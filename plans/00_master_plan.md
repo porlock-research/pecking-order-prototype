@@ -23,6 +23,7 @@ We will execute these features in order. Each feature will have its own detailed
     *   Shared Types package.
     *   Development Harness (The "Simulator").
 *   **Spec File:** `plans/01_infrastructure.md`
+*   **Status:** ✅ Completed (2026-02-06)
 
 ### **Feature 1: The Lobby (Entry)**
 *   **Goal:** Users can generate personas via Gemini, create lobbies, and invite friends.

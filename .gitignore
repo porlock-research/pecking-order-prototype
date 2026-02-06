@@ -11,6 +11,9 @@ build
 dist
 .party
 
+# TurboRepo
+.turbo
+
 # Misc
 .DS_Store
 *.pem
