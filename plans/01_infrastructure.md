@@ -40,13 +40,19 @@ Given the stack (Cloudflare Pages + PartyKit), the structure is:
     *   `Roster` (from Master Spec).
     *   `EventEnvelope` (Generic wrapper for `GAME.*`, `SOCIAL.*`).
 
-### **Step 3: The Logger**
+### **Step 3: The Logger (Observability)**
 *   **Path:** `packages/logger`
-*   **Why:** Cloudflare logs are messy. We need JSON output.
-*   **Format:**
+*   **Why:** Cloudflare logs are ephemeral. We need persistent, searchable system logs.
+*   **Stack:** **Axiom** (for system logs) + **Console** (fallback).
+*   **API:**
     ```typescript
-    export function log(level: "INFO"|"ERROR", layer: "L1"|"L2", message: string, meta?: any) {
-      console.log(JSON.stringify({ timestamp: Date.now(), level, layer, message, ...meta }));
+    // D1 Journal writes happen separately in L2 logic.
+    // This is purely for System Observability.
+    export function log(ctx: ExecutionContext, level: "INFO"|"ERROR", message: string, meta?: any) {
+      // 1. Console (Tail Workers)
+      console.log(JSON.stringify({ level, message, ...meta }));
+      // 2. Axiom (Async Flush)
+      ctx.waitUntil(axiom.ingest("pecking-order", [{ level, message, ...meta }]));
     }
     ```
 
@@ -55,8 +61,17 @@ Given the stack (Cloudflare Pages + PartyKit), the structure is:
 *   **Goal:** A script that can "play" a game by generating events.
 *   **MVP:** A simple TS script that imports `shared-types` and logs "Simulation Started". We will expand this in Feature 2.
 
+### **Step 5: Admin Dashboard Scaffolding**
+*   **Path:** `apps/lobby/app/routes/admin`
+*   **Goal:** A "God Mode" UI for Developers/Admins.
+*   **Features (MVP):**
+    *   Protected Route (Basic Auth / ENV Password).
+    *   List of Active Games (fetched from L1 via Admin API).
+    *   "Inspect" view to see raw Machine Context.
+
 ## **3. Success Criteria**
 *   [ ] `npm install` works at the root.
 *   [ ] `apps/game-server` can import `Roster` from `@pecking-order/shared-types`.
-*   [ ] `apps/client` can import `Roster` from `@pecking-order/shared-types`.
+*   [ ] `packages/logger` successfully sends a test event to Axiom (or mock).
+*   [ ] Admin Route exists in Lobby App.
 *   [ ] CI (GitHub Actions generic workflow) builds all packages.

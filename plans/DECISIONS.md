@@ -52,11 +52,24 @@ This document tracks significant architectural decisions, their context, and con
     *   L2 Orchestrator acts as the "Writer" to D1.
     *   We avoid OOM (Out of Memory) errors by not keeping history in RAM.
 
-## [ADR-006] Lazy Loading Cartridges
-*   **Date:** 2026-02-05
+## [ADR-007] Polymorphic Orchestrators (Game Modes)
+*   **Date:** 2026-02-06
 *   **Status:** Accepted
-*   **Context:** The game will have 10+ different minigames. Bundling all of them into the initial page load hurts mobile performance.
-*   **Decision:** Use React's `lazy()` + Dynamic Imports for minigames (`Cartridges`).
+*   **Context:** While "Pecking Order" (7 Days) is the MVP, we want the engine to support other tournament formats (e.g., "Blitz" - 1 Day) without rewriting the core infrastructure.
+*   **Decision:**
+    *   **L1 (Infra)** remains generic.
+    *   **L2 (Orchestrator)** is pluggable. L1 selects which Machine to spawn based on `manifest.gameMode`.
 *   **Consequences:**
-    *   The "Shell" (Main App) is lightweight.
-    *   We need a "Preload" signal from the server 5 minutes before a game starts to ensure assets are ready.
+    *   `apps/game-server/src/machines/l2` will house multiple machine definitions.
+    *   Shared types must support polymorphic Game Manifests.
+
+## [ADR-008] Dual-Channel Observability
+*   **Date:** 2026-02-06
+*   **Status:** Accepted
+*   **Context:** We need to debug system crashes (Observability) AND track game history for win conditions (Game Logic). Storing debug logs in the SQL Game DB causes bloat.
+*   **Decision:**
+    *   **System Logs (Axiom):** All technical events (`TRACE`, `ERROR`, `INFO`) are shipped to Axiom via `packages/logger`. Used by Admins/Devs.
+    *   **Game Journal (D1):** Only canonical game events (`ELIMINATION`, `VOTE`, `TRANSFER`) are stored in D1. Used by L2 Logic for Destinies.
+*   **Consequences:**
+    *   Strict separation of concerns in the Logger utility.
+    *   Requires Axiom API keys in the environment.
