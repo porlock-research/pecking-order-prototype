@@ -25,21 +25,26 @@ npm install
 
 ### Running the Stack (Dev Mode)
 
-You can run individual apps or the whole stack (via Turbo, though concurrent logs can be messy).
+You can run individual apps or the whole stack (via Turbo).
 
 **1. Start the Game Server (Port 1999)**
 ```bash
-npm run dev --workspace=game-server
+npx turbo dev --filter=game-server
 ```
 
 **2. Start the Lobby (Port 3000)**
 ```bash
-npm run dev --workspace=lobby-service
+npx turbo dev --filter=lobby-service
 ```
 
 **3. Start the Client (Port 5173)**
 ```bash
-npm run dev --workspace=client
+npx turbo dev --filter=client
+```
+
+**4. Run All**
+```bash
+npm run dev
 ```
 
 ### Building
