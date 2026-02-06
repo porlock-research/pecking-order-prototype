@@ -30,9 +30,10 @@ Use **Semantic Domain Tags** for commit messages. Do not use generic feature num
 | `[Shared]` | Changes affecting multiple layers (e.g., schemas). |
 
 **Feature Branch Protocol:**
+*   **Permission First:** Always ask for permission before creating a new branch.
+*   **Sequential Execution:** Do not start a new feature until the current feature is explicitly accepted by the user.
 *   Always create a new branch for each feature (e.g., `feature/01-lobby`, `fix/login-bug`).
 *   Never commit directly to `main` after the initial setup.
-*   Merge via PR (or simulate merge if working locally).
 
 ### **2. Flight Recorder**
 *   Before starting a task, read `plans/00_master_plan.md` to orient yourself.
@@ -40,6 +41,11 @@ Use **Semantic Domain Tags** for commit messages. Do not use generic feature num
 
 ### **3. Completion Protocol**
 *   **Success Criteria Validation:** Before marking a feature as "Completed", you MUST strictly verify each item in the "Success Criteria" section of the relevant plan.
+*   **User Acceptance:** You must receive explicit human acceptance before closing a feature.
+*   **Plan Updates:** Upon acceptance:
+    1.  Mark success criteria as `[x]`.
+    2.  If a criterion was skipped/changed, cite the relevant ADR.
+    3.  Add a **"Post-Implementation Summary"** section to the plan file highlighting deviations or discoveries.
 *   **No Half-Measures:** If a Deliverable is "Scaffold App", it means a *buildable* app, not just a folder.
 *   **Clean Git:** Never commit build artifacts (`.turbo`, `.next`, `dist`, `node_modules`). Verify with `git status` before committing.
 
