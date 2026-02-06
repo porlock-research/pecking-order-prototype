@@ -48,6 +48,7 @@ Use **Semantic Domain Tags** for commit messages. Do not use generic feature num
     3.  Add a **"Post-Implementation Summary"** section to the plan file highlighting deviations or discoveries.
 *   **No Half-Measures:** If a Deliverable is "Scaffold App", it means a *buildable* app, not just a folder.
 *   **Clean Git:** Never commit build artifacts (`.turbo`, `.next`, `dist`, `node_modules`). Verify with `git status` before committing.
+*   **Leverage User Expertise:** Before diving into complex debugging loops, ask the user clarifying questions. They may have observed details (e.g., "The app still loads") that invalidate your hypothesis.
 
 ## **Tech Stack**
 *   **Runtime:** Cloudflare Workers / PartyKit (Durable Objects).

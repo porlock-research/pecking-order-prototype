@@ -1,6 +1,6 @@
 # Feature 0: The Bedrock (Infrastructure)
 
-**Status:** Draft
+**Status:** ✅ Completed (2026-02-06)
 **Goal:** Initialize the Monorepo, Shared Types, and Developer Tooling.
 
 ## **1. The Monorepo Structure**
@@ -70,8 +70,14 @@ Given the stack (Cloudflare Pages + PartyKit), the structure is:
     *   "Inspect" view to see raw Machine Context.
 
 ## **3. Success Criteria**
-*   [ ] `npm install` works at the root.
-*   [ ] `apps/game-server` can import `Roster` from `@pecking-order/shared-types`.
-*   [ ] `packages/logger` successfully sends a test event to Axiom (or mock).
-*   [ ] Admin Route exists in Lobby App.
-*   [ ] CI (GitHub Actions generic workflow) builds all packages.
+*   [x] `npm install` works at the root.
+*   [x] `apps/game-server` can import `Roster` from `@pecking-order/shared-types`.
+*   [x] `packages/logger` successfully sends a test event to Axiom (or mock).
+*   [x] Admin Route exists in Lobby App.
+*   [x] CI (GitHub Actions generic workflow) builds all packages.
+
+## **4. Post-Implementation Summary**
+*   **Dev Environment:** Running `npm run dev` (root) successfully starts all apps in parallel.
+*   **NPM Noise:** `lobby-service` emits `npm error code ENOWORKSPACES` during dev, but the Next.js server starts and functions correctly. This is deemed a non-blocking cosmetic issue related to the interaction between Turbo, NPM Workspaces, and Next.js.
+*   **Package Exports:** Fixed an issue where `"types"` must be listed first in `package.json` exports to avoid build warnings.
+*   **Artifact Tracking:** Updated `.gitignore` to strictly exclude `.next` and `.turbo` folders which were initially tracked by accident.
