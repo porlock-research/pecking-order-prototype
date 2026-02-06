@@ -29,6 +29,11 @@ Use **Semantic Domain Tags** for commit messages. Do not use generic feature num
 | `[Docs]` | Updates to specs, plans, or decision logs. |
 | `[Shared]` | Changes affecting multiple layers (e.g., schemas). |
 
+**Feature Branch Protocol:**
+*   Always create a new branch for each feature (e.g., `feature/01-lobby`, `fix/login-bug`).
+*   Never commit directly to `main` after the initial setup.
+*   Merge via PR (or simulate merge if working locally).
+
 ### **2. Flight Recorder**
 *   Before starting a task, read `plans/00_master_plan.md` to orient yourself.
 *   If you make a major architectural decision, log it in `plans/DECISIONS.md`.
