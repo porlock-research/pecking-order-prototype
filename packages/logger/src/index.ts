@@ -45,11 +45,12 @@ export function log(
   if (ctx && process.env.AXIOM_TOKEN) {
     const axiom = getAxiom();
     if (axiom) {
-      ctx.waitUntil(
-        axiom.ingest(AXIOM_DATASET, [payload]).catch((err) => {
-          console.error("Failed to ship logs to Axiom", err);
-        })
-      );
+      const promise = axiom.ingest(AXIOM_DATASET, [payload]);
+      // Wrap in a promise to handle errors safely without breaking types if ingest returns void/unknown
+      const safePromise = Promise.resolve(promise).catch((err: any) => {
+        console.error("Failed to ship logs to Axiom", err);
+      });
+      ctx.waitUntil(safePromise);
     }
   }
 }

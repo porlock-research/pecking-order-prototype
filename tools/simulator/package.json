@@ -1,0 +1,13 @@
+{
+  "name": "simulator",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@pecking-order/shared-types": "*",
+    "@pecking-order/logger": "*",
+    "tsx": "^4.0.0"
+  }
+}
