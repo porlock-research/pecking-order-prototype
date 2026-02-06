@@ -1,0 +1,5 @@
+{
+  "name": "pecking-order-server",
+  "main": "src/server.ts",
+  "compatibilityDate": "2024-02-06"
+}

@@ -1,0 +1,17 @@
+{
+  "name": "game-server",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "partykit dev",
+    "build": "tsc",
+    "deploy": "partykit deploy"
+  },
+  "dependencies": {
+    "partykit": "^0.0.103",
+    "@pecking-order/shared-types": "*",
+    "@pecking-order/logger": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
