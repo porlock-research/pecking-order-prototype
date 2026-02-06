@@ -81,7 +81,7 @@ For each feature, we will:
 1.  **Draft the Spec:** Create the specific markdown file (e.g., `plans/02_feature_lobby.md`).
 2.  **Approve:** Review the plan with the user.
 3.  **Implement:** Code the vertical slice.
-4.  **Verify:** Run the harness/simulator to prove it works.
+4.  **Verify:** Run the harness/simulator AND strictly verify all "Success Criteria" defined in the plan.
 
 ## **4. Context Persistence & Handoff (Crucial)**
 

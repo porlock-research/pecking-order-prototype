@@ -33,6 +33,11 @@ Use **Semantic Domain Tags** for commit messages. Do not use generic feature num
 *   Before starting a task, read `plans/00_master_plan.md` to orient yourself.
 *   If you make a major architectural decision, log it in `plans/DECISIONS.md`.
 
+### **3. Completion Protocol**
+*   **Success Criteria Validation:** Before marking a feature as "Completed", you MUST strictly verify each item in the "Success Criteria" section of the relevant plan.
+*   **No Half-Measures:** If a Deliverable is "Scaffold App", it means a *buildable* app, not just a folder.
+*   **Clean Git:** Never commit build artifacts (`.turbo`, `.next`, `dist`, `node_modules`). Verify with `git status` before committing.
+
 ## **Tech Stack**
 *   **Runtime:** Cloudflare Workers / PartyKit (Durable Objects).
 *   **State:** XState v5.
