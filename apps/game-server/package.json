@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "partykit dev",
-    "build": "tsc",
+    "build": "tsc --noEmit",
     "deploy": "partykit deploy"
   },
   "dependencies": {
