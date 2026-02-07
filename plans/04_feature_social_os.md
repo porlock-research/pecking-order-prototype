@@ -18,7 +18,15 @@
     *   **Time Window:** 10:00 AM - 11:00 PM.
     *   **Char Limit:** 1200 chars / day (Tracked in Context).
 
-## **3. State Machine (L3 Region A)**
+## **3. Persistence Strategy (Context vs. Journal)**
+
+*   **Context (L3 RAM):** Tracks *Daily Limits* and *Recent Chat History* (Last 50 messages per channel).
+    *   *Why?* Fast access for validation logic.
+*   **Journal (D1 SQL):** Tracks *Every Message* (Audit Trail).
+    *   *Why?* "Spy" powers need to query message history ("Show me Alice's last 3 DMs").
+    *   *Mechanism:* `FACT.RECORD` event -> L2 -> D1 Insert.
+
+## **4. State Machine (L3 Region A)**
 
 ```typescript
 socialRegion: {
@@ -28,30 +36,12 @@ socialRegion: {
       on: {
         "SOCIAL.MSG": {
           guard: "canAffordAndOpen",
-          actions: ["deductSilver", "broadcastMessage", "logUsage"]
+          actions: ["deductSilver", "broadcastMessage", "emitFact"]
         },
         "SOCIAL.CREATE_GROUP": {
           actions: "createChannel"
         }
       }
-    }
-  }
-}
-```
-
-## **4. Data Model (Context)**
-
-```typescript
-interface SocialContext {
-  silver: number; // Current balance
-  usage: {
-    charsToday: number;
-    dmCount: number;
-  };
-  channels: {
-    [channelId: string]: {
-      members: string[]; // Player IDs
-      history: Message[]; // Last 50 messages (Transient)
     }
   }
 }

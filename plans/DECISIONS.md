@@ -73,3 +73,21 @@ This document tracks significant architectural decisions, their context, and con
 *   **Consequences:**
     *   Strict separation of concerns in the Logger utility.
     *   Requires Axiom API keys in the environment.
+
+## [ADR-009] Simulation-First Verification
+*   **Date:** 2026-02-07
+*   **Status:** Accepted
+*   **Context:** Testing 7-day game logic (Destinies) manually is impossible. Unit tests for XState are good but don't capture full E2E state transitions.
+*   **Decision:** We will use a scriptable **Simulator** (`tools/simulator`) as the primary verification tool for Win Conditions.
+*   **Consequences:**
+    *   The Simulator must be kept up-to-date with Shared Types.
+    *   CI pipeline must run simulation scenarios.
+
+## [ADR-010] Zero-PII Client Architecture
+*   **Date:** 2026-02-07
+*   **Status:** Accepted
+*   **Context:** The core premise of the game is anonymity. Leaking emails or real names in the API response allows users to "doxx" opponents.
+*   **Decision:** The Client API (`/api/lobby/[id]`) and Handoff Payload must **NEVER** contain PII.
+*   **Consequences:**
+    *   Emails are stored in D1 but never returned to the frontend.
+    *   Session cookies/tokens are used for identity, not email params.

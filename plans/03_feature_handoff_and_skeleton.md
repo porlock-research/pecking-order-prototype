@@ -22,8 +22,19 @@
     ```json
     {
       "lobbyId": "xyz",
-      "roster": [ ...final player list... ],
-      "manifest": { ...game settings... }
+      "roster": [
+        {
+           "playerId": "p1",
+           "persona": { "name": "Countess Snuffles", "avatar": "🐱" },
+           "isHost": true,
+           // NO EMAIL. Identity is managed by the cookie/token.
+        }
+      ],
+      "manifest": {
+         "gameMode": "PECKING_ORDER", // Polymorphic Key
+         "theme": "Sci-Fi",
+         // ...
+      }
     }
     ```
 *   **L1 Logic:**
@@ -40,7 +51,7 @@
 ### Step C: Connection (L0 -> L1)
 *   **Client App:** React PWA shell.
 *   **Hook:** `usePartySocket({ room: id, query: { token } })`.
-*   **On Connect:** L1 validates token.
+*   **On Connect:** L1 validates token against the stored Roster.
 *   **On Message:** L1 sends `SYSTEM.SYNC` with the current state.
 
 ## **4. Implementation Steps**

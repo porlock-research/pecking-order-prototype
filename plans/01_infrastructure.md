@@ -80,4 +80,6 @@ Given the stack (Cloudflare Pages + PartyKit), the structure is:
 *   **Dev Environment:** Running `npm run dev` (root) successfully starts all apps in parallel.
 *   **NPM Noise:** `lobby-service` emits `npm error code ENOWORKSPACES` during dev, but the Next.js server starts and functions correctly. This is deemed a non-blocking cosmetic issue related to the interaction between Turbo, NPM Workspaces, and Next.js.
 *   **Package Exports:** Fixed an issue where `"types"` must be listed first in `package.json` exports to avoid build warnings.
-*   **Artifact Tracking:** Updated `.gitignore` to strictly exclude `.next` and `.turbo` folders which were initially tracked by accident.
+*   **Artifact Tracking:** Updated `.gitignore` to strictly exclude `.next`, `.turbo`, and `.wrangler` folders.
+*   **Turbo Configuration:** Updated `turbo.json` to include `globalDependencies` (so `.env` changes invalidate cache) and added a `test` pipeline.
+*   **Logger Robustness:** Refactored `packages/logger` to accept an optional `env` object, ensuring compatibility with Cloudflare Workers/PartyKit where `process.env` is not available.

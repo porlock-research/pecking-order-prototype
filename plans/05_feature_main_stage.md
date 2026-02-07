@@ -11,6 +11,7 @@
 ## **2. Technical Requirements**
 *   **Architecture:** Lazy Loaded Components (Client) + Ephemeral Actor (Server).
 *   **Pattern:** `invoke: { src: 'triviaMachine' }`.
+*   **Polymorphism:** The specific cartridge loaded is determined by the `manifest.gameMode`.
 
 ## **3. The Cartridge Interface**
 

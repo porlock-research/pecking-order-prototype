@@ -13,6 +13,8 @@ coverage
 **/.party
 out/
 .vercel
+**/.wrangler
+**/.drizzle
 
 # Misc
 .DS_Store
