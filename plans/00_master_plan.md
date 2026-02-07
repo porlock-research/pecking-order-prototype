@@ -25,6 +25,14 @@ We will execute these features in order. Each feature will have its own detailed
 *   **Spec File:** `plans/01_infrastructure.md`
 *   **Status:** ✅ Completed (2026-02-06)
 
+### **Feature 0.5: The Production Pipeline**
+*   **Goal:** Automate testing and deployment to Staging.
+*   **Deliverables:** 
+    *   CI/CD Workflows (GitHub Actions).
+    *   Staging Environment Configuration.
+*   **Spec File:** `plans/01_production_pipeline.md`
+*   **Status:** In Progress
+
 ### **Feature 1: The Lobby (Entry)**
 *   **Goal:** Users can generate personas via Gemini, create lobbies, and invite friends.
 *   **Deliverables:** 

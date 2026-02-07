@@ -1,0 +1,70 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [ main, feature/* ]
+
+jobs:
+  deploy-lobby:
+    name: Deploy Lobby (P1)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
+      - run: npm ci
+      - run: npx turbo run build --filter=lobby-service
+      - run: npm run pages:build -w apps/lobby
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: pecking-order-lobby
+          directory: apps/lobby/.vercel/output/static
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-client:
+    name: Deploy Client (L0)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
+      - run: npm ci
+      - run: npx turbo run build --filter=client
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: pecking-order-client
+          directory: apps/client/dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-server:
+    name: Deploy Game Server (L1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
+      - run: npm ci
+      - name: Deploy to PartyKit
+        env:
+          PARTYKIT_TOKEN: ${{ secrets.PARTYKIT_TOKEN }}
+        run: npx turbo run deploy --filter=game-server

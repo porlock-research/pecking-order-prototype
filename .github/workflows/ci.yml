@@ -1,25 +1,40 @@
-name: CI
+name: CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
-  build:
+  validate:
+    name: Validate Code Quality
     runs-on: ubuntu-latest
+    
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
           cache: 'npm'
-          
+
       - name: Install Dependencies
         run: npm ci
-        
-      - name: Build All
-        run: npm run build
+
+      - name: Build
+        run: npx turbo run build --filter=...[HEAD^1]
+
+      - name: Lint
+        run: npx turbo run lint --filter=...[HEAD^1]
+
+      - name: Test
+        run: npx turbo run test --filter=...[HEAD^1]
