@@ -5,7 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # PartyServer requires a Durable Object binding
 [[durable_objects.bindings]]
-name = "GAME"
+name = "GameServer"
 class_name = "GameServer"
 
 # Migrations for DO state (required for new DO classes)

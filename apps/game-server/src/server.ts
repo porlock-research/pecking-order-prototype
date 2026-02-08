@@ -3,7 +3,7 @@ import { Roster, InitPayloadSchema } from "@pecking-order/shared-types";
 import { log } from "@pecking-order/logger";
 
 export interface Env {
-  GAME: DurableObjectNamespace;
+  GameServer: DurableObjectNamespace;
   DB: D1Database;
   AXIOM_DATASET: string;
   AXIOM_TOKEN?: string;
