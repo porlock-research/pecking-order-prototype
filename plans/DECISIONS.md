@@ -91,3 +91,16 @@ This document tracks significant architectural decisions, their context, and con
 *   **Consequences:**
     *   Emails are stored in D1 but never returned to the frontend.
     *   Session cookies/tokens are used for identity, not email params.
+
+## [ADR-011] Self-Hosted Cloudflare Infrastructure (OpenNext + PartyServer)
+*   **Date:** 2026-02-08
+*   **Status:** Accepted
+*   **Context:** We need full control over D1 bindings, logs, and deployment regions. The "Managed PartyKit" platform is an abstraction layer that hides these controls. Also, `next-on-pages` is deprecated.
+*   **Decision:**
+    *   **Lobby:** Deploy as a Cloudflare Worker using **OpenNext**.
+    *   **Game Server:** Deploy as a Cloudflare Worker/DO using **PartyServer** (official Cloudflare library).
+    *   **Config:** Use `wrangler.toml` (or `wrangler.json`) as the single source of truth for bindings.
+*   **Consequences:**
+    *   We are responsible for `wrangler` configuration.
+    *   We gain direct access to D1 and Logpush.
+    *   React 19 is enforced globally to support OpenNext.

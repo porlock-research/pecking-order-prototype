@@ -10,7 +10,7 @@
 4.  **Host:** "I want to see who has joined (as their Persona) and 'Start Game' to trigger the real server handoff."
 
 ## **2. Technical Requirements**
-*   **Framework:** Next.js (App Router) on Cloudflare Pages.
+*   **Framework:** Next.js 15+ (App Router) using **OpenNext** on Cloudflare Workers.
 *   **Database:** Cloudflare D1 (SQLite) via Drizzle ORM.
 *   **AI:** `google-generative-ai` SDK (Gemini Pro).
 *   **Auth:** 
