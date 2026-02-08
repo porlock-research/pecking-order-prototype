@@ -46,6 +46,28 @@ export class GameServer extends Server<Env> {
         console.log(`[L1] ⏰ Setting Alarm for: ${new Date(nextWakeup).toISOString()}`);
         this.ctx.storage.setAlarm(nextWakeup);
       }
+
+      // C. Broadcast State to Clients
+      // We attempt to grab L3 context if it exists, as it holds the "Real" roster/chat during the day
+      let l3Context = {};
+      const l3Ref = snapshot.children['l3-session'];
+      if (l3Ref) {
+        const l3Snapshot = l3Ref.getSnapshot();
+        if (l3Snapshot) {
+          l3Context = l3Snapshot.context;
+        }
+      }
+
+      const combinedContext = {
+        ...snapshot.context,
+        ...l3Context
+      };
+
+      this.broadcast(JSON.stringify({
+        type: "SYSTEM.SYNC",
+        state: snapshot.value,
+        context: combinedContext
+      }));
     });
 
     this.actor.start();
