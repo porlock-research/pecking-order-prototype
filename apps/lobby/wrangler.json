@@ -9,5 +9,8 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
+  },
+  "vars": {
+    "GAME_SERVER_URL": "https://game-server.pecking-order.workers.dev"
   }
 }
