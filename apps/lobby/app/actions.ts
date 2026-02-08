@@ -33,13 +33,28 @@ export async function startGameStub() {
     // ... imagine 8 players
   };
 
+  const now = Date.now();
+  const timeline = [
+    { time: new Date(now + 5000).toISOString(), action: "GAME_STARTED", payload: { msg: "Let the games begin!" } },
+    { time: new Date(now + 10000).toISOString(), action: "GROUP_CHAT_OPEN", payload: { msg: "Chat is open." } },
+    { time: new Date(now + 15000).toISOString(), action: "DMS_OPEN", payload: { msg: "Secrets allowed." } },
+    { time: new Date(now + 20000).toISOString(), action: "VOTING_STARTED", payload: { msg: "Cast your stones." } },
+    { time: new Date(now + 25000).toISOString(), action: "GAME_ENDED", payload: { msg: "Day is done." } },
+  ];
+
   const payload = {
     lobbyId: "lobby-debug",
     roster,
     manifest: {
       id: "manifest-1",
       gameMode: "PECKING_ORDER" as const,
-      days: []
+      days: [
+        {
+          dayIndex: 1,
+          theme: "Test Day",
+          timeline
+        }
+      ]
     }
   };
 

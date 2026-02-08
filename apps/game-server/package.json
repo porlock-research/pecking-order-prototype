@@ -9,7 +9,8 @@
   "dependencies": {
     "@pecking-order/logger": "*",
     "@pecking-order/shared-types": "*",
-    "partyserver": "^0.1.2"
+    "partyserver": "^0.1.2",
+    "partywhen": "^0.1.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260207.0",
