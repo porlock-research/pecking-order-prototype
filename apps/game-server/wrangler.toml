@@ -10,7 +10,7 @@ class_name = "GameServer"
 # Migrations for DO state (required for new DO classes)
 [[migrations]]
 tag = "v1"
-new_classes = ["GameServer"]
+new_sqlite_classes = ["GameServer"]
 
 # D1 Database Binding (for Journal)
 [[d1_databases]]
