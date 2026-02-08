@@ -1,17 +1,18 @@
 import { setup, assign, fromPromise } from 'xstate';
 import { dailySessionMachine } from './l3-session';
+import { SocialPlayer, Roster } from '@pecking-order/shared-types';
 
 // --- Types (Local definition to ensure self-containment) ---
 export interface GameContext {
   gameId: string;
-  roster: Record<string, any>;
+  roster: Record<string, SocialPlayer>;
   manifest: any;
   dayIndex: number;
   nextWakeup: number | null;
 }
 
 export type GameEvent = 
-  | { type: 'SYSTEM.INIT'; payload: { roster: any; manifest: any }; gameId: string }
+  | { type: 'SYSTEM.INIT'; payload: { roster: Roster; manifest: any }; gameId: string }
   | { type: 'SYSTEM.WAKEUP' }
   | { type: 'SYSTEM.PAUSE' };
 
@@ -24,7 +25,20 @@ export const orchestratorMachine = setup({
   actions: {
     initializeContext: assign({
       gameId: ({ event }) => (event.type === 'SYSTEM.INIT' ? event.gameId : ''),
-      roster: ({ event }) => (event.type === 'SYSTEM.INIT' ? event.payload.roster : {}),
+      roster: ({ event }) => {
+        if (event.type !== 'SYSTEM.INIT') return {};
+        const internalRoster: Record<string, SocialPlayer> = {};
+        for (const [id, p] of Object.entries(event.payload.roster)) {
+          internalRoster[id] = {
+            id,
+            personaName: p.personaName,
+            avatarUrl: p.avatarUrl,
+            status: p.isAlive ? "ALIVE" : "ELIMINATED",
+            silver: p.silver
+          };
+        }
+        return internalRoster;
+      },
       manifest: ({ event }) => (event.type === 'SYSTEM.INIT' ? event.payload.manifest : {}),
       dayIndex: 0,
     }),
@@ -42,10 +56,7 @@ export const orchestratorMachine = setup({
     }
   },
   actors: {
-    // Placeholder for L3 Daily Session (Phase 3)
-    dailySession: fromPromise(async () => {
-      return { status: "Day Complete" }; 
-    })
+    dailySessionMachine // Add it to setup actors
   }
 }).createMachine({
   id: 'pecking-order-l2',
@@ -85,16 +96,18 @@ export const orchestratorMachine = setup({
           // SPAWN THE CHILD
           invoke: {
             id: 'l3-session',
-            src: dailySessionMachine,
+            src: 'dailySessionMachine', // Reference by name
             input: ({ context }) => ({
-              dayIndex: context.dayIndex
+              dayIndex: context.dayIndex,
+              roster: context.roster
             }),
             onDone: {
               // When L3 finishes (after 20s), go to Night Summary
               target: 'nightSummary',
               actions: ({ event }) => {
-                // DEFENSIVE CODING: Check if output exists
-                const reason = event.output ? event.output.reason : "Unknown";
+                // DEFENSIVE CODING: Check if output exists and use unknown for event to access output safely
+                const output = (event as any).output;
+                const reason = output ? output.reason : "Unknown";
                 console.log(`[L2] Day Ended. Reason: ${reason}`);
               }
             }

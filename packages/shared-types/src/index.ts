@@ -88,3 +88,39 @@ export type RosterPlayer = z.infer<typeof RosterPlayerSchema>;
 export type Roster = z.infer<typeof RosterSchema>;
 export type GameManifest = z.infer<typeof GameManifestSchema>;
 export type InitPayload = z.infer<typeof InitPayloadSchema>;
+
+// --- Social & Chat Schemas ---
+
+export const SocialPlayerSchema = z.object({
+  id: z.string(),
+  personaName: z.string(),
+  avatarUrl: z.string(),
+  status: z.enum(["ALIVE", "ELIMINATED"]),
+  silver: z.number().int().default(0),
+});
+
+export const ChatMessageSchema = z.object({
+  id: z.string(), // UUID
+  senderId: z.string(),
+  timestamp: z.number(),
+  content: z.string().max(280),
+  channel: z.enum(["MAIN", "DM"]),
+  targetId: z.string().optional()
+});
+
+export const SocialEventSchema = z.discriminatedUnion("type", [
+  z.object({ 
+    type: z.literal("SOCIAL.SEND_MSG"), 
+    content: z.string(), 
+    targetId: z.string().optional() 
+  }),
+  z.object({ 
+    type: z.literal("SOCIAL.SEND_SILVER"), 
+    amount: z.number().positive(), 
+    targetId: z.string() 
+  })
+]);
+
+export type SocialPlayer = z.infer<typeof SocialPlayerSchema>;
+export type ChatMessage = z.infer<typeof ChatMessageSchema>;
+export type SocialEvent = z.infer<typeof SocialEventSchema>;

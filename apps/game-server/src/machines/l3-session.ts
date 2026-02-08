@@ -1,39 +1,87 @@
 import { setup, assign } from 'xstate';
+import { ChatMessage, SocialPlayer, SocialEvent } from '@pecking-order/shared-types';
 
 // 1. Define strict types
 export interface DailyContext {
   dayIndex: number;
-  chatLog: Array<{ sender: string; message: string }>;
-  silver: Record<string, number>;
+  chatLog: ChatMessage[];
+  roster: Record<string, SocialPlayer>;
 }
 
 export type DailyEvent =
-  | { type: 'SOCIAL.DM'; sender: string; message: string }
+  | (SocialEvent & { senderId: string }) // Inject senderId in server.ts
   | { type: 'INTERNAL.END_DAY' };
 
 export const dailySessionMachine = setup({
   types: {
-    // CRITICAL: We must explicitly define 'input' for it to be accepted from L2
-    input: {} as { dayIndex: number }, 
+    input: {} as { dayIndex: number; roster: Record<string, SocialPlayer> }, 
     context: {} as DailyContext,
     events: {} as DailyEvent,
     output: {} as { reason: string }
   },
   actions: {
-    logMessage: assign({
+    processMessage: assign({
       chatLog: ({ context, event }) => {
-        if (event.type !== 'SOCIAL.DM') return context.chatLog;
-        return [...context.chatLog, { sender: event.sender, message: event.message }];
+        if (event.type !== 'SOCIAL.SEND_MSG') return context.chatLog;
+        
+        const sender = context.roster[event.senderId];
+        if (!sender) return context.chatLog;
+
+        const isDM = !!event.targetId;
+        
+        // Create message object
+        const newMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          senderId: event.senderId,
+          timestamp: Date.now(),
+          content: event.content,
+          channel: isDM ? 'DM' : 'MAIN',
+          targetId: event.targetId
+        };
+
+        return [...context.chatLog, newMessage];
+      },
+      roster: ({ context, event }) => {
+        if (event.type !== 'SOCIAL.SEND_MSG' || !event.targetId) return context.roster;
+        
+        const sender = context.roster[event.senderId];
+        if (!sender || sender.silver < 1) return context.roster;
+
+        // Deduct 1 silver for DM
+        return {
+          ...context.roster,
+          [event.senderId]: {
+            ...sender,
+            silver: sender.silver - 1
+          }
+        };
+      }
+    }),
+    transferSilver: assign({
+      roster: ({ context, event }) => {
+        if (event.type !== 'SOCIAL.SEND_SILVER') return context.roster;
+        
+        const sender = context.roster[event.senderId];
+        const target = context.roster[event.targetId];
+        
+        if (!sender || !target || sender.silver < event.amount) return context.roster;
+
+        console.log(`[L3] FACT.RECORD: ${sender.personaName} sent ${event.amount} silver to ${target.personaName}`);
+
+        return {
+          ...context.roster,
+          [event.senderId]: { ...sender, silver: sender.silver - event.amount },
+          [event.targetId]: { ...target, silver: target.silver + event.amount }
+        };
       }
     })
   }
 }).createMachine({
   id: 'l3-daily-session',
-  // 2. Hydrate Context from Input
   context: ({ input }) => ({
     dayIndex: input.dayIndex || 0,
     chatLog: [],
-    silver: {}
+    roster: input.roster || {}
   }),
   initial: 'running',
   states: {
@@ -44,7 +92,10 @@ export const dailySessionMachine = setup({
           initial: 'active',
           states: {
             active: {
-              on: { 'SOCIAL.DM': { actions: 'logMessage' } }
+              on: { 
+                'SOCIAL.SEND_MSG': { actions: 'processMessage' },
+                'SOCIAL.SEND_SILVER': { actions: 'transferSilver' }
+              }
             }
           }
         },
@@ -52,9 +103,8 @@ export const dailySessionMachine = setup({
           initial: 'idle',
           states: {
             idle: {
-              // 3. Shorten timer to 5s for faster debugging
               after: {
-                5000: { actions: ({ self }) => self.send({ type: 'INTERNAL.END_DAY' }) }
+                20000: { actions: ({ self }) => self.send({ type: 'INTERNAL.END_DAY' }) }
               }
             }
           }
@@ -66,7 +116,6 @@ export const dailySessionMachine = setup({
     },
     finishing: {
       type: 'final',
-      // 4. Return Output as a Function (Safer)
       output: () => ({ reason: "Time Limit Reached" })
     }
   }

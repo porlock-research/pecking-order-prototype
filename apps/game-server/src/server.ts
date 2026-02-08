@@ -93,7 +93,19 @@ export class GameServer extends Server<Env> {
    * 3. CLIENT SYNC: WebSocket Connection
    */
   onConnect(ws: Connection, ctx: ConnectionContext) {
-    console.log(`[L1] Client Connected`);
+    const url = new URL(ctx.request.url);
+    const playerId = url.searchParams.get("playerId");
+    const roster = this.actor?.getSnapshot().context.roster || {};
+
+    if (!playerId || !roster[playerId]) {
+      console.log(`[L1] Rejecting connection: Invalid Player ID ${playerId}`);
+      ws.close(4001, "Invalid Player ID");
+      return;
+    }
+
+    // Attach identity to connection
+    ws.setState({ playerId });
+    console.log(`[L1] Player Connected: ${playerId}`);
     
     // Send current state immediately so client UI hydrates
     const snapshot = this.actor?.getSnapshot();
@@ -107,7 +119,31 @@ export class GameServer extends Server<Env> {
   }
 
   /**
-   * 4. TIME: The Cloudflare Alarm wakes us up
+   * 4. MESSAGE: Receive social events from clients
+   */
+  onMessage(ws: Connection, message: string) {
+    try {
+      const event = JSON.parse(message);
+      const state = ws.state as { playerId: string } | null;
+
+      if (!state?.playerId) {
+        ws.close(4001, "Missing Identity");
+        return;
+      }
+
+      // Inject senderId to prevent spoofing
+      this.actor?.send({
+        ...event,
+        senderId: state.playerId
+      });
+      
+    } catch (err) {
+      console.error("[L1] Error processing message:", err);
+    }
+  }
+
+  /**
+   * 5. TIME: The Cloudflare Alarm wakes us up
    */
   async onAlarm() {
     console.log(`[L1] ⏰ RRRRING! Alarm fired.`);
