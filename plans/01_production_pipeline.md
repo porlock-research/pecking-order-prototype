@@ -28,17 +28,16 @@
 
 ### **Step 2: CD Workflow (Staging Deploy)**
 *   **Path:** `.github/workflows/deploy-staging.yml`
-*   **Triggers:** Push to `main`.
+*   **Triggers:** Push to `main`, Feature Branches (for verification).
 *   **Jobs:**
     *   `deploy-lobby`: Uses `cloudflare/pages-action` to deploy `apps/lobby`.
     *   `deploy-client`: Uses `cloudflare/pages-action` to deploy `apps/client`.
-    *   `deploy-party`: Uses `npx partykit deploy` to deploy `apps/game-server`.
+    *   `deploy-server`: Uses `wrangler deploy` (via turbo) to deploy `apps/game-server`.
 
 ### **Step 3: Environment Configuration**
 *   **Secrets:**
     *   `CLOUDFLARE_API_TOKEN`
     *   `CLOUDFLARE_ACCOUNT_ID`
-    *   `PARTYKIT_TOKEN`
     *   `GEMINI_API_KEY` (for Staging)
 
 ## **4. Success Criteria**
