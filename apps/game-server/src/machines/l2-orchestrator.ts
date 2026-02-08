@@ -81,7 +81,8 @@ export const orchestratorMachine = setup({
     preGame: {
       entry: ['scheduleMorningAlarm'], 
       on: {
-        'SYSTEM.WAKEUP': { target: 'dayLoop' }
+        'SYSTEM.WAKEUP': { target: 'dayLoop' },
+        'ADMIN.NEXT_STAGE': { target: 'dayLoop' }
       }
     },
     dayLoop: {

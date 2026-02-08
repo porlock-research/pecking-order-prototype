@@ -126,7 +126,10 @@ export class GameServer extends Server<Env> {
       const event = JSON.parse(message);
       const state = ws.state as { playerId: string } | null;
 
+      console.log(`[L1] 📨 Received message from ${state?.playerId}:`, JSON.stringify(event));
+
       if (!state?.playerId) {
+        console.warn("[L1] Message received from connection without playerId");
         ws.close(4001, "Missing Identity");
         return;
       }
