@@ -28,19 +28,22 @@
 ### **Feature 2: The Game Loop (Scheduling)**
 *   **Goal:** Implement 7-day loop with multiple alarms.
 *   **Deliverables:** `partywhen` integration, Day/Night transitions.
-*   **Status:** IN PROGRESS
+*   **Status:** ✅ Completed (2026-02-08)
 
 ### **Feature 3: The Social OS (Communication)**
 *   **Goal:** Real-time chat, DMs, and Silver logic.
 *   **Spec File:** `plans/04_feature_social_os.md`
+*   **Status:** ✅ Completed (2026-02-08)
 
 ### **Feature 4: The Main Stage (Minigames)**
 *   **Goal:** Pluggable Cartridges (Trivia, etc).
 *   **Spec File:** `plans/05_feature_main_stage.md`
+*   **Status:** ✅ Completed (Skeleton & Registry) (2026-02-08)
 
 ### **Feature 5: Judgment (Voting & Elimination)**
 *   **Goal:** Daily Vote mechanics and transitions.
 *   **Spec File:** `plans/06_feature_judgment.md`
+*   **Status:** NEXT
 
 ### **Feature 6: Destiny (Meta-Game)**
 *   **Goal:** Win conditions and D1 Journal.

@@ -8,6 +8,7 @@ export const useGameEngine = (gameId: string, playerId: string) => {
   const socket = usePartySocket({
     host: "localhost:8787", // Hardcoded for local dev as per instructions
     room: gameId,
+    party: 'game-server',
     query: {
       playerId,
     },

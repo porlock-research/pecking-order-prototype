@@ -14,7 +14,8 @@ export interface GameContext {
 export type GameEvent = 
   | { type: 'SYSTEM.INIT'; payload: { roster: Roster; manifest: any }; gameId: string }
   | { type: 'SYSTEM.WAKEUP' }
-  | { type: 'SYSTEM.PAUSE' };
+  | { type: 'SYSTEM.PAUSE' }
+  | { type: 'ADMIN.NEXT_STAGE' };
 
 // --- The L2 Orchestrator Machine ---
 export const orchestratorMachine = setup({
@@ -56,7 +57,7 @@ export const orchestratorMachine = setup({
     }
   },
   actors: {
-    dailySessionMachine // Add it to setup actors
+    dailySessionMachine
   }
 }).createMachine({
   id: 'pecking-order-l2',
@@ -88,24 +89,23 @@ export const orchestratorMachine = setup({
       states: {
         morningBriefing: {
           entry: ['incrementDay', 'logTransition'],
-          after: {
-            5000: 'activeSession' // 5s delay for "Morning Announcements"
+          on: {
+            'ADMIN.NEXT_STAGE': { target: 'activeSession' }
           }
         },
         activeSession: {
           // SPAWN THE CHILD
           invoke: {
             id: 'l3-session',
-            src: 'dailySessionMachine', // Reference by name
+            src: 'dailySessionMachine',
             input: ({ context }) => ({
               dayIndex: context.dayIndex,
               roster: context.roster
             }),
             onDone: {
-              // When L3 finishes (after 20s), go to Night Summary
+              // When L3 finishes, go to Night Summary
               target: 'nightSummary',
               actions: ({ event }) => {
-                // DEFENSIVE CODING: Check if output exists and use unknown for event to access output safely
                 const output = (event as any).output;
                 const reason = output ? output.reason : "Unknown";
                 console.log(`[L2] Day Ended. Reason: ${reason}`);
@@ -117,9 +117,9 @@ export const orchestratorMachine = setup({
           }
         },
         nightSummary: {
-          entry: ['scheduleMorningAlarm', 'logTransition'],
+          entry: ['logTransition'],
           on: {
-            'SYSTEM.WAKEUP': { target: 'morningBriefing' }
+            'ADMIN.NEXT_STAGE': { target: 'morningBriefing' }
           }
         }
       },

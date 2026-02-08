@@ -1,5 +1,5 @@
 import { setup, assign } from 'xstate';
-import { ChatMessage, SocialPlayer, SocialEvent } from '@pecking-order/shared-types';
+import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent } from '@pecking-order/shared-types';
 
 // 1. Define strict types
 export interface DailyContext {
@@ -10,7 +10,8 @@ export interface DailyContext {
 
 export type DailyEvent =
   | (SocialEvent & { senderId: string }) // Inject senderId in server.ts
-  | { type: 'INTERNAL.END_DAY' };
+  | { type: 'INTERNAL.END_DAY' }
+  | AdminEvent;
 
 export const dailySessionMachine = setup({
   types: {
@@ -103,8 +104,10 @@ export const dailySessionMachine = setup({
           initial: 'idle',
           states: {
             idle: {
-              after: {
-                20000: { actions: ({ self }) => self.send({ type: 'INTERNAL.END_DAY' }) }
+              on: {
+                'ADMIN.NEXT_STAGE': { 
+                  actions: ({ self }) => self.send({ type: 'INTERNAL.END_DAY' }) 
+                }
               }
             }
           }
@@ -116,7 +119,7 @@ export const dailySessionMachine = setup({
     },
     finishing: {
       type: 'final',
-      output: () => ({ reason: "Time Limit Reached" })
+      output: () => ({ reason: "Manual Trigger" })
     }
   }
 });

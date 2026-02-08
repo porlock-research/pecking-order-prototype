@@ -121,9 +121,14 @@ export const SocialEventSchema = z.discriminatedUnion("type", [
   })
 ]);
 
+export const AdminEventSchema = z.object({
+  type: z.literal("ADMIN.NEXT_STAGE")
+});
+
 export type SocialPlayer = z.infer<typeof SocialPlayerSchema>;
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 export type SocialEvent = z.infer<typeof SocialEventSchema>;
+export type AdminEvent = z.infer<typeof AdminEventSchema>;
 
 // --- Cartridge Protocol (Minigames) ---
 

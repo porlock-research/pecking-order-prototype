@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGameStore } from './store/useGameStore';
 import { useGameEngine } from './hooks/useGameEngine';
 import { ChatRoom } from './components/ChatRoom';
+import { formatState } from './utils/formatState';
 
 export default function App() {
   // For debugging/stub purposes, we'll try to get these from URL params
@@ -39,7 +40,7 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
       <header className="header">
         <div className="status-bar">
           <span className="day">Day {dayIndex}</span>
-          <span className="state">[{serverState}]</span>
+          <span className="state">[{formatState(serverState)}]</span>
         </div>
         <div className="player-stats">
           {me && (
@@ -90,6 +91,25 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
           Settings
         </button>
       </footer>
+
+      {/* Admin God Button */}
+      <div style={{ position: 'fixed', bottom: 80, right: 20, zIndex: 1000 }}>
+        <button 
+          onClick={() => engine.socket.send(JSON.stringify({ type: "ADMIN.NEXT_STAGE" }))}
+          style={{ 
+            padding: '10px 20px', 
+            background: '#ff4444', 
+            color: 'white', 
+            fontWeight: 'bold',
+            border: 'none',
+            borderRadius: '4px',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+            cursor: 'pointer'
+          }}
+        >
+          ADMIN: NEXT STAGE
+        </button>
+      </div>
 
       <style>{`
         .game-shell {
