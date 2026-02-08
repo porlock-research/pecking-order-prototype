@@ -73,6 +73,7 @@ export class GameServer extends Server<Env> {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    console.log("[GameServer] Fetch Env Keys:", Object.keys(env));
     try {
       const response = await routePartykitRequest(request, env);
       return response || new Response("Not Found", { status: 404 });
