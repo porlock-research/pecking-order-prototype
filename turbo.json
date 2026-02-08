@@ -4,6 +4,14 @@
     "**/.env",
     "tsconfig.json"
   ],
+  "globalPassThroughEnv": [
+    "CLOUDFLARE_API_TOKEN",
+    "CLOUDFLARE_ACCOUNT_ID",
+    "PARTYKIT_TOKEN",
+    "GEMINI_API_KEY",
+    "AXIOM_TOKEN",
+    "AXIOM_ORG_ID"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
