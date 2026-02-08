@@ -11,6 +11,6 @@
     "binding": "ASSETS"
   },
   "vars": {
-    "GAME_SERVER_URL": "https://game-server.pecking-order.workers.dev"
+    "GAME_SERVER_URL": "https://game-server.porlock.workers.dev"
   }
 }
