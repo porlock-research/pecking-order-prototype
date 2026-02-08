@@ -48,9 +48,9 @@ export async function startGameStub() {
 
   // 3. Send to Game Server
   // Note: partyserver URL pattern is typically /parties/:party/:id
-  // The URL segment must match the Durable Object binding name in wrangler.toml
-  // apps/game-server/wrangler.toml defines: name = "GameServer"
-  const targetUrl = `${GAME_SERVER_URL}/parties/GameServer/${GAME_ID}/init`;
+  // The URL segment must match the kebab-cased Binding Name
+  // Binding: GameServer -> URL: game-server
+  const targetUrl = `${GAME_SERVER_URL}/parties/game-server/${GAME_ID}/init`;
   
   console.log(`[Lobby] Handoff to ${targetUrl}`);
 
