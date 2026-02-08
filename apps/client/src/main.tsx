@@ -1,12 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { GameStatus } from "@pecking-order/shared-types";
-
-// Verify Import
-console.log(`Client Loaded. Status: ${GameStatus.OPEN}`);
+import App from './App';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <h1>Pecking Order Client</h1>
+    <App />
   </React.StrictMode>,
 );
