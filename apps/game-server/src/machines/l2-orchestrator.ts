@@ -1,4 +1,4 @@
-import { setup, assign, fromPromise } from 'xstate';
+import { setup, assign, fromPromise, sendTo } from 'xstate';
 import { dailySessionMachine } from './l3-session';
 import { SocialPlayer, Roster } from '@pecking-order/shared-types';
 
@@ -54,6 +54,15 @@ export const orchestratorMachine = setup({
     }),
     logTransition: ({ context, event }) => {
       console.log(`[L2 Logic] Processing: ${event.type} | Current Day: ${context.dayIndex}`);
+    },
+    forwardToSession: ({ context, event, self }) => {
+        const child = self.getSnapshot().children['l3-session'];
+        if (child) {
+            child.send(event);
+        } else {
+            console.warn("[L2] Child 'l3-session' not found (Zombie State). Skipping day.");
+            self.send({ type: 'SYSTEM.WAKEUP' }); 
+        }
     }
   },
   actors: {
@@ -114,7 +123,8 @@ export const orchestratorMachine = setup({
             }
           },
           on: {
-            'SYSTEM.WAKEUP': { target: 'nightSummary' }
+            'SYSTEM.WAKEUP': { target: 'nightSummary' },
+            'ADMIN.NEXT_STAGE': { actions: 'forwardToSession' }
           }
         },
         nightSummary: {
