@@ -2,16 +2,18 @@
   "name": "game-server",
   "version": "0.0.1",
   "scripts": {
-    "dev": "partykit dev",
+    "dev": "wrangler dev",
     "build": "tsc --noEmit",
-    "deploy": "partykit deploy"
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "partykit": "^0.0.103",
+    "@pecking-order/logger": "*",
     "@pecking-order/shared-types": "*",
-    "@pecking-order/logger": "*"
+    "partyserver": "^0.1.2"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "@cloudflare/workers-types": "^4.20260207.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^4.63.0"
   }
 }

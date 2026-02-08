@@ -9,9 +9,12 @@
 3.  **Player:** "When the Game App loads, it connects to the server and shows 'Waiting for Start'."
 
 ## **2. Technical Requirements**
-*   **Infrastructure:** PartyKit (Durable Objects).
+*   **Infrastructure:** Cloudflare Workers + Durable Objects (using `partyserver` library).
 *   **Protocol:** WebSocket.
 *   **Security:** Signed Tokens (JWT) passed from Lobby to Game to prove identity.
+*   **Deployment Safety:**
+    *   **Snapshot Versioning:** All snapshots must include a `version` field (e.g., `{ version: 1, machineState: ... }`).
+    *   **Migration Logic:** On server wake (`onStart`), check `snapshot.version`. If old, run `migrateSnapshot(old, new)` or error out safely. **Never** load an incompatible snapshot blindly.
 
 ## **3. The Handoff Protocol**
 
@@ -56,8 +59,8 @@
 
 ## **4. Implementation Steps**
 
-1.  **Initialize PartyKit:** `npm create partykit@latest`.
-2.  **Define L1 Server:** `server.ts` with `onRequest` (for HTTP POST) and `onConnect` (for WS).
+1.  **Initialize Game Server:** `npm create cloudflare@latest` (or manual setup with `partyserver`).
+2.  **Define L1 Server:** `server.ts` implementing `Server` class from `partyserver`.
 3.  **Client Shell:** Create `apps/client` (Vite + React).
 4.  **JWT Logic:** Implement a simple shared secret signing in `packages/shared-types` or `apps/lobby`.
 5.  **Redirect Flow:** Update `apps/lobby` to handle the "Start" button logic.

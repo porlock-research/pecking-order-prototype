@@ -6,7 +6,7 @@
 ## **1. The Monorepo Structure**
 
 We will use **NPM Workspaces** (native) or **Turborepo** for task orchestration.
-Given the stack (Cloudflare Pages + PartyKit), the structure is:
+Given the stack (Cloudflare Pages + PartyServer), the structure is:
 
 ```text
 /pecking-order
@@ -14,7 +14,7 @@ Given the stack (Cloudflare Pages + PartyKit), the structure is:
   turbo.json
   /apps
     /lobby (Next.js 14+ / Remix - Cloudflare Pages)
-    /game-server (PartyKit)
+    /game-server (PartyServer / Cloudflare Worker)
     /client (React + Vite + PWA)
   /packages
     /shared-types (TypeScript Interfaces, Zod Schemas)
