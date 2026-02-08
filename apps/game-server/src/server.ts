@@ -1,6 +1,7 @@
 import { Server, routePartykitRequest, Connection, ConnectionContext } from "partyserver";
 import { createActor, ActorRefFrom } from "xstate";
 import { orchestratorMachine } from "./machines/l2-orchestrator";
+import { Scheduler } from "partywhen";
 
 // Persistence Key
 const STORAGE_KEY = "game_state_snapshot";
@@ -17,12 +18,42 @@ export interface Env {
 export class GameServer extends Server<Env> {
   // The Brain (XState Actor)
   private actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
+  
+  // The Scheduler (Composition)
+  private scheduler: Scheduler<Env>;
+  
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // Instantiate Scheduler helper
+    this.scheduler = new Scheduler(ctx, env);
+    
+    // Monkey-patch the callback method onto the scheduler instance so "self" tasks work
+    // because partywhen calls this[callback.function]() on the scheduler instance
+    (this.scheduler as any).wakeUpL2 = this.wakeUpL2.bind(this);
+  }
+
+  // Callback for PartyWhen
+  async wakeUpL2() {
+    console.log("[L1] ⏰ PartyWhen Task Triggered: wakeUpL2");
+    this.actor?.send({ type: "SYSTEM.WAKEUP" });
+  }
 
   /**
    * 1. LIFECYCLE: Boot up the Brain
    * Called automatically when the Durable Object is instantiated
    */
   async onStart() {
+    // DEBUG: Diagnose PartyWhen Persistence
+    try {
+      const tables = this.ctx.storage.sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'");
+      console.log("[L1] Debug: Tasks table exists?", [...tables]);
+      
+      const currentAlarm = await this.ctx.storage.getAlarm();
+      console.log("[L1] Debug: Current Alarm:", currentAlarm ? new Date(currentAlarm).toISOString() : "None");
+    } catch (e) {
+      console.error("[L1] Debug: SQL/Alarm Check Failed", e);
+    }
+
     // Load previous state from disk
     const snapshotStr = await this.ctx.storage.get<string>(STORAGE_KEY);
     
@@ -36,15 +67,24 @@ export class GameServer extends Server<Env> {
     }
 
     // AUTO-SAVE & ALARM SYSTEM
-    this.actor.subscribe((snapshot) => {
+    this.actor.subscribe(async (snapshot) => {
       // A. Save State to Disk (Critical for crash recovery)
       this.ctx.storage.put(STORAGE_KEY, JSON.stringify(snapshot));
 
-      // B. Schedule Physical Alarm if Logic requests it
+      // B. Schedule via PartyWhen
       const nextWakeup = snapshot.context.nextWakeup;
       if (nextWakeup && nextWakeup > Date.now()) {
-        console.log(`[L1] ⏰ Setting Alarm for: ${new Date(nextWakeup).toISOString()}`);
-        this.ctx.storage.setAlarm(nextWakeup);
+        console.log(`[L1] 📅 Scheduling Wakeup via PartyWhen for: ${new Date(nextWakeup).toISOString()}`);
+        
+        await this.scheduler.scheduleTask({
+          id: `wakeup-${Date.now()}`,
+          type: "scheduled",
+          time: new Date(nextWakeup),
+          callback: { type: "self", function: "wakeUpL2" }
+        });
+
+        const alarm = await this.ctx.storage.getAlarm();
+        console.log(`[L1] Debug: Alarm status after schedule: ${alarm ? new Date(alarm).toISOString() : "None"}`);
       }
 
       // C. Broadcast State to Clients
@@ -86,20 +126,21 @@ export class GameServer extends Server<Env> {
         this.actor?.send({ 
           type: "SYSTEM.INIT", 
           payload: { roster: json.roster, manifest: json.manifest }, 
-          gameId: "game-1" // Fallback since this.name might be flaky in local dev during early lifecycle
+          gameId: "game-1" 
         });
 
         return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
       } catch (err) {
+        console.error("[L1] POST /init failed:", err);
         return new Response("Invalid Payload", { status: 400 });
       }
     }
     
     // 2. GET /state (Debugging Endpoint)
-    if (req.method === "GET") {
+    if (req.method === "GET" && new URL(req.url).pathname.endsWith("/state")) {
         const snapshot = this.actor?.getSnapshot();
         return new Response(JSON.stringify({
-            state: snapshot?.value,     // e.g., "preGame"
+            state: snapshot?.value,
             day: snapshot?.context.dayIndex,
             nextWakeup: snapshot?.context.nextWakeup ? new Date(snapshot.context.nextWakeup).toISOString() : null
         }, null, 2), { 
@@ -108,7 +149,7 @@ export class GameServer extends Server<Env> {
         });
     }
 
-    return new Response("Method Not Allowed", { status: 405 });
+    return new Response("Not Found", { status: 404 });
   }
 
   /**
@@ -171,9 +212,8 @@ export class GameServer extends Server<Env> {
    * 5. TIME: The Cloudflare Alarm wakes us up
    */
   async onAlarm() {
-    console.log(`[L1] ⏰ RRRRING! Alarm fired.`);
-    // Tell the Brain to wake up.
-    this.actor?.send({ type: "SYSTEM.WAKEUP" });
+    // Delegate to PartyWhen Scheduler instance
+    await this.scheduler.alarm();
   }
 }
 

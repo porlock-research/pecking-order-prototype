@@ -48,9 +48,12 @@ export const orchestratorMachine = setup({
     }),
     scheduleMorningAlarm: assign({
       nextWakeup: ({ context }) => {
-        // LOGIC: Set wakeup for 30 seconds from now (Simulating "Tomorrow Morning")
-        return Date.now() + 30000; 
+        // LOGIC: Set wakeup for 5 seconds from now
+        return Date.now() + 5000; 
       }
+    }),
+    scheduleNextStage: assign({
+      nextWakeup: ({ context }) => Date.now() + 5000
     }),
     logTransition: ({ context, event }) => {
       console.log(`[L2 Logic] Processing: ${event.type} | Current Day: ${context.dayIndex}`);
@@ -98,12 +101,14 @@ export const orchestratorMachine = setup({
       initial: 'morningBriefing',
       states: {
         morningBriefing: {
-          entry: ['incrementDay', 'logTransition'],
+          entry: ['incrementDay', 'logTransition', 'scheduleNextStage'],
           on: {
-            'ADMIN.NEXT_STAGE': { target: 'activeSession' }
+            'ADMIN.NEXT_STAGE': { target: 'activeSession' },
+            'SYSTEM.WAKEUP': { target: 'activeSession' }
           }
         },
         activeSession: {
+          entry: ['logTransition', 'scheduleNextStage'],
           // SPAWN THE CHILD
           invoke: {
             id: 'l3-session',
@@ -113,13 +118,8 @@ export const orchestratorMachine = setup({
               roster: context.roster
             }),
             onDone: {
-              // When L3 finishes, go to Night Summary
               target: 'nightSummary',
-              actions: ({ event }) => {
-                const output = (event as any).output;
-                const reason = output ? output.reason : "Unknown";
-                console.log(`[L2] Day Ended. Reason: ${reason}`);
-              }
+              actions: ({ event }) => console.log(`[L2] L3 Finished naturally.`)
             }
           },
           on: {
@@ -128,9 +128,10 @@ export const orchestratorMachine = setup({
           }
         },
         nightSummary: {
-          entry: ['logTransition'],
+          entry: ['logTransition', 'scheduleNextStage'],
           on: {
-            'ADMIN.NEXT_STAGE': { target: 'morningBriefing' }
+            'ADMIN.NEXT_STAGE': { target: 'morningBriefing' },
+            'SYSTEM.WAKEUP': { target: 'morningBriefing' }
           }
         }
       },
