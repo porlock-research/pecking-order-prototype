@@ -73,14 +73,31 @@ export class GameServer extends Server<Env> {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    console.log("[GameServer] Fetch Env Keys:", Object.keys(env));
-    try {
-      const response = await routePartykitRequest(request, env);
-      return response || new Response("Not Found", { status: 404 });
-    } catch (err: any) {
-      console.error("[GameServer] Critical Error in Fetch Handler:", err);
-      // Return a visible error to the caller (Lobby) instead of 1042
-      return new Response(`Game Server Error: ${err.message}\n${err.stack}`, { status: 500 });
+    const url = new URL(request.url);
+    console.log(`[GameServer] Incoming: ${request.method} ${url.pathname}`);
+
+    // Manual Routing: /parties/GameServer/:id/...
+    // This bypasses `routePartykitRequest` which was failing to detect the binding
+    if (url.pathname.startsWith("/parties/GameServer/")) {
+      const parts = url.pathname.split("/");
+      const roomId = parts[3]; // ["", "parties", "GameServer", "ROOM_ID", ...]
+
+      if (!roomId) {
+        return new Response("Missing Room ID", { status: 400 });
+      }
+
+      console.log(`[GameServer] Routing to Room: ${roomId}`);
+      
+      try {
+        const id = env.GameServer.idFromName(roomId);
+        const stub = env.GameServer.get(id);
+        return await stub.fetch(request);
+      } catch (err: any) {
+        console.error("[GameServer] DO Error:", err);
+        return new Response(`DO Error: ${err.message}`, { status: 500 });
+      }
     }
+
+    return new Response("Not Found (Manual Router)", { status: 404 });
   },
 } satisfies ExportedHandler<Env>;
