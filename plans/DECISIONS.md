@@ -104,3 +104,22 @@ This document tracks significant architectural decisions, their context, and con
     *   We are responsible for `wrangler` configuration.
     *   We gain direct access to D1 and Logpush.
     *   React 19 is enforced globally to support OpenNext.
+
+## [ADR-012] Composition Over Inheritance for Scheduler (PartyWhen Fix)
+*   **Date:** 2026-02-08
+*   **Status:** Accepted
+*   **Context:** Using `partywhen` by inheriting from `Scheduler` breaks `partyserver`'s WebSocket logic because `Scheduler` overrides `fetch` without calling `super`.
+*   **Decision:** Use **Composition**. `GameServer` extends `Server` (partyserver) and instantiates `Scheduler` (partywhen) as a private property.
+*   **Consequences:**
+    *   We manually delegate alarms via `this.scheduler.alarm()`.
+    *   We monkey-patch callbacks (e.g., `wakeUpL2`) onto the scheduler instance so it can call back into the main class.
+    *   We retain full control over WebSocket upgrades.
+
+## [ADR-013] Dynamic IDs for Scheduled Tasks
+*   **Date:** 2026-02-08
+*   **Status:** Accepted
+*   **Context:** Reusing static task IDs (e.g., "next-wakeup") causes race conditions where `partywhen` deletes the *newly scheduled* task when cleaning up the *just executed* task if they share an ID.
+*   **Decision:** Use unique, timestamp-based IDs for all scheduled tasks (e.g., `wakeup-${Date.now()}`).
+*   **Consequences:**
+    *   Prevents accidental deletion of future alarms.
+    *   Requires no changes to `partywhen` internals.

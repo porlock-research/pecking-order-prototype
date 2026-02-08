@@ -1,21 +1,24 @@
 import { setup, assign, fromPromise, sendTo } from 'xstate';
 import { dailySessionMachine } from './l3-session';
-import { SocialPlayer, Roster } from '@pecking-order/shared-types';
+import { SocialPlayer, Roster, GameManifest, Fact } from '@pecking-order/shared-types';
 
-// --- Types (Local definition to ensure self-containment) ---
+// --- Types ---
 export interface GameContext {
   gameId: string;
   roster: Record<string, SocialPlayer>;
-  manifest: any;
+  manifest: GameManifest | null;
   dayIndex: number;
   nextWakeup: number | null;
+  lastProcessedTime: number;
 }
 
 export type GameEvent = 
-  | { type: 'SYSTEM.INIT'; payload: { roster: Roster; manifest: any }; gameId: string }
+  | { type: 'SYSTEM.INIT'; payload: { roster: Roster; manifest: GameManifest }; gameId: string }
   | { type: 'SYSTEM.WAKEUP' }
   | { type: 'SYSTEM.PAUSE' }
-  | { type: 'ADMIN.NEXT_STAGE' };
+  | { type: 'ADMIN.NEXT_STAGE' }
+  | { type: 'FACT.RECORD'; fact: Fact }
+  | { type: 'INTERNAL.READY' };
 
 // --- The L2 Orchestrator Machine ---
 export const orchestratorMachine = setup({
@@ -40,31 +43,88 @@ export const orchestratorMachine = setup({
         }
         return internalRoster;
       },
-      manifest: ({ event }) => (event.type === 'SYSTEM.INIT' ? event.payload.manifest : {}),
+      manifest: ({ event }) => (event.type === 'SYSTEM.INIT' ? event.payload.manifest : null),
       dayIndex: 0,
+      lastProcessedTime: 0,
     }),
     incrementDay: assign({
       dayIndex: ({ context }) => context.dayIndex + 1
     }),
-    scheduleMorningAlarm: assign({
+    scheduleGameStart: assign({
       nextWakeup: ({ context }) => {
-        // LOGIC: Set wakeup for 5 seconds from now
-        return Date.now() + 5000; 
+        console.log("[L2] Scheduling Game Start (1s)...");
+        return Date.now() + 1000;
       }
     }),
-    scheduleNextStage: assign({
-      nextWakeup: ({ context }) => Date.now() + 5000
+    scheduleNextTimelineEvent: assign({
+      nextWakeup: ({ context }) => {
+        if (!context.manifest) return null;
+        const currentDay = context.manifest.days.find(d => d.dayIndex === context.dayIndex);
+        if (!currentDay) {
+          console.warn(`[L2] Day ${context.dayIndex} not found in manifest.`);
+          return null; 
+        }
+
+        const now = Date.now();
+        // Look ahead from either NOW or the last thing we processed (whichever is later)
+        const effectiveNow = Math.max(now, context.lastProcessedTime);
+        const nextEvent = currentDay.timeline.find(e => new Date(e.time).getTime() > effectiveNow + 100);
+
+        if (nextEvent) {
+          console.log(`[L2] Scheduling next event: ${nextEvent.action} at ${nextEvent.time}`);
+          return new Date(nextEvent.time).getTime();
+        } else {
+          console.log(`[L2] No more events for Day ${context.dayIndex}.`);
+          return null; 
+        }
+      }
     }),
-    logTransition: ({ context, event }) => {
-      console.log(`[L2 Logic] Processing: ${event.type} | Current Day: ${context.dayIndex}`);
+    processTimelineEvent: assign(({ context, self }) => {
+      if (!context.manifest) return {};
+      const currentDay = context.manifest.days.find(d => d.dayIndex === context.dayIndex);
+      if (!currentDay) return {};
+
+      const now = Date.now();
+      let newProcessedTime = context.lastProcessedTime;
+      
+      const recentEvents = currentDay.timeline.filter(e => {
+        const t = new Date(e.time).getTime();
+        return t > context.lastProcessedTime && t <= now + 2000 && t > now - 10000;
+      });
+
+      if (recentEvents.length === 0) return {};
+
+      // Child is GUARANTEED to exist because we are in 'running' state which waits for INTERNAL.READY
+      const child = self.getSnapshot().children['l3-session'];
+
+      for (const e of recentEvents) {
+        if (e.action === 'END_DAY') {
+             console.log(`[L2] Processing Timeline Event (Self): ${e.action}`);
+             self.send({ type: 'ADMIN.NEXT_STAGE' }); 
+             newProcessedTime = Math.max(newProcessedTime, new Date(e.time).getTime());
+        } else {
+             if (child) {
+               console.log(`[L2] Processing Timeline Event (Child): ${e.action}`);
+               child.send({ type: `INTERNAL.${e.action}`, payload: e.payload });
+               newProcessedTime = Math.max(newProcessedTime, new Date(e.time).getTime());
+             } else {
+               // This should theoretically never happen now
+               console.error(`[L2] 💥 CRITICAL: Child missing in 'running' state.`);
+             }
+        }
+      }
+      
+      return { lastProcessedTime: newProcessedTime };
+    }),
+    logToJournal: ({ event }) => {
+      if (event.type !== 'FACT.RECORD') return;
+      console.log(`[L2 Journal] ✍️ Writing Fact to D1: ${event.fact.type} by ${event.fact.actorId}`);
+      // TODO: Actual D1 Insert
     },
     forwardToSession: ({ context, event, self }) => {
         const child = self.getSnapshot().children['l3-session'];
-        if (child) {
+        if (child && (event.type === 'ADMIN.NEXT_STAGE')) {
             child.send(event);
-        } else {
-            console.warn("[L2] Child 'l3-session' not found (Zombie State). Skipping day.");
-            self.send({ type: 'SYSTEM.WAKEUP' }); 
         }
     }
   },
@@ -77,21 +137,22 @@ export const orchestratorMachine = setup({
   context: {
     gameId: '',
     roster: {},
-    manifest: {},
+    manifest: null,
     dayIndex: 0,
-    nextWakeup: null
+    nextWakeup: null,
+    lastProcessedTime: 0
   },
   states: {
     uninitialized: {
       on: {
         'SYSTEM.INIT': {
           target: 'preGame',
-          actions: ['initializeContext', 'logTransition']
+          actions: ['initializeContext']
         }
       }
     },
     preGame: {
-      entry: ['scheduleMorningAlarm'], 
+      entry: ['scheduleGameStart'], 
       on: {
         'SYSTEM.WAKEUP': { target: 'dayLoop' },
         'ADMIN.NEXT_STAGE': { target: 'dayLoop' }
@@ -101,34 +162,53 @@ export const orchestratorMachine = setup({
       initial: 'morningBriefing',
       states: {
         morningBriefing: {
-          entry: ['incrementDay', 'logTransition', 'scheduleNextStage'],
+          entry: ['incrementDay', 'scheduleNextTimelineEvent'],
           on: {
             'ADMIN.NEXT_STAGE': { target: 'activeSession' },
-            'SYSTEM.WAKEUP': { target: 'activeSession' }
+            'SYSTEM.WAKEUP': { 
+               target: 'activeSession' 
+            }
           }
         },
         activeSession: {
-          entry: ['logTransition', 'scheduleNextStage'],
-          // SPAWN THE CHILD
           invoke: {
             id: 'l3-session',
             src: 'dailySessionMachine',
             input: ({ context }) => ({
               dayIndex: context.dayIndex,
-              roster: context.roster
+              roster: context.roster,
+              manifest: context.manifest?.days.find(d => d.dayIndex === context.dayIndex)
             }),
             onDone: {
               target: 'nightSummary',
               actions: ({ event }) => console.log(`[L2] L3 Finished naturally.`)
             }
           },
+          // Wait for Child to say "I'm Ready"
+          initial: 'waitingForChild',
+          states: {
+            waitingForChild: {
+              on: {
+                'INTERNAL.READY': { target: 'running' }
+              }
+            },
+            running: {
+              entry: ['processTimelineEvent', 'scheduleNextTimelineEvent'],
+              on: {
+                'SYSTEM.WAKEUP': { 
+                   actions: ['processTimelineEvent', 'scheduleNextTimelineEvent']
+                }
+              }
+            }
+          },
           on: {
-            'SYSTEM.WAKEUP': { target: 'nightSummary' },
-            'ADMIN.NEXT_STAGE': { actions: 'forwardToSession' }
+            'ADMIN.NEXT_STAGE': { target: 'nightSummary' },
+            'FACT.RECORD': { actions: 'logToJournal' },
+            'INTERNAL.READY': { actions: ({ self }) => self.send({ type: 'INTERNAL.READY' }) } 
           }
         },
         nightSummary: {
-          entry: ['logTransition', 'scheduleNextStage'],
+          entry: ['scheduleNextTimelineEvent'],
           on: {
             'ADMIN.NEXT_STAGE': { target: 'morningBriefing' },
             'SYSTEM.WAKEUP': { target: 'morningBriefing' }

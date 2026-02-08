@@ -13,14 +13,33 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const gid = params.get('gameId') || 'stub-game-123';
+    const gid = params.get('gameId');
     const pid = params.get('playerId') || 'p1';
+    
     setGameId(gid);
     setPlayerId(pid);
-    useGameStore.getState().setPlayerId(pid);
+    
+    if (pid) {
+      useGameStore.getState().setPlayerId(pid);
+    }
   }, []);
 
-  if (!gameId || !playerId) return <div>Initializing...</div>;
+  if (!gameId) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: '#333' }}>
+        <h1>No Game ID Provided</h1>
+        <p>Please start a game from the Lobby Debugger first.</p>
+        <a 
+          href="http://localhost:3000/debug" 
+          style={{ display: 'inline-block', marginTop: '1rem', color: 'blue', textDecoration: 'underline' }}
+        >
+          Go to Lobby Debugger
+        </a>
+      </div>
+    );
+  }
+
+  if (!playerId) return <div>Initializing Player...</div>;
 
   return (
     <GameShell gameId={gameId} playerId={playerId} />

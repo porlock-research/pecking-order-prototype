@@ -1,21 +1,28 @@
-import { setup, assign } from 'xstate';
-import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent } from '@pecking-order/shared-types';
+import { setup, assign, sendParent, sendTo } from 'xstate';
+import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact } from '@pecking-order/shared-types';
+import { votingMachine } from './cartridges/voting-machine';
 
 // 1. Define strict types
 export interface DailyContext {
   dayIndex: number;
   chatLog: ChatMessage[];
   roster: Record<string, SocialPlayer>;
+  manifest: DailyManifest | undefined;
 }
 
 export type DailyEvent =
   | (SocialEvent & { senderId: string }) // Inject senderId in server.ts
   | { type: 'INTERNAL.END_DAY' }
+  | { type: 'INTERNAL.START_CARTRIDGE'; payload: any }
+  | { type: 'INTERNAL.OPEN_VOTING'; payload: any }
+  | { type: 'INTERNAL.INJECT_PROMPT'; payload: any }
+  | { type: 'GAME.VOTE'; senderId: string; targetId: string }
+  | { type: 'FACT.RECORD'; fact: Fact }
   | AdminEvent;
 
 export const dailySessionMachine = setup({
   types: {
-    input: {} as { dayIndex: number; roster: Record<string, SocialPlayer> }, 
+    input: {} as { dayIndex: number; roster: Record<string, SocialPlayer>; manifest?: DailyManifest }, 
     context: {} as DailyContext,
     events: {} as DailyEvent,
     output: {} as { reason: string }
@@ -67,7 +74,17 @@ export const dailySessionMachine = setup({
         
         if (!sender || !target || sender.silver < event.amount) return context.roster;
 
-        console.log(`[L3] FACT.RECORD: ${sender.personaName} sent ${event.amount} silver to ${target.personaName}`);
+        // Emitting Fact to Parent (L2) for journaling
+        sendParent({ 
+          type: 'FACT.RECORD', 
+          fact: {
+            type: 'SILVER_TRANSFER',
+            actorId: event.senderId,
+            targetId: event.targetId,
+            payload: { amount: event.amount },
+            timestamp: Date.now()
+          }
+        });
 
         return {
           ...context.roster,
@@ -75,20 +92,30 @@ export const dailySessionMachine = setup({
           [event.targetId]: { ...target, silver: target.silver + event.amount }
         };
       }
-    })
+    }),
+    forwardToL2: sendParent(({ event }) => event),
+    forwardToChild: sendTo('activeCartridge', ({ event }) => event)
+  },
+  actors: {
+    votingMachine
   }
 }).createMachine({
   id: 'l3-daily-session',
   context: ({ input }) => ({
     dayIndex: input.dayIndex || 0,
     chatLog: [],
-    roster: input.roster || {}
+    roster: input.roster || {},
+    manifest: input.manifest
   }),
+  entry: [
+    sendParent({ type: 'INTERNAL.READY' })
+  ],
   initial: 'running',
   states: {
     running: {
       type: 'parallel',
       states: {
+        // REGION A: SOCIAL OS
         social: {
           initial: 'active',
           states: {
@@ -100,21 +127,56 @@ export const dailySessionMachine = setup({
             }
           }
         },
+        // REGION B: MAIN STAGE
         mainStage: {
+          initial: 'groupChat',
+          states: {
+            groupChat: {
+              on: {
+                'INTERNAL.START_CARTRIDGE': 'dailyGame',
+                'INTERNAL.OPEN_VOTING': 'voting',
+                'INTERNAL.INJECT_PROMPT': { actions: ({ event }) => console.log('Prompt:', event.payload) } 
+              }
+            },
+            dailyGame: {
+              // Stub for Trivia/Minigames
+              on: {
+                 'INTERNAL.END_DAY': 'groupChat' // Placeholder exit
+              }
+            },
+            voting: {
+              invoke: {
+                id: 'activeCartridge',
+                src: 'votingMachine',
+                input: ({ context }) => ({ voteType: context.manifest?.voteType || "EXECUTIONER" }),
+                onDone: { target: 'groupChat' }
+              },
+              on: {
+                'GAME.VOTE': { actions: 'forwardToChild' }
+              }
+            }
+          }
+        },
+        // REGION C: ACTIVITY LAYER (Popups)
+        activityLayer: {
           initial: 'idle',
           states: {
             idle: {
               on: {
-                'ADMIN.NEXT_STAGE': { 
-                  actions: ({ self }) => self.send({ type: 'INTERNAL.END_DAY' }) 
-                }
+                // Future: INTERNAL.START_ACTIVITY
+              }
+            },
+            active: {
+              on: {
+                // ACTIVITY.SUBMIT
               }
             }
           }
         }
       },
       on: {
-        'INTERNAL.END_DAY': { target: 'finishing' }
+        'INTERNAL.END_DAY': { target: 'finishing' },
+        'FACT.RECORD': { actions: 'forwardToL2' }
       }
     },
     finishing: {

@@ -57,13 +57,40 @@ export class GameServer extends Server<Env> {
     // Load previous state from disk
     const snapshotStr = await this.ctx.storage.get<string>(STORAGE_KEY);
     
+    // Define the D1 Writer Implementation
+    const machineWithPersistence = orchestratorMachine.provide({
+      actions: {
+        logToJournal: ({ event }) => {
+          if (event.type !== 'FACT.RECORD') return;
+          const fact = event.fact;
+          console.log(`[L1] 📝 Persisting Fact: ${fact.type}`);
+          
+          // Fire and forget D1 insert
+          this.env.DB.prepare(
+            `INSERT INTO GameJournal (id, game_id, day_index, timestamp, event_type, actor_id, target_id, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          ).bind(
+            crypto.randomUUID(),
+            'game-1', // TODO: Get from context if possible, or use fixed
+            0, // TODO: Get dayIndex from context if possible
+            fact.timestamp,
+            fact.type,
+            fact.actorId,
+            fact.targetId || null,
+            JSON.stringify(fact.payload || {})
+          ).run().catch(err => {
+            console.error("[L1] 💥 Failed to write to Journal:", err);
+          });
+        }
+      }
+    });
+
     if (snapshotStr) {
       console.log(`[L1] ♻️  Resuming Game`);
       const snapshot = JSON.parse(snapshotStr);
-      this.actor = createActor(orchestratorMachine, { snapshot });
+      this.actor = createActor(machineWithPersistence, { snapshot });
     } else {
       console.log(`[L1] ✨ Fresh Boot`);
-      this.actor = createActor(orchestratorMachine);
+      this.actor = createActor(machineWithPersistence);
     }
 
     // AUTO-SAVE & ALARM SYSTEM

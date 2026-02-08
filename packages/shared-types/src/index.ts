@@ -42,14 +42,17 @@ export const LobbySchema = z.object({
 
 // --- Schemas (Game Engine Layer) ---
 
+export const TimelineEventSchema = z.object({
+  time: z.string(), // "09:00" or ISO string
+  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "END_DAY"]),
+  payload: z.any().optional(),
+});
+
 export const DailyManifestSchema = z.object({
   dayIndex: z.number(),
   theme: z.string(),
-  timeline: z.array(z.object({
-    time: z.string(), // "09:00"
-    action: z.string(), // "START_CARTRIDGE"
-    payload: z.any().optional(),
-  })),
+  voteType: z.enum(["EXECUTIONER", "TRUST", "MAJORITY", "JURY"]), // Polymorphic voting
+  timeline: z.array(TimelineEventSchema),
 });
 
 export const GameManifestSchema = z.object({
@@ -80,6 +83,18 @@ export const InitPayloadSchema = z.object({
   manifest: GameManifestSchema,
 });
 
+// --- Journal & Facts (Persistence) ---
+
+export const FactSchema = z.object({
+  type: z.enum(["SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "GAME_RESULT"]),
+  actorId: z.string(),
+  targetId: z.string().optional(),
+  payload: z.any().optional(), // JSON details
+  timestamp: z.number()
+});
+
+export type Fact = z.infer<typeof FactSchema>;
+
 // --- Types (Inferred) ---
 
 export type Player = z.infer<typeof PlayerSchema>;
@@ -87,6 +102,8 @@ export type Lobby = z.infer<typeof LobbySchema>;
 export type RosterPlayer = z.infer<typeof RosterPlayerSchema>;
 export type Roster = z.infer<typeof RosterSchema>;
 export type GameManifest = z.infer<typeof GameManifestSchema>;
+export type DailyManifest = z.infer<typeof DailyManifestSchema>;
+export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
 export type InitPayload = z.infer<typeof InitPayloadSchema>;
 
 // --- Social & Chat Schemas ---
