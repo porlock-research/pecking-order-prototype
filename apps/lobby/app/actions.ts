@@ -48,13 +48,9 @@ export async function startGameStub() {
 
   // 3. Send to Game Server
   // Note: partyserver URL pattern is typically /parties/:party/:id
-  // We defined "GameServer" class in wrangler.toml.
-  // partyserver defaults route: /parties/GameServer/stub-game-123
-  // AND we implemented onRequest to handle /init suffix?
-  // Let's check server.ts: endsWith("/init")
-  // So URL: /parties/GameServer/stub-game-123/init
-  
-  const targetUrl = `${GAME_SERVER_URL}/parties/GameServer/${GAME_ID}/init`;
+  // The URL segment must match the Durable Object binding name in wrangler.toml
+  // apps/game-server/wrangler.toml defines: name = "GAME"
+  const targetUrl = `${GAME_SERVER_URL}/parties/GAME/${GAME_ID}/init`;
   
   console.log(`[Lobby] Handoff to ${targetUrl}`);
 
