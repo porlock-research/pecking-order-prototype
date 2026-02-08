@@ -20,7 +20,7 @@ export default function DebugPage() {
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-4">Lobby Debugger</h1>
       <div className="border p-4 rounded bg-gray-50">
-        <p className="mb-4">Test the Game Server Handoff (Lobby -> L1)</p>
+        <p className="mb-4">Test the Game Server Handoff (Lobby -&gt; L1)</p>
         <button 
           onClick={handleStart}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
