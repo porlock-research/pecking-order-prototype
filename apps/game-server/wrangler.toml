@@ -13,10 +13,10 @@ tag = "v1"
 new_classes = ["GameServer"]
 
 # D1 Database Binding (for Journal)
-[[d1_databases]]
-binding = "DB"
-database_name = "pecking-order-db"
-database_id = "REPLACE_WITH_REAL_ID"
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "pecking-order-db"
+# database_id = "REPLACE_WITH_REAL_ID"
 
 # Axiom Secrets (Logging)
 [vars]
