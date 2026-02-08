@@ -73,9 +73,13 @@ export class GameServer extends Server<Env> {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    return (
-      (await routePartykitRequest(request, env)) ||
-      new Response("Not Found", { status: 404 })
-    );
+    try {
+      const response = await routePartykitRequest(request, env);
+      return response || new Response("Not Found", { status: 404 });
+    } catch (err: any) {
+      console.error("[GameServer] Critical Error in Fetch Handler:", err);
+      // Return a visible error to the caller (Lobby) instead of 1042
+      return new Response(`Game Server Error: ${err.message}\n${err.stack}`, { status: 500 });
+    }
   },
 } satisfies ExportedHandler<Env>;
