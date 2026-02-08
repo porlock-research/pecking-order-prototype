@@ -5,18 +5,17 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "pages:build": "npx @cloudflare/next-on-pages",
-    "start": "next start",
-    "lint": "next lint"
+    "worker:build": "opennextjs-cloudflare build",
+    "deploy": "opennextjs-cloudflare build && wrangler deploy"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.16.3",
     "@pecking-order/shared-types": "*",
-    "next": "^14.2.15",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "next": "^15.5.12",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
-    "@cloudflare/next-on-pages": "^1.13.16",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

@@ -36,7 +36,7 @@
       "cache": false
     },
     "deploy": {
-      "dependsOn": ["build"],
+      "dependsOn": ["build", "^build"],
       "cache": false
     }
   }
