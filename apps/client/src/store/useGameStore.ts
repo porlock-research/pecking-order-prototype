@@ -6,6 +6,7 @@ interface GameState {
   dayIndex: number;
   roster: Record<string, SocialPlayer>;
   chatLog: ChatMessage[];
+  manifest: any; // Add manifest
   serverState: string | null;
   playerId: string | null;
   
@@ -20,6 +21,7 @@ export const useGameStore = create<GameState>((set) => ({
   dayIndex: 0,
   roster: {},
   chatLog: [],
+  manifest: null,
   serverState: null,
   playerId: null,
 
@@ -28,6 +30,7 @@ export const useGameStore = create<GameState>((set) => ({
     dayIndex: data.context?.dayIndex || 0,
     roster: data.context?.roster || {},
     chatLog: data.context?.chatLog || [],
+    manifest: data.context?.manifest || null,
     serverState: data.state || null,
   })),
 

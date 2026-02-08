@@ -124,3 +124,13 @@ export const SocialEventSchema = z.discriminatedUnion("type", [
 export type SocialPlayer = z.infer<typeof SocialPlayerSchema>;
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 export type SocialEvent = z.infer<typeof SocialEventSchema>;
+
+// --- Cartridge Protocol (Minigames) ---
+
+export type CartridgeId = "TRIVIA" | "VOTE_EXECUTIONER" | "VOTE_TRUST";
+
+export interface CartridgeProps {
+  stage: "LOBBY" | "PLAY" | "RESULT";
+  payload: any; // specific to the game
+  onAction: (action: any) => void;
+}
