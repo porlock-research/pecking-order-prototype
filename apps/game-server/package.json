@@ -10,7 +10,9 @@
     "@pecking-order/logger": "*",
     "@pecking-order/shared-types": "*",
     "partyserver": "^0.1.2",
-    "partywhen": "^0.1.0"
+    "partywhen": "^0.1.0",
+    "xstate": "^5.26.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260207.0",
