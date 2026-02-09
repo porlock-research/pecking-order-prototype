@@ -17,6 +17,7 @@ export type GameEvent =
   | { type: 'SYSTEM.WAKEUP' }
   | { type: 'SYSTEM.PAUSE' }
   | { type: 'ADMIN.NEXT_STAGE' }
+  | { type: 'ADMIN.INJECT_TIMELINE_EVENT'; payload: { action: string; payload?: any } }
   | { type: 'FACT.RECORD'; fact: Fact }
   | { type: 'INTERNAL.READY' };
 
@@ -52,6 +53,10 @@ export const orchestratorMachine = setup({
     }),
     scheduleGameStart: assign({
       nextWakeup: ({ context }) => {
+        if (context.manifest?.gameMode === 'DEBUG_PECKING_ORDER') {
+          console.log("[L2] Debug Mode: Skipping Game Start Alarm. Waiting for Admin trigger.");
+          return null;
+        }
         console.log("[L2] Scheduling Game Start (1s)...");
         return Date.now() + 1000;
       }
@@ -59,6 +64,13 @@ export const orchestratorMachine = setup({
     scheduleNextTimelineEvent: assign({
       nextWakeup: ({ context }) => {
         if (!context.manifest) return null;
+        
+        // Manual Mode Check
+        if (context.manifest.gameMode === 'DEBUG_PECKING_ORDER') {
+           console.log("[L2] Debug Mode: Skipping automatic scheduling.");
+           return null;
+        }
+
         const currentDay = context.manifest.days.find(d => d.dayIndex === context.dayIndex);
         if (!currentDay) {
           console.warn(`[L2] Day ${context.dayIndex} not found in manifest.`);
@@ -66,7 +78,6 @@ export const orchestratorMachine = setup({
         }
 
         const now = Date.now();
-        // Look ahead from either NOW or the last thing we processed (whichever is later)
         const effectiveNow = Math.max(now, context.lastProcessedTime);
         const nextEvent = currentDay.timeline.find(e => new Date(e.time).getTime() > effectiveNow + 100);
 
@@ -121,11 +132,22 @@ export const orchestratorMachine = setup({
       console.log(`[L2 Journal] ✍️ Writing Fact to D1: ${event.fact.type} by ${event.fact.actorId}`);
       // TODO: Actual D1 Insert
     },
-    forwardToSession: ({ context, event, self }) => {
+    // New Action for Manual Injection
+    injectAdminEvent: ({ event, self }) => {
+      if (event.type !== 'ADMIN.INJECT_TIMELINE_EVENT') return;
+      
+      console.log(`[L2] 💉 Admin Injecting Event: ${event.payload.action}`);
+      
+      if (event.payload.action === 'END_DAY') {
+        self.send({ type: 'ADMIN.NEXT_STAGE' });
+      } else {
         const child = self.getSnapshot().children['l3-session'];
-        if (child && (event.type === 'ADMIN.NEXT_STAGE')) {
-            child.send(event);
+        if (child) {
+          child.send({ type: `INTERNAL.${event.payload.action}`, payload: event.payload.payload });
+        } else {
+          console.warn(`[L2] Cannot inject event. Child session not ready.`);
         }
+      }
     }
   },
   actors: {
@@ -184,7 +206,6 @@ export const orchestratorMachine = setup({
               actions: ({ event }) => console.log(`[L2] L3 Finished naturally.`)
             }
           },
-          // Wait for Child to say "I'm Ready"
           initial: 'waitingForChild',
           states: {
             waitingForChild: {
@@ -204,7 +225,8 @@ export const orchestratorMachine = setup({
           on: {
             'ADMIN.NEXT_STAGE': { target: 'nightSummary' },
             'FACT.RECORD': { actions: 'logToJournal' },
-            'INTERNAL.READY': { actions: ({ self }) => self.send({ type: 'INTERNAL.READY' }) } 
+            'INTERNAL.READY': { actions: ({ self }) => self.send({ type: 'INTERNAL.READY' }) },
+            'ADMIN.INJECT_TIMELINE_EVENT': { actions: 'injectAdminEvent' }
           }
         },
         nightSummary: {

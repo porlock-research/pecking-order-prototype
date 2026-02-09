@@ -169,11 +169,36 @@ export class GameServer extends Server<Env> {
         return new Response(JSON.stringify({
             state: snapshot?.value,
             day: snapshot?.context.dayIndex,
-            nextWakeup: snapshot?.context.nextWakeup ? new Date(snapshot.context.nextWakeup).toISOString() : null
+            nextWakeup: snapshot?.context.nextWakeup ? new Date(snapshot.context.nextWakeup).toISOString() : null,
+            manifest: snapshot?.context.manifest
         }, null, 2), { 
             status: 200, 
             headers: { "Content-Type": "application/json" } 
         });
+    }
+
+    // 3. POST /admin (Manual Control)
+    if (req.method === "POST" && new URL(req.url).pathname.endsWith("/admin")) {
+        try {
+            const body = await req.json() as any;
+            console.log(`[L1] 🛡️ Admin Command: ${body.type}`);
+
+            if (body.type === "NEXT_STAGE") {
+                this.actor?.send({ type: "ADMIN.NEXT_STAGE" });
+            } else if (body.type === "INJECT_TIMELINE_EVENT") {
+                this.actor?.send({ 
+                    type: "ADMIN.INJECT_TIMELINE_EVENT", 
+                    payload: { action: body.action, payload: body.payload } 
+                });
+            } else {
+                return new Response("Unknown Admin Command", { status: 400 });
+            }
+
+            return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
+        } catch (err) {
+            console.error("[L1] Admin request failed:", err);
+            return new Response("Internal Error", { status: 500 });
+        }
     }
 
     return new Response("Not Found", { status: 404 });
@@ -200,10 +225,26 @@ export class GameServer extends Server<Env> {
     // Send current state immediately so client UI hydrates
     const snapshot = this.actor?.getSnapshot();
     if (snapshot) {
+      // START MERGE LOGIC
+      let l3Context = {};
+      const l3Ref = snapshot.children['l3-session'];
+      if (l3Ref) {
+        const l3Snapshot = l3Ref.getSnapshot();
+        if (l3Snapshot) {
+          l3Context = l3Snapshot.context;
+        }
+      }
+      
+      const combinedContext = {
+        ...snapshot.context,
+        ...l3Context
+      };
+      // END MERGE LOGIC
+
       ws.send(JSON.stringify({
         type: "SYSTEM.SYNC",
         state: snapshot.value,
-        context: snapshot.context
+        context: combinedContext
       }));
     }
   }

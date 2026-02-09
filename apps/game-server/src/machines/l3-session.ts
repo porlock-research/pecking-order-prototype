@@ -47,7 +47,12 @@ export const dailySessionMachine = setup({
           targetId: event.targetId
         };
 
-        return [...context.chatLog, newMessage];
+        // Keep only the last 50 messages [ADR-005]
+        const updatedLog = [...context.chatLog, newMessage];
+        if (updatedLog.length > 50) {
+            return updatedLog.slice(-50);
+        }
+        return updatedLog;
       },
       roster: ({ context, event }) => {
         if (event.type !== 'SOCIAL.SEND_MSG' || !event.targetId) return context.roster;
