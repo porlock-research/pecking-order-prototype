@@ -176,3 +176,69 @@ This document tracks significant architectural decisions, their context, and con
     *   ChatLog survives DO restarts via the existing storage payload.
     *   Follows the same "L1 owns durability" principle from ADR-002 and ADR-005.
     *   Memory footprint is bounded: cache is replaced (not accumulated) each time L3 is alive.
+
+## [ADR-019] Explicit L2→L3 Event Forwarding for All Client Event Types
+*   **Date:** 2026-02-09
+*   **Status:** Accepted
+*   **Context:** XState v5 invoked child actors do NOT receive unhandled parent events. L2's `activeSession.on` forwarded `SOCIAL.SEND_MSG` and `SOCIAL.SEND_SILVER` to L3 via `sendTo`, but `GAME.VOTE` had no handler. Votes from clients reached L2 and were silently dropped — never reaching the voting cartridge in L3.
+*   **Decision:** Every client-originated event type that L3 must process needs an explicit `sendTo('l3-session', ...)` handler in L2's `activeSession.on` block. Added `GAME.VOTE` forwarding alongside the existing social event handlers.
+*   **Consequences:**
+    *   Voting is now functional end-to-end (client → L1 → L2 → L3 → voting cartridge).
+    *   Any future client event types (e.g., `GAME.SUBMIT_ANSWER`) must also be added here.
+    *   Reinforces the pattern: L2 is a conscious router, not a transparent proxy.
+
+## [ADR-020] Split sendParent from Computation in XState v5 Actions
+*   **Date:** 2026-02-09
+*   **Status:** Accepted
+*   **Context:** The voting cartridge's `calculateAndReport` action was a plain function that called `sendParent()` internally. In XState v5, `sendParent()` returns an action object — calling it inside a plain function action discards the return value (NO-OP). This is the same class of bug previously fixed in L3 (see MEMORY.md). The `GAME_RESULT` fact never reached L3, L2, or D1.
+*   **Decision:** Always use `sendParent` as a top-level action creator, never inside a plain function or `assign()`. Split computation into `calculateResults` (assign to context) and `reportResults` (sendParent reading from context). Also added `emitVoteCastFact` (sendParent) for per-vote journaling per spec requirements.
+*   **Consequences:**
+    *   `GAME_RESULT` and `VOTE_CAST` facts now propagate correctly through L3 → L2 → L1 → D1.
+    *   Voting cartridge context gained a `results` field to hold computed results between actions.
+    *   Establishes a firm pattern: never nest `sendParent`/`sendTo` inside other action types.
+
+## [ADR-021] Canonical Event Naming Between Manifest and State Machines
+*   **Date:** 2026-02-09
+*   **Status:** Accepted
+*   **Context:** The manifest timeline defines `CLOSE_VOTING` (shared-types). L2's `processTimelineEvent` correctly prefixes it as `INTERNAL.CLOSE_VOTING` and sends it to L3. But (1) L3's voting state had no handler for it, and (2) the voting machine expected `INTERNAL.TIME_UP`. This two-layer naming mismatch meant voting could never be closed via the timeline.
+*   **Decision:** The voting machine must use `INTERNAL.CLOSE_VOTING` (matching the manifest action name with the `INTERNAL.` prefix). L3's voting state must forward `INTERNAL.CLOSE_VOTING` to the child cartridge. The naming convention is: manifest action `X` → internal event `INTERNAL.X`.
+*   **Consequences:**
+    *   Voting can now be closed via both `ADMIN.INJECT_TIMELINE_EVENT` and automatic timeline processing.
+    *   Future cartridges must follow the same `INTERNAL.{MANIFEST_ACTION}` naming convention.
+
+## [ADR-022] Clear Rehydration Data After First Use
+*   **Date:** 2026-02-09
+*   **Status:** Accepted
+*   **Context:** `restoredChatLog` is set on L2 context during boot (from L1 storage) and passed to L3 via `initialChatLog`. But it was never cleared. On Day 2+, every new L3 session started with Day 1's stale chat messages because L2 kept passing the same `restoredChatLog`.
+*   **Decision:** Clear `restoredChatLog` (set to `undefined`) in `morningBriefing.entry` alongside `incrementDay`. This ensures rehydration data is only used for the first L3 spawn after a crash recovery, not for subsequent day transitions.
+*   **Consequences:**
+    *   Day 2+ L3 sessions start with empty chatLogs as intended.
+    *   Crash recovery still works: restored data is consumed on first spawn, then discarded.
+
+## [ADR-023] Remove Self-Send Anti-Pattern for Event Re-Routing
+*   **Date:** 2026-02-09
+*   **Status:** Accepted
+*   **Context:** L2's `activeSession.on` had a handler `'INTERNAL.READY': { actions: ({ self }) => self.send({ type: 'INTERNAL.READY' }) }`. During normal operation, the deeper `waitingForChild` state handles the event first (XState child-state priority). But during crash recovery, if L2 restores to `activeSession.running`, a fresh L3 sends `INTERNAL.READY` which bubbles to `activeSession.on`, re-enqueues the same event, and loops infinitely until XState throws "Maximum events reached."
+*   **Decision:** Remove the self-send handler entirely. The `waitingForChild` state already handles `INTERNAL.READY` correctly. If L2 is already in `running`, a redundant `INTERNAL.READY` should be silently ignored (XState's default for unhandled events).
+*   **Consequences:**
+    *   Crash recovery no longer causes infinite event loops.
+    *   Eliminates a class of bugs where `self.send()` in event handlers can create cycles.
+
+## [ADR-024] Dynamic D1 Journal Context from Actor Snapshot
+*   **Date:** 2026-02-09
+*   **Status:** Accepted
+*   **Context:** `persistFactToD1` (overridden in L1 via `.provide()`) used hardcoded `'game-1'` and `0` for `game_id` and `day_index`. All journal entries across all games and days were attributed identically, making the journal useless for per-game/per-day queries.
+*   **Decision:** Read `gameId` and `dayIndex` from `this.actor?.getSnapshot().context` at write time. Since `persistFactToD1` runs in L1's `.provide()` closure, it has access to `this.actor`.
+*   **Consequences:**
+    *   Journal entries are now correctly attributed to their game and day.
+    *   Destiny queries (`SELECT ... WHERE game_id = ? AND day_index = ?`) will return correct results.
+
+## [ADR-025] Client Event Whitelist (Input Validation at L1 Boundary)
+*   **Date:** 2026-02-09
+*   **Status:** Accepted
+*   **Context:** `onMessage` in L1 parsed any JSON from WebSocket clients and forwarded it directly to L2 with `senderId` injected. A malicious client could send `{ type: "INTERNAL.READY" }` or `{ type: "SYSTEM.INIT" }` to trigger unintended state transitions, skip game phases, or crash the server.
+*   **Decision:** Maintain an `ALLOWED_CLIENT_EVENTS` whitelist (`SOCIAL.SEND_MSG`, `SOCIAL.SEND_SILVER`, `GAME.VOTE`). Reject any event type not on the list with a warning log.
+*   **Consequences:**
+    *   Clients can only send events they're supposed to send.
+    *   New client event types must be explicitly added to the whitelist.
+    *   Follows the principle: validate at system boundaries (ADR-010 spirit).

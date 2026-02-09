@@ -15,6 +15,7 @@ export type DailyEvent =
   | { type: 'INTERNAL.END_DAY' }
   | { type: 'INTERNAL.START_CARTRIDGE'; payload: any }
   | { type: 'INTERNAL.OPEN_VOTING'; payload: any }
+  | { type: 'INTERNAL.CLOSE_VOTING' }
   | { type: 'INTERNAL.INJECT_PROMPT'; payload: any }
   | { type: 'GAME.VOTE'; senderId: string; targetId: string }
   | { type: 'FACT.RECORD'; fact: Fact }
@@ -175,7 +176,8 @@ export const dailySessionMachine = setup({
                 onDone: { target: 'groupChat' }
               },
               on: {
-                'GAME.VOTE': { actions: 'forwardToChild' }
+                'GAME.VOTE': { actions: 'forwardToChild' },
+                'INTERNAL.CLOSE_VOTING': { actions: 'forwardToChild' }
               }
             }
           }

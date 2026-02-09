@@ -3,11 +3,12 @@ import { setup, assign, sendParent } from 'xstate';
 export interface VoteContext {
   voteType: string;
   votes: Record<string, string>; // voterId -> targetId
+  results: Record<string, number>; // targetId -> voteCount
 }
 
 export type VoteEvent = 
   | { type: 'GAME.VOTE'; senderId: string; targetId: string }
-  | { type: 'INTERNAL.TIME_UP' };
+  | { type: 'INTERNAL.CLOSE_VOTING' };
 
 export const votingMachine = setup({
   types: {
@@ -19,51 +20,62 @@ export const votingMachine = setup({
     recordVote: assign({
       votes: ({ context, event }) => {
         if (event.type !== 'GAME.VOTE') return context.votes;
-        // In a real implementation, we'd check validity (isAlive, etc)
         return {
           ...context.votes,
           [event.senderId]: event.targetId
         };
       }
     }),
-    calculateAndReport: ({ context }) => {
-      // Stub calculation logic
-      const results = Object.values(context.votes).reduce((acc, target) => {
-        acc[target] = (acc[target] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      console.log(`[VotingCartridge] Results (${context.voteType}):`, results);
-      
-      // Send result back to parent (L3) which will send to L2
-      // We use a generic FACT.RECORD structure
-      sendParent({ 
-        type: 'FACT.RECORD', 
+    emitVoteCastFact: sendParent(({ event }) => {
+      if (event.type !== 'GAME.VOTE') return { type: 'FACT.RECORD', fact: { type: 'VOTE_CAST', actorId: '', timestamp: 0 } };
+      return {
+        type: 'FACT.RECORD',
         fact: {
-          type: 'GAME_RESULT',
-          actorId: 'SYSTEM',
-          payload: { results },
+          type: 'VOTE_CAST',
+          actorId: event.senderId,
+          targetId: event.targetId,
+          payload: {},
           timestamp: Date.now()
         }
-      });
-    }
+      };
+    }),
+    calculateResults: assign({
+      results: ({ context }) => {
+        const results = Object.values(context.votes).reduce((acc, target) => {
+          acc[target] = (acc[target] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        console.log(`[VotingCartridge] Results (${context.voteType}):`, results);
+        return results;
+      }
+    }),
+    reportResults: sendParent(({ context }) => ({
+      type: 'FACT.RECORD',
+      fact: {
+        type: 'GAME_RESULT',
+        actorId: 'SYSTEM',
+        payload: { results: context.results },
+        timestamp: Date.now()
+      }
+    }))
   }
 }).createMachine({
   id: 'voting-cartridge',
   context: ({ input }) => ({
     voteType: input.voteType,
-    votes: {}
+    votes: {},
+    results: {}
   }),
   initial: 'active',
   states: {
     active: {
       on: {
-        'GAME.VOTE': { actions: 'recordVote' },
-        'INTERNAL.TIME_UP': { target: 'completed' }
+        'GAME.VOTE': { actions: ['recordVote', 'emitVoteCastFact'] },
+        'INTERNAL.CLOSE_VOTING': { target: 'completed' }
       }
     },
     completed: {
-      entry: 'calculateAndReport',
+      entry: ['calculateResults', 'reportResults'],
       type: 'final'
     }
   }

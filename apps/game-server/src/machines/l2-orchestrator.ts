@@ -22,6 +22,7 @@ export type GameEvent =
   | { type: 'ADMIN.INJECT_TIMELINE_EVENT'; payload: { action: string; payload?: any } }
   | { type: 'FACT.RECORD'; fact: Fact }
   | { type: 'INTERNAL.READY' }
+  | { type: 'GAME.VOTE'; senderId: string; targetId: string }
   | (SocialEvent & { senderId: string });
 
 // --- The L2 Orchestrator Machine ---
@@ -54,6 +55,9 @@ export const orchestratorMachine = setup({
     }),
     incrementDay: assign({
       dayIndex: ({ context }) => context.dayIndex + 1
+    }),
+    clearRestoredChatLog: assign({
+      restoredChatLog: undefined
     }),
     scheduleGameStart: assign({
       nextWakeup: ({ context }) => {
@@ -193,7 +197,7 @@ export const orchestratorMachine = setup({
       initial: 'morningBriefing',
       states: {
         morningBriefing: {
-          entry: ['incrementDay'],
+          entry: ['incrementDay', 'clearRestoredChatLog'],
           always: 'activeSession'
         },
         activeSession: {
@@ -238,7 +242,7 @@ export const orchestratorMachine = setup({
             },
             'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }) => event) },
             'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }) => event) },
-            'INTERNAL.READY': { actions: ({ self }) => self.send({ type: 'INTERNAL.READY' }) },
+            'GAME.VOTE': { actions: sendTo('l3-session', ({ event }) => event) },
             'ADMIN.INJECT_TIMELINE_EVENT': { actions: 'injectAdminEvent' }
           }
         },

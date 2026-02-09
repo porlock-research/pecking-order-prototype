@@ -78,13 +78,18 @@ export class GameServer extends Server<Env> {
 
           console.log(`[L1] 📝 Persisting Fact to D1: ${fact.type}`);
 
+          // Read actual game context from L2 actor snapshot
+          const snapshot = this.actor?.getSnapshot();
+          const gameId = snapshot?.context.gameId || 'unknown';
+          const dayIndex = snapshot?.context.dayIndex || 0;
+
           // Fire and forget D1 insert
           this.env.DB.prepare(
             `INSERT INTO GameJournal (id, game_id, day_index, timestamp, event_type, actor_id, target_id, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
           ).bind(
             crypto.randomUUID(),
-            'game-1', // TODO: Get from context if possible, or use fixed
-            0, // TODO: Get dayIndex from context if possible
+            gameId,
+            dayIndex,
             fact.timestamp,
             fact.type,
             fact.actorId,
@@ -292,6 +297,8 @@ export class GameServer extends Server<Env> {
   /**
    * 4. MESSAGE: Receive social events from clients
    */
+  private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER', 'GAME.VOTE'];
+
   onMessage(ws: Connection, message: string) {
     try {
       const event = JSON.parse(message);
@@ -305,12 +312,17 @@ export class GameServer extends Server<Env> {
         return;
       }
 
+      if (!GameServer.ALLOWED_CLIENT_EVENTS.includes(event.type)) {
+        console.warn(`[L1] Rejected event type from client: ${event.type}`);
+        return;
+      }
+
       // Inject senderId to prevent spoofing
       this.actor?.send({
         ...event,
         senderId: state.playerId
       });
-      
+
     } catch (err) {
       console.error("[L1] Error processing message:", err);
     }
