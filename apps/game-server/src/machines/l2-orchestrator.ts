@@ -184,13 +184,8 @@ export const orchestratorMachine = setup({
       initial: 'morningBriefing',
       states: {
         morningBriefing: {
-          entry: ['incrementDay', 'scheduleNextTimelineEvent'],
-          on: {
-            'ADMIN.NEXT_STAGE': { target: 'activeSession' },
-            'SYSTEM.WAKEUP': { 
-               target: 'activeSession' 
-            }
-          }
+          entry: ['incrementDay'],
+          always: 'activeSession'
         },
         activeSession: {
           invoke: {
