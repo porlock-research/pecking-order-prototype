@@ -2,7 +2,7 @@
 
 import { InitPayloadSchema, Roster } from "@pecking-order/shared-types";
 
-export async function startGameStub() {
+export async function startGameStub(gameMode: "PECKING_ORDER" | "BLITZ" | "DEBUG_PECKING_ORDER" = "PECKING_ORDER") {
   const GAME_SERVER_URL = process.env.GAME_SERVER_URL || "http://localhost:8787";
   const GAME_ID = `game-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
@@ -56,7 +56,7 @@ export async function startGameStub() {
     roster,
     manifest: {
       id: "manifest-1",
-      gameMode: "PECKING_ORDER" as const,
+      gameMode: gameMode,
       days: [
         {
           dayIndex: 1,
@@ -100,6 +100,36 @@ export async function startGameStub() {
 
   } catch (err: any) {
     console.error("[Lobby] Handoff Failed:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getGameState(gameId: string) {
+  const GAME_SERVER_URL = process.env.GAME_SERVER_URL || "http://localhost:8787";
+  const targetUrl = `${GAME_SERVER_URL}/parties/game-server/${gameId}/state`;
+  
+  try {
+    const res = await fetch(targetUrl, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return { error: "Failed to fetch state" };
+  }
+}
+
+export async function sendAdminCommand(gameId: string, command: any) {
+  const GAME_SERVER_URL = process.env.GAME_SERVER_URL || "http://localhost:8787";
+  const targetUrl = `${GAME_SERVER_URL}/parties/game-server/${gameId}/admin`;
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: "POST",
+      body: JSON.stringify(command),
+      headers: { "Content-Type": "application/json" }
+    });
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    return { success: true };
+  } catch (err: any) {
     return { success: false, error: err.message };
   }
 }
