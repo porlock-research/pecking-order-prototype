@@ -18,7 +18,10 @@ export interface Env {
 export class GameServer extends Server<Env> {
   // The Brain (XState Actor)
   private actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
-  
+
+  // Cache L3 chatLog so it survives L3 actor destruction (e.g. nightSummary transition)
+  private lastKnownChatLog: any[] = [];
+
   // The Scheduler (Composition)
   private scheduler: Scheduler<Env>;
   
@@ -58,13 +61,23 @@ export class GameServer extends Server<Env> {
     const snapshotStr = await this.ctx.storage.get<string>(STORAGE_KEY);
     
     // Define the D1 Writer Implementation
+    // Only override persistFactToD1 — updateJournalTimestamp (assign) stays in L2
+    // to ensure context changes trigger the subscription for SYSTEM.SYNC broadcasts
+    const JOURNALABLE_TYPES = ['SILVER_TRANSFER', 'VOTE_CAST', 'ELIMINATION', 'DM_SENT', 'POWER_USED', 'GAME_RESULT'];
     const machineWithPersistence = orchestratorMachine.provide({
       actions: {
-        logToJournal: ({ event }) => {
+        persistFactToD1: ({ event }) => {
           if (event.type !== 'FACT.RECORD') return;
           const fact = event.fact;
-          console.log(`[L1] 📝 Persisting Fact: ${fact.type}`);
-          
+
+          // Per spec: only journal significant events to D1 (not high-frequency CHAT_MSG)
+          if (!JOURNALABLE_TYPES.includes(fact.type)) {
+            console.log(`[L1] Fact received (sync-only, not journaled): ${fact.type}`);
+            return;
+          }
+
+          console.log(`[L1] 📝 Persisting Fact to D1: ${fact.type}`);
+
           // Fire and forget D1 insert
           this.env.DB.prepare(
             `INSERT INTO GameJournal (id, game_id, day_index, timestamp, event_type, actor_id, target_id, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -101,6 +114,7 @@ export class GameServer extends Server<Env> {
       // Inject restored chat log into L2 context for rehydration
       if (restoredChatLog) {
         l2Snapshot.context.restoredChatLog = restoredChatLog;
+        this.lastKnownChatLog = restoredChatLog;
       }
 
       this.actor = createActor(machineWithPersistence, { snapshot: l2Snapshot });
@@ -117,14 +131,18 @@ export class GameServer extends Server<Env> {
       const l3Ref = snapshot.children['l3-session'];
       if (l3Ref) {
           const l3Snapshot = l3Ref.getSnapshot();
-          if (l3Snapshot) l3Context = l3Snapshot.context;
+          if (l3Snapshot) {
+            l3Context = l3Snapshot.context;
+            // Cache chatLog while L3 is alive
+            this.lastKnownChatLog = l3Context.chatLog || [];
+          }
       }
 
       // A. Save FULL State to Disk (L2 + L3 critical data)
       const storagePayload = {
           l2: snapshot,
           l3Context: {
-              chatLog: l3Context.chatLog // Only save what we need to restore
+              chatLog: l3Context.chatLog ?? this.lastKnownChatLog
           }
       };
       this.ctx.storage.put(STORAGE_KEY, JSON.stringify(storagePayload));
@@ -144,9 +162,11 @@ export class GameServer extends Server<Env> {
 
       // C. Broadcast State to Clients
       // We explicitly merge L3 context here for the view layer
+      // Use cached chatLog as fallback when L3 is destroyed (e.g. nightSummary)
       const combinedContext = {
         ...snapshot.context,
-        ...l3Context
+        ...l3Context,
+        chatLog: l3Context.chatLog ?? this.lastKnownChatLog
       };
 
       this.broadcast(JSON.stringify({
@@ -245,7 +265,7 @@ export class GameServer extends Server<Env> {
     const snapshot = this.actor?.getSnapshot();
     if (snapshot) {
       // START MERGE LOGIC
-      let l3Context = {};
+      let l3Context: any = {};
       const l3Ref = snapshot.children['l3-session'];
       if (l3Ref) {
         const l3Snapshot = l3Ref.getSnapshot();
@@ -253,10 +273,11 @@ export class GameServer extends Server<Env> {
           l3Context = l3Snapshot.context;
         }
       }
-      
+
       const combinedContext = {
         ...snapshot.context,
-        ...l3Context
+        ...l3Context,
+        chatLog: l3Context.chatLog ?? this.lastKnownChatLog
       };
       // END MERGE LOGIC
 

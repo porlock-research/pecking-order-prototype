@@ -29,7 +29,9 @@ export const useGameStore = create<GameState>((set) => ({
     gameId: data.context?.gameId || state.gameId,
     dayIndex: data.context?.dayIndex || 0,
     roster: data.context?.roster || {},
-    chatLog: data.context?.chatLog || [],
+    // Server is authoritative, but never wipe a populated chatLog with an empty one
+    // (protects against stale syncs from unrelated L2 state changes)
+    chatLog: data.context?.chatLog?.length ? data.context.chatLog : state.chatLog,
     manifest: data.context?.manifest || null,
     serverState: data.state || null,
   })),

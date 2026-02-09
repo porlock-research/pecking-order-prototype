@@ -123,3 +123,56 @@ This document tracks significant architectural decisions, their context, and con
 *   **Consequences:**
     *   Prevents accidental deletion of future alarms.
     *   Requires no changes to `partywhen` internals.
+
+## [ADR-014] Manifest-Driven Execution
+*   **Date:** 2026-02-08
+*   **Status:** Accepted
+*   **Context:** Hardcoding game logic (e.g., "At 10am open chat") into the source code makes the engine brittle and hard to test. We need to support variable game pacing (e.g., Blitz Mode vs. 7-Day Mode).
+*   **Decision:** The Game Engine (L2) will read a JSON `GameManifest` passed at initialization. All alarms and state transitions are derived from this data structure.
+*   **Consequences:**
+    *   L2 Logic is generic; behavior is data-defined.
+    *   `DailyManifestSchema` becomes a critical contract.
+    *   Testing becomes easier (just inject a 20-second manifest).
+
+## [ADR-015] Explicit Child Readiness Signal (Handshake)
+*   **Date:** 2026-02-08
+*   **Status:** Accepted
+*   **Context:** When L2 spawns the L3 Child Actor, XState/JavaScript execution order often leads to race conditions where L2 tries to send an event (e.g., `INJECT_PROMPT`) to L3 before L3 is fully initialized and listening.
+*   **Decision:** Implement a strict **Handshake Pattern**. L2 spawns L3 and waits in a `waitingForChild` state. L3 sends `INTERNAL.READY` on entry. Only then does L2 transition to `running` and start processing the timeline.
+*   **Consequences:**
+    *   Eliminates "Child not ready" errors.
+    *   Adds a slight latency (1 tick) to startup, which is negligible.
+
+## [ADR-016] Idempotent Timeline Processing (Buffer + LastProcessedTime)
+*   **Date:** 2026-02-08
+*   **Status:** Accepted
+*   **Context:** Cloudflare Alarms and JS `setTimeout` are not perfectly precise. An alarm scheduled for `T` might fire at `T-5ms` or `T+100ms`. Strict equality checks (`now === time`) fail, causing missed events or infinite loops.
+*   **Decision:** Use a **Look-Ahead Buffer** logic:
+    *   **Scheduling:** Schedule next event if `time > Math.max(now, lastProcessedTime) + 100ms`.
+    *   **Processing:** Process event if `time <= now + 2000ms` AND `time > lastProcessedTime`.
+    *   **State:** Persist `lastProcessedTime` in L2 Context.
+*   **Consequences:**
+    *   Events are processed exactly once.
+    *   System is resilient to minor clock jitter.
+    *   Requires careful management of the `lastProcessedTime` cursor.
+
+## [ADR-017] Consistent DEBUG Mode Guards Across All Timeline Actions
+*   **Date:** 2026-02-09
+*   **Status:** Accepted
+*   **Context:** `scheduleGameStart` and `scheduleNextTimelineEvent` both have `DEBUG_PECKING_ORDER` guards that skip automatic execution, allowing manual control via `ADMIN.NEXT_STAGE` and `ADMIN.INJECT_TIMELINE_EVENT`. However, `processTimelineEvent` lacked this guard. When the manifest contained past timestamps, entering the `running` state would immediately process `END_DAY`, destroying L3 before any manual testing could occur.
+*   **Decision:** Add the same `gameMode === 'DEBUG_PECKING_ORDER'` early-return guard to `processTimelineEvent`, making all three timeline actions consistent.
+*   **Consequences:**
+    *   In DEBUG mode, the only way to advance the timeline is via admin commands (`ADMIN.NEXT_STAGE`, `ADMIN.INJECT_TIMELINE_EVENT`).
+    *   L3 stays alive indefinitely in DEBUG mode, enabling manual chat and social feature testing.
+    *   No behavioral change for production (`PECKING_ORDER`) mode.
+
+## [ADR-018] L1-Level ChatLog Cache (Surviving L3 Destruction)
+*   **Date:** 2026-02-09
+*   **Status:** Accepted
+*   **Context:** When L2 transitions from `activeSession` to `nightSummary`, XState v5 terminates the invoked L3 actor. The L1 subscription handler then finds `snapshot.children['l3-session']` is `undefined`, so both DO Storage persistence and `SYSTEM.SYNC` broadcasts lose the chatLog. Clients connecting after the transition receive no chat history.
+*   **Decision:** Maintain a `lastKnownChatLog` instance variable at the L1 (`GameServer`) level. Cache it from L3 while alive; use it as a fallback (`??`) in persistence, broadcast, and `onConnect` when L3 is gone. Initialize from restored storage on boot.
+*   **Consequences:**
+    *   ChatLog survives L3 actor lifecycle transitions (e.g., `activeSession` → `nightSummary`).
+    *   ChatLog survives DO restarts via the existing storage payload.
+    *   Follows the same "L1 owns durability" principle from ADR-002 and ADR-005.
+    *   Memory footprint is bounded: cache is replaced (not accumulated) each time L3 is alive.

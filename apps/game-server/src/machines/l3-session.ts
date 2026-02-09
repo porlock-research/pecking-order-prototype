@@ -28,16 +28,16 @@ export const dailySessionMachine = setup({
     output: {} as { reason: string }
   },
   actions: {
+    // Pure context update — adds message to chatLog, deducts silver for DMs
     processMessage: assign({
       chatLog: ({ context, event }) => {
         if (event.type !== 'SOCIAL.SEND_MSG') return context.chatLog;
-        
+
         const sender = context.roster[event.senderId];
         if (!sender) return context.chatLog;
 
         const isDM = !!event.targetId;
-        
-        // Create message object
+
         const newMessage: ChatMessage = {
           id: crypto.randomUUID(),
           senderId: event.senderId,
@@ -47,28 +47,16 @@ export const dailySessionMachine = setup({
           targetId: event.targetId
         };
 
-        // Emit Fact for Journaling [ADR-005]
-        sendParent({ 
-          type: 'FACT.RECORD', 
-          fact: {
-            type: isDM ? 'DM_SENT' : 'CHAT_MSG',
-            actorId: event.senderId,
-            targetId: event.targetId,
-            payload: { content: event.content, messageId: newMessage.id },
-            timestamp: newMessage.timestamp
-          }
-        });
-
         // Keep only the last 50 messages [ADR-005]
         const updatedLog = [...context.chatLog, newMessage];
         if (updatedLog.length > 50) {
-            return updatedLog.slice(-50);
+          return updatedLog.slice(-50);
         }
         return updatedLog;
       },
       roster: ({ context, event }) => {
         if (event.type !== 'SOCIAL.SEND_MSG' || !event.targetId) return context.roster;
-        
+
         const sender = context.roster[event.senderId];
         if (!sender || sender.silver < 1) return context.roster;
 
@@ -82,26 +70,30 @@ export const dailySessionMachine = setup({
         };
       }
     }),
+    // Side-effect: emit FACT.RECORD to L2 for journaling + sync trigger [ADR-005]
+    emitChatFact: sendParent(({ event }) => {
+      if (event.type !== 'SOCIAL.SEND_MSG') return { type: 'FACT.RECORD', fact: { type: 'CHAT_MSG', actorId: '', timestamp: 0 } };
+      const isDM = !!event.targetId;
+      return {
+        type: 'FACT.RECORD',
+        fact: {
+          type: isDM ? 'DM_SENT' : 'CHAT_MSG',
+          actorId: event.senderId,
+          targetId: event.targetId,
+          payload: { content: event.content },
+          timestamp: Date.now()
+        }
+      };
+    }),
+    // Pure context update — transfers silver between players
     transferSilver: assign({
       roster: ({ context, event }) => {
         if (event.type !== 'SOCIAL.SEND_SILVER') return context.roster;
-        
+
         const sender = context.roster[event.senderId];
         const target = context.roster[event.targetId];
-        
-        if (!sender || !target || sender.silver < event.amount) return context.roster;
 
-        // Emitting Fact to Parent (L2) for journaling
-        sendParent({ 
-          type: 'FACT.RECORD', 
-          fact: {
-            type: 'SILVER_TRANSFER',
-            actorId: event.senderId,
-            targetId: event.targetId,
-            payload: { amount: event.amount },
-            timestamp: Date.now()
-          }
-        });
+        if (!sender || !target || sender.silver < event.amount) return context.roster;
 
         return {
           ...context.roster,
@@ -109,6 +101,20 @@ export const dailySessionMachine = setup({
           [event.targetId]: { ...target, silver: target.silver + event.amount }
         };
       }
+    }),
+    // Side-effect: emit FACT.RECORD for silver transfer [ADR-005]
+    emitSilverFact: sendParent(({ event }) => {
+      if (event.type !== 'SOCIAL.SEND_SILVER') return { type: 'FACT.RECORD', fact: { type: 'SILVER_TRANSFER', actorId: '', timestamp: 0 } };
+      return {
+        type: 'FACT.RECORD',
+        fact: {
+          type: 'SILVER_TRANSFER',
+          actorId: event.senderId,
+          targetId: event.targetId,
+          payload: { amount: event.amount },
+          timestamp: Date.now()
+        }
+      };
     }),
     forwardToL2: sendParent(({ event }) => event),
     forwardToChild: sendTo('activeCartridge', ({ event }) => event)
@@ -137,9 +143,9 @@ export const dailySessionMachine = setup({
           initial: 'active',
           states: {
             active: {
-              on: { 
-                'SOCIAL.SEND_MSG': { actions: 'processMessage' },
-                'SOCIAL.SEND_SILVER': { actions: 'transferSilver' }
+              on: {
+                'SOCIAL.SEND_MSG': { actions: ['processMessage', 'emitChatFact'] },
+                'SOCIAL.SEND_SILVER': { actions: ['transferSilver', 'emitSilverFact'] }
               }
             }
           }

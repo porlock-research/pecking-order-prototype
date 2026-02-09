@@ -19,17 +19,20 @@ We have successfully implemented a hierarchical Actor Model system to handle the
 ### **L2: Orchestrator (The Manager)**
 *   **Component:** `orchestratorMachine` (XState v5).
 *   **Responsibility:**
+    *   **Manifest-Driven Execution:** Reads `GameManifest` to schedule alarms (no hardcoded times).
     *   **The 7-Day Loop:** Manages transitions between `morningBriefing`, `activeSession`, and `nightSummary`.
     *   **Authority:** Source of Truth for Roster and Game Phase.
     *   **Sync:** Broadcasts state snapshots to clients on transition.
-*   **Behavior:** Runs continuously. Wakes up via L1 Alarms to advance the schedule.
+*   **Behavior:** Runs continuously. Wakes up via L1 Alarms, waits for L3 handshake (`INTERNAL.READY`), then processes timeline events.
 
 ### **L3: Session (The Gameplay)**
 *   **Component:** `dailySessionMachine` (XState v5 Child Actor).
 *   **Responsibility:**
-    *   **Ephemeral State:** Chat logs, silver currency changes, mini-game status.
-    *   **Concurrency:** Handles parallel regions (Social + Main Stage).
-*   **Lifecycle:** Spawned by L2 during `activeSession`. Can be terminated by L2 (Time's Up) or finish naturally.
+    *   **Parallel Regions:** 
+        *   `social`: Handles Chat and Silver currency.
+        *   `mainStage`: Handles Minigames and Voting cartridges.
+    *   **Ephemeral State:** Reset daily.
+*   **Lifecycle:** Spawned by L2 during `activeSession`. Signals `INTERNAL.READY` on startup.
 
 ## **2. Scheduling & Time**
 
@@ -37,8 +40,8 @@ Time is the primary driver of the game.
 
 *   **Mechanism:** `partywhen` (SQLite-backed Scheduler).
 *   **Flow:**
-    1.  L2 State Entry Action (e.g., `scheduleMorningAlarm`) calculates target time.
-    2.  L2 Context updates `nextWakeup`.
+    1.  L2 `scheduleNextTimelineEvent` looks ahead in the `GameManifest`.
+    2.  Uses `lastProcessedTime` cursor to ensure idempotency [ADR-016].
     3.  L1 Subscription detects change -> Calls `scheduler.scheduleTask`.
     4.  Task ID is **Dynamic** (`wakeup-${ts}`) to prevent race conditions [ADR-013].
     5.  Cloudflare Alarm fires -> `scheduler.execute` -> `wakeUpL2` -> `actor.send('SYSTEM.WAKEUP')`.
@@ -55,11 +58,12 @@ Time is the primary driver of the game.
 
 As of this milestone, the engine can:
 *   [x] Accept a Roster via HTTP Handoff (`POST /init`).
-*   [x] Boot up into a persistent game loop.
+*   [x] Boot up into a persistent game loop driven by a JSON Manifest.
 *   [x] Automatically cycle through game phases (Morning -> Active -> Night) via Alarms.
+*   [x] Run Parallel Regions (Chat + Voting) simultaneously.
 *   [x] Persist state to SQLite across reloads/crashes.
-*   [x] Support real-time WebSocket clients.
-*   [x] Handle manual overrides (`ADMIN.NEXT_STAGE`) alongside automatic scheduling.
+*   [x] Persist Game Facts (`FACT.RECORD`) to D1 Journal.
+*   [x] Support real-time WebSocket clients with dynamic Game ID.
 
 ## **5. Next Steps**
 

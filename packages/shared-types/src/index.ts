@@ -57,7 +57,7 @@ export const DailyManifestSchema = z.object({
 
 export const GameManifestSchema = z.object({
   id: z.string(),
-  gameMode: z.enum(["PECKING_ORDER", "BLITZ"]),
+  gameMode: z.enum(["PECKING_ORDER", "BLITZ", "DEBUG_PECKING_ORDER"]),
   days: z.array(DailyManifestSchema),
 });
 
@@ -86,7 +86,7 @@ export const InitPayloadSchema = z.object({
 // --- Journal & Facts (Persistence) ---
 
 export const FactSchema = z.object({
-  type: z.enum(["SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "GAME_RESULT"]),
+  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "GAME_RESULT"]),
   actorId: z.string(),
   targetId: z.string().optional(),
   payload: z.any().optional(), // JSON details

@@ -1,6 +1,6 @@
-import { setup, assign, fromPromise, sendTo } from 'xstate';
+import { setup, assign, sendTo } from 'xstate';
 import { dailySessionMachine } from './l3-session';
-import { SocialPlayer, Roster, GameManifest, Fact } from '@pecking-order/shared-types';
+import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent } from '@pecking-order/shared-types';
 
 // --- Types ---
 export interface GameContext {
@@ -14,14 +14,15 @@ export interface GameContext {
   lastJournalEntry: number; // Triggers state change for syncing
 }
 
-export type GameEvent = 
+export type GameEvent =
   | { type: 'SYSTEM.INIT'; payload: { roster: Roster; manifest: GameManifest }; gameId: string }
   | { type: 'SYSTEM.WAKEUP' }
   | { type: 'SYSTEM.PAUSE' }
   | { type: 'ADMIN.NEXT_STAGE' }
   | { type: 'ADMIN.INJECT_TIMELINE_EVENT'; payload: { action: string; payload?: any } }
   | { type: 'FACT.RECORD'; fact: Fact }
-  | { type: 'INTERNAL.READY' };
+  | { type: 'INTERNAL.READY' }
+  | (SocialEvent & { senderId: string });
 
 // --- The L2 Orchestrator Machine ---
 export const orchestratorMachine = setup({
@@ -95,6 +96,7 @@ export const orchestratorMachine = setup({
     }),
     processTimelineEvent: assign(({ context, self }) => {
       if (!context.manifest) return {};
+      if (context.manifest.gameMode === 'DEBUG_PECKING_ORDER') return {};
       const currentDay = context.manifest.days.find(d => d.dayIndex === context.dayIndex);
       if (!currentDay) return {};
 
@@ -130,11 +132,14 @@ export const orchestratorMachine = setup({
       
       return { lastProcessedTime: newProcessedTime };
     }),
-    logToJournal: assign(({ event }) => {
+    updateJournalTimestamp: assign(({ event }) => {
       if (event.type !== 'FACT.RECORD') return {};
-      console.log(`[L2 Journal] ✍️ Writing Fact to D1: ${event.fact.type} by ${event.fact.actorId}`);
+      console.log(`[L2 Journal] ✍️ Fact received: ${event.fact.type} by ${event.fact.actorId}`);
       return { lastJournalEntry: Date.now() };
     }),
+    persistFactToD1: () => {
+      // No-op in L2 — overridden by L1 via .provide() to inject D1 binding
+    },
     // New Action for Manual Injection
     injectAdminEvent: ({ event, self }) => {
       if (event.type !== 'ADMIN.INJECT_TIMELINE_EVENT') return;
@@ -224,13 +229,15 @@ export const orchestratorMachine = setup({
           },
           on: {
             'ADMIN.NEXT_STAGE': { target: 'nightSummary' },
-            'FACT.RECORD': { 
-                actions: 'logToJournal',
+            'FACT.RECORD': {
+                actions: ['updateJournalTimestamp', 'persistFactToD1'],
                 // Force state update to trigger persistence/sync
                 target: undefined, // Stay in current state
                 reenter: false,
                 internal: true
             },
+            'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }) => event) },
+            'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }) => event) },
             'INTERNAL.READY': { actions: ({ self }) => self.send({ type: 'INTERNAL.READY' }) },
             'ADMIN.INJECT_TIMELINE_EVENT': { actions: 'injectAdminEvent' }
           }
