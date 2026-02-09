@@ -10,6 +10,7 @@ export interface GameContext {
   dayIndex: number;
   nextWakeup: number | null;
   lastProcessedTime: number;
+  restoredChatLog?: any[]; // For rehydration only
 }
 
 export type GameEvent = 
@@ -194,7 +195,8 @@ export const orchestratorMachine = setup({
             input: ({ context }) => ({
               dayIndex: context.dayIndex,
               roster: context.roster,
-              manifest: context.manifest?.days.find(d => d.dayIndex === context.dayIndex)
+              manifest: context.manifest?.days.find(d => d.dayIndex === context.dayIndex),
+              initialChatLog: context.restoredChatLog
             }),
             onDone: {
               target: 'nightSummary',

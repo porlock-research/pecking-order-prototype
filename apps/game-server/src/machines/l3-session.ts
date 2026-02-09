@@ -22,7 +22,7 @@ export type DailyEvent =
 
 export const dailySessionMachine = setup({
   types: {
-    input: {} as { dayIndex: number; roster: Record<string, SocialPlayer>; manifest?: DailyManifest }, 
+    input: {} as { dayIndex: number; roster: Record<string, SocialPlayer>; manifest?: DailyManifest; initialChatLog?: ChatMessage[] }, 
     context: {} as DailyContext,
     events: {} as DailyEvent,
     output: {} as { reason: string }
@@ -120,7 +120,7 @@ export const dailySessionMachine = setup({
   id: 'l3-daily-session',
   context: ({ input }) => ({
     dayIndex: input.dayIndex || 0,
-    chatLog: [],
+    chatLog: input.initialChatLog || [],
     roster: input.roster || {},
     manifest: input.manifest
   }),
