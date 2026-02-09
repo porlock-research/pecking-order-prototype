@@ -32,8 +32,13 @@ export const dailySessionMachine = setup({
       chatLog: ({ context, event }) => {
         if (event.type !== 'SOCIAL.SEND_MSG') return context.chatLog;
         
+        console.log(`[L3] 💬 Processing Message from ${event.senderId}: ${event.content}`);
+
         const sender = context.roster[event.senderId];
-        if (!sender) return context.chatLog;
+        if (!sender) {
+             console.warn(`[L3] 🚫 Sender ${event.senderId} not found in roster`);
+             return context.chatLog;
+        }
 
         const isDM = !!event.targetId;
         

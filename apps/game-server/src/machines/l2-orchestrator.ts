@@ -215,6 +215,18 @@ export const orchestratorMachine = setup({
               on: {
                 'SYSTEM.WAKEUP': { 
                    actions: ['processTimelineEvent', 'scheduleNextTimelineEvent']
+                },
+                // Explicit Debugging for forwarding
+                '*': {
+                    actions: ({ event, self }) => {
+                        const child = self.getSnapshot().children['l3-session'];
+                        if (child) {
+                            console.log(`[L2] 🔀 Forwarding ${event.type} to L3`);
+                            child.send(event);
+                        } else {
+                            console.warn(`[L2] ⚠️ Cannot forward ${event.type}: L3 Child not found`);
+                        }
+                    }
                 }
               }
             }
