@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Color Palette - Core */
+    --color-fill: 10, 10, 10;          /* Deep Black/Gray */
+    --color-surface: 24, 24, 27;       /* Zinc 900 */
+    --color-surface-hover: 39, 39, 42; /* Zinc 800 */
+    
+    /* Text */
+    --color-text-base: 255, 255, 255;
+    --color-text-muted: 161, 161, 170; /* Zinc 400 */
+    --color-text-inverted: 0, 0, 0;
+
+    /* Semantic Accents */
+    --color-primary: 250, 204, 21;     /* Yellow 400 - The "Gold" / High Value */
+    --color-secondary: 16, 185, 129;   /* Emerald 500 - Success / Safe */
+    --color-danger: 239, 68, 68;       /* Red 500 - Elimination / Alert */
+    --color-info: 59, 130, 246;        /* Blue 500 - Neutral Info */
+
+    /* Borders */
+    --color-border: 63, 63, 70;        /* Zinc 700 */
+    --color-border-active: 250, 204, 21; /* Yellow 400 */
+
+    /* Shadows & Glows */
+    --shadow-glow: 0 0 15px rgba(250, 204, 21, 0.3);
+  }
+
+  /* Optional: Light Theme (for testing themability later) */
+  [data-theme='light'] {
+    --color-fill: 255, 255, 255;
+    --color-surface: 244, 244, 245;
+    --color-surface-hover: 228, 228, 231;
+    --color-text-base: 24, 24, 27;
+    --color-text-muted: 113, 113, 122;
+    --color-text-inverted: 255, 255, 255;
+    --color-primary: 234, 179, 8;      /* Yellow 600 */
+    --color-border: 228, 228, 231;
+    --color-border-active: 234, 179, 8;
+  }
+}
+
+/* Base Styles */
+body {
+  @apply bg-skin-fill text-skin-base font-sans antialiased selection:bg-skin-primary selection:text-skin-inverted;
+}
+
+/* Utilities for Patterns */
+@layer utilities {
+  .bg-grid-pattern {
+    background-size: 40px 40px;
+    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px rgba(var(--color-primary), 0.5);
+  }
+  
+  .border-glow {
+    box-shadow: 0 0 8px rgba(var(--color-primary), 0.3);
+  }
+}

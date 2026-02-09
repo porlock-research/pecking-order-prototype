@@ -18,7 +18,10 @@ export interface Env {
 export class GameServer extends Server<Env> {
   // The Brain (XState Actor)
   private actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
-  
+
+  // Cache L3 chatLog so it survives L3 actor destruction (e.g. nightSummary transition)
+  private lastKnownChatLog: any[] = [];
+
   // The Scheduler (Composition)
   private scheduler: Scheduler<Env>;
   
@@ -57,24 +60,97 @@ export class GameServer extends Server<Env> {
     // Load previous state from disk
     const snapshotStr = await this.ctx.storage.get<string>(STORAGE_KEY);
     
+    // Define the D1 Writer Implementation
+    // Only override persistFactToD1 — updateJournalTimestamp (assign) stays in L2
+    // to ensure context changes trigger the subscription for SYSTEM.SYNC broadcasts
+    const JOURNALABLE_TYPES = ['SILVER_TRANSFER', 'VOTE_CAST', 'ELIMINATION', 'DM_SENT', 'POWER_USED', 'GAME_RESULT'];
+    const machineWithPersistence = orchestratorMachine.provide({
+      actions: {
+        persistFactToD1: ({ event }) => {
+          if (event.type !== 'FACT.RECORD') return;
+          const fact = event.fact;
+
+          // Per spec: only journal significant events to D1 (not high-frequency CHAT_MSG)
+          if (!JOURNALABLE_TYPES.includes(fact.type)) {
+            console.log(`[L1] Fact received (sync-only, not journaled): ${fact.type}`);
+            return;
+          }
+
+          console.log(`[L1] 📝 Persisting Fact to D1: ${fact.type}`);
+
+          // Fire and forget D1 insert
+          this.env.DB.prepare(
+            `INSERT INTO GameJournal (id, game_id, day_index, timestamp, event_type, actor_id, target_id, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          ).bind(
+            crypto.randomUUID(),
+            'game-1', // TODO: Get from context if possible, or use fixed
+            0, // TODO: Get dayIndex from context if possible
+            fact.timestamp,
+            fact.type,
+            fact.actorId,
+            fact.targetId || null,
+            JSON.stringify(fact.payload || {})
+          ).run().catch(err => {
+            console.error("[L1] 💥 Failed to write to Journal:", err);
+          });
+        }
+      }
+    });
+
     if (snapshotStr) {
       console.log(`[L1] ♻️  Resuming Game`);
-      const snapshot = JSON.parse(snapshotStr);
-      this.actor = createActor(orchestratorMachine, { snapshot });
+      const storedData = JSON.parse(snapshotStr);
+      // storedData structure: { l2: Snapshot, l3Context: { chatLog: ... } }
+
+      let l2Snapshot = storedData;
+      let restoredChatLog = undefined;
+
+      // Handle migration from old format (raw L2 snapshot) to new format
+      if (storedData.l2) {
+          l2Snapshot = storedData.l2;
+          restoredChatLog = storedData.l3Context?.chatLog;
+      }
+      
+      // Inject restored chat log into L2 context for rehydration
+      if (restoredChatLog) {
+        l2Snapshot.context.restoredChatLog = restoredChatLog;
+        this.lastKnownChatLog = restoredChatLog;
+      }
+
+      this.actor = createActor(machineWithPersistence, { snapshot: l2Snapshot });
     } else {
       console.log(`[L1] ✨ Fresh Boot`);
-      this.actor = createActor(orchestratorMachine);
+      this.actor = createActor(machineWithPersistence);
     }
 
     // AUTO-SAVE & ALARM SYSTEM
     this.actor.subscribe(async (snapshot) => {
-      // A. Save State to Disk (Critical for crash recovery)
-      this.ctx.storage.put(STORAGE_KEY, JSON.stringify(snapshot));
+      
+      // Extract L3 Context for Persistence
+      let l3Context: any = {};
+      const l3Ref = snapshot.children['l3-session'];
+      if (l3Ref) {
+          const l3Snapshot = l3Ref.getSnapshot();
+          if (l3Snapshot) {
+            l3Context = l3Snapshot.context;
+            // Cache chatLog while L3 is alive
+            this.lastKnownChatLog = l3Context.chatLog || [];
+          }
+      }
+
+      // A. Save FULL State to Disk (L2 + L3 critical data)
+      const storagePayload = {
+          l2: snapshot,
+          l3Context: {
+              chatLog: l3Context.chatLog ?? this.lastKnownChatLog
+          }
+      };
+      this.ctx.storage.put(STORAGE_KEY, JSON.stringify(storagePayload));
 
       // B. Schedule via PartyWhen
       const nextWakeup = snapshot.context.nextWakeup;
       if (nextWakeup && nextWakeup > Date.now()) {
-        console.log(`[L1] 📅 Scheduling Wakeup via PartyWhen for: ${new Date(nextWakeup).toISOString()}`);
+        // console.log(`[L1] 📅 Scheduling Wakeup via PartyWhen for: ${new Date(nextWakeup).toISOString()}`);
         
         await this.scheduler.scheduleTask({
           id: `wakeup-${Date.now()}`,
@@ -82,25 +158,15 @@ export class GameServer extends Server<Env> {
           time: new Date(nextWakeup),
           callback: { type: "self", function: "wakeUpL2" }
         });
-
-        const alarm = await this.ctx.storage.getAlarm();
-        console.log(`[L1] Debug: Alarm status after schedule: ${alarm ? new Date(alarm).toISOString() : "None"}`);
       }
 
       // C. Broadcast State to Clients
-      // We attempt to grab L3 context if it exists, as it holds the "Real" roster/chat during the day
-      let l3Context = {};
-      const l3Ref = snapshot.children['l3-session'];
-      if (l3Ref) {
-        const l3Snapshot = l3Ref.getSnapshot();
-        if (l3Snapshot) {
-          l3Context = l3Snapshot.context;
-        }
-      }
-
+      // We explicitly merge L3 context here for the view layer
+      // Use cached chatLog as fallback when L3 is destroyed (e.g. nightSummary)
       const combinedContext = {
         ...snapshot.context,
-        ...l3Context
+        ...l3Context,
+        chatLog: l3Context.chatLog ?? this.lastKnownChatLog
       };
 
       this.broadcast(JSON.stringify({
@@ -142,11 +208,36 @@ export class GameServer extends Server<Env> {
         return new Response(JSON.stringify({
             state: snapshot?.value,
             day: snapshot?.context.dayIndex,
-            nextWakeup: snapshot?.context.nextWakeup ? new Date(snapshot.context.nextWakeup).toISOString() : null
+            nextWakeup: snapshot?.context.nextWakeup ? new Date(snapshot.context.nextWakeup).toISOString() : null,
+            manifest: snapshot?.context.manifest
         }, null, 2), { 
             status: 200, 
             headers: { "Content-Type": "application/json" } 
         });
+    }
+
+    // 3. POST /admin (Manual Control)
+    if (req.method === "POST" && new URL(req.url).pathname.endsWith("/admin")) {
+        try {
+            const body = await req.json() as any;
+            console.log(`[L1] 🛡️ Admin Command: ${body.type}`);
+
+            if (body.type === "NEXT_STAGE") {
+                this.actor?.send({ type: "ADMIN.NEXT_STAGE" });
+            } else if (body.type === "INJECT_TIMELINE_EVENT") {
+                this.actor?.send({ 
+                    type: "ADMIN.INJECT_TIMELINE_EVENT", 
+                    payload: { action: body.action, payload: body.payload } 
+                });
+            } else {
+                return new Response("Unknown Admin Command", { status: 400 });
+            }
+
+            return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
+        } catch (err) {
+            console.error("[L1] Admin request failed:", err);
+            return new Response("Internal Error", { status: 500 });
+        }
     }
 
     return new Response("Not Found", { status: 404 });
@@ -173,10 +264,27 @@ export class GameServer extends Server<Env> {
     // Send current state immediately so client UI hydrates
     const snapshot = this.actor?.getSnapshot();
     if (snapshot) {
+      // START MERGE LOGIC
+      let l3Context: any = {};
+      const l3Ref = snapshot.children['l3-session'];
+      if (l3Ref) {
+        const l3Snapshot = l3Ref.getSnapshot();
+        if (l3Snapshot) {
+          l3Context = l3Snapshot.context;
+        }
+      }
+
+      const combinedContext = {
+        ...snapshot.context,
+        ...l3Context,
+        chatLog: l3Context.chatLog ?? this.lastKnownChatLog
+      };
+      // END MERGE LOGIC
+
       ws.send(JSON.stringify({
         type: "SYSTEM.SYNC",
         state: snapshot.value,
-        context: snapshot.context
+        context: combinedContext
       }));
     }
   }
