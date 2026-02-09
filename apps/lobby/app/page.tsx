@@ -22,7 +22,7 @@ export default function LobbyRoot() {
 
     if (result.success) {
       setStatus(`LOBBY_CREATED: ${result.gameId}`);
-      setGameId(result.gameId);
+      setGameId(result.gameId ?? null);
     } else {
       setStatus(`ERROR: ${result.error}`);
     }
