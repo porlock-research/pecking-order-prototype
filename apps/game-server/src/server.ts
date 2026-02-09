@@ -1,5 +1,5 @@
 import { Server, routePartykitRequest, Connection, ConnectionContext } from "partyserver";
-import { createActor, ActorRefFrom } from "xstate";
+import { createActor, ActorRefFrom, Subscription } from "xstate";
 import { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Scheduler } from "partywhen";
 
@@ -21,6 +21,9 @@ export class GameServer extends Server<Env> {
   
   // The Scheduler (Composition)
   private scheduler: Scheduler<Env>;
+
+  // L3 Subscription
+  private l3Subscription: Subscription | undefined;
   
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -114,30 +117,48 @@ export class GameServer extends Server<Env> {
         console.log(`[L1] Debug: Alarm status after schedule: ${alarm ? new Date(alarm).toISOString() : "None"}`);
       }
 
-      // C. Broadcast State to Clients
-      // We attempt to grab L3 context if it exists, as it holds the "Real" roster/chat during the day
-      let l3Context = {};
+      // C. Manage L3 Subscription
       const l3Ref = snapshot.children['l3-session'];
-      if (l3Ref) {
-        const l3Snapshot = l3Ref.getSnapshot();
-        if (l3Snapshot) {
-          l3Context = l3Snapshot.context;
-        }
+      
+      // If L3 exists and we aren't tracking it, subscribe!
+      if (l3Ref && !this.l3Subscription) {
+        console.log("[L1] 🔗 Subscribing to L3 Session updates...");
+        this.l3Subscription = l3Ref.subscribe((l3Snapshot) => {
+          // Broadcast whenever L3 changes (Chat, Silver, etc.)
+          this.broadcastState(snapshot, l3Snapshot.context);
+        });
+      } 
+      // If L3 is gone (Night/Death) but we are still tracking, unsubscribe
+      else if (!l3Ref && this.l3Subscription) {
+         console.log("[L1] 🔌 Unsubscribing from L3 Session...");
+         this.l3Subscription.unsubscribe();
+         this.l3Subscription = undefined;
       }
 
+      // D. Broadcast Initial L2 Update (or L3 merged if available)
+      let l3Context = {};
+      if (l3Ref) {
+          const l3Snapshot = l3Ref.getSnapshot();
+          if (l3Snapshot) l3Context = l3Snapshot.context;
+      }
+      this.broadcastState(snapshot, l3Context);
+    });
+
+    this.actor.start();
+  }
+
+  // Helper to merge and broadcast
+  private broadcastState(l2Snapshot: any, l3Context: any) {
       const combinedContext = {
-        ...snapshot.context,
+        ...l2Snapshot.context,
         ...l3Context
       };
 
       this.broadcast(JSON.stringify({
         type: "SYSTEM.SYNC",
-        state: snapshot.value,
+        state: l2Snapshot.value,
         context: combinedContext
       }));
-    });
-
-    this.actor.start();
   }
 
   /**

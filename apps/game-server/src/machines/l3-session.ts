@@ -47,6 +47,18 @@ export const dailySessionMachine = setup({
           targetId: event.targetId
         };
 
+        // Emit Fact for Journaling [ADR-005]
+        sendParent({ 
+          type: 'FACT.RECORD', 
+          fact: {
+            type: isDM ? 'DM_SENT' : 'CHAT_MSG',
+            actorId: event.senderId,
+            targetId: event.targetId,
+            payload: { content: event.content, messageId: newMessage.id },
+            timestamp: newMessage.timestamp
+          }
+        });
+
         // Keep only the last 50 messages [ADR-005]
         const updatedLog = [...context.chatLog, newMessage];
         if (updatedLog.length > 50) {
