@@ -11,6 +11,7 @@ export interface GameContext {
   nextWakeup: number | null;
   lastProcessedTime: number;
   restoredChatLog?: any[]; // For rehydration only
+  lastJournalEntry: number; // Triggers state change for syncing
 }
 
 export type GameEvent = 
@@ -48,6 +49,7 @@ export const orchestratorMachine = setup({
       manifest: ({ event }) => (event.type === 'SYSTEM.INIT' ? event.payload.manifest : null),
       dayIndex: 0,
       lastProcessedTime: 0,
+      lastJournalEntry: 0
     }),
     incrementDay: assign({
       dayIndex: ({ context }) => context.dayIndex + 1
@@ -128,11 +130,11 @@ export const orchestratorMachine = setup({
       
       return { lastProcessedTime: newProcessedTime };
     }),
-    logToJournal: ({ event }) => {
-      if (event.type !== 'FACT.RECORD') return;
+    logToJournal: assign(({ event }) => {
+      if (event.type !== 'FACT.RECORD') return {};
       console.log(`[L2 Journal] ✍️ Writing Fact to D1: ${event.fact.type} by ${event.fact.actorId}`);
-      // TODO: Actual D1 Insert
-    },
+      return { lastJournalEntry: Date.now() };
+    }),
     // New Action for Manual Injection
     injectAdminEvent: ({ event, self }) => {
       if (event.type !== 'ADMIN.INJECT_TIMELINE_EVENT') return;
@@ -163,7 +165,8 @@ export const orchestratorMachine = setup({
     manifest: null,
     dayIndex: 0,
     nextWakeup: null,
-    lastProcessedTime: 0
+    lastProcessedTime: 0,
+    lastJournalEntry: 0
   },
   states: {
     uninitialized: {
@@ -221,7 +224,13 @@ export const orchestratorMachine = setup({
           },
           on: {
             'ADMIN.NEXT_STAGE': { target: 'nightSummary' },
-            'FACT.RECORD': { actions: 'logToJournal' },
+            'FACT.RECORD': { 
+                actions: 'logToJournal',
+                // Force state update to trigger persistence/sync
+                target: undefined, // Stay in current state
+                reenter: false,
+                internal: true
+            },
             'INTERNAL.READY': { actions: ({ self }) => self.send({ type: 'INTERNAL.READY' }) },
             'ADMIN.INJECT_TIMELINE_EVENT': { actions: 'injectAdminEvent' }
           }
