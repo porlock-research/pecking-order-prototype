@@ -1,19 +1,18 @@
 import React from 'react';
 import { SocialPlayer } from '@pecking-order/shared-types';
 
-interface MajorityVotingProps {
+interface BubbleVotingProps {
   cartridge: any;
   playerId: string;
   roster: Record<string, SocialPlayer>;
   engine: { sendVoteAction: (type: string, targetId: string) => void };
 }
 
-export default function MajorityVoting({ cartridge, playerId, roster, engine }: MajorityVotingProps) {
-  const { phase, eligibleVoters, eligibleTargets, votes, results } = cartridge;
+export default function BubbleVoting({ cartridge, playerId, roster, engine }: BubbleVotingProps) {
+  const { phase, eligibleVoters, eligibleTargets, votes, results, immunePlayerIds } = cartridge;
   const canVote = eligibleVoters.includes(playerId);
   const myVote = votes[playerId] ?? null;
 
-  // Count votes per target
   const tallies: Record<string, number> = {};
   for (const targetId of Object.values(votes) as string[]) {
     tallies[targetId] = (tallies[targetId] || 0) + 1;
@@ -22,12 +21,30 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
   if (phase === 'REVEAL') {
     const revealTallies: Record<string, number> = results?.summary?.tallies ?? tallies;
     const eliminatedId: string | null = results?.eliminatedId ?? null;
+    const immune: string[] = results?.summary?.immunePlayerIds ?? immunePlayerIds ?? [];
 
     return (
       <div className="mx-4 my-2 p-4 rounded-xl bg-skin-surface border border-skin-base space-y-3">
         <h3 className="text-sm font-mono font-bold text-skin-primary uppercase tracking-widest text-center">
-          VOTE RESULTS
+          THE BUBBLE - RESULTS
         </h3>
+
+        {immune.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-[10px] font-mono text-skin-muted uppercase text-center">Immune (Top 3 Silver)</p>
+            <div className="flex justify-center gap-2">
+              {immune.map((id: string) => {
+                const player = roster[id];
+                return (
+                  <div key={id} className="flex items-center gap-1 p-1.5 rounded border border-skin-secondary bg-skin-secondary/10 text-xs">
+                    <span>{player?.avatarUrl || '\u{1F464}'}</span>
+                    <span className="text-skin-secondary font-bold">{player?.personaName || id}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2">
           {Object.entries(revealTallies)
@@ -72,9 +89,26 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
       <div className="flex items-center justify-center gap-2">
         <span className="w-2 h-2 rounded-full bg-skin-primary animate-pulse" />
         <h3 className="text-sm font-mono font-bold text-skin-primary uppercase tracking-widest">
-          MAJORITY VOTE
+          THE BUBBLE
         </h3>
       </div>
+
+      {immunePlayerIds?.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[10px] font-mono text-skin-muted uppercase text-center">Immune (Top 3 Silver)</p>
+          <div className="flex justify-center gap-2">
+            {immunePlayerIds.map((id: string) => {
+              const player = roster[id];
+              return (
+                <div key={id} className="flex items-center gap-1 p-1.5 rounded border border-skin-secondary bg-skin-secondary/10 text-xs opacity-60">
+                  <span>{player?.avatarUrl || '\u{1F464}'}</span>
+                  <span className="text-skin-secondary font-bold">{player?.personaName || id}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {myVote ? (
         <p className="text-xs font-mono text-skin-secondary text-center uppercase tracking-wider">
@@ -86,7 +120,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
         </p>
       ) : (
         <p className="text-xs font-mono text-skin-muted text-center">
-          Tap a player to vote
+          Tap a player to vote (ranks 4+ only)
         </p>
       )}
 
@@ -100,7 +134,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
             <button
               key={targetId}
               disabled={!!myVote || !canVote}
-              onClick={() => engine.sendVoteAction('VOTE.MAJORITY.CAST', targetId)}
+              onClick={() => engine.sendVoteAction('VOTE.BUBBLE.CAST', targetId)}
               className={`flex items-center gap-2 p-2 rounded-lg border transition-all text-left
                 ${isSelected
                   ? 'border-skin-primary bg-skin-primary/20 ring-1 ring-skin-primary'

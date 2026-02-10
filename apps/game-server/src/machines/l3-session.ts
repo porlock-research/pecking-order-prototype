@@ -18,8 +18,7 @@ export type DailyEvent =
   | { type: 'INTERNAL.OPEN_VOTING'; payload: any }
   | { type: 'INTERNAL.CLOSE_VOTING' }
   | { type: 'INTERNAL.INJECT_PROMPT'; payload: any }
-  | { type: 'GAME.VOTE'; senderId: string; targetId: string; slot?: string }
-  | { type: 'GAME.EXECUTIONER_PICK'; senderId: string; targetId: string }
+  | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
   | { type: 'FACT.RECORD'; fact: Fact }
   | AdminEvent;
 
@@ -208,9 +207,11 @@ export const dailySessionMachine = setup({
                   target: 'groupChat',
                   actions: 'forwardVoteResultToL2'
                 },
-                'GAME.VOTE': { actions: 'forwardToChild' },
-                'GAME.EXECUTIONER_PICK': { actions: 'forwardToChild' },
-                'INTERNAL.CLOSE_VOTING': { actions: 'forwardToChild' }
+                'INTERNAL.CLOSE_VOTING': { actions: 'forwardToChild' },
+                '*': {
+                  guard: ({ event }) => typeof event.type === 'string' && event.type.startsWith('VOTE.'),
+                  actions: 'forwardToChild',
+                }
               }
             }
           }

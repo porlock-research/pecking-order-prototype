@@ -1,16 +1,17 @@
 import { setup, assign, sendParent } from 'xstate';
 import type { VoteResult, VotingCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { BaseVoteContext, VoteEvent } from './_contract';
-import { getAlivePlayerIds } from './_helpers';
+import { getAlivePlayerIds, getTop3SilverIds } from './_helpers';
 
-interface MajorityContext extends BaseVoteContext {
+interface BubbleContext extends BaseVoteContext {
   roster: Record<string, SocialPlayer>;
   dayIndex: number;
+  immunePlayerIds: string[];
 }
 
-export const majorityMachine = setup({
+export const bubbleMachine = setup({
   types: {
-    context: {} as MajorityContext,
+    context: {} as BubbleContext,
     events: {} as VoteEvent,
     input: {} as VotingCartridgeInput,
     output: {} as VoteResult,
@@ -18,14 +19,14 @@ export const majorityMachine = setup({
   actions: {
     recordVote: assign({
       votes: ({ context, event }) => {
-        if (event.type !== 'VOTE.MAJORITY.CAST') return context.votes;
+        if (event.type !== 'VOTE.BUBBLE.CAST') return context.votes;
         if (!context.eligibleVoters.includes(event.senderId)) return context.votes;
         if (!context.eligibleTargets.includes(event.targetId!)) return context.votes;
         return { ...context.votes, [event.senderId]: event.targetId! };
       },
     }),
     emitVoteCastFact: sendParent(({ event }) => {
-      if (event.type !== 'VOTE.MAJORITY.CAST')
+      if (event.type !== 'VOTE.BUBBLE.CAST')
         return { type: 'FACT.RECORD', fact: { type: 'VOTE_CAST', actorId: '', timestamp: 0 } };
       return {
         type: 'FACT.RECORD',
@@ -33,7 +34,7 @@ export const majorityMachine = setup({
           type: 'VOTE_CAST',
           actorId: event.senderId,
           targetId: event.targetId,
-          payload: { mechanism: 'MAJORITY' },
+          payload: { mechanism: 'BUBBLE' },
           timestamp: Date.now(),
         },
       };
@@ -47,7 +48,11 @@ export const majorityMachine = setup({
 
         const maxVotes = Math.max(0, ...Object.values(tallies));
         if (maxVotes === 0) {
-          return { eliminatedId: null, mechanism: 'MAJORITY' as const, summary: { tallies } };
+          return {
+            eliminatedId: null,
+            mechanism: 'BUBBLE' as const,
+            summary: { tallies, immunePlayerIds: context.immunePlayerIds },
+          };
         }
 
         const tied = Object.entries(tallies)
@@ -65,7 +70,11 @@ export const majorityMachine = setup({
           });
         }
 
-        return { eliminatedId, mechanism: 'MAJORITY' as const, summary: { tallies } };
+        return {
+          eliminatedId,
+          mechanism: 'BUBBLE' as const,
+          summary: { tallies, immunePlayerIds: context.immunePlayerIds },
+        };
       },
       phase: 'REVEAL',
     }),
@@ -80,18 +89,21 @@ export const majorityMachine = setup({
     })),
   },
 }).createMachine({
-  id: 'majority-voting',
+  id: 'bubble-voting',
   context: ({ input }) => {
     const alive = getAlivePlayerIds(input.roster);
+    const immune = getTop3SilverIds(input.roster);
+    const targets = alive.filter(id => !immune.includes(id));
     return {
-      voteType: 'MAJORITY',
+      voteType: 'BUBBLE',
       phase: 'VOTING',
       eligibleVoters: alive,
-      eligibleTargets: alive,
+      eligibleTargets: targets,
       votes: {},
       results: null,
       roster: input.roster,
       dayIndex: input.dayIndex,
+      immunePlayerIds: immune,
     };
   },
   initial: 'active',
@@ -99,7 +111,7 @@ export const majorityMachine = setup({
   states: {
     active: {
       on: {
-        'VOTE.MAJORITY.CAST': { actions: ['recordVote', 'emitVoteCastFact'] },
+        'VOTE.BUBBLE.CAST': { actions: ['recordVote', 'emitVoteCastFact'] },
         'INTERNAL.CLOSE_VOTING': { target: 'completed' },
       },
     },

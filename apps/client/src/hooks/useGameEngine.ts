@@ -15,7 +15,7 @@ export const useGameEngine = (gameId: string, playerId: string) => {
     onMessage(event) {
       try {
         const data = JSON.parse(event.data);
-        
+
         if (data.type === "SYSTEM.SYNC") {
           sync(data);
         } else if (data.type === "SOCIAL.MSG_RECEIVED") {
@@ -43,19 +43,14 @@ export const useGameEngine = (gameId: string, playerId: string) => {
     }));
   };
 
-  const sendVote = (targetId: string) => {
-    socket.send(JSON.stringify({ type: "GAME.VOTE", targetId }));
-  };
-
-  const sendExecutionerPick = (targetId: string) => {
-    socket.send(JSON.stringify({ type: "GAME.EXECUTIONER_PICK", targetId }));
+  const sendVoteAction = (type: string, targetId: string) => {
+    socket.send(JSON.stringify({ type, targetId }));
   };
 
   return {
     socket,
     sendMessage,
     sendSilver,
-    sendVote,
-    sendExecutionerPick
+    sendVoteAction
   };
 };

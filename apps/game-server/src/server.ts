@@ -340,7 +340,7 @@ export class GameServer extends Server<Env> {
   /**
    * 4. MESSAGE: Receive social events from clients
    */
-  private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER', 'GAME.VOTE', 'GAME.EXECUTIONER_PICK'];
+  private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER'];
 
   onMessage(ws: Connection, message: string) {
     try {
@@ -355,7 +355,9 @@ export class GameServer extends Server<Env> {
         return;
       }
 
-      if (!GameServer.ALLOWED_CLIENT_EVENTS.includes(event.type)) {
+      const isAllowed = GameServer.ALLOWED_CLIENT_EVENTS.includes(event.type)
+        || (typeof event.type === 'string' && event.type.startsWith('VOTE.'));
+      if (!isAllowed) {
         console.warn(`[L1] Rejected event type from client: ${event.type}`);
         return;
       }

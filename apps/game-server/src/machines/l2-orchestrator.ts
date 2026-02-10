@@ -23,8 +23,7 @@ export type GameEvent =
   | { type: 'ADMIN.INJECT_TIMELINE_EVENT'; payload: { action: string; payload?: any } }
   | { type: 'FACT.RECORD'; fact: Fact }
   | { type: 'INTERNAL.READY' }
-  | { type: 'GAME.VOTE'; senderId: string; targetId: string; slot?: string }
-  | { type: 'GAME.EXECUTIONER_PICK'; senderId: string; targetId: string }
+  | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
   | { type: 'CARTRIDGE.VOTE_RESULT'; result: VoteResult }
   | (SocialEvent & { senderId: string });
 
@@ -248,9 +247,11 @@ export const orchestratorMachine = setup({
             },
             'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }) => event) },
             'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }) => event) },
-            'GAME.VOTE': { actions: sendTo('l3-session', ({ event }) => event) },
-            'GAME.EXECUTIONER_PICK': { actions: sendTo('l3-session', ({ event }) => event) },
             'CARTRIDGE.VOTE_RESULT': { actions: 'storeVoteResult' },
+            '*': {
+              guard: ({ event }) => typeof event.type === 'string' && event.type.startsWith('VOTE.'),
+              actions: sendTo('l3-session', ({ event }) => event),
+            },
             'ADMIN.INJECT_TIMELINE_EVENT': [
               {
                 guard: ({ event }) => (event as any).payload?.action === 'END_DAY',

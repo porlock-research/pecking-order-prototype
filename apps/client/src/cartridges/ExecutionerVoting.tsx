@@ -5,10 +5,7 @@ interface ExecutionerVotingProps {
   cartridge: any;
   playerId: string;
   roster: Record<string, SocialPlayer>;
-  engine: {
-    sendVote: (targetId: string) => void;
-    sendExecutionerPick: (targetId: string) => void;
-  };
+  engine: { sendVoteAction: (type: string, targetId: string) => void };
 }
 
 export default function ExecutionerVoting({ cartridge, playerId, roster, engine }: ExecutionerVotingProps) {
@@ -38,7 +35,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
 
         {executioner && (
           <div className="flex items-center justify-center gap-2 text-sm">
-            <span className="text-lg">{executioner.avatarUrl || '👤'}</span>
+            <span className="text-lg">{executioner.avatarUrl || '\u{1F464}'}</span>
             <span className="font-bold text-skin-base">{executioner.personaName}</span>
             <span className="text-[10px] font-mono text-skin-muted uppercase">was the executioner</span>
           </div>
@@ -46,7 +43,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
 
         {eliminated ? (
           <div className="flex items-center justify-center gap-2 p-3 rounded-lg border border-skin-danger bg-skin-danger/10">
-            <span className="text-lg">{eliminated.avatarUrl || '👤'}</span>
+            <span className="text-lg">{eliminated.avatarUrl || '\u{1F464}'}</span>
             <div>
               <div className="text-sm font-bold text-skin-danger">{eliminated.personaName}</div>
               <span className="text-[10px] font-mono text-skin-danger uppercase">eliminated</span>
@@ -66,7 +63,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
                   const player = roster[targetId];
                   return (
                     <div key={targetId} className="flex items-center gap-1 p-1.5 rounded border border-skin-base text-xs">
-                      <span>{player?.avatarUrl || '👤'}</span>
+                      <span>{player?.avatarUrl || '\u{1F464}'}</span>
                       <span className="truncate flex-1 text-skin-base">{player?.personaName || targetId}</span>
                       <span className="font-mono font-bold text-skin-primary">{count as number}</span>
                     </div>
@@ -95,7 +92,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
 
         {executioner && (
           <div className="flex items-center justify-center gap-2 text-sm">
-            <span className="text-lg">{executioner.avatarUrl || '👤'}</span>
+            <span className="text-lg">{executioner.avatarUrl || '\u{1F464}'}</span>
             <span className="font-bold text-skin-base">{executioner.personaName}</span>
             <span className="text-[10px] font-mono text-skin-primary uppercase">executioner</span>
           </div>
@@ -112,10 +109,10 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
                 return (
                   <button
                     key={targetId}
-                    onClick={() => engine.sendExecutionerPick(targetId)}
+                    onClick={() => engine.sendVoteAction('VOTE.EXECUTIONER.PICK', targetId)}
                     className="flex items-center gap-2 p-2 rounded-lg border border-skin-base bg-skin-surface hover:border-skin-danger hover:bg-skin-danger/10 transition-all text-left"
                   >
-                    <span className="text-lg shrink-0">{player?.avatarUrl || '👤'}</span>
+                    <span className="text-lg shrink-0">{player?.avatarUrl || '\u{1F464}'}</span>
                     <div className="text-xs font-bold truncate text-skin-base">
                       {player?.personaName || targetId}
                     </div>
@@ -178,7 +175,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
             <button
               key={targetId}
               disabled={!!myVote || !canVote}
-              onClick={() => engine.sendVote(targetId)}
+              onClick={() => engine.sendVoteAction('VOTE.EXECUTIONER.ELECT', targetId)}
               className={`flex items-center gap-2 p-2 rounded-lg border transition-all text-left
                 ${isSelected
                   ? 'border-skin-primary bg-skin-primary/20 ring-1 ring-skin-primary'
@@ -187,7 +184,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
                 ${(!!myVote || !canVote) && !isSelected ? 'opacity-60' : ''}
               `}
             >
-              <span className="text-lg shrink-0">{player?.avatarUrl || '👤'}</span>
+              <span className="text-lg shrink-0">{player?.avatarUrl || '\u{1F464}'}</span>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-bold truncate text-skin-base">
                   {player?.personaName || targetId}

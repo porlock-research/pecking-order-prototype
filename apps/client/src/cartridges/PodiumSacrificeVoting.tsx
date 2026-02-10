@@ -1,19 +1,19 @@
 import React from 'react';
 import { SocialPlayer } from '@pecking-order/shared-types';
 
-interface MajorityVotingProps {
+interface PodiumSacrificeVotingProps {
   cartridge: any;
   playerId: string;
   roster: Record<string, SocialPlayer>;
   engine: { sendVoteAction: (type: string, targetId: string) => void };
 }
 
-export default function MajorityVoting({ cartridge, playerId, roster, engine }: MajorityVotingProps) {
-  const { phase, eligibleVoters, eligibleTargets, votes, results } = cartridge;
+export default function PodiumSacrificeVoting({ cartridge, playerId, roster, engine }: PodiumSacrificeVotingProps) {
+  const { phase, eligibleVoters, eligibleTargets, votes, results, podiumPlayerIds } = cartridge;
   const canVote = eligibleVoters.includes(playerId);
+  const isOnPodium = podiumPlayerIds?.includes(playerId);
   const myVote = votes[playerId] ?? null;
 
-  // Count votes per target
   const tallies: Record<string, number> = {};
   for (const targetId of Object.values(votes) as string[]) {
     tallies[targetId] = (tallies[targetId] || 0) + 1;
@@ -26,7 +26,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
     return (
       <div className="mx-4 my-2 p-4 rounded-xl bg-skin-surface border border-skin-base space-y-3">
         <h3 className="text-sm font-mono font-bold text-skin-primary uppercase tracking-widest text-center">
-          VOTE RESULTS
+          PODIUM SACRIFICE - RESULTS
         </h3>
 
         <div className="grid grid-cols-2 gap-2">
@@ -72,11 +72,15 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
       <div className="flex items-center justify-center gap-2">
         <span className="w-2 h-2 rounded-full bg-skin-primary animate-pulse" />
         <h3 className="text-sm font-mono font-bold text-skin-primary uppercase tracking-widest">
-          MAJORITY VOTE
+          PODIUM SACRIFICE
         </h3>
       </div>
 
-      {myVote ? (
+      {isOnPodium ? (
+        <p className="text-xs font-mono text-skin-danger text-center uppercase tracking-wider">
+          You're on the podium — you cannot vote
+        </p>
+      ) : myVote ? (
         <p className="text-xs font-mono text-skin-secondary text-center uppercase tracking-wider">
           Vote cast!
         </p>
@@ -86,7 +90,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
         </p>
       ) : (
         <p className="text-xs font-mono text-skin-muted text-center">
-          Tap a player to vote
+          Vote to eliminate a podium player
         </p>
       )}
 
@@ -100,7 +104,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
             <button
               key={targetId}
               disabled={!!myVote || !canVote}
-              onClick={() => engine.sendVoteAction('VOTE.MAJORITY.CAST', targetId)}
+              onClick={() => engine.sendVoteAction('VOTE.PODIUM_SACRIFICE.CAST', targetId)}
               className={`flex items-center gap-2 p-2 rounded-lg border transition-all text-left
                 ${isSelected
                   ? 'border-skin-primary bg-skin-primary/20 ring-1 ring-skin-primary'

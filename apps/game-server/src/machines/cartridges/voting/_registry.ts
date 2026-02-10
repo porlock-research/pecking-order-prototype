@@ -1,8 +1,18 @@
 import { majorityMachine } from './majority-machine';
 import { executionerMachine } from './executioner-machine';
+import { bubbleMachine } from './bubble-machine';
+import { podiumSacrificeMachine } from './podium-sacrifice-machine';
+import { secondToLastMachine } from './second-to-last-machine';
+import { shieldMachine } from './shield-machine';
+import { trustPairsMachine } from './trust-pairs-machine';
 
 export const VOTE_REGISTRY = {
   MAJORITY: majorityMachine,
   EXECUTIONER: executionerMachine,
-  // Future: BUBBLE, SECOND_TO_LAST, PODIUM_SACRIFICE, SHIELD, TRUST_PAIRS, DUELS
+  BUBBLE: bubbleMachine,
+  PODIUM_SACRIFICE: podiumSacrificeMachine,
+  SECOND_TO_LAST: secondToLastMachine,
+  SHIELD: shieldMachine,
+  TRUST_PAIRS: trustPairsMachine,
+  // Future: DUELS (needs minigame system)
 } as const;

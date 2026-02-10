@@ -3,7 +3,7 @@
  *
  * Every voting machine must:
  * - Accept VotingCartridgeInput as input
- * - Handle GAME.VOTE, INTERNAL.CLOSE_VOTING (and optionally GAME.EXECUTIONER_PICK)
+ * - Handle VOTE.{MECHANISM}.* events and INTERNAL.CLOSE_VOTING
  * - Emit VOTE_CAST facts via sendParent on each valid vote
  * - Emit GAME_RESULT fact via sendParent on completion
  * - Return VoteResult as output from final state
@@ -23,6 +23,5 @@ export interface BaseVoteContext {
 }
 
 export type VoteEvent =
-  | { type: 'GAME.VOTE'; senderId: string; targetId: string; slot?: string }
-  | { type: 'GAME.EXECUTIONER_PICK'; senderId: string; targetId: string }
+  | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
   | { type: 'INTERNAL.CLOSE_VOTING' };

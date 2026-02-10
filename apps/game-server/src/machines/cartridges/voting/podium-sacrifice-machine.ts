@@ -1,16 +1,17 @@
 import { setup, assign, sendParent } from 'xstate';
 import type { VoteResult, VotingCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { BaseVoteContext, VoteEvent } from './_contract';
-import { getAlivePlayerIds } from './_helpers';
+import { getAlivePlayerIds, getTop3SilverIds } from './_helpers';
 
-interface MajorityContext extends BaseVoteContext {
+interface PodiumSacrificeContext extends BaseVoteContext {
   roster: Record<string, SocialPlayer>;
   dayIndex: number;
+  podiumPlayerIds: string[];
 }
 
-export const majorityMachine = setup({
+export const podiumSacrificeMachine = setup({
   types: {
-    context: {} as MajorityContext,
+    context: {} as PodiumSacrificeContext,
     events: {} as VoteEvent,
     input: {} as VotingCartridgeInput,
     output: {} as VoteResult,
@@ -18,14 +19,14 @@ export const majorityMachine = setup({
   actions: {
     recordVote: assign({
       votes: ({ context, event }) => {
-        if (event.type !== 'VOTE.MAJORITY.CAST') return context.votes;
+        if (event.type !== 'VOTE.PODIUM_SACRIFICE.CAST') return context.votes;
         if (!context.eligibleVoters.includes(event.senderId)) return context.votes;
         if (!context.eligibleTargets.includes(event.targetId!)) return context.votes;
         return { ...context.votes, [event.senderId]: event.targetId! };
       },
     }),
     emitVoteCastFact: sendParent(({ event }) => {
-      if (event.type !== 'VOTE.MAJORITY.CAST')
+      if (event.type !== 'VOTE.PODIUM_SACRIFICE.CAST')
         return { type: 'FACT.RECORD', fact: { type: 'VOTE_CAST', actorId: '', timestamp: 0 } };
       return {
         type: 'FACT.RECORD',
@@ -33,7 +34,7 @@ export const majorityMachine = setup({
           type: 'VOTE_CAST',
           actorId: event.senderId,
           targetId: event.targetId,
-          payload: { mechanism: 'MAJORITY' },
+          payload: { mechanism: 'PODIUM_SACRIFICE' },
           timestamp: Date.now(),
         },
       };
@@ -47,7 +48,11 @@ export const majorityMachine = setup({
 
         const maxVotes = Math.max(0, ...Object.values(tallies));
         if (maxVotes === 0) {
-          return { eliminatedId: null, mechanism: 'MAJORITY' as const, summary: { tallies } };
+          return {
+            eliminatedId: null,
+            mechanism: 'PODIUM_SACRIFICE' as const,
+            summary: { tallies, podiumPlayerIds: context.podiumPlayerIds },
+          };
         }
 
         const tied = Object.entries(tallies)
@@ -65,7 +70,11 @@ export const majorityMachine = setup({
           });
         }
 
-        return { eliminatedId, mechanism: 'MAJORITY' as const, summary: { tallies } };
+        return {
+          eliminatedId,
+          mechanism: 'PODIUM_SACRIFICE' as const,
+          summary: { tallies, podiumPlayerIds: context.podiumPlayerIds },
+        };
       },
       phase: 'REVEAL',
     }),
@@ -80,18 +89,21 @@ export const majorityMachine = setup({
     })),
   },
 }).createMachine({
-  id: 'majority-voting',
+  id: 'podium-sacrifice-voting',
   context: ({ input }) => {
     const alive = getAlivePlayerIds(input.roster);
+    const podium = getTop3SilverIds(input.roster);
+    const voters = alive.filter(id => !podium.includes(id));
     return {
-      voteType: 'MAJORITY',
+      voteType: 'PODIUM_SACRIFICE',
       phase: 'VOTING',
-      eligibleVoters: alive,
-      eligibleTargets: alive,
+      eligibleVoters: voters,
+      eligibleTargets: podium,
       votes: {},
       results: null,
       roster: input.roster,
       dayIndex: input.dayIndex,
+      podiumPlayerIds: podium,
     };
   },
   initial: 'active',
@@ -99,7 +111,7 @@ export const majorityMachine = setup({
   states: {
     active: {
       on: {
-        'VOTE.MAJORITY.CAST': { actions: ['recordVote', 'emitVoteCastFact'] },
+        'VOTE.PODIUM_SACRIFICE.CAST': { actions: ['recordVote', 'emitVoteCastFact'] },
         'INTERNAL.CLOSE_VOTING': { target: 'completed' },
       },
     },
