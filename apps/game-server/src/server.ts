@@ -19,8 +19,9 @@ export class GameServer extends Server<Env> {
   // The Brain (XState Actor)
   private actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
 
-  // Cache L3 chatLog so it survives L3 actor destruction (e.g. nightSummary transition)
+  // Cache L3 data so it survives L3 actor destruction (e.g. nightSummary transition)
   private lastKnownChatLog: any[] = [];
+  private lastKnownRoster: any = null;
 
   // The Scheduler (Composition)
   private scheduler: Scheduler<Env>;
@@ -145,17 +146,26 @@ export class GameServer extends Server<Env> {
 
       let l2Snapshot = storedData;
       let restoredChatLog = undefined;
+      let restoredRoster = undefined;
 
       // Handle migration from old format (raw L2 snapshot) to new format
       if (storedData.l2) {
           l2Snapshot = storedData.l2;
           restoredChatLog = storedData.l3Context?.chatLog;
+          restoredRoster = storedData.l3Context?.roster;
       }
-      
+
       // Inject restored chat log into L2 context for rehydration
       if (restoredChatLog) {
         l2Snapshot.context.restoredChatLog = restoredChatLog;
         this.lastKnownChatLog = restoredChatLog;
+      }
+
+      // Restore L3 roster (has up-to-date silver) into L2 context
+      // so the new L3 session gets correct values on re-invoke
+      if (restoredRoster) {
+        l2Snapshot.context.roster = restoredRoster;
+        this.lastKnownRoster = restoredRoster;
       }
 
       this.actor = createActor(machineWithPersistence, { snapshot: l2Snapshot });
@@ -174,8 +184,9 @@ export class GameServer extends Server<Env> {
           const l3Snapshot = l3Ref.getSnapshot();
           if (l3Snapshot) {
             l3Context = l3Snapshot.context;
-            // Cache chatLog while L3 is alive
+            // Cache L3 data while L3 is alive
             this.lastKnownChatLog = l3Context.chatLog || [];
+            this.lastKnownRoster = l3Context.roster || null;
           }
       }
 
@@ -183,7 +194,8 @@ export class GameServer extends Server<Env> {
       const storagePayload = {
           l2: snapshot,
           l3Context: {
-              chatLog: l3Context.chatLog ?? this.lastKnownChatLog
+              chatLog: l3Context.chatLog ?? this.lastKnownChatLog,
+              roster: l3Context.roster ?? this.lastKnownRoster
           }
       };
       this.ctx.storage.put(STORAGE_KEY, JSON.stringify(storagePayload));
