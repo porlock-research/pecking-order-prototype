@@ -44,7 +44,7 @@ export const LobbySchema = z.object({
 
 export const TimelineEventSchema = z.object({
   time: z.string(), // "09:00" or ISO string
-  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "END_DAY"]),
+  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "START_GAME", "END_GAME", "END_DAY"]),
   payload: z.any().optional(),
 });
 
@@ -55,6 +55,17 @@ export const VoteTypeSchema = z.enum([
   "PODIUM_SACRIFICE", "SHIELD", "TRUST_PAIRS", "DUELS"
 ]);
 export type VoteType = z.infer<typeof VoteTypeSchema>;
+
+// --- Game (Minigame) Types ---
+
+export const GameTypeSchema = z.enum(["TRIVIA", "REALTIME_TRIVIA", "NONE"]);
+export type GameType = z.infer<typeof GameTypeSchema>;
+
+export interface GameCartridgeInput {
+  gameType: GameType;
+  roster: Record<string, SocialPlayer>;
+  dayIndex: number;
+}
 
 export type VotingPhase = "EXPLAIN" | "VOTING" | "REVEAL" | "EXECUTIONER_PICKING";
 
@@ -74,6 +85,7 @@ export const DailyManifestSchema = z.object({
   dayIndex: z.number(),
   theme: z.string(),
   voteType: VoteTypeSchema,
+  gameType: GameTypeSchema.default("NONE"),
   timeline: z.array(TimelineEventSchema),
 });
 

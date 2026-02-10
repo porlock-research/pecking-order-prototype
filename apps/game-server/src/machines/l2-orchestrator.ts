@@ -1,6 +1,7 @@
 import { setup, assign, sendTo, enqueueActions, raise } from 'xstate';
 import { dailySessionMachine } from './l3-session';
 import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent } from '@pecking-order/shared-types';
+import type { GameOutput } from './cartridges/games/_contract';
 
 // --- Types ---
 export interface GameContext {
@@ -24,7 +25,9 @@ export type GameEvent =
   | { type: 'FACT.RECORD'; fact: Fact }
   | { type: 'INTERNAL.READY' }
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
+  | { type: `GAME.${string}`; senderId: string; [key: string]: any }
   | { type: 'CARTRIDGE.VOTE_RESULT'; result: VoteResult }
+  | { type: 'CARTRIDGE.GAME_RESULT'; result: GameOutput }
   | DmRejectedEvent
   | (SocialEvent & { senderId: string });
 
@@ -166,6 +169,21 @@ export const orchestratorMachine = setup({
     clearPendingElimination: assign({
       pendingElimination: null
     }),
+    applyGameRewards: assign({
+      roster: ({ context, event }) => {
+        if (event.type !== 'CARTRIDGE.GAME_RESULT') return context.roster;
+        const result = (event as any).result as GameOutput;
+        if (!result?.silverRewards) return context.roster;
+        const updated = { ...context.roster };
+        for (const [pid, silver] of Object.entries(result.silverRewards)) {
+          if (updated[pid]) {
+            updated[pid] = { ...updated[pid], silver: updated[pid].silver + silver };
+          }
+        }
+        console.log(`[L2] Applied game silver rewards:`, result.silverRewards);
+        return updated;
+      }
+    }),
     sendDmRejection: () => {
       // No-op in L2. Overridden by L1 via .provide() to send rejection to specific client.
     }
@@ -252,11 +270,18 @@ export const orchestratorMachine = setup({
             'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }) => event) },
             'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }) => event) },
             'CARTRIDGE.VOTE_RESULT': { actions: 'storeVoteResult' },
+            'CARTRIDGE.GAME_RESULT': { actions: 'applyGameRewards' },
             'DM.REJECTED': { actions: 'sendDmRejection' },
-            '*': {
-              guard: ({ event }) => typeof event.type === 'string' && event.type.startsWith('VOTE.'),
-              actions: sendTo('l3-session', ({ event }) => event),
-            },
+            '*': [
+              {
+                guard: ({ event }) => typeof event.type === 'string' && event.type.startsWith('VOTE.'),
+                actions: sendTo('l3-session', ({ event }) => event),
+              },
+              {
+                guard: ({ event }) => typeof event.type === 'string' && event.type.startsWith('GAME.'),
+                actions: sendTo('l3-session', ({ event }) => event),
+              }
+            ],
             'ADMIN.INJECT_TIMELINE_EVENT': [
               {
                 guard: ({ event }) => (event as any).payload?.action === 'END_DAY',

@@ -16,6 +16,7 @@ interface GameState {
   serverState: string | null;
   playerId: string | null;
   activeCartridge: any | null;
+  activeGameCartridge: any | null;
   dmRejection: { reason: DmRejectionReason; timestamp: number } | null;
 
   // Actions
@@ -61,6 +62,7 @@ export const useGameStore = create<GameState>((set) => ({
   serverState: null,
   playerId: null,
   activeCartridge: null,
+  activeGameCartridge: null,
   dmRejection: null,
 
   sync: (data) => set((state) => ({
@@ -73,6 +75,7 @@ export const useGameStore = create<GameState>((set) => ({
     manifest: data.context?.manifest || null,
     serverState: data.state || null,
     activeCartridge: data.context?.activeCartridge ?? null,
+    activeGameCartridge: data.context?.activeGameCartridge ?? null,
   })),
 
   addChatMessage: (msg) => set((state) => ({

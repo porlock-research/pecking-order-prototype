@@ -2,11 +2,11 @@ import React, { lazy, Suspense } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { CartridgeId } from '@pecking-order/shared-types';
 
-const Trivia = lazy(() => import('../cartridges/Trivia'));
+const RealtimeTrivia = lazy(() => import('../cartridges/RealtimeTrivia'));
 const Voting = lazy(() => import('../cartridges/Voting'));
 
 const GAME_REGISTRY: Record<string, React.LazyExoticComponent<React.FC<any>>> = {
-  TRIVIA: Trivia,
+  REALTIME_TRIVIA: RealtimeTrivia as any,
   VOTE_EXECUTIONER: Voting,
   VOTE_TRUST: Voting, // Use Voting as stub for both
 };

@@ -4,9 +4,12 @@ import { InitPayloadSchema, Roster } from "@pecking-order/shared-types";
 
 export interface DebugDayConfig {
   voteType: string;
+  gameType: string;
   events: {
     INJECT_PROMPT: boolean;
     OPEN_DMS: boolean;
+    START_GAME: boolean;
+    END_GAME: boolean;
     OPEN_VOTING: boolean;
     CLOSE_VOTING: boolean;
     CLOSE_DMS: boolean;
@@ -66,6 +69,8 @@ export async function startGameStub(
     const EVENT_MESSAGES: Record<string, string> = {
       INJECT_PROMPT: "Chat prompt injected.",
       OPEN_DMS: "DMs are now open.",
+      START_GAME: "Daily game started!",
+      END_GAME: "Daily game ended.",
       OPEN_VOTING: "Voting is now open!",
       CLOSE_VOTING: "Voting is now closed.",
       CLOSE_DMS: "DMs are now closed.",
@@ -78,7 +83,7 @@ export async function startGameStub(
       const timeline: { time: string; action: string; payload: { msg: string } }[] = [];
 
       let eventOffset = 0;
-      for (const eventKey of ['INJECT_PROMPT', 'OPEN_DMS', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'END_DAY'] as const) {
+      for (const eventKey of ['INJECT_PROMPT', 'OPEN_DMS', 'START_GAME', 'END_GAME', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'END_DAY'] as const) {
         if (day.events[eventKey]) {
           timeline.push({
             time: t(baseOffset + eventOffset),
@@ -93,6 +98,7 @@ export async function startGameStub(
         dayIndex: dayNum,
         theme: `Debug Day ${dayNum}`,
         voteType: day.voteType,
+        gameType: day.gameType,
         timeline,
       };
     });

@@ -14,10 +14,17 @@ const AVAILABLE_VOTE_TYPES = [
   { value: "TRUST_PAIRS", label: "Trust Pairs" },
 ];
 
+const AVAILABLE_GAME_TYPES = [
+  { value: "NONE", label: "No Game" },
+  { value: "TRIVIA", label: "Trivia" },
+  { value: "REALTIME_TRIVIA", label: "Real-Time Trivia" },
+];
+
 function createDefaultDay(): DebugDayConfig {
   return {
     voteType: "MAJORITY",
-    events: { INJECT_PROMPT: true, OPEN_DMS: true, OPEN_VOTING: true, CLOSE_VOTING: false, CLOSE_DMS: false, END_DAY: true },
+    gameType: "NONE",
+    events: { INJECT_PROMPT: true, OPEN_DMS: true, START_GAME: false, END_GAME: false, OPEN_VOTING: true, CLOSE_VOTING: false, CLOSE_DMS: false, END_DAY: true },
   };
 }
 
@@ -44,6 +51,13 @@ export default function LobbyRoot() {
   function handleVoteTypeChange(dayIdx: number, voteType: string) {
     setDebugConfig(prev => {
       const days = prev.days.map((d, i) => i === dayIdx ? { ...d, voteType } : d);
+      return { ...prev, days };
+    });
+  }
+
+  function handleGameTypeChange(dayIdx: number, gameType: string) {
+    setDebugConfig(prev => {
+      const days = prev.days.map((d, i) => i === dayIdx ? { ...d, gameType } : d);
       return { ...prev, days };
     });
   }
@@ -161,23 +175,35 @@ export default function LobbyRoot() {
                           DAY_{String(idx + 1).padStart(2, '0')}
                         </div>
 
-                        <div className="relative">
-                          <select
-                            value={day.voteType}
-                            onChange={(e) => handleVoteTypeChange(idx, e.target.value)}
-                            className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-sm hover:border-skin-dim/30"
-                          >
-                            {AVAILABLE_VOTE_TYPES.map(vt => (
-                              <option key={vt.value} value={vt.value}>{vt.label}</option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-skin-dim/50">
-                            <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="relative">
+                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Vote</label>
+                            <select
+                              value={day.voteType}
+                              onChange={(e) => handleVoteTypeChange(idx, e.target.value)}
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                            >
+                              {AVAILABLE_VOTE_TYPES.map(vt => (
+                                <option key={vt.value} value={vt.value}>{vt.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="relative">
+                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Game</label>
+                            <select
+                              value={day.gameType}
+                              onChange={(e) => handleGameTypeChange(idx, e.target.value)}
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                            >
+                              {AVAILABLE_GAME_TYPES.map(gt => (
+                                <option key={gt.value} value={gt.value}>{gt.label}</option>
+                              ))}
+                            </select>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                          {(['INJECT_PROMPT', 'OPEN_DMS', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'END_DAY'] as const).map(eventKey => (
+                          {(['INJECT_PROMPT', 'OPEN_DMS', 'START_GAME', 'END_GAME', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'END_DAY'] as const).map(eventKey => (
                             <label key={eventKey} className="flex items-center gap-2 cursor-pointer group/cb">
                               <input
                                 type="checkbox"

@@ -4,6 +4,7 @@ import { useGameEngine } from './hooks/useGameEngine';
 import { ChatRoom } from './components/ChatRoom';
 import { DirectMessages } from './components/DirectMessages';
 import VotingPanel from './cartridges/Voting';
+import GamePanel from './cartridges/GamePanel';
 import { formatState } from './utils/formatState';
 
 export default function App() {
@@ -112,6 +113,7 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
 
         <div className="shrink-0">
           <VotingPanel engine={engine} />
+          <GamePanel engine={engine} />
         </div>
 
         <div className="flex-1 overflow-hidden relative">

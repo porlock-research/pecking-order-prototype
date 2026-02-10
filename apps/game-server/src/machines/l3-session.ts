@@ -1,6 +1,8 @@
 import { setup, assign, sendParent, sendTo, type AnyActorRef, enqueueActions } from 'xstate';
-import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteResult, VoteType, DmRejectionReason, DM_MAX_PARTNERS_PER_DAY, DM_MAX_CHARS_PER_DAY } from '@pecking-order/shared-types';
+import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteResult, VoteType, GameType, DmRejectionReason, DM_MAX_PARTNERS_PER_DAY, DM_MAX_CHARS_PER_DAY } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from './cartridges/voting/_registry';
+import { GAME_REGISTRY } from './cartridges/games/_registry';
+import type { GameOutput } from './cartridges/games/_contract';
 
 // 1. Define strict types
 export interface DailyContext {
@@ -9,6 +11,7 @@ export interface DailyContext {
   roster: Record<string, SocialPlayer>;
   manifest: DailyManifest | undefined;
   activeCartridgeRef: AnyActorRef | null;
+  activeGameCartridgeRef: AnyActorRef | null;
   dmsOpen: boolean;
   dmPartnersByPlayer: Record<string, string[]>;
   dmCharsByPlayer: Record<string, number>;
@@ -23,7 +26,10 @@ export type DailyEvent =
   | { type: 'INTERNAL.OPEN_DMS' }
   | { type: 'INTERNAL.CLOSE_DMS' }
   | { type: 'INTERNAL.INJECT_PROMPT'; payload: any }
+  | { type: 'INTERNAL.START_GAME'; payload?: any }
+  | { type: 'INTERNAL.END_GAME' }
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
+  | { type: `GAME.${string}`; senderId: string; [key: string]: any }
   | { type: 'FACT.RECORD'; fact: Fact }
   | AdminEvent;
 
@@ -211,7 +217,33 @@ export const dailySessionMachine = setup({
     })),
     cleanupCartridge: assign({
       activeCartridgeRef: () => null
-    })
+    }),
+    // --- Game Cartridge Actions ---
+    spawnGameCartridge: assign({
+      activeGameCartridgeRef: ({ context, spawn }) => {
+        const gameType = context.manifest?.gameType || 'NONE';
+        if (gameType === 'NONE') {
+          console.log('[L3] No game type for this day, skipping game cartridge');
+          return null;
+        }
+        const hasKey = gameType in GAME_REGISTRY;
+        const key = hasKey ? gameType : 'REALTIME_TRIVIA';
+        if (!hasKey) console.error(`[L3] Unknown gameType: ${gameType}, falling back to REALTIME_TRIVIA`);
+        console.log(`[L3] Spawning game cartridge: ${key}`);
+        return (spawn as any)(key, {
+          id: 'activeGameCartridge',
+          input: { gameType: key, roster: context.roster, dayIndex: context.dayIndex }
+        });
+      }
+    }),
+    cleanupGameCartridge: assign({
+      activeGameCartridgeRef: () => null
+    }),
+    forwardGameResultToL2: sendParent(({ event }) => ({
+      type: 'CARTRIDGE.GAME_RESULT',
+      result: (event as any).output as GameOutput
+    })),
+    forwardToGameChild: sendTo('activeGameCartridge', ({ event }) => event)
   },
   guards: {
     isDmAllowed: ({ context, event }) => {
@@ -229,7 +261,8 @@ export const dailySessionMachine = setup({
     },
   },
   actors: {
-    ...VOTE_REGISTRY
+    ...VOTE_REGISTRY,
+    ...GAME_REGISTRY
   }
 }).createMachine({
   id: 'l3-daily-session',
@@ -239,6 +272,7 @@ export const dailySessionMachine = setup({
     roster: input.roster || {},
     manifest: input.manifest,
     activeCartridgeRef: null,
+    activeGameCartridgeRef: null,
     dmsOpen: false,
     dmPartnersByPlayer: {},
     dmCharsByPlayer: {},
@@ -287,14 +321,24 @@ export const dailySessionMachine = setup({
             groupChat: {
               on: {
                 'INTERNAL.START_CARTRIDGE': 'dailyGame',
+                'INTERNAL.START_GAME': 'dailyGame',
                 'INTERNAL.OPEN_VOTING': 'voting',
                 'INTERNAL.INJECT_PROMPT': { actions: ({ event }) => console.log('Prompt:', event.payload) }
               }
             },
             dailyGame: {
-              // Stub for Trivia/Minigames
+              entry: 'spawnGameCartridge',
+              exit: 'cleanupGameCartridge',
               on: {
-                 'INTERNAL.END_DAY': 'groupChat' // Placeholder exit
+                'xstate.done.actor.activeGameCartridge': {
+                  target: 'groupChat',
+                  actions: 'forwardGameResultToL2'
+                },
+                'INTERNAL.END_GAME': { actions: 'forwardToGameChild' },
+                '*': {
+                  guard: ({ event }) => typeof event.type === 'string' && event.type.startsWith('GAME.'),
+                  actions: 'forwardToGameChild',
+                }
               }
             },
             voting: {

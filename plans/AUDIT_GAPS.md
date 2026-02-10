@@ -162,8 +162,14 @@ The spec describes cartridges as receiving roster data, rules, and questions -- 
 | **Client Voting UI** | `VotingPanel` router dispatches to `MajorityVoting` / `ExecutionerVoting` based on `activeCartridge.voteType` from `SYSTEM.SYNC`. Live vote counts, phase-driven rendering (VOTING/EXECUTIONER_PICKING/REVEAL), unknown-type fallback. | `feature/polymorphic-voting-and-elimination` |
 | **Batch 2 Voting Mechanics** | BUBBLE, PODIUM_SACRIFICE, SECOND_TO_LAST, SHIELD, TRUST_PAIRS — server machines + client UI components. All use `VOTE.*` namespace with generic forwarding (no per-mechanic whitelisting). DUELS remains unimplemented (needs minigame system). | `feature/voting-mechanics-batch-2` |
 | **Debug Manifest Config Panel** | Lobby UI panel for configuring debug manifests before initialization. Day count stepper (1-7), per-day vote type dropdown (all 7 mechanics), per-day timeline event toggles (INJECT_PROMPT, OPEN_VOTING, CLOSE_VOTING, END_DAY). `actions.ts` conditionally builds manifest from config in DEBUG_PECKING_ORDER mode. | `feature/voting-mechanics-batch-2` |
+| **#4 DM Constraints** | Full DM system: L3 guards enforce DM window (`OPEN_DMS`/`CLOSE_DMS` timeline events), 3 partner/day limit, 1200 char/day limit, 1 silver cost, target validation (alive, not self). L1 per-player chatLog filtering prevents DM leaks in SYSTEM.SYNC. Targeted `DM.REJECTED` delivery with reason codes. Client DM tab with thread list, conversation view, inline rejection errors. ChatRoom filtered to MAIN-only. Debug manifest includes DM timeline toggles. Silver persistence across server restarts. | `feat/direct-messages`, `fix/silver-persistence` |
+| **#10 Timeline Actions** | Added `OPEN_DMS` / `CLOSE_DMS` to `TimelineEventAction` enum. Lobby debug config includes them as toggleable events per day. | `feat/direct-messages` |
 
 ### Remaining
 
 - DUELS voting mechanic — needs minigame system integration
-- DM constraints (#4), Activity layer (#5), Gold economy (#6), Destiny system (#7), Powers (#9)
+- Daily games / cartridge system (#3), Activity layer (#5), Gold economy (#6), Destiny system (#7), Powers (#9)
+
+### Known Tech Debt
+
+- **Duplicate SYSTEM.SYNC on game actions** — Answering a trivia question produces two L2 subscription fires: one from the game cartridge context change, one from `FACT.RECORD` → `updateJournalTimestamp`. Both trigger SYSTEM.SYNC with identical game data. This caused a React bug (effect cleanup cancelled a timeout on the second render). Fixed locally by using primitive deps, but the root issue is that every state change in the L2 subscription broadcasts to all clients. Consider: batching/debouncing the subscription broadcast, or redesigning the WebSocket message schema so SYSTEM.SYNC is only sent once per logical action.

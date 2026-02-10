@@ -9,12 +9,15 @@
   },
   "dependencies": {
     "@pecking-order/shared-types": "*",
+    "canvas-confetti": "^1.9.4",
+    "framer-motion": "^12.34.0",
     "partysocket": "^1.1.11",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.24",
     "eslint": "^10.0.0",

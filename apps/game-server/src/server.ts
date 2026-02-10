@@ -213,8 +213,9 @@ export class GameServer extends Server<Env> {
         });
       }
 
-      // C. Extract voting cartridge context for client rendering
+      // C. Extract voting + game cartridge context for client rendering
       let activeCartridge: any = null;
+      let rawGameCartridge: any = null;
       const l3RefForCartridge = snapshot.children['l3-session'];
       if (l3RefForCartridge) {
         const l3Snap = l3RefForCartridge.getSnapshot();
@@ -222,11 +223,13 @@ export class GameServer extends Server<Env> {
         if (cartridgeRef) {
           activeCartridge = cartridgeRef.getSnapshot()?.context || null;
         }
+        const gameCartridgeRef = (l3Snap?.children as any)?.['activeGameCartridge'];
+        if (gameCartridgeRef) {
+          rawGameCartridge = gameCartridgeRef.getSnapshot()?.context || null;
+        }
       }
 
-      // D. Broadcast State to Clients (per-player DM filtering)
-      // We explicitly merge L3 context here for the view layer
-      // Use cached chatLog as fallback when L3 is destroyed (e.g. nightSummary)
+      // D. Broadcast State to Clients (per-player DM + game filtering)
       const fullChatLog = l3Context.chatLog ?? this.lastKnownChatLog;
       const baseContext = {
         ...snapshot.context,
@@ -234,7 +237,6 @@ export class GameServer extends Server<Env> {
         activeCartridge
       };
 
-      // Send per-player filtered payloads (DMs only visible to sender/recipient)
       for (const ws of this.getConnections()) {
         const state = ws.state as { playerId: string } | null;
         const pid = state?.playerId;
@@ -245,10 +247,12 @@ export class GameServer extends Server<Env> {
           (msg.channel === 'DM' && (msg.senderId === pid || msg.targetId === pid))
         );
 
+        const activeGameCartridge = GameServer.projectGameCartridge(rawGameCartridge, pid);
+
         ws.send(JSON.stringify({
           type: "SYSTEM.SYNC",
           state: snapshot.value,
-          context: { ...baseContext, chatLog: playerChatLog }
+          context: { ...baseContext, chatLog: playerChatLog, activeGameCartridge }
         }));
       }
     });
@@ -344,6 +348,7 @@ export class GameServer extends Server<Env> {
       // START MERGE LOGIC
       let l3Context: any = {};
       let activeCartridge: any = null;
+      let rawGameCartridge: any = null;
       const l3Ref = snapshot.children['l3-session'];
       if (l3Ref) {
         const l3Snapshot = l3Ref.getSnapshot();
@@ -353,6 +358,10 @@ export class GameServer extends Server<Env> {
           if (cartridgeRef) {
             activeCartridge = cartridgeRef.getSnapshot()?.context || null;
           }
+          const gameCartridgeRef = (l3Snapshot.children as any)?.['activeGameCartridge'];
+          if (gameCartridgeRef) {
+            rawGameCartridge = gameCartridgeRef.getSnapshot()?.context || null;
+          }
         }
       }
 
@@ -361,11 +370,13 @@ export class GameServer extends Server<Env> {
         msg.channel === 'MAIN' ||
         (msg.channel === 'DM' && (msg.senderId === playerId || msg.targetId === playerId))
       );
+      const activeGameCartridge = GameServer.projectGameCartridge(rawGameCartridge, playerId);
       const combinedContext = {
         ...snapshot.context,
         ...l3Context,
         chatLog: playerChatLog,
-        activeCartridge
+        activeCartridge,
+        activeGameCartridge
       };
       // END MERGE LOGIC
 
@@ -380,6 +391,39 @@ export class GameServer extends Server<Env> {
   /**
    * 4. MESSAGE: Receive social events from clients
    */
+  /**
+   * Project game cartridge context per-player.
+   * Async games (with `players` record) get filtered to the requesting player's view.
+   * Real-time games are broadcast as-is.
+   */
+  private static projectGameCartridge(gameCtx: any, playerId: string): any {
+    if (!gameCtx) return null;
+
+    // Async per-player games have a `players` record
+    if (gameCtx.players) {
+      const playerState = gameCtx.players[playerId];
+      if (!playerState) return null;
+      return {
+        gameType: gameCtx.gameType,
+        status: playerState.status,
+        currentRound: playerState.currentRound,
+        totalRounds: playerState.totalRounds,
+        currentQuestion: playerState.currentQuestion,
+        roundDeadline: playerState.status === 'PLAYING' && playerState.questionStartedAt
+          ? playerState.questionStartedAt + 15_000
+          : null,
+        lastRoundResult: playerState.lastRoundResult,
+        score: playerState.score,
+        correctCount: playerState.correctCount,
+        silverReward: playerState.silverReward,
+        goldContribution: gameCtx.goldContribution,
+      };
+    }
+
+    // Real-time games: broadcast full context
+    return gameCtx;
+  }
+
   private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER'];
 
   onMessage(ws: Connection, message: string) {
@@ -396,7 +440,8 @@ export class GameServer extends Server<Env> {
       }
 
       const isAllowed = GameServer.ALLOWED_CLIENT_EVENTS.includes(event.type)
-        || (typeof event.type === 'string' && event.type.startsWith('VOTE.'));
+        || (typeof event.type === 'string' && event.type.startsWith('VOTE.'))
+        || (typeof event.type === 'string' && event.type.startsWith('GAME.'));
       if (!isAllowed) {
         console.warn(`[L1] Rejected event type from client: ${event.type}`);
         return;

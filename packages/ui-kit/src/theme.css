@@ -287,3 +287,12 @@ body {
 .count-pop {
   animation: count-pop 300ms ease-out;
 }
+
+/* Gold Glow: gold contribution shimmer pulse */
+@keyframes gold-glow {
+  0%, 100% { text-shadow: 0 0 8px rgba(251, 191, 36, 0.4); }
+  50%      { text-shadow: 0 0 20px rgba(251, 191, 36, 0.7), 0 0 40px rgba(251, 191, 36, 0.3); }
+}
+.gold-glow {
+  animation: gold-glow 2s ease-in-out infinite;
+}
