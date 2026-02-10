@@ -14,6 +14,7 @@ module.exports = {
         extend: {
             colors: {
                 skin: {
+                    // Core theme tokens
                     deep: 'var(--po-bg-deep)',
                     panel: 'var(--po-bg-panel)',
                     input: 'var(--po-bg-input)',
@@ -28,10 +29,17 @@ module.exports = {
                     orange: 'var(--po-orange)',
                     danger: 'var(--po-danger)',
                     info: 'var(--po-info)',
+
+                    // Legacy aliases (client app uses these names)
+                    fill: 'var(--po-bg-deep)',
+                    surface: 'var(--po-bg-panel)',
+                    primary: 'var(--po-gold)',
+                    secondary: 'var(--po-pink)',
                 },
             },
             textColor: {
                 skin: {
+                    // Core
                     base: 'var(--po-text)',
                     dim: 'var(--po-text-dim)',
                     inverted: 'var(--po-text-inverted)',
@@ -39,10 +47,17 @@ module.exports = {
                     pink: 'var(--po-pink)',
                     green: 'var(--po-green)',
                     danger: 'var(--po-danger)',
+                    info: 'var(--po-info)',
+
+                    // Legacy aliases
+                    primary: 'var(--po-gold)',
+                    secondary: 'var(--po-pink)',
+                    muted: 'var(--po-text-dim)',
                 },
             },
             backgroundColor: {
                 skin: {
+                    // Core
                     deep: 'var(--po-bg-deep)',
                     panel: 'var(--po-bg-panel)',
                     input: 'var(--po-bg-input)',
@@ -52,6 +67,13 @@ module.exports = {
                     pink: 'var(--po-pink)',
                     green: 'var(--po-green)',
                     danger: 'var(--po-danger)',
+                    info: 'var(--po-info)',
+
+                    // Legacy aliases
+                    fill: 'var(--po-bg-deep)',
+                    surface: 'var(--po-bg-panel)',
+                    primary: 'var(--po-gold)',
+                    secondary: 'var(--po-pink)',
                 },
             },
             borderColor: {
@@ -60,12 +82,23 @@ module.exports = {
                     active: 'var(--po-border-active)',
                     gold: 'var(--po-gold)',
                     pink: 'var(--po-pink)',
+
+                    // Legacy aliases
+                    primary: 'var(--po-gold)',
+                    secondary: 'var(--po-pink)',
+                    danger: 'var(--po-danger)',
+                    muted: 'var(--po-text-dim)',
                 },
             },
             ringColor: {
                 skin: {
                     gold: 'var(--po-gold)',
                     pink: 'var(--po-pink)',
+
+                    // Legacy aliases
+                    primary: 'var(--po-gold)',
+                    secondary: 'var(--po-pink)',
+                    danger: 'var(--po-danger)',
                 },
             },
             fontFamily: {
