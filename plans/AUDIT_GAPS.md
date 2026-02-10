@@ -146,3 +146,21 @@ The spec describes cartridges as receiving roster data, rules, and questions -- 
 | P3 | Gold economy + prize pool | Low | End-game reward |
 | P3 | Destiny system | Medium | Meta-game layer |
 | P3 | Powers (SPY, etc.) | Medium | Advanced social mechanics |
+
+---
+
+## Implementation Progress
+
+### Completed
+
+| Gap | What Was Done | Commit/Branch |
+|---|---|---|
+| **#1 Elimination Flow** | L2 `nightSummary` applies elimination from `CARTRIDGE.VOTE_RESULT`, updates roster (`status: ELIMINATED`), persists `ELIMINATION` to D1 via L1 `.provide()` override. Cartridges emit `GAME_RESULT` facts via `sendParent`. | `feature/polymorphic-voting-and-elimination` |
+| **#2 Polymorphic Voting** | Registry pattern (`cartridges/voting/_registry.ts`) maps `VoteType` → machine. Contract (`_contract.ts`) defines `BaseVoteContext` + `VoteEvent`. MAJORITY and EXECUTIONER fully implemented as separate XState machines with spawn-based dynamic dispatch (ADR-026). | `feature/polymorphic-voting-and-elimination` |
+| **#8 VoteType Enum** | Expanded to `EXECUTIONER \| MAJORITY \| BUBBLE \| SECOND_TO_LAST \| PODIUM_SACRIFICE \| SHIELD \| TRUST_PAIRS \| DUELS`. Matches game design. | `feature/polymorphic-voting-and-elimination` |
+| **#11 Cartridge I/O Contract** | Voting cartridges receive full `{ voteType, roster, dayIndex }` input. Output follows `FACT.RECORD` protocol (`VOTE_CAST`, `GAME_RESULT`). `BaseVoteContext` is the rendering contract for clients. | `feature/polymorphic-voting-and-elimination` |
+| **Client Voting UI** | `VotingPanel` router dispatches to `MajorityVoting` / `ExecutionerVoting` based on `activeCartridge.voteType` from `SYSTEM.SYNC`. Live vote counts, phase-driven rendering (VOTING/EXECUTIONER_PICKING/REVEAL), unknown-type fallback. | `feature/polymorphic-voting-and-elimination` |
+
+### Remaining (6 voting mechanics)
+
+BUBBLE, SECOND_TO_LAST, PODIUM_SACRIFICE, SHIELD, TRUST_PAIRS, DUELS — server machines + client UIs. Adding each is: new machine file + registry entry + client component + `VotingPanel` case. No L3/L2/L1 changes needed (ADR-026).
