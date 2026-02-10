@@ -67,7 +67,7 @@ export async function startGameStub(gameMode: "PECKING_ORDER" | "BLITZ" | "DEBUG
         {
           dayIndex: 2,
           theme: "Double Trouble",
-          voteType: "TRUST" as const,
+          voteType: "TRUST_PAIRS" as const,
           timeline: timelineDay2
         }
       ]

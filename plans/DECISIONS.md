@@ -242,3 +242,15 @@ This document tracks significant architectural decisions, their context, and con
     *   Clients can only send events they're supposed to send.
     *   New client event types must be explicitly added to the whitelist.
     *   Follows the principle: validate at system boundaries (ADR-010 spirit).
+
+## [ADR-026] Spawn over Invoke for Polymorphic Actor Dispatch in XState v5
+*   **Date:** 2026-02-09
+*   **Status:** Accepted
+*   **Context:** The voting system needs to dispatch different state machines (Majority, Executioner, etc.) based on a runtime value (`manifest.voteType`). XState v5's `invoke.src` only accepts static string keys from registered actors or inline actor logic. Passing a function `({ context }) => 'MAJORITY'` does **not** perform a key lookup — XState treats the function itself as actor logic (a callback actor), which lacks `getInitialSnapshot`, causing a runtime crash: `TypeError: this.logic.getInitialSnapshot is not a function`.
+*   **Decision:** Use `spawn()` inside an `assign` entry action instead of `invoke`. Register all voting machines in `setup().actors` so they're available by string key. Use `(spawn as any)(voteType, { id: 'activeCartridge', input })` for dynamic dispatch (type assertion needed because XState v5's TypeScript types restrict `spawn` to statically-known keys). Listen for `xstate.done.actor.activeCartridge` to detect completion — functionally equivalent to `invoke.onDone`. Store the spawned `ActorRef` in context to prevent garbage collection.
+*   **Consequences:**
+    *   Polymorphic dispatch works at runtime: any machine registered in the `VOTE_REGISTRY` can be spawned by its string key.
+    *   `sendTo('activeCartridge', ...)` finds the spawned child by id for event forwarding.
+    *   `sendParent()` from the spawned child sends events to L3 (its parent), preserving the fact pipeline (L3 → L2 → L1 → D1).
+    *   Adding a new voting mechanic requires only: create machine file, add to `_registry.ts`, add VoteType string to `VoteTypeSchema`. No L3/L2/L1 changes.
+    *   The `as any` on `spawn` is a targeted escape hatch for a known XState v5 type limitation — runtime behavior is correct.

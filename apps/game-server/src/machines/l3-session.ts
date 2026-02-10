@@ -1,6 +1,6 @@
-import { setup, assign, sendParent, sendTo } from 'xstate';
-import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact } from '@pecking-order/shared-types';
-import { votingMachine } from './cartridges/voting-machine';
+import { setup, assign, sendParent, sendTo, type AnyActorRef } from 'xstate';
+import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteResult, VoteType } from '@pecking-order/shared-types';
+import { VOTE_REGISTRY } from './cartridges/voting/_registry';
 
 // 1. Define strict types
 export interface DailyContext {
@@ -8,6 +8,7 @@ export interface DailyContext {
   chatLog: ChatMessage[];
   roster: Record<string, SocialPlayer>;
   manifest: DailyManifest | undefined;
+  activeCartridgeRef: AnyActorRef | null;
 }
 
 export type DailyEvent =
@@ -17,13 +18,14 @@ export type DailyEvent =
   | { type: 'INTERNAL.OPEN_VOTING'; payload: any }
   | { type: 'INTERNAL.CLOSE_VOTING' }
   | { type: 'INTERNAL.INJECT_PROMPT'; payload: any }
-  | { type: 'GAME.VOTE'; senderId: string; targetId: string }
+  | { type: 'GAME.VOTE'; senderId: string; targetId: string; slot?: string }
+  | { type: 'GAME.EXECUTIONER_PICK'; senderId: string; targetId: string }
   | { type: 'FACT.RECORD'; fact: Fact }
   | AdminEvent;
 
 export const dailySessionMachine = setup({
   types: {
-    input: {} as { dayIndex: number; roster: Record<string, SocialPlayer>; manifest?: DailyManifest; initialChatLog?: ChatMessage[] }, 
+    input: {} as { dayIndex: number; roster: Record<string, SocialPlayer>; manifest?: DailyManifest; initialChatLog?: ChatMessage[] },
     context: {} as DailyContext,
     events: {} as DailyEvent,
     output: {} as { reason: string }
@@ -118,10 +120,34 @@ export const dailySessionMachine = setup({
       };
     }),
     forwardToL2: sendParent(({ event }) => event),
-    forwardToChild: sendTo('activeCartridge', ({ event }) => event)
+    forwardToChild: sendTo('activeCartridge', ({ event }) => event),
+    // Spawn the correct voting machine from the registry based on manifest voteType.
+    // XState v5 setup() restricts spawn to registered actor keys. We register all
+    // machines in actors{} and use the voteType string as the key. Type assertion
+    // needed because the key is dynamic.
+    spawnVotingCartridge: assign({
+      activeCartridgeRef: ({ context, spawn }) => {
+        const voteType = context.manifest?.voteType || 'MAJORITY';
+        const hasKey = voteType in VOTE_REGISTRY;
+        const key = hasKey ? voteType : 'MAJORITY';
+        if (!hasKey) console.error(`[L3] Unknown voteType: ${voteType}, falling back to MAJORITY`);
+        console.log(`[L3] Spawning voting cartridge: ${key}`);
+        return (spawn as any)(key, {
+          id: 'activeCartridge',
+          input: { voteType: key, roster: context.roster, dayIndex: context.dayIndex }
+        });
+      }
+    }),
+    forwardVoteResultToL2: sendParent(({ event }) => ({
+      type: 'CARTRIDGE.VOTE_RESULT',
+      result: (event as any).output as VoteResult
+    })),
+    cleanupCartridge: assign({
+      activeCartridgeRef: () => null
+    })
   },
   actors: {
-    votingMachine
+    ...VOTE_REGISTRY
   }
 }).createMachine({
   id: 'l3-daily-session',
@@ -129,7 +155,8 @@ export const dailySessionMachine = setup({
     dayIndex: input.dayIndex || 0,
     chatLog: input.initialChatLog || [],
     roster: input.roster || {},
-    manifest: input.manifest
+    manifest: input.manifest,
+    activeCartridgeRef: null
   }),
   entry: [
     sendParent({ type: 'INTERNAL.READY' })
@@ -159,7 +186,7 @@ export const dailySessionMachine = setup({
               on: {
                 'INTERNAL.START_CARTRIDGE': 'dailyGame',
                 'INTERNAL.OPEN_VOTING': 'voting',
-                'INTERNAL.INJECT_PROMPT': { actions: ({ event }) => console.log('Prompt:', event.payload) } 
+                'INTERNAL.INJECT_PROMPT': { actions: ({ event }) => console.log('Prompt:', event.payload) }
               }
             },
             dailyGame: {
@@ -169,14 +196,20 @@ export const dailySessionMachine = setup({
               }
             },
             voting: {
-              invoke: {
-                id: 'activeCartridge',
-                src: 'votingMachine',
-                input: ({ context }) => ({ voteType: context.manifest?.voteType || "EXECUTIONER" }),
-                onDone: { target: 'groupChat' }
-              },
+              // Spawn the correct voting machine dynamically on entry.
+              // XState v5 invoke.src does NOT support dynamic string key resolution
+              // via functions — it treats the function as actor logic. spawn() is the
+              // correct pattern for polymorphic actor dispatch.
+              entry: 'spawnVotingCartridge',
+              exit: 'cleanupCartridge',
               on: {
+                // Spawned actor emits this when it reaches its final state
+                'xstate.done.actor.activeCartridge': {
+                  target: 'groupChat',
+                  actions: 'forwardVoteResultToL2'
+                },
                 'GAME.VOTE': { actions: 'forwardToChild' },
+                'GAME.EXECUTIONER_PICK': { actions: 'forwardToChild' },
                 'INTERNAL.CLOSE_VOTING': { actions: 'forwardToChild' }
               }
             }
