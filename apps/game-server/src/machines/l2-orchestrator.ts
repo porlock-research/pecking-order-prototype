@@ -1,6 +1,6 @@
-import { setup, assign, sendTo } from 'xstate';
+import { setup, assign, sendTo, enqueueActions, raise } from 'xstate';
 import { dailySessionMachine } from './l3-session';
-import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent } from '@pecking-order/shared-types';
+import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult } from '@pecking-order/shared-types';
 
 // --- Types ---
 export interface GameContext {
@@ -12,6 +12,7 @@ export interface GameContext {
   lastProcessedTime: number;
   restoredChatLog?: any[]; // For rehydration only
   lastJournalEntry: number; // Triggers state change for syncing
+  pendingElimination: VoteResult | null;
 }
 
 export type GameEvent =
@@ -22,7 +23,9 @@ export type GameEvent =
   | { type: 'ADMIN.INJECT_TIMELINE_EVENT'; payload: { action: string; payload?: any } }
   | { type: 'FACT.RECORD'; fact: Fact }
   | { type: 'INTERNAL.READY' }
-  | { type: 'GAME.VOTE'; senderId: string; targetId: string }
+  | { type: 'GAME.VOTE'; senderId: string; targetId: string; slot?: string }
+  | { type: 'GAME.EXECUTIONER_PICK'; senderId: string; targetId: string }
+  | { type: 'CARTRIDGE.VOTE_RESULT'; result: VoteResult }
   | (SocialEvent & { senderId: string });
 
 // --- The L2 Orchestrator Machine ---
@@ -98,43 +101,35 @@ export const orchestratorMachine = setup({
         }
       }
     }),
-    processTimelineEvent: assign(({ context, self }) => {
-      if (!context.manifest) return {};
-      if (context.manifest.gameMode === 'DEBUG_PECKING_ORDER') return {};
+    processTimelineEvent: enqueueActions(({ enqueue, context }) => {
+      if (!context.manifest) return;
+      if (context.manifest.gameMode === 'DEBUG_PECKING_ORDER') return;
       const currentDay = context.manifest.days.find(d => d.dayIndex === context.dayIndex);
-      if (!currentDay) return {};
+      if (!currentDay) return;
 
       const now = Date.now();
       let newProcessedTime = context.lastProcessedTime;
-      
+
       const recentEvents = currentDay.timeline.filter(e => {
         const t = new Date(e.time).getTime();
         return t > context.lastProcessedTime && t <= now + 2000 && t > now - 10000;
       });
 
-      if (recentEvents.length === 0) return {};
-
-      // Child is GUARANTEED to exist because we are in 'running' state which waits for INTERNAL.READY
-      const child = self.getSnapshot().children['l3-session'];
+      if (recentEvents.length === 0) return;
 
       for (const e of recentEvents) {
+        console.log(`[L2] Processing Timeline Event: ${e.action}`);
         if (e.action === 'END_DAY') {
-             console.log(`[L2] Processing Timeline Event (Self): ${e.action}`);
-             self.send({ type: 'ADMIN.NEXT_STAGE' }); 
-             newProcessedTime = Math.max(newProcessedTime, new Date(e.time).getTime());
+          enqueue.raise({ type: 'ADMIN.NEXT_STAGE' } as any);
         } else {
-             if (child) {
-               console.log(`[L2] Processing Timeline Event (Child): ${e.action}`);
-               child.send({ type: `INTERNAL.${e.action}`, payload: e.payload });
-               newProcessedTime = Math.max(newProcessedTime, new Date(e.time).getTime());
-             } else {
-               // This should theoretically never happen now
-               console.error(`[L2] 💥 CRITICAL: Child missing in 'running' state.`);
-             }
+          // Route through the machine's own ADMIN.INJECT_TIMELINE_EVENT handler
+          // which uses declarative sendTo('l3-session', ...) to reach the child
+          enqueue.raise({ type: 'ADMIN.INJECT_TIMELINE_EVENT', payload: { action: e.action, payload: e.payload } } as any);
         }
+        newProcessedTime = Math.max(newProcessedTime, new Date(e.time).getTime());
       }
-      
-      return { lastProcessedTime: newProcessedTime };
+
+      enqueue.assign({ lastProcessedTime: newProcessedTime });
     }),
     updateJournalTimestamp: assign(({ event }) => {
       if (event.type !== 'FACT.RECORD') return {};
@@ -144,23 +139,33 @@ export const orchestratorMachine = setup({
     persistFactToD1: () => {
       // No-op in L2 — overridden by L1 via .provide() to inject D1 binding
     },
-    // New Action for Manual Injection
-    injectAdminEvent: ({ event, self }) => {
-      if (event.type !== 'ADMIN.INJECT_TIMELINE_EVENT') return;
-      
-      console.log(`[L2] 💉 Admin Injecting Event: ${event.payload.action}`);
-      
-      if (event.payload.action === 'END_DAY') {
-        self.send({ type: 'ADMIN.NEXT_STAGE' });
-      } else {
-        const child = self.getSnapshot().children['l3-session'];
-        if (child) {
-          child.send({ type: `INTERNAL.${event.payload.action}`, payload: event.payload.payload });
-        } else {
-          console.warn(`[L2] Cannot inject event. Child session not ready.`);
-        }
+    logAdminInject: ({ event }) => {
+      if (event.type === 'ADMIN.INJECT_TIMELINE_EVENT') {
+        console.log(`[L2] 💉 Admin Injecting Event: ${event.payload.action}`);
       }
-    }
+    },
+    // Elimination pipeline actions
+    storeVoteResult: assign({
+      pendingElimination: ({ event }) =>
+        event.type === 'CARTRIDGE.VOTE_RESULT' ? event.result : null
+    }),
+    applyElimination: assign({
+      roster: ({ context }) => {
+        if (!context.pendingElimination?.eliminatedId) return context.roster;
+        const id = context.pendingElimination.eliminatedId;
+        console.log(`[L2] 💀 Eliminating player: ${id}`);
+        return {
+          ...context.roster,
+          [id]: { ...context.roster[id], status: 'ELIMINATED' }
+        };
+      }
+    }),
+    persistEliminationToD1: () => {
+      // No-op in L2. Overridden by L1 via .provide() to write ELIMINATION fact to D1.
+    },
+    clearPendingElimination: assign({
+      pendingElimination: null
+    })
   },
   actors: {
     dailySessionMachine
@@ -175,7 +180,8 @@ export const orchestratorMachine = setup({
     dayIndex: 0,
     nextWakeup: null,
     lastProcessedTime: 0,
-    lastJournalEntry: 0
+    lastJournalEntry: 0,
+    pendingElimination: null
   },
   states: {
     uninitialized: {
@@ -243,11 +249,30 @@ export const orchestratorMachine = setup({
             'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }) => event) },
             'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }) => event) },
             'GAME.VOTE': { actions: sendTo('l3-session', ({ event }) => event) },
-            'ADMIN.INJECT_TIMELINE_EVENT': { actions: 'injectAdminEvent' }
+            'GAME.EXECUTIONER_PICK': { actions: sendTo('l3-session', ({ event }) => event) },
+            'CARTRIDGE.VOTE_RESULT': { actions: 'storeVoteResult' },
+            'ADMIN.INJECT_TIMELINE_EVENT': [
+              {
+                guard: ({ event }) => (event as any).payload?.action === 'END_DAY',
+                actions: [
+                  'logAdminInject',
+                  raise({ type: 'ADMIN.NEXT_STAGE' } as any)
+                ]
+              },
+              {
+                actions: [
+                  'logAdminInject',
+                  sendTo('l3-session', ({ event }) => ({
+                    type: `INTERNAL.${(event as any).payload.action}`,
+                    payload: (event as any).payload.payload
+                  }))
+                ]
+              }
+            ]
           }
         },
         nightSummary: {
-          entry: ['scheduleNextTimelineEvent'],
+          entry: ['applyElimination', 'persistEliminationToD1', 'clearPendingElimination', 'scheduleNextTimelineEvent'],
           on: {
             'ADMIN.NEXT_STAGE': { target: 'morningBriefing' },
             'SYSTEM.WAKEUP': { target: 'morningBriefing' }

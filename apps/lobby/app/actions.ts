@@ -48,6 +48,7 @@ export async function startGameStub(gameMode: "PECKING_ORDER" | "BLITZ" | "DEBUG
   // Day 2 (Starts "tomorrow", but for stub we just append it logically)
   const timelineDay2 = [
     { time: t(30000), action: "INJECT_PROMPT", payload: { msg: "Day 2 begins!" } },
+    { time: t(35000), action: "OPEN_VOTING", payload: { msg: "Voting is now open!" } },
     { time: t(40000), action: "END_DAY", payload: { msg: "Day 2 ended." } },
   ];
 
@@ -67,7 +68,7 @@ export async function startGameStub(gameMode: "PECKING_ORDER" | "BLITZ" | "DEBUG
         {
           dayIndex: 2,
           theme: "Double Trouble",
-          voteType: "TRUST" as const,
+          voteType: "TRUST_PAIRS" as const,
           timeline: timelineDay2
         }
       ]

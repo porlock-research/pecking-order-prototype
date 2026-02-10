@@ -6,10 +6,11 @@ interface GameState {
   dayIndex: number;
   roster: Record<string, SocialPlayer>;
   chatLog: ChatMessage[];
-  manifest: any; // Add manifest
+  manifest: any;
   serverState: string | null;
   playerId: string | null;
-  
+  activeCartridge: any | null;
+
   // Actions
   sync: (data: any) => void;
   addChatMessage: (msg: ChatMessage) => void;
@@ -24,6 +25,7 @@ export const useGameStore = create<GameState>((set) => ({
   manifest: null,
   serverState: null,
   playerId: null,
+  activeCartridge: null,
 
   sync: (data) => set((state) => ({
     gameId: data.context?.gameId || state.gameId,
@@ -34,6 +36,7 @@ export const useGameStore = create<GameState>((set) => ({
     chatLog: data.context?.chatLog?.length ? data.context.chatLog : state.chatLog,
     manifest: data.context?.manifest || null,
     serverState: data.state || null,
+    activeCartridge: data.context?.activeCartridge ?? null,
   })),
 
   addChatMessage: (msg) => set((state) => ({

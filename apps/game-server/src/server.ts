@@ -98,6 +98,31 @@ export class GameServer extends Server<Env> {
           ).run().catch(err => {
             console.error("[L1] 💥 Failed to write to Journal:", err);
           });
+        },
+        persistEliminationToD1: () => {
+          const snapshot = this.actor?.getSnapshot();
+          const result = snapshot?.context.pendingElimination;
+          if (!result?.eliminatedId) return;
+
+          const gameId = snapshot?.context.gameId || 'unknown';
+          const dayIndex = snapshot?.context.dayIndex || 0;
+
+          console.log(`[L1] 📝 Persisting ELIMINATION to D1: ${result.eliminatedId}`);
+
+          this.env.DB.prepare(
+            `INSERT INTO GameJournal (id, game_id, day_index, timestamp, event_type, actor_id, target_id, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          ).bind(
+            crypto.randomUUID(),
+            gameId,
+            dayIndex,
+            Date.now(),
+            'ELIMINATION',
+            'SYSTEM',
+            result.eliminatedId,
+            JSON.stringify({ mechanism: result.mechanism, summary: result.summary })
+          ).run().catch(err => {
+            console.error("[L1] 💥 Failed to write ELIMINATION to Journal:", err);
+          });
         }
       }
     });
@@ -165,13 +190,25 @@ export class GameServer extends Server<Env> {
         });
       }
 
-      // C. Broadcast State to Clients
+      // C. Extract voting cartridge context for client rendering
+      let activeCartridge: any = null;
+      const l3RefForCartridge = snapshot.children['l3-session'];
+      if (l3RefForCartridge) {
+        const l3Snap = l3RefForCartridge.getSnapshot();
+        const cartridgeRef = (l3Snap?.children as any)?.['activeCartridge'];
+        if (cartridgeRef) {
+          activeCartridge = cartridgeRef.getSnapshot()?.context || null;
+        }
+      }
+
+      // D. Broadcast State to Clients
       // We explicitly merge L3 context here for the view layer
       // Use cached chatLog as fallback when L3 is destroyed (e.g. nightSummary)
       const combinedContext = {
         ...snapshot.context,
         ...l3Context,
-        chatLog: l3Context.chatLog ?? this.lastKnownChatLog
+        chatLog: l3Context.chatLog ?? this.lastKnownChatLog,
+        activeCartridge
       };
 
       this.broadcast(JSON.stringify({
@@ -271,18 +308,24 @@ export class GameServer extends Server<Env> {
     if (snapshot) {
       // START MERGE LOGIC
       let l3Context: any = {};
+      let activeCartridge: any = null;
       const l3Ref = snapshot.children['l3-session'];
       if (l3Ref) {
         const l3Snapshot = l3Ref.getSnapshot();
         if (l3Snapshot) {
           l3Context = l3Snapshot.context;
+          const cartridgeRef = (l3Snapshot.children as any)?.['activeCartridge'];
+          if (cartridgeRef) {
+            activeCartridge = cartridgeRef.getSnapshot()?.context || null;
+          }
         }
       }
 
       const combinedContext = {
         ...snapshot.context,
         ...l3Context,
-        chatLog: l3Context.chatLog ?? this.lastKnownChatLog
+        chatLog: l3Context.chatLog ?? this.lastKnownChatLog,
+        activeCartridge
       };
       // END MERGE LOGIC
 
@@ -297,7 +340,7 @@ export class GameServer extends Server<Env> {
   /**
    * 4. MESSAGE: Receive social events from clients
    */
-  private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER', 'GAME.VOTE'];
+  private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER', 'GAME.VOTE', 'GAME.EXECUTIONER_PICK'];
 
   onMessage(ws: Connection, message: string) {
     try {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGameStore } from './store/useGameStore';
 import { useGameEngine } from './hooks/useGameEngine';
 import { ChatRoom } from './components/ChatRoom';
+import VotingPanel from './cartridges/Voting';
 import { formatState } from './utils/formatState';
 
 export default function App() {
@@ -100,10 +101,15 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
       </header>
 
       {/* Main Region */}
-      <main className="flex-1 overflow-hidden relative bg-skin-fill">
-        
+      <main className="flex-1 overflow-hidden relative bg-skin-fill flex flex-col">
+
+        <div className="shrink-0">
+          <VotingPanel engine={engine} />
+        </div>
+
+        <div className="flex-1 overflow-hidden relative">
         {activeTab === 'chat' && <ChatRoom engine={engine} />}
-        
+
         {activeTab === 'roster' && (
           <div className="absolute inset-0 overflow-y-auto p-4 scroll-smooth">
             <div className="space-y-4 max-w-md mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -149,6 +155,7 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
             <p className="font-mono text-sm uppercase tracking-widest">System Modules Offline</p>
           </div>
         )}
+        </div>
 
       </main>
 

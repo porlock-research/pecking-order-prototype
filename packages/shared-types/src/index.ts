@@ -48,10 +48,32 @@ export const TimelineEventSchema = z.object({
   payload: z.any().optional(),
 });
 
+// --- Voting Types ---
+
+export const VoteTypeSchema = z.enum([
+  "EXECUTIONER", "MAJORITY", "BUBBLE", "SECOND_TO_LAST",
+  "PODIUM_SACRIFICE", "SHIELD", "TRUST_PAIRS", "DUELS"
+]);
+export type VoteType = z.infer<typeof VoteTypeSchema>;
+
+export type VotingPhase = "EXPLAIN" | "VOTING" | "REVEAL" | "EXECUTIONER_PICKING";
+
+export interface VoteResult {
+  eliminatedId: string | null;
+  mechanism: VoteType;
+  summary: Record<string, any>;
+}
+
+export interface VotingCartridgeInput {
+  voteType: VoteType;
+  roster: Record<string, SocialPlayer>;
+  dayIndex: number;
+}
+
 export const DailyManifestSchema = z.object({
   dayIndex: z.number(),
   theme: z.string(),
-  voteType: z.enum(["EXECUTIONER", "TRUST", "MAJORITY", "JURY"]), // Polymorphic voting
+  voteType: VoteTypeSchema,
   timeline: z.array(TimelineEventSchema),
 });
 

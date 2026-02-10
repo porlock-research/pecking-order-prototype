@@ -1,22 +1,36 @@
 import React from 'react';
-import { CartridgeProps } from '@pecking-order/shared-types';
+import { useGameStore } from '../store/useGameStore';
+import MajorityVoting from './MajorityVoting';
+import ExecutionerVoting from './ExecutionerVoting';
 
-const Voting: React.FC<CartridgeProps> = ({ stage, payload, onAction }) => {
-  return (
-    <div className="cartridge voting">
-      <h3>Voting: {stage}</h3>
-      <div className="content">
-        {stage === 'PLAY' && (
-          <button onClick={() => onAction({ type: 'VOTE.CAST', target: 'someone' })}>
-            Cast Vote
-          </button>
-        )}
-      </div>
-      <style>{`
-        .voting { padding: 1rem; background: #c0392b; border-radius: 8px; }
-      `}</style>
-    </div>
-  );
-};
+interface VotingPanelProps {
+  engine: {
+    sendVote: (targetId: string) => void;
+    sendExecutionerPick: (targetId: string) => void;
+  };
+}
 
-export default Voting;
+export default function VotingPanel({ engine }: VotingPanelProps) {
+  const activeCartridge = useGameStore((s) => s.activeCartridge);
+  const playerId = useGameStore((s) => s.playerId);
+  const roster = useGameStore((s) => s.roster);
+
+  if (!activeCartridge) return null;
+
+  const common = { cartridge: activeCartridge, playerId: playerId!, roster, engine };
+
+  switch (activeCartridge.voteType) {
+    case 'MAJORITY':
+      return <MajorityVoting {...common} />;
+    case 'EXECUTIONER':
+      return <ExecutionerVoting {...common} />;
+    default:
+      return (
+        <div className="mx-4 my-2 p-4 rounded-xl bg-skin-surface border border-skin-base text-center">
+          <span className="text-sm font-mono text-skin-muted">
+            UNKNOWN_VOTE_TYPE: {activeCartridge.voteType}
+          </span>
+        </div>
+      );
+  }
+}
