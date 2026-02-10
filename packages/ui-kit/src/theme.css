@@ -1,0 +1,261 @@
+/* ============================================================
+   PECKING ORDER — Design System
+   Shared tokens, themes, and animations.
+   Import via: @import '@pecking-order/ui-kit/theme.css';
+   ============================================================ */
+
+/* --- Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ============================================================
+   THEME: Reality TV  (default)
+   Deep purple, gold, hot pink. Party energy.
+   ============================================================ */
+:root,
+[data-theme="reality-tv"] {
+  /* Backgrounds */
+  --po-bg-deep: #2c003e;
+  --po-bg-panel: #4c1d95;
+  --po-bg-input: #5b21b6;
+  --po-bg-bubble: #3b1a7e;
+  --po-bg-glass: rgba(255, 255, 255, 0.05);
+
+  /* Text */
+  --po-text: #ffffff;
+  --po-text-dim: #d8b4fe;
+  --po-text-inverted: #000000;
+
+  /* Accents */
+  --po-gold: #fbbf24;
+  --po-gold-dim: rgba(251, 191, 36, 0.2);
+  --po-pink: #ec4899;
+  --po-pink-depth: #be185d;
+  --po-green: #10b981;
+  --po-green-dim: rgba(16, 185, 129, 0.3);
+  --po-orange: #f97316;
+  --po-danger: #ef4444;
+  --po-info: #818cf8;
+
+  /* Borders */
+  --po-border: rgba(255, 255, 255, 0.1);
+  --po-border-active: #fbbf24;
+
+  /* Typography */
+  --po-font-display: 'Poppins', sans-serif;
+  --po-font-body: 'Inter', sans-serif;
+  --po-font-mono: 'JetBrains Mono', monospace;
+
+  /* Radii */
+  --po-radius-card: 16px;
+  --po-radius-bubble: 18px;
+  --po-radius-pill: 30px;
+  --po-radius-badge: 12px;
+
+  /* Shadows */
+  --po-shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --po-shadow-glow: 0 0 15px var(--po-gold-dim);
+  --po-shadow-btn: 0 4px 0 var(--po-pink-depth);
+
+  /* Gradient */
+  --po-gradient-bg: radial-gradient(circle at center, var(--po-bg-panel) 0%, var(--po-bg-deep) 100%);
+}
+
+/* ============================================================
+   THEME: Cyberpunk  (alt — proves theming works)
+   Neon cyan, electric red, dark chrome.
+   ============================================================ */
+[data-theme="cyberpunk"] {
+  /* Backgrounds */
+  --po-bg-deep: #0a0a0f;
+  --po-bg-panel: #1a1a2e;
+  --po-bg-input: #16213e;
+  --po-bg-bubble: #0f3460;
+  --po-bg-glass: rgba(255, 255, 255, 0.03);
+
+  /* Text */
+  --po-text: #e0e0e0;
+  --po-text-dim: #7a8ba0;
+  --po-text-inverted: #000000;
+
+  /* Accents */
+  --po-gold: #00f0ff;
+  --po-gold-dim: rgba(0, 240, 255, 0.15);
+  --po-pink: #ff2d55;
+  --po-pink-depth: #cc1a3a;
+  --po-green: #39ff14;
+  --po-green-dim: rgba(57, 255, 20, 0.2);
+  --po-orange: #ff6600;
+  --po-danger: #ff4444;
+  --po-info: #6366f1;
+
+  /* Borders */
+  --po-border: rgba(255, 255, 255, 0.06);
+  --po-border-active: #00f0ff;
+
+  /* Typography — swap display font */
+  --po-font-display: 'Orbitron', sans-serif;
+
+  /* Shadows */
+  --po-shadow-glow: 0 0 15px var(--po-gold-dim);
+  --po-shadow-btn: 0 4px 0 var(--po-pink-depth);
+  --po-gradient-bg: radial-gradient(ellipse at top, #1a1a2e 0%, #0a0a0f 100%);
+}
+
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+body {
+  margin: 0;
+  background: var(--po-gradient-bg);
+  color: var(--po-text);
+  font-family: var(--po-font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+
+/* ============================================================
+   UTILITY CLASSES
+   ============================================================ */
+
+/* Typography */
+.font-display { font-family: var(--po-font-display); }
+.font-body    { font-family: var(--po-font-body); }
+.font-mono    { font-family: var(--po-font-mono); }
+
+.text-glow {
+  text-shadow: 0 0 10px var(--po-gold-dim), 0 0 20px rgba(251, 191, 36, 0.1);
+}
+
+/* Backgrounds */
+.bg-gradient-velvet {
+  background: var(--po-gradient-bg);
+}
+
+.bg-glass {
+  background: var(--po-bg-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.bg-grid-pattern {
+  background-size: 50px 50px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+/* Signature: Skewed TV Badge */
+.badge-skew {
+  display: inline-block;
+  background: #fff;
+  color: #000;
+  font-family: var(--po-font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 2px 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transform: skew(-10deg);
+}
+
+/* Signature: 3D Press Button */
+.btn-press {
+  box-shadow: var(--po-shadow-btn);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn-press:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+/* Glow border */
+.border-glow {
+  box-shadow: var(--po-shadow-glow);
+}
+
+
+/* ============================================================
+   ANIMATIONS — Live Event Energy
+   ============================================================ */
+
+/* Pulse: online badges, live indicators */
+@keyframes pulse-live {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.08); opacity: 0.85; }
+}
+.pulse-live {
+  animation: pulse-live 2s ease-in-out infinite;
+}
+
+/* Slide Up In: chat messages, notifications */
+@keyframes slide-up-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-up-in {
+  animation: slide-up-in 300ms ease-out both;
+}
+
+/* Shimmer: gold elements, loading states */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 25%,
+    rgba(251, 191, 36, 0.15) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Flash Update: breaking news text, new votes */
+@keyframes flash-update {
+  0%   { color: var(--po-pink); transform: scale(1.03); }
+  100% { color: inherit; transform: scale(1); }
+}
+.flash-update {
+  animation: flash-update 500ms ease-out;
+}
+
+/* Badge Pop: player counts, notification badges */
+@keyframes badge-pop {
+  0%   { transform: scale(0.8); }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.badge-pop {
+  animation: badge-pop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Glow Breathe: active panel borders, current player */
+@keyframes glow-breathe {
+  0%, 100% { box-shadow: 0 0 8px var(--po-gold-dim); }
+  50%      { box-shadow: 0 0 20px var(--po-gold-dim), 0 0 40px rgba(251, 191, 36, 0.08); }
+}
+.glow-breathe {
+  animation: glow-breathe 3s ease-in-out infinite;
+}
+
+/* Spin Slow: activity spinners */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+/* Fade In: panel transitions */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade-in {
+  animation: fade-in 200ms ease-out both;
+}

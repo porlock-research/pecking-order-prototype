@@ -4,6 +4,9 @@ const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  presets: [
+    require("@pecking-order/ui-kit/tailwind-preset"),
+  ],
   theme: {
     extend: {
       backgroundImage: {
