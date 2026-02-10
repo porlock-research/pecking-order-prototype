@@ -35,6 +35,7 @@ function createDefaultManifestConfig(): DebugManifestConfig {
 export default function LobbyRoot() {
   const [status, setStatus] = useState<string>("SYSTEM_IDLE");
   const [gameId, setGameId] = useState<string | null>(null);
+  const [clientHost, setClientHost] = useState<string>('http://localhost:5173');
   const [mode, setMode] = useState<"PECKING_ORDER" | "BLITZ" | "DEBUG_PECKING_ORDER">("PECKING_ORDER");
   const [isLoading, setIsLoading] = useState(false);
   const [debugConfig, setDebugConfig] = useState<DebugManifestConfig>(createDefaultManifestConfig);
@@ -86,6 +87,7 @@ export default function LobbyRoot() {
     if (result.success) {
       setStatus(`LOBBY_CREATED: ${result.gameId}`);
       setGameId(result.gameId ?? null);
+      if (result.clientHost) setClientHost(result.clientHost);
     } else {
       setStatus(`ERROR: ${result.error}`);
     }
@@ -264,7 +266,7 @@ export default function LobbyRoot() {
               {gameId && (
                 <div className="grid grid-cols-1 gap-3 slide-up-in pt-2">
                   <a
-                    href={`${process.env.NEXT_PUBLIC_GAME_CLIENT_HOST || 'http://localhost:5173'}/?gameId=${gameId}&playerId=p1`}
+                    href={`${clientHost}/?gameId=${gameId}&playerId=p1`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-between p-4 bg-skin-panel/30 hover:bg-skin-panel/50 text-skin-base rounded-lg transition-all border border-skin-base hover:border-skin-dim/30 group"

@@ -164,7 +164,8 @@ export async function startGameStub(
     }
 
     const data = await res.json();
-    return { success: true, gameId: GAME_ID, data };
+    const clientHost = process.env.GAME_CLIENT_HOST || 'http://localhost:5173';
+    return { success: true, gameId: GAME_ID, clientHost, data };
 
   } catch (err: any) {
     console.error("[Lobby] Handoff Failed:", err);
