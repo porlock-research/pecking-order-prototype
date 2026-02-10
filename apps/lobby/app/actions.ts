@@ -26,7 +26,7 @@ export async function startGameStub(
   gameMode: "PECKING_ORDER" | "BLITZ" | "DEBUG_PECKING_ORDER" = "PECKING_ORDER",
   debugConfig?: DebugManifestConfig
 ) {
-  const GAME_SERVER_URL = process.env.GAME_SERVER_URL || "http://localhost:8787";
+  const GAME_SERVER_HOST = process.env.GAME_SERVER_HOST || "http://localhost:8787";
   const GAME_ID = `game-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   // 1. Mock Data (Strictly typed)
@@ -147,7 +147,7 @@ export async function startGameStub(
 
   // 3. Send to Game Server
   // URL Pattern: /parties/:party/:id/init
-  const targetUrl = `${GAME_SERVER_URL}/parties/game-server/${GAME_ID}/init`;
+  const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${GAME_ID}/init`;
   
   console.log(`[Lobby] Handoff for ${GAME_ID} to ${targetUrl}`);
 
@@ -173,8 +173,8 @@ export async function startGameStub(
 }
 
 export async function getGameState(gameId: string) {
-  const GAME_SERVER_URL = process.env.GAME_SERVER_URL || "http://localhost:8787";
-  const targetUrl = `${GAME_SERVER_URL}/parties/game-server/${gameId}/state`;
+  const GAME_SERVER_HOST = process.env.GAME_SERVER_HOST || "http://localhost:8787";
+  const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/state`;
   
   try {
     const res = await fetch(targetUrl, { cache: 'no-store' });
@@ -186,8 +186,8 @@ export async function getGameState(gameId: string) {
 }
 
 export async function sendAdminCommand(gameId: string, command: any) {
-  const GAME_SERVER_URL = process.env.GAME_SERVER_URL || "http://localhost:8787";
-  const targetUrl = `${GAME_SERVER_URL}/parties/game-server/${gameId}/admin`;
+  const GAME_SERVER_HOST = process.env.GAME_SERVER_HOST || "http://localhost:8787";
+  const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/admin`;
 
   try {
     const res = await fetch(targetUrl, {

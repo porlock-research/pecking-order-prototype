@@ -7,7 +7,7 @@ export const useGameEngine = (gameId: string, playerId: string) => {
   const setDmRejection = useGameStore((s) => s.setDmRejection);
 
   const socket = usePartySocket({
-    host: new URL(import.meta.env.VITE_GAME_SERVER_URL || "http://localhost:8787").host,
+    host: new URL(import.meta.env.VITE_GAME_SERVER_HOST || "http://localhost:8787").host,
     room: gameId,
     party: 'game-server',
     query: {

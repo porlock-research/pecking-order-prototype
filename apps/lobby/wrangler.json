@@ -12,6 +12,7 @@
     "binding": "ASSETS"
   },
   "vars": {
-    "GAME_SERVER_URL": "https://game-server.porlock.workers.dev"
+    "GAME_SERVER_HOST": "https://game-server.porlock.workers.dev",
+    "NEXT_PUBLIC_GAME_CLIENT_HOST": "https://pecking-order-client.pages.dev"
   }
 }
