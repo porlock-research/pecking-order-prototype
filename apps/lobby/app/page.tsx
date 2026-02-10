@@ -264,7 +264,7 @@ export default function LobbyRoot() {
               {gameId && (
                 <div className="grid grid-cols-1 gap-3 slide-up-in pt-2">
                   <a
-                    href={`http://localhost:5173/?gameId=${gameId}&playerId=p1`}
+                    href={`${process.env.NEXT_PUBLIC_GAME_CLIENT_URL || 'http://localhost:5173'}/?gameId=${gameId}&playerId=p1`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-between p-4 bg-skin-panel/30 hover:bg-skin-panel/50 text-skin-base rounded-lg transition-all border border-skin-base hover:border-skin-dim/30 group"

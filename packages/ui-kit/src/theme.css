@@ -288,6 +288,12 @@ body {
   animation: count-pop 300ms ease-out;
 }
 
+/* Title Glow: landing page title pulse */
+@keyframes title-glow {
+  0%, 100% { text-shadow: 0 0 30px rgba(251, 191, 36, 0.4), 0 0 60px rgba(251, 191, 36, 0.15); }
+  50%      { text-shadow: 0 0 40px rgba(251, 191, 36, 0.6), 0 0 80px rgba(251, 191, 36, 0.25), 0 0 120px rgba(251, 191, 36, 0.1); }
+}
+
 /* Gold Glow: gold contribution shimmer pulse */
 @keyframes gold-glow {
   0%, 100% { text-shadow: 0 0 8px rgba(251, 191, 36, 0.4); }

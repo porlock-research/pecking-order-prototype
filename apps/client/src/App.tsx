@@ -28,22 +28,36 @@ export default function App() {
 
   if (!gameId) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-velvet text-skin-base p-8 text-center space-y-6">
-        <div className="w-16 h-16 rounded-full bg-glass border border-white/10 flex items-center justify-center glow-breathe">
-          <span className="font-mono text-2xl text-skin-gold">//</span>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-velvet text-skin-base p-8 text-center space-y-8 overflow-hidden">
+        {/* Title */}
+        <div className="space-y-4">
+          <h1
+            className="text-6xl sm:text-8xl font-black uppercase tracking-tighter font-display leading-none"
+            style={{
+              color: 'var(--po-gold)',
+              textShadow: '0 0 30px rgba(251, 191, 36, 0.4), 0 0 60px rgba(251, 191, 36, 0.15)',
+              animation: 'title-glow 4s ease-in-out infinite',
+            }}
+          >
+            Pecking<br />Order
+          </h1>
+          <p className="text-lg sm:text-xl text-skin-dim/80 italic font-body tracking-wide">
+            keep your friends close...
+          </p>
         </div>
-        <h1 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-skin-gold to-skin-pink shimmer font-display">
-          NO SIGNAL DETECTED
-        </h1>
-        <p className="text-skin-dim max-w-xs mx-auto font-body">
-          Please initiate the sequence from the Lobby Console.
+
+        {/* Decorative pulse ring */}
+        <div className="relative w-24 h-24">
+          <div className="absolute inset-0 rounded-full border border-skin-gold/20 glow-breathe" />
+          <div className="absolute inset-3 rounded-full border border-skin-gold/10" style={{ animation: 'pulse-live 3s ease-in-out infinite 0.5s' }} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="font-mono text-3xl text-skin-gold/60">//</span>
+          </div>
+        </div>
+
+        <p className="text-sm font-mono text-skin-dim/50 uppercase tracking-widest">
+          awaiting signal
         </p>
-        <a
-          href="http://localhost:3000"
-          className="inline-flex items-center justify-center px-6 py-3 bg-skin-gold text-skin-inverted font-bold uppercase tracking-wider rounded-lg hover:opacity-90 transition-opacity btn-press font-display"
-        >
-          Return to Lobby
-        </a>
       </div>
     );
   }
