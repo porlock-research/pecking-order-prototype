@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { ChatMessage } from '@pecking-order/shared-types';
 
@@ -9,7 +9,9 @@ interface ChatRoomProps {
 }
 
 export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
-  const { chatLog, playerId, roster } = useGameStore();
+  const { playerId, roster } = useGameStore();
+  const rawChatLog = useGameStore(s => s.chatLog);
+  const chatLog = useMemo(() => rawChatLog.filter(m => m.channel === 'MAIN'), [rawChatLog]);
   const [inputValue, setInputValue] = useState('');
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
