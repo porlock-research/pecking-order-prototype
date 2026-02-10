@@ -46,6 +46,7 @@ module.exports = {
                     gold: 'var(--po-gold)',
                     pink: 'var(--po-pink)',
                     green: 'var(--po-green)',
+                    orange: 'var(--po-orange)',
                     danger: 'var(--po-danger)',
                     info: 'var(--po-info)',
 
@@ -82,6 +83,9 @@ module.exports = {
                     active: 'var(--po-border-active)',
                     gold: 'var(--po-gold)',
                     pink: 'var(--po-pink)',
+                    green: 'var(--po-green)',
+                    orange: 'var(--po-orange)',
+                    info: 'var(--po-info)',
 
                     // Legacy aliases
                     primary: 'var(--po-gold)',
@@ -94,6 +98,9 @@ module.exports = {
                 skin: {
                     gold: 'var(--po-gold)',
                     pink: 'var(--po-pink)',
+                    green: 'var(--po-green)',
+                    orange: 'var(--po-orange)',
+                    info: 'var(--po-info)',
 
                     // Legacy aliases
                     primary: 'var(--po-gold)',
@@ -126,6 +133,8 @@ module.exports = {
                 'glow-breathe': 'glow-breathe 3s ease-in-out infinite',
                 'spin-slow': 'spin-slow 8s linear infinite',
                 'fade-in': 'fade-in 200ms ease-out both',
+                'elimination-reveal': 'elimination-reveal 600ms ease-out forwards',
+                'count-pop': 'count-pop 300ms ease-out',
             },
             keyframes: {
                 'pulse-live': {
@@ -160,6 +169,16 @@ module.exports = {
                 'fade-in': {
                     from: { opacity: '0' },
                     to: { opacity: '1' },
+                },
+                'elimination-reveal': {
+                    '0%': { opacity: '0', transform: 'scale(0.95)' },
+                    '40%': { opacity: '1', transform: 'scale(1.02)', boxShadow: '0 0 30px rgba(239,68,68,0.4)' },
+                    '100%': { transform: 'scale(1)', boxShadow: 'none' },
+                },
+                'count-pop': {
+                    '0%': { transform: 'scale(1)' },
+                    '50%': { transform: 'scale(1.4)' },
+                    '100%': { transform: 'scale(1)' },
                 },
             },
         },

@@ -24,107 +24,119 @@ export default function ShieldVoting({ cartridge, playerId, roster, engine }: Sh
     const eliminatedId: string | null = results?.eliminatedId ?? null;
 
     return (
-      <div className="mx-4 my-2 p-4 rounded-xl bg-skin-surface border border-skin-base space-y-3">
-        <h3 className="text-sm font-mono font-bold text-skin-secondary uppercase tracking-widest text-center">
-          THE SHIELD - RESULTS
-        </h3>
+      <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
+        <div className="h-1 vote-strip-shield" />
+        <div className="p-4 space-y-3 animate-slide-up-in">
+          <h3 className="text-sm font-mono font-bold text-skin-pink uppercase tracking-widest text-center">
+            THE SHIELD -- RESULTS
+          </h3>
 
-        <p className="text-[10px] font-mono text-skin-muted text-center uppercase">
-          Fewest saves = eliminated
-        </p>
+          <p className="text-[10px] font-mono text-skin-dim text-center uppercase">
+            Fewest saves = eliminated
+          </p>
 
-        <div className="grid grid-cols-2 gap-2">
-          {Object.entries(revealSaves)
-            .sort(([, a], [, b]) => (b as number) - (a as number))
-            .map(([targetId, count]) => {
-              const player = roster[targetId];
-              const isEliminated = targetId === eliminatedId;
-              return (
-                <div
-                  key={targetId}
-                  className={`flex items-center gap-2 p-2 rounded-lg border ${
-                    isEliminated
-                      ? 'border-skin-danger bg-skin-danger/10'
-                      : 'border-skin-base bg-skin-surface'
-                  }`}
-                >
-                  <span className="text-lg">{player?.avatarUrl || '\u{1F464}'}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-xs font-bold truncate ${isEliminated ? 'text-skin-danger' : 'text-skin-base'}`}>
-                      {player?.personaName || targetId}
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(revealSaves)
+              .sort(([, a], [, b]) => (b as number) - (a as number))
+              .map(([targetId, count]) => {
+                const player = roster[targetId];
+                const isEliminated = targetId === eliminatedId;
+                return (
+                  <div
+                    key={targetId}
+                    className={`flex items-center gap-2 p-2 rounded-xl ${
+                      isEliminated
+                        ? 'border border-skin-danger bg-skin-danger/10 elimination-reveal'
+                        : 'bg-skin-deep/40 border border-white/[0.06]'
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-pink avatar-ring shrink-0">
+                      {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
                     </div>
-                    {isEliminated && (
-                      <span className="text-[10px] font-mono text-skin-danger uppercase">eliminated</span>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-xs font-bold truncate ${isEliminated ? 'text-skin-danger' : 'text-skin-base'}`}>
+                        {player?.personaName || targetId}
+                      </div>
+                      {isEliminated && (
+                        <span className="text-[10px] font-mono text-skin-danger uppercase animate-flash-update">ELIMINATED</span>
+                      )}
+                    </div>
+                    <span className="font-mono font-bold text-sm bg-skin-pink/20 rounded-full px-2 min-w-[24px] text-center text-skin-pink">{count as number}</span>
                   </div>
-                  <span className="font-mono font-bold text-sm text-skin-secondary">{count as number}</span>
-                </div>
-              );
-            })}
-        </div>
+                );
+              })}
+          </div>
 
-        {!eliminatedId && (
-          <p className="text-xs font-mono text-skin-muted text-center uppercase">No elimination</p>
-        )}
+          {!eliminatedId && (
+            <p className="text-xs font-mono text-skin-dim text-center uppercase">No elimination</p>
+          )}
+        </div>
       </div>
     );
   }
 
   // VOTING phase
   return (
-    <div className="mx-4 my-2 p-4 rounded-xl bg-skin-surface border border-skin-base space-y-3">
-      <div className="flex items-center justify-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-skin-secondary animate-pulse" />
-        <h3 className="text-sm font-mono font-bold text-skin-secondary uppercase tracking-widest">
-          THE SHIELD
-        </h3>
-      </div>
+    <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
+      <div className="h-1 vote-strip-shield" />
+      <div className="p-4 space-y-3">
+        <div className="flex items-center justify-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-skin-pink pulse-live" />
+          <h3 className="text-sm font-mono font-bold text-skin-pink uppercase tracking-widest">
+            THE SHIELD
+          </h3>
+        </div>
 
-      {myVote ? (
-        <p className="text-xs font-mono text-skin-secondary text-center uppercase tracking-wider">
-          Shield cast!
-        </p>
-      ) : !canVote ? (
-        <p className="text-xs font-mono text-skin-muted text-center uppercase tracking-wider">
-          You are not eligible to vote
-        </p>
-      ) : (
-        <p className="text-xs font-mono text-skin-muted text-center">
-          Choose someone to SAVE
-        </p>
-      )}
+        <p className="text-[10px] font-mono text-skin-dim text-center uppercase">Vote to save -- fewest saves = eliminated</p>
 
-      <div className="grid grid-cols-2 gap-2">
-        {eligibleTargets.map((targetId: string) => {
-          const player = roster[targetId];
-          const isSelected = myVote === targetId;
-          const saveCount = saveCounts[targetId] || 0;
+        {myVote ? (
+          <p className="text-xs font-mono text-skin-pink text-center uppercase tracking-wider">
+            Shield cast!
+          </p>
+        ) : !canVote ? (
+          <p className="text-xs font-mono text-skin-dim text-center uppercase tracking-wider">
+            You are not eligible to vote
+          </p>
+        ) : (
+          <p className="text-xs font-mono text-skin-dim text-center">
+            Choose someone to SAVE
+          </p>
+        )}
 
-          return (
-            <button
-              key={targetId}
-              disabled={!!myVote || !canVote}
-              onClick={() => engine.sendVoteAction('VOTE.SHIELD.SAVE', targetId)}
-              className={`flex items-center gap-2 p-2 rounded-lg border transition-all text-left
-                ${isSelected
-                  ? 'border-skin-secondary bg-skin-secondary/20 ring-1 ring-skin-secondary'
-                  : 'border-skin-base bg-skin-surface hover:border-skin-muted'
-                }
-                ${(!!myVote || !canVote) && !isSelected ? 'opacity-60' : ''}
-              `}
-            >
-              <span className="text-lg shrink-0">{player?.avatarUrl || '\u{1F464}'}</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold truncate text-skin-base">
-                  {player?.personaName || targetId}
+        <div className="grid grid-cols-2 gap-2">
+          {eligibleTargets.map((targetId: string) => {
+            const player = roster[targetId];
+            const isSelected = myVote === targetId;
+            const saveCount = saveCounts[targetId] || 0;
+
+            return (
+              <button
+                key={targetId}
+                disabled={!!myVote || !canVote}
+                onClick={() => engine.sendVoteAction('VOTE.SHIELD.SAVE', targetId)}
+                className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left
+                  ${isSelected
+                    ? 'border-skin-pink bg-skin-pink/20 ring-2 ring-skin-pink'
+                    : 'bg-skin-deep/40 border-white/[0.06] hover:border-white/20'
+                  }
+                  ${(!!myVote || !canVote) && !isSelected ? 'opacity-40 grayscale' : ''}
+                `}
+              >
+                <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-pink avatar-ring shrink-0">
+                  {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
                 </div>
-              </div>
-              {saveCount > 0 && (
-                <span className="font-mono text-xs font-bold text-skin-secondary">{saveCount}</span>
-              )}
-            </button>
-          );
-        })}
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold truncate text-skin-base">
+                    {player?.personaName || targetId}
+                  </div>
+                </div>
+                {saveCount > 0 && (
+                  <span className="font-mono text-xs font-bold bg-skin-pink/20 rounded-full px-2 min-w-[24px] text-center text-skin-pink count-pop">{saveCount}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

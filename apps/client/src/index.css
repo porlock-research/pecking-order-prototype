@@ -7,4 +7,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* App-specific overrides (if any) go below */
+/* App-specific overrides */
+
+/* Vote accent strips — 4px gradient bar at top of each vote panel */
+.vote-strip-majority    { background: linear-gradient(90deg, transparent, var(--po-gold), transparent); }
+.vote-strip-executioner { background: linear-gradient(90deg, transparent, var(--po-danger), transparent); }
+.vote-strip-bubble      { background: linear-gradient(90deg, transparent, var(--po-info), transparent); }
+.vote-strip-shield      { background: linear-gradient(90deg, transparent, var(--po-pink), transparent); }
+.vote-strip-podium      { background: linear-gradient(90deg, transparent, var(--po-orange), transparent); }
+.vote-strip-second      { background: linear-gradient(90deg, transparent, var(--po-text-dim), transparent); }
+.vote-strip-trust       { background: linear-gradient(90deg, transparent, var(--po-green), transparent); }
+
+/* Avatar ring — subtle gold glow around player circles */
+.avatar-ring {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1), 0 0 8px rgba(251, 191, 36, 0.15);
+}

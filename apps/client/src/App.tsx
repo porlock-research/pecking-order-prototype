@@ -8,17 +8,17 @@ import { formatState } from './utils/formatState';
 export default function App() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
-  
+
   const { dayIndex, roster, serverState } = useGameStore();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const gid = params.get('gameId');
     const pid = params.get('playerId') || 'p1';
-    
+
     setGameId(gid);
     setPlayerId(pid);
-    
+
     if (pid) {
       useGameStore.getState().setPlayerId(pid);
     }
@@ -26,19 +26,19 @@ export default function App() {
 
   if (!gameId) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-skin-fill text-skin-base p-8 text-center space-y-6">
-        <div className="w-16 h-16 rounded-full bg-skin-surface border border-skin-base flex items-center justify-center text-3xl animate-pulse">
-          🔍
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-velvet text-skin-base p-8 text-center space-y-6">
+        <div className="w-16 h-16 rounded-full bg-glass border border-white/10 flex items-center justify-center glow-breathe">
+          <span className="font-mono text-2xl text-skin-gold">//</span>
         </div>
-        <h1 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-skin-primary to-skin-secondary">
+        <h1 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-skin-gold to-skin-pink shimmer font-display">
           NO SIGNAL DETECTED
         </h1>
-        <p className="text-skin-muted max-w-xs mx-auto">
+        <p className="text-skin-dim max-w-xs mx-auto font-body">
           Please initiate the sequence from the Lobby Console.
         </p>
-        <a 
-          href="http://localhost:3000" 
-          className="inline-flex items-center justify-center px-6 py-3 bg-skin-primary text-skin-inverted font-bold uppercase tracking-wider rounded-lg hover:opacity-90 transition-opacity"
+        <a
+          href="http://localhost:3000"
+          className="inline-flex items-center justify-center px-6 py-3 bg-skin-gold text-skin-inverted font-bold uppercase tracking-wider rounded-lg hover:opacity-90 transition-opacity btn-press font-display"
         >
           Return to Lobby
         </a>
@@ -47,8 +47,11 @@ export default function App() {
   }
 
   if (!playerId) return (
-    <div className="min-h-screen bg-skin-fill flex items-center justify-center text-skin-primary font-mono animate-pulse">
-      ESTABLISHING_UPLINK...
+    <div className="min-h-screen bg-gradient-velvet flex flex-col items-center justify-center gap-3">
+      <span className="w-6 h-6 border-2 border-skin-gold border-t-transparent rounded-full spin-slow" />
+      <span className="text-skin-gold font-mono animate-shimmer uppercase tracking-widest text-sm">
+        ESTABLISHING_UPLINK...
+      </span>
     </div>
   );
 
@@ -65,35 +68,37 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
   const me = roster[playerId];
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-skin-fill text-skin-base font-sans overflow-hidden bg-grid-pattern selection:bg-skin-primary selection:text-skin-inverted">
-      
+    <div className="fixed inset-0 flex flex-col bg-skin-fill text-skin-base font-body overflow-hidden bg-grid-pattern selection:bg-skin-gold selection:text-skin-inverted">
+
       {/* Header */}
-      <header className="shrink-0 bg-skin-surface/90 backdrop-blur-md border-b border-skin-base px-4 py-3 flex items-center justify-between shadow-lg z-50">
-        <div className="flex flex-col">
+      <header className="shrink-0 bg-skin-panel/90 backdrop-blur-md border-b border-white/[0.06] px-4 py-3 flex items-center justify-between shadow-card z-50">
+        <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-skin-muted uppercase tracking-widest">Day {dayIndex}</span>
-            <span className={`w-2 h-2 rounded-full ${serverState === 'active' ? 'bg-skin-secondary animate-pulse' : 'bg-skin-danger'}`}></span>
+            <span className="text-[10px] font-mono bg-skin-gold/10 border border-skin-gold/30 rounded-pill px-3 py-0.5 text-skin-gold uppercase tracking-widest">
+              Day {dayIndex}
+            </span>
+            <span className={`w-2 h-2 rounded-full ${serverState === 'active' ? 'bg-skin-green pulse-live' : 'bg-skin-danger'}`} />
           </div>
-          <span className="text-sm font-bold text-skin-primary tracking-tight font-mono">
+          <span className="text-sm font-bold text-skin-gold tracking-tight font-mono text-glow">
             [{formatState(serverState).toUpperCase()}]
           </span>
         </div>
-        
+
         <div className="flex items-center gap-3">
           {me && (
             <>
               <div className="flex flex-col items-end">
                 <span className="text-xs font-bold text-skin-base">{me.personaName}</span>
-                <span className="text-[10px] font-mono text-skin-muted">ID: {playerId}</span>
+                <span className="text-[10px] font-mono text-skin-dim">ID: {playerId}</span>
               </div>
-              <div className="h-8 w-8 rounded-full bg-skin-surface border border-skin-primary/50 overflow-hidden relative">
-                <div className="absolute inset-0 flex items-center justify-center text-lg bg-skin-primary/10">
-                   {me.avatarUrl || '👤'}
+              <div className={`h-8 w-8 rounded-full bg-skin-panel border-2 border-skin-gold/40 overflow-hidden relative avatar-ring ${serverState === 'active' ? 'pulse-live' : ''}`}>
+                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold font-mono text-skin-gold bg-skin-gold/10">
+                   {me.personaName?.charAt(0)?.toUpperCase() || '?'}
                 </div>
               </div>
-              <div className="flex items-center px-2 py-1 rounded bg-skin-surface border border-skin-base">
-                <span className="mr-1">💰</span>
-                <span className="font-mono font-bold text-skin-primary">{me.silver}</span>
+              <div className="flex items-center px-2.5 py-1 rounded-pill bg-skin-gold/10 border border-skin-gold/20">
+                <span className="text-[10px] font-mono text-skin-dim mr-1.5 uppercase">Ag</span>
+                <span className="font-mono font-bold text-skin-gold">{me.silver}</span>
               </div>
             </>
           )}
@@ -112,34 +117,36 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
 
         {activeTab === 'roster' && (
           <div className="absolute inset-0 overflow-y-auto p-4 scroll-smooth">
-            <div className="space-y-4 max-w-md mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <h2 className="text-xl font-black text-skin-base tracking-tighter border-b border-skin-base pb-2 mb-4">
+            <div className="space-y-4 max-w-md mx-auto animate-fade-in">
+              <h2 className="text-xl font-black text-skin-base tracking-tighter border-b border-white/10 pb-2 mb-4 font-display">
                 ACTIVE_PLAYERS
               </h2>
               <ul className="space-y-2">
                 {Object.values(roster).map(p => {
                   const isMe = p.id === playerId;
                   return (
-                    <li 
-                      key={p.id} 
+                    <li
+                      key={p.id}
                       className={`flex items-center justify-between p-3 rounded-xl border transition-all
-                        ${isMe 
-                          ? 'bg-skin-primary/10 border-skin-primary' 
-                          : 'bg-skin-surface border-skin-base hover:border-skin-muted'
+                        ${isMe
+                          ? 'bg-skin-gold/10 border-skin-gold/30'
+                          : 'bg-glass border-white/[0.06] hover:border-white/20'
                         }`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">{p.avatarUrl || '👤'}</span>
+                        <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-gold avatar-ring">
+                          {p.personaName?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
                         <div className="flex flex-col">
                           <span className="font-bold text-sm">
-                            {p.personaName} 
-                            {isMe && <span className="ml-2 text-[10px] bg-skin-primary text-skin-inverted px-1.5 py-0.5 rounded-full font-mono uppercase">YOU</span>}
+                            {p.personaName}
+                            {isMe && <span className="ml-2 badge-skew text-[9px]">YOU</span>}
                           </span>
-                          <span className="text-[10px] font-mono text-skin-muted uppercase tracking-wider">{p.status}</span>
+                          <span className="text-[10px] font-mono text-skin-dim uppercase tracking-wider">{p.status}</span>
                         </div>
                       </div>
-                      <div className="font-mono text-sm text-skin-muted">
-                        💰{p.silver}
+                      <div className="font-mono text-sm text-skin-gold font-bold">
+                        {p.silver} <span className="text-[10px] text-skin-dim font-normal">Ag</span>
                       </div>
                     </li>
                   )
@@ -150,8 +157,8 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
         )}
 
         {activeTab === 'settings' && (
-          <div className="absolute inset-0 overflow-y-auto p-4 flex flex-col items-center justify-center text-skin-muted space-y-4">
-            <div className="text-4xl">🚧</div>
+          <div className="absolute inset-0 overflow-y-auto p-4 flex flex-col items-center justify-center text-skin-dim space-y-4">
+            <span className="font-mono text-3xl text-skin-dim opacity-40">[--]</span>
             <p className="font-mono text-sm uppercase tracking-widest">System Modules Offline</p>
           </div>
         )}
@@ -160,51 +167,39 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
       </main>
 
       {/* Footer Nav */}
-      <footer className="shrink-0 bg-skin-surface border-t border-skin-base pb-safe">
+      <footer className="shrink-0 bg-skin-panel/90 backdrop-blur-md border-t border-white/[0.06] pb-safe">
         <nav className="flex items-stretch h-16">
-          <button 
-            className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors relative
-              ${activeTab === 'chat' ? 'text-skin-primary' : 'text-skin-muted hover:bg-skin-surface-hover'}
-            `}
-            onClick={() => setActiveTab('chat')}
-          >
-            <span className="text-xl">💬</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest">Comms</span>
-            {activeTab === 'chat' && <span className="absolute top-0 left-0 right-0 h-0.5 bg-skin-primary shadow-[0_0_10px_rgba(250,204,21,0.5)]" />}
-          </button>
-          
-          <button 
-            className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors relative
-              ${activeTab === 'roster' ? 'text-skin-primary' : 'text-skin-muted hover:bg-skin-surface-hover'}
-            `}
-            onClick={() => setActiveTab('roster')}
-          >
-            <span className="text-xl">👥</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest">Roster</span>
-            {activeTab === 'roster' && <span className="absolute top-0 left-0 right-0 h-0.5 bg-skin-primary shadow-[0_0_10px_rgba(250,204,21,0.5)]" />}
-          </button>
-          
-          <button 
-            className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors relative
-              ${activeTab === 'settings' ? 'text-skin-primary' : 'text-skin-muted hover:bg-skin-surface-hover'}
-            `}
-            onClick={() => setActiveTab('settings')}
-          >
-            <span className="text-xl">⚙️</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest">System</span>
-            {activeTab === 'settings' && <span className="absolute top-0 left-0 right-0 h-0.5 bg-skin-primary shadow-[0_0_10px_rgba(250,204,21,0.5)]" />}
-          </button>
+          {([
+            { key: 'chat' as const, label: 'Comms', icon: '#' },
+            { key: 'roster' as const, label: 'Roster', icon: '::' },
+            { key: 'settings' as const, label: 'System', icon: '*' },
+          ]).map(tab => {
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors relative
+                  ${isActive ? 'text-skin-gold' : 'text-skin-dim opacity-50 hover:opacity-70'}
+                `}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                <span className={`font-mono ${isActive ? 'text-xl font-bold' : 'text-lg'}`}>{tab.icon}</span>
+                <span className={`text-[10px] uppercase tracking-widest ${isActive ? 'font-bold' : ''}`}>{tab.label}</span>
+                {isActive && <span className="absolute top-0 left-0 right-0 h-0.5 bg-skin-gold shadow-glow animate-fade-in" />}
+              </button>
+            );
+          })}
         </nav>
       </footer>
 
       {/* Admin God Button (Bottom Right Floating) */}
       <div className="fixed bottom-24 right-4 z-50">
-        <button 
+        <button
           onClick={() => engine.socket.send(JSON.stringify({ type: "ADMIN.NEXT_STAGE" }))}
-          className="h-12 w-12 rounded-full bg-skin-danger text-skin-inverted shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border-2 border-white/20"
+          className="h-12 w-12 rounded-full bg-skin-danger text-skin-inverted shadow-glow glow-breathe flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border-2 border-white/20 font-mono font-bold text-lg"
           title="Force Next Stage"
         >
-          ⚡️
+          {'>'}
         </button>
       </div>
 

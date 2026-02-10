@@ -259,3 +259,31 @@ body {
 .fade-in {
   animation: fade-in 200ms ease-out both;
 }
+
+/* Vote Panel: glass card for all voting cartridges */
+.vote-panel {
+  background: rgba(76, 29, 149, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Elimination Reveal: scale + red glow flash */
+@keyframes elimination-reveal {
+  0%   { opacity: 0; transform: scale(0.95); }
+  40%  { opacity: 1; transform: scale(1.02); box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); }
+  100% { transform: scale(1); box-shadow: none; }
+}
+.elimination-reveal {
+  animation: elimination-reveal 600ms ease-out forwards;
+}
+
+/* Count Pop: vote count badge bounce */
+@keyframes count-pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+.count-pop {
+  animation: count-pop 300ms ease-out;
+}

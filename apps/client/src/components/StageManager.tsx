@@ -17,26 +17,15 @@ interface StageManagerProps {
 
 export const StageManager: React.FC<StageManagerProps> = ({ onAction }) => {
   const manifest = useGameStore((s) => s.manifest);
-  
+
   // Logic to determine current cartridge - for now looking at a stubbed field
   // In a real scenario, the server would tell us which cartridge is active
   const cartridgeId: CartridgeId | undefined = manifest?.todaysCartridgeId;
 
   if (!cartridgeId || !GAME_REGISTRY[cartridgeId]) {
     return (
-      <div className="stage-placeholder">
-        <p>Waiting for the stage to begin...</p>
-        <style>{`
-          .stage-placeholder {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 200px;
-            background: #222;
-            border-radius: 8px;
-            border: 2px dashed #444;
-          }
-        `}</style>
+      <div className="flex items-center justify-center h-[200px] bg-skin-panel/50 rounded-card border-2 border-dashed border-white/10">
+        <p className="font-mono text-skin-dim shimmer">Waiting for the stage to begin...</p>
       </div>
     );
   }
@@ -44,11 +33,11 @@ export const StageManager: React.FC<StageManagerProps> = ({ onAction }) => {
   const Component = GAME_REGISTRY[cartridgeId];
 
   return (
-    <Suspense fallback={<div>Loading Stage...</div>}>
-      <Component 
-        stage="PLAY" 
-        payload={{}} 
-        onAction={onAction} 
+    <Suspense fallback={<div className="flex items-center justify-center h-[200px] font-mono text-skin-dim shimmer">Loading Stage...</div>}>
+      <Component
+        stage="PLAY"
+        payload={{}}
+        onAction={onAction}
       />
     </Suspense>
   );
