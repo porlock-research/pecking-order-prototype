@@ -43,9 +43,19 @@ export const useGameEngine = (gameId: string, playerId: string) => {
     }));
   };
 
+  const sendVote = (targetId: string) => {
+    socket.send(JSON.stringify({ type: "GAME.VOTE", targetId }));
+  };
+
+  const sendExecutionerPick = (targetId: string) => {
+    socket.send(JSON.stringify({ type: "GAME.EXECUTIONER_PICK", targetId }));
+  };
+
   return {
     socket,
     sendMessage,
-    sendSilver
+    sendSilver,
+    sendVote,
+    sendExecutionerPick
   };
 };
