@@ -4,6 +4,7 @@ import { useGameStore } from "../store/useGameStore";
 export const useGameEngine = (gameId: string, playerId: string) => {
   const sync = useGameStore((s) => s.sync);
   const addChatMessage = useGameStore((s) => s.addChatMessage);
+  const setDmRejection = useGameStore((s) => s.setDmRejection);
 
   const socket = usePartySocket({
     host: "localhost:8787", // Hardcoded for local dev as per instructions
@@ -20,6 +21,8 @@ export const useGameEngine = (gameId: string, playerId: string) => {
           sync(data);
         } else if (data.type === "SOCIAL.MSG_RECEIVED") {
           addChatMessage(data.payload);
+        } else if (data.type === "DM.REJECTED") {
+          setDmRejection(data.reason);
         }
       } catch (err) {
         console.error("Failed to parse message", err);
@@ -28,6 +31,14 @@ export const useGameEngine = (gameId: string, playerId: string) => {
   });
 
   const sendMessage = (content: string, targetId?: string) => {
+    socket.send(JSON.stringify({
+      type: "SOCIAL.SEND_MSG",
+      content,
+      targetId
+    }));
+  };
+
+  const sendDM = (targetId: string, content: string) => {
     socket.send(JSON.stringify({
       type: "SOCIAL.SEND_MSG",
       content,
@@ -50,6 +61,7 @@ export const useGameEngine = (gameId: string, playerId: string) => {
   return {
     socket,
     sendMessage,
+    sendDM,
     sendSilver,
     sendVoteAction
   };

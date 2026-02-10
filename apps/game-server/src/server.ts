@@ -99,6 +99,17 @@ export class GameServer extends Server<Env> {
             console.error("[L1] 💥 Failed to write to Journal:", err);
           });
         },
+        sendDmRejection: ({ event }: any) => {
+          if (event.type !== 'DM.REJECTED') return;
+          // Send rejection only to the sender's WebSocket
+          for (const ws of this.getConnections()) {
+            const state = ws.state as { playerId: string } | null;
+            if (state?.playerId === event.senderId) {
+              ws.send(JSON.stringify({ type: 'DM.REJECTED', reason: event.reason }));
+              break;
+            }
+          }
+        },
         persistEliminationToD1: () => {
           const snapshot = this.actor?.getSnapshot();
           const result = snapshot?.context.pendingElimination;
@@ -201,21 +212,33 @@ export class GameServer extends Server<Env> {
         }
       }
 
-      // D. Broadcast State to Clients
+      // D. Broadcast State to Clients (per-player DM filtering)
       // We explicitly merge L3 context here for the view layer
       // Use cached chatLog as fallback when L3 is destroyed (e.g. nightSummary)
-      const combinedContext = {
+      const fullChatLog = l3Context.chatLog ?? this.lastKnownChatLog;
+      const baseContext = {
         ...snapshot.context,
         ...l3Context,
-        chatLog: l3Context.chatLog ?? this.lastKnownChatLog,
         activeCartridge
       };
 
-      this.broadcast(JSON.stringify({
-        type: "SYSTEM.SYNC",
-        state: snapshot.value,
-        context: combinedContext
-      }));
+      // Send per-player filtered payloads (DMs only visible to sender/recipient)
+      for (const ws of this.getConnections()) {
+        const state = ws.state as { playerId: string } | null;
+        const pid = state?.playerId;
+        if (!pid) continue;
+
+        const playerChatLog = fullChatLog.filter((msg: any) =>
+          msg.channel === 'MAIN' ||
+          (msg.channel === 'DM' && (msg.senderId === pid || msg.targetId === pid))
+        );
+
+        ws.send(JSON.stringify({
+          type: "SYSTEM.SYNC",
+          state: snapshot.value,
+          context: { ...baseContext, chatLog: playerChatLog }
+        }));
+      }
     });
 
     this.actor.start();
@@ -321,10 +344,15 @@ export class GameServer extends Server<Env> {
         }
       }
 
+      const fullChatLog = l3Context.chatLog ?? this.lastKnownChatLog;
+      const playerChatLog = fullChatLog.filter((msg: any) =>
+        msg.channel === 'MAIN' ||
+        (msg.channel === 'DM' && (msg.senderId === playerId || msg.targetId === playerId))
+      );
       const combinedContext = {
         ...snapshot.context,
         ...l3Context,
-        chatLog: l3Context.chatLog ?? this.lastKnownChatLog,
+        chatLog: playerChatLog,
         activeCartridge
       };
       // END MERGE LOGIC

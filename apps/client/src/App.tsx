@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGameStore } from './store/useGameStore';
 import { useGameEngine } from './hooks/useGameEngine';
 import { ChatRoom } from './components/ChatRoom';
+import { DirectMessages } from './components/DirectMessages';
 import VotingPanel from './cartridges/Voting';
 import { formatState } from './utils/formatState';
 
@@ -63,7 +64,8 @@ export default function App() {
 function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
   const { dayIndex, roster, serverState } = useGameStore();
   const engine = useGameEngine(gameId, playerId);
-  const [activeTab, setActiveTab] = useState<'chat' | 'roster' | 'settings'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'dms' | 'roster' | 'settings'>('chat');
+  const hasDms = useGameStore(s => s.chatLog.some(m => m.channel === 'DM'));
 
   const me = roster[playerId];
 
@@ -114,6 +116,8 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
 
         <div className="flex-1 overflow-hidden relative">
         {activeTab === 'chat' && <ChatRoom engine={engine} />}
+
+        {activeTab === 'dms' && <DirectMessages engine={engine} />}
 
         {activeTab === 'roster' && (
           <div className="absolute inset-0 overflow-y-auto p-4 scroll-smooth">
@@ -170,22 +174,27 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
       <footer className="shrink-0 bg-skin-panel/90 backdrop-blur-md border-t border-white/[0.06] pb-safe">
         <nav className="flex items-stretch h-16">
           {([
-            { key: 'chat' as const, label: 'Comms', icon: '#' },
-            { key: 'roster' as const, label: 'Roster', icon: '::' },
-            { key: 'settings' as const, label: 'System', icon: '*' },
+            { key: 'chat' as const, label: 'Comms', icon: '#', accent: 'text-skin-gold', bar: 'bg-skin-gold' },
+            { key: 'dms' as const, label: 'DMs', icon: '@', accent: 'text-skin-pink', bar: 'bg-skin-pink' },
+            { key: 'roster' as const, label: 'Roster', icon: '::', accent: 'text-skin-gold', bar: 'bg-skin-gold' },
+            { key: 'settings' as const, label: 'System', icon: '*', accent: 'text-skin-gold', bar: 'bg-skin-gold' },
           ]).map(tab => {
             const isActive = activeTab === tab.key;
+            const hasBadge = tab.key === 'dms' && !isActive && hasDms;
             return (
               <button
                 key={tab.key}
                 className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors relative
-                  ${isActive ? 'text-skin-gold' : 'text-skin-dim opacity-50 hover:opacity-70'}
+                  ${isActive ? tab.accent : 'text-skin-dim opacity-50 hover:opacity-70'}
                 `}
                 onClick={() => setActiveTab(tab.key)}
               >
-                <span className={`font-mono ${isActive ? 'text-xl font-bold' : 'text-lg'}`}>{tab.icon}</span>
+                <span className="relative">
+                  <span className={`font-mono ${isActive ? 'text-xl font-bold' : 'text-lg'}`}>{tab.icon}</span>
+                  {hasBadge && <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-skin-pink" />}
+                </span>
                 <span className={`text-[10px] uppercase tracking-widest ${isActive ? 'font-bold' : ''}`}>{tab.label}</span>
-                {isActive && <span className="absolute top-0 left-0 right-0 h-0.5 bg-skin-gold shadow-glow animate-fade-in" />}
+                {isActive && <span className={`absolute top-0 left-0 right-0 h-0.5 ${tab.bar} shadow-glow animate-fade-in`} />}
               </button>
             );
           })}

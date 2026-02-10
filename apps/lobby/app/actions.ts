@@ -6,8 +6,10 @@ export interface DebugDayConfig {
   voteType: string;
   events: {
     INJECT_PROMPT: boolean;
+    OPEN_DMS: boolean;
     OPEN_VOTING: boolean;
     CLOSE_VOTING: boolean;
+    CLOSE_DMS: boolean;
     END_DAY: boolean;
   };
 }
@@ -47,7 +49,7 @@ export async function startGameStub(
       bio: "Ready to win.",
       isAlive: true,
       isSpectator: false,
-      silver: 0,
+      silver: 50,
       gold: 0,
       destinyId: i === 0 ? "FANATIC" : "FLOAT" // varied destinies
     };
@@ -63,8 +65,10 @@ export async function startGameStub(
     // Build manifest from debug config
     const EVENT_MESSAGES: Record<string, string> = {
       INJECT_PROMPT: "Chat prompt injected.",
+      OPEN_DMS: "DMs are now open.",
       OPEN_VOTING: "Voting is now open!",
       CLOSE_VOTING: "Voting is now closed.",
+      CLOSE_DMS: "DMs are now closed.",
       END_DAY: "Day has ended.",
     };
 
@@ -74,7 +78,7 @@ export async function startGameStub(
       const timeline: { time: string; action: string; payload: { msg: string } }[] = [];
 
       let eventOffset = 0;
-      for (const eventKey of ['INJECT_PROMPT', 'OPEN_VOTING', 'CLOSE_VOTING', 'END_DAY'] as const) {
+      for (const eventKey of ['INJECT_PROMPT', 'OPEN_DMS', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'END_DAY'] as const) {
         if (day.events[eventKey]) {
           timeline.push({
             time: t(baseOffset + eventOffset),

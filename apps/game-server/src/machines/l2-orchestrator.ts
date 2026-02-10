@@ -1,6 +1,6 @@
 import { setup, assign, sendTo, enqueueActions, raise } from 'xstate';
 import { dailySessionMachine } from './l3-session';
-import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult } from '@pecking-order/shared-types';
+import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent } from '@pecking-order/shared-types';
 
 // --- Types ---
 export interface GameContext {
@@ -25,6 +25,7 @@ export type GameEvent =
   | { type: 'INTERNAL.READY' }
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
   | { type: 'CARTRIDGE.VOTE_RESULT'; result: VoteResult }
+  | DmRejectedEvent
   | (SocialEvent & { senderId: string });
 
 // --- The L2 Orchestrator Machine ---
@@ -164,7 +165,10 @@ export const orchestratorMachine = setup({
     },
     clearPendingElimination: assign({
       pendingElimination: null
-    })
+    }),
+    sendDmRejection: () => {
+      // No-op in L2. Overridden by L1 via .provide() to send rejection to specific client.
+    }
   },
   actors: {
     dailySessionMachine
@@ -248,6 +252,7 @@ export const orchestratorMachine = setup({
             'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }) => event) },
             'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }) => event) },
             'CARTRIDGE.VOTE_RESULT': { actions: 'storeVoteResult' },
+            'DM.REJECTED': { actions: 'sendDmRejection' },
             '*': {
               guard: ({ event }) => typeof event.type === 'string' && event.type.startsWith('VOTE.'),
               actions: sendTo('l3-session', ({ event }) => event),

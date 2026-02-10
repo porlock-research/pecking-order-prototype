@@ -44,7 +44,7 @@ export const LobbySchema = z.object({
 
 export const TimelineEventSchema = z.object({
   time: z.string(), // "09:00" or ISO string
-  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "END_DAY"]),
+  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "END_DAY"]),
   payload: z.any().optional(),
 });
 
@@ -177,4 +177,18 @@ export interface CartridgeProps {
   stage: "LOBBY" | "PLAY" | "RESULT";
   payload: any; // specific to the game
   onAction: (action: any) => void;
+}
+
+// --- DM Constants ---
+
+export const DM_MAX_PARTNERS_PER_DAY = 3;
+export const DM_MAX_CHARS_PER_DAY = 1200;
+export const DM_SILVER_COST = 1;
+
+export type DmRejectionReason = 'DMS_CLOSED' | 'PARTNER_LIMIT' | 'CHAR_LIMIT' | 'SELF_DM' | 'TARGET_ELIMINATED' | 'INSUFFICIENT_SILVER';
+
+export interface DmRejectedEvent {
+  type: 'DM.REJECTED';
+  reason: DmRejectionReason;
+  senderId: string;
 }

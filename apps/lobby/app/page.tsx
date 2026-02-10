@@ -17,7 +17,7 @@ const AVAILABLE_VOTE_TYPES = [
 function createDefaultDay(): DebugDayConfig {
   return {
     voteType: "MAJORITY",
-    events: { INJECT_PROMPT: true, OPEN_VOTING: true, CLOSE_VOTING: false, END_DAY: true },
+    events: { INJECT_PROMPT: true, OPEN_DMS: true, OPEN_VOTING: true, CLOSE_VOTING: false, CLOSE_DMS: false, END_DAY: true },
   };
 }
 
@@ -177,7 +177,7 @@ export default function LobbyRoot() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                          {(['INJECT_PROMPT', 'OPEN_VOTING', 'CLOSE_VOTING', 'END_DAY'] as const).map(eventKey => (
+                          {(['INJECT_PROMPT', 'OPEN_DMS', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'END_DAY'] as const).map(eventKey => (
                             <label key={eventKey} className="flex items-center gap-2 cursor-pointer group/cb">
                               <input
                                 type="checkbox"
