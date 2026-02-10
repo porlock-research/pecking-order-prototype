@@ -1,23 +1,72 @@
 'use client';
 
 import { startGameStub } from "./actions";
+import type { DebugManifestConfig, DebugDayConfig } from "./actions";
 import { useState } from "react";
+
+const AVAILABLE_VOTE_TYPES = [
+  { value: "MAJORITY", label: "Majority Vote" },
+  { value: "EXECUTIONER", label: "Executioner" },
+  { value: "BUBBLE", label: "Bubble (Top 3 Immune)" },
+  { value: "SECOND_TO_LAST", label: "Second to Last (Auto)" },
+  { value: "PODIUM_SACRIFICE", label: "Podium Sacrifice" },
+  { value: "SHIELD", label: "Shield (Vote to Save)" },
+  { value: "TRUST_PAIRS", label: "Trust Pairs" },
+];
+
+function createDefaultDay(): DebugDayConfig {
+  return {
+    voteType: "MAJORITY",
+    events: { INJECT_PROMPT: true, OPEN_VOTING: true, CLOSE_VOTING: false, END_DAY: true },
+  };
+}
+
+function createDefaultManifestConfig(): DebugManifestConfig {
+  return { dayCount: 2, days: [createDefaultDay(), createDefaultDay()] };
+}
 
 export default function LobbyRoot() {
   const [status, setStatus] = useState<string>("SYSTEM_IDLE");
   const [gameId, setGameId] = useState<string | null>(null);
   const [mode, setMode] = useState<"PECKING_ORDER" | "BLITZ" | "DEBUG_PECKING_ORDER">("PECKING_ORDER");
   const [isLoading, setIsLoading] = useState(false);
+  const [debugConfig, setDebugConfig] = useState<DebugManifestConfig>(createDefaultManifestConfig);
+
+  function handleDayCountChange(delta: number) {
+    setDebugConfig(prev => {
+      const newCount = Math.max(1, Math.min(7, prev.dayCount + delta));
+      const days = [...prev.days];
+      while (days.length < newCount) days.push(createDefaultDay());
+      return { dayCount: newCount, days: days.slice(0, newCount) };
+    });
+  }
+
+  function handleVoteTypeChange(dayIdx: number, voteType: string) {
+    setDebugConfig(prev => {
+      const days = prev.days.map((d, i) => i === dayIdx ? { ...d, voteType } : d);
+      return { ...prev, days };
+    });
+  }
+
+  function handleEventToggle(dayIdx: number, eventKey: keyof DebugDayConfig['events']) {
+    setDebugConfig(prev => {
+      const days = prev.days.map((d, i) =>
+        i === dayIdx ? { ...d, events: { ...d.events, [eventKey]: !d.events[eventKey] } } : d
+      );
+      return { ...prev, days };
+    });
+  }
 
   async function handleStart() {
     setIsLoading(true);
     setStatus("INITIALIZING_PROTOCOL...");
     setGameId(null);
-    
+
     // Artificial delay for effect
     await new Promise(r => setTimeout(r, 800));
 
-    const result = await startGameStub(mode);
+    const config = mode === 'DEBUG_PECKING_ORDER' ? debugConfig : undefined;
+    const result = await startGameStub(mode, config);
     setIsLoading(false);
 
     if (result.success) {
@@ -77,6 +126,76 @@ export default function LobbyRoot() {
                   </div>
                 </div>
               </div>
+
+              {/* Debug Manifest Panel */}
+              {mode === 'DEBUG_PECKING_ORDER' && !gameId && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-white/40 uppercase tracking-widest pl-1">
+                      Debug Manifest
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-white/40">Days:</span>
+                      <button
+                        onClick={() => handleDayCountChange(-1)}
+                        disabled={debugConfig.dayCount <= 1}
+                        className="w-7 h-7 flex items-center justify-center bg-zinc-900/80 border border-white/10 rounded-lg font-mono text-sm text-white/60 hover:text-yellow-400 hover:border-yellow-500/30 transition-all disabled:opacity-30 disabled:hover:text-white/60 disabled:hover:border-white/10"
+                      >
+                        −
+                      </button>
+                      <span className="font-mono text-sm text-yellow-400 w-4 text-center">{debugConfig.dayCount}</span>
+                      <button
+                        onClick={() => handleDayCountChange(1)}
+                        disabled={debugConfig.dayCount >= 7}
+                        className="w-7 h-7 flex items-center justify-center bg-zinc-900/80 border border-white/10 rounded-lg font-mono text-sm text-white/60 hover:text-yellow-400 hover:border-yellow-500/30 transition-all disabled:opacity-30 disabled:hover:text-white/60 disabled:hover:border-white/10"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                    {debugConfig.days.map((day, idx) => (
+                      <div key={idx} className="border border-white/10 rounded-lg bg-zinc-900/40 p-4 space-y-3">
+                        <div className="font-mono text-xs text-yellow-400 tracking-widest">
+                          DAY_{String(idx + 1).padStart(2, '0')}
+                        </div>
+
+                        <div className="relative">
+                          <select
+                            value={day.voteType}
+                            onChange={(e) => handleVoteTypeChange(idx, e.target.value)}
+                            className="w-full appearance-none bg-zinc-900/80 text-white border border-white/10 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all font-mono text-sm hover:border-white/20"
+                          >
+                            {AVAILABLE_VOTE_TYPES.map(vt => (
+                              <option key={vt.value} value={vt.value}>{vt.label}</option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-white/30">
+                            <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                          {(['INJECT_PROMPT', 'OPEN_VOTING', 'CLOSE_VOTING', 'END_DAY'] as const).map(eventKey => (
+                            <label key={eventKey} className="flex items-center gap-2 cursor-pointer group/cb">
+                              <input
+                                type="checkbox"
+                                checked={day.events[eventKey]}
+                                onChange={() => handleEventToggle(idx, eventKey)}
+                                className="accent-yellow-500 w-3.5 h-3.5"
+                              />
+                              <span className="font-mono text-xs text-white/50 group-hover/cb:text-white/70 transition-colors">
+                                {eventKey}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Action Button */}
               <button 

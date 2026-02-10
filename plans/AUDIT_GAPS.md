@@ -160,7 +160,10 @@ The spec describes cartridges as receiving roster data, rules, and questions -- 
 | **#8 VoteType Enum** | Expanded to `EXECUTIONER \| MAJORITY \| BUBBLE \| SECOND_TO_LAST \| PODIUM_SACRIFICE \| SHIELD \| TRUST_PAIRS \| DUELS`. Matches game design. | `feature/polymorphic-voting-and-elimination` |
 | **#11 Cartridge I/O Contract** | Voting cartridges receive full `{ voteType, roster, dayIndex }` input. Output follows `FACT.RECORD` protocol (`VOTE_CAST`, `GAME_RESULT`). `BaseVoteContext` is the rendering contract for clients. | `feature/polymorphic-voting-and-elimination` |
 | **Client Voting UI** | `VotingPanel` router dispatches to `MajorityVoting` / `ExecutionerVoting` based on `activeCartridge.voteType` from `SYSTEM.SYNC`. Live vote counts, phase-driven rendering (VOTING/EXECUTIONER_PICKING/REVEAL), unknown-type fallback. | `feature/polymorphic-voting-and-elimination` |
+| **Batch 2 Voting Mechanics** | BUBBLE, PODIUM_SACRIFICE, SECOND_TO_LAST, SHIELD, TRUST_PAIRS — server machines + client UI components. All use `VOTE.*` namespace with generic forwarding (no per-mechanic whitelisting). DUELS remains unimplemented (needs minigame system). | `feature/voting-mechanics-batch-2` |
+| **Debug Manifest Config Panel** | Lobby UI panel for configuring debug manifests before initialization. Day count stepper (1-7), per-day vote type dropdown (all 7 mechanics), per-day timeline event toggles (INJECT_PROMPT, OPEN_VOTING, CLOSE_VOTING, END_DAY). `actions.ts` conditionally builds manifest from config in DEBUG_PECKING_ORDER mode. | `feature/voting-mechanics-batch-2` |
 
-### Remaining (6 voting mechanics)
+### Remaining
 
-BUBBLE, SECOND_TO_LAST, PODIUM_SACRIFICE, SHIELD, TRUST_PAIRS, DUELS — server machines + client UIs. Adding each is: new machine file + registry entry + client component + `VotingPanel` case. No L3/L2/L1 changes needed (ADR-026).
+- DUELS voting mechanic — needs minigame system integration
+- DM constraints (#4), Activity layer (#5), Gold economy (#6), Destiny system (#7), Powers (#9)

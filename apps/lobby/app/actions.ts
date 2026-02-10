@@ -2,7 +2,25 @@
 
 import { InitPayloadSchema, Roster } from "@pecking-order/shared-types";
 
-export async function startGameStub(gameMode: "PECKING_ORDER" | "BLITZ" | "DEBUG_PECKING_ORDER" = "PECKING_ORDER") {
+export interface DebugDayConfig {
+  voteType: string;
+  events: {
+    INJECT_PROMPT: boolean;
+    OPEN_VOTING: boolean;
+    CLOSE_VOTING: boolean;
+    END_DAY: boolean;
+  };
+}
+
+export interface DebugManifestConfig {
+  dayCount: number;
+  days: DebugDayConfig[];
+}
+
+export async function startGameStub(
+  gameMode: "PECKING_ORDER" | "BLITZ" | "DEBUG_PECKING_ORDER" = "PECKING_ORDER",
+  debugConfig?: DebugManifestConfig
+) {
   const GAME_SERVER_URL = process.env.GAME_SERVER_URL || "http://localhost:8787";
   const GAME_ID = `game-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
@@ -39,18 +57,70 @@ export async function startGameStub(gameMode: "PECKING_ORDER" | "BLITZ" | "DEBUG
   // Helper to format time relative to now
   const t = (offset: number) => new Date(now + offset).toISOString();
 
-  const timelineDay1 = [
-    { time: t(2000), action: "INJECT_PROMPT", payload: { msg: "Chat is open. Who is the imposter?" } },
-    { time: t(10000), action: "OPEN_VOTING", payload: { msg: "Voting is now open!" } },
-    { time: t(20000), action: "END_DAY", payload: { msg: "Day has ended." } },
-  ];
+  let days;
 
-  // Day 2 (Starts "tomorrow", but for stub we just append it logically)
-  const timelineDay2 = [
-    { time: t(30000), action: "INJECT_PROMPT", payload: { msg: "Day 2 begins!" } },
-    { time: t(35000), action: "OPEN_VOTING", payload: { msg: "Voting is now open!" } },
-    { time: t(40000), action: "END_DAY", payload: { msg: "Day 2 ended." } },
-  ];
+  if (gameMode === 'DEBUG_PECKING_ORDER' && debugConfig) {
+    // Build manifest from debug config
+    const EVENT_MESSAGES: Record<string, string> = {
+      INJECT_PROMPT: "Chat prompt injected.",
+      OPEN_VOTING: "Voting is now open!",
+      CLOSE_VOTING: "Voting is now closed.",
+      END_DAY: "Day has ended.",
+    };
+
+    days = debugConfig.days.slice(0, debugConfig.dayCount).map((day, i) => {
+      const dayNum = i + 1;
+      const baseOffset = i * 30000;
+      const timeline: { time: string; action: string; payload: { msg: string } }[] = [];
+
+      let eventOffset = 0;
+      for (const eventKey of ['INJECT_PROMPT', 'OPEN_VOTING', 'CLOSE_VOTING', 'END_DAY'] as const) {
+        if (day.events[eventKey]) {
+          timeline.push({
+            time: t(baseOffset + eventOffset),
+            action: eventKey,
+            payload: { msg: EVENT_MESSAGES[eventKey] },
+          });
+          eventOffset += 5000;
+        }
+      }
+
+      return {
+        dayIndex: dayNum,
+        theme: `Debug Day ${dayNum}`,
+        voteType: day.voteType,
+        timeline,
+      };
+    });
+  } else {
+    // Default hardcoded manifest
+    const timelineDay1 = [
+      { time: t(2000), action: "INJECT_PROMPT", payload: { msg: "Chat is open. Who is the imposter?" } },
+      { time: t(10000), action: "OPEN_VOTING", payload: { msg: "Voting is now open!" } },
+      { time: t(20000), action: "END_DAY", payload: { msg: "Day has ended." } },
+    ];
+
+    const timelineDay2 = [
+      { time: t(30000), action: "INJECT_PROMPT", payload: { msg: "Day 2 begins!" } },
+      { time: t(35000), action: "OPEN_VOTING", payload: { msg: "Voting is now open!" } },
+      { time: t(40000), action: "END_DAY", payload: { msg: "Day 2 ended." } },
+    ];
+
+    days = [
+      {
+        dayIndex: 1,
+        theme: "The Beginning",
+        voteType: "EXECUTIONER" as const,
+        timeline: timelineDay1,
+      },
+      {
+        dayIndex: 2,
+        theme: "Double Trouble",
+        voteType: "TRUST_PAIRS" as const,
+        timeline: timelineDay2,
+      },
+    ];
+  }
 
   const payload = {
     lobbyId: `lobby-${Date.now()}`,
@@ -58,20 +128,7 @@ export async function startGameStub(gameMode: "PECKING_ORDER" | "BLITZ" | "DEBUG
     manifest: {
       id: "manifest-1",
       gameMode: gameMode,
-      days: [
-        {
-          dayIndex: 1,
-          theme: "The Beginning",
-          voteType: "EXECUTIONER" as const,
-          timeline: timelineDay1
-        },
-        {
-          dayIndex: 2,
-          theme: "Double Trouble",
-          voteType: "TRUST_PAIRS" as const,
-          timeline: timelineDay2
-        }
-      ]
+      days,
     }
   };
 
