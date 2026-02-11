@@ -165,10 +165,15 @@ The spec describes cartridges as receiving roster data, rules, and questions -- 
 | **#4 DM Constraints** | Full DM system: L3 guards enforce DM window (`OPEN_DMS`/`CLOSE_DMS` timeline events), 3 partner/day limit, 1200 char/day limit, 1 silver cost, target validation (alive, not self). L1 per-player chatLog filtering prevents DM leaks in SYSTEM.SYNC. Targeted `DM.REJECTED` delivery with reason codes. Client DM tab with thread list, conversation view, inline rejection errors. ChatRoom filtered to MAIN-only. Debug manifest includes DM timeline toggles. Silver persistence across server restarts. | `feat/direct-messages`, `fix/silver-persistence` |
 | **#10 Timeline Actions** | Added `OPEN_DMS` / `CLOSE_DMS` to `TimelineEventAction` enum. Lobby debug config includes them as toggleable events per day. | `feat/direct-messages` |
 
+| **#3 Daily Games / Cartridge System** | Game cartridge registry (`cartridges/games/`) with spawn-based dynamic dispatch (same pattern as voting, ADR-026). Trivia game fully implemented: per-player async state machine with 5 rounds, 15s countdown, speed bonuses, perfect bonus, silver rewards. Real-time trivia variant also implemented. L3 `dailyGame` parallel region spawns `activeGameCartridge` child. L1 projects per-player game state via SYSTEM.SYNC (strips other players' answers). L2 `applyGameRewards` action updates roster silver from `CARTRIDGE.GAME_RESULT`. Debug manifest supports `gameType` selection per day. Client: `GamePanel` router dispatches to `Trivia` / `RealtimeTrivia` components with framer-motion celebration screen, confetti, animated silver counter. | `feature/daily-minigame-trivia` |
+| **#9 Event Namespace** | Added `GAME.TRIVIA.*` namespace (`START`, `ANSWER`), `VOTE.*` wildcard forwarding, `GAME.*` wildcard at L1 whitelist. `START_GAME` / `END_GAME` timeline actions added. | `feature/daily-minigame-trivia` |
+| **News Ticker Pipeline** | `TICKER.UPDATE` WebSocket namespace (separate from SYSTEM.SYNC). Server converts FACT.RECORD events (SILVER_TRANSFER, GAME_RESULT, ELIMINATION) and state transitions (voting, night, morning, DM open/close) to humanized ticker messages broadcast to all clients. Client: `tickerMessages` rolling buffer in store, `NewsTicker` component with LIVE badge and slide animations. | `feature/news-ticker-and-ui-refresh` |
+| **UI Refresh** | Header redesign ("PECKING ORDER" gold slab + phase badge + ONLINE pill + Lucide Coins icon). Two-panel desktop layout (THE CAST sidebar + GREEN ROOM chat). Mobile tab nav with Lucide icons. Settings tab removed. ChatRoom: GREEN ROOM header, pink own-bubbles, "Spill the tea..." placeholder, "SHOUT >" button. All "Ag" references replaced with "silver" across client. `formatPhase()` utility for human-friendly state labels. `lucide-react` installed for game-themed iconography. | `feature/news-ticker-and-ui-refresh` |
+
 ### Remaining
 
 - DUELS voting mechanic — needs minigame system integration
-- Daily games / cartridge system (#3), Activity layer (#5), Gold economy (#6), Destiny system (#7), Powers (#9)
+- Activity layer (#5), Gold economy (#6), Destiny system (#7), Powers (#9)
 
 ### Known Tech Debt
 

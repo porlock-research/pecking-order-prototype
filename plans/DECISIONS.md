@@ -276,3 +276,44 @@ This document tracks significant architectural decisions, their context, and con
     *   VotingPanel returns `null` when `activeCartridge` is `null`, so it can be rendered unconditionally in `App.tsx`.
     *   The `engine` prop provides `sendVote` and `sendExecutionerPick` — future vote types that need new event types will extend the engine hook accordingly.
     *   Each component handles its own phase rendering (VOTING / REVEAL / etc.), keeping phase logic co-located with its vote type.
+
+## [ADR-029] Game Cartridge System (Spawn-Based, Same Pattern as Voting)
+*   **Date:** 2026-02-10
+*   **Status:** Accepted
+*   **Context:** Daily games (trivia, etc.) need the same runtime-polymorphic dispatch as voting cartridges (ADR-026). The manifest specifies a `gameType` per day, and L3 must spawn the corresponding machine.
+*   **Decision:** Reuse the spawn-based pattern from ADR-026. L3 has a `dailyGame` parallel state that spawns `activeGameCartridge` by string key from the game registry. `START_GAME` / `END_GAME` timeline actions control the lifecycle. L1 projects per-player game state into SYSTEM.SYNC (filtering private data like other players' answers). L2 applies silver rewards from `CARTRIDGE.GAME_RESULT` via `applyGameRewards` action.
+*   **Consequences:**
+    *   Adding a new game type = new machine file + registry entry + client component.
+    *   Per-player projection keeps async games private (e.g., trivia questions/answers).
+    *   Game rewards flow through the same fact pipeline as voting (L3 → L2 → L1 → D1).
+
+## [ADR-030] TICKER.UPDATE as Separate WebSocket Namespace
+*   **Date:** 2026-02-10
+*   **Status:** Accepted
+*   **Context:** The game needs a live news feed showing humanized event messages ("X sent 5 silver to Y", "Voting has begun!") to make the experience feel dynamic. These could be bundled into `SYSTEM.SYNC`, but that would bloat every sync message and complicate client logic (tickers are append-only, sync is full-state replacement).
+*   **Decision:** Create a separate `TICKER.UPDATE` WebSocket message type. Server generates ticker messages from two sources: (1) `FACT.RECORD` events converted via `factToTicker()` (silver transfers, game results, eliminations), and (2) L2 state transitions detected via `stateToTicker()` (voting, night, morning, DM open/close). Messages are broadcast to ALL connections (not per-player filtered — these are public events). Client stores up to 20 messages in a rolling buffer.
+*   **Consequences:**
+    *   Ticker is fire-and-forget — no state reconciliation needed.
+    *   SYSTEM.SYNC remains unchanged — no schema migration.
+    *   Private events (VOTE_CAST, DM_SENT, CHAT_MSG) are intentionally excluded.
+    *   New fact types can be added to `factToTicker()` without affecting sync logic.
+
+## [ADR-031] Two-Panel Desktop Layout with Mobile Tab Switching
+*   **Date:** 2026-02-10
+*   **Status:** Accepted
+*   **Context:** On desktop, showing only one panel at a time wastes screen real estate. The roster (player list) is useful context while chatting or viewing votes. On mobile, screen space is limited and tab switching works well.
+*   **Decision:** Desktop (lg+): persistent "THE CAST" sidebar (w-72) with player list + main content area. Footer nav hidden. Mobile (<lg): existing tab switching (Comms / DMs / Roster) with footer nav. Shared `RosterRow` component used in both views. Settings tab removed entirely.
+*   **Consequences:**
+    *   Desktop users see roster context at all times — no tab switching needed.
+    *   Mobile experience unchanged (3 tabs instead of 4).
+    *   `RosterRow` is reusable between sidebar and mobile roster view.
+
+## [ADR-032] Lucide Icons for Game-Themed Iconography
+*   **Date:** 2026-02-10
+*   **Status:** Accepted
+*   **Context:** The client used text symbols (#, @, ::, *) for tab icons and "Ag" as the silver abbreviation. This felt generic and missed the opportunity for game-themed visual identity.
+*   **Decision:** Install `lucide-react` (~1 KB per icon with tree-shaking). Use `Coins` for silver/gold (color-differentiated), `MessageCircle` for chat, `Mail` for DMs, `Users` for roster, `Zap` for ticker events. Replace all "Ag" text with "silver" across the client. All icon references use Lucide components.
+*   **Consequences:**
+    *   Consistent visual language across the app.
+    *   Tree-shaking ensures only imported icons ship in the bundle.
+    *   Future icons (Skull for elimination, Shield for shield voting, Crown for winner) are available without additional dependencies.
