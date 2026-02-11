@@ -236,6 +236,32 @@ export const orchestratorMachine = setup({
         timestamp: Date.now(),
       },
     } as any)),
+    applyFactToRoster: assign({
+      roster: ({ context, event }) => {
+        if (event.type !== 'FACT.RECORD') return context.roster;
+        const fact = (event as any).fact;
+        switch (fact.type) {
+          case 'DM_SENT': {
+            const sender = context.roster[fact.actorId];
+            if (!sender) return context.roster;
+            return { ...context.roster, [fact.actorId]: { ...sender, silver: sender.silver - 1 } };
+          }
+          case 'SILVER_TRANSFER': {
+            const from = context.roster[fact.actorId];
+            const to = context.roster[fact.targetId];
+            if (!from || !to) return context.roster;
+            const amount = fact.payload?.amount || 0;
+            return {
+              ...context.roster,
+              [fact.actorId]: { ...from, silver: from.silver - amount },
+              [fact.targetId]: { ...to, silver: to.silver + amount },
+            };
+          }
+          default:
+            return context.roster;
+        }
+      }
+    }),
     sendDmRejection: () => {
       // No-op in L2. Overridden by L1 via .provide() to send rejection to specific client.
     }
@@ -313,7 +339,7 @@ export const orchestratorMachine = setup({
           on: {
             'ADMIN.NEXT_STAGE': { target: 'nightSummary' },
             'FACT.RECORD': {
-                actions: ['updateJournalTimestamp', 'persistFactToD1'],
+                actions: ['updateJournalTimestamp', 'applyFactToRoster', 'persistFactToD1'],
                 // Force state update to trigger persistence/sync
                 target: undefined, // Stay in current state
                 reenter: false,
@@ -362,7 +388,7 @@ export const orchestratorMachine = setup({
             'SYSTEM.WAKEUP': { target: 'morningBriefing' },
             // Handle FACT.RECORD raised by processNightSummary (elimination facts)
             'FACT.RECORD': {
-              actions: ['updateJournalTimestamp', 'persistFactToD1'],
+              actions: ['updateJournalTimestamp', 'applyFactToRoster', 'persistFactToD1'],
             }
           }
         }

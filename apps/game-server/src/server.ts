@@ -20,9 +20,8 @@ export class GameServer extends Server<Env> {
   // The Brain (XState Actor)
   private actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
 
-  // Cache L3 data so it survives L3 actor destruction (e.g. nightSummary transition)
+  // Cache L3 chatLog so it survives L3 actor destruction (e.g. nightSummary transition)
   private lastKnownChatLog: any[] = [];
-  private lastKnownRoster: any = null;
 
   // Ticker state tracking
   private lastBroadcastState: string = '';
@@ -135,26 +134,17 @@ export class GameServer extends Server<Env> {
 
       let l2Snapshot = storedData;
       let restoredChatLog = undefined;
-      let restoredRoster = undefined;
 
       // Handle migration from old format (raw L2 snapshot) to new format
       if (storedData.l2) {
           l2Snapshot = storedData.l2;
           restoredChatLog = storedData.l3Context?.chatLog;
-          restoredRoster = storedData.l3Context?.roster;
       }
 
       // Inject restored chat log into L2 context for rehydration
       if (restoredChatLog) {
         l2Snapshot.context.restoredChatLog = restoredChatLog;
         this.lastKnownChatLog = restoredChatLog;
-      }
-
-      // Restore L3 roster (has up-to-date silver) into L2 context
-      // so the new L3 session gets correct values on re-invoke
-      if (restoredRoster) {
-        l2Snapshot.context.roster = restoredRoster;
-        this.lastKnownRoster = restoredRoster;
       }
 
       // Restore ticker history buffer
@@ -180,9 +170,8 @@ export class GameServer extends Server<Env> {
           l3Snapshot = l3Ref.getSnapshot();
           if (l3Snapshot) {
             l3Context = l3Snapshot.context;
-            // Cache L3 data while L3 is alive
+            // Cache L3 chatLog while L3 is alive
             this.lastKnownChatLog = l3Context.chatLog || [];
-            this.lastKnownRoster = l3Context.roster || null;
           } else {
             console.warn('[L1] ⚠️ L3 ref exists but getSnapshot() returned null');
           }
@@ -204,15 +193,13 @@ export class GameServer extends Server<Env> {
         this.broadcastDebugTicker(debugSummary);
       }
 
-      // A. Save FULL State to Disk (L2 + L3 critical data)
-      // When L3 is alive, its roster has in-session changes (DM costs, transfers, game rewards).
-      // When L3 is gone (nightSummary), L2's roster is authoritative (has eliminations).
-      // Using the stale lastKnownRoster here would lose elimination data on restart.
+      // A. Save FULL State to Disk (L2 snapshot + L3 chatLog)
+      // L2's roster is authoritative (tracks DM costs, transfers, rewards, eliminations).
+      // Only chatLog needs separate persistence since it lives in L3.
       const storagePayload = {
           l2: snapshot,
           l3Context: {
               chatLog: l3Context.chatLog ?? this.lastKnownChatLog,
-              roster: l3Context.roster || snapshot.context.roster
           },
           tickerHistory: this.tickerHistory
       };
@@ -232,15 +219,15 @@ export class GameServer extends Server<Env> {
       }
 
       // C. Extract voting + game cartridge context for client rendering
-      let activeCartridge: any = null;
+      let activeVotingCartridge: any = null;
       let rawGameCartridge: any = null;
       try {
         const l3RefForCartridge = snapshot.children['l3-session'];
         if (l3RefForCartridge) {
           const l3Snap = l3RefForCartridge.getSnapshot();
-          const cartridgeRef = (l3Snap?.children as any)?.['activeCartridge'];
-          if (cartridgeRef) {
-            activeCartridge = cartridgeRef.getSnapshot()?.context || null;
+          const votingCartridgeRef = (l3Snap?.children as any)?.['activeVotingCartridge'];
+          if (votingCartridgeRef) {
+            activeVotingCartridge = votingCartridgeRef.getSnapshot()?.context || null;
           }
           const gameCartridgeRef = (l3Snap?.children as any)?.['activeGameCartridge'];
           if (gameCartridgeRef) {
@@ -252,11 +239,14 @@ export class GameServer extends Server<Env> {
       }
 
       // D. Broadcast State to Clients (per-player DM + game filtering)
+      // Explicit SYNC payload — L2's roster is authoritative, no blind spread
       const fullChatLog = l3Context.chatLog ?? this.lastKnownChatLog;
-      const baseContext = {
-        ...snapshot.context,
-        ...l3Context,
-        activeCartridge
+      const syncContext = {
+        gameId: snapshot.context.gameId,
+        dayIndex: snapshot.context.dayIndex,
+        roster: snapshot.context.roster,       // Always L2's authoritative roster
+        manifest: snapshot.context.manifest,
+        activeVotingCartridge,
       };
 
       for (const ws of this.getConnections()) {
@@ -274,7 +264,7 @@ export class GameServer extends Server<Env> {
         ws.send(JSON.stringify({
           type: "SYSTEM.SYNC",
           state: snapshot.value,
-          context: { ...baseContext, chatLog: playerChatLog, activeGameCartridge }
+          context: { ...syncContext, chatLog: playerChatLog, activeGameCartridge }
         }));
       }
 
@@ -504,18 +494,18 @@ export class GameServer extends Server<Env> {
     // Send current state immediately so client UI hydrates
     const snapshot = this.actor?.getSnapshot();
     if (snapshot) {
-      // START MERGE LOGIC
+      // Build explicit SYNC payload — L2's roster is authoritative, no blind spread
       let l3Context: any = {};
-      let activeCartridge: any = null;
+      let activeVotingCartridge: any = null;
       let rawGameCartridge: any = null;
       const l3Ref = snapshot.children['l3-session'];
       if (l3Ref) {
         const l3Snapshot = l3Ref.getSnapshot();
         if (l3Snapshot) {
           l3Context = l3Snapshot.context;
-          const cartridgeRef = (l3Snapshot.children as any)?.['activeCartridge'];
-          if (cartridgeRef) {
-            activeCartridge = cartridgeRef.getSnapshot()?.context || null;
+          const votingCartridgeRef = (l3Snapshot.children as any)?.['activeVotingCartridge'];
+          if (votingCartridgeRef) {
+            activeVotingCartridge = votingCartridgeRef.getSnapshot()?.context || null;
           }
           const gameCartridgeRef = (l3Snapshot.children as any)?.['activeGameCartridge'];
           if (gameCartridgeRef) {
@@ -530,19 +520,19 @@ export class GameServer extends Server<Env> {
         (msg.channel === 'DM' && (msg.senderId === playerId || msg.targetId === playerId))
       );
       const activeGameCartridge = GameServer.projectGameCartridge(rawGameCartridge, playerId);
-      const combinedContext = {
-        ...snapshot.context,
-        ...l3Context,
-        chatLog: playerChatLog,
-        activeCartridge,
-        activeGameCartridge
-      };
-      // END MERGE LOGIC
 
       ws.send(JSON.stringify({
         type: "SYSTEM.SYNC",
         state: snapshot.value,
-        context: combinedContext
+        context: {
+          gameId: snapshot.context.gameId,
+          dayIndex: snapshot.context.dayIndex,
+          roster: snapshot.context.roster,       // Always L2's authoritative roster
+          manifest: snapshot.context.manifest,
+          chatLog: playerChatLog,
+          activeVotingCartridge,
+          activeGameCartridge,
+        }
       }));
 
       // Send ticker history so late joiners see recent events
