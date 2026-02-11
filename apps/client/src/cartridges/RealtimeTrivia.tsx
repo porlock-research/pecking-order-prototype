@@ -23,6 +23,7 @@ interface TriviaProps {
   engine: {
     sendGameAction: (type: string, payload?: Record<string, any>) => void;
   };
+  onDismiss?: () => void;
 }
 
 const OPTION_LABELS = ['A', 'B', 'C', 'D'];

@@ -27,6 +27,7 @@ export class GameServer extends Server<Env> {
   // Ticker state tracking
   private lastBroadcastState: string = '';
   private lastKnownDmsOpen: boolean = false;
+  private tickerHistory: TickerMessage[] = [];
 
   // The Scheduler (Composition)
   private scheduler: Scheduler<Env>;
@@ -120,31 +121,9 @@ export class GameServer extends Server<Env> {
             }
           }
         },
-        persistEliminationToD1: () => {
-          const snapshot = this.actor?.getSnapshot();
-          const result = snapshot?.context.pendingElimination;
-          if (!result?.eliminatedId) return;
-
-          const gameId = snapshot?.context.gameId || 'unknown';
-          const dayIndex = snapshot?.context.dayIndex || 0;
-
-          console.log(`[L1] 📝 Persisting ELIMINATION to D1: ${result.eliminatedId}`);
-
-          this.env.DB.prepare(
-            `INSERT INTO GameJournal (id, game_id, day_index, timestamp, event_type, actor_id, target_id, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-          ).bind(
-            crypto.randomUUID(),
-            gameId,
-            dayIndex,
-            Date.now(),
-            'ELIMINATION',
-            'SYSTEM',
-            result.eliminatedId,
-            JSON.stringify({ mechanism: result.mechanism, summary: result.summary })
-          ).run().catch(err => {
-            console.error("[L1] 💥 Failed to write ELIMINATION to Journal:", err);
-          });
-        }
+        // persistEliminationToD1 removed — eliminations now flow through the normal
+        // FACT.RECORD pipeline via processNightSummary's raise(), which calls
+        // persistFactToD1 above (handles D1 write + ticker for all journalable types)
       }
     });
 
@@ -177,6 +156,11 @@ export class GameServer extends Server<Env> {
         this.lastKnownRoster = restoredRoster;
       }
 
+      // Restore ticker history buffer
+      if (storedData.tickerHistory) {
+        this.tickerHistory = storedData.tickerHistory;
+      }
+
       this.actor = createActor(machineWithPersistence, { snapshot: l2Snapshot });
     } else {
       console.log(`[L1] ✨ Fresh Boot`);
@@ -200,12 +184,16 @@ export class GameServer extends Server<Env> {
       }
 
       // A. Save FULL State to Disk (L2 + L3 critical data)
+      // When L3 is alive, its roster has in-session changes (DM costs, transfers, game rewards).
+      // When L3 is gone (nightSummary), L2's roster is authoritative (has eliminations).
+      // Using the stale lastKnownRoster here would lose elimination data on restart.
       const storagePayload = {
           l2: snapshot,
           l3Context: {
               chatLog: l3Context.chatLog ?? this.lastKnownChatLog,
-              roster: l3Context.roster ?? this.lastKnownRoster
-          }
+              roster: l3Context.roster || snapshot.context.roster
+          },
+          tickerHistory: this.tickerHistory
       };
       this.ctx.storage.put(STORAGE_KEY, JSON.stringify(storagePayload));
 
@@ -356,6 +344,9 @@ export class GameServer extends Server<Env> {
   // --- Ticker Pipeline ---
 
   private broadcastTicker(msg: TickerMessage) {
+    // Buffer for late joiners
+    this.tickerHistory = [...this.tickerHistory, msg].slice(-20);
+
     const payload = JSON.stringify({ type: 'TICKER.UPDATE', message: msg });
     for (const ws of this.getConnections()) {
       ws.send(payload);
@@ -485,6 +476,14 @@ export class GameServer extends Server<Env> {
         state: snapshot.value,
         context: combinedContext
       }));
+
+      // Send ticker history so late joiners see recent events
+      if (this.tickerHistory.length > 0) {
+        ws.send(JSON.stringify({
+          type: 'TICKER.HISTORY',
+          messages: this.tickerHistory
+        }));
+      }
     }
   }
 

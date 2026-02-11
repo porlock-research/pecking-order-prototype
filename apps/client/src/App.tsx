@@ -150,11 +150,6 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
       {/* Main Region */}
       <main className="flex-1 overflow-hidden relative bg-skin-fill flex flex-col">
 
-        <div className="shrink-0">
-          <VotingPanel engine={engine} />
-          <GamePanel engine={engine} />
-        </div>
-
         {/* Two-panel desktop layout */}
         <div className="flex-1 overflow-hidden flex">
 
@@ -173,24 +168,56 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
             </ul>
           </aside>
 
-          {/* Main content area */}
-          <div className="flex-1 overflow-hidden relative">
-            {activeTab === 'chat' && <ChatRoom engine={engine} />}
-            {activeTab === 'dms' && <DirectMessages engine={engine} />}
-            {activeTab === 'roster' && (
-              <div className="absolute inset-0 overflow-y-auto p-4 scroll-smooth lg:hidden">
-                <div className="space-y-4 max-w-md mx-auto animate-fade-in">
-                  <h2 className="text-xl font-black text-skin-base tracking-tighter border-b border-white/10 pb-2 mb-4 font-display">
-                    THE CAST
-                  </h2>
-                  <ul className="space-y-2">
-                    {Object.values(roster).map((p: any) => (
-                      <RosterRow key={p.id} player={p} playerId={playerId} />
-                    ))}
-                  </ul>
+          {/* Main content column */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+
+            {/* Desktop content switcher (replaces footer nav on lg+) */}
+            <div className="hidden lg:flex border-b border-white/[0.06] bg-skin-panel/30">
+              {([
+                { key: 'chat' as const, label: 'Green Room' },
+                { key: 'dms' as const, label: 'DMs' },
+              ]).map(tab => {
+                const isActive = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`px-5 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors relative
+                      ${isActive
+                        ? 'text-skin-gold'
+                        : 'text-skin-dim opacity-50 hover:opacity-70'
+                      }`}
+                  >
+                    {tab.label}
+                    {isActive && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-skin-gold shadow-glow" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Voting & Game panels (inline with content) */}
+            <VotingPanel engine={engine} />
+            <GamePanel engine={engine} />
+
+            {/* Content area */}
+            <div className="flex-1 overflow-hidden relative">
+              {activeTab === 'chat' && <ChatRoom engine={engine} />}
+              {activeTab === 'dms' && <DirectMessages engine={engine} />}
+              {activeTab === 'roster' && (
+                <div className="absolute inset-0 overflow-y-auto p-4 scroll-smooth lg:hidden">
+                  <div className="space-y-4 max-w-md mx-auto animate-fade-in">
+                    <h2 className="text-xl font-black text-skin-base tracking-tighter border-b border-white/10 pb-2 mb-4 font-display">
+                      THE CAST
+                    </h2>
+                    <ul className="space-y-2">
+                      {Object.values(roster).map((p: any) => (
+                        <RosterRow key={p.id} player={p} playerId={playerId} />
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import RealtimeTrivia from './RealtimeTrivia';
 import Trivia from './Trivia';
@@ -13,10 +13,15 @@ export default function GamePanel({ engine }: GamePanelProps) {
   const activeGameCartridge = useGameStore((s) => s.activeGameCartridge);
   const playerId = useGameStore((s) => s.playerId);
   const roster = useGameStore((s) => s.roster);
+  const [dismissed, setDismissed] = useState(false);
 
-  if (!activeGameCartridge) return null;
+  // Reset dismiss when a new game starts
+  useEffect(() => { setDismissed(false); }, [activeGameCartridge?.gameType]);
 
-  const common = { cartridge: activeGameCartridge, playerId: playerId!, roster, engine };
+  if (!activeGameCartridge || dismissed) return null;
+
+  const onDismiss = () => setDismissed(true);
+  const common = { cartridge: activeGameCartridge, playerId: playerId!, roster, engine, onDismiss };
 
   switch (activeGameCartridge.gameType) {
     case 'REALTIME_TRIVIA':

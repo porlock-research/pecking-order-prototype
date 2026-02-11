@@ -107,6 +107,11 @@ export const triviaMachine = setup({
     input: {} as GameCartridgeInput,
     output: {} as GameOutput,
   },
+  guards: {
+    allPlayersComplete: ({ context }) =>
+      context.alivePlayers.length > 0 &&
+      context.alivePlayers.every(pid => context.players[pid]?.status === 'COMPLETED'),
+  },
   actions: {
     startPlayer: assign(({ context, event }) => {
       if (event.type !== 'GAME.TRIVIA.START') return {};
@@ -272,6 +277,10 @@ export const triviaMachine = setup({
   states: {
     active: {
       entry: 'emitRoundSync',
+      always: {
+        guard: 'allPlayersComplete',
+        target: 'completed',
+      },
       on: {
         'GAME.TRIVIA.START': { target: 'active', reenter: true, actions: 'startPlayer' },
         'GAME.TRIVIA.ANSWER': { target: 'active', reenter: true, actions: 'processAnswer' },
@@ -279,7 +288,7 @@ export const triviaMachine = setup({
       },
     },
     completed: {
-      entry: ['finalizeResults', 'reportResults', 'emitRoundSync'],
+      entry: ['finalizeResults', 'emitRoundSync'],
       type: 'final',
     },
   },

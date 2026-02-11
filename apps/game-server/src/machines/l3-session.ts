@@ -239,6 +239,21 @@ export const dailySessionMachine = setup({
     cleanupGameCartridge: assign({
       activeGameCartridgeRef: () => null
     }),
+    // Apply silver rewards to L3's own roster so clients see the update immediately
+    // (L3's roster overwrites L2's in the SYSTEM.SYNC spread)
+    applyGameRewardsLocally: assign({
+      roster: ({ context, event }) => {
+        const result = (event as any).output as GameOutput;
+        if (!result?.silverRewards) return context.roster;
+        const updated = { ...context.roster };
+        for (const [pid, silver] of Object.entries(result.silverRewards)) {
+          if (updated[pid]) {
+            updated[pid] = { ...updated[pid], silver: updated[pid].silver + silver };
+          }
+        }
+        return updated;
+      }
+    }),
     forwardGameResultToL2: sendParent(({ event }) => ({
       type: 'CARTRIDGE.GAME_RESULT',
       result: (event as any).output as GameOutput
@@ -332,7 +347,7 @@ export const dailySessionMachine = setup({
               on: {
                 'xstate.done.actor.activeGameCartridge': {
                   target: 'groupChat',
-                  actions: 'forwardGameResultToL2'
+                  actions: ['applyGameRewardsLocally', 'forwardGameResultToL2']
                 },
                 'INTERNAL.END_GAME': { actions: 'forwardToGameChild' },
                 '*': {

@@ -152,22 +152,33 @@ export const orchestratorMachine = setup({
       pendingElimination: ({ event }) =>
         event.type === 'CARTRIDGE.VOTE_RESULT' ? event.result : null
     }),
-    applyElimination: assign({
-      roster: ({ context }) => {
-        if (!context.pendingElimination?.eliminatedId) return context.roster;
-        const id = context.pendingElimination.eliminatedId;
+    // Consolidated nightSummary action: apply elimination + emit FACT.RECORD + clear pending.
+    // Uses enqueueActions to capture pendingElimination data BEFORE assigns clear it,
+    // because XState v5 runs all assigns before effects in a single action batch.
+    processNightSummary: enqueueActions(({ enqueue, context }) => {
+      const pending = context.pendingElimination;
+      if (pending?.eliminatedId) {
+        const id = pending.eliminatedId;
         console.log(`[L2] 💀 Eliminating player: ${id}`);
-        return {
-          ...context.roster,
-          [id]: { ...context.roster[id], status: 'ELIMINATED' }
-        };
+        enqueue.assign({
+          roster: {
+            ...context.roster,
+            [id]: { ...context.roster[id], status: 'ELIMINATED' as const }
+          }
+        });
+        // Emit through the normal fact pipeline (D1 journal + ticker)
+        enqueue.raise({
+          type: 'FACT.RECORD',
+          fact: {
+            type: 'ELIMINATION',
+            actorId: 'SYSTEM',
+            targetId: id,
+            payload: { mechanism: pending.mechanism, summary: pending.summary },
+            timestamp: Date.now(),
+          },
+        } as any);
       }
-    }),
-    persistEliminationToD1: () => {
-      // No-op in L2. Overridden by L1 via .provide() to write ELIMINATION fact to D1.
-    },
-    clearPendingElimination: assign({
-      pendingElimination: null
+      enqueue.assign({ pendingElimination: null });
     }),
     applyGameRewards: assign({
       roster: ({ context, event }) => {
@@ -183,6 +194,27 @@ export const orchestratorMachine = setup({
         console.log(`[L2] Applied game silver rewards:`, result.silverRewards);
         return updated;
       }
+    }),
+    // Raise a FACT.RECORD for game results so it flows through the normal
+    // fact pipeline (D1 journal + ticker). We do this here instead of relying
+    // on sendParent from the game cartridge's final state, because XState v5
+    // deferred effects from a completing child actor may not be delivered.
+    emitGameResultFact: raise(({ event }) => {
+      const result = (event as any).result as GameOutput;
+      return {
+        type: 'FACT.RECORD',
+        fact: {
+          type: 'GAME_RESULT',
+          actorId: 'SYSTEM',
+          payload: {
+            players: Object.fromEntries(
+              Object.entries(result.silverRewards || {}).map(([pid, silver]: [string, number]) => [pid, { silverReward: silver }])
+            ),
+            goldContribution: result.goldContribution || 0,
+          },
+          timestamp: Date.now(),
+        },
+      } as any;
     }),
     sendDmRejection: () => {
       // No-op in L2. Overridden by L1 via .provide() to send rejection to specific client.
@@ -270,7 +302,7 @@ export const orchestratorMachine = setup({
             'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }) => event) },
             'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }) => event) },
             'CARTRIDGE.VOTE_RESULT': { actions: 'storeVoteResult' },
-            'CARTRIDGE.GAME_RESULT': { actions: 'applyGameRewards' },
+            'CARTRIDGE.GAME_RESULT': { actions: ['applyGameRewards', 'emitGameResultFact'] },
             'DM.REJECTED': { actions: 'sendDmRejection' },
             '*': [
               {
@@ -303,10 +335,14 @@ export const orchestratorMachine = setup({
           }
         },
         nightSummary: {
-          entry: ['applyElimination', 'persistEliminationToD1', 'clearPendingElimination', 'scheduleNextTimelineEvent'],
+          entry: ['processNightSummary', 'scheduleNextTimelineEvent'],
           on: {
             'ADMIN.NEXT_STAGE': { target: 'morningBriefing' },
-            'SYSTEM.WAKEUP': { target: 'morningBriefing' }
+            'SYSTEM.WAKEUP': { target: 'morningBriefing' },
+            // Handle FACT.RECORD raised by processNightSummary (elimination facts)
+            'FACT.RECORD': {
+              actions: ['updateJournalTimestamp', 'persistFactToD1'],
+            }
           }
         }
       },

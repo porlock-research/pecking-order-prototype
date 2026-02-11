@@ -257,7 +257,7 @@ export const realtimeTriviaMachine = setup({
       },
     },
     scoreboard: {
-      entry: ['applyPerfectBonus', 'reportResults', 'emitRoundSync'],
+      entry: ['applyPerfectBonus', 'emitRoundSync'],
       type: 'final',
     },
   },

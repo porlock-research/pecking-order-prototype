@@ -31,6 +31,7 @@ interface TriviaProps {
   engine: {
     sendGameAction: (type: string, payload?: Record<string, any>) => void;
   };
+  onDismiss?: () => void;
 }
 
 const OPTION_LABELS = ['A', 'B', 'C', 'D'];
@@ -185,7 +186,7 @@ function RoundResult({
 
 // --- Main Component ---
 
-export default function Trivia({ cartridge, playerId, roster, engine }: TriviaProps) {
+export default function Trivia({ cartridge, playerId, roster, engine, onDismiss }: TriviaProps) {
   const { status, currentRound, totalRounds, currentQuestion, roundDeadline, lastRoundResult, score, correctCount, silverReward, goldContribution } = cartridge;
 
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -429,6 +430,18 @@ export default function Trivia({ cartridge, playerId, roster, engine }: TriviaPr
                 </p>
                 <p className="text-xs text-skin-gold/70 mt-0.5">added to the pot</p>
               </div>
+            </motion.div>
+          )}
+
+          {/* Dismiss */}
+          {onDismiss && (
+            <motion.div variants={slideUp} className="text-center pt-1">
+              <button
+                onClick={onDismiss}
+                className="px-8 py-2.5 text-xs font-bold uppercase tracking-wider text-skin-dim border border-white/[0.08] rounded-lg hover:bg-white/[0.04] hover:text-skin-base transition-colors"
+              >
+                Done
+              </button>
             </motion.div>
           )}
         </motion.div>

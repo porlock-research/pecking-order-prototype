@@ -24,6 +24,7 @@ interface GameState {
   sync: (data: any) => void;
   addChatMessage: (msg: ChatMessage) => void;
   addTickerMessage: (msg: TickerMessage) => void;
+  setTickerMessages: (msgs: TickerMessage[]) => void;
   setPlayerId: (id: string) => void;
   setDmRejection: (reason: DmRejectionReason) => void;
   clearDmRejection: () => void;
@@ -88,6 +89,8 @@ export const useGameStore = create<GameState>((set) => ({
   addTickerMessage: (msg) => set((state) => ({
     tickerMessages: [...state.tickerMessages, msg].slice(-20)
   })),
+
+  setTickerMessages: (msgs) => set({ tickerMessages: msgs.slice(-20) }),
 
   setPlayerId: (id) => set({ playerId: id }),
 
