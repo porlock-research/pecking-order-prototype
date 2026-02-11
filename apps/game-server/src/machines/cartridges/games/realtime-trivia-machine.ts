@@ -240,11 +240,11 @@ export const realtimeTriviaMachine = setup({
         QUESTION_TIMER: { target: 'roundResult' },
       },
       on: {
-        // Individual play: answer immediately ends the round
         'GAME.REALTIME_TRIVIA.ANSWER': {
           target: 'roundResult',
           actions: 'recordAnswer',
         },
+        'INTERNAL.END_GAME': { target: 'scoreboard' },
       },
     },
     roundResult: {
@@ -254,6 +254,9 @@ export const realtimeTriviaMachine = setup({
           { guard: 'hasMoreRounds', target: 'question', actions: 'advanceRound' },
           { target: 'scoreboard' },
         ],
+      },
+      on: {
+        'INTERNAL.END_GAME': { target: 'scoreboard' },
       },
     },
     scoreboard: {

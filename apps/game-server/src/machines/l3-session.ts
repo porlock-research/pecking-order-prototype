@@ -10,7 +10,7 @@ export interface DailyContext {
   chatLog: ChatMessage[];
   roster: Record<string, SocialPlayer>;
   manifest: DailyManifest | undefined;
-  activeCartridgeRef: AnyActorRef | null;
+  activeVotingCartridgeRef: AnyActorRef | null;
   activeGameCartridgeRef: AnyActorRef | null;
   dmsOpen: boolean;
   dmPartnersByPlayer: Record<string, string[]>;
@@ -193,20 +193,20 @@ export const dailySessionMachine = setup({
       };
     }),
     forwardToL2: sendParent(({ event }) => event),
-    forwardToChild: sendTo('activeCartridge', ({ event }) => event),
+    forwardToVotingChild: sendTo('activeVotingCartridge', ({ event }) => event),
     // Spawn the correct voting machine from the registry based on manifest voteType.
     // XState v5 setup() restricts spawn to registered actor keys. We register all
     // machines in actors{} and use the voteType string as the key. Type assertion
     // needed because the key is dynamic.
     spawnVotingCartridge: assign({
-      activeCartridgeRef: ({ context, spawn }) => {
+      activeVotingCartridgeRef: ({ context, spawn }) => {
         const voteType = context.manifest?.voteType || 'MAJORITY';
         const hasKey = voteType in VOTE_REGISTRY;
         const key = hasKey ? voteType : 'MAJORITY';
         if (!hasKey) console.error(`[L3] Unknown voteType: ${voteType}, falling back to MAJORITY`);
         console.log(`[L3] Spawning voting cartridge: ${key}`);
         return (spawn as any)(key, {
-          id: 'activeCartridge',
+          id: 'activeVotingCartridge',
           input: { voteType: key, roster: context.roster, dayIndex: context.dayIndex }
         });
       }
@@ -215,8 +215,9 @@ export const dailySessionMachine = setup({
       type: 'CARTRIDGE.VOTE_RESULT',
       result: (event as any).output as VoteResult
     })),
-    cleanupCartridge: assign({
-      activeCartridgeRef: () => null
+    cleanupVotingCartridge: enqueueActions(({ enqueue }) => {
+      enqueue.stopChild('activeVotingCartridge');
+      enqueue.assign({ activeVotingCartridgeRef: null });
     }),
     // --- Game Cartridge Actions ---
     spawnGameCartridge: assign({
@@ -236,8 +237,9 @@ export const dailySessionMachine = setup({
         });
       }
     }),
-    cleanupGameCartridge: assign({
-      activeGameCartridgeRef: () => null
+    cleanupGameCartridge: enqueueActions(({ enqueue }) => {
+      enqueue.stopChild('activeGameCartridge');
+      enqueue.assign({ activeGameCartridgeRef: null });
     }),
     // Apply silver rewards to L3's own roster so clients see the update immediately
     // (L3's roster overwrites L2's in the SYSTEM.SYNC spread)
@@ -296,7 +298,7 @@ export const dailySessionMachine = setup({
     chatLog: input.initialChatLog || [],
     roster: input.roster || {},
     manifest: input.manifest,
-    activeCartridgeRef: null,
+    activeVotingCartridgeRef: null,
     activeGameCartridgeRef: null,
     dmsOpen: false,
     dmPartnersByPlayer: {},
@@ -375,17 +377,17 @@ export const dailySessionMachine = setup({
               // via functions — it treats the function as actor logic. spawn() is the
               // correct pattern for polymorphic actor dispatch.
               entry: 'spawnVotingCartridge',
-              exit: 'cleanupCartridge',
+              exit: 'cleanupVotingCartridge',
               on: {
                 // Spawned actor emits this when it reaches its final state
-                'xstate.done.actor.activeCartridge': {
+                'xstate.done.actor.activeVotingCartridge': {
                   target: 'groupChat',
                   actions: 'forwardVoteResultToL2'
                 },
-                'INTERNAL.CLOSE_VOTING': { actions: 'forwardToChild' },
+                'INTERNAL.CLOSE_VOTING': { actions: 'forwardToVotingChild' },
                 '*': {
                   guard: ({ event }) => typeof event.type === 'string' && event.type.startsWith('VOTE.'),
-                  actions: 'forwardToChild',
+                  actions: 'forwardToVotingChild',
                 }
               }
             }

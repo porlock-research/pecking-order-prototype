@@ -247,10 +247,10 @@ This document tracks significant architectural decisions, their context, and con
 *   **Date:** 2026-02-09
 *   **Status:** Accepted
 *   **Context:** The voting system needs to dispatch different state machines (Majority, Executioner, etc.) based on a runtime value (`manifest.voteType`). XState v5's `invoke.src` only accepts static string keys from registered actors or inline actor logic. Passing a function `({ context }) => 'MAJORITY'` does **not** perform a key lookup — XState treats the function itself as actor logic (a callback actor), which lacks `getInitialSnapshot`, causing a runtime crash: `TypeError: this.logic.getInitialSnapshot is not a function`.
-*   **Decision:** Use `spawn()` inside an `assign` entry action instead of `invoke`. Register all voting machines in `setup().actors` so they're available by string key. Use `(spawn as any)(voteType, { id: 'activeCartridge', input })` for dynamic dispatch (type assertion needed because XState v5's TypeScript types restrict `spawn` to statically-known keys). Listen for `xstate.done.actor.activeCartridge` to detect completion — functionally equivalent to `invoke.onDone`. Store the spawned `ActorRef` in context to prevent garbage collection.
+*   **Decision:** Use `spawn()` inside an `assign` entry action instead of `invoke`. Register all voting machines in `setup().actors` so they're available by string key. Use `(spawn as any)(voteType, { id: 'activeVotingCartridge', input })` for dynamic dispatch (type assertion needed because XState v5's TypeScript types restrict `spawn` to statically-known keys). Listen for `xstate.done.actor.activeVotingCartridge` to detect completion — functionally equivalent to `invoke.onDone`. Store the spawned `ActorRef` in context to prevent garbage collection.
 *   **Consequences:**
     *   Polymorphic dispatch works at runtime: any machine registered in the `VOTE_REGISTRY` can be spawned by its string key.
-    *   `sendTo('activeCartridge', ...)` finds the spawned child by id for event forwarding.
+    *   `sendTo('activeVotingCartridge', ...)` finds the spawned child by id for event forwarding.
     *   `sendParent()` from the spawned child sends events to L3 (its parent), preserving the fact pipeline (L3 → L2 → L1 → D1).
     *   Adding a new voting mechanic requires only: create machine file, add to `_registry.ts`, add VoteType string to `VoteTypeSchema`. No L3/L2/L1 changes.
     *   The `as any` on `spawn` is a targeted escape hatch for a known XState v5 type limitation — runtime behavior is correct.
@@ -258,11 +258,11 @@ This document tracks significant architectural decisions, their context, and con
 ## [ADR-027] ActiveCartridge Projection via SYSTEM.SYNC
 *   **Date:** 2026-02-09
 *   **Status:** Accepted
-*   **Context:** The voting engine runs inside a spawned child actor deep in the L3 session (L1 → L2 → L3 → activeCartridge). The client needs the cartridge's state (phase, votes, eligible players, results) to render voting UI, but the client only receives `SYSTEM.SYNC` broadcasts.
-*   **Decision:** L1's subscription handler extracts the `activeCartridge` snapshot context from the L3 child actor hierarchy (`snapshot.children['l3-session'].getSnapshot().children['activeCartridge'].getSnapshot().context`) and includes it as a top-level field in the SYNC payload. The client stores it in Zustand as `activeCartridge: any | null`.
+*   **Context:** The voting engine runs inside a spawned child actor deep in the L3 session (L1 → L2 → L3 → activeVotingCartridge). The client needs the cartridge's state (phase, votes, eligible players, results) to render voting UI, but the client only receives `SYSTEM.SYNC` broadcasts.
+*   **Decision:** L1's subscription handler extracts the `activeVotingCartridge` snapshot context from the L3 child actor hierarchy (`snapshot.children['l3-session'].getSnapshot().children['activeVotingCartridge'].getSnapshot().context`) and includes it as a top-level field in the SYNC payload. The client stores it in Zustand as `activeVotingCartridge: any | null`.
 *   **Consequences:**
     *   Clients receive voting state reactively — no polling or separate event channel needed.
-    *   `activeCartridge` is `null` when no voting is active, making conditional rendering trivial.
+    *   `activeVotingCartridge` is `null` when no voting is active, making conditional rendering trivial.
     *   The projection is read-only: clients send votes via `GAME.VOTE` / `GAME.EXECUTIONER_PICK` WebSocket events, not by mutating cartridge state.
     *   Adding new voting UIs requires only a client component — the projection pipeline is generic.
 
@@ -270,10 +270,10 @@ This document tracks significant architectural decisions, their context, and con
 *   **Date:** 2026-02-09
 *   **Status:** Accepted
 *   **Context:** The server's polymorphic voting system (ADR-026) dispatches different XState machines by `voteType`. The client needs a parallel dispatch mechanism to render the correct UI for each vote type.
-*   **Decision:** A `VotingPanel` component reads `activeCartridge.voteType` from the store and dispatches to type-specific components (`MajorityVoting`, `ExecutionerVoting`, etc.) via a `switch` statement. Unknown types render a fallback message. Each component receives `{ cartridge, playerId, roster, engine }` as props and is self-contained.
+*   **Decision:** A `VotingPanel` component reads `activeVotingCartridge.voteType` from the store and dispatches to type-specific components (`MajorityVoting`, `ExecutionerVoting`, etc.) via a `switch` statement. Unknown types render a fallback message. Each component receives `{ cartridge, playerId, roster, engine }` as props and is self-contained.
 *   **Consequences:**
     *   Adding a new voting UI follows the same pattern as server-side: create component, add `case` to the router.
-    *   VotingPanel returns `null` when `activeCartridge` is `null`, so it can be rendered unconditionally in `App.tsx`.
+    *   VotingPanel returns `null` when `activeVotingCartridge` is `null`, so it can be rendered unconditionally in `App.tsx`.
     *   The `engine` prop provides `sendVote` and `sendExecutionerPick` — future vote types that need new event types will extend the engine hook accordingly.
     *   Each component handles its own phase rendering (VOTING / REVEAL / etc.), keeping phase logic co-located with its vote type.
 
@@ -340,3 +340,24 @@ This document tracks significant architectural decisions, their context, and con
     *   L3 crashes produce explicit error logs (`[L1] 💥 L3 snapshot extraction FAILED`).
     *   Debug ticker is a separate WebSocket message type — doesn't pollute game ticker history or storage.
     *   Late-joining clients receive the latest debug summary on connect.
+
+## [ADR-035] L2 Roster Authority + Explicit SYNC Payload
+*   **Date:** 2026-02-11
+*   **Status:** Accepted
+*   **Context:** SYSTEM.SYNC used `{ ...l2Context, ...l3Context }` — a blind spread where L3's roster overwrote L2's. This meant eliminations applied by L2 (in `processNightSummary`) could be lost while L3 was alive, game rewards had to be dual-written to both L2 and L3, and internal L3 fields (`nextWakeup`, `pendingElimination`, `dmCharsByPlayer`, etc.) leaked to clients.
+*   **Decision:** Make L2's roster the single authority for SYSTEM.SYNC. Add `applyFactToRoster` action to L2's `FACT.RECORD` handler — applies silver mutations from facts (DM_SENT: -1, SILVER_TRANSFER: ±amount). L1 builds an explicit SYNC payload (`gameId`, `dayIndex`, `roster`, `manifest`, `activeVotingCartridge`, `chatLog`, `activeGameCartridge`) instead of blind-spreading. Storage no longer saves L3 roster — L2's snapshot is authoritative. L3 keeps its local roster for guard accuracy (DM cost checks, transfer validation).
+*   **Consequences:**
+    *   L2's roster is always authoritative — no more drift between L2 and L3 rosters.
+    *   SYNC payload is explicit — no internal fields leak to clients.
+    *   `lastKnownRoster` cache removed from L1 — simplifies restoration logic.
+    *   Tiny timing gap (one microtask) between L3 deduction and L2's FACT.RECORD processing — imperceptible to clients.
+
+## [ADR-036] stopChild for Cartridge Actor Cleanup
+*   **Date:** 2026-02-11
+*   **Status:** Accepted
+*   **Context:** `cleanupGameCartridge` and `cleanupVotingCartridge` nulled the context ref but didn't stop the spawned actor. XState v5 keeps completed/stopped actors in `snapshot.children` — L1's projection extracted stale cartridge context and kept sending it to clients after the game/vote ended.
+*   **Decision:** Use `enqueueActions` with `stopChild('activeGameCartridge')` / `stopChild('activeVotingCartridge')` followed by `assign({ ref: null })`. Also added `INTERNAL.END_GAME` handler to the realtime trivia machine (`question` and `roundResult` states → `scoreboard` final state) so admin can force-end it.
+*   **Consequences:**
+    *   Spawned actors are properly removed from L3's children map on cleanup.
+    *   L1 projection returns null for game/vote cartridge after phase ends.
+    *   Realtime trivia can now be force-ended via timeline or admin command.

@@ -15,7 +15,7 @@ interface GameState {
   manifest: any;
   serverState: string | null;
   playerId: string | null;
-  activeCartridge: any | null;
+  activeVotingCartridge: any | null;
   activeGameCartridge: any | null;
   dmRejection: { reason: DmRejectionReason; timestamp: number } | null;
   tickerMessages: TickerMessage[];
@@ -66,7 +66,7 @@ export const useGameStore = create<GameState>((set) => ({
   manifest: null,
   serverState: null,
   playerId: null,
-  activeCartridge: null,
+  activeVotingCartridge: null,
   activeGameCartridge: null,
   dmRejection: null,
   tickerMessages: [],
@@ -81,7 +81,7 @@ export const useGameStore = create<GameState>((set) => ({
     chatLog: data.context?.chatLog?.length ? data.context.chatLog : state.chatLog,
     manifest: data.context?.manifest || null,
     serverState: data.state || null,
-    activeCartridge: data.context?.activeCartridge ?? null,
+    activeVotingCartridge: data.context?.activeVotingCartridge ?? null,
     activeGameCartridge: data.context?.activeGameCartridge ?? null,
   })),
 

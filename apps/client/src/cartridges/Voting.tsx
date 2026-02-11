@@ -15,15 +15,15 @@ interface VotingPanelProps {
 }
 
 export default function VotingPanel({ engine }: VotingPanelProps) {
-  const activeCartridge = useGameStore((s) => s.activeCartridge);
+  const activeVotingCartridge = useGameStore((s) => s.activeVotingCartridge);
   const playerId = useGameStore((s) => s.playerId);
   const roster = useGameStore((s) => s.roster);
 
-  if (!activeCartridge) return null;
+  if (!activeVotingCartridge) return null;
 
-  const common = { cartridge: activeCartridge, playerId: playerId!, roster, engine };
+  const common = { cartridge: activeVotingCartridge, playerId: playerId!, roster, engine };
 
-  switch (activeCartridge.voteType) {
+  switch (activeVotingCartridge.voteType) {
     case 'MAJORITY':
       return <MajorityVoting {...common} />;
     case 'EXECUTIONER':
@@ -42,7 +42,7 @@ export default function VotingPanel({ engine }: VotingPanelProps) {
       return (
         <div className="mx-4 my-2 p-4 rounded-xl bg-skin-surface border border-skin-base text-center">
           <span className="text-sm font-mono text-skin-muted">
-            UNKNOWN_VOTE_TYPE: {activeCartridge.voteType}
+            UNKNOWN_VOTE_TYPE: {activeVotingCartridge.voteType}
           </span>
         </div>
       );
