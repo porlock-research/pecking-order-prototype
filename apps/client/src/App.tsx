@@ -3,9 +3,11 @@ import { useGameStore } from './store/useGameStore';
 import { useGameEngine } from './hooks/useGameEngine';
 import { ChatRoom } from './components/ChatRoom';
 import { DirectMessages } from './components/DirectMessages';
+import { NewsTicker } from './components/NewsTicker';
 import VotingPanel from './cartridges/Voting';
 import GamePanel from './cartridges/GamePanel';
-import { formatState } from './utils/formatState';
+import { formatState, formatPhase } from './utils/formatState';
+import { Coins, MessageCircle, Mail, Users } from 'lucide-react';
 
 export default function App() {
   const [gameId, setGameId] = useState<string | null>(null);
@@ -76,48 +78,71 @@ export default function App() {
   );
 }
 
+function RosterRow({ player, playerId }: { player: any; playerId: string }) {
+  const isMe = player.id === playerId;
+  return (
+    <li
+      className={`flex items-center justify-between p-3 rounded-xl border transition-all
+        ${isMe
+          ? 'bg-skin-gold/10 border-skin-gold/30'
+          : 'bg-glass border-white/[0.06] hover:border-white/20'
+        }`}
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-gold avatar-ring">
+          {player.personaName?.charAt(0)?.toUpperCase() || '?'}
+        </div>
+        <div className="flex flex-col">
+          <span className="font-bold text-sm">
+            {player.personaName}
+            {isMe && <span className="ml-2 badge-skew text-[9px]">YOU</span>}
+          </span>
+          <span className="text-[10px] font-mono text-skin-dim uppercase tracking-wider">{player.status}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 font-mono text-sm text-skin-gold font-bold">
+        <Coins size={12} className="text-gray-300" />
+        {player.silver}
+      </div>
+    </li>
+  );
+}
+
 function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
   const { dayIndex, roster, serverState } = useGameStore();
   const engine = useGameEngine(gameId, playerId);
-  const [activeTab, setActiveTab] = useState<'chat' | 'dms' | 'roster' | 'settings'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'dms' | 'roster'>('chat');
   const hasDms = useGameStore(s => s.chatLog.some(m => m.channel === 'DM'));
 
   const me = roster[playerId];
+  const aliveCount = Object.values(roster).filter((p: any) => p.status === 'ALIVE').length;
 
   return (
     <div className="fixed inset-0 flex flex-col bg-skin-fill text-skin-base font-body overflow-hidden bg-grid-pattern selection:bg-skin-gold selection:text-skin-inverted">
 
       {/* Header */}
-      <header className="shrink-0 bg-skin-panel/90 backdrop-blur-md border-b border-white/[0.06] px-4 py-3 flex items-center justify-between shadow-card z-50">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono bg-skin-gold/10 border border-skin-gold/30 rounded-pill px-3 py-0.5 text-skin-gold uppercase tracking-widest">
-              Day {dayIndex}
-            </span>
-            <span className={`w-2 h-2 rounded-full ${serverState === 'active' ? 'bg-skin-green pulse-live' : 'bg-skin-danger'}`} />
-          </div>
-          <span className="text-sm font-bold text-skin-gold tracking-tight font-mono text-glow">
-            [{formatState(serverState).toUpperCase()}]
+      <header className="shrink-0 bg-skin-panel/90 backdrop-blur-md border-b border-white/[0.06] px-4 py-2.5 flex items-center justify-between shadow-card z-50">
+        {/* Left: Title + Phase */}
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-black font-display tracking-tighter text-skin-gold italic text-glow leading-none">
+            PECKING ORDER
+          </h1>
+          <span className="badge-skew text-[9px] py-0.5 px-2">
+            {formatPhase(serverState)}
           </span>
         </div>
 
+        {/* Right: Online pill + Silver */}
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-pill bg-skin-green/10 border border-skin-green/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-skin-green animate-pulse-live" />
+            <span className="text-[9px] font-mono text-skin-green uppercase tracking-widest font-bold">Online</span>
+          </div>
           {me && (
-            <>
-              <div className="flex flex-col items-end">
-                <span className="text-xs font-bold text-skin-base">{me.personaName}</span>
-                <span className="text-[10px] font-mono text-skin-dim">ID: {playerId}</span>
-              </div>
-              <div className={`h-8 w-8 rounded-full bg-skin-panel border-2 border-skin-gold/40 overflow-hidden relative avatar-ring ${serverState === 'active' ? 'pulse-live' : ''}`}>
-                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold font-mono text-skin-gold bg-skin-gold/10">
-                   {me.personaName?.charAt(0)?.toUpperCase() || '?'}
-                </div>
-              </div>
-              <div className="flex items-center px-2.5 py-1 rounded-pill bg-skin-gold/10 border border-skin-gold/20">
-                <span className="text-[10px] font-mono text-skin-dim mr-1.5 uppercase">Ag</span>
-                <span className="font-mono font-bold text-skin-gold">{me.silver}</span>
-              </div>
-            </>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-skin-gold/10 border border-skin-gold/20">
+              <Coins size={12} className="text-gray-300" />
+              <span className="font-mono font-bold text-skin-gold text-sm">{me.silver}</span>
+            </div>
           )}
         </div>
       </header>
@@ -130,70 +155,54 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
           <GamePanel engine={engine} />
         </div>
 
-        <div className="flex-1 overflow-hidden relative">
-        {activeTab === 'chat' && <ChatRoom engine={engine} />}
+        {/* Two-panel desktop layout */}
+        <div className="flex-1 overflow-hidden flex">
 
-        {activeTab === 'dms' && <DirectMessages engine={engine} />}
-
-        {activeTab === 'roster' && (
-          <div className="absolute inset-0 overflow-y-auto p-4 scroll-smooth">
-            <div className="space-y-4 max-w-md mx-auto animate-fade-in">
-              <h2 className="text-xl font-black text-skin-base tracking-tighter border-b border-white/10 pb-2 mb-4 font-display">
-                ACTIVE_PLAYERS
-              </h2>
-              <ul className="space-y-2">
-                {Object.values(roster).map(p => {
-                  const isMe = p.id === playerId;
-                  return (
-                    <li
-                      key={p.id}
-                      className={`flex items-center justify-between p-3 rounded-xl border transition-all
-                        ${isMe
-                          ? 'bg-skin-gold/10 border-skin-gold/30'
-                          : 'bg-glass border-white/[0.06] hover:border-white/20'
-                        }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-gold avatar-ring">
-                          {p.personaName?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-sm">
-                            {p.personaName}
-                            {isMe && <span className="ml-2 badge-skew text-[9px]">YOU</span>}
-                          </span>
-                          <span className="text-[10px] font-mono text-skin-dim uppercase tracking-wider">{p.status}</span>
-                        </div>
-                      </div>
-                      <div className="font-mono text-sm text-skin-gold font-bold">
-                        {p.silver} <span className="text-[10px] text-skin-dim font-normal">Ag</span>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
+          {/* Desktop Sidebar: THE CAST */}
+          <aside className="hidden lg:flex lg:flex-col w-72 shrink-0 border-r border-white/[0.06] bg-skin-panel/20">
+            <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
+              <h2 className="text-xs font-black text-skin-base uppercase tracking-widest font-display">The Cast</h2>
+              <span className="text-[10px] font-mono bg-skin-gold/10 border border-skin-gold/30 rounded-pill px-2 py-0.5 text-skin-gold">
+                {aliveCount}
+              </span>
             </div>
-          </div>
-        )}
+            <ul className="flex-1 overflow-y-auto p-3 space-y-2">
+              {Object.values(roster).map((p: any) => (
+                <RosterRow key={p.id} player={p} playerId={playerId} />
+              ))}
+            </ul>
+          </aside>
 
-        {activeTab === 'settings' && (
-          <div className="absolute inset-0 overflow-y-auto p-4 flex flex-col items-center justify-center text-skin-dim space-y-4">
-            <span className="font-mono text-3xl text-skin-dim opacity-40">[--]</span>
-            <p className="font-mono text-sm uppercase tracking-widest">System Modules Offline</p>
+          {/* Main content area */}
+          <div className="flex-1 overflow-hidden relative">
+            {activeTab === 'chat' && <ChatRoom engine={engine} />}
+            {activeTab === 'dms' && <DirectMessages engine={engine} />}
+            {activeTab === 'roster' && (
+              <div className="absolute inset-0 overflow-y-auto p-4 scroll-smooth lg:hidden">
+                <div className="space-y-4 max-w-md mx-auto animate-fade-in">
+                  <h2 className="text-xl font-black text-skin-base tracking-tighter border-b border-white/10 pb-2 mb-4 font-display">
+                    THE CAST
+                  </h2>
+                  <ul className="space-y-2">
+                    {Object.values(roster).map((p: any) => (
+                      <RosterRow key={p.id} player={p} playerId={playerId} />
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
-        )}
         </div>
 
       </main>
 
-      {/* Footer Nav */}
-      <footer className="shrink-0 bg-skin-panel/90 backdrop-blur-md border-t border-white/[0.06] pb-safe">
-        <nav className="flex items-stretch h-16">
+      {/* Footer Nav (mobile only) */}
+      <footer className="shrink-0 bg-skin-panel/90 backdrop-blur-md border-t border-white/[0.06] pb-safe lg:hidden">
+        <nav className="flex items-stretch h-14">
           {([
-            { key: 'chat' as const, label: 'Comms', icon: '#', accent: 'text-skin-gold', bar: 'bg-skin-gold' },
-            { key: 'dms' as const, label: 'DMs', icon: '@', accent: 'text-skin-pink', bar: 'bg-skin-pink' },
-            { key: 'roster' as const, label: 'Roster', icon: '::', accent: 'text-skin-gold', bar: 'bg-skin-gold' },
-            { key: 'settings' as const, label: 'System', icon: '*', accent: 'text-skin-gold', bar: 'bg-skin-gold' },
+            { key: 'chat' as const, label: 'Comms', Icon: MessageCircle, accent: 'text-skin-gold', bar: 'bg-skin-gold' },
+            { key: 'dms' as const, label: 'DMs', Icon: Mail, accent: 'text-skin-pink', bar: 'bg-skin-pink' },
+            { key: 'roster' as const, label: 'Roster', Icon: Users, accent: 'text-skin-gold', bar: 'bg-skin-gold' },
           ]).map(tab => {
             const isActive = activeTab === tab.key;
             const hasBadge = tab.key === 'dms' && !isActive && hasDms;
@@ -206,7 +215,7 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
                 onClick={() => setActiveTab(tab.key)}
               >
                 <span className="relative">
-                  <span className={`font-mono ${isActive ? 'text-xl font-bold' : 'text-lg'}`}>{tab.icon}</span>
+                  <tab.Icon size={isActive ? 20 : 18} />
                   {hasBadge && <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-skin-pink" />}
                 </span>
                 <span className={`text-[10px] uppercase tracking-widest ${isActive ? 'font-bold' : ''}`}>{tab.label}</span>
@@ -216,6 +225,9 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
           })}
         </nav>
       </footer>
+
+      {/* News Ticker */}
+      <NewsTicker />
 
       {/* Admin God Button (Bottom Right Floating) */}
       <div className="fixed bottom-24 right-4 z-50">

@@ -95,7 +95,7 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
           </span>
         </div>
         <div className="flex items-center gap-1.5 text-xs font-mono text-skin-gold">
-          <span className="text-skin-dim">Ag:</span>
+          <span className="text-skin-dim">Silver:</span>
           <span className="font-bold">{scores[playerId] || 0}</span>
         </div>
       </div>
@@ -182,7 +182,7 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
                     {myResult.speedBonus > 0 && (
                       <span className="text-xs font-mono text-skin-gold">+{myResult.speedBonus} speed</span>
                     )}
-                    <span className="text-xs font-mono font-bold text-skin-green">= +{myResult.silver} Ag</span>
+                    <span className="text-xs font-mono font-bold text-skin-green">= +{myResult.silver} silver</span>
                   </div>
                 </div>
               ) : (
@@ -238,7 +238,7 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-bold text-skin-green">
-                      +{reward} Ag
+                      +{reward} silver
                     </span>
                   </div>
                 </div>

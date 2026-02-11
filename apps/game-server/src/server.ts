@@ -2,6 +2,7 @@ import { Server, routePartykitRequest, Connection, ConnectionContext } from "par
 import { createActor, ActorRefFrom } from "xstate";
 import { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Scheduler } from "partywhen";
+import type { TickerMessage } from "@pecking-order/shared-types";
 
 // Persistence Key
 const STORAGE_KEY = "game_state_snapshot";
@@ -22,6 +23,10 @@ export class GameServer extends Server<Env> {
   // Cache L3 data so it survives L3 actor destruction (e.g. nightSummary transition)
   private lastKnownChatLog: any[] = [];
   private lastKnownRoster: any = null;
+
+  // Ticker state tracking
+  private lastBroadcastState: string = '';
+  private lastKnownDmsOpen: boolean = false;
 
   // The Scheduler (Composition)
   private scheduler: Scheduler<Env>;
@@ -99,6 +104,10 @@ export class GameServer extends Server<Env> {
           ).run().catch(err => {
             console.error("[L1] 💥 Failed to write to Journal:", err);
           });
+
+          // Ticker: convert fact to humanized message
+          const tickerMsg = this.factToTicker(fact);
+          if (tickerMsg) this.broadcastTicker(tickerMsg);
         },
         sendDmRejection: ({ event }: any) => {
           if (event.type !== 'DM.REJECTED') return;
@@ -255,6 +264,26 @@ export class GameServer extends Server<Env> {
           context: { ...baseContext, chatLog: playerChatLog, activeGameCartridge }
         }));
       }
+
+      // E. Ticker: detect state transitions
+      const currentStateStr = JSON.stringify(snapshot.value);
+      if (currentStateStr !== this.lastBroadcastState) {
+        const tickerMsg = this.stateToTicker(currentStateStr, snapshot.context);
+        if (tickerMsg) this.broadcastTicker(tickerMsg);
+        this.lastBroadcastState = currentStateStr;
+      }
+
+      // F. Ticker: detect DM open/close changes
+      const currentDmsOpen = l3Context.dmsOpen ?? false;
+      if (currentDmsOpen !== this.lastKnownDmsOpen) {
+        this.lastKnownDmsOpen = currentDmsOpen;
+        this.broadcastTicker({
+          id: crypto.randomUUID(),
+          text: currentDmsOpen ? 'DMs are now open!' : 'DMs are now closed.',
+          category: 'SYSTEM',
+          timestamp: Date.now(),
+        });
+      }
     });
 
     this.actor.start();
@@ -322,6 +351,77 @@ export class GameServer extends Server<Env> {
     }
 
     return new Response("Not Found", { status: 404 });
+  }
+
+  // --- Ticker Pipeline ---
+
+  private broadcastTicker(msg: TickerMessage) {
+    const payload = JSON.stringify({ type: 'TICKER.UPDATE', message: msg });
+    for (const ws of this.getConnections()) {
+      ws.send(payload);
+    }
+  }
+
+  private factToTicker(fact: any): TickerMessage | null {
+    const roster = this.actor?.getSnapshot()?.context.roster || {};
+    const name = (id: string) => roster[id]?.personaName || id;
+
+    switch (fact.type) {
+      case 'SILVER_TRANSFER':
+        return {
+          id: crypto.randomUUID(),
+          text: `${name(fact.actorId)} sent ${fact.payload?.amount || '?'} silver to ${name(fact.targetId)}`,
+          category: 'SOCIAL',
+          timestamp: fact.timestamp,
+        };
+      case 'GAME_RESULT': {
+        const players = fact.payload?.players;
+        if (players) {
+          const sorted = Object.entries(players)
+            .map(([pid, data]: [string, any]) => ({ pid, silver: data.silverReward || 0 }))
+            .sort((a, b) => b.silver - a.silver);
+          if (sorted.length > 0 && sorted[0].silver > 0) {
+            return {
+              id: crypto.randomUUID(),
+              text: `${name(sorted[0].pid)} earned ${sorted[0].silver} silver in today's game!`,
+              category: 'GAME',
+              timestamp: fact.timestamp,
+            };
+          }
+        }
+        return null;
+      }
+      case 'ELIMINATION':
+        return {
+          id: crypto.randomUUID(),
+          text: `${name(fact.targetId || fact.actorId)} has been eliminated!`,
+          category: 'ELIMINATION',
+          timestamp: fact.timestamp,
+        };
+      default:
+        return null;
+    }
+  }
+
+  private stateToTicker(stateStr: string, context: any): TickerMessage | null {
+    const dayIndex = context?.dayIndex || 0;
+
+    if (stateStr.includes('nightSummary')) {
+      return { id: crypto.randomUUID(), text: 'Night has fallen...', category: 'SYSTEM', timestamp: Date.now() };
+    }
+    if (stateStr.includes('morningBriefing')) {
+      return { id: crypto.randomUUID(), text: `Day ${dayIndex} has begun!`, category: 'SYSTEM', timestamp: Date.now() };
+    }
+    if (stateStr.includes('voting')) {
+      return { id: crypto.randomUUID(), text: 'Voting has begun!', category: 'VOTE', timestamp: Date.now() };
+    }
+    if (stateStr.includes('dailyGame')) {
+      return { id: crypto.randomUUID(), text: "Today's game is starting!", category: 'GAME', timestamp: Date.now() };
+    }
+    if (stateStr.includes('gameOver')) {
+      return { id: crypto.randomUUID(), text: 'The game is over!', category: 'SYSTEM', timestamp: Date.now() };
+    }
+    return null;
   }
 
   /**

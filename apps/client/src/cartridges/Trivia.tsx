@@ -172,7 +172,7 @@ function RoundResult({
               {result.speedBonus > 0 && (
                 <span className="text-xs font-mono text-skin-gold">+{result.speedBonus} speed</span>
               )}
-              <span className="text-xs font-mono font-bold text-skin-green">= +{result.silver} Ag</span>
+              <span className="text-xs font-mono font-bold text-skin-green">= +{result.silver} silver</span>
             </div>
           </div>
         ) : (
@@ -281,7 +281,7 @@ export default function Trivia({ cartridge, playerId, roster, engine }: TriviaPr
         </div>
         {status !== 'NOT_STARTED' && (
           <div className="flex items-center gap-1.5 text-xs font-mono text-skin-gold">
-            <span className="text-skin-dim">Ag:</span>
+            <span className="text-skin-dim">Silver:</span>
             <span className="font-bold">{score}</span>
           </div>
         )}
@@ -392,18 +392,18 @@ export default function Trivia({ cartridge, playerId, roster, engine }: TriviaPr
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
               <div className="flex justify-between text-skin-dim">
                 <span>Base Score</span>
-                <span>{correctCount} &times; 2 = <span className="text-skin-base font-bold">{baseSilver} Ag</span></span>
+                <span>{correctCount} &times; 2 = <span className="text-skin-base font-bold">{baseSilver} silver</span></span>
               </div>
               {speedBonuses > 0 && (
                 <div className="flex justify-between text-skin-dim">
                   <span>Speed Bonuses</span>
-                  <span className="text-skin-gold font-bold">+{speedBonuses} Ag</span>
+                  <span className="text-skin-gold font-bold">+{speedBonuses} silver</span>
                 </div>
               )}
               {isPerfect && (
                 <div className="flex justify-between">
                   <span className="text-skin-gold gold-glow">Perfect Bonus</span>
-                  <span className="text-skin-gold font-bold gold-glow">+{PERFECT_BONUS_AMT} Ag</span>
+                  <span className="text-skin-gold font-bold gold-glow">+{PERFECT_BONUS_AMT} silver</span>
                 </div>
               )}
             </div>
@@ -413,7 +413,7 @@ export default function Trivia({ cartridge, playerId, roster, engine }: TriviaPr
           <motion.div variants={slideUp} className="text-center py-2">
             <p className="text-xs font-mono text-skin-dim uppercase tracking-widest mb-1">Silver Earned</p>
             <p className="text-4xl font-bold font-mono text-skin-gold text-glow">
-              +<AnimatedCounter target={silverReward} duration={1500} onComplete={fireConfetti} /> Ag
+              +<AnimatedCounter target={silverReward} duration={1500} onComplete={fireConfetti} /> silver
             </p>
             <p className="text-xs text-skin-dim mt-1">
               {correctCount}/{totalRounds} correct

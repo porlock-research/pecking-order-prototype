@@ -302,3 +302,21 @@ body {
 .gold-glow {
   animation: gold-glow 2s ease-in-out infinite;
 }
+
+/* Slide In Right: ticker messages entering */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.slide-in-right {
+  animation: slide-in-right 400ms ease-out both;
+}
+
+/* Slide Out Left: ticker messages exiting */
+@keyframes slide-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-40px); }
+}
+.slide-out-left {
+  animation: slide-out-left 300ms ease-in both;
+}

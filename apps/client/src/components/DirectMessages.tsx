@@ -12,7 +12,7 @@ const REJECTION_LABELS: Record<string, string> = {
   DMS_CLOSED: 'DMs are currently closed',
   PARTNER_LIMIT: "You've reached your daily conversation limit (3)",
   CHAR_LIMIT: 'Daily character limit reached',
-  INSUFFICIENT_SILVER: 'Not enough silver (costs 1 Ag)',
+  INSUFFICIENT_SILVER: 'Not enough silver (costs 1 silver)',
   TARGET_ELIMINATED: 'This player has been eliminated',
   SELF_DM: 'Cannot message yourself',
 };
@@ -280,7 +280,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
               No Conversations Yet
             </span>
             <p className="text-[10px] text-skin-dim/60 font-mono max-w-[200px] text-center">
-              Start a private message with any active player. Costs 1 Ag per message.
+              Start a private message with any active player. Costs 1 silver per message.
             </p>
           </div>
         )}

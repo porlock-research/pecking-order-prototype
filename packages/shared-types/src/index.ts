@@ -204,3 +204,12 @@ export interface DmRejectedEvent {
   reason: DmRejectionReason;
   senderId: string;
 }
+
+// --- Ticker (News Feed) ---
+
+export interface TickerMessage {
+  id: string;
+  text: string;
+  category: 'SOCIAL' | 'GAME' | 'VOTE' | 'ELIMINATION' | 'SYSTEM';
+  timestamp: number;
+}

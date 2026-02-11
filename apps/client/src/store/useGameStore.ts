@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SocialPlayer, ChatMessage, DmRejectionReason } from '@pecking-order/shared-types';
+import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage } from '@pecking-order/shared-types';
 
 interface DmThread {
   partnerId: string;
@@ -18,10 +18,12 @@ interface GameState {
   activeCartridge: any | null;
   activeGameCartridge: any | null;
   dmRejection: { reason: DmRejectionReason; timestamp: number } | null;
+  tickerMessages: TickerMessage[];
 
   // Actions
   sync: (data: any) => void;
   addChatMessage: (msg: ChatMessage) => void;
+  addTickerMessage: (msg: TickerMessage) => void;
   setPlayerId: (id: string) => void;
   setDmRejection: (reason: DmRejectionReason) => void;
   clearDmRejection: () => void;
@@ -64,6 +66,7 @@ export const useGameStore = create<GameState>((set) => ({
   activeCartridge: null,
   activeGameCartridge: null,
   dmRejection: null,
+  tickerMessages: [],
 
   sync: (data) => set((state) => ({
     gameId: data.context?.gameId || state.gameId,
@@ -80,6 +83,10 @@ export const useGameStore = create<GameState>((set) => ({
 
   addChatMessage: (msg) => set((state) => ({
     chatLog: [...state.chatLog, msg]
+  })),
+
+  addTickerMessage: (msg) => set((state) => ({
+    tickerMessages: [...state.tickerMessages, msg].slice(-20)
   })),
 
   setPlayerId: (id) => set({ playerId: id }),

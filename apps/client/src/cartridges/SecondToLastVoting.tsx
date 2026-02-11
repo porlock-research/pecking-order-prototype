@@ -73,7 +73,7 @@ export default function SecondToLastVoting({ cartridge, playerId, roster }: Seco
                     <span className="text-[10px] font-mono text-skin-danger uppercase animate-flash-update">ELIMINATED</span>
                   )}
                 </div>
-                <span className="font-mono text-xs text-skin-dim relative z-10">{entry.silver} Ag</span>
+                <span className="font-mono text-xs text-skin-dim relative z-10">{entry.silver} silver</span>
               </div>
             );
           })}

@@ -61,6 +61,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
   return (
     <div className="flex flex-col h-full relative">
 
+      {/* Sub-header */}
+      <div className="shrink-0 px-4 py-2.5 border-b border-white/[0.06] bg-skin-panel/30">
+        <span className="text-xs font-black text-skin-base uppercase tracking-widest font-display">Green Room</span>
+      </div>
+
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth pb-20" ref={scrollRef}>
         {displayedMessages.length === 0 && (
@@ -84,29 +89,34 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
                 key={msg.id}
                 className={`flex flex-col max-w-[85%] ${isMe ? 'ml-auto items-end' : 'mr-auto items-start'} ${isOptimistic ? 'shimmer' : ''} slide-up-in`}
             >
-              {/* Sender Name (Only for others) */}
+              {/* Sender Name + Time (Only for others) */}
               {!isMe && (
-                <span className="text-[11px] font-bold text-skin-dim mb-1 ml-1 uppercase tracking-wider">
-                  {sender?.personaName || 'Unknown'}
-                </span>
+                <div className="flex items-center gap-2 mb-1 ml-1">
+                  <span className="text-[11px] font-bold text-skin-dim uppercase tracking-wider">
+                    {sender?.personaName || 'Unknown'}
+                  </span>
+                  <span className="text-[9px] font-mono text-skin-dim/50">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               )}
 
               {/* Message Bubble */}
               <div
                 className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words relative group
                   ${isMe
-                    ? 'bg-skin-gold text-skin-inverted rounded-tr-sm shadow-glow'
-                    : 'bg-glass border border-white/[0.06] text-skin-base rounded-tl-sm'
+                    ? 'bg-skin-pink text-white rounded-tr-sm'
+                    : 'bg-white/10 border border-white/[0.08] text-skin-base rounded-tl-sm'
                   }`}
               >
                 {msg.content}
 
-                {/* Timestamp (Hover) */}
-                <span className={`absolute -bottom-5 text-[9px] font-mono text-skin-dim opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap
-                    ${isMe ? 'right-0' : 'left-0'}
-                `}>
+                {/* Timestamp (Hover — own messages) */}
+                {isMe && (
+                  <span className="absolute -bottom-5 right-0 text-[9px] font-mono text-skin-dim opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+                  </span>
+                )}
               </div>
             </div>
           );
@@ -120,18 +130,16 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Broadcast message..."
+            placeholder="Spill the tea..."
             maxLength={280}
-            className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-sm text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-gold focus:border-transparent focus:shadow-[0_0_15px_var(--po-gold-dim)] placeholder:text-skin-dim transition-all"
+            className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-sm text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:border-transparent focus:shadow-[0_0_15px_var(--po-pink-dim)] placeholder:text-skin-dim transition-all"
           />
           <button
             type="submit"
             disabled={!inputValue.trim()}
-            className="bg-skin-gold text-skin-inverted rounded-full p-3 font-bold hover:brightness-110 active:translate-y-[2px] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-btn"
+            className="bg-skin-pink text-white rounded-full px-4 py-3 font-display font-bold text-xs uppercase tracking-wider hover:brightness-110 active:translate-y-[1px] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-              <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-            </svg>
+            SHOUT &gt;
           </button>
         </form>
       </div>

@@ -135,6 +135,8 @@ module.exports = {
                 'fade-in': 'fade-in 200ms ease-out both',
                 'elimination-reveal': 'elimination-reveal 600ms ease-out forwards',
                 'count-pop': 'count-pop 300ms ease-out',
+                'slide-in-right': 'slide-in-right 400ms ease-out both',
+                'slide-out-left': 'slide-out-left 300ms ease-in both',
             },
             keyframes: {
                 'pulse-live': {
@@ -179,6 +181,14 @@ module.exports = {
                     '0%': { transform: 'scale(1)' },
                     '50%': { transform: 'scale(1.4)' },
                     '100%': { transform: 'scale(1)' },
+                },
+                'slide-in-right': {
+                    from: { opacity: '0', transform: 'translateX(40px)' },
+                    to: { opacity: '1', transform: 'translateX(0)' },
+                },
+                'slide-out-left': {
+                    from: { opacity: '1', transform: 'translateX(0)' },
+                    to: { opacity: '0', transform: 'translateX(-40px)' },
                 },
             },
         },
