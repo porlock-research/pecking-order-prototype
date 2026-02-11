@@ -317,3 +317,26 @@ This document tracks significant architectural decisions, their context, and con
     *   Consistent visual language across the app.
     *   Tree-shaking ensures only imported icons ship in the bundle.
     *   Future icons (Skull for elimination, Shield for shield voting, Crown for winner) are available without additional dependencies.
+
+## [ADR-033] Per-Player Incremental Game Rewards for Async Games
+*   **Date:** 2026-02-11
+*   **Status:** Accepted
+*   **Context:** ADR-029 modeled game cartridges after voting cartridges: one batch result at the end via `CARTRIDGE.GAME_RESULT`. This works for synchronous games (REALTIME_TRIVIA), but async games like TRIVIA have a fundamental problem: each player finishes independently, yet silver only updates when ALL players complete (or `INTERNAL.END_GAME` fires). Player A finishes 5 questions, sees a celebration screen, but their silver count doesn't change until the game machine reaches its final state.
+*   **Decision:** Async game machines emit `CARTRIDGE.PLAYER_GAME_RESULT { playerId, silverReward }` via `sendParent` as each player completes. This flows through L3 (apply to local roster + forward) → L2 (apply to roster + emit `FACT.RECORD`) → L1 (D1 journal + ticker). The trivia machine uses `enqueueActions` to conditionally `raise` internal `PLAYER_COMPLETED` and `ALL_COMPLETE` events after processing each answer. Game-end output only includes incomplete players (partial credit); completed players are excluded since they were already rewarded. Sync games (REALTIME_TRIVIA) remain unchanged — batch rewards at end.
+*   **Consequences:**
+    *   Silver updates in the client header immediately when an async game player finishes.
+    *   Per-player ticker messages ("X earned Y silver in today's game!") fire as players complete.
+    *   D1 journal has individual `PLAYER_GAME_RESULT` entries (more granular than the batch `GAME_RESULT`).
+    *   The dual-result contract is documented in `_contract.ts`.
+    *   Game cartridges now have two patterns: async (incremental `sendParent` + partial-credit output) and sync (batch output only).
+
+## [ADR-034] TICKER.DEBUG WebSocket Namespace for Server State Observability
+*   **Date:** 2026-02-11
+*   **Status:** Accepted
+*   **Context:** L3 crashes were invisible — no client-side indication, no structured logging. During debug sessions, it was unclear what state L2 and L3 were in, what vote/game type was active, or whether DMs were open.
+*   **Decision:** Emit `TICKER.DEBUG { summary }` WebSocket messages on every state change (deduplicated). Summary includes: day number, L2 state (flattened dot path), vote type, game type, DMs status, L3 main stage. Client stores as `debugTicker` (separate from game ticker history) and renders as a green marquee strip above the main ticker. Server also logs `[L1] 🔍 L2=... | L3=...` on every subscription fire, with try/catch around L3 and cartridge snapshot extraction.
+*   **Consequences:**
+    *   L2/L3 state is always visible in the client during debug sessions.
+    *   L3 crashes produce explicit error logs (`[L1] 💥 L3 snapshot extraction FAILED`).
+    *   Debug ticker is a separate WebSocket message type — doesn't pollute game ticker history or storage.
+    *   Late-joining clients receive the latest debug summary on connect.
