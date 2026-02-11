@@ -28,6 +28,7 @@ export class GameServer extends Server<Env> {
   private lastBroadcastState: string = '';
   private lastKnownDmsOpen: boolean = false;
   private tickerHistory: TickerMessage[] = [];
+  private lastDebugSummary: string = '';
 
   // The Scheduler (Composition)
   private scheduler: Scheduler<Env>;
@@ -70,7 +71,7 @@ export class GameServer extends Server<Env> {
     // Define the D1 Writer Implementation
     // Only override persistFactToD1 — updateJournalTimestamp (assign) stays in L2
     // to ensure context changes trigger the subscription for SYSTEM.SYNC broadcasts
-    const JOURNALABLE_TYPES = ['SILVER_TRANSFER', 'VOTE_CAST', 'ELIMINATION', 'DM_SENT', 'POWER_USED', 'GAME_RESULT'];
+    const JOURNALABLE_TYPES = ['SILVER_TRANSFER', 'VOTE_CAST', 'ELIMINATION', 'DM_SENT', 'POWER_USED', 'GAME_RESULT', 'PLAYER_GAME_RESULT'];
     const machineWithPersistence = orchestratorMachine.provide({
       actions: {
         persistFactToD1: ({ event }) => {
@@ -172,15 +173,35 @@ export class GameServer extends Server<Env> {
       
       // Extract L3 Context for Persistence
       let l3Context: any = {};
+      let l3Snapshot: any = null;
       const l3Ref = snapshot.children['l3-session'];
       if (l3Ref) {
-          const l3Snapshot = l3Ref.getSnapshot();
+        try {
+          l3Snapshot = l3Ref.getSnapshot();
           if (l3Snapshot) {
             l3Context = l3Snapshot.context;
             // Cache L3 data while L3 is alive
             this.lastKnownChatLog = l3Context.chatLog || [];
             this.lastKnownRoster = l3Context.roster || null;
+          } else {
+            console.warn('[L1] ⚠️ L3 ref exists but getSnapshot() returned null');
           }
+        } catch (err) {
+          console.error('[L1] 💥 L3 snapshot extraction FAILED — L3 may have crashed:', err);
+        }
+      }
+
+      // Debug logging: L2/L3 state summary
+      const l2StateStr = GameServer.flattenState(snapshot.value);
+      const l3StateStr = l3Snapshot ? GameServer.flattenState(l3Snapshot.value) : 'ABSENT';
+      console.log(`[L1] 🔍 L2=${l2StateStr} | L3=${l3StateStr} | Day=${snapshot.context.dayIndex}`);
+
+      // Debug ticker: broadcast state summary to clients
+      const debugSummary = this.buildDebugSummary(snapshot, l3Snapshot);
+      if (debugSummary !== this.lastDebugSummary) {
+        this.lastDebugSummary = debugSummary;
+        console.log(`[L1] 📺 Debug: ${debugSummary}`);
+        this.broadcastDebugTicker(debugSummary);
       }
 
       // A. Save FULL State to Disk (L2 + L3 critical data)
@@ -213,17 +234,21 @@ export class GameServer extends Server<Env> {
       // C. Extract voting + game cartridge context for client rendering
       let activeCartridge: any = null;
       let rawGameCartridge: any = null;
-      const l3RefForCartridge = snapshot.children['l3-session'];
-      if (l3RefForCartridge) {
-        const l3Snap = l3RefForCartridge.getSnapshot();
-        const cartridgeRef = (l3Snap?.children as any)?.['activeCartridge'];
-        if (cartridgeRef) {
-          activeCartridge = cartridgeRef.getSnapshot()?.context || null;
+      try {
+        const l3RefForCartridge = snapshot.children['l3-session'];
+        if (l3RefForCartridge) {
+          const l3Snap = l3RefForCartridge.getSnapshot();
+          const cartridgeRef = (l3Snap?.children as any)?.['activeCartridge'];
+          if (cartridgeRef) {
+            activeCartridge = cartridgeRef.getSnapshot()?.context || null;
+          }
+          const gameCartridgeRef = (l3Snap?.children as any)?.['activeGameCartridge'];
+          if (gameCartridgeRef) {
+            rawGameCartridge = gameCartridgeRef.getSnapshot()?.context || null;
+          }
         }
-        const gameCartridgeRef = (l3Snap?.children as any)?.['activeGameCartridge'];
-        if (gameCartridgeRef) {
-          rawGameCartridge = gameCartridgeRef.getSnapshot()?.context || null;
-        }
+      } catch (err) {
+        console.error('[L1] 💥 Cartridge context extraction failed:', err);
       }
 
       // D. Broadcast State to Clients (per-player DM + game filtering)
@@ -382,6 +407,13 @@ export class GameServer extends Server<Env> {
         }
         return null;
       }
+      case 'PLAYER_GAME_RESULT':
+        return {
+          id: crypto.randomUUID(),
+          text: `${name(fact.actorId)} earned ${fact.payload?.silverReward || 0} silver in today's game!`,
+          category: 'GAME',
+          timestamp: fact.timestamp,
+        };
       case 'ELIMINATION':
         return {
           id: crypto.randomUUID(),
@@ -413,6 +445,42 @@ export class GameServer extends Server<Env> {
       return { id: crypto.randomUUID(), text: 'The game is over!', category: 'SYSTEM', timestamp: Date.now() };
     }
     return null;
+  }
+
+  // Flatten nested XState state value to a dot path: { dayLoop: { activeSession: 'running' } } → "dayLoop.activeSession.running"
+  private static flattenState(value: any): string {
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object' && value !== null) {
+      return Object.entries(value).map(([k, v]) => `${k}.${GameServer.flattenState(v)}`).join(', ');
+    }
+    return String(value);
+  }
+
+  private buildDebugSummary(snapshot: any, l3Snapshot: any): string {
+    const dayIndex = snapshot.context.dayIndex || 0;
+    const l2State = GameServer.flattenState(snapshot.value);
+    const manifest = snapshot.context.manifest;
+    const currentDay = manifest?.days?.find((d: any) => d.dayIndex === dayIndex);
+    const voteType = currentDay?.voteType || '—';
+    const gameType = currentDay?.gameType || 'NONE';
+    const dmsOpen = l3Snapshot?.context?.dmsOpen ? 'OPEN' : 'CLOSED';
+
+    // Extract L3 mainStage state
+    let mainStage = '—';
+    if (l3Snapshot?.value?.running?.mainStage) {
+      mainStage = l3Snapshot.value.running.mainStage;
+    } else if (!l3Snapshot) {
+      mainStage = 'NO L3';
+    }
+
+    return `DAY ${dayIndex} · L2: ${l2State} · VOTE: ${voteType} · GAME: ${gameType} · DMs: ${dmsOpen} · STAGE: ${mainStage}`;
+  }
+
+  private broadcastDebugTicker(summary: string) {
+    const payload = JSON.stringify({ type: 'TICKER.DEBUG', summary });
+    for (const ws of this.getConnections()) {
+      ws.send(payload);
+    }
   }
 
   /**
@@ -483,6 +551,11 @@ export class GameServer extends Server<Env> {
           type: 'TICKER.HISTORY',
           messages: this.tickerHistory
         }));
+      }
+
+      // Send current debug ticker state
+      if (this.lastDebugSummary) {
+        ws.send(JSON.stringify({ type: 'TICKER.DEBUG', summary: this.lastDebugSummary }));
       }
     }
   }

@@ -120,7 +120,7 @@ export const InitPayloadSchema = z.object({
 // --- Journal & Facts (Persistence) ---
 
 export const FactSchema = z.object({
-  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "GAME_RESULT"]),
+  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "GAME_RESULT", "PLAYER_GAME_RESULT"]),
   actorId: z.string(),
   targetId: z.string().optional(),
   payload: z.any().optional(), // JSON details

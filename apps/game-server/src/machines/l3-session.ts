@@ -258,7 +258,17 @@ export const dailySessionMachine = setup({
       type: 'CARTRIDGE.GAME_RESULT',
       result: (event as any).output as GameOutput
     })),
-    forwardToGameChild: sendTo('activeGameCartridge', ({ event }) => event)
+    forwardToGameChild: sendTo('activeGameCartridge', ({ event }) => event),
+    // Per-player game reward: apply silver immediately so SYSTEM.SYNC shows it
+    applyPlayerGameRewardLocally: assign({
+      roster: ({ context, event }) => {
+        const { playerId, silverReward } = event as any;
+        const player = context.roster[playerId];
+        if (!player || !silverReward) return context.roster;
+        return { ...context.roster, [playerId]: { ...player, silver: player.silver + silverReward } };
+      }
+    }),
+    forwardPlayerGameResultToL2: sendParent(({ event }) => event),
   },
   guards: {
     isDmAllowed: ({ context, event }) => {
@@ -348,6 +358,9 @@ export const dailySessionMachine = setup({
                 'xstate.done.actor.activeGameCartridge': {
                   target: 'groupChat',
                   actions: ['applyGameRewardsLocally', 'forwardGameResultToL2']
+                },
+                'CARTRIDGE.PLAYER_GAME_RESULT': {
+                  actions: ['applyPlayerGameRewardLocally', 'forwardPlayerGameResultToL2']
                 },
                 'INTERNAL.END_GAME': { actions: 'forwardToGameChild' },
                 '*': {

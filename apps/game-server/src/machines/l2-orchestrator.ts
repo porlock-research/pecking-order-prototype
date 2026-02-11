@@ -28,6 +28,7 @@ export type GameEvent =
   | { type: `GAME.${string}`; senderId: string; [key: string]: any }
   | { type: 'CARTRIDGE.VOTE_RESULT'; result: VoteResult }
   | { type: 'CARTRIDGE.GAME_RESULT'; result: GameOutput }
+  | { type: 'CARTRIDGE.PLAYER_GAME_RESULT'; playerId: string; silverReward: number }
   | DmRejectedEvent
   | (SocialEvent & { senderId: string });
 
@@ -216,6 +217,25 @@ export const orchestratorMachine = setup({
         },
       } as any;
     }),
+    // Per-player game reward: apply silver to L2 roster immediately
+    applyPlayerGameReward: assign({
+      roster: ({ context, event }) => {
+        const { playerId, silverReward } = event as any;
+        if (!playerId || !silverReward) return context.roster;
+        const player = context.roster[playerId];
+        if (!player) return context.roster;
+        return { ...context.roster, [playerId]: { ...player, silver: player.silver + silverReward } };
+      }
+    }),
+    emitPlayerGameResultFact: raise(({ event }) => ({
+      type: 'FACT.RECORD',
+      fact: {
+        type: 'PLAYER_GAME_RESULT',
+        actorId: (event as any).playerId,
+        payload: { silverReward: (event as any).silverReward },
+        timestamp: Date.now(),
+      },
+    } as any)),
     sendDmRejection: () => {
       // No-op in L2. Overridden by L1 via .provide() to send rejection to specific client.
     }
@@ -303,6 +323,7 @@ export const orchestratorMachine = setup({
             'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }) => event) },
             'CARTRIDGE.VOTE_RESULT': { actions: 'storeVoteResult' },
             'CARTRIDGE.GAME_RESULT': { actions: ['applyGameRewards', 'emitGameResultFact'] },
+            'CARTRIDGE.PLAYER_GAME_RESULT': { actions: ['applyPlayerGameReward', 'emitPlayerGameResultFact'] },
             'DM.REJECTED': { actions: 'sendDmRejection' },
             '*': [
               {

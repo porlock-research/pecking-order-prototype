@@ -6,7 +6,7 @@
  * they begin or advance to a new question. Server validates timing; client
  * manages countdown UI and auto-submits on timeout.
  */
-import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
+import { setup, assign, sendParent, enqueueActions, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { GameEvent, GameOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
@@ -107,11 +107,7 @@ export const triviaMachine = setup({
     input: {} as GameCartridgeInput,
     output: {} as GameOutput,
   },
-  guards: {
-    allPlayersComplete: ({ context }) =>
-      context.alivePlayers.length > 0 &&
-      context.alivePlayers.every(pid => context.players[pid]?.status === 'COMPLETED'),
-  },
+  guards: {},
   actions: {
     startPlayer: assign(({ context, event }) => {
       if (event.type !== 'GAME.TRIVIA.START') return {};
@@ -138,14 +134,14 @@ export const triviaMachine = setup({
       };
     }),
 
-    processAnswer: assign(({ context, event }) => {
-      if (!event.type.startsWith('GAME.TRIVIA.ANSWER')) return {};
+    processAnswer: enqueueActions(({ enqueue, context, event }) => {
+      if (!event.type.startsWith('GAME.TRIVIA.ANSWER')) return;
       const { senderId, answerIndex } = event as any;
       const player = context.players[senderId];
-      if (!player || player.status !== 'PLAYING') return {};
+      if (!player || player.status !== 'PLAYING') return;
 
       const q = player.questions[player.currentRound - 1];
-      if (!q) return {};
+      if (!q) return;
 
       // Validate timing (1s grace for network latency)
       const elapsed = Date.now() - player.questionStartedAt;
@@ -182,7 +178,7 @@ export const triviaMachine = setup({
         ? newScore + PERFECT_BONUS
         : newScore;
 
-      return {
+      enqueue.assign({
         players: {
           ...context.players,
           [senderId]: {
@@ -205,7 +201,23 @@ export const triviaMachine = setup({
           },
         },
         goldContribution: context.goldContribution + (correct ? GOLD_PER_CORRECT : 0),
-      };
+      });
+
+      // Per-player reward: emit immediately when player completes
+      if (isComplete) {
+        enqueue.raise({ type: 'PLAYER_COMPLETED', playerId: senderId, silverReward: finalScore } as any);
+      }
+
+      // Check if ALL alive players are now complete
+      // (current player's isComplete is computed above; check others from context)
+      if (isComplete) {
+        const allDone = context.alivePlayers.every(pid =>
+          pid === senderId ? true : context.players[pid]?.status === 'COMPLETED'
+        );
+        if (allDone) {
+          enqueue.raise({ type: 'ALL_COMPLETE' } as any);
+        }
+      }
     }),
 
     finalizeResults: assign(({ context }) => {
@@ -270,20 +282,27 @@ export const triviaMachine = setup({
   output: ({ context }) => {
     const silverRewards: Record<string, number> = {};
     for (const [pid, player] of Object.entries(context.players)) {
-      silverRewards[pid] = player.silverReward || player.score;
+      // Completed players already rewarded via CARTRIDGE.PLAYER_GAME_RESULT
+      if (player.status !== 'COMPLETED') {
+        silverRewards[pid] = player.score; // partial credit
+      }
     }
     return { silverRewards, goldContribution: context.goldContribution };
   },
   states: {
     active: {
       entry: 'emitRoundSync',
-      always: {
-        guard: 'allPlayersComplete',
-        target: 'completed',
-      },
       on: {
         'GAME.TRIVIA.START': { target: 'active', reenter: true, actions: 'startPlayer' },
         'GAME.TRIVIA.ANSWER': { target: 'active', reenter: true, actions: 'processAnswer' },
+        'PLAYER_COMPLETED': {
+          actions: sendParent(({ event }): AnyEventObject => ({
+            type: 'CARTRIDGE.PLAYER_GAME_RESULT',
+            playerId: (event as any).playerId,
+            silverReward: (event as any).silverReward,
+          }))
+        },
+        'ALL_COMPLETE': { target: 'completed' },
         'INTERNAL.END_GAME': { target: 'completed' },
       },
     },

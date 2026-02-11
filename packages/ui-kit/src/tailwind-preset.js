@@ -135,6 +135,7 @@ module.exports = {
                 'fade-in': 'fade-in 200ms ease-out both',
                 'elimination-reveal': 'elimination-reveal 600ms ease-out forwards',
                 'count-pop': 'count-pop 300ms ease-out',
+                'marquee-scroll': 'marquee-scroll 20s linear infinite',
                 'slide-in-right': 'slide-in-right 400ms ease-out both',
                 'slide-out-left': 'slide-out-left 300ms ease-in both',
             },
@@ -181,6 +182,10 @@ module.exports = {
                     '0%': { transform: 'scale(1)' },
                     '50%': { transform: 'scale(1.4)' },
                     '100%': { transform: 'scale(1)' },
+                },
+                'marquee-scroll': {
+                    '0%': { transform: 'translateX(0)' },
+                    '100%': { transform: 'translateX(-50%)' },
                 },
                 'slide-in-right': {
                     from: { opacity: '0', transform: 'translateX(40px)' },

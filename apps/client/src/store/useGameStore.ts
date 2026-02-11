@@ -19,12 +19,14 @@ interface GameState {
   activeGameCartridge: any | null;
   dmRejection: { reason: DmRejectionReason; timestamp: number } | null;
   tickerMessages: TickerMessage[];
+  debugTicker: string | null;
 
   // Actions
   sync: (data: any) => void;
   addChatMessage: (msg: ChatMessage) => void;
   addTickerMessage: (msg: TickerMessage) => void;
   setTickerMessages: (msgs: TickerMessage[]) => void;
+  setDebugTicker: (summary: string) => void;
   setPlayerId: (id: string) => void;
   setDmRejection: (reason: DmRejectionReason) => void;
   clearDmRejection: () => void;
@@ -68,6 +70,7 @@ export const useGameStore = create<GameState>((set) => ({
   activeGameCartridge: null,
   dmRejection: null,
   tickerMessages: [],
+  debugTicker: null,
 
   sync: (data) => set((state) => ({
     gameId: data.context?.gameId || state.gameId,
@@ -91,6 +94,8 @@ export const useGameStore = create<GameState>((set) => ({
   })),
 
   setTickerMessages: (msgs) => set({ tickerMessages: msgs.slice(-20) }),
+
+  setDebugTicker: (summary) => set({ debugTicker: summary }),
 
   setPlayerId: (id) => set({ playerId: id }),
 

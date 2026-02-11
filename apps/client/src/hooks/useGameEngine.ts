@@ -6,6 +6,7 @@ export const useGameEngine = (gameId: string, playerId: string) => {
   const addChatMessage = useGameStore((s) => s.addChatMessage);
   const addTickerMessage = useGameStore((s) => s.addTickerMessage);
   const setTickerMessages = useGameStore((s) => s.setTickerMessages);
+  const setDebugTicker = useGameStore((s) => s.setDebugTicker);
   const setDmRejection = useGameStore((s) => s.setDmRejection);
 
   const socket = usePartySocket({
@@ -27,6 +28,8 @@ export const useGameEngine = (gameId: string, playerId: string) => {
           addTickerMessage(data.message);
         } else if (data.type === "TICKER.HISTORY") {
           setTickerMessages(data.messages);
+        } else if (data.type === "TICKER.DEBUG") {
+          setDebugTicker(data.summary);
         } else if (data.type === "DM.REJECTED") {
           setDmRejection(data.reason);
         }

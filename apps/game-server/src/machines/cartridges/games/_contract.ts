@@ -4,9 +4,16 @@
  * Every game machine must:
  * - Accept GameCartridgeInput as input
  * - Handle GAME.{MECHANIC}.* events
- * - Emit GAME_RESULT fact via sendParent on completion
  * - Return silver rewards map as output from final state
  * - Expose context matching BaseGameContext for SYSTEM.SYNC rendering
+ *
+ * Result patterns:
+ * - **Async games** (e.g. TRIVIA): Emit CARTRIDGE.PLAYER_GAME_RESULT per player
+ *   via sendParent as each player completes. Output silverRewards should only
+ *   include incomplete players (partial credit). Completed players are excluded
+ *   since they were already rewarded incrementally.
+ * - **Sync games** (e.g. REALTIME_TRIVIA): Return full silverRewards in output
+ *   from the final state (batch reward at game end).
  *
  * IMPORTANT: currentQuestion must NOT include correctIndex —
  * the context is broadcast to clients. Only reveal correctIndex
