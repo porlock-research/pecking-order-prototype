@@ -30,9 +30,11 @@ export async function startGameStub(
   const GAME_ID = `game-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   // 1. Mock Data (Strictly typed)
-  // Generate 8 players
-  const roster: Roster = {};
-  const personas = [
+  // Player count = days + 1 (so there's always 1 survivor after all eliminations)
+  const dayCount = debugConfig?.dayCount ?? 7;
+  const playerCount = dayCount + 1;
+
+  const ALL_PERSONAS = [
     { name: "Countess Snuffles", emoji: "🐱" },
     { name: "Dr. Spatula", emoji: "🍔" },
     { name: "Baron Von Bon Bon", emoji: "🍬" },
@@ -40,8 +42,11 @@ export async function startGameStub(
     { name: "Lady Fingers", emoji: "💅" },
     { name: "Sir Loin", emoji: "🥩" },
     { name: "Madame Mist", emoji: "🌫️" },
-    { name: "Professor Puns", emoji: "🤡" }
+    { name: "Professor Puns", emoji: "🤡" },
   ];
+
+  const roster: Roster = {};
+  const personas = ALL_PERSONAS.slice(0, playerCount);
 
   personas.forEach((p, i) => {
     const id = `p${i + 1}`;
@@ -54,7 +59,7 @@ export async function startGameStub(
       isSpectator: false,
       silver: 50,
       gold: 0,
-      destinyId: i === 0 ? "FANATIC" : "FLOAT" // varied destinies
+      destinyId: i === 0 ? "FANATIC" : "FLOAT",
     };
   });
 

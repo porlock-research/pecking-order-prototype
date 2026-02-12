@@ -7,6 +7,7 @@ import PodiumSacrificeVoting from './PodiumSacrificeVoting';
 import SecondToLastVoting from './SecondToLastVoting';
 import ShieldVoting from './ShieldVoting';
 import TrustPairsVoting from './TrustPairsVoting';
+import FinalsVoting from './FinalsVoting';
 
 interface VotingPanelProps {
   engine: {
@@ -38,6 +39,8 @@ export default function VotingPanel({ engine }: VotingPanelProps) {
       return <ShieldVoting {...common} />;
     case 'TRUST_PAIRS':
       return <TrustPairsVoting {...common} />;
+    case 'FINALS':
+      return <FinalsVoting {...common} />;
     default:
       return (
         <div className="mx-4 my-2 p-4 rounded-xl bg-skin-surface border border-skin-base text-center">
