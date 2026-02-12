@@ -8,8 +8,8 @@ import { Zap, Bug } from 'lucide-react';
  * from 0 to -50% (one copy's width). When the animation loops,
  * copy 2 is exactly where copy 1 started — seamless.
  *
- * Speed is adaptive: longer content = proportionally longer duration,
- * so scroll velocity stays constant regardless of content length.
+ * Performance: will-change: transform promotes to compositor layer.
+ * pauseOnHover stops animation when the user hovers (saves CPU).
  */
 const Marquee: React.FC<{
   children: React.ReactNode;
@@ -18,6 +18,7 @@ const Marquee: React.FC<{
 }> = ({ children, speed = 50, className }) => {
   const contentRef = useRef<HTMLDivElement>(null);
   const [duration, setDuration] = useState(20);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     if (contentRef.current) {
@@ -27,10 +28,18 @@ const Marquee: React.FC<{
   }, [children, speed]);
 
   return (
-    <div className={`overflow-hidden ${className || ''}`}>
+    <div
+      className={`overflow-hidden ${className || ''}`}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       <div
         className="flex whitespace-nowrap"
-        style={{ animation: `marquee-scroll ${duration}s linear infinite` }}
+        style={{
+          animation: `marquee-scroll ${duration}s linear infinite`,
+          animationPlayState: paused ? 'paused' : 'running',
+          willChange: 'transform',
+        }}
       >
         <div ref={contentRef} className="flex shrink-0 items-center">
           {children}
@@ -49,21 +58,18 @@ export const NewsTicker: React.FC = () => {
 
   return (
     <div className="shrink-0">
-      {/* Debug strip — green continuous marquee */}
+      {/* Debug strip — static single-line (no marquee) */}
       {debugTicker && (
-        <div className="bg-black/60 border-t border-skin-green/20 py-0.5">
-          <Marquee speed={40}>
-            <Bug size={9} className="shrink-0 mr-1.5 text-skin-green opacity-70" />
-            <span className="text-[9px] font-mono text-skin-green/80 uppercase tracking-widest">
-              {debugTicker}
-            </span>
-            <span className="mx-10 text-skin-green/30 text-[9px]">◆</span>
-          </Marquee>
+        <div className="bg-black/60 border-t border-skin-green/20 py-0.5 px-4 flex items-center gap-1.5 overflow-hidden">
+          <Bug size={9} className="shrink-0 text-skin-green opacity-70" />
+          <span className="text-[9px] font-mono text-skin-green/80 uppercase tracking-widest truncate">
+            {debugTicker}
+          </span>
         </div>
       )}
 
       {/* Main ticker — continuous marquee */}
-      <div className="bg-skin-deep/90 backdrop-blur-sm border-t border-white/[0.06] px-0 py-2 flex items-center gap-3 overflow-hidden">
+      <div className="bg-skin-deep/90 border-t border-white/[0.06] px-0 py-2 flex items-center gap-3 overflow-hidden">
         {/* LIVE badge */}
         <div className="shrink-0 ml-4 flex items-center gap-1.5 px-2 py-0.5 rounded bg-skin-danger/20 border border-skin-danger/30">
           <span className="w-1.5 h-1.5 rounded-full bg-skin-danger animate-pulse-live" />
