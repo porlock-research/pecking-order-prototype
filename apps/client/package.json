@@ -8,6 +8,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@pecking-order/auth": "*",
     "@pecking-order/shared-types": "*",
     "canvas-confetti": "^1.9.4",
     "framer-motion": "^12.34.0",

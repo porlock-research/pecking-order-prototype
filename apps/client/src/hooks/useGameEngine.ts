@@ -1,7 +1,7 @@
 import usePartySocket from "partysocket/react";
 import { useGameStore } from "../store/useGameStore";
 
-export const useGameEngine = (gameId: string, playerId: string) => {
+export const useGameEngine = (gameId: string, playerId: string, token?: string | null) => {
   const sync = useGameStore((s) => s.sync);
   const addChatMessage = useGameStore((s) => s.addChatMessage);
   const addTickerMessage = useGameStore((s) => s.addTickerMessage);
@@ -11,13 +11,14 @@ export const useGameEngine = (gameId: string, playerId: string) => {
   const setSilverTransferRejection = useGameStore((s) => s.setSilverTransferRejection);
   const setPerkResult = useGameStore((s) => s.setPerkResult);
 
+  // Use token-based auth when available, fall back to plain playerId for debug
+  const query = token ? { token } : { playerId };
+
   const socket = usePartySocket({
     host: new URL(import.meta.env.VITE_GAME_SERVER_HOST || "http://localhost:8787").host,
     room: gameId,
     party: 'game-server',
-    query: {
-      playerId,
-    },
+    query,
     onMessage(event) {
       try {
         const data = JSON.parse(event.data);

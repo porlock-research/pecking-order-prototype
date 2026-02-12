@@ -22,4 +22,4 @@ database_id = "c5941589-2d69-4ae1-9b5d-0554f2ad9721"
 # Axiom Secrets (Logging)
 [vars]
 AXIOM_DATASET = "pecking-order"
-# AXIOM_TOKEN and AXIOM_ORG_ID must be set via `wrangler secret put`
+# AXIOM_TOKEN, AXIOM_ORG_ID, and AUTH_SECRET must be set via `wrangler secret put`

@@ -11,6 +11,7 @@ const STORAGE_KEY = "game_state_snapshot";
 export interface Env {
   GameServer: DurableObjectNamespace;
   DB: D1Database;
+  AUTH_SECRET: string;
   AXIOM_DATASET: string;
   AXIOM_TOKEN?: string;
   AXIOM_ORG_ID?: string;
@@ -391,6 +392,12 @@ export class GameServer extends Server<Env> {
   async onRequest(req: Request): Promise<Response> {
     // 1. POST /init (Handoff)
     if (req.method === "POST" && new URL(req.url).pathname.endsWith("/init")) {
+      // Authenticate: lobby must send shared secret
+      const authHeader = req.headers.get('Authorization');
+      if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+
       try {
         const json = await req.json() as any;
 
@@ -635,10 +642,28 @@ export class GameServer extends Server<Env> {
   /**
    * 3. CLIENT SYNC: WebSocket Connection
    */
-  onConnect(ws: Connection, ctx: ConnectionContext) {
+  async onConnect(ws: Connection, ctx: ConnectionContext) {
     const url = new URL(ctx.request.url);
-    const playerId = url.searchParams.get("playerId");
     const roster = this.actor?.getSnapshot().context.roster || {};
+
+    let playerId: string | null = null;
+
+    // Try JWT token auth first
+    const token = url.searchParams.get("token");
+    if (token) {
+      try {
+        const { verifyGameToken } = await import("@pecking-order/auth");
+        const payload = await verifyGameToken(token, this.env.AUTH_SECRET);
+        playerId = payload.playerId;
+      } catch (err) {
+        console.log(`[L1] JWT verification failed:`, err);
+        ws.close(4003, "Invalid token");
+        return;
+      }
+    } else {
+      // Fallback: plain playerId query param (debug/legacy mode)
+      playerId = url.searchParams.get("playerId");
+    }
 
     if (!playerId || !roster[playerId]) {
       console.log(`[L1] Rejecting connection: Invalid Player ID ${playerId}`);
@@ -648,7 +673,7 @@ export class GameServer extends Server<Env> {
 
     // Attach identity to connection
     ws.setState({ playerId });
-    console.log(`[L1] Player Connected: ${playerId}`);
+    console.log(`[L1] Player Connected: ${playerId}${token ? ' (JWT)' : ' (legacy)'}`);
     
     // Send current state immediately so client UI hydrates
     const snapshot = this.actor?.getSnapshot();

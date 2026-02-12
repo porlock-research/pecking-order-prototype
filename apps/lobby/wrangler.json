@@ -14,5 +14,12 @@
   "vars": {
     "GAME_SERVER_HOST": "https://game-server.porlock.workers.dev",
     "GAME_CLIENT_HOST": "https://pecking-order-client.pages.dev"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pecking-order-lobby-db",
+      "database_id": "placeholder-create-with-wrangler"
+    }
+  ]
 }

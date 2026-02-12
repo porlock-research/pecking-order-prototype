@@ -47,6 +47,11 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 - **L2 roster authority** — single authoritative roster in L2, explicit SYNC payload (ADR-035)
 - **OpenTriviaDB integration** — live API fetch with fallback (ADR-042)
 - **Ticker performance** — removed backdrop-blur, added will-change: transform, static debug strip, pauseOnHover
+- **Economy consolidation** — `l2-economy.ts` merges game/prompt/transfer/DM silver mutations, gift bonus (+2 sender), transfer guards
+- **Perks system** — SPY_DMS, EXTRA_DM_PARTNER, EXTRA_DM_CHARS with silver costs, L3 perkOverrides, client PerkPanel
+- **Auth & invites** — shared `@pecking-order/auth` JWT package, lobby D1 (Users, Sessions, MagicLinks, GameSessions, Invites, PersonaPool), magic link login, invite codes, character selection from 24-persona pool
+- **Clean client URLs** — sessionStorage + replaceState pattern, invite code as canonical URL identifier (ADR-045, ADR-046)
+- **JWT-secured WebSocket** — game server verifies JWT on connect, POST /init auth via shared secret (ADR-044)
 
 ---
 
@@ -68,17 +73,18 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 |---------|---------------|--------|-------|
 | **Gold economy** | "Games increase shared gold prize pool. Winner takes gold pool." | Medium | Add `goldPool` to L2 context. Game cartridges contribute to it. Award to winner in `gameSummary`. Gold persists across games (needs cross-game storage). |
 | **Destiny system** | Fanatic, Self Hate, Float, Mole, Decoy, Detective | High | Secret objectives assigned at game start. Requires D1 journal queries to evaluate conditions at triggers (ELIMINATION, END_GAME). Gold rewards for completion. New `destinyStatus` tracking. |
-| **Powers (spend silver)** | "Pick a player. See the last 3 DMs they sent." | Medium | New `SOCIAL.USE_POWER` event namespace. Power types as a registry. Silver cost deduction. L1 targeted delivery of power results. |
-| **Extra DMs for silver** | "Extra DM messages, extra character limit" for silver | Low | Add silver-based DM limit overrides to L3 guards. |
+| **Powers (additional types)** | "Pick a player. See the last 3 DMs they sent." | Medium | SPY_DMS perk implemented. Additional power types (if spec calls for more) need new registry entries. |
+| ~~**Extra DMs for silver**~~ | ~~"Extra DM messages, extra character limit" for silver~~ | ~~DONE~~ | Implemented as EXTRA_DM_PARTNER (3 silver) and EXTRA_DM_CHARS (2 silver) perks. |
 
 ### P3 — Production Polish
 
 | Feature | Spec Reference | Effort | Notes |
 |---------|---------------|--------|-------|
-| **Character selection** | "Each player picks a character (photo + name from 3 random options)" | Medium | Lobby needs character selection UI. Currently uses hardcoded personas. |
 | **Bio creation** | "Write a 280-character bio" | Low | Lobby text input → roster `bio` field (field exists, UI doesn't). |
-| **Real scheduling** | "Game starts 9am PST the morning after all players accept invites" | Medium | Currently uses relative timestamps from lobby init. Needs real clock-based scheduling. |
+| **Real scheduling** | "Game starts 9am PST the morning after all players accept invites" | Medium | Currently host clicks "Launch Game" manually. Needs clock-based auto-start option. |
 | **Non-responsive players** | "How do we deal with non-responsive? AI takeover?" | High | Spec question. Could auto-vote, auto-skip, or introduce AI stand-ins. |
+| **Email delivery** | Magic links are displayed in UI, not emailed | Low | Integration with Resend/SES for sending magic link emails. |
+| **Session management** | No session revocation UI, no rate limiting on magic links | Low | Admin UI for session cleanup, rate limit on `/login` actions. |
 
 ---
 
@@ -109,3 +115,5 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 | FINALS, post-game, action splitting, tournament winning | `feature/tournament-winning` |
 | Activity layer (6 prompt types), OpenTriviaDB, lobby activity config | `feature/activity-layer-and-trivia-api` |
 | Ticker performance (backdrop-blur, will-change, static debug) | `fix/ticker-performance` |
+| Economy consolidation, perks system, D1 normalization | `feature/economy-and-perks` |
+| Auth, invites, character select, JWT-secured entry, clean URLs | `feature/lobby-game-flow` |

@@ -7,6 +7,7 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
+    "@pecking-order/auth": "*",
     "@pecking-order/logger": "*",
     "@pecking-order/shared-types": "*",
     "partyserver": "^0.1.2",

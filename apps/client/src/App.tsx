@@ -10,23 +10,93 @@ import PromptPanel from './cartridges/PromptPanel';
 import PerkPanel from './components/PerkPanel';
 import { formatState, formatPhase } from './utils/formatState';
 import { Coins, MessageCircle, Mail, Users } from 'lucide-react';
+import { decodeGameToken } from '@pecking-order/auth';
+
+/**
+ * Extracts a game code from the URL path (e.g. /game/X7K2MP → X7K2MP)
+ */
+function getGameCodeFromPath(): string | null {
+  const match = window.location.pathname.match(/^\/game\/([A-Za-z0-9]+)\/?$/);
+  return match ? match[1].toUpperCase() : null;
+}
+
+/**
+ * Applies a JWT token: decodes it, sets state, and stores in sessionStorage.
+ * If a gameCode is provided, keys the storage by that code and cleans the URL.
+ */
+function applyToken(
+  jwt: string,
+  gameCode: string | null,
+  setGameId: (id: string) => void,
+  setPlayerId: (id: string) => void,
+  setToken: (t: string) => void,
+) {
+  const decoded = decodeGameToken(jwt);
+  setGameId(decoded.gameId);
+  setPlayerId(decoded.playerId);
+  setToken(jwt);
+  useGameStore.getState().setPlayerId(decoded.playerId);
+
+  // Persist in sessionStorage keyed by game code (for refresh resilience)
+  const key = gameCode || decoded.gameId;
+  sessionStorage.setItem(`po_token_${key}`, jwt);
+
+  // Clean transient params from URL
+  if (gameCode) {
+    window.history.replaceState({}, '', `/game/${gameCode}`);
+  }
+}
 
 export default function App() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
   const { dayIndex, roster, serverState } = useGameStore();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const gid = params.get('gameId');
-    const pid = params.get('playerId') || 'p1';
+    const gameCode = getGameCodeFromPath();
+    const transientToken = params.get('_t');
+    const rawToken = params.get('token');
 
-    setGameId(gid);
-    setPlayerId(pid);
-
-    if (pid) {
-      useGameStore.getState().setPlayerId(pid);
+    if (gameCode && transientToken) {
+      // Arrived via lobby redirect: /game/CODE?_t=JWT
+      // Store token, clean URL
+      try {
+        applyToken(transientToken, gameCode, setGameId, setPlayerId, setToken);
+      } catch {
+        console.error('Invalid token from redirect');
+      }
+    } else if (gameCode) {
+      // Clean URL visit: /game/CODE — check sessionStorage
+      const cached = sessionStorage.getItem(`po_token_${gameCode}`);
+      if (cached) {
+        try {
+          applyToken(cached, gameCode, setGameId, setPlayerId, setToken);
+        } catch {
+          sessionStorage.removeItem(`po_token_${gameCode}`);
+          console.error('Cached token invalid');
+        }
+      }
+      // If no cached token, the "awaiting signal" screen shows —
+      // user needs to visit via lobby /play/CODE to get authenticated
+    } else if (rawToken) {
+      // Direct JWT entry: ?token=JWT (debug links from lobby)
+      try {
+        applyToken(rawToken, null, setGameId, setPlayerId, setToken);
+      } catch {
+        console.error('Invalid token');
+      }
+    } else {
+      // Legacy: plain query param entry (backward compat for debug)
+      const gid = params.get('gameId');
+      const pid = params.get('playerId') || 'p1';
+      setGameId(gid);
+      setPlayerId(pid);
+      if (pid) {
+        useGameStore.getState().setPlayerId(pid);
+      }
     }
   }, []);
 
@@ -76,7 +146,7 @@ export default function App() {
   );
 
   return (
-    <GameShell gameId={gameId} playerId={playerId} />
+    <GameShell gameId={gameId} playerId={playerId} token={token} />
   );
 }
 
@@ -110,9 +180,9 @@ function RosterRow({ player, playerId }: { player: any; playerId: string }) {
   );
 }
 
-function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
+function GameShell({ gameId, playerId, token }: { gameId: string, playerId: string, token: string | null }) {
   const { dayIndex, roster, serverState } = useGameStore();
-  const engine = useGameEngine(gameId, playerId);
+  const engine = useGameEngine(gameId, playerId, token);
   const [activeTab, setActiveTab] = useState<'chat' | 'dms' | 'roster'>('chat');
   const hasDms = useGameStore(s => s.chatLog.some(m => m.channel === 'DM'));
 
@@ -260,15 +330,17 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
       {/* News Ticker */}
       <NewsTicker />
 
-      {/* Admin God Button (Bottom Right Floating) */}
+      {/* Admin Link (Bottom Right Floating) — links to lobby admin panel */}
       <div className="fixed bottom-24 right-4 z-50">
-        <button
-          onClick={() => engine.socket.send(JSON.stringify({ type: "ADMIN.NEXT_STAGE" }))}
+        <a
+          href={`${import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000'}/admin/game/${gameId}`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="h-12 w-12 rounded-full bg-skin-danger text-skin-inverted shadow-glow glow-breathe flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border-2 border-white/20 font-mono font-bold text-lg"
-          title="Force Next Stage"
+          title="Lobby Admin Panel"
         >
-          {'>'}
-        </button>
+          {'⚙'}
+        </a>
       </div>
 
     </div>

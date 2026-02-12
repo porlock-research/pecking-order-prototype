@@ -462,3 +462,51 @@ This document tracks significant architectural decisions, their context, and con
     *   Two-phase activities handle `INTERNAL.END_ACTIVITY` in both phases (skip to completed with partial data).
     *   Anonymous shuffling stored in context (survives snapshot rehydration).
     *   Client: 5 new components with phase-appropriate UIs (text input, voting cards, player dropdowns, percentage bars).
+
+## [ADR-044] Shared Auth Package and JWT-Secured Client Entry
+*   **Date:** 2026-02-12
+*   **Status:** Accepted
+*   **Context:** The client connected to the game server using plain `?gameId=&playerId=` query params. Anyone who knew these values could impersonate a player. The lobby had no user accounts, no invite system, and no authentication.
+*   **Decision:** Introduce a full auth stack:
+    *   **`@pecking-order/auth` shared package** — JWT sign/verify using `jose` (Workers-compatible). Shared between lobby and game server.
+    *   **Lobby D1 database** — Users, Sessions, MagicLinks, GameSessions, Invites, PersonaPool tables.
+    *   **Email magic link auth** — passwordless login for the lobby (links displayed in UI for now, email delivery is future work).
+    *   **Invite system** — host creates game with invite code, players accept and pick a character from a curated 24-persona pool.
+    *   **JWT game tokens** — lobby mints `{ sub, gameId, playerId, personaName }` JWTs (HS256, 24h expiry). Client passes token to game server on WebSocket connect.
+    *   **POST /init auth** — shared secret in `Authorization: Bearer` header prevents unauthorized game creation.
+*   **Consequences:**
+    *   Player identity is cryptographically verified — no more URL param impersonation.
+    *   Game server validates JWT on WebSocket connect, falls back to legacy `?playerId=` for backward compat.
+    *   Lobby is the identity provider; game server trusts JWTs signed with the shared `AUTH_SECRET`.
+    *   Debug mode bypasses D1 with hardcoded personas and `dev-secret-change-me` signing key.
+
+## [ADR-045] Clean Client URLs via sessionStorage + replaceState
+*   **Date:** 2026-02-12
+*   **Status:** Accepted
+*   **Context:** JWT tokens are long (~200 chars). Passing them as URL params makes URLs ugly, unshareable, and leaks auth data in browser history. But the lobby (which has the session cookie) and the client (a separate SPA on a different origin) can't share auth state directly.
+*   **Decision:** Use an OAuth-style token relay pattern:
+    1.  Lobby redirects to `CLIENT_HOST/game/{CODE}?_t={JWT}`.
+    2.  Client reads the `_t` param, stores the JWT in `sessionStorage` keyed by game code (`po_token_{CODE}`).
+    3.  Client immediately cleans the URL via `history.replaceState({}, '', '/game/{CODE}')`.
+    4.  On refresh, client reads from `sessionStorage` using the game code from the URL path.
+    *   Lobby `/play/[code]` route authenticates via session cookie, resolves player slot, mints JWT, and redirects to client.
+    *   Cloudflare Pages `_redirects` file (`/* /index.html 200`) enables SPA fallback routing for `/game/{CODE}` paths.
+*   **Consequences:**
+    *   Canonical client URL is always `/game/{CODE}` — clean, shareable, memorable.
+    *   JWT never persists in the URL bar after the initial redirect.
+    *   `sessionStorage` provides refresh resilience within the browser tab (cleared when tab closes).
+    *   Cross-origin auth problem solved without CORS, shared cookies, or client-side API calls.
+
+## [ADR-046] Invite Code as Canonical URL Identifier
+*   **Date:** 2026-02-12
+*   **Status:** Accepted
+*   **Context:** The waiting room URL was `/game/{gameId}/waiting`, exposing the internal UUID-style game ID. This was ugly, hard to remember, and leaked implementation details. The invite code (6-char alphanumeric, e.g., `X7K2MP`) was already shared with players and was more user-friendly.
+*   **Decision:** Use the invite code as the canonical identifier in all user-facing URLs:
+    *   Waiting room: `/game/{inviteCode}/waiting` (not `/game/{gameId}/waiting`).
+    *   Client app: `/game/{inviteCode}` (not `/?gameId={uuid}`).
+    *   Lobby actions `startGame()` and `getGameSessionStatus()` accept invite code, look up game by `invite_code` column.
+    *   Case-insensitive matching via `.toUpperCase()`.
+*   **Consequences:**
+    *   All user-facing URLs use the same 6-char code that players share with each other.
+    *   Internal game IDs are never exposed to end users.
+    *   Server actions perform an extra D1 lookup by invite code, but this is negligible for the low-frequency operations involved.

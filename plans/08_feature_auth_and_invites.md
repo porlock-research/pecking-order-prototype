@@ -1,0 +1,305 @@
+# Feature: Auth, Login & Invite Flow
+
+> Lobby-side user accounts, passwordless login, invite-based game joining, character select, and JWT-secured client entry.
+
+---
+
+## Overview
+
+Players authenticate via email magic links in the lobby. A host creates a game and shares an invite code. Players accept the invite, pick a character from a curated pool, and wait in a lobby. When all slots are filled the host launches the game. The lobby mints JWTs that the client passes to the game server on WebSocket connect.
+
+```
+Player                Lobby (Next.js + D1)           Game Server (DO)       Client (Vite SPA)
+  |                         |                              |                       |
+  |-- enter email --------->|                              |                       |
+  |<-- magic link ----------|                              |                       |
+  |-- click link ---------->|                              |                       |
+  |<-- session cookie ------|                              |                       |
+  |                         |                              |                       |
+  |-- create game --------->|                              |                       |
+  |<-- invite code ---------|                              |                       |
+  |                         |                              |                       |
+  |-- share code with friends                              |                       |
+  |                         |                              |                       |
+  |-- accept invite ------->| (pick character)             |                       |
+  |<-- redirect to waiting -|                              |                       |
+  |                         |                              |                       |
+  |-- host clicks launch -->|-- POST /init (Bearer) ------>|                       |
+  |                         |-- mint JWTs ---------------->|                       |
+  |<-- JWT token -----------|                              |                       |
+  |                         |                              |                       |
+  |                         |                              |<-- ?token=jwt --------|
+  |                         |                              |-- verify JWT -------->|
+  |                         |                              |<-- SYSTEM.SYNC -------|
+```
+
+---
+
+## Data Model (Lobby D1)
+
+Six tables live in the lobby's D1 database (`pecking-order-lobby-db`):
+
+| Table | Purpose |
+|-------|---------|
+| **Users** | Cross-game identity. `id` (UUID), `email` (unique), `display_name`, timestamps. |
+| **Sessions** | Login sessions. Random token ID, 7-day expiry. Looked up via HTTP-only cookie `po_session`. |
+| **MagicLinks** | Passwordless login tokens. 5-minute expiry, single-use. |
+| **GameSessions** | Lobby-side game tracking. Status lifecycle: `RECRUITING` -> `READY` -> `STARTED` -> `COMPLETED`. Stores invite code, mode, day count, and serialized config. |
+| **Invites** | One row per player slot. Tracks `accepted_by` (user ID) and `persona_id` (chosen character). First-come-first-served slot assignment. |
+| **PersonaPool** | 24 curated characters with id, name, emoji avatar, and bio. Seeded via migration. |
+
+Migrations: `apps/lobby/migrations/0001_initial.sql` (schema) and `0002_seed_personas.sql` (persona seed data).
+
+---
+
+## Authentication
+
+### Magic Link Flow
+
+1. Player visits `/login`, enters email.
+2. Server action `sendMagicLink(email)`:
+   - Upserts user in `Users` (create if new).
+   - Generates random token, inserts into `MagicLinks` (5-min expiry).
+   - Returns the link (displayed in UI; email sending is a future enhancement).
+3. Player clicks link: `/login/verify?token=abc123`.
+4. Server action `verifyMagicLink(token)`:
+   - Validates token exists, not expired, not used.
+   - Marks token as used.
+   - Creates `Sessions` row (7-day expiry).
+   - Sets HTTP-only `po_session` cookie.
+   - Redirects to original destination (or `/`).
+
+### Session Resolution
+
+All authenticated pages call `requireAuth(redirectTo?)`:
+- Reads `po_session` cookie.
+- Joins `Sessions` + `Users` to resolve `{ userId, email, displayName }`.
+- If invalid/expired, redirects to `/login?next={redirectTo}`.
+
+### Key Files
+
+- `apps/lobby/lib/auth.ts` — `getSession()`, `requireAuth()`, `sendMagicLink()`, `verifyMagicLink()`, `logout()`
+- `apps/lobby/app/login/page.tsx` — Email input form
+- `apps/lobby/app/login/actions.ts` — `requestMagicLink()` server action
+- `apps/lobby/app/login/verify/page.tsx` — Token verification (server component)
+
+---
+
+## Game Creation & Invites
+
+### Create Flow
+
+1. Authenticated host visits `/` (lobby home).
+2. Configures game mode and per-day settings (vote type, game type, activity type).
+3. Clicks "Create Game" -> server action `createGame(mode, debugConfig?)`:
+   - Inserts `GameSessions` row with status `RECRUITING`.
+   - Generates 6-char alphanumeric invite code (no ambiguous chars: no I/O/0/1).
+   - Creates one `Invites` row per player slot.
+4. UI shows the invite code and link to `/invite/{code}`.
+
+### Invite Acceptance
+
+1. Player visits `/invite/{code}`.
+2. If not logged in, redirected to `/login?next=/invite/{code}`.
+3. Server action `getInviteInfo(code)` returns:
+   - Game info (mode, day count, player count, status).
+   - Filled slots (who joined, which character they picked).
+   - Available personas (full pool minus already-picked ones).
+4. Player picks a character from the grid.
+5. Server action `acceptInvite(code, personaId)`:
+   - Validates: user not already in game, persona not taken, slots available.
+   - Claims first unclaimed `Invites` row.
+   - If all slots filled -> updates `GameSessions.status` to `READY`.
+6. Redirects to waiting room `/game/{gameId}/waiting`.
+
+### Waiting Room
+
+- `/game/[code]/waiting/page.tsx` — polls `getGameSessionStatus(inviteCode)` every 3 seconds.
+- URL uses the **invite code** (not internal game ID) to avoid leaking implementation details.
+- Shows join progress (filled/empty slots with character avatars).
+- When status is `READY`, host sees "Launch Game" button.
+- When status is `STARTED`, shows "Enter Game" link pointing to client `/game/{CODE}?_t={JWT}`.
+
+### Character Exclusivity
+
+Each game has access to all 24 personas. Once a player picks one, it's removed from the available pool for that game. The invite page shows a grid of available characters with the taken ones filtered out.
+
+### Key Files
+
+- `apps/lobby/app/actions.ts` — `createGame()`, `getInviteInfo()`, `acceptInvite()`, `getGameSessionStatus()`, `startGame()`
+- `apps/lobby/app/invite/[code]/page.tsx` — Character select + join UI
+- `apps/lobby/app/game/[id]/waiting/page.tsx` — Waiting room UI (URL `[id]` param is the invite code)
+
+---
+
+## Game Start & Handoff
+
+When the host clicks "Launch Game" in the waiting room:
+
+1. Server action `startGame(inviteCode)`:
+   - Looks up game by invite code (case-insensitive).
+   - Validates host ownership and `READY` status.
+   - Loads accepted invites + persona data from D1.
+   - Builds roster from real user IDs + picked personas.
+   - Builds manifest (day configs, timelines) from stored `config_json`.
+   - Validates payload with `InitPayloadSchema`.
+   - POSTs to game server with `Authorization: Bearer {AUTH_SECRET}`.
+   - Mints a JWT per player via `signGameToken()`.
+   - Updates status to `STARTED`.
+2. Returns tokens map `{ p1: "eyJ...", p2: "eyJ...", ... }`.
+3. Waiting room resolves the current user's token and shows "Enter Game" link.
+
+### POST /init Authentication
+
+The game server validates the `Authorization` header on POST `/init`:
+
+```
+Authorization: Bearer {AUTH_SECRET}
+```
+
+If `AUTH_SECRET` is set and the header doesn't match, returns 401. This prevents unauthorized callers from creating games.
+
+---
+
+## JWT Token System
+
+### Shared Package
+
+`packages/auth/` provides JWT utilities using `jose` (Workers-compatible). Both lobby and game server import `@pecking-order/auth`.
+
+### Game Token Payload
+
+```typescript
+interface GameTokenPayload {
+  sub: string;        // userId (from lobby Users table)
+  gameId: string;     // game server room ID
+  playerId: string;   // e.g. "p1", "p2"
+  personaName: string;
+  iat: number;        // issued at
+  exp: number;        // expires in 24h
+}
+```
+
+### Signing (Lobby Side)
+
+```typescript
+import { signGameToken } from '@pecking-order/auth';
+
+const token = await signGameToken(
+  { sub: userId, gameId, playerId: 'p1', personaName: 'Countess Snuffles' },
+  AUTH_SECRET
+);
+```
+
+### Verification (Game Server Side)
+
+On WebSocket connect, the game server checks for a `?token=` query param:
+
+1. If present: verifies JWT signature + expiry via `verifyGameToken()`. Extracts `playerId`.
+2. If absent: falls back to legacy `?playerId=` query param (for debug/backward compat).
+3. Validates that `playerId` exists in the game's roster.
+4. Attaches `{ playerId }` to connection state.
+
+### Client Side — Clean URL Pattern (sessionStorage + replaceState)
+
+The client uses an OAuth-style token relay pattern to keep URLs clean and shareable:
+
+1. **Lobby redirect**: When a player enters the game (via waiting room or `/play/{CODE}`), the lobby redirects to `CLIENT_HOST/game/{CODE}?_t={JWT}`.
+2. **Token capture**: The client reads the `_t` param, decodes the JWT, stores it in `sessionStorage` keyed by game code (`po_token_{CODE}`), and immediately cleans the URL via `history.replaceState({}, '', '/game/{CODE}')`.
+3. **Refresh resilience**: On page refresh, the client finds no `_t` param but checks `sessionStorage` for a cached token matching the game code from the URL path.
+4. **Result**: The canonical client URL is always `/game/{CODE}` — clean, shareable, and memorable. The JWT never persists in the URL bar after the initial redirect.
+
+**Entry flow priority** (in `App.tsx`):
+1. `/game/CODE?_t=JWT` — redirect arrival from lobby, store + clean URL
+2. `/game/CODE` — refresh, check sessionStorage for cached token
+3. `?token=JWT` — debug links from lobby (direct JWT entry)
+4. `?gameId=&playerId=` — legacy backward compat
+
+**Lobby play route**: `/play/[code]/route.ts` authenticates the user via session cookie, resolves their player slot and JWT, then redirects to the client. This is used when a player visits the lobby play URL directly (not just from the waiting room).
+
+**SPA routing**: `apps/client/public/_redirects` contains `/* /index.html 200` for Cloudflare Pages fallback routing, ensuring `/game/{CODE}` paths resolve to the SPA.
+
+Backward compatibility: if no JWT token is available via any method, falls back to `?gameId=&playerId=` query params.
+
+---
+
+## Debug Mode
+
+### Quick Start (Skip Invites)
+
+The debug flow bypasses D1 and auth entirely for rapid local testing:
+
+1. Host clicks "Quick Start" on the lobby home page (with "Skip Invites" toggle ON).
+2. Server action `startDebugGame(mode, config?)`:
+   - Uses hardcoded personas (Countess Snuffles, Dr. Spatula, etc.).
+   - Builds roster with `debug-user-{n}` as `realUserId`.
+   - Mints JWTs with `dev-secret-change-me` as the signing secret.
+   - POSTs directly to game server (same as normal flow).
+3. Returns tokens — lobby links to client with `?token=` for p1.
+
+This means:
+- No D1 database needed for local dev.
+- No login required.
+- Admin console still accessible.
+- All game mechanics work identically.
+
+### Full Auth Flow (Debug Games)
+
+When the "Skip Invites" toggle is OFF (default), debug games use the full invite/auth flow:
+
+1. Host clicks "Create Game" — calls `createGame()` with debug config.
+2. Invite code generated, waiting room available at `/game/{CODE}/waiting`.
+3. Host shares invite code, players join via `/invite/{CODE}`.
+4. Same character selection, JWT minting, and clean URL flow as production.
+
+This allows testing the complete lobby→game flow locally without deploying.
+
+The debug flow bypasses D1 and auth entirely for rapid local testing:
+
+1. Host clicks "Debug: Quick Start" on the lobby home page.
+2. Server action `startDebugGame(mode, config?)`:
+   - Uses hardcoded personas (Countess Snuffles, Dr. Spatula, etc.).
+   - Builds roster with `debug-user-{n}` as `realUserId`.
+   - Mints JWTs with `dev-secret-change-me` as the signing secret.
+   - POSTs directly to game server (same as normal flow).
+3. Returns tokens — lobby links to client with `?token=` for p1.
+
+This means:
+- No D1 database needed for local dev.
+- No login required.
+- Admin console still accessible.
+- All game mechanics work identically.
+
+---
+
+## Environment Variables
+
+| Variable | Where | How Set | Purpose |
+|----------|-------|---------|---------|
+| `AUTH_SECRET` | Lobby + Game Server | `wrangler secret put` | JWT signing key, POST /init auth |
+| `DB` | Lobby | D1 binding in `wrangler.json` | Lobby database (Users, Games, etc.) |
+| `GAME_SERVER_HOST` | Lobby | `vars` in `wrangler.json` | URL of game server for POST /init |
+| `GAME_CLIENT_HOST` | Lobby | `vars` in `wrangler.json` | URL of client app for redirect links |
+| `VITE_GAME_SERVER_HOST` | Client | `.env.production` | Game server WebSocket host |
+| `VITE_LOBBY_HOST` | Client | `.env.production` | Lobby URL for admin panel links |
+
+For local dev, `AUTH_SECRET` defaults to `'dev-secret-change-me'` and the game server accepts connections without it.
+
+---
+
+## Security Model
+
+| Boundary | Mechanism |
+|----------|-----------|
+| Lobby login | Magic link token (5-min, single-use) -> session cookie (HTTP-only, 7-day) |
+| Lobby -> Game Server | Shared secret in `Authorization` header |
+| Client -> Game Server | JWT in WebSocket query param (24h expiry, HS256) |
+| Player identity | `playerId` extracted from verified JWT, not from client-supplied params |
+| Roster validation | Even with valid JWT, `playerId` must exist in game roster |
+
+### What's NOT yet implemented
+- Email delivery (magic links are displayed in UI, not emailed)
+- CSRF protection on server actions (Next.js provides some baseline protection)
+- Session revocation UI
+- Rate limiting on magic link generation
+- Scheduled auto-start (games start manually via host button)

@@ -1,41 +1,41 @@
 'use client';
 
-import { startGameStub } from "./actions";
-import type { DebugManifestConfig, DebugDayConfig } from "./actions";
-import { useState } from "react";
+import { createGame, startDebugGame } from './actions';
+import type { DebugManifestConfig, DebugDayConfig } from './actions';
+import { useState } from 'react';
 
 const AVAILABLE_VOTE_TYPES = [
-  { value: "MAJORITY", label: "Majority Vote" },
-  { value: "EXECUTIONER", label: "Executioner" },
-  { value: "BUBBLE", label: "Bubble (Top 3 Immune)" },
-  { value: "SECOND_TO_LAST", label: "Second to Last (Auto)" },
-  { value: "PODIUM_SACRIFICE", label: "Podium Sacrifice" },
-  { value: "SHIELD", label: "Shield (Vote to Save)" },
-  { value: "TRUST_PAIRS", label: "Trust Pairs" },
-  { value: "FINALS", label: "Finals (Crown Winner)" },
+  { value: 'MAJORITY', label: 'Majority Vote' },
+  { value: 'EXECUTIONER', label: 'Executioner' },
+  { value: 'BUBBLE', label: 'Bubble (Top 3 Immune)' },
+  { value: 'SECOND_TO_LAST', label: 'Second to Last (Auto)' },
+  { value: 'PODIUM_SACRIFICE', label: 'Podium Sacrifice' },
+  { value: 'SHIELD', label: 'Shield (Vote to Save)' },
+  { value: 'TRUST_PAIRS', label: 'Trust Pairs' },
+  { value: 'FINALS', label: 'Finals (Crown Winner)' },
 ];
 
 const AVAILABLE_GAME_TYPES = [
-  { value: "NONE", label: "No Game" },
-  { value: "TRIVIA", label: "Trivia" },
-  { value: "REALTIME_TRIVIA", label: "Real-Time Trivia" },
+  { value: 'NONE', label: 'No Game' },
+  { value: 'TRIVIA', label: 'Trivia' },
+  { value: 'REALTIME_TRIVIA', label: 'Real-Time Trivia' },
 ];
 
 const AVAILABLE_ACTIVITY_TYPES = [
-  { value: "NONE", label: "No Activity" },
-  { value: "PLAYER_PICK", label: "Player Pick" },
-  { value: "PREDICTION", label: "Prediction" },
-  { value: "WOULD_YOU_RATHER", label: "Would You Rather" },
-  { value: "HOT_TAKE", label: "Hot Take" },
-  { value: "CONFESSION", label: "Confession" },
-  { value: "GUESS_WHO", label: "Guess Who" },
+  { value: 'NONE', label: 'No Activity' },
+  { value: 'PLAYER_PICK', label: 'Player Pick' },
+  { value: 'PREDICTION', label: 'Prediction' },
+  { value: 'WOULD_YOU_RATHER', label: 'Would You Rather' },
+  { value: 'HOT_TAKE', label: 'Hot Take' },
+  { value: 'CONFESSION', label: 'Confession' },
+  { value: 'GUESS_WHO', label: 'Guess Who' },
 ];
 
 function createDefaultDay(): DebugDayConfig {
   return {
-    voteType: "MAJORITY",
-    gameType: "TRIVIA",
-    activityType: "PLAYER_PICK",
+    voteType: 'MAJORITY',
+    gameType: 'TRIVIA',
+    activityType: 'PLAYER_PICK',
     events: { INJECT_PROMPT: true, START_ACTIVITY: true, END_ACTIVITY: true, OPEN_DMS: true, START_GAME: true, END_GAME: true, OPEN_VOTING: true, CLOSE_VOTING: true, CLOSE_DMS: true, END_DAY: true },
   };
 }
@@ -45,12 +45,15 @@ function createDefaultManifestConfig(): DebugManifestConfig {
 }
 
 export default function LobbyRoot() {
-  const [status, setStatus] = useState<string>("SYSTEM_IDLE");
+  const [status, setStatus] = useState<string>('SYSTEM_IDLE');
   const [gameId, setGameId] = useState<string | null>(null);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [clientHost, setClientHost] = useState<string>('http://localhost:5173');
-  const [mode, setMode] = useState<"PECKING_ORDER" | "BLITZ" | "DEBUG_PECKING_ORDER">("PECKING_ORDER");
+  const [mode, setMode] = useState<'PECKING_ORDER' | 'BLITZ' | 'DEBUG_PECKING_ORDER'>('PECKING_ORDER');
   const [isLoading, setIsLoading] = useState(false);
   const [debugConfig, setDebugConfig] = useState<DebugManifestConfig>(createDefaultManifestConfig);
+  const [tokens, setTokens] = useState<Record<string, string> | null>(null);
+  const [skipInvites, setSkipInvites] = useState(false);
 
   function handleDayCountChange(delta: number) {
     setDebugConfig(prev => {
@@ -82,26 +85,51 @@ export default function LobbyRoot() {
     });
   }
 
-  async function handleStart() {
+  async function handleCreateGame() {
     setIsLoading(true);
-    setStatus("INITIALIZING_PROTOCOL...");
+    setStatus('CREATING_GAME...');
     setGameId(null);
+    setInviteCode(null);
+    setTokens(null);
 
-    // Artificial delay for effect
+    await new Promise(r => setTimeout(r, 400));
+
+    const config = mode === 'DEBUG_PECKING_ORDER' ? debugConfig : undefined;
+    const result = await createGame(mode, config);
+    setIsLoading(false);
+
+    if (result.success) {
+      setStatus(`GAME_CREATED: ${result.gameId}`);
+      setGameId(result.gameId ?? null);
+      setInviteCode(result.inviteCode ?? null);
+    } else {
+      setStatus(`ERROR: ${result.error}`);
+    }
+  }
+
+  async function handleDebugStart() {
+    setIsLoading(true);
+    setStatus('INITIALIZING_PROTOCOL...');
+    setGameId(null);
+    setTokens(null);
+
     await new Promise(r => setTimeout(r, 800));
 
     const config = mode === 'DEBUG_PECKING_ORDER' ? debugConfig : undefined;
-    const result = await startGameStub(mode, config);
+    const result = await startDebugGame(mode, config);
     setIsLoading(false);
 
     if (result.success) {
       setStatus(`LOBBY_CREATED: ${result.gameId}`);
       setGameId(result.gameId ?? null);
       if (result.clientHost) setClientHost(result.clientHost);
+      if (result.tokens) setTokens(result.tokens);
     } else {
       setStatus(`ERROR: ${result.error}`);
     }
   }
+
+  const isDebugMode = mode === 'DEBUG_PECKING_ORDER';
 
   return (
     <div className="min-h-screen bg-skin-deep bg-grid-pattern flex flex-col items-center justify-center p-4 font-body text-skin-base relative selection:bg-skin-gold/30">
@@ -154,7 +182,7 @@ export default function LobbyRoot() {
               </div>
 
               {/* Debug Manifest Panel */}
-              {mode === 'DEBUG_PECKING_ORDER' && !gameId && (
+              {isDebugMode && !gameId && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
@@ -167,7 +195,7 @@ export default function LobbyRoot() {
                         disabled={debugConfig.dayCount <= 1}
                         className="w-7 h-7 flex items-center justify-center bg-skin-input border border-skin-base rounded-lg font-mono text-sm text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
                       >
-                        −
+                        -
                       </button>
                       <span className="font-mono text-sm text-skin-gold w-4 text-center">{debugConfig.dayCount}</span>
                       <button
@@ -235,30 +263,72 @@ export default function LobbyRoot() {
                 </div>
               )}
 
-              {/* Action Button */}
-              <button
-                onClick={handleStart}
-                disabled={isLoading || !!gameId}
-                className={`group w-full py-5 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transform transition-all flex items-center justify-center gap-3 relative overflow-hidden
-                  ${isLoading
-                    ? 'bg-skin-input text-skin-dim/40 cursor-wait'
-                    : gameId
-                      ? 'bg-skin-green/10 text-skin-green border border-skin-green/30 cursor-default'
-                      : 'bg-skin-pink text-skin-base shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
-                  }`}
-              >
-                {isLoading ? (
-                  <>
-                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></span>
-                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75"></span>
-                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150"></span>
-                  </>
-                ) : gameId ? (
-                  <>Protocol Active</>
-                ) : (
-                  <>Initialize Lobby</>
-                )}
-              </button>
+              {/* Skip Invites Toggle (debug mode only) */}
+              {isDebugMode && !gameId && (
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={skipInvites}
+                      onChange={(e) => setSkipInvites(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-skin-input border border-skin-base rounded-full peer-checked:bg-skin-gold/30 peer-checked:border-skin-gold/50 transition-all" />
+                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-skin-dim/60 rounded-full peer-checked:translate-x-4 peer-checked:bg-skin-gold transition-all" />
+                  </div>
+                  <span className="text-xs font-mono text-skin-dim/60 group-hover:text-skin-dim transition-colors">
+                    Skip invites (hardcoded players, no auth)
+                  </span>
+                </label>
+              )}
+
+              {/* Action Buttons */}
+              {!gameId && (
+                <div className="space-y-3">
+                  {/* Primary action: Create Game (invite flow) or Quick Start */}
+                  {isDebugMode && skipInvites ? (
+                    <button
+                      onClick={handleDebugStart}
+                      disabled={isLoading}
+                      className={`group w-full py-5 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transform transition-all flex items-center justify-center gap-3 relative overflow-hidden
+                        ${isLoading
+                          ? 'bg-skin-input text-skin-dim/40 cursor-wait'
+                          : 'bg-skin-pink text-skin-base shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
+                        }`}
+                    >
+                      {isLoading ? (
+                        <>
+                          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></span>
+                          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75"></span>
+                          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150"></span>
+                        </>
+                      ) : (
+                        <>Quick Start</>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleCreateGame}
+                      disabled={isLoading}
+                      className={`group w-full py-5 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transform transition-all flex items-center justify-center gap-3 relative overflow-hidden
+                        ${isLoading
+                          ? 'bg-skin-input text-skin-dim/40 cursor-wait'
+                          : 'bg-skin-pink text-skin-base shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
+                        }`}
+                    >
+                      {isLoading ? (
+                        <>
+                          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></span>
+                          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75"></span>
+                          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150"></span>
+                        </>
+                      ) : (
+                        <>Create Game</>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Terminal Output */}
               <div className="font-mono text-xs border-t border-skin-base/30 pt-6 mt-6">
@@ -272,11 +342,52 @@ export default function LobbyRoot() {
                 </div>
               </div>
 
-              {/* Success Actions */}
-              {gameId && (
+              {/* Invite Code Display (after createGame) */}
+              {inviteCode && !tokens && (
+                <div className="slide-up-in space-y-4">
+                  <div className="text-center space-y-2">
+                    <div className="text-xs font-display font-bold text-skin-dim uppercase tracking-widest">
+                      Invite Code
+                    </div>
+                    <div className="text-4xl font-mono font-black text-skin-gold tracking-[0.3em] select-all">
+                      {inviteCode}
+                    </div>
+                    <p className="text-xs text-skin-dim/60">Share this code with your players</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    <a
+                      href={`/invite/${inviteCode}`}
+                      className="flex items-center justify-between p-4 bg-skin-panel/30 hover:bg-skin-panel/50 text-skin-base rounded-lg transition-all border border-skin-base hover:border-skin-dim/30 group"
+                    >
+                      <span className="font-medium text-sm flex flex-col">
+                        <span className="font-bold text-skin-base">Join as Host</span>
+                        <span className="text-xs text-skin-dim/60">Pick your character</span>
+                      </span>
+                      <span className="text-skin-dim/40 group-hover:text-skin-gold group-hover:translate-x-1 transition-all">&rarr;</span>
+                    </a>
+
+                    {inviteCode && (
+                      <a
+                        href={`/game/${inviteCode}/waiting`}
+                        className="flex items-center justify-between p-4 bg-skin-info/10 hover:bg-skin-info/20 text-skin-info rounded-lg transition-all border border-skin-info/20 hover:border-skin-info/40 group"
+                      >
+                        <span className="font-medium text-sm flex flex-col">
+                          <span className="font-bold text-skin-info">Waiting Room</span>
+                          <span className="text-xs text-skin-info/50">See who has joined</span>
+                        </span>
+                        <span className="text-skin-info/30 group-hover:text-skin-info group-hover:translate-x-1 transition-all">&rarr;</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Debug Start Success (after startDebugGame) */}
+              {tokens && gameId && (
                 <div className="grid grid-cols-1 gap-3 slide-up-in pt-2">
                   <a
-                    href={`${clientHost}/?gameId=${gameId}&playerId=p1`}
+                    href={`${clientHost}/?token=${tokens['p1']}`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-between p-4 bg-skin-panel/30 hover:bg-skin-panel/50 text-skin-base rounded-lg transition-all border border-skin-base hover:border-skin-dim/30 group"
@@ -285,10 +396,10 @@ export default function LobbyRoot() {
                       <span className="font-bold text-skin-base">Enter Simulation</span>
                       <span className="text-xs text-skin-dim/60">Connect as Player 1</span>
                     </span>
-                    <span className="text-skin-dim/40 group-hover:text-skin-gold group-hover:translate-x-1 transition-all">→</span>
+                    <span className="text-skin-dim/40 group-hover:text-skin-gold group-hover:translate-x-1 transition-all">&rarr;</span>
                   </a>
 
-                  {mode === 'DEBUG_PECKING_ORDER' && (
+                  {isDebugMode && (
                     <a
                       href={`/admin/game/${gameId}`}
                       className="flex items-center justify-between p-4 bg-skin-info/10 hover:bg-skin-info/20 text-skin-info rounded-lg transition-all border border-skin-info/20 hover:border-skin-info/40 group"
@@ -297,7 +408,7 @@ export default function LobbyRoot() {
                         <span className="font-bold text-skin-info">Admin Console</span>
                         <span className="text-xs text-skin-info/50">God Mode Controls</span>
                       </span>
-                      <span className="text-skin-info/30 group-hover:text-skin-info group-hover:translate-x-1 transition-all">⚡️</span>
+                      <span className="text-skin-info/30 group-hover:text-skin-info group-hover:translate-x-1 transition-all">&rarr;</span>
                     </a>
                   )}
                 </div>
