@@ -70,7 +70,7 @@ export class GameServer extends Server<Env> {
     // Define the D1 Writer Implementation
     // Only override persistFactToD1 — updateJournalTimestamp (assign) stays in L2
     // to ensure context changes trigger the subscription for SYSTEM.SYNC broadcasts
-    const JOURNALABLE_TYPES = ['SILVER_TRANSFER', 'VOTE_CAST', 'ELIMINATION', 'DM_SENT', 'POWER_USED', 'GAME_RESULT', 'PLAYER_GAME_RESULT', 'WINNER_DECLARED'];
+    const JOURNALABLE_TYPES = ['SILVER_TRANSFER', 'VOTE_CAST', 'ELIMINATION', 'DM_SENT', 'POWER_USED', 'GAME_RESULT', 'PLAYER_GAME_RESULT', 'WINNER_DECLARED', 'PROMPT_RESULT'];
     const machineWithPersistence = orchestratorMachine.provide({
       actions: {
         persistFactToD1: ({ event }: any) => {
@@ -218,9 +218,10 @@ export class GameServer extends Server<Env> {
         });
       }
 
-      // C. Extract voting + game cartridge context for client rendering
+      // C. Extract voting + game + prompt cartridge context for client rendering
       let activeVotingCartridge: any = null;
       let rawGameCartridge: any = null;
+      let activePromptCartridge: any = null;
       try {
         const l3RefForCartridge = snapshot.children['l3-session'];
         if (l3RefForCartridge) {
@@ -232,6 +233,10 @@ export class GameServer extends Server<Env> {
           const gameCartridgeRef = (l3Snap?.children as any)?.['activeGameCartridge'];
           if (gameCartridgeRef) {
             rawGameCartridge = gameCartridgeRef.getSnapshot()?.context || null;
+          }
+          const promptCartridgeRef = (l3Snap?.children as any)?.['activePromptCartridge'];
+          if (promptCartridgeRef) {
+            activePromptCartridge = promptCartridgeRef.getSnapshot()?.context || null;
           }
         }
       } catch (err) {
@@ -247,6 +252,7 @@ export class GameServer extends Server<Env> {
         roster: snapshot.context.roster,       // Always L2's authoritative roster
         manifest: snapshot.context.manifest,
         activeVotingCartridge,
+        activePromptCartridge: GameServer.projectPromptCartridge(activePromptCartridge),
         winner: snapshot.context.winner,
       };
 
@@ -419,6 +425,21 @@ export class GameServer extends Server<Env> {
           category: 'SYSTEM',
           timestamp: fact.timestamp,
         };
+      case 'PROMPT_RESULT': {
+        const rewards = fact.payload?.silverRewards;
+        if (rewards) {
+          const totalSilver = Object.values(rewards).reduce((sum: number, v: any) => sum + (v || 0), 0);
+          if (totalSilver > 0) {
+            return {
+              id: crypto.randomUUID(),
+              text: `Activity complete! ${Object.keys(rewards).length} players earned ${totalSilver} silver total.`,
+              category: 'SOCIAL',
+              timestamp: fact.timestamp,
+            };
+          }
+        }
+        return null;
+      }
       default:
         return null;
     }
@@ -509,6 +530,7 @@ export class GameServer extends Server<Env> {
       let l3Context: any = {};
       let activeVotingCartridge: any = null;
       let rawGameCartridge: any = null;
+      let activePromptCartridge: any = null;
       const l3Ref = snapshot.children['l3-session'];
       if (l3Ref) {
         const l3Snapshot = l3Ref.getSnapshot();
@@ -521,6 +543,10 @@ export class GameServer extends Server<Env> {
           const gameCartridgeRef = (l3Snapshot.children as any)?.['activeGameCartridge'];
           if (gameCartridgeRef) {
             rawGameCartridge = gameCartridgeRef.getSnapshot()?.context || null;
+          }
+          const promptCartridgeRef = (l3Snapshot.children as any)?.['activePromptCartridge'];
+          if (promptCartridgeRef) {
+            activePromptCartridge = promptCartridgeRef.getSnapshot()?.context || null;
           }
         }
       }
@@ -543,6 +569,7 @@ export class GameServer extends Server<Env> {
           chatLog: playerChatLog,
           activeVotingCartridge,
           activeGameCartridge,
+          activePromptCartridge: GameServer.projectPromptCartridge(activePromptCartridge),
           winner: snapshot.context.winner,
         }
       }));
@@ -579,6 +606,7 @@ export class GameServer extends Server<Env> {
       if (!playerState) return null;
       return {
         gameType: gameCtx.gameType,
+        ready: gameCtx.ready ?? true,
         status: playerState.status,
         currentRound: playerState.currentRound,
         totalRounds: playerState.totalRounds,
@@ -594,8 +622,33 @@ export class GameServer extends Server<Env> {
       };
     }
 
-    // Real-time games: broadcast full context
-    return gameCtx;
+    // Real-time games: broadcast full context (strip questionPool/correctIndex data)
+    const { questionPool, ...publicCtx } = gameCtx;
+    return publicCtx;
+  }
+
+  /**
+   * Project prompt cartridge context for SYSTEM.SYNC.
+   * Strips sensitive author mappings from two-phase activities during active phases.
+   * - CONFESSION: strip `confessions` (author→text) during COLLECTING/VOTING
+   * - GUESS_WHO: strip `answers` (author→text) during ANSWERING/GUESSING
+   */
+  private static projectPromptCartridge(promptCtx: any): any {
+    if (!promptCtx) return null;
+
+    const { promptType, phase } = promptCtx;
+
+    if (promptType === 'CONFESSION' && (phase === 'COLLECTING' || phase === 'VOTING')) {
+      const { confessions, ...safe } = promptCtx;
+      return safe;
+    }
+
+    if (promptType === 'GUESS_WHO' && (phase === 'ANSWERING' || phase === 'GUESSING')) {
+      const { answers, ...safe } = promptCtx;
+      return safe;
+    }
+
+    return promptCtx;
   }
 
   private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER'];
@@ -615,7 +668,8 @@ export class GameServer extends Server<Env> {
 
       const isAllowed = GameServer.ALLOWED_CLIENT_EVENTS.includes(event.type)
         || (typeof event.type === 'string' && event.type.startsWith('VOTE.'))
-        || (typeof event.type === 'string' && event.type.startsWith('GAME.'));
+        || (typeof event.type === 'string' && event.type.startsWith('GAME.'))
+        || (typeof event.type === 'string' && event.type.startsWith('ACTIVITY.'));
       if (!isAllowed) {
         console.warn(`[L1] Rejected event type from client: ${event.type}`);
         return;

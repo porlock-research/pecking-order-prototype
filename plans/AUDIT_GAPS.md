@@ -179,12 +179,14 @@ The spec describes cartridges as receiving roster data, rules, and questions -- 
 | **Post-Game Machine (L4)** | Dedicated `l4-post-game.ts`: free group chat (no DMs, no silver costs, no voting/games). Uses shared `buildChatMessage`/`appendToChatLog` from `social-helpers.ts`. Invoked in L2's `gameSummary` state with `id: 'l3-session'` so L1 extraction works unchanged. ADR-039. | `feature/tournament-winning` |
 | **Tournament Winning Flow** | L2: `winner` context field, `gameSummary` state (invokes post-game machine), dynamic day limit from `manifest.days.length`. `processNightSummary` handles both elimination AND winner declaration (independent `if` blocks). nightSummary transitions detect winner → gameSummary. L1: `winner` in SYNC, `WINNER_DECLARED` in journal + ticker. Client: `winner` in store, `gameSummary` → 'GAME OVER' label. ADR-040. | `feature/tournament-winning` |
 | **Lobby Debug Improvements** | Player count = days + 1 (always 1 survivor). Removed per-event checkboxes — all timeline actions always enabled. Added FINALS to vote type dropdown, game type dropdown per day. | `feature/tournament-winning` |
+| **#5 Activity Layer / Prompt System** | Full cartridge-based activity system following voting/game pattern. 6 prompt types implemented: `PLAYER_PICK` (pick a player, mutual bonus), `PREDICTION` (guess elimination, consensus bonus), `WOULD_YOU_RATHER` (A/B choice, minority bonus), `HOT_TAKE` (agree/disagree, minority bonus), `CONFESSION` (two-phase: anonymous write → vote for best), `GUESS_WHO` (two-phase: anonymous answer → guess authors). L3 `activityLayer` region wired with spawn/cleanup/forward. L2 `applyPromptRewards` + fact emission. L1 `projectPromptCartridge()` strips sensitive author mappings from SYNC during active phases. `PROMPT_RESULT` in FactSchema + journal + ticker. Timeline: `START_ACTIVITY` / `END_ACTIVITY`. Client: `PromptPanel` router → 6 type-specific components. Lobby debug config includes activity type selector + default prompts/options per type. ADR-041, ADR-043. | `feature/activity-layer-and-trivia-api` |
+| **OpenTriviaDB Integration** | Both trivia machines (async + realtime) now fetch questions from OpenTriviaDB API. New `loading` initial state with `fromPromise(fetchTriviaQuestions)` + fallback to hardcoded pool on error. `TriviaQuestion` enriched with `category`/`difficulty`. Client shows difficulty badges (green/yellow/red pills) and category tags. Async trivia: `ready` boolean controls loading spinner. Realtime trivia: `questionPool` stripped from SYNC payload. ADR-042. | `feature/activity-layer-and-trivia-api` |
 
 ### Remaining
 
 - DUELS voting mechanic — needs minigame system integration
 - `dailyGame` sub-state refactor (`playing`/`completed`) — see tech debt above
-- Activity layer (#5), Gold economy (#6), Destiny system (#7), Powers (#9)
+- Gold economy (#6), Destiny system (#7), Powers (#9)
 
 ### Known Tech Debt
 

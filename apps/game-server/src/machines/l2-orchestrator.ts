@@ -3,11 +3,13 @@ import { dailySessionMachine } from './l3-session';
 import { postGameMachine } from './l4-post-game';
 import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent } from '@pecking-order/shared-types';
 import type { GameOutput } from './cartridges/games/_contract';
+import type { PromptOutput } from './cartridges/prompts/_contract';
 
 import { l2InitializationActions } from './actions/l2-initialization';
 import { l2TimelineActions } from './actions/l2-timeline';
 import { l2EliminationActions } from './actions/l2-elimination';
 import { l2GameRewardsActions } from './actions/l2-game-rewards';
+import { l2PromptRewardsActions } from './actions/l2-prompt-rewards';
 import { l2FactsActions } from './actions/l2-facts';
 
 // --- Types ---
@@ -37,6 +39,8 @@ export type GameEvent =
   | { type: 'CARTRIDGE.VOTE_RESULT'; result: VoteResult }
   | { type: 'CARTRIDGE.GAME_RESULT'; result: GameOutput }
   | { type: 'CARTRIDGE.PLAYER_GAME_RESULT'; playerId: string; silverReward: number }
+  | { type: 'CARTRIDGE.PROMPT_RESULT'; result: PromptOutput }
+  | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
   | DmRejectedEvent
   | (SocialEvent & { senderId: string });
 
@@ -51,6 +55,7 @@ export const orchestratorMachine = setup({
     ...l2TimelineActions,
     ...l2EliminationActions,
     ...l2GameRewardsActions,
+    ...l2PromptRewardsActions,
     ...l2FactsActions,
   } as any,
   actors: {
@@ -140,6 +145,7 @@ export const orchestratorMachine = setup({
             'CARTRIDGE.VOTE_RESULT': { actions: 'storeVoteResult' },
             'CARTRIDGE.GAME_RESULT': { actions: ['applyGameRewards', 'emitGameResultFact'] },
             'CARTRIDGE.PLAYER_GAME_RESULT': { actions: ['applyPlayerGameReward', 'emitPlayerGameResultFact'] },
+            'CARTRIDGE.PROMPT_RESULT': { actions: ['applyPromptRewards', 'emitPromptResultFact'] },
             'DM.REJECTED': { actions: 'sendDmRejection' },
             '*': [
               {
@@ -148,6 +154,10 @@ export const orchestratorMachine = setup({
               },
               {
                 guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('GAME.'),
+                actions: sendTo('l3-session', ({ event }: any) => event),
+              },
+              {
+                guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('ACTIVITY.'),
                 actions: sendTo('l3-session', ({ event }: any) => event),
               }
             ],

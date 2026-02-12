@@ -404,3 +404,61 @@ This document tracks significant architectural decisions, their context, and con
     *   A 3-day manifest ends the game after day 3, not day 7.
     *   Existing 7-day manifests behave identically.
     *   Game designers control tournament length purely through manifest configuration.
+
+## [ADR-041] Activity Layer / Prompt System
+*   **Date:** 2026-02-11
+*   **Status:** Accepted
+*   **Context:** The spec describes daily social prompts ("Pick your bestie", "Who's kindest?") that run throughout the day as overlay popups. L3's `activityLayer` parallel region was stubbed (idle/active, no logic). This needed to become a real cartridge-based system.
+*   **Decision:** Follow the same registry/contract/spawn pattern as voting and game cartridges:
+    *   `cartridges/prompts/_contract.ts` defines `BasePromptContext`, `PromptEvent`, `PromptOutput`.
+    *   `cartridges/prompts/_registry.ts` maps `PromptType` → machine (currently `PLAYER_PICK`).
+    *   `ACTIVITY.{MECHANISM}.{ACTION}` event namespace with wildcard forwarding at L1/L2/L3.
+    *   L3 `activityLayer` region: `idle` → `active` (spawns `activePromptCartridge`) → `idle` on completion.
+    *   L2 handles `CARTRIDGE.PROMPT_RESULT` with `applyPromptRewards` + fact emission.
+    *   L1 extracts `activePromptCartridge` from L3 children and includes in SYSTEM.SYNC.
+    *   `PROMPT_RESULT` added to `FactSchema` and journalable types.
+    *   Timeline events: `START_ACTIVITY` (with payload `{ promptType, promptText }`) and `END_ACTIVITY`.
+*   **Consequences:**
+    *   Adding new prompt types = new machine file + registry entry + client component.
+    *   Activity runs in parallel with voting/games (parallel region in L3).
+    *   Silver rewards: +5 per response, +10 per mutual pick (PLAYER_PICK).
+    *   Client: `PromptPanel` router dispatches to `PlayerPickPrompt` based on `activePromptCartridge.promptType`.
+
+## [ADR-042] OpenTriviaDB Integration
+*   **Date:** 2026-02-11
+*   **Status:** Accepted
+*   **Context:** Both trivia machines (async + realtime) used identical hardcoded 15-question pools. This made trivia repetitive after a few games.
+*   **Decision:** Replace hardcoded pools with the Open Trivia Database API (`opentdb.com/api.php`):
+    *   New utility `trivia-api.ts` — `fetchTriviaQuestions(amount)` fetches, decodes URL3986, shuffles answers, computes `correctIndex`.
+    *   Both machines gain a `loading` initial state using `invoke: { src: fromPromise(fetchQuestions) }`.
+    *   On success → store questions in `questionPool`, transition to active/waiting.
+    *   On error → use `FALLBACK_QUESTIONS` (original hardcoded pool with `category`/`difficulty` added).
+    *   `TriviaQuestion` type enriched with `category` and `difficulty` fields.
+    *   Client shows difficulty badge (green/yellow/red pill) and category tag per question.
+    *   Async trivia exposes `ready: boolean` in context — client shows loading spinner when false.
+*   **Consequences:**
+    *   50 fresh questions per game session (randomized from API).
+    *   Graceful degradation: API failure → instant fallback to 15 hardcoded questions.
+    *   No authentication needed — OpenTDB is free and rate-limited by IP.
+    *   `questionPool` stripped from realtime SYNC payload to avoid leaking correct answers.
+
+## [ADR-043] Five New Activity Types (Prompt Cartridges)
+*   **Date:** 2026-02-11
+*   **Status:** Accepted
+*   **Context:** The activity layer (ADR-041) launched with only `PLAYER_PICK`. The game design calls for variety — social deduction prompts, opinion polls, anonymous writing games. Five new types fill the content gap.
+*   **Decision:** Implement 5 new prompt cartridge machines following the existing registry pattern:
+    *   **Single-phase** (same pattern as PLAYER_PICK):
+        *   `PREDICTION` — pick who gets eliminated tonight. +5 participation, +10 consensus bonus (picked most-predicted).
+        *   `WOULD_YOU_RATHER` — choose option A or B. +5 participation, +10 minority bonus. New `optionA`/`optionB` fields in `PromptCartridgeInput`.
+        *   `HOT_TAKE` — agree/disagree with a statement. +5 participation, +10 minority bonus.
+    *   **Two-phase** (new pattern with security-sensitive context stripping):
+        *   `CONFESSION` — collecting → voting → completed. Write anonymous text, vote for best. +5 submit, +5 vote, +15 winner.
+        *   `GUESS_WHO` — answering → guessing → completed. Answer prompt anonymously, guess who wrote what. +5 participation, +5/correct guess, +5/player fooled.
+    *   L1 `projectPromptCartridge()` strips sensitive author mappings (`confessions`/`answers`) from SYNC during active phases (same approach as `projectGameCartridge` for trivia answers).
+    *   Each type has its own event sub-namespace: `ACTIVITY.PROMPT.*`, `ACTIVITY.WYR.*`, `ACTIVITY.HOTTAKE.*`, `ACTIVITY.CONFESSION.*`, `ACTIVITY.GUESSWHO.*`.
+    *   Lobby `ACTIVITY_PROMPTS` map provides default prompt text per type. `ACTIVITY_OPTIONS` provides WYR-specific `optionA`/`optionB`.
+*   **Consequences:**
+    *   6 total activity types selectable in lobby debug config.
+    *   Two-phase activities handle `INTERNAL.END_ACTIVITY` in both phases (skip to completed with partial data).
+    *   Anonymous shuffling stored in context (survives snapshot rehydration).
+    *   Client: 5 new components with phase-appropriate UIs (text input, voting cards, player dropdowns, percentage bars).

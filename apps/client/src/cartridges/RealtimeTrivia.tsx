@@ -4,11 +4,12 @@ import type { SocialPlayer } from '@pecking-order/shared-types';
 interface TriviaProps {
   cartridge: {
     gameType: string;
+    ready?: boolean;
     phase: 'WAITING' | 'QUESTION' | 'RESULT' | 'SCOREBOARD';
     currentRound: number;
     totalRounds: number;
     scores: Record<string, number>;
-    currentQuestion: { question: string; options: string[] } | null;
+    currentQuestion: { question: string; options: string[]; category?: string; difficulty?: string } | null;
     roundDeadline: number | null;
     lastRoundResults: {
       correctIndex: number;
@@ -27,6 +28,30 @@ interface TriviaProps {
 }
 
 const OPTION_LABELS = ['A', 'B', 'C', 'D'];
+
+const DIFFICULTY_COLORS: Record<string, string> = {
+  easy: 'bg-skin-green/15 text-skin-green border-skin-green/30',
+  medium: 'bg-skin-gold/15 text-skin-gold border-skin-gold/30',
+  hard: 'bg-skin-danger/15 text-skin-danger border-skin-danger/30',
+};
+
+function DifficultyBadge({ category, difficulty }: { category?: string; difficulty?: string }) {
+  if (!category && !difficulty) return null;
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {category && (
+        <span className="text-[9px] font-mono text-skin-dim bg-white/[0.04] border border-white/[0.08] rounded-pill px-2 py-0.5 uppercase tracking-wider">
+          {category}
+        </span>
+      )}
+      {difficulty && (
+        <span className={`text-[9px] font-mono border rounded-pill px-2 py-0.5 uppercase tracking-wider ${DIFFICULTY_COLORS[difficulty] || ''}`}>
+          {difficulty}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function CountdownBar({ deadline }: { deadline: number | null }) {
   const [pct, setPct] = useState(100);
@@ -111,6 +136,7 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
       {/* Question + Inline Result Phase */}
       {showQuestion && currentQuestion && (
         <div className="p-4 space-y-4">
+          <DifficultyBadge category={currentQuestion.category} difficulty={currentQuestion.difficulty} />
           <p className="text-sm font-bold text-skin-base leading-relaxed">
             {currentQuestion.question}
           </p>
@@ -249,12 +275,19 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
         </div>
       )}
 
-      {/* Waiting Phase */}
+      {/* Waiting / Loading Phase */}
       {phase === 'WAITING' && (
-        <div className="p-6 text-center">
-          <span className="text-sm font-mono text-skin-dim animate-pulse">
-            Starting trivia...
-          </span>
+        <div className="p-6 text-center space-y-3">
+          {cartridge.ready === false ? (
+            <>
+              <span className="inline-block w-5 h-5 border-2 border-skin-gold border-t-transparent rounded-full spin-slow" />
+              <p className="text-sm font-mono text-skin-dim animate-pulse">Loading questions...</p>
+            </>
+          ) : (
+            <span className="text-sm font-mono text-skin-dim animate-pulse">
+              Starting trivia...
+            </span>
+          )}
         </div>
       )}
     </div>

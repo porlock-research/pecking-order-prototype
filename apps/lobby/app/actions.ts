@@ -5,8 +5,11 @@ import { InitPayloadSchema, Roster } from "@pecking-order/shared-types";
 export interface DebugDayConfig {
   voteType: string;
   gameType: string;
+  activityType: string;
   events: {
     INJECT_PROMPT: boolean;
+    START_ACTIVITY: boolean;
+    END_ACTIVITY: boolean;
     OPEN_DMS: boolean;
     START_GAME: boolean;
     END_GAME: boolean;
@@ -73,6 +76,8 @@ export async function startGameStub(
     // Build manifest from debug config
     const EVENT_MESSAGES: Record<string, string> = {
       INJECT_PROMPT: "Chat prompt injected.",
+      START_ACTIVITY: "Activity started!",
+      END_ACTIVITY: "Activity ended.",
       OPEN_DMS: "DMs are now open.",
       START_GAME: "Daily game started!",
       END_GAME: "Daily game ended.",
@@ -82,18 +87,37 @@ export async function startGameStub(
       END_DAY: "Day has ended.",
     };
 
+    const ACTIVITY_PROMPTS: Record<string, string> = {
+      PLAYER_PICK: 'Pick your bestie',
+      PREDICTION: 'Who do you think will be eliminated tonight?',
+      WOULD_YOU_RATHER: 'Would you rather...',
+      HOT_TAKE: 'Pineapple belongs on pizza',
+      CONFESSION: 'Confess something about your game strategy',
+      GUESS_WHO: 'What is your biggest fear in this game?',
+      NONE: '',
+    };
+
+    const ACTIVITY_OPTIONS: Record<string, { optionA: string; optionB: string }> = {
+      WOULD_YOU_RATHER: { optionA: 'Have immunity for one round', optionB: 'Get 50 bonus silver' },
+    };
+
     days = debugConfig.days.slice(0, debugConfig.dayCount).map((day, i) => {
       const dayNum = i + 1;
       const baseOffset = i * 30000;
-      const timeline: { time: string; action: string; payload: { msg: string } }[] = [];
+      const timeline: { time: string; action: string; payload: any }[] = [];
 
       let eventOffset = 0;
-      for (const eventKey of ['INJECT_PROMPT', 'OPEN_DMS', 'START_GAME', 'END_GAME', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'END_DAY'] as const) {
+      for (const eventKey of ['INJECT_PROMPT', 'START_ACTIVITY', 'END_ACTIVITY', 'OPEN_DMS', 'START_GAME', 'END_GAME', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'END_DAY'] as const) {
+        // Skip activity events if activityType is NONE
+        if ((eventKey === 'START_ACTIVITY' || eventKey === 'END_ACTIVITY') && day.activityType === 'NONE') continue;
         if (day.events[eventKey]) {
+          const payload = eventKey === 'START_ACTIVITY'
+            ? { msg: EVENT_MESSAGES[eventKey], promptType: day.activityType, promptText: ACTIVITY_PROMPTS[day.activityType] || 'Pick a player', ...(ACTIVITY_OPTIONS[day.activityType] || {}) }
+            : { msg: EVENT_MESSAGES[eventKey] };
           timeline.push({
             time: t(baseOffset + eventOffset),
             action: eventKey,
-            payload: { msg: EVENT_MESSAGES[eventKey] },
+            payload,
           });
           eventOffset += 5000;
         }

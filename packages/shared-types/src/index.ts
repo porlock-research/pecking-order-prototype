@@ -44,7 +44,7 @@ export const LobbySchema = z.object({
 
 export const TimelineEventSchema = z.object({
   time: z.string(), // "09:00" or ISO string
-  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "START_GAME", "END_GAME", "END_DAY"]),
+  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "START_GAME", "END_GAME", "END_DAY"]),
   payload: z.any().optional(),
 });
 
@@ -121,7 +121,7 @@ export const InitPayloadSchema = z.object({
 // --- Journal & Facts (Persistence) ---
 
 export const FactSchema = z.object({
-  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED"]),
+  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED", "PROMPT_RESULT"]),
   actorId: z.string(),
   targetId: z.string().optional(),
   payload: z.any().optional(), // JSON details
@@ -204,6 +204,20 @@ export interface DmRejectedEvent {
   type: 'DM.REJECTED';
   reason: DmRejectionReason;
   senderId: string;
+}
+
+// --- Prompt (Activity Layer) Types ---
+
+export const PromptTypeSchema = z.enum(['PLAYER_PICK', 'PREDICTION', 'WOULD_YOU_RATHER', 'HOT_TAKE', 'CONFESSION', 'GUESS_WHO']);
+export type PromptType = z.infer<typeof PromptTypeSchema>;
+
+export interface PromptCartridgeInput {
+  promptType: PromptType;
+  promptText: string;
+  roster: Record<string, SocialPlayer>;
+  dayIndex: number;
+  optionA?: string;
+  optionB?: string;
 }
 
 // --- Ticker (News Feed) ---

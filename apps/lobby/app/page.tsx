@@ -21,11 +21,22 @@ const AVAILABLE_GAME_TYPES = [
   { value: "REALTIME_TRIVIA", label: "Real-Time Trivia" },
 ];
 
+const AVAILABLE_ACTIVITY_TYPES = [
+  { value: "NONE", label: "No Activity" },
+  { value: "PLAYER_PICK", label: "Player Pick" },
+  { value: "PREDICTION", label: "Prediction" },
+  { value: "WOULD_YOU_RATHER", label: "Would You Rather" },
+  { value: "HOT_TAKE", label: "Hot Take" },
+  { value: "CONFESSION", label: "Confession" },
+  { value: "GUESS_WHO", label: "Guess Who" },
+];
+
 function createDefaultDay(): DebugDayConfig {
   return {
     voteType: "MAJORITY",
     gameType: "TRIVIA",
-    events: { INJECT_PROMPT: true, OPEN_DMS: true, START_GAME: true, END_GAME: true, OPEN_VOTING: true, CLOSE_VOTING: true, CLOSE_DMS: true, END_DAY: true },
+    activityType: "PLAYER_PICK",
+    events: { INJECT_PROMPT: true, START_ACTIVITY: true, END_ACTIVITY: true, OPEN_DMS: true, START_GAME: true, END_GAME: true, OPEN_VOTING: true, CLOSE_VOTING: true, CLOSE_DMS: true, END_DAY: true },
   };
 }
 
@@ -60,6 +71,13 @@ export default function LobbyRoot() {
   function handleGameTypeChange(dayIdx: number, gameType: string) {
     setDebugConfig(prev => {
       const days = prev.days.map((d, i) => i === dayIdx ? { ...d, gameType } : d);
+      return { ...prev, days };
+    });
+  }
+
+  function handleActivityTypeChange(dayIdx: number, activityType: string) {
+    setDebugConfig(prev => {
+      const days = prev.days.map((d, i) => i === dayIdx ? { ...d, activityType } : d);
       return { ...prev, days };
     });
   }
@@ -169,7 +187,7 @@ export default function LobbyRoot() {
                           DAY_{String(idx + 1).padStart(2, '0')}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           <div className="relative">
                             <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Vote</label>
                             <select
@@ -191,6 +209,18 @@ export default function LobbyRoot() {
                             >
                               {AVAILABLE_GAME_TYPES.map(gt => (
                                 <option key={gt.value} value={gt.value}>{gt.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="relative">
+                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Activity</label>
+                            <select
+                              value={day.activityType}
+                              onChange={(e) => handleActivityTypeChange(idx, e.target.value)}
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                            >
+                              {AVAILABLE_ACTIVITY_TYPES.map(at => (
+                                <option key={at.value} value={at.value}>{at.label}</option>
                               ))}
                             </select>
                           </div>

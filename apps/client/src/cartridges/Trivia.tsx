@@ -5,10 +5,11 @@ import type { SocialPlayer } from '@pecking-order/shared-types';
 
 interface TriviaCartridge {
   gameType: 'TRIVIA';
+  ready?: boolean;
   status: 'NOT_STARTED' | 'PLAYING' | 'COMPLETED';
   currentRound: number;
   totalRounds: number;
-  currentQuestion: { question: string; options: string[] } | null;
+  currentQuestion: { question: string; options: string[]; category?: string; difficulty?: string } | null;
   roundDeadline: number | null;
   lastRoundResult: {
     question: string;
@@ -17,6 +18,8 @@ interface TriviaCartridge {
     correct: boolean;
     silver: number;
     speedBonus: number;
+    category?: string;
+    difficulty?: string;
   } | null;
   score: number;
   correctCount: number;
@@ -38,6 +41,30 @@ const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 const RESULT_DISPLAY_MS = 2_000;
 const BASE_SILVER_PER_Q = 2;
 const PERFECT_BONUS_AMT = 5;
+
+const DIFFICULTY_COLORS: Record<string, string> = {
+  easy: 'bg-skin-green/15 text-skin-green border-skin-green/30',
+  medium: 'bg-skin-gold/15 text-skin-gold border-skin-gold/30',
+  hard: 'bg-skin-danger/15 text-skin-danger border-skin-danger/30',
+};
+
+function DifficultyBadge({ category, difficulty }: { category?: string; difficulty?: string }) {
+  if (!category && !difficulty) return null;
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {category && (
+        <span className="text-[9px] font-mono text-skin-dim bg-white/[0.04] border border-white/[0.08] rounded-pill px-2 py-0.5 uppercase tracking-wider">
+          {category}
+        </span>
+      )}
+      {difficulty && (
+        <span className={`text-[9px] font-mono border rounded-pill px-2 py-0.5 uppercase tracking-wider ${DIFFICULTY_COLORS[difficulty] || ''}`}>
+          {difficulty}
+        </span>
+      )}
+    </div>
+  );
+}
 
 // --- Framer Motion Variants ---
 
@@ -132,6 +159,7 @@ function RoundResult({
 }) {
   return (
     <div className="p-4 space-y-4 animate-fade-in">
+      <DifficultyBadge category={result.category} difficulty={result.difficulty} />
       <p className="text-sm font-bold text-skin-base leading-relaxed">
         {result.question}
       </p>
@@ -288,8 +316,16 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
         )}
       </div>
 
+      {/* LOADING: Fetching questions */}
+      {status === 'NOT_STARTED' && cartridge.ready === false && (
+        <div className="p-6 text-center space-y-3">
+          <span className="inline-block w-5 h-5 border-2 border-skin-gold border-t-transparent rounded-full spin-slow" />
+          <p className="text-sm font-mono text-skin-dim animate-pulse">Loading questions...</p>
+        </div>
+      )}
+
       {/* PREGAME: Start Button */}
-      {status === 'NOT_STARTED' && (
+      {status === 'NOT_STARTED' && cartridge.ready !== false && (
         <div className="p-6 space-y-4 text-center">
           <div className="space-y-2">
             <p className="text-sm font-bold text-skin-base">Daily Trivia Challenge</p>
@@ -325,6 +361,7 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
           {/* Active question */}
           {!showingResult && currentQuestion && (
             <div className="p-4 space-y-4">
+              <DifficultyBadge category={currentQuestion.category} difficulty={currentQuestion.difficulty} />
               <p className="text-sm font-bold text-skin-base leading-relaxed">
                 {currentQuestion.question}
               </p>

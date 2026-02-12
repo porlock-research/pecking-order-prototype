@@ -1,33 +1,8 @@
-import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
+import { setup, assign, sendParent, fromPromise, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { BaseGameContext, GameEvent, GameOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
-
-// --- Question Bank ---
-
-interface TriviaQuestion {
-  question: string;
-  options: string[];
-  correctIndex: number;
-}
-
-const QUESTION_POOL: TriviaQuestion[] = [
-  { question: "Which planet is known as the Red Planet?", options: ["Venus", "Mars", "Jupiter", "Saturn"], correctIndex: 1 },
-  { question: "What is the hardest natural substance on Earth?", options: ["Gold", "Iron", "Diamond", "Quartz"], correctIndex: 2 },
-  { question: "How many bones does an adult human body have?", options: ["186", "206", "226", "246"], correctIndex: 1 },
-  { question: "Which ocean is the largest?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correctIndex: 3 },
-  { question: "What gas do plants absorb from the atmosphere?", options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Helium"], correctIndex: 2 },
-  { question: "Who painted the Mona Lisa?", options: ["Michelangelo", "Raphael", "Da Vinci", "Donatello"], correctIndex: 2 },
-  { question: "What is the chemical symbol for gold?", options: ["Go", "Gd", "Au", "Ag"], correctIndex: 2 },
-  { question: "Which country has the most time zones?", options: ["Russia", "USA", "France", "China"], correctIndex: 2 },
-  { question: "What is the smallest prime number?", options: ["0", "1", "2", "3"], correctIndex: 2 },
-  { question: "Which element has the atomic number 1?", options: ["Helium", "Hydrogen", "Lithium", "Carbon"], correctIndex: 1 },
-  { question: "How many players are on a soccer team?", options: ["9", "10", "11", "12"], correctIndex: 2 },
-  { question: "What year did the Titanic sink?", options: ["1905", "1912", "1918", "1923"], correctIndex: 1 },
-  { question: "Which animal is the tallest in the world?", options: ["Elephant", "Giraffe", "Blue Whale", "Ostrich"], correctIndex: 1 },
-  { question: "What is the speed of light (approx)?", options: ["300 km/s", "3,000 km/s", "30,000 km/s", "300,000 km/s"], correctIndex: 3 },
-  { question: "In which continent is the Sahara Desert?", options: ["Asia", "South America", "Africa", "Australia"], correctIndex: 2 },
-];
+import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from './trivia-api';
 
 // --- Scoring Constants ---
 const TOTAL_ROUNDS = 5;
@@ -38,8 +13,8 @@ const MAX_SPEED_BONUS = 3;   // max speed bonus (answer instantly)
 const PERFECT_BONUS = 5;     // bonus for 5/5 correct
 const GOLD_PER_CORRECT = 1;  // collective gold per correct answer
 
-function pickRandomQuestions(count: number): TriviaQuestion[] {
-  const shuffled = [...QUESTION_POOL].sort(() => Math.random() - 0.5);
+function pickRandomQuestions(pool: TriviaQuestion[], count: number): TriviaQuestion[] {
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 }
 
@@ -56,6 +31,8 @@ interface TriviaContext extends BaseGameContext {
   alivePlayers: string[];
   correctCounts: Record<string, number>;  // per-player correct answer tally
   questionStartedAt: number;              // when current question began
+  questionPool: TriviaQuestion[];
+  ready: boolean;
 }
 
 // --- Machine ---
@@ -67,6 +44,11 @@ export const realtimeTriviaMachine = setup({
     input: {} as GameCartridgeInput,
     output: {} as GameOutput,
   },
+  actors: {
+    fetchQuestions: fromPromise(async () => {
+      return await fetchTriviaQuestions(50);
+    }),
+  },
   delays: {
     QUESTION_TIMER: QUESTION_TIME_MS,
     RESULT_TIMER: RESULT_DISPLAY_MS,
@@ -75,13 +57,26 @@ export const realtimeTriviaMachine = setup({
     hasMoreRounds: ({ context }) => context.currentRound < context.totalRounds,
   },
   actions: {
+    assignFetchedQuestions: assign(({ event }: any) => {
+      const pool = event.output as TriviaQuestion[];
+      return {
+        questionPool: pool,
+        questions: pickRandomQuestions(pool, TOTAL_ROUNDS),
+        ready: true,
+      };
+    }),
+    assignFallbackQuestions: assign(() => ({
+      questionPool: FALLBACK_QUESTIONS,
+      questions: pickRandomQuestions(FALLBACK_QUESTIONS, TOTAL_ROUNDS),
+      ready: true,
+    })),
     setupQuestion: assign(({ context }) => {
       const q = context.questions[context.currentRound - 1];
       const now = Date.now();
       return {
         phase: 'QUESTION' as const,
         // Strip correctIndex — clients see context via SYSTEM.SYNC
-        currentQuestion: q ? { question: q.question, options: q.options } : null,
+        currentQuestion: q ? { question: q.question, options: q.options, category: q.category, difficulty: q.difficulty } : null,
         roundDeadline: now + QUESTION_TIME_MS,
         questionStartedAt: now,
         answers: {},
@@ -213,7 +208,7 @@ export const realtimeTriviaMachine = setup({
       currentQuestion: null,
       roundDeadline: null,
       lastRoundResults: null,
-      questions: pickRandomQuestions(TOTAL_ROUNDS),
+      questions: [],
       answers: {},
       roster: input.roster,
       dayIndex: input.dayIndex,
@@ -222,14 +217,29 @@ export const realtimeTriviaMachine = setup({
       alivePlayers: alive,
       correctCounts: initialCorrectCounts,
       questionStartedAt: 0,
+      questionPool: [],
+      ready: false,
     };
   },
-  initial: 'waiting',
+  initial: 'loading',
   output: ({ context }) => ({
     silverRewards: context.silverRewards,
     goldContribution: context.goldContribution,
   }),
   states: {
+    loading: {
+      invoke: {
+        src: 'fetchQuestions',
+        onDone: {
+          target: 'waiting',
+          actions: ['assignFetchedQuestions'],
+        },
+        onError: {
+          target: 'waiting',
+          actions: ['assignFallbackQuestions'],
+        },
+      },
+    },
     waiting: {
       always: 'question',
     },

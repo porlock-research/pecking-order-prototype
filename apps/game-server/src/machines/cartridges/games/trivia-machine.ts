@@ -6,36 +6,11 @@
  * they begin or advance to a new question. Server validates timing; client
  * manages countdown UI and auto-submits on timeout.
  */
-import { setup, assign, sendParent, enqueueActions, type AnyEventObject } from 'xstate';
+import { setup, assign, sendParent, enqueueActions, fromPromise, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { GameEvent, GameOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
-
-// --- Question Bank ---
-
-interface TriviaQuestion {
-  question: string;
-  options: string[];
-  correctIndex: number;
-}
-
-const QUESTION_POOL: TriviaQuestion[] = [
-  { question: "Which planet is known as the Red Planet?", options: ["Venus", "Mars", "Jupiter", "Saturn"], correctIndex: 1 },
-  { question: "What is the hardest natural substance on Earth?", options: ["Gold", "Iron", "Diamond", "Quartz"], correctIndex: 2 },
-  { question: "How many bones does an adult human body have?", options: ["186", "206", "226", "246"], correctIndex: 1 },
-  { question: "Which ocean is the largest?", options: ["Atlantic", "Indian", "Arctic", "Pacific"], correctIndex: 3 },
-  { question: "What gas do plants absorb from the atmosphere?", options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Helium"], correctIndex: 2 },
-  { question: "Who painted the Mona Lisa?", options: ["Michelangelo", "Raphael", "Da Vinci", "Donatello"], correctIndex: 2 },
-  { question: "What is the chemical symbol for gold?", options: ["Go", "Gd", "Au", "Ag"], correctIndex: 2 },
-  { question: "Which country has the most time zones?", options: ["Russia", "USA", "France", "China"], correctIndex: 2 },
-  { question: "What is the smallest prime number?", options: ["0", "1", "2", "3"], correctIndex: 2 },
-  { question: "Which element has the atomic number 1?", options: ["Helium", "Hydrogen", "Lithium", "Carbon"], correctIndex: 1 },
-  { question: "How many players are on a soccer team?", options: ["9", "10", "11", "12"], correctIndex: 2 },
-  { question: "What year did the Titanic sink?", options: ["1905", "1912", "1918", "1923"], correctIndex: 1 },
-  { question: "Which animal is the tallest in the world?", options: ["Elephant", "Giraffe", "Blue Whale", "Ostrich"], correctIndex: 1 },
-  { question: "What is the speed of light (approx)?", options: ["300 km/s", "3,000 km/s", "30,000 km/s", "300,000 km/s"], correctIndex: 3 },
-  { question: "In which continent is the Sahara Desert?", options: ["Asia", "South America", "Africa", "Australia"], correctIndex: 2 },
-];
+import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from './trivia-api';
 
 // --- Scoring Constants ---
 const TOTAL_ROUNDS = 5;
@@ -45,8 +20,8 @@ const MAX_SPEED_BONUS = 3;
 const PERFECT_BONUS = 5;
 const GOLD_PER_CORRECT = 1;
 
-function pickRandomQuestions(count: number): TriviaQuestion[] {
-  const shuffled = [...QUESTION_POOL].sort(() => Math.random() - 0.5);
+function pickRandomQuestions(pool: TriviaQuestion[], count: number): TriviaQuestion[] {
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 }
 
@@ -60,7 +35,7 @@ export interface PlayerTriviaState {
   questions: TriviaQuestion[];  // FULL questions — stripped in L1 projection
   score: number;
   correctCount: number;
-  currentQuestion: { question: string; options: string[] } | null;
+  currentQuestion: { question: string; options: string[]; category?: string; difficulty?: string } | null;
   lastRoundResult: {
     question: string;
     options: string[];
@@ -68,6 +43,8 @@ export interface PlayerTriviaState {
     correct: boolean;
     silver: number;
     speedBonus: number;
+    category?: string;
+    difficulty?: string;
   } | null;
   silverReward: number;
 }
@@ -96,6 +73,8 @@ interface TriviaContext {
   alivePlayers: string[];
   roster: Record<string, SocialPlayer>;
   dayIndex: number;
+  questionPool: TriviaQuestion[];
+  ready: boolean;
 }
 
 // --- Machine ---
@@ -107,15 +86,29 @@ export const triviaMachine = setup({
     input: {} as GameCartridgeInput,
     output: {} as GameOutput,
   },
+  actors: {
+    fetchQuestions: fromPromise(async () => {
+      return await fetchTriviaQuestions(50);
+    }),
+  },
   guards: {},
   actions: {
+    assignFetchedQuestions: assign({
+      questionPool: (_, params: { questions: TriviaQuestion[] }) => params.questions,
+      ready: true,
+    }),
+    assignFallbackQuestions: assign({
+      questionPool: FALLBACK_QUESTIONS,
+      ready: true,
+    }),
+
     startPlayer: assign(({ context, event }) => {
       if (event.type !== 'GAME.TRIVIA.START') return {};
       const senderId = (event as any).senderId as string;
       const player = context.players[senderId];
       if (!player || player.status !== 'NOT_STARTED') return {};
 
-      const questions = pickRandomQuestions(TOTAL_ROUNDS);
+      const questions = pickRandomQuestions(context.questionPool, TOTAL_ROUNDS);
       const q = questions[0];
 
       return {
@@ -127,7 +120,7 @@ export const triviaMachine = setup({
             currentRound: 1,
             questions,
             questionStartedAt: Date.now(),
-            currentQuestion: { question: q.question, options: q.options },
+            currentQuestion: { question: q.question, options: q.options, category: q.category, difficulty: q.difficulty },
             lastRoundResult: null,
           },
         },
@@ -166,11 +159,11 @@ export const triviaMachine = setup({
       const isComplete = nextRound > TOTAL_ROUNDS;
 
       // Set up next question or finalize
-      let nextQuestion: { question: string; options: string[] } | null = null;
+      let nextQuestion: PlayerTriviaState['currentQuestion'] = null;
       let nextQuestionStartedAt = 0;
       if (!isComplete) {
         const nq = player.questions[nextRound - 1];
-        nextQuestion = { question: nq.question, options: nq.options };
+        nextQuestion = { question: nq.question, options: nq.options, category: nq.category, difficulty: nq.difficulty };
         nextQuestionStartedAt = Date.now();
       }
 
@@ -196,6 +189,8 @@ export const triviaMachine = setup({
               correct,
               silver,
               speedBonus,
+              category: q.category,
+              difficulty: q.difficulty,
             },
             silverReward: isComplete ? finalScore : 0,
           },
@@ -209,7 +204,6 @@ export const triviaMachine = setup({
       }
 
       // Check if ALL alive players are now complete
-      // (current player's isComplete is computed above; check others from context)
       if (isComplete) {
         const allDone = context.alivePlayers.every(pid =>
           pid === senderId ? true : context.players[pid]?.status === 'COMPLETED'
@@ -276,9 +270,11 @@ export const triviaMachine = setup({
       alivePlayers: alive,
       roster: input.roster,
       dayIndex: input.dayIndex,
+      questionPool: [],
+      ready: false,
     };
   },
-  initial: 'active',
+  initial: 'loading',
   output: ({ context }) => {
     const silverRewards: Record<string, number> = {};
     for (const [pid, player] of Object.entries(context.players)) {
@@ -290,6 +286,22 @@ export const triviaMachine = setup({
     return { silverRewards, goldContribution: context.goldContribution };
   },
   states: {
+    loading: {
+      invoke: {
+        src: 'fetchQuestions',
+        onDone: {
+          target: 'active',
+          actions: {
+            type: 'assignFetchedQuestions',
+            params: ({ event }: any) => ({ questions: event.output }),
+          },
+        },
+        onError: {
+          target: 'active',
+          actions: ['assignFallbackQuestions'],
+        },
+      },
+    },
     active: {
       entry: 'emitRoundSync',
       on: {

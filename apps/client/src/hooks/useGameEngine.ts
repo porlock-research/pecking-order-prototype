@@ -71,12 +71,17 @@ export const useGameEngine = (gameId: string, playerId: string) => {
     socket.send(JSON.stringify({ type, ...payload }));
   };
 
+  const sendActivityAction = (type: string, payload?: Record<string, any>) => {
+    socket.send(JSON.stringify({ type, ...payload }));
+  };
+
   return {
     socket,
     sendMessage,
     sendDM,
     sendSilver,
     sendVoteAction,
-    sendGameAction
+    sendGameAction,
+    sendActivityAction
   };
 };

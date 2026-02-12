@@ -1,12 +1,14 @@
 import { setup, assign, sendParent } from 'xstate';
-import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType } from '@pecking-order/shared-types';
+import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from './cartridges/voting/_registry';
 import { GAME_REGISTRY } from './cartridges/games/_registry';
+import { PROMPT_REGISTRY } from './cartridges/prompts/_registry';
 import type { AnyActorRef } from 'xstate';
 
 import { l3SocialActions, l3SocialGuards } from './actions/l3-social';
 import { l3VotingActions } from './actions/l3-voting';
 import { l3GameActions } from './actions/l3-games';
+import { l3ActivityActions } from './actions/l3-activity';
 
 // 1. Define strict types
 export interface DailyContext {
@@ -16,6 +18,7 @@ export interface DailyContext {
   manifest: DailyManifest | undefined;
   activeVotingCartridgeRef: AnyActorRef | null;
   activeGameCartridgeRef: AnyActorRef | null;
+  activePromptCartridgeRef: AnyActorRef | null;
   dmsOpen: boolean;
   dmPartnersByPlayer: Record<string, string[]>;
   dmCharsByPlayer: Record<string, number>;
@@ -32,8 +35,11 @@ export type DailyEvent =
   | { type: 'INTERNAL.INJECT_PROMPT'; payload: any }
   | { type: 'INTERNAL.START_GAME'; payload?: any }
   | { type: 'INTERNAL.END_GAME' }
+  | { type: 'INTERNAL.START_ACTIVITY'; payload: any }
+  | { type: 'INTERNAL.END_ACTIVITY' }
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
   | { type: `GAME.${string}`; senderId: string; [key: string]: any }
+  | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
   | { type: 'FACT.RECORD'; fact: Fact }
   | AdminEvent;
 
@@ -48,13 +54,15 @@ export const dailySessionMachine = setup({
     ...l3SocialActions,
     ...l3VotingActions,
     ...l3GameActions,
+    ...l3ActivityActions,
   } as any,
   guards: {
     ...l3SocialGuards,
   } as any,
   actors: {
     ...VOTE_REGISTRY,
-    ...GAME_REGISTRY
+    ...GAME_REGISTRY,
+    ...PROMPT_REGISTRY,
   }
 // XState v5 setup() can't infer action string names from externally-defined
 // action objects, so we cast the machine config. Runtime behavior is correct.
@@ -67,6 +75,7 @@ export const dailySessionMachine = setup({
     manifest: input.manifest,
     activeVotingCartridgeRef: null,
     activeGameCartridgeRef: null,
+    activePromptCartridgeRef: null,
     dmsOpen: false,
     dmPartnersByPlayer: {},
     dmCharsByPlayer: {},
@@ -158,12 +167,33 @@ export const dailySessionMachine = setup({
           states: {
             idle: {
               on: {
-                // Future: INTERNAL.START_ACTIVITY
+                'INTERNAL.START_ACTIVITY': {
+                  target: 'playing',
+                }
               }
             },
-            active: {
+            playing: {
+              entry: 'spawnPromptCartridge',
               on: {
-                // ACTIVITY.SUBMIT
+                'xstate.done.actor.activePromptCartridge': {
+                  target: 'completed',
+                  actions: ['applyPromptRewardsLocally', 'forwardPromptResultToL2']
+                },
+                'INTERNAL.END_ACTIVITY': { actions: 'forwardToPromptChild' },
+                '*': {
+                  guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('ACTIVITY.'),
+                  actions: 'forwardToPromptChild',
+                }
+              }
+            },
+            completed: {
+              // Cartridge stays alive so results remain visible in SYSTEM.SYNC.
+              // Only END_ACTIVITY cleans up and returns to idle.
+              on: {
+                'INTERNAL.END_ACTIVITY': {
+                  target: 'idle',
+                  actions: 'cleanupPromptCartridge',
+                }
               }
             }
           }
