@@ -19,6 +19,9 @@ binding = "DB"
 database_name = "pecking-order-journal-db"
 database_id = "c5941589-2d69-4ae1-9b5d-0554f2ad9721"
 
+[observability]
+enabled = true
+
 # Axiom Secrets (Logging)
 [vars]
 AXIOM_DATASET = "pecking-order"

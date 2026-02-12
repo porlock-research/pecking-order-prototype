@@ -11,6 +11,9 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "observability": {
+    "enabled": true
+  },
   "vars": {
     "GAME_SERVER_HOST": "https://game-server.porlock.workers.dev",
     "GAME_CLIENT_HOST": "https://pecking-order-client.pages.dev"
@@ -19,7 +22,7 @@
     {
       "binding": "DB",
       "database_name": "pecking-order-lobby-db",
-      "database_id": "placeholder-create-with-wrangler"
+      "database_id": "f90367aa-0f60-436d-81c3-c65c342d0d4b"
     }
   ]
 }
