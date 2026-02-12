@@ -70,7 +70,7 @@ export class GameServer extends Server<Env> {
     // Define the D1 Writer Implementation
     // Only override persistFactToD1 — updateJournalTimestamp (assign) stays in L2
     // to ensure context changes trigger the subscription for SYSTEM.SYNC broadcasts
-    const JOURNALABLE_TYPES = ['SILVER_TRANSFER', 'VOTE_CAST', 'ELIMINATION', 'DM_SENT', 'POWER_USED', 'GAME_RESULT', 'PLAYER_GAME_RESULT', 'WINNER_DECLARED', 'PROMPT_RESULT'];
+    const JOURNALABLE_TYPES = ['SILVER_TRANSFER', 'VOTE_CAST', 'ELIMINATION', 'DM_SENT', 'POWER_USED', 'PERK_USED', 'GAME_RESULT', 'PLAYER_GAME_RESULT', 'WINNER_DECLARED', 'PROMPT_RESULT'];
     const machineWithPersistence = orchestratorMachine.provide({
       actions: {
         persistFactToD1: ({ event }: any) => {
@@ -106,13 +106,51 @@ export class GameServer extends Server<Env> {
             console.error("[L1] 💥 Failed to write to Journal:", err);
           });
 
+          // Perk results: deliver confirmation back to the player
+          if (fact.type === 'PERK_USED') {
+            const perkType = fact.payload?.perkType;
+            if (perkType === 'SPY_DMS' && fact.targetId) {
+              // SPY_DMS: query D1 for target's last 3 DMs
+              this.env.DB.prepare(
+                `SELECT actor_id, target_id, payload, timestamp FROM GameJournal
+                 WHERE game_id = ? AND event_type = 'DM_SENT' AND actor_id = ?
+                 ORDER BY timestamp DESC LIMIT 3`
+              ).bind(gameId, fact.targetId).all().then((results: any) => {
+                const messages = (results.results || []).map((r: any) => ({
+                  from: r.actor_id,
+                  to: r.target_id,
+                  content: JSON.parse(r.payload || '{}').content || '',
+                  timestamp: r.timestamp,
+                }));
+                this.actor?.send({
+                  type: 'PERK.RESULT',
+                  senderId: fact.actorId,
+                  result: { perkType: 'SPY_DMS', success: true, data: { messages } },
+                } as any);
+              }).catch((err: any) => {
+                console.error('[L1] SPY_DMS D1 query failed:', err);
+                this.actor?.send({
+                  type: 'PERK.RESULT',
+                  senderId: fact.actorId,
+                  result: { perkType: 'SPY_DMS', success: false, data: { messages: [] } },
+                } as any);
+              });
+            } else {
+              // EXTRA_DM_PARTNER / EXTRA_DM_CHARS: immediate confirmation
+              this.actor?.send({
+                type: 'PERK.RESULT',
+                senderId: fact.actorId,
+                result: { perkType, success: true },
+              } as any);
+            }
+          }
+
           // Ticker: convert fact to humanized message
           const tickerMsg = this.factToTicker(fact);
           if (tickerMsg) this.broadcastTicker(tickerMsg);
         },
         sendDmRejection: ({ event }: any) => {
           if (event.type !== 'DM.REJECTED') return;
-          // Send rejection only to the sender's WebSocket
           for (const ws of this.getConnections()) {
             const state = ws.state as { playerId: string } | null;
             if (state?.playerId === event.senderId) {
@@ -121,9 +159,26 @@ export class GameServer extends Server<Env> {
             }
           }
         },
-        // persistEliminationToD1 removed — eliminations now flow through the normal
-        // FACT.RECORD pipeline via processNightSummary's raise(), which calls
-        // persistFactToD1 above (handles D1 write + ticker for all journalable types)
+        sendSilverTransferRejection: ({ event }: any) => {
+          if (event.type !== 'SILVER_TRANSFER.REJECTED') return;
+          for (const ws of this.getConnections()) {
+            const state = ws.state as { playerId: string } | null;
+            if (state?.playerId === event.senderId) {
+              ws.send(JSON.stringify({ type: 'SILVER_TRANSFER.REJECTED', reason: event.reason }));
+              break;
+            }
+          }
+        },
+        deliverPerkResult: ({ event }: any) => {
+          if (event.type !== 'PERK.RESULT' && event.type !== 'PERK.REJECTED') return;
+          for (const ws of this.getConnections()) {
+            const state = ws.state as { playerId: string } | null;
+            if (state?.playerId === event.senderId) {
+              ws.send(JSON.stringify(event));
+              break;
+            }
+          }
+        },
       }
     });
 
@@ -246,6 +301,9 @@ export class GameServer extends Server<Env> {
       // D. Broadcast State to Clients (per-player DM + game filtering)
       // Explicit SYNC payload — L2's roster is authoritative, no blind spread
       const fullChatLog = l3Context.chatLog ?? this.lastKnownChatLog;
+      const dmCharsByPlayer = l3Context.dmCharsByPlayer || {};
+      const dmPartnersByPlayer = l3Context.dmPartnersByPlayer || {};
+      const perkOverrides = l3Context.perkOverrides || {};
       const syncContext = {
         gameId: snapshot.context.gameId,
         dayIndex: snapshot.context.dayIndex,
@@ -268,10 +326,19 @@ export class GameServer extends Server<Env> {
 
         const activeGameCartridge = GameServer.projectGameCartridge(rawGameCartridge, pid);
 
+        // Per-player DM usage stats (from L3 context)
+        const overrides = perkOverrides[pid] || { extraPartners: 0, extraChars: 0 };
+        const dmStats = {
+          charsUsed: dmCharsByPlayer[pid] || 0,
+          charsLimit: 1200 + overrides.extraChars,
+          partnersUsed: (dmPartnersByPlayer[pid] || []).length,
+          partnersLimit: 3 + overrides.extraPartners,
+        };
+
         ws.send(JSON.stringify({
           type: "SYSTEM.SYNC",
           state: snapshot.value,
-          context: { ...syncContext, chatLog: playerChatLog, activeGameCartridge }
+          context: { ...syncContext, chatLog: playerChatLog, activeGameCartridge, dmStats }
         }));
       }
 
@@ -283,7 +350,26 @@ export class GameServer extends Server<Env> {
         this.lastBroadcastState = currentStateStr;
       }
 
-      // F. Ticker: detect DM open/close changes
+      // F. Update D1 when game ends
+      if (currentStateStr.includes('gameOver')) {
+        const finalRoster = snapshot.context.roster;
+        const gameId = snapshot.context.gameId;
+        if (gameId) {
+          const updates = Object.entries(finalRoster).map(([pid, p]: [string, any]) =>
+            this.env.DB.prepare(
+              `UPDATE Players SET status=?, silver=?, gold=? WHERE game_id=? AND player_id=?`
+            ).bind(p.status, p.silver, p.gold || 0, gameId, pid)
+          );
+          updates.push(this.env.DB.prepare(
+            `UPDATE Games SET status='COMPLETED', completed_at=? WHERE id=?`
+          ).bind(Date.now(), gameId));
+          this.env.DB.batch(updates).catch((err: any) =>
+            console.error('[L1] Failed to update game-end D1 rows:', err)
+          );
+        }
+      }
+
+      // G. Ticker: detect DM open/close changes
       const currentDmsOpen = l3Context.dmsOpen ?? false;
       if (currentDmsOpen !== this.lastKnownDmsOpen) {
         this.lastKnownDmsOpen = currentDmsOpen;
@@ -307,13 +393,40 @@ export class GameServer extends Server<Env> {
     if (req.method === "POST" && new URL(req.url).pathname.endsWith("/init")) {
       try {
         const json = await req.json() as any;
-        
+
+        // Extract game ID from URL path: /parties/game-server/{GAME_ID}/init
+        const url = new URL(req.url);
+        const pathParts = url.pathname.split('/');
+        const gameId = pathParts[pathParts.length - 2]; // segment before "/init"
+
         // Send signal to the Brain
-        this.actor?.send({ 
-          type: "SYSTEM.INIT", 
-          payload: { roster: json.roster, manifest: json.manifest }, 
-          gameId: "game-1" 
+        this.actor?.send({
+          type: "SYSTEM.INIT",
+          payload: { roster: json.roster, manifest: json.manifest },
+          gameId
         });
+
+        // Persist game + players to D1
+        const roster = json.roster;
+        const manifest = json.manifest;
+        this.env.DB.prepare(
+          `INSERT OR IGNORE INTO Games (id, mode, status, created_at) VALUES (?, ?, 'IN_PROGRESS', ?)`
+        ).bind(gameId, manifest?.gameMode || 'PECKING_ORDER', Date.now()).run().catch((err: any) =>
+          console.error('[L1] Failed to insert Game row:', err)
+        );
+
+        const playerStmt = this.env.DB.prepare(
+          `INSERT OR IGNORE INTO Players (game_id, player_id, real_user_id, persona_name, avatar_url, status, silver, gold, destiny_id)
+           VALUES (?, ?, ?, ?, ?, 'ALIVE', ?, ?, ?)`
+        );
+        const batch = Object.entries(roster || {}).map(([pid, p]: [string, any]) =>
+          playerStmt.bind(gameId, pid, p.realUserId || '', p.personaName || '', p.avatarUrl || '', p.silver || 50, p.gold || 0, p.destinyId || null)
+        );
+        if (batch.length > 0) {
+          this.env.DB.batch(batch).catch((err: any) =>
+            console.error('[L1] Failed to insert Player rows:', err)
+          );
+        }
 
         return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
       } catch (err) {
@@ -425,6 +538,20 @@ export class GameServer extends Server<Env> {
           category: 'SYSTEM',
           timestamp: fact.timestamp,
         };
+      case 'PERK_USED': {
+        const perkType = fact.payload?.perkType || 'unknown';
+        const perkLabels: Record<string, string> = {
+          SPY_DMS: 'Spy DMs',
+          EXTRA_DM_PARTNER: 'Extra DM Partner',
+          EXTRA_DM_CHARS: 'Extra DM Characters',
+        };
+        return {
+          id: crypto.randomUUID(),
+          text: `${name(fact.actorId)} used ${perkLabels[perkType] || perkType}!`,
+          category: 'SOCIAL',
+          timestamp: fact.timestamp,
+        };
+      }
       case 'PROMPT_RESULT': {
         const rewards = fact.payload?.silverRewards;
         if (rewards) {
@@ -558,6 +685,18 @@ export class GameServer extends Server<Env> {
       );
       const activeGameCartridge = GameServer.projectGameCartridge(rawGameCartridge, playerId);
 
+      // Per-player DM usage stats (from L3 context)
+      const dmChars = l3Context.dmCharsByPlayer || {};
+      const dmPartners = l3Context.dmPartnersByPlayer || {};
+      const perks = l3Context.perkOverrides || {};
+      const overrides = perks[playerId] || { extraPartners: 0, extraChars: 0 };
+      const dmStats = {
+        charsUsed: dmChars[playerId] || 0,
+        charsLimit: 1200 + overrides.extraChars,
+        partnersUsed: (dmPartners[playerId] || []).length,
+        partnersLimit: 3 + overrides.extraPartners,
+      };
+
       ws.send(JSON.stringify({
         type: "SYSTEM.SYNC",
         state: snapshot.value,
@@ -571,6 +710,7 @@ export class GameServer extends Server<Env> {
           activeGameCartridge,
           activePromptCartridge: GameServer.projectPromptCartridge(activePromptCartridge),
           winner: snapshot.context.winner,
+          dmStats,
         }
       }));
 
@@ -651,7 +791,7 @@ export class GameServer extends Server<Env> {
     return promptCtx;
   }
 
-  private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER'];
+  private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER', 'SOCIAL.USE_PERK'];
 
   onMessage(ws: Connection, message: string) {
     try {

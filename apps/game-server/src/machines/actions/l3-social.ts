@@ -66,6 +66,10 @@ export const l3SocialActions = {
     const targetId = event.targetId;
     const content = event.content;
 
+    const overrides = context.perkOverrides?.[senderId] || { extraPartners: 0, extraChars: 0 };
+    const partnerLimit = DM_MAX_PARTNERS_PER_DAY + overrides.extraPartners;
+    const charLimit = DM_MAX_CHARS_PER_DAY + overrides.extraChars;
+
     let reason: DmRejectionReason = 'DMS_CLOSED';
     if (!context.dmsOpen) {
       reason = 'DMS_CLOSED';
@@ -77,11 +81,11 @@ export const l3SocialActions = {
       reason = 'INSUFFICIENT_SILVER';
     } else {
       const partners = context.dmPartnersByPlayer[senderId] || [];
-      if (!partners.includes(targetId) && partners.length >= DM_MAX_PARTNERS_PER_DAY) {
+      if (!partners.includes(targetId) && partners.length >= partnerLimit) {
         reason = 'PARTNER_LIMIT';
       } else {
         const charsUsed = context.dmCharsByPlayer[senderId] || 0;
-        if (charsUsed + content.length > DM_MAX_CHARS_PER_DAY) {
+        if (charsUsed + content.length > charLimit) {
           reason = 'CHAR_LIMIT';
         }
       }
@@ -111,9 +115,31 @@ export const l3SocialActions = {
     };
   }),
   forwardToL2: sendParent(({ event }: any) => event),
+  // Silver transfer rejected: notify parent (L2 → L1 → client)
+  rejectSilverTransfer: sendParent(({ context, event }: any): any => {
+    if (event.type !== 'SOCIAL.SEND_SILVER') return { type: 'NOOP' };
+    const { senderId, targetId, amount } = event;
+    let reason = 'UNKNOWN';
+    if (senderId === targetId) reason = 'SELF_SEND';
+    else if (!amount || amount <= 0) reason = 'INVALID_AMOUNT';
+    else if ((context.roster[senderId]?.silver ?? 0) < amount) reason = 'INSUFFICIENT_SILVER';
+    else if (context.roster[targetId]?.status === 'ELIMINATED') reason = 'TARGET_ELIMINATED';
+    else if (!context.roster[targetId]) reason = 'TARGET_NOT_FOUND';
+    return { type: 'SILVER_TRANSFER.REJECTED', senderId, reason };
+  }),
 };
 
 export const l3SocialGuards = {
+  isSilverTransferAllowed: ({ context, event }: any) => {
+    if (event.type !== 'SOCIAL.SEND_SILVER') return false;
+    const { senderId, targetId, amount } = event;
+    if (senderId === targetId) return false;
+    if (!amount || amount <= 0) return false;
+    if ((context.roster[senderId]?.silver ?? 0) < amount) return false;
+    if (!context.roster[targetId]) return false;
+    if (context.roster[targetId]?.status === 'ELIMINATED') return false;
+    return true;
+  },
   isDmAllowed: ({ context, event }: any) => {
     if (event.type !== 'SOCIAL.SEND_MSG' || !event.targetId) return false;
     const { senderId, targetId, content } = event;
@@ -121,10 +147,13 @@ export const l3SocialGuards = {
     if (senderId === targetId) return false;
     if (context.roster[targetId]?.status === 'ELIMINATED') return false;
     if ((context.roster[senderId]?.silver ?? 0) < 1) return false;
+    const overrides = context.perkOverrides?.[senderId] || { extraPartners: 0, extraChars: 0 };
+    const partnerLimit = DM_MAX_PARTNERS_PER_DAY + overrides.extraPartners;
+    const charLimit = DM_MAX_CHARS_PER_DAY + overrides.extraChars;
     const partners = context.dmPartnersByPlayer[senderId] || [];
-    if (!partners.includes(targetId) && partners.length >= DM_MAX_PARTNERS_PER_DAY) return false;
+    if (!partners.includes(targetId) && partners.length >= partnerLimit) return false;
     const charsUsed = context.dmCharsByPlayer[senderId] || 0;
-    if (charsUsed + content.length > DM_MAX_CHARS_PER_DAY) return false;
+    if (charsUsed + content.length > charLimit) return false;
     return true;
   },
 };

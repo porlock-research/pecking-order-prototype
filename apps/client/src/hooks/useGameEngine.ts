@@ -8,6 +8,8 @@ export const useGameEngine = (gameId: string, playerId: string) => {
   const setTickerMessages = useGameStore((s) => s.setTickerMessages);
   const setDebugTicker = useGameStore((s) => s.setDebugTicker);
   const setDmRejection = useGameStore((s) => s.setDmRejection);
+  const setSilverTransferRejection = useGameStore((s) => s.setSilverTransferRejection);
+  const setPerkResult = useGameStore((s) => s.setPerkResult);
 
   const socket = usePartySocket({
     host: new URL(import.meta.env.VITE_GAME_SERVER_HOST || "http://localhost:8787").host,
@@ -32,6 +34,10 @@ export const useGameEngine = (gameId: string, playerId: string) => {
           setDebugTicker(data.summary);
         } else if (data.type === "DM.REJECTED") {
           setDmRejection(data.reason);
+        } else if (data.type === "SILVER_TRANSFER.REJECTED") {
+          setSilverTransferRejection(data.reason);
+        } else if (data.type === "PERK.RESULT" || data.type === "PERK.REJECTED") {
+          setPerkResult(data);
         }
       } catch (err) {
         console.error("Failed to parse message", err);
@@ -75,6 +81,10 @@ export const useGameEngine = (gameId: string, playerId: string) => {
     socket.send(JSON.stringify({ type, ...payload }));
   };
 
+  const sendPerk = (perkType: string, targetId?: string) => {
+    socket.send(JSON.stringify({ type: 'SOCIAL.USE_PERK', perkType, targetId }));
+  };
+
   return {
     socket,
     sendMessage,
@@ -82,6 +92,7 @@ export const useGameEngine = (gameId: string, playerId: string) => {
     sendSilver,
     sendVoteAction,
     sendGameAction,
-    sendActivityAction
+    sendActivityAction,
+    sendPerk
   };
 };

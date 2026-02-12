@@ -121,7 +121,7 @@ export const InitPayloadSchema = z.object({
 // --- Journal & Facts (Persistence) ---
 
 export const FactSchema = z.object({
-  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED", "PROMPT_RESULT"]),
+  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "PERK_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED", "PROMPT_RESULT"]),
   actorId: z.string(),
   targetId: z.string().optional(),
   payload: z.any().optional(), // JSON details
@@ -219,6 +219,17 @@ export interface PromptCartridgeInput {
   optionA?: string;
   optionB?: string;
 }
+
+// --- Perks (Economy Powers) ---
+
+export const PerkTypeSchema = z.enum(['SPY_DMS', 'EXTRA_DM_PARTNER', 'EXTRA_DM_CHARS']);
+export type PerkType = z.infer<typeof PerkTypeSchema>;
+
+export const PERK_COSTS: Record<PerkType, number> = {
+  SPY_DMS: 5,
+  EXTRA_DM_PARTNER: 3,
+  EXTRA_DM_CHARS: 2,
+};
 
 // --- Ticker (News Feed) ---
 

@@ -7,6 +7,7 @@ import { NewsTicker } from './components/NewsTicker';
 import VotingPanel from './cartridges/Voting';
 import GamePanel from './cartridges/GamePanel';
 import PromptPanel from './cartridges/PromptPanel';
+import PerkPanel from './components/PerkPanel';
 import { formatState, formatPhase } from './utils/formatState';
 import { Coins, MessageCircle, Mail, Users } from 'lucide-react';
 
@@ -196,10 +197,11 @@ function GameShell({ gameId, playerId }: { gameId: string, playerId: string }) {
               })}
             </div>
 
-            {/* Voting, Game & Activity panels (inline with content) */}
+            {/* Voting, Game, Activity & Perk panels (inline with content) */}
             <VotingPanel engine={engine} />
             <GamePanel engine={engine} />
             <PromptPanel engine={engine} />
+            <PerkPanel engine={engine} />
 
             {/* Content area */}
             <div className="flex-1 overflow-hidden relative">

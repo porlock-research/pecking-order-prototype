@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
-import { DM_MAX_CHARS_PER_DAY, ChatMessage } from '@pecking-order/shared-types';
+import { ChatMessage } from '@pecking-order/shared-types';
 
 interface DirectMessagesProps {
   engine: {
@@ -10,7 +10,7 @@ interface DirectMessagesProps {
 
 const REJECTION_LABELS: Record<string, string> = {
   DMS_CLOSED: 'DMs are currently closed',
-  PARTNER_LIMIT: "You've reached your daily conversation limit (3)",
+  PARTNER_LIMIT: "You've reached your daily conversation limit",
   CHAR_LIMIT: 'Daily character limit reached',
   INSUFFICIENT_SILVER: 'Not enough silver (costs 1 silver)',
   TARGET_ELIMINATED: 'This player has been eliminated',
@@ -20,6 +20,7 @@ const REJECTION_LABELS: Record<string, string> = {
 export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
   const { playerId, roster, dmRejection, clearDmRejection } = useGameStore();
   const chatLog = useGameStore(s => s.chatLog);
+  const dmStats = useGameStore(s => s.dmStats);
   const [activePartnerId, setActivePartnerId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [showNewDm, setShowNewDm] = useState(false);
@@ -45,11 +46,11 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
       .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
   }, [chatLog, playerId]);
 
-  // Calculate chars used today from DM messages I sent
-  const charsUsedToday = chatLog
-    .filter(m => m.channel === 'DM' && m.senderId === playerId)
-    .reduce((sum, m) => sum + m.content.length, 0);
-  const charsRemaining = Math.max(0, DM_MAX_CHARS_PER_DAY - charsUsedToday);
+  // Server-authoritative DM stats (includes perk overrides)
+  const charsRemaining = dmStats ? Math.max(0, dmStats.charsLimit - dmStats.charsUsed) : 0;
+  const charsLimit = dmStats?.charsLimit ?? 1200;
+  const partnersRemaining = dmStats ? Math.max(0, dmStats.partnersLimit - dmStats.partnersUsed) : 0;
+  const partnersLimit = dmStats?.partnersLimit ?? 3;
 
   // Auto-clear rejection after 4 seconds
   useEffect(() => {
@@ -136,7 +137,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
             </div>
             <span className="text-sm font-bold text-skin-base">{partner?.personaName || 'Unknown'}</span>
           </div>
-          <span className="font-mono text-[10px] text-skin-dim">{charsRemaining}/{DM_MAX_CHARS_PER_DAY}</span>
+          <span className="font-mono text-[10px] text-skin-dim">{charsRemaining}/{charsLimit}</span>
         </div>
 
         {/* Messages */}
@@ -216,7 +217,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
             </div>
             <span className="text-sm font-bold text-skin-base">{partner?.personaName || 'Unknown'}</span>
           </div>
-          <span className="font-mono text-[10px] text-skin-dim">{charsRemaining}/{DM_MAX_CHARS_PER_DAY}</span>
+          <span className="font-mono text-[10px] text-skin-dim">{charsRemaining}/{charsLimit}</span>
         </div>
 
         <div className="flex-1 flex items-center justify-center">
@@ -261,7 +262,14 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="shrink-0 px-4 py-3 border-b border-white/[0.06] bg-skin-panel/40 flex items-center justify-between">
-        <span className="text-sm font-bold text-skin-pink uppercase tracking-wider font-display">Direct Messages</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-skin-pink uppercase tracking-wider font-display">Direct Messages</span>
+          {dmStats && (
+            <span className="text-[10px] font-mono text-skin-dim">
+              {dmStats.partnersUsed}/{partnersLimit} partners · {charsRemaining} chars left
+            </span>
+          )}
+        </div>
         <button
           onClick={() => setShowNewDm(true)}
           className="text-[10px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-3 py-1 text-skin-pink uppercase tracking-widest hover:bg-skin-pink/20 transition-colors"

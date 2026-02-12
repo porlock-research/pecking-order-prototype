@@ -9,6 +9,7 @@ import { l3SocialActions, l3SocialGuards } from './actions/l3-social';
 import { l3VotingActions } from './actions/l3-voting';
 import { l3GameActions } from './actions/l3-games';
 import { l3ActivityActions } from './actions/l3-activity';
+import { l3PerkActions, l3PerkGuards } from './actions/l3-perks';
 
 // 1. Define strict types
 export interface DailyContext {
@@ -22,6 +23,7 @@ export interface DailyContext {
   dmsOpen: boolean;
   dmPartnersByPlayer: Record<string, string[]>;
   dmCharsByPlayer: Record<string, number>;
+  perkOverrides: Record<string, { extraPartners: number; extraChars: number }>;
 }
 
 export type DailyEvent =
@@ -55,9 +57,11 @@ export const dailySessionMachine = setup({
     ...l3VotingActions,
     ...l3GameActions,
     ...l3ActivityActions,
+    ...l3PerkActions,
   } as any,
   guards: {
     ...l3SocialGuards,
+    ...l3PerkGuards,
   } as any,
   actors: {
     ...VOTE_REGISTRY,
@@ -79,6 +83,7 @@ export const dailySessionMachine = setup({
     dmsOpen: false,
     dmPartnersByPlayer: {},
     dmCharsByPlayer: {},
+    perkOverrides: {},
   }),
   entry: [
     sendParent({ type: 'INTERNAL.READY' })
@@ -107,7 +112,14 @@ export const dailySessionMachine = setup({
                     actions: ['processMessage', 'emitChatFact'],
                   }
                 ],
-                'SOCIAL.SEND_SILVER': { actions: ['transferSilver', 'emitSilverFact'] },
+                'SOCIAL.SEND_SILVER': [
+                  { guard: 'isSilverTransferAllowed', actions: ['transferSilver', 'emitSilverFact'] },
+                  { actions: ['rejectSilverTransfer'] }
+                ],
+                'SOCIAL.USE_PERK': [
+                  { guard: 'canAffordPerk', actions: ['deductPerkCost', 'recordPerkOverride', 'emitPerkFact'] },
+                  { actions: ['rejectPerk'] }
+                ],
                 'INTERNAL.OPEN_DMS': { actions: assign({ dmsOpen: true }) },
                 'INTERNAL.CLOSE_DMS': { actions: assign({ dmsOpen: false }) },
               }

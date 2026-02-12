@@ -8,8 +8,7 @@ import type { PromptOutput } from './cartridges/prompts/_contract';
 import { l2InitializationActions } from './actions/l2-initialization';
 import { l2TimelineActions } from './actions/l2-timeline';
 import { l2EliminationActions } from './actions/l2-elimination';
-import { l2GameRewardsActions } from './actions/l2-game-rewards';
-import { l2PromptRewardsActions } from './actions/l2-prompt-rewards';
+import { l2EconomyActions } from './actions/l2-economy';
 import { l2FactsActions } from './actions/l2-facts';
 
 // --- Types ---
@@ -41,6 +40,10 @@ export type GameEvent =
   | { type: 'CARTRIDGE.PLAYER_GAME_RESULT'; playerId: string; silverReward: number }
   | { type: 'CARTRIDGE.PROMPT_RESULT'; result: PromptOutput }
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
+  | { type: 'SOCIAL.USE_PERK'; senderId: string; perkType: string; targetId?: string }
+  | { type: 'PERK.RESULT'; senderId: string; result: any }
+  | { type: 'PERK.REJECTED'; senderId: string; reason: string }
+  | { type: 'SILVER_TRANSFER.REJECTED'; senderId: string; reason: string }
   | DmRejectedEvent
   | (SocialEvent & { senderId: string });
 
@@ -54,8 +57,7 @@ export const orchestratorMachine = setup({
     ...l2InitializationActions,
     ...l2TimelineActions,
     ...l2EliminationActions,
-    ...l2GameRewardsActions,
-    ...l2PromptRewardsActions,
+    ...l2EconomyActions,
     ...l2FactsActions,
   } as any,
   actors: {
@@ -147,6 +149,10 @@ export const orchestratorMachine = setup({
             'CARTRIDGE.PLAYER_GAME_RESULT': { actions: ['applyPlayerGameReward', 'emitPlayerGameResultFact'] },
             'CARTRIDGE.PROMPT_RESULT': { actions: ['applyPromptRewards', 'emitPromptResultFact'] },
             'DM.REJECTED': { actions: 'sendDmRejection' },
+            'SILVER_TRANSFER.REJECTED': { actions: 'sendSilverTransferRejection' },
+            'SOCIAL.USE_PERK': { actions: sendTo('l3-session', ({ event }: any) => event) },
+            'PERK.RESULT': { actions: 'deliverPerkResult' },
+            'PERK.REJECTED': { actions: 'deliverPerkResult' },
             '*': [
               {
                 guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('VOTE.'),

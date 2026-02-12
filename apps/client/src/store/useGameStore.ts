@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage } from '@pecking-order/shared-types';
+import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType } from '@pecking-order/shared-types';
 
 interface DmThread {
   partnerId: string;
@@ -19,7 +19,10 @@ interface GameState {
   activeGameCartridge: any | null;
   activePromptCartridge: any | null;
   winner: { playerId: string; mechanism: string; summary: Record<string, any> } | null;
+  dmStats: { charsUsed: number; charsLimit: number; partnersUsed: number; partnersLimit: number } | null;
   dmRejection: { reason: DmRejectionReason; timestamp: number } | null;
+  silverTransferRejection: { reason: string; timestamp: number } | null;
+  lastPerkResult: any | null;
   tickerMessages: TickerMessage[];
   debugTicker: string | null;
 
@@ -32,6 +35,10 @@ interface GameState {
   setPlayerId: (id: string) => void;
   setDmRejection: (reason: DmRejectionReason) => void;
   clearDmRejection: () => void;
+  setSilverTransferRejection: (reason: string) => void;
+  clearSilverTransferRejection: () => void;
+  setPerkResult: (result: any) => void;
+  clearPerkResult: () => void;
 }
 
 // Selectors
@@ -72,7 +79,10 @@ export const useGameStore = create<GameState>((set) => ({
   activeGameCartridge: null,
   activePromptCartridge: null,
   winner: null,
+  dmStats: null,
   dmRejection: null,
+  silverTransferRejection: null,
+  lastPerkResult: null,
   tickerMessages: [],
   debugTicker: null,
 
@@ -89,6 +99,7 @@ export const useGameStore = create<GameState>((set) => ({
     activeGameCartridge: data.context?.activeGameCartridge ?? null,
     activePromptCartridge: data.context?.activePromptCartridge ?? null,
     winner: data.context?.winner ?? null,
+    dmStats: data.context?.dmStats ?? null,
   })),
 
   addChatMessage: (msg) => set((state) => ({
@@ -108,4 +119,10 @@ export const useGameStore = create<GameState>((set) => ({
   setDmRejection: (reason) => set({ dmRejection: { reason, timestamp: Date.now() } }),
 
   clearDmRejection: () => set({ dmRejection: null }),
+
+  setSilverTransferRejection: (reason) => set({ silverTransferRejection: { reason, timestamp: Date.now() } }),
+  clearSilverTransferRejection: () => set({ silverTransferRejection: null }),
+
+  setPerkResult: (result) => set({ lastPerkResult: { ...result, timestamp: Date.now() } }),
+  clearPerkResult: () => set({ lastPerkResult: null }),
 }));
