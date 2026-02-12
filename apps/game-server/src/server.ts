@@ -70,10 +70,10 @@ export class GameServer extends Server<Env> {
     // Define the D1 Writer Implementation
     // Only override persistFactToD1 — updateJournalTimestamp (assign) stays in L2
     // to ensure context changes trigger the subscription for SYSTEM.SYNC broadcasts
-    const JOURNALABLE_TYPES = ['SILVER_TRANSFER', 'VOTE_CAST', 'ELIMINATION', 'DM_SENT', 'POWER_USED', 'GAME_RESULT', 'PLAYER_GAME_RESULT'];
+    const JOURNALABLE_TYPES = ['SILVER_TRANSFER', 'VOTE_CAST', 'ELIMINATION', 'DM_SENT', 'POWER_USED', 'GAME_RESULT', 'PLAYER_GAME_RESULT', 'WINNER_DECLARED'];
     const machineWithPersistence = orchestratorMachine.provide({
       actions: {
-        persistFactToD1: ({ event }) => {
+        persistFactToD1: ({ event }: any) => {
           if (event.type !== 'FACT.RECORD') return;
           const fact = event.fact;
 
@@ -247,6 +247,7 @@ export class GameServer extends Server<Env> {
         roster: snapshot.context.roster,       // Always L2's authoritative roster
         manifest: snapshot.context.manifest,
         activeVotingCartridge,
+        winner: snapshot.context.winner,
       };
 
       for (const ws of this.getConnections()) {
@@ -411,6 +412,13 @@ export class GameServer extends Server<Env> {
           category: 'ELIMINATION',
           timestamp: fact.timestamp,
         };
+      case 'WINNER_DECLARED':
+        return {
+          id: crypto.randomUUID(),
+          text: `${name(fact.targetId || fact.actorId)} has won the game!`,
+          category: 'SYSTEM',
+          timestamp: fact.timestamp,
+        };
       default:
         return null;
     }
@@ -430,6 +438,9 @@ export class GameServer extends Server<Env> {
     }
     if (stateStr.includes('dailyGame')) {
       return { id: crypto.randomUUID(), text: "Today's game is starting!", category: 'GAME', timestamp: Date.now() };
+    }
+    if (stateStr.includes('gameSummary')) {
+      return { id: crypto.randomUUID(), text: 'The winner has been crowned!', category: 'SYSTEM', timestamp: Date.now() };
     }
     if (stateStr.includes('gameOver')) {
       return { id: crypto.randomUUID(), text: 'The game is over!', category: 'SYSTEM', timestamp: Date.now() };
@@ -532,6 +543,7 @@ export class GameServer extends Server<Env> {
           chatLog: playerChatLog,
           activeVotingCartridge,
           activeGameCartridge,
+          winner: snapshot.context.winner,
         }
       }));
 

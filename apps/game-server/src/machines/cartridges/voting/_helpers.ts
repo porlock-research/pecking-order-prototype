@@ -14,6 +14,12 @@ export function getTop3SilverIds(roster: Record<string, SocialPlayer>): string[]
     .map(([id]) => id);
 }
 
+export function getEliminatedPlayerIds(roster: Record<string, SocialPlayer>): string[] {
+  return Object.entries(roster)
+    .filter(([, p]) => p.status === 'ELIMINATED')
+    .map(([id]) => id);
+}
+
 export function getSilverRanking(roster: Record<string, SocialPlayer>): Array<{ id: string; silver: number }> {
   return Object.entries(roster)
     .filter(([, p]) => p.status === 'ALIVE')

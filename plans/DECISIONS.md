@@ -361,3 +361,46 @@ This document tracks significant architectural decisions, their context, and con
     *   Spawned actors are properly removed from L3's children map on cleanup.
     *   L1 projection returns null for game/vote cartridge after phase ends.
     *   Realtime trivia can now be force-ended via timeline or admin command.
+
+## [ADR-037] L2/L3 Action File Splitting
+*   **Date:** 2026-02-11
+*   **Status:** Accepted
+*   **Context:** L2 (~400 lines) and L3 (~420 lines) contained all action logic inline in `setup()`. This made navigation, code review, and reuse difficult. The post-game machine needed to share social helpers with L3.
+*   **Decision:** Extract actions into categorized files under `machines/actions/`: L2 gets `l2-initialization.ts`, `l2-timeline.ts`, `l2-elimination.ts`, `l2-game-rewards.ts`, `l2-facts.ts`. L3 gets `l3-social.ts`, `l3-voting.ts`, `l3-games.ts`. Pure data transforms shared between L3 and the post-game machine go in `social-helpers.ts`. Action objects spread into `setup()` with `as any` because XState v5 can't infer action string names from externally-defined objects; machine configs also cast to `any` for the same reason.
+*   **Consequences:**
+    *   L2 and L3 machine files are now slim config-only (~200 lines each).
+    *   Shared social helpers (`buildChatMessage`, `appendToChatLog`, `deductSilver`, `transferSilverBetween`) are reusable across machines.
+    *   Action string references in machine configs lose TypeScript type-checking (XState v5 limitation with external actions).
+    *   No behavioral changes — same SYNC output before and after.
+
+## [ADR-038] FINALS Voting Cartridge
+*   **Date:** 2026-02-11
+*   **Status:** Accepted
+*   **Context:** The spec calls for a final day where eliminated players vote for their favorite among survivors to crown a winner. No existing voting mechanic covers this — all existing ones eliminate a player.
+*   **Decision:** New `finals-machine.ts` voting cartridge. Only ELIMINATED players can vote (via `getEliminatedPlayerIds` helper). Only ALIVE players are candidates. Most votes wins. Ties broken by highest silver, then random. Output includes `winnerId` (new field on `VoteResult`) instead of `eliminatedId`. Edge case: 0 eliminated voters → alive player with most silver wins by default. New `WINNER` voting phase for client rendering.
+*   **Consequences:**
+    *   `VoteResult` gains optional `winnerId` field.
+    *   `VotingPhase` gains `WINNER` variant.
+    *   `VoteType` gains `FINALS` variant.
+    *   Client `FinalsVoting.tsx` shows eliminated-player voting UI and winner celebration.
+
+## [ADR-039] Dedicated Post-Game Machine (l4-post-game)
+*   **Date:** 2026-02-11
+*   **Status:** Accepted
+*   **Context:** After the winner is crowned, players should be able to continue chatting. Reusing L3 would bring unnecessary complexity (DM tracking, silver costs, voting/game cartridge support). A separate, simple machine is more maintainable and extensible.
+*   **Decision:** New `l4-post-game.ts` machine invoked by L2's `gameSummary` state with `id: 'l3-session'` (same ID so L1's extraction logic works unchanged). Supports free group chat only — no DMs, no silver costs, no voting/games. Uses shared `buildChatMessage` + `appendToChatLog` helpers. Future features (identity reveals, post-game awards) can be added without touching L3.
+*   **Consequences:**
+    *   Post-game chat is free (no silver deduction).
+    *   L1 extracts chatLog from `snapshot.children['l3-session']` — no changes needed.
+    *   `gameSummary` state is a sibling to `dayLoop`, not nested inside it.
+    *   Admin can advance from `gameSummary` to `gameOver` via `ADMIN.NEXT_STAGE`.
+
+## [ADR-040] Dynamic Day Limit from Manifest
+*   **Date:** 2026-02-11
+*   **Status:** Accepted
+*   **Context:** `dayLoop.always` guard was hardcoded to `context.dayIndex >= 7`. This meant all games lasted exactly 7 days regardless of the manifest's actual day count.
+*   **Decision:** Change the guard to `context.dayIndex >= (context.manifest?.days.length ?? 7)`. The manifest is the source of truth for game duration. The `?? 7` fallback handles null manifests gracefully.
+*   **Consequences:**
+    *   A 3-day manifest ends the game after day 3, not day 7.
+    *   Existing 7-day manifests behave identically.
+    *   Game designers control tournament length purely through manifest configuration.

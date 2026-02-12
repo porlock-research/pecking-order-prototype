@@ -22,6 +22,7 @@ export function formatPhase(value: StateValue | null | undefined): string {
   if (flat.includes('nightsummary') || flat.includes('night')) return 'NIGHT COUNCIL';
   if (flat.includes('morningbriefing') || flat.includes('morning')) return 'BRIEFING';
   if (flat.includes('groupchat') || flat.includes('activesession')) return 'LIVE SESSION';
+  if (flat.includes('gamesummary')) return 'GAME OVER';
   if (flat.includes('gameover') || flat.includes('game_over')) return 'FINALE';
 
   return 'IN PROGRESS';

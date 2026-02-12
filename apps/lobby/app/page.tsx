@@ -12,6 +12,7 @@ const AVAILABLE_VOTE_TYPES = [
   { value: "PODIUM_SACRIFICE", label: "Podium Sacrifice" },
   { value: "SHIELD", label: "Shield (Vote to Save)" },
   { value: "TRUST_PAIRS", label: "Trust Pairs" },
+  { value: "FINALS", label: "Finals (Crown Winner)" },
 ];
 
 const AVAILABLE_GAME_TYPES = [
@@ -23,8 +24,8 @@ const AVAILABLE_GAME_TYPES = [
 function createDefaultDay(): DebugDayConfig {
   return {
     voteType: "MAJORITY",
-    gameType: "NONE",
-    events: { INJECT_PROMPT: true, OPEN_DMS: true, START_GAME: false, END_GAME: false, OPEN_VOTING: true, CLOSE_VOTING: false, CLOSE_DMS: false, END_DAY: true },
+    gameType: "TRIVIA",
+    events: { INJECT_PROMPT: true, OPEN_DMS: true, START_GAME: true, END_GAME: true, OPEN_VOTING: true, CLOSE_VOTING: true, CLOSE_DMS: true, END_DAY: true },
   };
 }
 
@@ -59,15 +60,6 @@ export default function LobbyRoot() {
   function handleGameTypeChange(dayIdx: number, gameType: string) {
     setDebugConfig(prev => {
       const days = prev.days.map((d, i) => i === dayIdx ? { ...d, gameType } : d);
-      return { ...prev, days };
-    });
-  }
-
-  function handleEventToggle(dayIdx: number, eventKey: keyof DebugDayConfig['events']) {
-    setDebugConfig(prev => {
-      const days = prev.days.map((d, i) =>
-        i === dayIdx ? { ...d, events: { ...d.events, [eventKey]: !d.events[eventKey] } } : d
-      );
       return { ...prev, days };
     });
   }
@@ -113,7 +105,7 @@ export default function LobbyRoot() {
           </h1>
 
           <p className="text-lg text-skin-dim font-light tracking-wide max-w-sm mx-auto">
-            7 Days. 8 Players. <span className="badge-skew">One Survivor.</span>
+            Social Deception. <span className="badge-skew">One Survivor.</span>
           </p>
         </header>
 
@@ -204,20 +196,8 @@ export default function LobbyRoot() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                          {(['INJECT_PROMPT', 'OPEN_DMS', 'START_GAME', 'END_GAME', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'END_DAY'] as const).map(eventKey => (
-                            <label key={eventKey} className="flex items-center gap-2 cursor-pointer group/cb">
-                              <input
-                                type="checkbox"
-                                checked={day.events[eventKey]}
-                                onChange={() => handleEventToggle(idx, eventKey)}
-                                className="accent-[var(--po-gold)] w-3.5 h-3.5"
-                              />
-                              <span className="font-mono text-xs text-skin-dim/70 group-hover/cb:text-skin-dim transition-colors">
-                                {eventKey}
-                              </span>
-                            </label>
-                          ))}
+                        <div className="text-[10px] font-mono text-skin-dim/40">
+                          All timeline actions enabled
                         </div>
                       </div>
                     ))}
