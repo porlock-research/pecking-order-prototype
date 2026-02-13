@@ -19,7 +19,7 @@ self.addEventListener('push', (event) => {
       badge: '/icons/badge-72.png',
       tag: data.tag || 'default',
       renotify: true,
-      data: { url: self.location.origin },
+      data: { url: data.url || self.location.origin },
     };
 
     event.waitUntil(self.registration.showNotification(title, options));

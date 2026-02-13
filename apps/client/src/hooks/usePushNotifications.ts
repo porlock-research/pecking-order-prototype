@@ -22,16 +22,31 @@ export function usePushNotifications(socket: WebSocket | { send: (data: string) 
   });
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  // Check existing subscription on mount
+  // Check existing subscription on mount AND re-register with new game servers.
+  // Push subscriptions live in the browser, but the server stores them per Durable Object
+  // (per game). When the player joins a new game, the new DO has no record of the
+  // subscription, so we re-send PUSH.SUBSCRIBE over the new WebSocket.
   useEffect(() => {
     if (permission === 'unsupported') return;
+    if (!socket) return;
 
     navigator.serviceWorker.ready.then((reg) => {
       reg.pushManager.getSubscription().then((sub) => {
         setIsSubscribed(!!sub);
+        if (sub && socket) {
+          const subJSON = sub.toJSON();
+          socket.send(JSON.stringify({
+            type: 'PUSH.SUBSCRIBE',
+            subscription: {
+              endpoint: subJSON.endpoint,
+              keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
+            },
+            returnUrl: window.location.href,
+          }));
+        }
       });
     });
-  }, [permission]);
+  }, [permission, socket]);
 
   const subscribe = useCallback(async () => {
     if (permission === 'unsupported') return;
@@ -71,6 +86,7 @@ export function usePushNotifications(socket: WebSocket | { send: (data: string) 
           endpoint: subJSON.endpoint,
           keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
         },
+        returnUrl: window.location.href,
       }));
 
       setIsSubscribed(true);
