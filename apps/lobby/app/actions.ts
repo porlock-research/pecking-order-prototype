@@ -28,6 +28,7 @@ export interface DebugDayConfig {
 export interface DebugManifestConfig {
   dayCount: number;
   days: DebugDayConfig[];
+  pushConfig: Record<string, boolean>;
 }
 
 export interface Persona {
@@ -392,6 +393,7 @@ export async function startGame(
       id: `manifest-${game.id}`,
       gameMode: game.mode,
       days,
+      pushConfig: debugConfigParsed?.pushConfig,
     },
   };
 
@@ -503,7 +505,7 @@ export async function startDebugGame(
   const payload = {
     lobbyId: `lobby-${Date.now()}`,
     roster,
-    manifest: { id: 'manifest-1', gameMode: mode, days },
+    manifest: { id: 'manifest-1', gameMode: mode, days, pushConfig: debugConfig?.pushConfig },
   };
 
   const validated = InitPayloadSchema.parse(payload);
