@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { getGameSessionStatus, startGame } from '../../../actions';
 import type { GameSlot } from '../../../actions';
 
@@ -16,27 +16,20 @@ export default function WaitingRoom() {
   const [isStarting, setIsStarting] = useState(false);
   const [clientHost, setClientHost] = useState('http://localhost:5173');
 
-  const poll = useCallback(async () => {
-    try {
-      const result = await getGameSessionStatus(code);
-      setStatus(result.status);
-      setSlots(result.slots);
-      if (result.tokens) {
-        setTokens(result.tokens);
-      }
-      if (result.clientHost) {
-        setClientHost(result.clientHost);
-      }
-    } catch {
-      setError('Failed to fetch game status');
-    }
-  }, [code]);
-
   useEffect(() => {
-    poll();
-    const interval = setInterval(poll, 3000);
-    return () => clearInterval(interval);
-  }, [poll]);
+    async function load() {
+      try {
+        const result = await getGameSessionStatus(code);
+        setStatus(result.status);
+        setSlots(result.slots);
+        if (result.tokens) setTokens(result.tokens);
+        if (result.clientHost) setClientHost(result.clientHost);
+      } catch {
+        setError('Failed to fetch game status');
+      }
+    }
+    load();
+  }, [code]);
 
   async function handleStart() {
     setIsStarting(true);
@@ -173,7 +166,7 @@ export default function WaitingRoom() {
         {!isStarted && !isReady && (
           <div className="text-center">
             <p className="text-xs text-skin-dim/40 font-mono">
-              Share the invite code with your players. This page auto-refreshes.
+              Share the code with your players and refresh when ready.
             </p>
           </div>
         )}
