@@ -6,7 +6,7 @@
 
 ## Overview
 
-Players authenticate via email magic links in the lobby. A host creates a game and shares an invite code. Players accept the invite, pick a character from a curated pool, and wait in a lobby. When all slots are filled the host launches the game. The lobby mints JWTs that the client passes to the game server on WebSocket connect.
+Players authenticate via email magic links in the lobby. Auth is required on all routes (`/`, `/join/*`, `/game/*`) via edge middleware — unauthenticated users are redirected to `/login?next={path}`. A host creates a game and shares an invite code. Players accept the invite, pick a character from a curated pool, and wait in a lobby. When all slots are filled any participant can launch the game. The lobby mints JWTs that the client passes to the game server on WebSocket connect.
 
 ```
 Player                Lobby (Next.js + D1)           Game Server (DO)       Client (Vite SPA)
@@ -24,7 +24,7 @@ Player                Lobby (Next.js + D1)           Game Server (DO)       Clie
   |-- accept invite ------->| (pick character)             |                       |
   |<-- redirect to waiting -|                              |                       |
   |                         |                              |                       |
-  |-- host clicks launch -->|-- POST /init (Bearer) ------>|                       |
+  |-- player clicks launch ->|-- POST /init (Bearer) ------>|                       |
   |                         |-- mint JWTs ---------------->|                       |
   |<-- JWT token -----------|                              |                       |
   |                         |                              |                       |
@@ -69,19 +69,28 @@ Migrations: `apps/lobby/migrations/0001_initial.sql` (schema) and `0002_seed_per
    - Sets HTTP-only `po_session` cookie.
    - Redirects to original destination (or `/`).
 
+### Edge Middleware
+
+`apps/lobby/middleware.ts` protects all app routes at the edge layer:
+
+- **Matcher:** `'/'`, `'/join/:path*'`, `'/game/:path*'`
+- Checks for `po_session` cookie. If missing, redirects to `/login?next={pathname}`.
+- This ensures hosts are authenticated **before** creating a game, preventing invite code loss during the auth redirect. Previously the lobby home (`/`) was unprotected, so unauthenticated hosts could create a game, get an invite code, then lose it when redirected to login.
+
 ### Session Resolution
 
-All authenticated pages call `requireAuth(redirectTo?)`:
+All authenticated server actions call `requireAuth(redirectTo?)`:
 - Reads `po_session` cookie.
 - Joins `Sessions` + `Users` to resolve `{ userId, email, displayName }`.
 - If invalid/expired, redirects to `/login?next={redirectTo}`.
 
 ### Key Files
 
+- `apps/lobby/middleware.ts` — Edge auth middleware (cookie check + redirect)
 - `apps/lobby/lib/auth.ts` — `getSession()`, `requireAuth()`, `sendMagicLink()`, `verifyMagicLink()`, `logout()`
 - `apps/lobby/app/login/page.tsx` — Email input form
 - `apps/lobby/app/login/actions.ts` — `requestMagicLink()` server action
-- `apps/lobby/app/login/verify/page.tsx` — Token verification (server component)
+- `apps/lobby/app/login/verify/route.ts` — Token verification (route handler)
 
 ---
 
@@ -95,12 +104,12 @@ All authenticated pages call `requireAuth(redirectTo?)`:
    - Inserts `GameSessions` row with status `RECRUITING`.
    - Generates 6-char alphanumeric invite code (no ambiguous chars: no I/O/0/1).
    - Creates one `Invites` row per player slot.
-4. UI shows the invite code and link to `/invite/{code}`.
+4. UI shows the invite code and link to `/join/{code}`.
 
 ### Invite Acceptance
 
-1. Player visits `/invite/{code}`.
-2. If not logged in, redirected to `/login?next=/invite/{code}`.
+1. Player visits `/join/{code}`.
+2. If not logged in, middleware redirects to `/login?next=/join/{code}`.
 3. Server action `getInviteInfo(code)` returns:
    - Game info (mode, day count, player count, status).
    - Filled slots (who joined, which character they picked).
@@ -110,14 +119,14 @@ All authenticated pages call `requireAuth(redirectTo?)`:
    - Validates: user not already in game, persona not taken, slots available.
    - Claims first unclaimed `Invites` row.
    - If all slots filled -> updates `GameSessions.status` to `READY`.
-6. Redirects to waiting room `/game/{gameId}/waiting`.
+6. Redirects to waiting room `/game/{code}/waiting`.
 
 ### Waiting Room
 
-- `/game/[code]/waiting/page.tsx` — polls `getGameSessionStatus(inviteCode)` every 3 seconds.
+- `/game/[id]/waiting/page.tsx` — fetches `getGameSessionStatus(inviteCode)` once on mount (no polling).
 - URL uses the **invite code** (not internal game ID) to avoid leaking implementation details.
 - Shows join progress (filled/empty slots with character avatars).
-- When status is `READY`, host sees "Launch Game" button.
+- When status is `READY`, any participant sees "Launch Game" button.
 - When status is `STARTED`, shows "Enter Game" link pointing to client `/game/{CODE}?_t={JWT}`.
 
 ### Character Exclusivity
@@ -127,18 +136,18 @@ Each game has access to all 24 personas. Once a player picks one, it's removed f
 ### Key Files
 
 - `apps/lobby/app/actions.ts` — `createGame()`, `getInviteInfo()`, `acceptInvite()`, `getGameSessionStatus()`, `startGame()`
-- `apps/lobby/app/invite/[code]/page.tsx` — Character select + join UI
+- `apps/lobby/app/join/[code]/page.tsx` — Character select + join UI
 - `apps/lobby/app/game/[id]/waiting/page.tsx` — Waiting room UI (URL `[id]` param is the invite code)
 
 ---
 
 ## Game Start & Handoff
 
-When the host clicks "Launch Game" in the waiting room:
+When a player clicks "Launch Game" in the waiting room:
 
 1. Server action `startGame(inviteCode)`:
    - Looks up game by invite code (case-insensitive).
-   - Validates host ownership and `READY` status.
+   - Validates the caller is a participant in the game (any player, not just the host) and `READY` status.
    - Loads accepted invites + persona data from D1.
    - Builds roster from real user IDs + picked personas.
    - Builds manifest (day configs, timelines) from stored `config_json`.
@@ -249,26 +258,10 @@ When the "Skip Invites" toggle is OFF (default), debug games use the full invite
 
 1. Host clicks "Create Game" — calls `createGame()` with debug config.
 2. Invite code generated, waiting room available at `/game/{CODE}/waiting`.
-3. Host shares invite code, players join via `/invite/{CODE}`.
+3. Host shares invite code, players join via `/join/{CODE}`.
 4. Same character selection, JWT minting, and clean URL flow as production.
 
 This allows testing the complete lobby→game flow locally without deploying.
-
-The debug flow bypasses D1 and auth entirely for rapid local testing:
-
-1. Host clicks "Debug: Quick Start" on the lobby home page.
-2. Server action `startDebugGame(mode, config?)`:
-   - Uses hardcoded personas (Countess Snuffles, Dr. Spatula, etc.).
-   - Builds roster with `debug-user-{n}` as `realUserId`.
-   - Mints JWTs with `dev-secret-change-me` as the signing secret.
-   - POSTs directly to game server (same as normal flow).
-3. Returns tokens — lobby links to client with `?token=` for p1.
-
-This means:
-- No D1 database needed for local dev.
-- No login required.
-- Admin console still accessible.
-- All game mechanics work identically.
 
 ---
 

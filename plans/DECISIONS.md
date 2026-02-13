@@ -497,6 +497,21 @@ This document tracks significant architectural decisions, their context, and con
     *   `sessionStorage` provides refresh resilience within the browser tab (cleared when tab closes).
     *   Cross-origin auth problem solved without CORS, shared cookies, or client-side API calls.
 
+## [ADR-047] Edge Auth Middleware + Participant-Based Game Launch
+*   **Date:** 2026-02-12
+*   **Status:** Accepted
+*   **Context:** Two auth flow issues: (1) Unauthenticated hosts could create a game on `/`, get an invite code, then be redirected to `/login` — losing the invite code because the `next` parameter defaulted to `/`. (2) `startGame()` required `host_user_id` match, but during local multi-player testing the `po_session` cookie is overwritten each time a different player logs in (single browser, shared cookie jar), so the cookie belonged to the last player to join, not the host.
+*   **Decision:**
+    *   Add Next.js edge middleware (`apps/lobby/middleware.ts`) protecting `/`, `/join/*`, and `/game/*`. Unauthenticated requests redirect to `/login?next={pathname}`. This ensures hosts are already authenticated when they create a game, so the invite code is never lost.
+    *   Change `startGame()` from requiring `host_user_id` to verifying the caller is any participant (`SELECT id FROM Invites WHERE game_id = ? AND accepted_by = ?`). Any authenticated player in the game can launch it.
+    *   Rename `/invite/{code}` routes to `/join/{code}` for clearer semantics.
+    *   Remove 3-second polling from the waiting room — single fetch on mount.
+*   **Consequences:**
+    *   Auth is enforced before game creation — invite codes survive the login redirect.
+    *   Local multi-player testing works regardless of which player's session is in the cookie.
+    *   In production, any participant can launch (not just the host). Future: could restrict to host if needed.
+    *   `/join` is the canonical route for accepting invites (old `/invite` removed).
+
 ## [ADR-046] Invite Code as Canonical URL Identifier
 *   **Date:** 2026-02-12
 *   **Status:** Accepted
