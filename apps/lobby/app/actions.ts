@@ -651,6 +651,7 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
   slots: GameSlot[];
   tokens?: Record<string, string>;
   inviteCode?: string;
+  clientHost?: string;
 }> {
   const session = await requireAuth();
   const db = await getDB();
@@ -709,5 +710,6 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     }
   }
 
-  return { status: game.status, slots, tokens, inviteCode: game.invite_code };
+  const clientHost = process.env.GAME_CLIENT_HOST || 'http://localhost:5173';
+  return { status: game.status, slots, tokens, inviteCode: game.invite_code, clientHost };
 }

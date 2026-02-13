@@ -14,9 +14,7 @@ export default function WaitingRoom() {
   const [tokens, setTokens] = useState<Record<string, string> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
-  const clientHost = typeof window !== 'undefined'
-    ? (new URLSearchParams(window.location.search).get('clientHost') || 'http://localhost:5173')
-    : 'http://localhost:5173';
+  const [clientHost, setClientHost] = useState('http://localhost:5173');
 
   const poll = useCallback(async () => {
     try {
@@ -25,6 +23,9 @@ export default function WaitingRoom() {
       setSlots(result.slots);
       if (result.tokens) {
         setTokens(result.tokens);
+      }
+      if (result.clientHost) {
+        setClientHost(result.clientHost);
       }
     } catch {
       setError('Failed to fetch game status');
