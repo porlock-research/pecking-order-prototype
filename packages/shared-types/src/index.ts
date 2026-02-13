@@ -90,10 +90,34 @@ export const DailyManifestSchema = z.object({
   timeline: z.array(TimelineEventSchema),
 });
 
+// --- Push Notification Config ---
+
+export const PushTriggerSchema = z.enum([
+  // Fact-driven
+  'DM_SENT',           // targeted -> DM recipient
+  'ELIMINATION',       // broadcast
+  'WINNER_DECLARED',   // broadcast
+  // Phase-transition
+  'DAY_START',         // broadcast (morningBriefing/groupChat)
+  'VOTING',            // broadcast
+  'NIGHT_SUMMARY',     // broadcast
+  'DAILY_GAME',        // broadcast
+]);
+export type PushTrigger = z.infer<typeof PushTriggerSchema>;
+
+export const PushConfigSchema = z.record(PushTriggerSchema, z.boolean()).default({});
+export type PushConfig = z.infer<typeof PushConfigSchema>;
+
+export const DEFAULT_PUSH_CONFIG: Record<PushTrigger, boolean> = {
+  DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
+  DAY_START: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
+};
+
 export const GameManifestSchema = z.object({
   id: z.string(),
   gameMode: z.enum(["PECKING_ORDER", "BLITZ", "DEBUG_PECKING_ORDER"]),
   days: z.array(DailyManifestSchema),
+  pushConfig: PushConfigSchema.optional(),
 });
 
 export const RosterPlayerSchema = z.object({
