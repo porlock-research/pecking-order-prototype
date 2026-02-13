@@ -512,6 +512,24 @@ This document tracks significant architectural decisions, their context, and con
     *   In production, any participant can launch (not just the host). Future: could restrict to host if needed.
     *   `/join` is the canonical route for accepting invites (old `/invite` removed).
 
+## [ADR-048] PWA Push Notifications
+*   **Date:** 2026-02-13
+*   **Status:** Accepted
+*   **Context:** Players need to be pulled back into the game when phases change (day starts, voting opens) or when they receive a DM. The game is async — players aren't always watching. Native push notifications are the standard mechanism for this on both desktop and mobile.
+*   **Decision:** Implement Web Push (RFC 8291) with VAPID auth, no third-party services (Firebase, OneSignal). Key architectural choices:
+    *   **`@pushforge/builder`** for encryption/signing in the Durable Object — lightweight, no Node.js crypto dependencies.
+    *   **Two trigger paths**: fact-driven (DM_SENT, ELIMINATION, WINNER_DECLARED) and state-transition-driven (DAY_START, ACTIVITY, VOTING, NIGHT_SUMMARY, DAILY_GAME). Both converge on shared `pushToPlayer`/`pushBroadcast` in `push-triggers.ts`.
+    *   **Configurable triggers** via `PushConfigSchema` on the game manifest. Lobby debug panel exposes per-trigger toggles. Default: all ON.
+    *   **Dedup via `Set<string>`** of sent push keys (`tag:body`) — prevents duplicate notifications when L3 parallel state changes trigger multiple L2 subscription fires for the same logical phase.
+    *   **Always send** — no online-skip. Notifications arrive even with tab open, since users may not be looking at the tab.
+    *   **returnUrl** — client sends `window.location.href` (includes game token) on PUSH.SUBSCRIBE. Server stores it as `push_url:{key}` and injects into push payloads. Notification click opens/focuses the game tab with auth.
+    *   **`_redirects` pass-through** — Cloudflare Pages SPA catch-all was intercepting `/sw.js`. Added explicit pass-through rules before the fallback.
+    *   **PWA via `vite-plugin-pwa`** with `injectManifest` strategy. SW handles precaching + push + notificationclick.
+*   **Consequences:**
+    *   Push works on Chrome (desktop/Android) immediately. iOS requires Add to Home Screen (PWA install) — `PushManager` unavailable in plain Safari tabs.
+    *   Per-game DO storage for subscriptions (not global KV). Client auto-re-registers on each game join via mount effect.
+    *   `AUTH_SECRET` must be set on both lobby and game-server Workers for JWT signing/verification to work on staging/production.
+
 ## [ADR-046] Invite Code as Canonical URL Identifier
 *   **Date:** 2026-02-12
 *   **Status:** Accepted
