@@ -8,8 +8,8 @@ interface PushPromptProps {
 export function PushPrompt({ socket }: PushPromptProps) {
   const { permission, isSubscribed, subscribe } = usePushNotifications(socket);
 
-  // Only show when push is supported, not yet asked, and not subscribed
-  if (permission !== 'default' || isSubscribed) return null;
+  // Hide when unsupported, denied, or already subscribed
+  if (permission === 'unsupported' || permission === 'denied' || isSubscribed) return null;
 
   return (
     <button

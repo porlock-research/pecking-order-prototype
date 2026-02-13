@@ -10,6 +10,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );
 
 // Register service worker for PWA + push notifications
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js', { scope: '/' });
-}
+// Uses vite-plugin-pwa's virtual module to handle dev/prod paths correctly
+import { registerSW } from 'virtual:pwa-register';
+registerSW();

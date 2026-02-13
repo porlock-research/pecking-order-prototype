@@ -161,19 +161,19 @@ export class GameServer extends Server<Env> {
               title: 'Pecking Order',
               body: `${pushName(fact.actorId)} sent you a DM`,
               tag: 'dm',
-            }).catch(() => {});
+            }).catch(err => console.error('[L1] [Push] Error:', err));
           } else if (fact.type === 'ELIMINATION') {
             this.pushBroadcast({
               title: 'Pecking Order',
               body: `${pushName(fact.targetId || fact.actorId)} has been eliminated!`,
               tag: 'elimination',
-            }).catch(() => {});
+            }).catch(err => console.error('[L1] [Push] Error:', err));
           } else if (fact.type === 'WINNER_DECLARED') {
             this.pushBroadcast({
               title: 'Pecking Order',
               body: `${pushName(fact.targetId || fact.actorId)} wins!`,
               tag: 'winner',
-            }).catch(() => {});
+            }).catch(err => console.error('[L1] [Push] Error:', err));
           }
         },
         sendDmRejection: ({ event }: any) => {
@@ -386,14 +386,18 @@ export class GameServer extends Server<Env> {
       }
 
       // E. Ticker: detect state transitions + push notifications
-      const currentStateStr = JSON.stringify(snapshot.value);
+      // Combine L2 + L3 state for transition detection (L3 phases like voting/dailyGame
+      // don't change the L2 state string, so we must include both)
+      const l3StateJson = l3Snapshot ? JSON.stringify(l3Snapshot.value) : '';
+      const currentStateStr = JSON.stringify(snapshot.value) + l3StateJson;
       if (currentStateStr !== this.lastBroadcastState) {
         const tickerMsg = this.stateToTicker(currentStateStr, snapshot.context);
         if (tickerMsg) this.broadcastTicker(tickerMsg);
 
         // Push notifications for phase transitions (fire-and-forget)
         const pushPayload = this.stateToPush(currentStateStr, snapshot.context);
-        if (pushPayload) this.pushBroadcast(pushPayload).catch(() => {});
+        console.log(`[L1] [Push] State changed, push payload: ${pushPayload ? pushPayload.body : 'NONE (no mapping)'}`);
+        if (pushPayload) this.pushBroadcast(pushPayload).catch(err => console.error('[L1] [Push] Error:', err));
 
         this.lastBroadcastState = currentStateStr;
       }
@@ -551,34 +555,45 @@ export class GameServer extends Server<Env> {
     return false;
   }
 
-  private async pushToPlayer(playerId: string, payload: Record<string, string>) {
-    if (this.isPlayerOnline(playerId)) return;
-
+  private pushKeyForPlayer(playerId: string): string {
     const roster: any = this.actor?.getSnapshot()?.context.roster || {};
-    const realUserId = roster[playerId]?.realUserId;
-    if (!realUserId) return;
+    return roster[playerId]?.realUserId || playerId;
+  }
 
-    const sub = await getPushSubscription(this.ctx.storage, realUserId);
-    if (!sub) return;
+  private async pushToPlayer(playerId: string, payload: Record<string, string>) {
+    if (this.isPlayerOnline(playerId)) {
+      console.log(`[L1] [Push] Skip ${playerId} — online`);
+      return;
+    }
 
+    const pushKey = this.pushKeyForPlayer(playerId);
+    const sub = await getPushSubscription(this.ctx.storage, pushKey);
+    if (!sub) {
+      console.log(`[L1] [Push] Skip ${playerId} — no subscription stored`);
+      return;
+    }
+
+    console.log(`[L1] [Push] Sending to ${playerId}: ${payload.body}`);
     const result = await sendPushNotification(sub, payload, this.env.VAPID_PRIVATE_JWK);
+    console.log(`[L1] [Push] Result for ${playerId}: ${result}`);
     if (result === "expired") {
-      await deletePushSubscription(this.ctx.storage, realUserId);
-      console.log(`[L1] Push subscription expired for ${playerId}, cleaned up`);
+      await deletePushSubscription(this.ctx.storage, pushKey);
     }
   }
 
   private async pushBroadcast(payload: Record<string, string>) {
     const roster = this.actor?.getSnapshot()?.context.roster || {};
+    const playerIds = Object.keys(roster);
+    console.log(`[L1] [Push] Broadcasting to ${playerIds.length} players: ${payload.body}`);
     await Promise.allSettled(
-      Object.keys(roster).map((pid) => this.pushToPlayer(pid, payload)),
+      playerIds.map((pid) => this.pushToPlayer(pid, payload)),
     );
   }
 
   private stateToPush(stateStr: string, context: any): Record<string, string> | null {
     const dayIndex = context?.dayIndex || 0;
 
-    if (stateStr.includes("morningBriefing")) {
+    if (stateStr.includes("morningBriefing") || stateStr.includes("groupChat")) {
       return { title: "Pecking Order", body: `Day ${dayIndex} has begun!`, tag: "phase" };
     }
     if (stateStr.includes("voting")) {
@@ -943,25 +958,21 @@ export class GameServer extends Server<Env> {
 
       // Push subscription management — L1-only, no state machine involvement
       if (event.type === 'PUSH.SUBSCRIBE') {
-        const roster: any = this.actor?.getSnapshot()?.context.roster || {};
-        const realUserId = roster[state.playerId]?.realUserId;
-        if (realUserId && event.subscription) {
-          savePushSubscription(this.ctx.storage, realUserId, event.subscription).catch(
+        const pushKey = this.pushKeyForPlayer(state.playerId);
+        if (event.subscription) {
+          savePushSubscription(this.ctx.storage, pushKey, event.subscription).catch(
             (err: any) => console.error('[L1] Failed to save push subscription:', err),
           );
-          console.log(`[L1] Push subscription saved for ${state.playerId}`);
+          console.log(`[L1] Push subscription saved for ${state.playerId} (key: ${pushKey})`);
         }
         return;
       }
       if (event.type === 'PUSH.UNSUBSCRIBE') {
-        const roster: any = this.actor?.getSnapshot()?.context.roster || {};
-        const realUserId = roster[state.playerId]?.realUserId;
-        if (realUserId) {
-          deletePushSubscription(this.ctx.storage, realUserId).catch(
-            (err: any) => console.error('[L1] Failed to delete push subscription:', err),
-          );
-          console.log(`[L1] Push subscription removed for ${state.playerId}`);
-        }
+        const pushKey = this.pushKeyForPlayer(state.playerId);
+        deletePushSubscription(this.ctx.storage, pushKey).catch(
+          (err: any) => console.error('[L1] Failed to delete push subscription:', err),
+        );
+        console.log(`[L1] Push subscription removed for ${state.playerId}`);
         return;
       }
 
