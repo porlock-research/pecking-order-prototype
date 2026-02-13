@@ -101,6 +101,8 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 - ~~**Spawned cartridge actors persist after cleanup**~~ RESOLVED (ADR-036)
 - ~~**Marquee animation CPU usage**~~ RESOLVED — removed backdrop-blur, added will-change: transform, static debug strip, pauseOnHover
 
+- **Cloudflare Pages preview URLs break staging flow** — Feature branches deploy the client to preview URLs (`https://{branch}.pecking-order-client.pages.dev/`) but the lobby's `GAME_CLIENT_HOST` points to the production Pages URL. Game server and lobby are Workers (single deployment per env), so only the client gets branch-specific URLs. Options: (a) deploy-staging workflow uses `wrangler pages deploy --branch=main` to always target production URL, (b) lobby reads branch from a header/env and constructs preview URL dynamically, (c) accept that staging client always trails behind and test feature branches via manual `wrangler pages deploy` to production.
+
 ---
 
 ## Implementation Log
