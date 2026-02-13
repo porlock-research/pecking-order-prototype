@@ -31,6 +31,17 @@ const AVAILABLE_ACTIVITY_TYPES = [
   { value: 'GUESS_WHO', label: 'Guess Who' },
 ];
 
+const PUSH_TRIGGER_LABELS: { key: string; label: string }[] = [
+  { key: 'DM_SENT', label: 'DM Received' },
+  { key: 'ELIMINATION', label: 'Elimination' },
+  { key: 'WINNER_DECLARED', label: 'Winner Declared' },
+  { key: 'DAY_START', label: 'Day Started' },
+  { key: 'ACTIVITY', label: 'Activity Started' },
+  { key: 'VOTING', label: 'Voting Opened' },
+  { key: 'NIGHT_SUMMARY', label: 'Night Summary' },
+  { key: 'DAILY_GAME', label: 'Game Time' },
+];
+
 function createDefaultDay(): DebugDayConfig {
   return {
     voteType: 'MAJORITY',
@@ -41,7 +52,14 @@ function createDefaultDay(): DebugDayConfig {
 }
 
 function createDefaultManifestConfig(): DebugManifestConfig {
-  return { dayCount: 2, days: [createDefaultDay(), createDefaultDay()] };
+  return {
+    dayCount: 2,
+    days: [createDefaultDay(), createDefaultDay()],
+    pushConfig: {
+      DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
+      DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
+    },
+  };
 }
 
 export default function LobbyRoot() {
@@ -60,7 +78,7 @@ export default function LobbyRoot() {
       const newCount = Math.max(1, Math.min(7, prev.dayCount + delta));
       const days = [...prev.days];
       while (days.length < newCount) days.push(createDefaultDay());
-      return { dayCount: newCount, days: days.slice(0, newCount) };
+      return { ...prev, dayCount: newCount, days: days.slice(0, newCount) };
     });
   }
 
@@ -83,6 +101,13 @@ export default function LobbyRoot() {
       const days = prev.days.map((d, i) => i === dayIdx ? { ...d, activityType } : d);
       return { ...prev, days };
     });
+  }
+
+  function handlePushToggle(trigger: string) {
+    setDebugConfig(prev => ({
+      ...prev,
+      pushConfig: { ...prev.pushConfig, [trigger]: !prev.pushConfig[trigger] },
+    }));
   }
 
   async function handleCreateGame() {
@@ -258,6 +283,34 @@ export default function LobbyRoot() {
                           All timeline actions enabled
                         </div>
                       </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Push Alerts Config (debug mode only) */}
+              {isDebugMode && !gameId && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
+                    Push Alerts
+                  </label>
+                  <div className="border border-skin-base rounded-lg bg-skin-input/40 p-3 space-y-1.5">
+                    {PUSH_TRIGGER_LABELS.map(({ key, label }) => (
+                      <label key={key} className="flex items-center justify-between cursor-pointer group">
+                        <span className="text-xs font-mono text-skin-dim/60 group-hover:text-skin-dim transition-colors">
+                          {label}
+                        </span>
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={debugConfig.pushConfig[key] ?? true}
+                            onChange={() => handlePushToggle(key)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-8 h-4 bg-skin-input border border-skin-base rounded-full peer-checked:bg-skin-gold/30 peer-checked:border-skin-gold/50 transition-all" />
+                          <div className="absolute left-0.5 top-0.5 w-3 h-3 bg-skin-dim/60 rounded-full peer-checked:translate-x-4 peer-checked:bg-skin-gold transition-all" />
+                        </div>
+                      </label>
                     ))}
                   </div>
                 </div>

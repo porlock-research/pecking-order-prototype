@@ -8,3 +8,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>,
 );
+
+// Register service worker for PWA + push notifications
+// Uses vite-plugin-pwa's virtual module to handle dev/prod paths correctly
+import { registerSW } from 'virtual:pwa-register';
+registerSW();
