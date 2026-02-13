@@ -294,8 +294,8 @@ export async function startGame(
 
   // Load game by invite code
   const game = await db
-    .prepare('SELECT * FROM GameSessions WHERE invite_code = ? AND host_user_id = ?')
-    .bind(inviteCode.toUpperCase(), session.userId)
+    .prepare('SELECT * FROM GameSessions WHERE invite_code = ?')
+    .bind(inviteCode.toUpperCase())
     .first<{
       id: string;
       mode: string;
@@ -306,7 +306,17 @@ export async function startGame(
     }>();
 
   if (!game) {
-    return { success: false, error: 'Game not found or not your game' };
+    return { success: false, error: 'Game not found' };
+  }
+
+  // Verify the caller is a participant in this game
+  const isParticipant = await db
+    .prepare('SELECT id FROM Invites WHERE game_id = ? AND accepted_by = ?')
+    .bind(game.id, session.userId)
+    .first();
+
+  if (!isParticipant) {
+    return { success: false, error: 'You are not a player in this game' };
   }
 
   if (game.status !== 'READY') {
