@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
-import { ChatMessage } from '@pecking-order/shared-types';
+import { ChatMessage, GAME_MASTER_ID } from '@pecking-order/shared-types';
 
 interface DirectMessagesProps {
   engine: {
@@ -16,6 +16,14 @@ const REJECTION_LABELS: Record<string, string> = {
   TARGET_ELIMINATED: 'This player has been eliminated',
   SELF_DM: 'Cannot message yourself',
 };
+
+function resolvePartner(partnerId: string, roster: Record<string, any>): { name: string; initial: string; isGameMaster: boolean } {
+  if (partnerId === GAME_MASTER_ID) {
+    return { name: 'Game Master', initial: 'GM', isGameMaster: true };
+  }
+  const p = roster[partnerId];
+  return { name: p?.personaName || 'Unknown', initial: p?.personaName?.charAt(0)?.toUpperCase() || '?', isGameMaster: false };
+}
 
 export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
   const { playerId, roster, dmRejection, clearDmRejection } = useGameStore();
@@ -120,7 +128,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
 
   // Thread view
   if (activePartnerId && activeThread) {
-    const partner = roster[activePartnerId];
+    const partnerInfo = resolvePartner(activePartnerId, roster);
     return (
       <div className="flex flex-col h-full relative">
         {/* Header */}
@@ -132,10 +140,10 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
             >
               {'<-'}
             </button>
-            <div className="w-7 h-7 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-pink avatar-ring">
-              {partner?.personaName?.charAt(0)?.toUpperCase() || '?'}
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-mono avatar-ring ${partnerInfo.isGameMaster ? 'bg-skin-gold/20 text-skin-gold' : 'bg-skin-panel text-skin-pink'}`}>
+              {partnerInfo.initial}
             </div>
-            <span className="text-sm font-bold text-skin-base">{partner?.personaName || 'Unknown'}</span>
+            <span className={`text-sm font-bold ${partnerInfo.isGameMaster ? 'text-skin-gold' : 'text-skin-base'}`}>{partnerInfo.name}</span>
           </div>
           <span className="font-mono text-[10px] text-skin-dim">{charsRemaining}/{charsLimit}</span>
         </div>
@@ -201,7 +209,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
 
   // If activePartnerId is set but no thread yet (new conversation)
   if (activePartnerId) {
-    const partner = roster[activePartnerId];
+    const partnerInfo = resolvePartner(activePartnerId, roster);
     return (
       <div className="flex flex-col h-full relative">
         <div className="shrink-0 px-4 py-3 border-b border-white/[0.06] bg-skin-panel/40 flex items-center justify-between">
@@ -212,10 +220,10 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
             >
               {'<-'}
             </button>
-            <div className="w-7 h-7 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-pink avatar-ring">
-              {partner?.personaName?.charAt(0)?.toUpperCase() || '?'}
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-mono avatar-ring ${partnerInfo.isGameMaster ? 'bg-skin-gold/20 text-skin-gold' : 'bg-skin-panel text-skin-pink'}`}>
+              {partnerInfo.initial}
             </div>
-            <span className="text-sm font-bold text-skin-base">{partner?.personaName || 'Unknown'}</span>
+            <span className={`text-sm font-bold ${partnerInfo.isGameMaster ? 'text-skin-gold' : 'text-skin-base'}`}>{partnerInfo.name}</span>
           </div>
           <span className="font-mono text-[10px] text-skin-dim">{charsRemaining}/{charsLimit}</span>
         </div>
@@ -294,7 +302,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
         )}
 
         {threads.map(thread => {
-          const partner = roster[thread.partnerId];
+          const partnerInfo = resolvePartner(thread.partnerId, roster);
           const lastMsg = thread.messages[thread.messages.length - 1];
           const isFromMe = lastMsg?.senderId === playerId;
 
@@ -304,13 +312,13 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
               onClick={() => setActivePartnerId(thread.partnerId)}
               className="w-full flex items-center gap-3 p-3 rounded-xl bg-glass border border-white/[0.06] hover:border-skin-pink/30 transition-all text-left"
             >
-              <div className="w-10 h-10 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-pink avatar-ring shrink-0">
-                {partner?.personaName?.charAt(0)?.toUpperCase() || '?'}
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold font-mono avatar-ring shrink-0 ${partnerInfo.isGameMaster ? 'bg-skin-gold/20 text-skin-gold' : 'bg-skin-panel text-skin-pink'}`}>
+                {partnerInfo.initial}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">
-                  <span className="font-bold text-sm text-skin-base truncate">
-                    {partner?.personaName || 'Unknown'}
+                  <span className={`font-bold text-sm truncate ${partnerInfo.isGameMaster ? 'text-skin-gold' : 'text-skin-base'}`}>
+                    {partnerInfo.name}
                   </span>
                   <span className="text-[9px] font-mono text-skin-dim shrink-0 ml-2">
                     {new Date(thread.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

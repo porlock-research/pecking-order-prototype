@@ -1,4 +1,4 @@
-import { setup, assign, sendParent } from 'xstate';
+import { setup, assign, sendParent, enqueueActions } from 'xstate';
 import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from './cartridges/voting/_registry';
 import { GAME_REGISTRY } from './cartridges/games/_registry';
@@ -10,6 +10,8 @@ import { l3VotingActions } from './actions/l3-voting';
 import { l3GameActions } from './actions/l3-games';
 import { l3ActivityActions } from './actions/l3-activity';
 import { l3PerkActions, l3PerkGuards } from './actions/l3-perks';
+import { buildChatMessage, appendToChatLog } from './actions/social-helpers';
+import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 
 // 1. Define strict types
 export interface DailyContext {
@@ -135,7 +137,28 @@ export const dailySessionMachine = setup({
                 'INTERNAL.START_CARTRIDGE': 'dailyGame',
                 'INTERNAL.START_GAME': 'dailyGame',
                 'INTERNAL.OPEN_VOTING': 'voting',
-                'INTERNAL.INJECT_PROMPT': { actions: ({ event }: any) => console.log('Prompt:', event.payload) }
+                'INTERNAL.INJECT_PROMPT': {
+                  actions: enqueueActions(({ context, event, enqueue }: any) => {
+                    const text = event.payload?.text || event.payload?.msg || 'The Game Master speaks...';
+                    const targetId = event.payload?.targetId;
+                    const channel = targetId ? 'DM' as const : 'MAIN' as const;
+                    const msg = buildChatMessage(GAME_MASTER_ID, text, channel, targetId);
+                    enqueue.assign({ chatLog: appendToChatLog(context.chatLog, msg) });
+                    // Emit DM_SENT fact for targeted messages so push notifications fire
+                    if (targetId) {
+                      enqueue.raise({
+                        type: 'FACT.RECORD',
+                        fact: {
+                          type: 'DM_SENT',
+                          actorId: GAME_MASTER_ID,
+                          targetId,
+                          payload: { content: text },
+                          timestamp: Date.now(),
+                        },
+                      });
+                    }
+                  })
+                }
               }
             },
             dailyGame: {

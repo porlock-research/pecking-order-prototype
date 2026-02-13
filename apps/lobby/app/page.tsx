@@ -1,8 +1,8 @@
 'use client';
 
-import { createGame, startDebugGame } from './actions';
-import type { DebugManifestConfig, DebugDayConfig } from './actions';
-import { useState } from 'react';
+import { createGame, startDebugGame, getAuthStatus, getActiveGames } from './actions';
+import type { DebugManifestConfig, DebugDayConfig, ActiveGame } from './actions';
+import { useState, useEffect } from 'react';
 
 const AVAILABLE_VOTE_TYPES = [
   { value: 'MAJORITY', label: 'Majority Vote' },
@@ -72,6 +72,13 @@ export default function LobbyRoot() {
   const [debugConfig, setDebugConfig] = useState<DebugManifestConfig>(createDefaultManifestConfig);
   const [tokens, setTokens] = useState<Record<string, string> | null>(null);
   const [skipInvites, setSkipInvites] = useState(false);
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [activeGames, setActiveGames] = useState<ActiveGame[]>([]);
+
+  useEffect(() => {
+    getAuthStatus().then(s => { if (s.authed && s.email) setAuthEmail(s.email); });
+    getActiveGames().then(setActiveGames);
+  }, []);
 
   function handleDayCountChange(delta: number) {
     setDebugConfig(prev => {
@@ -170,6 +177,11 @@ export default function LobbyRoot() {
             <span className="w-2 h-2 rounded-full bg-skin-green animate-pulse-live mr-2"></span>
             <span className="text-xs font-mono text-skin-dim tracking-widest uppercase">Network Online</span>
           </div>
+          {authEmail && (
+            <div className="text-xs font-mono text-skin-dim/60">
+              Logged in as {authEmail}
+            </div>
+          )}
 
           <h1 className="text-6xl md:text-7xl font-display font-black tracking-tighter text-skin-gold mb-2 text-glow">
             PECKING ORDER
@@ -185,6 +197,45 @@ export default function LobbyRoot() {
           <div className="bg-skin-deep/60 rounded-[20px] p-8 border border-skin-base">
 
             <div className="space-y-8">
+              {/* Active Games */}
+              {activeGames.length > 0 && (
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
+                    Your Games
+                  </label>
+                  <div className="space-y-2">
+                    {activeGames.map(game => {
+                      const isStarted = game.status === 'STARTED';
+                      const href = isStarted
+                        ? `${clientHost}/?gameId=${game.id}`
+                        : `/game/${game.inviteCode}/waiting`;
+                      return (
+                        <a
+                          key={game.id}
+                          href={href}
+                          className="flex items-center justify-between p-3 bg-skin-panel/30 hover:bg-skin-panel/50 text-skin-base rounded-lg transition-all border border-skin-base hover:border-skin-dim/30 group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                              isStarted
+                                ? 'bg-skin-green/20 text-skin-green border border-skin-green/30'
+                                : 'bg-skin-info/20 text-skin-info border border-skin-info/30'
+                            }`}>
+                              {game.status}
+                            </span>
+                            <span className="text-xs font-mono text-skin-dim/60">{game.mode}</span>
+                            <span className="text-[10px] font-mono text-skin-dim/40">{game.playerCount}p</span>
+                          </div>
+                          <span className="text-skin-dim/40 group-hover:text-skin-gold group-hover:translate-x-1 transition-all text-sm">
+                            {isStarted ? 'Jump In' : 'Waiting'} &rarr;
+                          </span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Game Mode Selector */}
               <div className="space-y-3">
                 <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">

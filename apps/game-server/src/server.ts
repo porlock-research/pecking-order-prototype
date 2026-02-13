@@ -291,11 +291,16 @@ export class GameServer extends Server<Env> {
 
   private handleGetState(): Response {
     const snapshot = this.actor?.getSnapshot();
+    const roster = snapshot?.context.roster || {};
+    const rosterSummary = Object.fromEntries(
+      Object.entries(roster).map(([id, p]: [string, any]) => [id, { personaName: p.personaName, status: p.isAlive ? 'ALIVE' : 'ELIMINATED' }])
+    );
     return new Response(JSON.stringify({
       state: snapshot?.value,
       day: snapshot?.context.dayIndex,
       nextWakeup: snapshot?.context.nextWakeup ? new Date(snapshot.context.nextWakeup).toISOString() : null,
       manifest: snapshot?.context.manifest,
+      roster: rosterSummary,
     }, null, 2), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -303,6 +308,12 @@ export class GameServer extends Server<Env> {
   }
 
   private async handleAdmin(req: Request): Promise<Response> {
+    // Auth check — require Bearer token matching AUTH_SECRET
+    const authHeader = req.headers.get('Authorization');
+    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
     try {
       const body = await req.json() as any;
       console.log(`[L1] Admin Command: ${body.type}`);
@@ -313,6 +324,14 @@ export class GameServer extends Server<Env> {
         this.actor?.send({
           type: "ADMIN.INJECT_TIMELINE_EVENT",
           payload: { action: body.action, payload: body.payload },
+        });
+      } else if (body.type === "SEND_GAME_MASTER_MSG") {
+        this.actor?.send({
+          type: "ADMIN.INJECT_TIMELINE_EVENT",
+          payload: {
+            action: "INJECT_PROMPT",
+            payload: { text: body.content, targetId: body.targetId },
+          },
         });
       } else {
         return new Response("Unknown Admin Command", { status: 400 });

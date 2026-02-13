@@ -256,6 +256,10 @@ export const PERK_COSTS: Record<PerkType, number> = {
   EXTRA_DM_CHARS: 2,
 };
 
+// --- Game Master ---
+
+export const GAME_MASTER_ID = 'GAME_MASTER';
+
 // --- Ticker (News Feed) ---
 
 export interface TickerMessage {

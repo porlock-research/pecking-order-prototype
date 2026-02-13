@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
-import { ChatMessage } from '@pecking-order/shared-types';
+import { ChatMessage, GAME_MASTER_ID } from '@pecking-order/shared-types';
 
 interface ChatRoomProps {
   engine: {
@@ -82,7 +82,27 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
         {displayedMessages.map((msg) => {
           const sender = roster[msg.senderId];
           const isMe = msg.senderId === playerId;
+          const isGameMaster = msg.senderId === GAME_MASTER_ID;
           const isOptimistic = msg.id.toString().startsWith('opt-');
+
+          // Game Master messages — full-width banner style
+          if (isGameMaster) {
+            return (
+              <div key={msg.id} className="w-full slide-up-in">
+                <div className="border-l-2 border-skin-gold bg-skin-gold/10 px-4 py-3 rounded-r-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[11px] font-bold text-skin-gold uppercase tracking-wider font-display">
+                      Game Master
+                    </span>
+                    <span className="text-[9px] font-mono text-skin-dim/50">
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-skin-base leading-relaxed">{msg.content}</p>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div

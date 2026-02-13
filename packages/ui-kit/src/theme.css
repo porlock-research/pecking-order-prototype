@@ -303,17 +303,6 @@ body {
   animation: gold-glow 2s ease-in-out infinite;
 }
 
-/* Marquee Scroll: continuous loop via duplicate-content trick.
-   The wrapper holds two copies of the content side by side;
-   translating -50% scrolls exactly one copy out, then loops seamlessly. */
-@keyframes marquee-scroll {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-.marquee-scroll {
-  animation: marquee-scroll 20s linear infinite;
-}
-
 /* Slide In Right: ticker messages entering */
 @keyframes slide-in-right {
   from { opacity: 0; transform: translateX(40px); }

@@ -3,7 +3,7 @@
 import { InitPayloadSchema, Roster } from '@pecking-order/shared-types';
 import { signGameToken } from '@pecking-order/auth';
 import { getDB } from '@/lib/db';
-import { requireAuth, generateId, generateInviteCode } from '@/lib/auth';
+import { requireAuth, getSession, generateId, generateInviteCode } from '@/lib/auth';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -428,7 +428,10 @@ export async function startGame(
     await fetch(`${GAME_SERVER_HOST}/parties/game-server/${game.id}/admin`, {
       method: 'POST',
       body: JSON.stringify({ type: 'NEXT_STAGE' }),
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AUTH_SECRET}`,
+      },
     }).catch((err: any) => console.error('[Lobby] Auto-advance failed:', err));
 
     return { success: true, tokens };
@@ -532,6 +535,59 @@ export async function startDebugGame(
     console.error('[Lobby] Debug start failed:', err);
     return { success: false, error: err.message };
   }
+}
+
+// ── Auth Status ─────────────────────────────────────────────────────────
+
+export async function getAuthStatus(): Promise<{ authed: boolean; email?: string }> {
+  const session = await getSession();
+  if (!session) return { authed: false };
+  return { authed: true, email: session.email };
+}
+
+// ── Active Games for Current User ───────────────────────────────────────
+
+export interface ActiveGame {
+  id: string;
+  inviteCode: string;
+  mode: string;
+  status: string;
+  playerCount: number;
+  createdAt: number;
+}
+
+export async function getActiveGames(): Promise<ActiveGame[]> {
+  const session = await getSession();
+  if (!session) return [];
+
+  const db = await getDB();
+  const { results } = await db
+    .prepare(
+      `SELECT gs.id, gs.invite_code, gs.mode, gs.status, gs.player_count, gs.created_at
+       FROM Invites i
+       JOIN GameSessions gs ON gs.id = i.game_id
+       WHERE i.accepted_by = ?
+         AND gs.status IN ('RECRUITING','READY','STARTED')
+       ORDER BY gs.created_at DESC`
+    )
+    .bind(session.userId)
+    .all<{
+      id: string;
+      invite_code: string;
+      mode: string;
+      status: string;
+      player_count: number;
+      created_at: number;
+    }>();
+
+  return results.map((r) => ({
+    id: r.id,
+    inviteCode: r.invite_code,
+    mode: r.mode,
+    status: r.status,
+    playerCount: r.player_count,
+    createdAt: r.created_at,
+  }));
 }
 
 // ── Shared: Build manifest days ──────────────────────────────────────────
@@ -641,13 +697,17 @@ export async function getGameState(gameId: string) {
 
 export async function sendAdminCommand(gameId: string, command: any) {
   const GAME_SERVER_HOST = process.env.GAME_SERVER_HOST || 'http://localhost:8787';
+  const AUTH_SECRET = process.env.AUTH_SECRET || 'dev-secret-change-me';
   const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/admin`;
 
   try {
     const res = await fetch(targetUrl, {
       method: 'POST',
       body: JSON.stringify(command),
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AUTH_SECRET}`,
+      },
     });
     if (!res.ok) throw new Error(`Status ${res.status}`);
     return { success: true };
