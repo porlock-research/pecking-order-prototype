@@ -99,6 +99,7 @@ export const PushTriggerSchema = z.enum([
   'WINNER_DECLARED',   // broadcast
   // Phase-transition
   'DAY_START',         // broadcast (morningBriefing/groupChat)
+  'ACTIVITY',          // broadcast
   'VOTING',            // broadcast
   'NIGHT_SUMMARY',     // broadcast
   'DAILY_GAME',        // broadcast
@@ -110,7 +111,7 @@ export type PushConfig = z.infer<typeof PushConfigSchema>;
 
 export const DEFAULT_PUSH_CONFIG: Record<PushTrigger, boolean> = {
   DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
-  DAY_START: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
+  DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
 };
 
 export const GameManifestSchema = z.object({

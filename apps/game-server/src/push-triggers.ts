@@ -69,6 +69,10 @@ export function stateToPush(
 ): Record<string, string> | null {
   const dayIndex = context?.dayIndex || 0;
 
+  if (stateStr.includes('"activityLayer":"playing"')) {
+    if (!isPushEnabled(manifest, 'ACTIVITY')) return null;
+    return { title: "Pecking Order", body: "Activity time!", tag: "activity" };
+  }
   if (stateStr.includes("morningBriefing") || stateStr.includes("groupChat")) {
     if (!isPushEnabled(manifest, 'DAY_START')) return null;
     return { title: "Pecking Order", body: `Day ${dayIndex} has begun!`, tag: "phase" };

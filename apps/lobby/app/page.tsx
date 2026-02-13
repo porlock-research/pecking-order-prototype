@@ -36,6 +36,7 @@ const PUSH_TRIGGER_LABELS: { key: string; label: string }[] = [
   { key: 'ELIMINATION', label: 'Elimination' },
   { key: 'WINNER_DECLARED', label: 'Winner Declared' },
   { key: 'DAY_START', label: 'Day Started' },
+  { key: 'ACTIVITY', label: 'Activity Started' },
   { key: 'VOTING', label: 'Voting Opened' },
   { key: 'NIGHT_SUMMARY', label: 'Night Summary' },
   { key: 'DAILY_GAME', label: 'Game Time' },
@@ -56,7 +57,7 @@ function createDefaultManifestConfig(): DebugManifestConfig {
     days: [createDefaultDay(), createDefaultDay()],
     pushConfig: {
       DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
-      DAY_START: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
+      DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
     },
   };
 }
