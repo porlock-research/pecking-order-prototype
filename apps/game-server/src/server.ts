@@ -3,6 +3,7 @@ import { createActor, ActorRefFrom } from "xstate";
 import { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Scheduler } from "partywhen";
 import type { TickerMessage } from "@pecking-order/shared-types";
+import { savePushSubscription, deletePushSubscription, getPushSubscription, sendPushNotification } from "./push";
 
 // Persistence Key
 const STORAGE_KEY = "game_state_snapshot";
@@ -15,6 +16,8 @@ export interface Env {
   AXIOM_DATASET: string;
   AXIOM_TOKEN?: string;
   AXIOM_ORG_ID?: string;
+  VAPID_PUBLIC_KEY: string;
+  VAPID_PRIVATE_JWK: string;
 }
 
 export class GameServer extends Server<Env> {
@@ -149,6 +152,29 @@ export class GameServer extends Server<Env> {
           // Ticker: convert fact to humanized message
           const tickerMsg = this.factToTicker(fact);
           if (tickerMsg) this.broadcastTicker(tickerMsg);
+
+          // Push notifications for significant facts (fire-and-forget)
+          const pushRoster = snapshot?.context.roster || {};
+          const pushName = (id: string) => pushRoster[id]?.personaName || id;
+          if (fact.type === 'DM_SENT' && fact.targetId) {
+            this.pushToPlayer(fact.targetId, {
+              title: 'Pecking Order',
+              body: `${pushName(fact.actorId)} sent you a DM`,
+              tag: 'dm',
+            }).catch(() => {});
+          } else if (fact.type === 'ELIMINATION') {
+            this.pushBroadcast({
+              title: 'Pecking Order',
+              body: `${pushName(fact.targetId || fact.actorId)} has been eliminated!`,
+              tag: 'elimination',
+            }).catch(() => {});
+          } else if (fact.type === 'WINNER_DECLARED') {
+            this.pushBroadcast({
+              title: 'Pecking Order',
+              body: `${pushName(fact.targetId || fact.actorId)} wins!`,
+              tag: 'winner',
+            }).catch(() => {});
+          }
         },
         sendDmRejection: ({ event }: any) => {
           if (event.type !== 'DM.REJECTED') return;
@@ -359,11 +385,16 @@ export class GameServer extends Server<Env> {
         }));
       }
 
-      // E. Ticker: detect state transitions
+      // E. Ticker: detect state transitions + push notifications
       const currentStateStr = JSON.stringify(snapshot.value);
       if (currentStateStr !== this.lastBroadcastState) {
         const tickerMsg = this.stateToTicker(currentStateStr, snapshot.context);
         if (tickerMsg) this.broadcastTicker(tickerMsg);
+
+        // Push notifications for phase transitions (fire-and-forget)
+        const pushPayload = this.stateToPush(currentStateStr, snapshot.context);
+        if (pushPayload) this.pushBroadcast(pushPayload).catch(() => {});
+
         this.lastBroadcastState = currentStateStr;
       }
 
@@ -496,7 +527,70 @@ export class GameServer extends Server<Env> {
         }
     }
 
+    // 4. GET /vapid-key (Push Notifications)
+    if (req.method === "GET" && new URL(req.url).pathname.endsWith("/vapid-key")) {
+      return new Response(JSON.stringify({ publicKey: this.env.VAPID_PUBLIC_KEY }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    }
+
     return new Response("Not Found", { status: 404 });
+  }
+
+  // --- Push Notification Methods ---
+
+  private isPlayerOnline(playerId: string): boolean {
+    for (const ws of this.getConnections()) {
+      const state = ws.state as { playerId: string } | null;
+      if (state?.playerId === playerId) return true;
+    }
+    return false;
+  }
+
+  private async pushToPlayer(playerId: string, payload: Record<string, string>) {
+    if (this.isPlayerOnline(playerId)) return;
+
+    const roster: any = this.actor?.getSnapshot()?.context.roster || {};
+    const realUserId = roster[playerId]?.realUserId;
+    if (!realUserId) return;
+
+    const sub = await getPushSubscription(this.ctx.storage, realUserId);
+    if (!sub) return;
+
+    const result = await sendPushNotification(sub, payload, this.env.VAPID_PRIVATE_JWK);
+    if (result === "expired") {
+      await deletePushSubscription(this.ctx.storage, realUserId);
+      console.log(`[L1] Push subscription expired for ${playerId}, cleaned up`);
+    }
+  }
+
+  private async pushBroadcast(payload: Record<string, string>) {
+    const roster = this.actor?.getSnapshot()?.context.roster || {};
+    await Promise.allSettled(
+      Object.keys(roster).map((pid) => this.pushToPlayer(pid, payload)),
+    );
+  }
+
+  private stateToPush(stateStr: string, context: any): Record<string, string> | null {
+    const dayIndex = context?.dayIndex || 0;
+
+    if (stateStr.includes("morningBriefing")) {
+      return { title: "Pecking Order", body: `Day ${dayIndex} has begun!`, tag: "phase" };
+    }
+    if (stateStr.includes("voting")) {
+      return { title: "Pecking Order", body: "Voting has begun!", tag: "phase" };
+    }
+    if (stateStr.includes("nightSummary")) {
+      return { title: "Pecking Order", body: "Night has fallen...", tag: "phase" };
+    }
+    if (stateStr.includes("dailyGame")) {
+      return { title: "Pecking Order", body: "Game time!", tag: "phase" };
+    }
+    return null;
   }
 
   // --- Ticker Pipeline ---
@@ -844,6 +938,30 @@ export class GameServer extends Server<Env> {
       if (!state?.playerId) {
         console.warn("[L1] Message received from connection without playerId");
         ws.close(4001, "Missing Identity");
+        return;
+      }
+
+      // Push subscription management — L1-only, no state machine involvement
+      if (event.type === 'PUSH.SUBSCRIBE') {
+        const roster: any = this.actor?.getSnapshot()?.context.roster || {};
+        const realUserId = roster[state.playerId]?.realUserId;
+        if (realUserId && event.subscription) {
+          savePushSubscription(this.ctx.storage, realUserId, event.subscription).catch(
+            (err: any) => console.error('[L1] Failed to save push subscription:', err),
+          );
+          console.log(`[L1] Push subscription saved for ${state.playerId}`);
+        }
+        return;
+      }
+      if (event.type === 'PUSH.UNSUBSCRIBE') {
+        const roster: any = this.actor?.getSnapshot()?.context.roster || {};
+        const realUserId = roster[state.playerId]?.realUserId;
+        if (realUserId) {
+          deletePushSubscription(this.ctx.storage, realUserId).catch(
+            (err: any) => console.error('[L1] Failed to delete push subscription:', err),
+          );
+          console.log(`[L1] Push subscription removed for ${state.playerId}`);
+        }
         return;
       }
 
