@@ -357,7 +357,7 @@ export default function LobbyRoot() {
 
                   <div className="grid grid-cols-1 gap-3">
                     <a
-                      href={`/invite/${inviteCode}`}
+                      href={`/join/${inviteCode}`}
                       className="flex items-center justify-between p-4 bg-skin-panel/30 hover:bg-skin-panel/50 text-skin-base rounded-lg transition-all border border-skin-base hover:border-skin-dim/30 group"
                     >
                       <span className="font-medium text-sm flex flex-col">

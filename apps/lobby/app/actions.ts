@@ -126,7 +126,7 @@ export async function getInviteInfo(code: string): Promise<{
   alreadyJoined?: boolean;
   error?: string;
 }> {
-  const session = await requireAuth(`/invite/${code}`);
+  const session = await requireAuth(`/join/${code}`);
   const db = await getDB();
 
   // Find game by invite code
@@ -214,7 +214,7 @@ export async function acceptInvite(
   code: string,
   personaId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const session = await requireAuth(`/invite/${code}`);
+  const session = await requireAuth(`/join/${code}`);
   const db = await getDB();
   const now = Date.now();
 
