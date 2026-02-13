@@ -49,7 +49,7 @@ export default function InvitePage() {
       await loadInviteInfo();
       // Redirect to waiting room
       if (game) {
-        router.push(`/game/${game.id}/waiting`);
+        router.push(`/game/${code}/waiting`);
       }
     } else {
       setError(result.error || 'Failed to join');
@@ -154,7 +154,7 @@ export default function InvitePage() {
               You've Already Joined
             </div>
             <a
-              href={`/game/${game.id}/waiting`}
+              href={`/game/${code}/waiting`}
               className="inline-block py-3 px-6 bg-skin-green/20 text-skin-green border border-skin-green/40 rounded-xl font-display font-bold text-sm uppercase hover:bg-skin-green/30 transition-all"
             >
               Go to Waiting Room

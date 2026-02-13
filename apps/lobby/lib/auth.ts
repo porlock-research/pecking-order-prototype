@@ -79,7 +79,7 @@ export async function requireAuth(redirectTo?: string): Promise<SessionUser> {
 
 // ── Magic Link ───────────────────────────────────────────────────────────
 
-export async function sendMagicLink(email: string): Promise<{ link: string }> {
+export async function sendMagicLink(email: string, next?: string): Promise<{ link: string }> {
   const db = await getDB();
   const now = Date.now();
   const normalizedEmail = email.toLowerCase().trim();
@@ -107,7 +107,7 @@ export async function sendMagicLink(email: string): Promise<{ link: string }> {
 
   // For now: return the link directly (no email sending yet)
   // In dev, the lobby itself runs on localhost:3000
-  const link = `/login/verify?token=${token}`;
+  const link = `/login/verify?token=${token}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
 
   return { link };
 }

@@ -85,6 +85,7 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 | **Non-responsive players** | "How do we deal with non-responsive? AI takeover?" | High | Spec question. Could auto-vote, auto-skip, or introduce AI stand-ins. |
 | **Email delivery** | Magic links are displayed in UI, not emailed | Low | Integration with Resend/SES for sending magic link emails. |
 | **Session management** | No session revocation UI, no rate limiting on magic links | Low | Admin UI for session cleanup, rate limit on `/login` actions. |
+| **Persistence & rehydration hardening** | DO snapshot restore loses L3 child actors | High | `subscribe()` snapshot contains live `ActorRef` objects that don't survive JSON roundtrip. Switched to `getPersistedSnapshot()` as immediate fix, but need full audit: validate child restoration on every resume, handle mid-game DO eviction gracefully (reconnect clients, re-derive L3 state from L2 context), add integration tests for persist→restore→send cycle. Consider whether chatLog extraction can be eliminated if `getPersistedSnapshot()` already captures L3 context. |
 
 ---
 

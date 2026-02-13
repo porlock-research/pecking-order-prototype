@@ -208,7 +208,20 @@ export class GameServer extends Server<Env> {
         this.tickerHistory = storedData.tickerHistory;
       }
 
-      this.actor = createActor(machineWithPersistence, { snapshot: l2Snapshot });
+      try {
+        this.actor = createActor(machineWithPersistence, { snapshot: l2Snapshot });
+        // Verify L3 was restored if L2 expects it (activeSession state)
+        const restoredState = JSON.stringify(this.actor.getSnapshot().value);
+        if (restoredState.includes('activeSession') && !this.actor.getSnapshot().children['l3-session']) {
+          console.warn('[L1] ⚠️ L3 missing after restore — snapshot was corrupted. Clearing state for fresh start.');
+          await this.ctx.storage.delete(STORAGE_KEY);
+          this.actor = createActor(machineWithPersistence);
+        }
+      } catch (err) {
+        console.error('[L1] 💥 Snapshot restore failed — starting fresh:', err);
+        await this.ctx.storage.delete(STORAGE_KEY);
+        this.actor = createActor(machineWithPersistence);
+      }
     } else {
       console.log(`[L1] ✨ Fresh Boot`);
       this.actor = createActor(machineWithPersistence);
@@ -252,8 +265,11 @@ export class GameServer extends Server<Env> {
       // A. Save FULL State to Disk (L2 snapshot + L3 chatLog)
       // L2's roster is authoritative (tracks DM costs, transfers, rewards, eliminations).
       // Only chatLog needs separate persistence since it lives in L3.
+      // IMPORTANT: getPersistedSnapshot() properly serializes children (L3, cartridges).
+      // The raw subscribe snapshot contains live ActorRef objects that don't survive JSON roundtrip.
+      const persistedSnapshot = this.actor?.getPersistedSnapshot();
       const storagePayload = {
-          l2: snapshot,
+          l2: persistedSnapshot,
           l3Context: {
               chatLog: l3Context.chatLog ?? this.lastKnownChatLog,
           },
