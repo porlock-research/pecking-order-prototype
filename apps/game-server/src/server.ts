@@ -3,11 +3,10 @@ import { createActor, ActorRefFrom } from "xstate";
 import { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Scheduler } from "partywhen";
 import type { TickerMessage } from "@pecking-order/shared-types";
-import { savePushSubscription, deletePushSubscription } from "./push";
-import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd } from "./d1-persistence";
+import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, savePushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { flattenState, factToTicker, stateToTicker, buildDebugSummary, broadcastTicker, broadcastDebugTicker } from "./ticker";
 import { extractCartridges, extractL3Context, buildSyncPayload, broadcastSync } from "./sync";
-import { pushKeyForPlayer, stateToPush, handleFactPush, pushBroadcast, type PushContext } from "./push-triggers";
+import { stateToPush, handleFactPush, pushBroadcast, type PushContext } from "./push-triggers";
 
 const STORAGE_KEY = "game_state_snapshot";
 
@@ -20,6 +19,7 @@ export interface Env {
   AXIOM_ORG_ID?: string;
   VAPID_PUBLIC_KEY: string;
   VAPID_PRIVATE_JWK: string;
+  GAME_CLIENT_HOST: string;
 }
 
 export class GameServer extends Server<Env> {
@@ -45,10 +45,13 @@ export class GameServer extends Server<Env> {
 
   /** Build a PushContext for the push-triggers module. */
   private getPushContext(): PushContext {
+    const snapshot = this.actor?.getSnapshot();
     return {
-      roster: this.actor?.getSnapshot()?.context.roster || {},
-      storage: this.ctx.storage,
+      roster: snapshot?.context.roster || {},
+      db: this.env.DB,
       vapidPrivateJwk: this.env.VAPID_PRIVATE_JWK,
+      clientHost: this.env.GAME_CLIENT_HOST || 'https://pecking-order-client.pages.dev',
+      inviteCode: snapshot?.context.inviteCode || '',
     };
   }
 
@@ -278,6 +281,7 @@ export class GameServer extends Server<Env> {
         type: "SYSTEM.INIT",
         payload: { roster: json.roster, manifest: json.manifest },
         gameId,
+        inviteCode: json.inviteCode || '',
       });
 
       insertGameAndPlayers(this.env.DB, gameId, json.manifest?.gameMode || 'PECKING_ORDER', json.roster || {});
@@ -386,29 +390,6 @@ export class GameServer extends Server<Env> {
         return;
       }
 
-      // Push subscription management — L1-only, no state machine involvement
-      if (event.type === 'PUSH.SUBSCRIBE') {
-        const pushKey = pushKeyForPlayer(state.playerId, this.actor?.getSnapshot()?.context.roster || {});
-        if (event.subscription) {
-          savePushSubscription(this.ctx.storage, pushKey, event.subscription).catch(
-            (err: any) => console.error('[L1] Failed to save push subscription:', err),
-          );
-          if (event.returnUrl) {
-            this.ctx.storage.put(`push_url:${pushKey}`, event.returnUrl);
-          }
-          console.log(`[L1] Push subscription saved for ${state.playerId} (key: ${pushKey})`);
-        }
-        return;
-      }
-      if (event.type === 'PUSH.UNSUBSCRIBE') {
-        const pushKey = pushKeyForPlayer(state.playerId, this.actor?.getSnapshot()?.context.roster || {});
-        deletePushSubscription(this.ctx.storage, pushKey).catch(
-          (err: any) => console.error('[L1] Failed to delete push subscription:', err),
-        );
-        console.log(`[L1] Push subscription removed for ${state.playerId}`);
-        return;
-      }
-
       const isAllowed = GameServer.ALLOWED_CLIENT_EVENTS.includes(event.type)
         || (typeof event.type === 'string' && event.type.startsWith('VOTE.'))
         || (typeof event.type === 'string' && event.type.startsWith('GAME.'))
@@ -471,8 +452,71 @@ export class GameServer extends Server<Env> {
   }
 }
 
+// --- CORS helper for push endpoints ---
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+
+    // Global HTTP push subscription endpoints (not routed to DO)
+    if (url.pathname === '/api/push/subscribe') {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { status: 204, headers: CORS_HEADERS });
+      }
+
+      // Authenticate via JWT
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        return new Response('Unauthorized', { status: 401, headers: CORS_HEADERS });
+      }
+      const token = authHeader.slice(7);
+      let userId: string;
+      try {
+        const { verifyGameToken } = await import('@pecking-order/auth');
+        const payload = await verifyGameToken(token, env.AUTH_SECRET);
+        userId = payload.sub;
+      } catch {
+        return new Response('Invalid token', { status: 401, headers: CORS_HEADERS });
+      }
+
+      if (request.method === 'POST') {
+        try {
+          const body = await request.json() as { endpoint: string; keys: { p256dh: string; auth: string } };
+          if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
+            return new Response('Invalid subscription', { status: 400, headers: CORS_HEADERS });
+          }
+          await savePushSubscriptionD1(env.DB, userId, body);
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+          });
+        } catch (err) {
+          console.error('[Push API] Save failed:', err);
+          return new Response('Server error', { status: 500, headers: CORS_HEADERS });
+        }
+      }
+
+      if (request.method === 'DELETE') {
+        try {
+          await deletePushSubscriptionD1(env.DB, userId);
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+          });
+        } catch (err) {
+          console.error('[Push API] Delete failed:', err);
+          return new Response('Server error', { status: 500, headers: CORS_HEADERS });
+        }
+      }
+
+      return new Response('Method not allowed', { status: 405, headers: CORS_HEADERS });
+    }
+
     return (await routePartykitRequest(request, env)) || new Response("Not Found", { status: 404 });
   },
 } satisfies ExportedHandler<Env>;

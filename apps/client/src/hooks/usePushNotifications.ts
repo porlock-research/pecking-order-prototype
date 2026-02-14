@@ -13,7 +13,24 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return arr;
 }
 
-export function usePushNotifications(socket: WebSocket | { send: (data: string) => void } | null) {
+/** Find any cached game JWT from sessionStorage (po_token_* keys). */
+function findCachedToken(): string | null {
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (key?.startsWith('po_token_')) {
+      const val = sessionStorage.getItem(key);
+      if (val) return val;
+    }
+  }
+  return null;
+}
+
+/**
+ * HTTP-based push subscription hook. No WebSocket dependency.
+ * Subscribes via POST /api/push/subscribe on the game server.
+ * Can run on the launcher screen (/) using any cached JWT.
+ */
+export function usePushNotifications() {
   const [permission, setPermission] = useState<PushPermission>(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
       return 'unsupported';
@@ -22,31 +39,42 @@ export function usePushNotifications(socket: WebSocket | { send: (data: string) 
   });
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  // Check existing subscription on mount AND re-register with new game servers.
-  // Push subscriptions live in the browser, but the server stores them per Durable Object
-  // (per game). When the player joins a new game, the new DO has no record of the
-  // subscription, so we re-send PUSH.SUBSCRIBE over the new WebSocket.
-  useEffect(() => {
-    if (permission === 'unsupported') return;
-    if (!socket) return;
+  const serverHost = import.meta.env.VITE_GAME_SERVER_HOST || 'http://localhost:8787';
 
-    navigator.serviceWorker.ready.then((reg) => {
-      reg.pushManager.getSubscription().then((sub) => {
-        setIsSubscribed(!!sub);
-        if (sub && socket) {
-          const subJSON = sub.toJSON();
-          socket.send(JSON.stringify({
-            type: 'PUSH.SUBSCRIBE',
-            subscription: {
-              endpoint: subJSON.endpoint,
-              keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
-            },
-            returnUrl: window.location.href,
-          }));
-        }
-      });
+  // Sync existing browser subscription to D1 on mount
+  useEffect(() => {
+    if (permission === 'unsupported' || permission !== 'granted') return;
+
+    navigator.serviceWorker.ready.then(async (reg) => {
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        setIsSubscribed(false);
+        return;
+      }
+      setIsSubscribed(true);
+
+      // Re-register with server (idempotent upsert)
+      const token = findCachedToken();
+      if (!token) return;
+
+      const subJSON = sub.toJSON();
+      try {
+        await fetch(`${serverHost}/api/push/subscribe`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            endpoint: subJSON.endpoint,
+            keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
+          }),
+        });
+      } catch (err) {
+        console.error('[Push] Re-sync failed:', err);
+      }
     });
-  }, [permission, socket]);
+  }, [permission, serverHost]);
 
   const subscribe = useCallback(async () => {
     if (permission === 'unsupported') return;
@@ -61,7 +89,6 @@ export function usePushNotifications(socket: WebSocket | { send: (data: string) 
       // Fetch VAPID public key from server
       let vapidKey = sessionStorage.getItem(VAPID_KEY_CACHE_KEY);
       if (!vapidKey) {
-        const serverHost = import.meta.env.VITE_GAME_SERVER_HOST || 'http://localhost:8787';
         const resp = await fetch(`${serverHost}/parties/game-server/vapid-key`);
         const data = await resp.json();
         vapidKey = data.publicKey;
@@ -78,22 +105,31 @@ export function usePushNotifications(socket: WebSocket | { send: (data: string) 
         applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
       });
 
-      // Send subscription to server over WebSocket
+      // Send subscription to server via HTTP
+      const token = findCachedToken();
+      if (!token) {
+        console.error('[Push] No cached JWT — cannot register subscription');
+        return;
+      }
+
       const subJSON = sub.toJSON();
-      socket?.send(JSON.stringify({
-        type: 'PUSH.SUBSCRIBE',
-        subscription: {
+      await fetch(`${serverHost}/api/push/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
           endpoint: subJSON.endpoint,
           keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
-        },
-        returnUrl: window.location.href,
-      }));
+        }),
+      });
 
       setIsSubscribed(true);
     } catch (err) {
       console.error('[Push] Subscribe failed:', err);
     }
-  }, [permission, socket]);
+  }, [permission, serverHost]);
 
   const unsubscribe = useCallback(async () => {
     if (permission === 'unsupported') return;
@@ -103,13 +139,21 @@ export function usePushNotifications(socket: WebSocket | { send: (data: string) 
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
         await sub.unsubscribe();
-        socket?.send(JSON.stringify({ type: 'PUSH.UNSUBSCRIBE' }));
       }
+
+      const token = findCachedToken();
+      if (token) {
+        await fetch(`${serverHost}/api/push/subscribe`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+      }
+
       setIsSubscribed(false);
     } catch (err) {
       console.error('[Push] Unsubscribe failed:', err);
     }
-  }, [permission, socket]);
+  }, [permission, serverHost]);
 
   return { permission, isSubscribed, subscribe, unsubscribe };
 }

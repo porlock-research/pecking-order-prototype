@@ -102,39 +102,7 @@ export default function App() {
   }, []);
 
   if (!gameId) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-velvet text-skin-base p-8 text-center space-y-8 overflow-hidden">
-        {/* Title */}
-        <div className="space-y-4">
-          <h1
-            className="text-6xl sm:text-8xl font-black uppercase tracking-tighter font-display leading-none"
-            style={{
-              color: 'var(--po-gold)',
-              textShadow: '0 0 30px rgba(251, 191, 36, 0.4), 0 0 60px rgba(251, 191, 36, 0.15)',
-              animation: 'title-glow 4s ease-in-out infinite',
-            }}
-          >
-            Pecking<br />Order
-          </h1>
-          <p className="text-lg sm:text-xl text-skin-dim/80 italic font-body tracking-wide">
-            keep your friends close...
-          </p>
-        </div>
-
-        {/* Decorative pulse ring */}
-        <div className="relative w-24 h-24">
-          <div className="absolute inset-0 rounded-full border border-skin-gold/20 glow-breathe" />
-          <div className="absolute inset-3 rounded-full border border-skin-gold/10" style={{ animation: 'pulse-live 3s ease-in-out infinite 0.5s' }} />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-mono text-3xl text-skin-gold/60">//</span>
-          </div>
-        </div>
-
-        <p className="text-sm font-mono text-skin-dim/50 uppercase tracking-widest">
-          awaiting signal
-        </p>
-      </div>
-    );
+    return <LauncherScreen />;
   }
 
   if (!playerId) return (
@@ -148,6 +116,103 @@ export default function App() {
 
   return (
     <GameShell gameId={gameId} playerId={playerId} token={token} />
+  );
+}
+
+/**
+ * Launcher screen at `/` — shown when no gameId in URL.
+ * Scans sessionStorage for cached game tokens and lists them.
+ */
+function LauncherScreen() {
+  const cachedGames: Array<{ code: string; personaName: string; gameId: string }> = [];
+
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (key?.startsWith('po_token_')) {
+      const token = sessionStorage.getItem(key);
+      if (token) {
+        try {
+          const decoded = decodeGameToken(token);
+          const code = key.replace('po_token_', '');
+          cachedGames.push({ code, personaName: decoded.personaName, gameId: decoded.gameId });
+        } catch {
+          // Invalid token — skip
+        }
+      }
+    }
+  }
+
+  const lobbyHost = import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000';
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-velvet text-skin-base p-8 text-center space-y-8 overflow-hidden">
+      {/* Title */}
+      <div className="space-y-4">
+        <h1
+          className="text-6xl sm:text-8xl font-black uppercase tracking-tighter font-display leading-none"
+          style={{
+            color: 'var(--po-gold)',
+            textShadow: '0 0 30px rgba(251, 191, 36, 0.4), 0 0 60px rgba(251, 191, 36, 0.15)',
+            animation: 'title-glow 4s ease-in-out infinite',
+          }}
+        >
+          Pecking<br />Order
+        </h1>
+        <p className="text-lg sm:text-xl text-skin-dim/80 italic font-body tracking-wide">
+          keep your friends close...
+        </p>
+      </div>
+
+      {/* Push prompt — subscribes early using any cached JWT */}
+      <PushPrompt />
+
+      {/* Game list or empty state */}
+      {cachedGames.length > 0 ? (
+        <div className="w-full max-w-sm space-y-3">
+          <p className="text-xs font-mono text-skin-dim/60 uppercase tracking-widest">
+            Your Games
+          </p>
+          {cachedGames.map((g) => (
+            <a
+              key={g.code}
+              href={`/game/${g.code}`}
+              className="flex items-center justify-between p-4 rounded-xl border border-white/[0.06] bg-glass hover:border-skin-gold/30 transition-all group"
+            >
+              <div className="flex flex-col items-start gap-1">
+                <span className="text-sm font-bold text-skin-base group-hover:text-skin-gold transition-colors">
+                  {g.personaName}
+                </span>
+                <span className="text-[10px] font-mono text-skin-dim uppercase tracking-wider">
+                  {g.code}
+                </span>
+              </div>
+              <span className="text-xs font-mono font-bold text-skin-gold/60 group-hover:text-skin-gold uppercase tracking-widest transition-colors">
+                Enter
+              </span>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="relative w-24 h-24 mx-auto">
+            <div className="absolute inset-0 rounded-full border border-skin-gold/20 glow-breathe" />
+            <div className="absolute inset-3 rounded-full border border-skin-gold/10" style={{ animation: 'pulse-live 3s ease-in-out infinite 0.5s' }} />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="font-mono text-3xl text-skin-gold/60">//</span>
+            </div>
+          </div>
+          <p className="text-sm font-mono text-skin-dim/50 uppercase tracking-widest">
+            No active games
+          </p>
+          <a
+            href={lobbyHost}
+            className="inline-block text-xs font-mono text-skin-gold/70 hover:text-skin-gold underline underline-offset-4 uppercase tracking-widest transition-colors"
+          >
+            Join from the lobby
+          </a>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -207,7 +272,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
 
         {/* Right: Push + Online pill + Silver */}
         <div className="flex items-center gap-3">
-          <PushPrompt socket={engine.socket} />
+          <PushPrompt />
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-pill bg-skin-green/10 border border-skin-green/20">
             <span className="w-1.5 h-1.5 rounded-full bg-skin-green animate-pulse-live" />
             <span className="text-[9px] font-mono text-skin-green uppercase tracking-widest font-bold">Online</span>

@@ -388,6 +388,7 @@ export async function startGame(
 
   const payload = {
     lobbyId: `lobby-${Date.now()}`,
+    inviteCode: inviteCode.toUpperCase(),
     roster,
     manifest: {
       id: `manifest-${game.id}`,
@@ -504,6 +505,7 @@ export async function startDebugGame(
 
   const payload = {
     lobbyId: `lobby-${Date.now()}`,
+    inviteCode: 'DEBUG',
     roster,
     manifest: { id: 'manifest-1', gameMode: mode, days, pushConfig: debugConfig?.pushConfig },
   };

@@ -1,35 +1,13 @@
-import { buildPushHTTPRequest, type PushSubscription } from "@pushforge/builder";
-
-const PUSH_SUB_PREFIX = "push_sub:";
-
-export async function savePushSubscription(
-  storage: DurableObjectStorage,
-  realUserId: string,
-  sub: PushSubscription,
-): Promise<void> {
-  await storage.put(`${PUSH_SUB_PREFIX}${realUserId}`, JSON.stringify(sub));
-}
-
-export async function deletePushSubscription(
-  storage: DurableObjectStorage,
-  realUserId: string,
-): Promise<void> {
-  await storage.delete(`${PUSH_SUB_PREFIX}${realUserId}`);
-}
-
-export async function getPushSubscription(
-  storage: DurableObjectStorage,
-  realUserId: string,
-): Promise<PushSubscription | null> {
-  const raw = await storage.get<string>(`${PUSH_SUB_PREFIX}${realUserId}`);
-  if (!raw) return null;
-  return JSON.parse(raw) as PushSubscription;
-}
+/**
+ * Low-level push notification sending via @pushforge/builder.
+ * Extracted from push.ts — no DO storage dependency.
+ */
+import { buildPushHTTPRequest } from "@pushforge/builder";
 
 export type PushResult = "sent" | "expired" | "error";
 
 export async function sendPushNotification(
-  sub: PushSubscription,
+  sub: { endpoint: string; keys: { p256dh: string; auth: string } },
   payload: Record<string, string>,
   vapidPrivateJWK: string,
   adminContact: string = "mailto:admin@peckingorder.app",
@@ -37,7 +15,7 @@ export async function sendPushNotification(
   try {
     const { endpoint, headers, body } = await buildPushHTTPRequest({
       privateJWK: vapidPrivateJWK,
-      subscription: sub,
+      subscription: sub as any,
       message: {
         payload: payload as any,
         adminContact,

@@ -139,6 +139,7 @@ export const RosterSchema = z.record(z.string(), RosterPlayerSchema);
 
 export const InitPayloadSchema = z.object({
   lobbyId: z.string(),
+  inviteCode: z.string(),
   roster: RosterSchema,
   manifest: GameManifestSchema,
 });

@@ -4,6 +4,7 @@ import type { SocialPlayer } from '@pecking-order/shared-types';
 export const l2InitializationActions = {
   initializeContext: assign({
     gameId: ({ event }: any) => (event.type === 'SYSTEM.INIT' ? event.gameId : ''),
+    inviteCode: ({ event }: any) => (event.type === 'SYSTEM.INIT' ? (event.inviteCode || '') : ''),
     roster: ({ event }: any) => {
       if (event.type !== 'SYSTEM.INIT') return {};
       const internalRoster: Record<string, SocialPlayer> = {};

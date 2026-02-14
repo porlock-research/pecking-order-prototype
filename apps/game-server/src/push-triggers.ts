@@ -1,15 +1,21 @@
 /**
  * Push notification trigger logic — decides when/what to push based on
  * configurable push config from the game manifest.
+ *
+ * Subscriptions are stored in D1 (global, not per-DO).
+ * Notification URLs are constructed from clientHost + inviteCode.
  */
 import type { PushTrigger, GameManifest } from "@pecking-order/shared-types";
 import { DEFAULT_PUSH_CONFIG } from "@pecking-order/shared-types";
-import { getPushSubscription, deletePushSubscription, sendPushNotification } from "./push";
+import { getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
+import { sendPushNotification } from "./push-send";
 
 export interface PushContext {
   roster: Record<string, any>;
-  storage: DurableObjectStorage;
+  db: D1Database;
   vapidPrivateJwk: string;
+  clientHost: string;
+  inviteCode: string;
 }
 
 /** Check if a push trigger is enabled for this game's manifest. */
@@ -31,21 +37,21 @@ export async function pushToPlayer(
   payload: Record<string, string>,
 ): Promise<void> {
   const pushKey = pushKeyForPlayer(playerId, ctx.roster);
-  const sub = await getPushSubscription(ctx.storage, pushKey);
+  const sub = await getPushSubscriptionD1(ctx.db, pushKey);
   if (!sub) {
     console.log(`[L1] [Push] Skip ${playerId} — no subscription stored`);
     return;
   }
 
-  // Inject stored returnUrl so notification click opens the game
-  const returnUrl = await ctx.storage.get<string>(`push_url:${pushKey}`);
-  const enriched = returnUrl ? { ...payload, url: returnUrl } : payload;
+  // Construct game URL from clientHost + inviteCode
+  const url = ctx.inviteCode ? `${ctx.clientHost}/game/${ctx.inviteCode}` : ctx.clientHost;
+  const enriched = { ...payload, url };
 
   console.log(`[L1] [Push] Sending to ${playerId}: ${payload.body}`);
   const result = await sendPushNotification(sub, enriched, ctx.vapidPrivateJwk);
   console.log(`[L1] [Push] Result for ${playerId}: ${result}`);
   if (result === "expired") {
-    await deletePushSubscription(ctx.storage, pushKey);
+    await deletePushSubscriptionD1(ctx.db, pushKey);
   }
 }
 
