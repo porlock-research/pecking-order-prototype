@@ -18,7 +18,12 @@ type D1 = {
   batch(stmts: unknown[]): Promise<unknown[]>;
 };
 
-export async function getDB(): Promise<D1> {
+export async function getEnv(): Promise<Record<string, unknown>> {
   const { env } = await getCloudflareContext({ async: true });
-  return (env as Record<string, unknown>).DB as D1;
+  return env as Record<string, unknown>;
+}
+
+export async function getDB(): Promise<D1> {
+  const env = await getEnv();
+  return env.DB as D1;
 }

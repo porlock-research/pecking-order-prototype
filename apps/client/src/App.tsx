@@ -272,7 +272,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
 
         {/* Right: Push + Online pill + Silver */}
         <div className="flex items-center gap-3">
-          <PushPrompt />
+          <PushPrompt token={token} />
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-pill bg-skin-green/10 border border-skin-green/20">
             <span className="w-1.5 h-1.5 rounded-full bg-skin-green animate-pulse-live" />
             <span className="text-[9px] font-mono text-skin-green uppercase tracking-widest font-bold">Online</span>

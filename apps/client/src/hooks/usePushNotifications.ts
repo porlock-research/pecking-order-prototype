@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 
 type PushPermission = 'default' | 'granted' | 'denied' | 'unsupported';
 
-const VAPID_KEY_CACHE_KEY = 'po_vapid_key';
-
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -28,9 +26,10 @@ function findCachedToken(): string | null {
 /**
  * HTTP-based push subscription hook. No WebSocket dependency.
  * Subscribes via POST /api/push/subscribe on the game server.
- * Can run on the launcher screen (/) using any cached JWT.
+ * Pass the active game token to ensure the subscription is keyed
+ * to the correct user identity. Falls back to any cached JWT.
  */
-export function usePushNotifications() {
+export function usePushNotifications(activeToken?: string | null) {
   const [permission, setPermission] = useState<PushPermission>(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
       return 'unsupported';
@@ -43,22 +42,36 @@ export function usePushNotifications() {
 
   // Sync existing browser subscription to D1 on mount
   useEffect(() => {
-    if (permission === 'unsupported' || permission !== 'granted') return;
+    if (permission === 'unsupported') return;
 
-    navigator.serviceWorker.ready.then(async (reg) => {
-      const sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        setIsSubscribed(false);
-        return;
-      }
-      setIsSubscribed(true);
+    // No SW registered yet — button should show (isSubscribed stays false)
+    if (!navigator.serviceWorker.controller && navigator.serviceWorker.getRegistrations) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        if (regs.length === 0) {
+          setIsSubscribed(false);
+          return;
+        }
+        checkExistingSubscription();
+      });
+    } else {
+      checkExistingSubscription();
+    }
 
-      // Re-register with server (idempotent upsert)
-      const token = findCachedToken();
-      if (!token) return;
-
-      const subJSON = sub.toJSON();
+    async function checkExistingSubscription() {
       try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          setIsSubscribed(false);
+          return;
+        }
+        setIsSubscribed(true);
+
+        // Re-register with server (idempotent upsert)
+        const token = activeToken || findCachedToken();
+        if (!token) return;
+
+        const subJSON = sub.toJSON();
         await fetch(`${serverHost}/api/push/subscribe`, {
           method: 'POST',
           headers: {
@@ -72,9 +85,10 @@ export function usePushNotifications() {
         });
       } catch (err) {
         console.error('[Push] Re-sync failed:', err);
+        setIsSubscribed(false);
       }
-    });
-  }, [permission, serverHost]);
+    }
+  }, [permission, serverHost, activeToken]);
 
   const subscribe = useCallback(async () => {
     if (permission === 'unsupported') return;
@@ -86,14 +100,14 @@ export function usePushNotifications() {
     try {
       const reg = await navigator.serviceWorker.ready;
 
-      // Fetch VAPID public key from server
-      let vapidKey = sessionStorage.getItem(VAPID_KEY_CACHE_KEY);
-      if (!vapidKey) {
-        const resp = await fetch(`${serverHost}/parties/game-server/vapid-key`);
-        const data = await resp.json();
-        vapidKey = data.publicKey;
-        if (vapidKey) sessionStorage.setItem(VAPID_KEY_CACHE_KEY, vapidKey);
-      }
+      // Clear any stale subscription (e.g. from a different VAPID key)
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) await existing.unsubscribe();
+
+      // Fetch VAPID public key from server (always fresh — key differs per environment)
+      const resp = await fetch(`${serverHost}/parties/game-server/vapid-key`);
+      const data = await resp.json();
+      const vapidKey = data.publicKey;
 
       if (!vapidKey) {
         console.error('[Push] No VAPID key available');
@@ -106,7 +120,7 @@ export function usePushNotifications() {
       });
 
       // Send subscription to server via HTTP
-      const token = findCachedToken();
+      const token = activeToken || findCachedToken();
       if (!token) {
         console.error('[Push] No cached JWT — cannot register subscription');
         return;
@@ -129,7 +143,7 @@ export function usePushNotifications() {
     } catch (err) {
       console.error('[Push] Subscribe failed:', err);
     }
-  }, [permission, serverHost]);
+  }, [permission, serverHost, activeToken]);
 
   const unsubscribe = useCallback(async () => {
     if (permission === 'unsupported') return;
@@ -141,7 +155,7 @@ export function usePushNotifications() {
         await sub.unsubscribe();
       }
 
-      const token = findCachedToken();
+      const token = activeToken || findCachedToken();
       if (token) {
         await fetch(`${serverHost}/api/push/subscribe`, {
           method: 'DELETE',
@@ -153,7 +167,7 @@ export function usePushNotifications() {
     } catch (err) {
       console.error('[Push] Unsubscribe failed:', err);
     }
-  }, [permission, serverHost]);
+  }, [permission, serverHost, activeToken]);
 
   return { permission, isSubscribed, subscribe, unsubscribe };
 }

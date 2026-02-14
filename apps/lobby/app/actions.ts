@@ -2,7 +2,7 @@
 
 import { InitPayloadSchema, Roster } from '@pecking-order/shared-types';
 import { signGameToken } from '@pecking-order/auth';
-import { getDB } from '@/lib/db';
+import { getDB, getEnv } from '@/lib/db';
 import { requireAuth, getSession, generateId, generateInviteCode } from '@/lib/auth';
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -290,8 +290,9 @@ export async function startGame(
 ): Promise<{ success: boolean; error?: string; tokens?: Record<string, string> }> {
   const session = await requireAuth();
   const db = await getDB();
-  const GAME_SERVER_HOST = process.env.GAME_SERVER_HOST || 'http://localhost:8787';
-  const AUTH_SECRET = process.env.AUTH_SECRET || 'dev-secret-change-me';
+  const env = await getEnv();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
 
   // Load game by invite code
   const game = await db
@@ -454,8 +455,9 @@ export async function startDebugGame(
   tokens?: Record<string, string>;
   error?: string;
 }> {
-  const GAME_SERVER_HOST = process.env.GAME_SERVER_HOST || 'http://localhost:8787';
-  const AUTH_SECRET = process.env.AUTH_SECRET || 'dev-secret-change-me';
+  const env = await getEnv();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
   const GAME_ID = `game-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   const dayCount = debugConfig?.dayCount ?? 7;
@@ -531,7 +533,7 @@ export async function startDebugGame(
       throw new Error(`Server responded ${res.status}: ${text}`);
     }
 
-    const clientHost = process.env.GAME_CLIENT_HOST || 'http://localhost:5173';
+    const clientHost = (env.GAME_CLIENT_HOST as string) || 'http://localhost:5173';
     return { success: true, gameId: GAME_ID, clientHost, tokens };
   } catch (err: any) {
     console.error('[Lobby] Debug start failed:', err);
@@ -685,7 +687,8 @@ function buildManifestDays(
 // ── Existing Admin Actions ───────────────────────────────────────────────
 
 export async function getGameState(gameId: string) {
-  const GAME_SERVER_HOST = process.env.GAME_SERVER_HOST || 'http://localhost:8787';
+  const env = await getEnv();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
   const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/state`;
 
   try {
@@ -698,8 +701,9 @@ export async function getGameState(gameId: string) {
 }
 
 export async function sendAdminCommand(gameId: string, command: any) {
-  const GAME_SERVER_HOST = process.env.GAME_SERVER_HOST || 'http://localhost:8787';
-  const AUTH_SECRET = process.env.AUTH_SECRET || 'dev-secret-change-me';
+  const env = await getEnv();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
   const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/admin`;
 
   try {
@@ -729,6 +733,7 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
 }> {
   const session = await requireAuth();
   const db = await getDB();
+  const env = await getEnv();
 
   const game = await db
     .prepare('SELECT id, status, invite_code FROM GameSessions WHERE invite_code = ?')
@@ -765,7 +770,7 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
   // If game just started, get token for the current user
   let tokens: Record<string, string> | undefined;
   if (game.status === 'STARTED') {
-    const AUTH_SECRET = process.env.AUTH_SECRET || 'dev-secret-change-me';
+    const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
     const myInvite = invites.find((i) => i.accepted_by === session.userId);
     if (myInvite) {
       const idx = invites.filter((i) => i.accepted_by).indexOf(myInvite);
@@ -784,6 +789,6 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     }
   }
 
-  const clientHost = process.env.GAME_CLIENT_HOST || 'http://localhost:5173';
+  const clientHost = (env.GAME_CLIENT_HOST as string) || 'http://localhost:5173';
   return { status: game.status, slots, tokens, inviteCode: game.invite_code, clientHost };
 }

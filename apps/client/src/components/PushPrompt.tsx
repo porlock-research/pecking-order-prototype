@@ -1,11 +1,11 @@
 import { Bell } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
-export function PushPrompt() {
-  const { permission, isSubscribed, subscribe } = usePushNotifications();
+export function PushPrompt({ token }: { token?: string | null }) {
+  const { permission, isSubscribed, subscribe } = usePushNotifications(token);
 
-  // Hide when unsupported, denied, or already subscribed
-  if (permission === 'unsupported' || permission === 'denied' || isSubscribed) return null;
+  // Hide only when unsupported or denied
+  if (permission === 'unsupported' || permission === 'denied') return null;
 
   return (
     <button

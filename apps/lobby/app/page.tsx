@@ -207,7 +207,7 @@ export default function LobbyRoot() {
                     {activeGames.map(game => {
                       const isStarted = game.status === 'STARTED';
                       const href = isStarted
-                        ? `${clientHost}/?gameId=${game.id}`
+                        ? `/play/${game.inviteCode}`
                         : `/game/${game.inviteCode}/waiting`;
                       return (
                         <a

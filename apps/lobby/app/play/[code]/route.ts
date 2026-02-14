@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getDB } from '@/lib/db';
+import { getDB, getEnv } from '@/lib/db';
 import { signGameToken } from '@pecking-order/auth';
 
 /**
@@ -16,8 +16,9 @@ export async function GET(
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
-  const GAME_CLIENT_HOST = process.env.GAME_CLIENT_HOST || 'http://localhost:5173';
-  const AUTH_SECRET = process.env.AUTH_SECRET || 'dev-secret-change-me';
+  const env = await getEnv();
+  const GAME_CLIENT_HOST = (env.GAME_CLIENT_HOST as string) || 'http://localhost:5173';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
 
   // Check auth — redirect to login if not authenticated
   const session = await getSession();
