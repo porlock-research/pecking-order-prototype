@@ -84,6 +84,39 @@ export function insertGameAndPlayers(
   }
 }
 
+// --- Push Subscriptions (D1-backed, replaces DO storage) ---
+
+export async function savePushSubscriptionD1(
+  db: D1Database,
+  userId: string,
+  sub: { endpoint: string; keys: { p256dh: string; auth: string } },
+): Promise<void> {
+  const now = Date.now();
+  await db.prepare(
+    `INSERT INTO PushSubscriptions (user_id, endpoint, p256dh, auth, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET endpoint=excluded.endpoint, p256dh=excluded.p256dh, auth=excluded.auth, updated_at=excluded.updated_at`
+  ).bind(userId, sub.endpoint, sub.keys.p256dh, sub.keys.auth, now, now).run();
+}
+
+export async function deletePushSubscriptionD1(
+  db: D1Database,
+  userId: string,
+): Promise<void> {
+  await db.prepare('DELETE FROM PushSubscriptions WHERE user_id = ?').bind(userId).run();
+}
+
+export async function getPushSubscriptionD1(
+  db: D1Database,
+  userId: string,
+): Promise<{ endpoint: string; keys: { p256dh: string; auth: string } } | null> {
+  const row = await db.prepare(
+    'SELECT endpoint, p256dh, auth FROM PushSubscriptions WHERE user_id = ?'
+  ).bind(userId).first<{ endpoint: string; p256dh: string; auth: string }>();
+  if (!row) return null;
+  return { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } };
+}
+
 /** Update Games status to COMPLETED and Players with final silver/gold. Fire-and-forget. */
 export function updateGameEnd(
   db: D1Database,

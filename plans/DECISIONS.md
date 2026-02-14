@@ -530,6 +530,24 @@ This document tracks significant architectural decisions, their context, and con
     *   Per-game DO storage for subscriptions (not global KV). Client auto-re-registers on each game join via mount effect.
     *   `AUTH_SECRET` must be set on both lobby and game-server Workers for JWT signing/verification to work on staging/production.
 
+## [ADR-049] Centralized Push Subscriptions in D1 + HTTP Push API
+*   **Date:** 2026-02-13
+*   **Status:** Accepted (supersedes ADR-048 storage model)
+*   **Context:** ADR-048 stored push subscriptions in per-DO storage and managed them over WebSocket (`PUSH.SUBSCRIBE`/`PUSH.UNSUBSCRIBE`). This created three problems: (1) **Chicken-and-egg**: players can only subscribe after connecting to the game WebSocket, but the first notifications (Day 1 start) fire before most players have connected. (2) **PWA dead-end**: launching the client from homescreen at `/` showed "Awaiting Signal" with no way to navigate to a game or subscribe to push. (3) **No cross-game identity**: subscriptions were per-DO, so a player needed to re-subscribe for every game, and there was no way to reach them outside a specific game's DO.
+*   **Decision:** Three changes:
+    *   **D1 for subscriptions**: New `PushSubscriptions` table (`user_id` PK, endpoint, p256dh, auth, timestamps). One row per user globally, not per game. `user_id` matches the JWT `sub` claim (opaque cookie-hash from lobby auth). Upsert on re-subscribe.
+    *   **HTTP API for subscribe/unsubscribe**: `POST/DELETE /api/push/subscribe` on the game server's module-level `fetch()` handler (before `routePartykitRequest`). JWT `Authorization: Bearer` header for auth, CORS headers for cross-origin client. No DO involvement — operates directly on `env.DB`.
+    *   **Notification URLs from context**: Push payloads include `url: ${clientHost}/game/${inviteCode}` constructed from `GAME_CLIENT_HOST` env var + L2 context `inviteCode` (new field, passed through `InitPayloadSchema` → `SYSTEM.INIT` → L2 context). Replaces the old `push_url:` DO storage approach.
+    *   **Client launcher screen**: Root `/` replaced "Awaiting Signal" with a game list built from `sessionStorage` `po_token_*` JWTs. Includes `<PushPrompt />` for early subscription using any cached token.
+    *   **`push.ts` deleted**: DO storage push functions removed. `sendPushNotification()` extracted to `push-send.ts`.
+*   **Consequences:**
+    *   Push subscription is decoupled from the game lifecycle — works on the launcher screen before any WebSocket connection.
+    *   Existing browser subscriptions auto-sync to D1 on mount (idempotent upsert).
+    *   Old DO-storage subscriptions are abandoned (clean cut). Players auto-resubscribe via HTTP on next client visit.
+    *   `PUSH.SUBSCRIBE`/`PUSH.UNSUBSCRIBE` WebSocket handlers removed from L1 `onMessage`.
+    *   D1 migration 0003 required on game server DB.
+    *   **Remaining gap**: First-ever notification still missed if the player has never visited the client app (push is origin-scoped to the client SW). Planned fix: auto-launch game in pre-game mode when all players join, redirect from lobby waiting room to client, where SW registers and push subscribes before Day 1.
+
 ## [ADR-046] Invite Code as Canonical URL Identifier
 *   **Date:** 2026-02-12
 *   **Status:** Accepted

@@ -81,9 +81,9 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 | Feature | Spec Reference | Effort | Notes |
 |---------|---------------|--------|-------|
 | **Bio creation** | "Write a 280-character bio" | Low | Lobby text input → roster `bio` field (field exists, UI doesn't). |
-| **Real scheduling** | "Game starts 9am PST the morning after all players accept invites" | Medium | Currently host clicks "Launch Game" manually. Needs clock-based auto-start option. |
+| **Real scheduling + auto-launch** | "Game starts 9am PST the morning after all players accept invites" | Medium | Plan: auto-launch game in pre-game mode when last player joins (merges acceptInvite + startGame). Manifest timestamps drive Day 1 start via partywhen alarms. Lobby waiting room redirects to client app so SW registers + push subscribes before Day 1. Email notification to all players when game enters pre-game (needs email service, e.g., Resend). Backup email on Day 1 to players without push subscription (check D1 PushSubscriptions vs roster). |
 | **Non-responsive players** | "How do we deal with non-responsive? AI takeover?" | High | Spec question. Could auto-vote, auto-skip, or introduce AI stand-ins. |
-| **Email delivery** | Magic links are displayed in UI, not emailed | Low | Integration with Resend/SES for sending magic link emails. |
+| **Email delivery** | Magic links are displayed in UI, not emailed | Low | Integration with Resend/SES for sending magic link emails. Also needed for: game-launched notification (pre-game), Day 1 start fallback for non-push-subscribers. |
 | **Session management** | No session revocation UI, no rate limiting on magic links | Low | Admin UI for session cleanup, rate limit on `/login` actions. |
 | **Persistence & rehydration hardening** | DO snapshot restore loses L3 child actors | High | `subscribe()` snapshot contains live `ActorRef` objects that don't survive JSON roundtrip. Switched to `getPersistedSnapshot()` as immediate fix, but need full audit: validate child restoration on every resume, handle mid-game DO eviction gracefully (reconnect clients, re-derive L3 state from L2 context), add integration tests for persist→restore→send cycle. Consider whether chatLog extraction can be eliminated if `getPersistedSnapshot()` already captures L3 context. |
 
@@ -120,3 +120,5 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 | Ticker performance (backdrop-blur, will-change, static debug) | `fix/ticker-performance` |
 | Economy consolidation, perks system, D1 normalization | `feature/economy-and-perks` |
 | Auth, invites, character select, JWT-secured entry, clean URLs | `feature/lobby-game-flow` |
+| PWA push notifications (DO storage, WebSocket-based) | `feat/pwa-push-notifications` |
+| D1 push subscriptions, HTTP push API, client launcher, inviteCode plumbing | `feat/app-structure-architecture` |

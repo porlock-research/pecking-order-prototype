@@ -14,6 +14,7 @@ import { l2FactsActions } from './actions/l2-facts';
 // --- Types ---
 export interface GameContext {
   gameId: string;
+  inviteCode: string;
   roster: Record<string, SocialPlayer>;
   manifest: GameManifest | null;
   dayIndex: number;
@@ -26,7 +27,7 @@ export interface GameContext {
 }
 
 export type GameEvent =
-  | { type: 'SYSTEM.INIT'; payload: { roster: Roster; manifest: GameManifest }; gameId: string }
+  | { type: 'SYSTEM.INIT'; payload: { roster: Roster; manifest: GameManifest }; gameId: string; inviteCode: string }
   | { type: 'SYSTEM.WAKEUP' }
   | { type: 'SYSTEM.PAUSE' }
   | { type: 'ADMIN.NEXT_STAGE' }
@@ -71,6 +72,7 @@ export const orchestratorMachine = setup({
   initial: 'uninitialized',
   context: {
     gameId: '',
+    inviteCode: '',
     roster: {},
     manifest: null,
     dayIndex: 0,

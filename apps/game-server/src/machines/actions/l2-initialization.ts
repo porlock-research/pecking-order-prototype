@@ -4,9 +4,10 @@ import type { SocialPlayer } from '@pecking-order/shared-types';
 export const l2InitializationActions = {
   initializeContext: assign({
     gameId: ({ event }: any) => (event.type === 'SYSTEM.INIT' ? event.gameId : ''),
+    inviteCode: ({ event }: any) => (event.type === 'SYSTEM.INIT' ? (event.inviteCode || '') : ''),
     roster: ({ event }: any) => {
       if (event.type !== 'SYSTEM.INIT') return {};
-      const internalRoster: Record<string, SocialPlayer> = {};
+      const internalRoster: Record<string, any> = {};
       for (const [id, p] of Object.entries(event.payload.roster) as any) {
         internalRoster[id] = {
           id,
@@ -14,6 +15,7 @@ export const l2InitializationActions = {
           avatarUrl: p.avatarUrl,
           status: p.isAlive ? 'ALIVE' : 'ELIMINATED',
           silver: p.silver,
+          realUserId: p.realUserId || '',
         };
       }
       return internalRoster;

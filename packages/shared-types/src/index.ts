@@ -139,6 +139,7 @@ export const RosterSchema = z.record(z.string(), RosterPlayerSchema);
 
 export const InitPayloadSchema = z.object({
   lobbyId: z.string(),
+  inviteCode: z.string(),
   roster: RosterSchema,
   manifest: GameManifestSchema,
 });
@@ -174,6 +175,7 @@ export const SocialPlayerSchema = z.object({
   avatarUrl: z.string(),
   status: z.enum(["ALIVE", "ELIMINATED"]),
   silver: z.number().int().default(0),
+  realUserId: z.string().optional(),
 });
 
 export const ChatMessageSchema = z.object({
