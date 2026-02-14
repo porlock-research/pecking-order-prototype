@@ -260,7 +260,7 @@ export const PERK_COSTS: Record<PerkType, number> = {
 
 // --- Game Master ---
 
-export const GAME_MASTER_ID = 'GAME_MASTER';
+export const GAME_MASTER_ID: string = 'GAME_MASTER';
 
 // --- Ticker (News Feed) ---
 
