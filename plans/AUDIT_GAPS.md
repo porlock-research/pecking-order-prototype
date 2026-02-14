@@ -122,3 +122,4 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 | Auth, invites, character select, JWT-secured entry, clean URLs | `feature/lobby-game-flow` |
 | PWA push notifications (DO storage, WebSocket-based) | `feat/pwa-push-notifications` |
 | D1 push subscriptions, HTTP push API, client launcher, inviteCode plumbing | `feat/app-structure-architecture` |
+| Lobby env vars (getCloudflareContext), push subscription reliability, VAPID key handling, tsup DTS fix | `fix/post-merge-misc` |

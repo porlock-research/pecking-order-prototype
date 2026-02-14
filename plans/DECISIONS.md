@@ -561,3 +561,21 @@ This document tracks significant architectural decisions, their context, and con
     *   All user-facing URLs use the same 6-char code that players share with each other.
     *   Internal game IDs are never exposed to end users.
     *   Server actions perform an extra D1 lookup by invite code, but this is negligible for the low-frequency operations involved.
+
+## [ADR-050] Cloudflare Runtime Env Vars + Push Subscription Reliability
+*   **Date:** 2026-02-13
+*   **Status:** Accepted
+*   **Context:** Post-merge testing revealed three issues: (1) Lobby server actions used `process.env.*` for `GAME_SERVER_HOST`, `AUTH_SECRET`, and `GAME_CLIENT_HOST`, which returns `undefined` on Cloudflare Workers (vars are only available via execution context, not `process.env`). (2) Push subscriptions were stored under the wrong user identity — `findCachedToken()` grabbed whichever `po_token_*` was first in sessionStorage, which could be from a different game with a different JWT `sub`. (3) The Alerts button was hidden by stale browser push subscriptions from previous VAPID key environments.
+*   **Decision:**
+    *   **`getEnv()` helper**: New `getEnv()` in `lib/db.ts` wraps `getCloudflareContext()` (same pattern as existing `getDB()`). All lobby server actions and route handlers use it instead of `process.env`. Fallbacks to localhost values preserved for local dev.
+    *   **Active token threading**: `usePushNotifications(activeToken?)` accepts the current game's JWT. `GameShell` passes its token prop. Falls back to `findCachedToken()` only on the launcher screen.
+    *   **Always-fresh VAPID key**: Removed sessionStorage caching of `po_vapid_key`. Subscribe always fetches from `/vapid-key` endpoint, preventing cross-environment key mismatches.
+    *   **Stale subscription cleanup**: `subscribe()` calls `pushManager.getSubscription()` + `unsubscribe()` before creating a new subscription, ensuring the VAPID key matches the current server.
+    *   **Always-visible Alerts button**: PushPrompt no longer hides when `isSubscribed` (browser state can be stale). Hidden only when permission is `unsupported` or `denied`.
+    *   **Active games use `/play/CODE`**: Lobby "Jump In" links use the server-side `/play/{inviteCode}` redirect route instead of constructing client URLs with a stale `clientHost` state variable.
+    *   **`.dev.vars` for local dev**: Game server `.dev.vars` (gitignored) overrides `[vars]` from `wrangler.toml` with local values (`AUTH_SECRET`, `GAME_CLIENT_HOST`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_JWK`).
+*   **Consequences:**
+    *   Lobby env vars work correctly on both local dev (`.dev.vars` override) and Cloudflare production (`[vars]` in `wrangler.toml`).
+    *   Push subscriptions are always keyed to the correct user identity for the active game.
+    *   Switching between local and production environments doesn't leave stale VAPID keys or push subscriptions.
+    *   `AUTH_SECRET` must be set in game server `.dev.vars` for local JWT verification (was previously undefined, causing `HMAC key length (0)` errors).
