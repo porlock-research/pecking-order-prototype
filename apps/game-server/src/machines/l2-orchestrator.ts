@@ -2,7 +2,7 @@ import { setup, assign, sendTo, raise } from 'xstate';
 import { dailySessionMachine } from './l3-session';
 import { postGameMachine } from './l4-post-game';
 import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent } from '@pecking-order/shared-types';
-import type { GameOutput } from './cartridges/games/_contract';
+import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from './cartridges/prompts/_contract';
 
 import { l2InitializationActions } from './actions/l2-initialization';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useGameStore } from './store/useGameStore';
 import { useGameEngine } from './hooks/useGameEngine';
 import { ChatRoom } from './components/ChatRoom';
@@ -8,6 +8,8 @@ import VotingPanel from './cartridges/Voting';
 import GamePanel from './cartridges/GamePanel';
 import PromptPanel from './cartridges/PromptPanel';
 import PerkPanel from './components/PerkPanel';
+
+const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
 import { formatState, formatPhase } from './utils/formatState';
 import { Coins, MessageCircle, Mail, Users } from 'lucide-react';
 import { decodeGameToken } from '@pecking-order/auth';
@@ -100,6 +102,14 @@ export default function App() {
       }
     }
   }, []);
+
+  if (window.location.pathname === '/dev/games') {
+    return (
+      <Suspense fallback={null}>
+        <GameDevHarness />
+      </Suspense>
+    );
+  }
 
   if (!gameId) {
     return <LauncherScreen />;

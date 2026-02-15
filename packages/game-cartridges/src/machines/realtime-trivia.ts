@@ -1,8 +1,8 @@
 import { setup, assign, sendParent, fromPromise, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
-import type { BaseGameContext, GameEvent, GameOutput } from './_contract';
-import { getAlivePlayerIds } from '../voting/_helpers';
-import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from './trivia-api';
+import type { BaseGameContext, GameEvent, GameOutput } from '../contracts';
+import { getAlivePlayerIds } from '../helpers/alive-players';
+import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from '../helpers/trivia-api';
 
 // --- Scoring Constants ---
 const TOTAL_ROUNDS = 5;
@@ -20,7 +20,7 @@ function pickRandomQuestions(pool: TriviaQuestion[], count: number): TriviaQuest
 
 // --- Context ---
 
-interface TriviaContext extends BaseGameContext {
+export interface RealtimeTriviaContext extends BaseGameContext {
   questions: TriviaQuestion[];
   // Current round answers: playerId → { answerIndex, answeredAt timestamp }
   answers: Record<string, { answerIndex: number; answeredAt: number }>;
@@ -39,7 +39,7 @@ interface TriviaContext extends BaseGameContext {
 
 export const realtimeTriviaMachine = setup({
   types: {
-    context: {} as TriviaContext,
+    context: {} as RealtimeTriviaContext,
     events: {} as GameEvent,
     input: {} as GameCartridgeInput,
     output: {} as GameOutput,

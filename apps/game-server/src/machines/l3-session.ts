@@ -1,7 +1,7 @@
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
 import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from './cartridges/voting/_registry';
-import { GAME_REGISTRY } from './cartridges/games/_registry';
+import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 import { PROMPT_REGISTRY } from './cartridges/prompts/_registry';
 import type { AnyActorRef } from 'xstate';
 

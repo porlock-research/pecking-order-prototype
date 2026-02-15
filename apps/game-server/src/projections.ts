@@ -3,40 +3,8 @@
  * Pure functions — no side effects or dependencies on server state.
  */
 
-/**
- * Project game cartridge context per-player.
- * Async games (with `players` record) get filtered to the requesting player's view.
- * Real-time games are broadcast as-is.
- */
-export function projectGameCartridge(gameCtx: any, playerId: string): any {
-  if (!gameCtx) return null;
-
-  // Async per-player games have a `players` record
-  if (gameCtx.players) {
-    const playerState = gameCtx.players[playerId];
-    if (!playerState) return null;
-    return {
-      gameType: gameCtx.gameType,
-      ready: gameCtx.ready ?? true,
-      status: playerState.status,
-      currentRound: playerState.currentRound,
-      totalRounds: playerState.totalRounds,
-      currentQuestion: playerState.currentQuestion,
-      roundDeadline: playerState.status === 'PLAYING' && playerState.questionStartedAt
-        ? playerState.questionStartedAt + 15_000
-        : null,
-      lastRoundResult: playerState.lastRoundResult,
-      score: playerState.score,
-      correctCount: playerState.correctCount,
-      silverReward: playerState.silverReward,
-      goldContribution: gameCtx.goldContribution,
-    };
-  }
-
-  // Real-time games: broadcast full context (strip questionPool/correctIndex data)
-  const { questionPool, ...publicCtx } = gameCtx;
-  return publicCtx;
-}
+// Game cartridge projection is now in the shared package
+export { projectGameCartridge } from '@pecking-order/game-cartridges';
 
 /**
  * Project prompt cartridge context for SYSTEM.SYNC.

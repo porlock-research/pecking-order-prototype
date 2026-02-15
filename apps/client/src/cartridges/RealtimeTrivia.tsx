@@ -1,86 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import type { SocialPlayer } from '@pecking-order/shared-types';
+import type { SocialPlayer, RealtimeTriviaProjection } from '@pecking-order/shared-types';
+import {
+  CountdownBar,
+  DifficultyBadge,
+  CartridgeContainer,
+  CartridgeHeader,
+  OptionGrid,
+  ResultFeedback,
+} from './game-shared';
 
 interface TriviaProps {
-  cartridge: {
-    gameType: string;
-    ready?: boolean;
-    phase: 'WAITING' | 'QUESTION' | 'RESULT' | 'SCOREBOARD';
-    currentRound: number;
-    totalRounds: number;
-    scores: Record<string, number>;
-    currentQuestion: { question: string; options: string[]; category?: string; difficulty?: string } | null;
-    roundDeadline: number | null;
-    lastRoundResults: {
-      correctIndex: number;
-      playerResults: Record<string, { correct: boolean; silver: number; speedBonus: number }>;
-    } | null;
-    silverRewards?: Record<string, number>;
-    goldContribution?: number;
-    correctCounts?: Record<string, number>;
-  };
+  cartridge: RealtimeTriviaProjection;
   playerId: string;
   roster: Record<string, SocialPlayer>;
   engine: {
     sendGameAction: (type: string, payload?: Record<string, any>) => void;
   };
   onDismiss?: () => void;
-}
-
-const OPTION_LABELS = ['A', 'B', 'C', 'D'];
-
-const DIFFICULTY_COLORS: Record<string, string> = {
-  easy: 'bg-skin-green/15 text-skin-green border-skin-green/30',
-  medium: 'bg-skin-gold/15 text-skin-gold border-skin-gold/30',
-  hard: 'bg-skin-danger/15 text-skin-danger border-skin-danger/30',
-};
-
-function DifficultyBadge({ category, difficulty }: { category?: string; difficulty?: string }) {
-  if (!category && !difficulty) return null;
-  return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      {category && (
-        <span className="text-[9px] font-mono text-skin-dim bg-white/[0.04] border border-white/[0.08] rounded-pill px-2 py-0.5 uppercase tracking-wider">
-          {category}
-        </span>
-      )}
-      {difficulty && (
-        <span className={`text-[9px] font-mono border rounded-pill px-2 py-0.5 uppercase tracking-wider ${DIFFICULTY_COLORS[difficulty] || ''}`}>
-          {difficulty}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function CountdownBar({ deadline }: { deadline: number | null }) {
-  const [pct, setPct] = useState(100);
-
-  useEffect(() => {
-    if (!deadline) { setPct(100); return; }
-    const total = 15_000;
-    const tick = () => {
-      const remaining = deadline - Date.now();
-      setPct(Math.max(0, Math.min(100, (remaining / total) * 100)));
-    };
-    tick();
-    const id = setInterval(tick, 100);
-    return () => clearInterval(id);
-  }, [deadline]);
-
-  return (
-    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-      <div
-        className="h-full rounded-full transition-all duration-100 ease-linear"
-        style={{
-          width: `${pct}%`,
-          background: pct > 30
-            ? 'linear-gradient(90deg, var(--po-gold), var(--po-gold-bright, #ffd700))'
-            : 'linear-gradient(90deg, var(--po-danger, #ef4444), var(--po-pink, #f472b6))',
-        }}
-      />
-    </div>
-  );
 }
 
 export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: TriviaProps) {
@@ -108,23 +44,12 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
     .map(([id, score]) => ({ id, score, name: roster[id]?.personaName || id }));
 
   return (
-    <div className="mx-4 my-2 rounded-xl bg-glass border border-white/[0.06] overflow-hidden slide-up-in shadow-card">
-
-      {/* Header Bar */}
-      <div className="px-4 py-3 bg-skin-gold/5 border-b border-white/[0.06] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono bg-skin-gold/10 border border-skin-gold/30 rounded-pill px-2.5 py-0.5 text-skin-gold uppercase tracking-widest">
-            RT Trivia
-          </span>
-          <span className="text-xs font-mono text-skin-dim">
-            Round {currentRound}/{totalRounds}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs font-mono text-skin-gold">
-          <span className="text-skin-dim">Silver:</span>
-          <span className="font-bold">{scores[playerId] || 0}</span>
-        </div>
-      </div>
+    <CartridgeContainer>
+      <CartridgeHeader
+        label="RT Trivia"
+        roundInfo={`Round ${currentRound}/${totalRounds}`}
+        score={scores[playerId] || 0}
+      />
 
       {/* Timer (only during active question, not during result) */}
       {phase === 'QUESTION' && (
@@ -141,80 +66,18 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
             {currentQuestion.question}
           </p>
 
-          <div className="grid grid-cols-1 gap-2">
-            {currentQuestion.options.map((opt, idx) => {
-              const isSelected = selectedAnswer === idx;
-              const isCorrect = correctIdx === idx;
-
-              // During result: highlight correct/wrong
-              if (isShowingResult) {
-                const isPlayerWrong = isSelected && !isCorrect;
-                return (
-                  <div
-                    key={idx}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-sm transition-all
-                      ${isCorrect
-                        ? 'bg-skin-green/15 border-skin-green/40 text-skin-green ring-1 ring-skin-green/30'
-                        : isPlayerWrong
-                          ? 'bg-skin-danger/15 border-skin-danger/40 text-skin-danger'
-                          : 'bg-white/[0.02] border-white/[0.04] text-skin-dim opacity-40'
-                      }`}
-                  >
-                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold font-mono shrink-0
-                      ${isCorrect
-                        ? 'bg-skin-green text-skin-inverted'
-                        : isPlayerWrong
-                          ? 'bg-skin-danger text-skin-inverted'
-                          : 'bg-white/[0.06] text-skin-dim'
-                      }`}>
-                      {isCorrect ? '\u2713' : isPlayerWrong ? '\u2717' : OPTION_LABELS[idx]}
-                    </span>
-                    <span>{opt}</span>
-                  </div>
-                );
-              }
-
-              // During question: interactive buttons
-              return (
-                <button
-                  key={idx}
-                  onClick={() => handleAnswer(idx)}
-                  disabled={selectedAnswer !== null}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all text-sm
-                    ${isSelected
-                      ? 'bg-skin-gold/20 border-skin-gold/50 text-skin-gold'
-                      : selectedAnswer !== null
-                        ? 'bg-white/[0.02] border-white/[0.04] text-skin-dim opacity-50 cursor-default'
-                        : 'bg-white/[0.03] border-white/[0.06] text-skin-base hover:bg-white/[0.06] hover:border-white/10 active:scale-[0.98]'
-                    }`}
-                >
-                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold font-mono shrink-0
-                    ${isSelected ? 'bg-skin-gold text-skin-inverted' : 'bg-white/[0.06] text-skin-dim'}`}>
-                    {OPTION_LABELS[idx]}
-                  </span>
-                  <span>{opt}</span>
-                </button>
-              );
-            })}
-          </div>
+          <OptionGrid
+            options={currentQuestion.options}
+            selectedAnswer={selectedAnswer}
+            onSelect={!isShowingResult ? handleAnswer : undefined}
+            correctIndex={isShowingResult ? correctIdx : undefined}
+            disabled={isShowingResult}
+          />
 
           {/* Inline result feedback */}
           {isShowingResult && myResult && (
-            <div className={`text-center py-2 rounded-lg animate-fade-in ${myResult.correct ? 'bg-skin-green/10' : 'bg-skin-danger/10'}`}>
-              {myResult.correct ? (
-                <div>
-                  <span className="text-sm font-bold text-skin-green">Correct!</span>
-                  <div className="flex items-center justify-center gap-2 mt-0.5">
-                    <span className="text-xs font-mono text-skin-green">+{myResult.silver - myResult.speedBonus} base</span>
-                    {myResult.speedBonus > 0 && (
-                      <span className="text-xs font-mono text-skin-gold">+{myResult.speedBonus} speed</span>
-                    )}
-                    <span className="text-xs font-mono font-bold text-skin-green">= +{myResult.silver} silver</span>
-                  </div>
-                </div>
-              ) : (
-                <span className="text-sm font-bold text-skin-danger">Wrong answer</span>
-              )}
+            <div className="animate-fade-in">
+              <ResultFeedback correct={myResult.correct} silver={myResult.silver} speedBonus={myResult.speedBonus} />
             </div>
           )}
 
@@ -234,7 +97,6 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
             Final Scoreboard
           </p>
 
-          {/* Gold contribution */}
           {(goldContribution ?? 0) > 0 && (
             <div className="text-center text-xs font-mono text-skin-gold/70 border border-skin-gold/10 rounded-lg py-2 bg-skin-gold/5">
               +{goldContribution} gold added to the pot
@@ -290,6 +152,6 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
           )}
         </div>
       )}
-    </div>
+    </CartridgeContainer>
   );
 }

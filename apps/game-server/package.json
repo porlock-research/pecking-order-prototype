@@ -9,6 +9,7 @@
   "dependencies": {
     "@pecking-order/auth": "*",
     "@pecking-order/logger": "*",
+    "@pecking-order/game-cartridges": "*",
     "@pecking-order/shared-types": "*",
     "@pushforge/builder": "^2.0.1",
     "partyserver": "^0.1.2",

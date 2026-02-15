@@ -1,6 +1,6 @@
 import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
-import type { GameOutput } from '../cartridges/games/_contract';
-import { GAME_REGISTRY } from '../cartridges/games/_registry';
+import type { GameOutput } from '@pecking-order/game-cartridges';
+import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 
 export const l3GameActions = {
   spawnGameCartridge: assign({

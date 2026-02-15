@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
+import GapRun from './GapRun';
 import RealtimeTrivia from './RealtimeTrivia';
 import Trivia from './Trivia';
 
@@ -24,6 +25,8 @@ export default function GamePanel({ engine }: GamePanelProps) {
   const common = { cartridge: activeGameCartridge, playerId: playerId!, roster, engine, onDismiss };
 
   switch (activeGameCartridge.gameType) {
+    case 'GAP_RUN':
+      return <GapRun {...common} />;
     case 'REALTIME_TRIVIA':
       return <RealtimeTrivia {...common} />;
     case 'TRIVIA':

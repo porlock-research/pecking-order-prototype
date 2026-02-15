@@ -8,9 +8,9 @@
  */
 import { setup, assign, sendParent, enqueueActions, fromPromise, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
-import type { GameEvent, GameOutput } from './_contract';
-import { getAlivePlayerIds } from '../voting/_helpers';
-import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from './trivia-api';
+import type { GameEvent, GameOutput } from '../contracts';
+import { getAlivePlayerIds } from '../helpers/alive-players';
+import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from '../helpers/trivia-api';
 
 // --- Scoring Constants ---
 const TOTAL_ROUNDS = 5;
@@ -66,7 +66,7 @@ function createPlayerState(): PlayerTriviaState {
 
 // --- Machine Context ---
 
-interface TriviaContext {
+export interface TriviaContext {
   gameType: 'TRIVIA';
   players: Record<string, PlayerTriviaState>;
   goldContribution: number;
@@ -253,6 +253,12 @@ export const triviaMachine = setup({
         timestamp: Date.now(),
       },
     })),
+
+    emitPlayerGameResult: sendParent(({ event }): AnyEventObject => ({
+      type: 'CARTRIDGE.PLAYER_GAME_RESULT',
+      playerId: (event as any).playerId,
+      silverReward: (event as any).silverReward,
+    })),
   },
 }).createMachine({
   id: 'trivia-game',
@@ -308,11 +314,7 @@ export const triviaMachine = setup({
         'GAME.TRIVIA.START': { target: 'active', reenter: true, actions: 'startPlayer' },
         'GAME.TRIVIA.ANSWER': { target: 'active', reenter: true, actions: 'processAnswer' },
         'PLAYER_COMPLETED': {
-          actions: sendParent(({ event }): AnyEventObject => ({
-            type: 'CARTRIDGE.PLAYER_GAME_RESULT',
-            playerId: (event as any).playerId,
-            silverReward: (event as any).silverReward,
-          }))
+          actions: 'emitPlayerGameResult',
         },
         'ALL_COMPLETE': { target: 'completed' },
         'INTERNAL.END_GAME': { target: 'completed' },

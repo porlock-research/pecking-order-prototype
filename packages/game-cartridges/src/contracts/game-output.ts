@@ -1,17 +1,16 @@
 /**
- * Game (Minigame) Cartridge Contract
+ * Game Cartridge Output Contract
  *
  * Every game machine must:
  * - Accept GameCartridgeInput as input
  * - Handle GAME.{MECHANIC}.* events
- * - Return silver rewards map as output from final state
+ * - Return GameOutput from final state
  * - Expose context matching BaseGameContext for SYSTEM.SYNC rendering
  *
  * Result patterns:
  * - **Async games** (e.g. TRIVIA): Emit CARTRIDGE.PLAYER_GAME_RESULT per player
  *   via sendParent as each player completes. Output silverRewards should only
- *   include incomplete players (partial credit). Completed players are excluded
- *   since they were already rewarded incrementally.
+ *   include incomplete players (partial credit).
  * - **Sync games** (e.g. REALTIME_TRIVIA): Return full silverRewards in output
  *   from the final state (batch reward at game end).
  *
@@ -19,28 +18,23 @@
  * the context is broadcast to clients. Only reveal correctIndex
  * in lastRoundResults after the round ends.
  */
-import type { GameType, GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
+import type { GameType } from '@pecking-order/shared-types';
 
-export type { GameType, GameCartridgeInput };
+export type { GameType };
 
 export interface BaseGameContext {
   gameType: GameType;
   phase: 'WAITING' | 'QUESTION' | 'RESULT' | 'SCOREBOARD';
   currentRound: number;
   totalRounds: number;
-  scores: Record<string, number>;        // playerId → cumulative silver earned
+  scores: Record<string, number>;
   currentQuestion: { question: string; options: string[] } | null;
-  roundDeadline: number | null;           // timestamp for client countdown
+  roundDeadline: number | null;
   lastRoundResults: {
     correctIndex: number;
     playerResults: Record<string, { correct: boolean; silver: number; speedBonus: number }>;
   } | null;
 }
-
-export type GameEvent =
-  | { type: `GAME.${string}`; senderId: string; [key: string]: any }
-  | { type: 'INTERNAL.START_GAME'; payload?: any }
-  | { type: 'INTERNAL.END_GAME' };
 
 export interface GameOutput {
   silverRewards: Record<string, number>;

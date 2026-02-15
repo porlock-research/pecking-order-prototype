@@ -1,5 +1,5 @@
 import { assign, raise } from 'xstate';
-import type { GameOutput } from '../cartridges/games/_contract';
+import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from '../cartridges/prompts/_contract';
 import { PERK_COSTS, type PerkType } from '@pecking-order/shared-types';
 

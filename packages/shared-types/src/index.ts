@@ -58,7 +58,7 @@ export type VoteType = z.infer<typeof VoteTypeSchema>;
 
 // --- Game (Minigame) Types ---
 
-export const GameTypeSchema = z.enum(["TRIVIA", "REALTIME_TRIVIA", "NONE"]);
+export const GameTypeSchema = z.enum(["TRIVIA", "REALTIME_TRIVIA", "GAP_RUN", "NONE"]);
 export type GameType = z.infer<typeof GameTypeSchema>;
 
 export interface GameCartridgeInput {
@@ -270,3 +270,76 @@ export interface TickerMessage {
   category: 'SOCIAL' | 'GAME' | 'VOTE' | 'ELIMINATION' | 'SYSTEM';
   timestamp: number;
 }
+
+// --- Per-Game Client Events ---
+
+export type GapRunClientEvent =
+  | { type: 'GAME.GAP_RUN.START' }
+  | { type: 'GAME.GAP_RUN.RESULT'; distance: number; jumps: number; timeElapsed: number };
+
+export type TriviaClientEvent =
+  | { type: 'GAME.TRIVIA.START' }
+  | { type: 'GAME.TRIVIA.ANSWER'; answerIndex: number };
+
+export type RealtimeTriviaClientEvent =
+  | { type: 'GAME.REALTIME_TRIVIA.ANSWER'; answerIndex: number };
+
+export type GameClientEvent =
+  | GapRunClientEvent
+  | TriviaClientEvent
+  | RealtimeTriviaClientEvent;
+
+// --- Per-Game Projected State (what the client renders) ---
+
+export interface GapRunProjection {
+  gameType: 'GAP_RUN';
+  ready?: boolean;
+  status: 'NOT_STARTED' | 'PLAYING' | 'COMPLETED';
+  startedAt: number;
+  distance: number;
+  jumps: number;
+  timeElapsed: number;
+  silverReward: number;
+  goldContribution: number;
+  seed: number;
+  timeLimit: number;
+}
+
+export interface TriviaProjection {
+  gameType: 'TRIVIA';
+  ready?: boolean;
+  status: 'NOT_STARTED' | 'PLAYING' | 'COMPLETED';
+  currentRound: number;
+  totalRounds: number;
+  currentQuestion: { question: string; options: string[]; category?: string; difficulty?: string } | null;
+  roundDeadline: number | null;
+  lastRoundResult: {
+    question: string; options: string[]; correctIndex: number;
+    correct: boolean; silver: number; speedBonus: number;
+    category?: string; difficulty?: string;
+  } | null;
+  score: number;
+  correctCount: number;
+  silverReward: number;
+  goldContribution: number;
+}
+
+export interface RealtimeTriviaProjection {
+  gameType: 'REALTIME_TRIVIA';
+  ready?: boolean;
+  phase: 'WAITING' | 'QUESTION' | 'RESULT' | 'SCOREBOARD';
+  currentRound: number;
+  totalRounds: number;
+  scores: Record<string, number>;
+  currentQuestion: { question: string; options: string[]; category?: string; difficulty?: string } | null;
+  roundDeadline: number | null;
+  lastRoundResults: {
+    correctIndex: number;
+    playerResults: Record<string, { correct: boolean; silver: number; speedBonus: number }>;
+  } | null;
+  silverRewards?: Record<string, number>;
+  goldContribution?: number;
+  correctCounts?: Record<string, number>;
+}
+
+export type GameProjection = GapRunProjection | TriviaProjection | RealtimeTriviaProjection;
