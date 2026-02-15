@@ -19,6 +19,7 @@ const AVAILABLE_GAME_TYPES = [
   { value: 'NONE', label: 'No Game' },
   { value: 'TRIVIA', label: 'Trivia' },
   { value: 'REALTIME_TRIVIA', label: 'Real-Time Trivia' },
+  { value: 'GAP_RUN', label: 'Gap Run' },
 ];
 
 const AVAILABLE_ACTIVITY_TYPES = [

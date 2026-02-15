@@ -12,6 +12,7 @@ coverage
 **/.turbo
 **/.party
 **/.open-next
+**/tsconfig.tsbuildinfo
 out/
 .vercel
 **/.wrangler
