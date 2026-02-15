@@ -20,6 +20,14 @@ const AVAILABLE_GAME_TYPES = [
   { value: 'TRIVIA', label: 'Trivia' },
   { value: 'REALTIME_TRIVIA', label: 'Real-Time Trivia' },
   { value: 'GAP_RUN', label: 'Gap Run' },
+  { value: 'GRID_PUSH', label: 'Grid Push' },
+  { value: 'SEQUENCE', label: 'Sequence' },
+  { value: 'REACTION_TIME', label: 'Reaction Time' },
+  { value: 'COLOR_MATCH', label: 'Color Match' },
+  { value: 'STACKER', label: 'Stacker' },
+  { value: 'QUICK_MATH', label: 'Quick Math' },
+  { value: 'SIMON_SAYS', label: 'Simon Says' },
+  { value: 'AIM_TRAINER', label: 'Aim Trainer' },
 ];
 
 const AVAILABLE_ACTIVITY_TYPES = [

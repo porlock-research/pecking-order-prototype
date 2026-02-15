@@ -58,13 +58,19 @@ export type VoteType = z.infer<typeof VoteTypeSchema>;
 
 // --- Game (Minigame) Types ---
 
-export const GameTypeSchema = z.enum(["TRIVIA", "REALTIME_TRIVIA", "GAP_RUN", "NONE"]);
+export const GameTypeSchema = z.enum([
+  "TRIVIA", "REALTIME_TRIVIA",
+  "GAP_RUN", "GRID_PUSH", "SEQUENCE",
+  "REACTION_TIME", "COLOR_MATCH", "STACKER", "QUICK_MATH", "SIMON_SAYS", "AIM_TRAINER",
+  "NONE",
+]);
 export type GameType = z.infer<typeof GameTypeSchema>;
 
 export interface GameCartridgeInput {
   gameType: GameType;
   roster: Record<string, SocialPlayer>;
   dayIndex: number;
+  difficulty?: number; // 0-1 scale, overrides default day-based difficulty
 }
 
 export type VotingPhase = "EXPLAIN" | "VOTING" | "REVEAL" | "EXECUTIONER_PICKING" | "WINNER";
@@ -284,26 +290,80 @@ export type TriviaClientEvent =
 export type RealtimeTriviaClientEvent =
   | { type: 'GAME.REALTIME_TRIVIA.ANSWER'; answerIndex: number };
 
+export type GridPushClientEvent =
+  | { type: 'GAME.GRID_PUSH.START' }
+  | { type: 'GAME.GRID_PUSH.RESULT'; bankedTotal: number; longestRun: number; totalFlips: number; timeElapsed: number };
+
+export type SequenceClientEvent =
+  | { type: 'GAME.SEQUENCE.START' }
+  | { type: 'GAME.SEQUENCE.RESULT'; correctRounds: number; score: number; timeElapsed: number };
+
+export type ReactionTimeClientEvent =
+  | { type: 'GAME.REACTION_TIME.START' }
+  | { type: 'GAME.REACTION_TIME.RESULT'; avgReactionMs: number; roundsCompleted: number; bestReactionMs: number; timeElapsed: number };
+
+export type ColorMatchClientEvent =
+  | { type: 'GAME.COLOR_MATCH.START' }
+  | { type: 'GAME.COLOR_MATCH.RESULT'; correctAnswers: number; totalRounds: number; streak: number; timeElapsed: number };
+
+export type StackerClientEvent =
+  | { type: 'GAME.STACKER.START' }
+  | { type: 'GAME.STACKER.RESULT'; height: number; perfectLayers: number; timeElapsed: number };
+
+export type QuickMathClientEvent =
+  | { type: 'GAME.QUICK_MATH.START' }
+  | { type: 'GAME.QUICK_MATH.RESULT'; correctAnswers: number; totalRounds: number; streak: number; timeElapsed: number };
+
+export type SimonSaysClientEvent =
+  | { type: 'GAME.SIMON_SAYS.START' }
+  | { type: 'GAME.SIMON_SAYS.RESULT'; roundsCompleted: number; longestSequence: number; timeElapsed: number };
+
+export type AimTrainerClientEvent =
+  | { type: 'GAME.AIM_TRAINER.START' }
+  | { type: 'GAME.AIM_TRAINER.RESULT'; targetsHit: number; totalTargets: number; score: number; timeElapsed: number };
+
 export type GameClientEvent =
   | GapRunClientEvent
   | TriviaClientEvent
-  | RealtimeTriviaClientEvent;
+  | RealtimeTriviaClientEvent
+  | GridPushClientEvent
+  | SequenceClientEvent
+  | ReactionTimeClientEvent
+  | ColorMatchClientEvent
+  | StackerClientEvent
+  | QuickMathClientEvent
+  | SimonSaysClientEvent
+  | AimTrainerClientEvent;
 
 // --- Per-Game Projected State (what the client renders) ---
 
-export interface GapRunProjection {
-  gameType: 'GAP_RUN';
+/** Projection for all arcade-type games (per-player, client-rendered, one-shot result) */
+export interface ArcadeGameProjection {
+  gameType: string;
   ready?: boolean;
   status: 'NOT_STARTED' | 'PLAYING' | 'COMPLETED';
   startedAt: number;
-  distance: number;
-  jumps: number;
-  timeElapsed: number;
+  result: Record<string, number> | null;
   silverReward: number;
   goldContribution: number;
   seed: number;
   timeLimit: number;
+  difficulty: number;
 }
+
+/**
+ * Renderer contract for arcade-type minigames.
+ * Implement this to create a new arcade game — no XState knowledge needed.
+ */
+export interface ArcadeRendererProps {
+  seed: number;
+  difficulty: number;
+  timeLimit: number;
+  /** Call when the game ends. Keys are score dimensions (e.g. distance, jumps). */
+  onResult: (result: Record<string, number>) => void;
+}
+
+export type GapRunProjection = ArcadeGameProjection & { gameType: 'GAP_RUN' };
 
 export interface TriviaProjection {
   gameType: 'TRIVIA';
@@ -342,4 +402,4 @@ export interface RealtimeTriviaProjection {
   correctCounts?: Record<string, number>;
 }
 
-export type GameProjection = GapRunProjection | TriviaProjection | RealtimeTriviaProjection;
+export type GameProjection = ArcadeGameProjection | TriviaProjection | RealtimeTriviaProjection;

@@ -9,6 +9,10 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
+    "./machines/arcade-machine": {
+      "types": "./dist/machines/arcade-machine.d.ts",
+      "import": "./dist/machines/arcade-machine.mjs"
+    },
     "./machines/gap-run": {
       "types": "./dist/machines/gap-run.d.ts",
       "import": "./dist/machines/gap-run.mjs"
@@ -16,6 +20,14 @@
     "./machines/trivia": {
       "types": "./dist/machines/trivia.d.ts",
       "import": "./dist/machines/trivia.mjs"
+    },
+    "./machines/grid-push": {
+      "types": "./dist/machines/grid-push.d.ts",
+      "import": "./dist/machines/grid-push.mjs"
+    },
+    "./machines/sequence": {
+      "types": "./dist/machines/sequence.d.ts",
+      "import": "./dist/machines/sequence.mjs"
     },
     "./machines/realtime-trivia": {
       "types": "./dist/machines/realtime-trivia.d.ts",
@@ -27,7 +39,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/machines/gap-run.ts src/machines/trivia.ts src/machines/realtime-trivia.ts --format cjs,esm && tsc --declaration --emitDeclarationOnly --outDir dist",
+    "build": "tsup src/index.ts src/machines/arcade-machine.ts src/machines/gap-run.ts src/machines/grid-push.ts src/machines/sequence.ts src/machines/reaction-time.ts src/machines/color-match.ts src/machines/stacker.ts src/machines/quick-math.ts src/machines/simon-says.ts src/machines/aim-trainer.ts src/machines/trivia.ts src/machines/realtime-trivia.ts --format cjs,esm && tsc --declaration --emitDeclarationOnly --outDir dist",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "lint": "tsc --noEmit"
   },

@@ -3,18 +3,64 @@ import { createActor, fromPromise, type AnyActorRef, type Snapshot } from 'xstat
 import type { SocialPlayer, GameProjection } from '@pecking-order/shared-types';
 import {
   gapRunMachine,
+  gridPushMachine,
+  sequenceMachine,
+  reactionTimeMachine,
+  colorMatchMachine,
+  stackerMachine,
+  quickMathMachine,
+  simonSaysMachine,
+  aimTrainerMachine,
   triviaMachine,
   realtimeTriviaMachine,
   FALLBACK_QUESTIONS,
   projectGameCartridge,
 } from '@pecking-order/game-cartridges';
 import GapRun from '../cartridges/GapRun';
+import GridPush from '../cartridges/GridPush';
+import SequenceGame from '../cartridges/SequenceGame';
+import ReactionTime from '../cartridges/ReactionTime';
+import ColorMatch from '../cartridges/ColorMatch';
+import Stacker from '../cartridges/Stacker';
+import QuickMath from '../cartridges/QuickMath';
+import SimonSays from '../cartridges/SimonSays';
+import AimTrainer from '../cartridges/AimTrainer';
 import RealtimeTrivia from '../cartridges/RealtimeTrivia';
 import Trivia from '../cartridges/Trivia';
 
 // --- Types ---
 
-type GameType = 'GAP_RUN' | 'TRIVIA' | 'REALTIME_TRIVIA';
+type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA';
+
+interface GapRunConfig {
+  difficulty: number; // 0-1
+}
+
+interface TriviaConfig {
+  roundCount: number;
+}
+
+interface RealtimeTriviaConfig {
+  questionTimer: number; // ms
+}
+
+type GameConfig = GapRunConfig | TriviaConfig | RealtimeTriviaConfig;
+
+function defaultConfig(type: GameType): GameConfig {
+  switch (type) {
+    case 'GAP_RUN': return { difficulty: 0.2 };
+    case 'GRID_PUSH': return { difficulty: 0.2 };
+    case 'SEQUENCE': return { difficulty: 0.2 };
+    case 'REACTION_TIME': return { difficulty: 0.2 };
+    case 'COLOR_MATCH': return { difficulty: 0.2 };
+    case 'STACKER': return { difficulty: 0.2 };
+    case 'QUICK_MATH': return { difficulty: 0.2 };
+    case 'SIMON_SAYS': return { difficulty: 0.2 };
+    case 'AIM_TRAINER': return { difficulty: 0.2 };
+    case 'TRIVIA': return { roundCount: 5 };
+    case 'REALTIME_TRIVIA': return { questionTimer: 8000 };
+  }
+}
 
 interface LogEntry {
   ts: number;
@@ -37,6 +83,14 @@ const MOCK_PLAYER_ID = 'dev-p1';
 function getMachine(type: GameType) {
   switch (type) {
     case 'GAP_RUN': return gapRunMachine;
+    case 'GRID_PUSH': return gridPushMachine;
+    case 'SEQUENCE': return sequenceMachine;
+    case 'REACTION_TIME': return reactionTimeMachine;
+    case 'COLOR_MATCH': return colorMatchMachine;
+    case 'STACKER': return stackerMachine;
+    case 'QUICK_MATH': return quickMathMachine;
+    case 'SIMON_SAYS': return simonSaysMachine;
+    case 'AIM_TRAINER': return aimTrainerMachine;
     case 'TRIVIA': return triviaMachine;
     case 'REALTIME_TRIVIA': return realtimeTriviaMachine;
   }
@@ -46,7 +100,7 @@ function getMachine(type: GameType) {
 
 export default function GameDevHarness() {
   const [gameType, setGameType] = useState<GameType>('GAP_RUN');
-  const [seed, setSeed] = useState(42);
+  const [config, setConfig] = useState<GameConfig>(defaultConfig('GAP_RUN'));
   const [cartridge, setCartridge] = useState<GameProjection | null>(null);
   const [eventLog, setEventLog] = useState<LogEntry[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -57,12 +111,8 @@ export default function GameDevHarness() {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [eventLog]);
 
-  const addLog = useCallback((type: string, payload?: Record<string, any>, label?: string) => {
-    setEventLog(prev => [...prev, { ts: Date.now(), type, payload, label }]);
-  }, []);
-
   // --- Reset: stop old actor, create new one ---
-  const resetCartridge = useCallback((type: GameType, s: number) => {
+  const resetCartridge = useCallback((type: GameType, cfg: GameConfig) => {
     // Stop existing actor
     if (actorRef.current) {
       actorRef.current.stop();
@@ -73,7 +123,13 @@ export default function GameDevHarness() {
     setCartridge(null);
 
     const machine = getMachine(type);
-    const input = { gameType: type, roster: MOCK_ROSTER, dayIndex: 1 };
+    const input: any = { gameType: type, roster: MOCK_ROSTER, dayIndex: 1 };
+
+    // Pass per-game config into machine input
+    const ARCADE_TYPES: string[] = ['GAP_RUN', 'GRID_PUSH', 'SEQUENCE', 'REACTION_TIME', 'COLOR_MATCH', 'STACKER', 'QUICK_MATH', 'SIMON_SAYS', 'AIM_TRAINER'];
+    if (ARCADE_TYPES.includes(type) && 'difficulty' in cfg) {
+      input.difficulty = cfg.difficulty;
+    }
 
     // Stub sendParent actions: machines use sendParent for fact pipeline,
     // but standalone actors have no parent. Override with log-capturing stubs.
@@ -107,7 +163,8 @@ export default function GameDevHarness() {
       };
     }
     if (type === 'REALTIME_TRIVIA') {
-      provideConfig.delays = { QUESTION_TIMER: 8000, RESULT_TIMER: 2000 };
+      const qt = 'questionTimer' in cfg ? (cfg as RealtimeTriviaConfig).questionTimer : 8000;
+      provideConfig.delays = { QUESTION_TIMER: qt, RESULT_TIMER: 2000 };
     }
 
     const configuredMachine = (machine as any).provide(provideConfig);
@@ -131,7 +188,7 @@ export default function GameDevHarness() {
 
   // Initialize on mount
   useEffect(() => {
-    resetCartridge(gameType, seed);
+    resetCartridge(gameType, config);
     return () => {
       if (actorRef.current) {
         actorRef.current.stop();
@@ -174,28 +231,75 @@ export default function GameDevHarness() {
           value={gameType}
           onChange={(e) => {
             const t = e.target.value as GameType;
+            const newCfg = defaultConfig(t);
             setGameType(t);
-            resetCartridge(t, seed);
+            setConfig(newCfg);
+            resetCartridge(t, newCfg);
           }}
           className="bg-skin-panel border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs font-mono text-skin-base focus:border-skin-gold/50 focus:outline-none"
         >
           <option value="GAP_RUN">GAP_RUN</option>
+          <option value="GRID_PUSH">GRID_PUSH</option>
+          <option value="SEQUENCE">SEQUENCE</option>
+          <option value="REACTION_TIME">REACTION_TIME</option>
+          <option value="COLOR_MATCH">COLOR_MATCH</option>
+          <option value="STACKER">STACKER</option>
+          <option value="QUICK_MATH">QUICK_MATH</option>
+          <option value="SIMON_SAYS">SIMON_SAYS</option>
+          <option value="AIM_TRAINER">AIM_TRAINER</option>
           <option value="TRIVIA">TRIVIA</option>
           <option value="REALTIME_TRIVIA">REALTIME_TRIVIA</option>
         </select>
 
-        <div className="flex items-center gap-2">
-          <label className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">Seed</label>
-          <input
-            type="number"
-            value={seed}
-            onChange={(e) => setSeed(Number(e.target.value) || 0)}
-            className="w-20 bg-skin-panel border border-white/[0.1] rounded-lg px-2 py-1.5 text-xs font-mono text-skin-base focus:border-skin-gold/50 focus:outline-none"
-          />
-        </div>
+        {/* Per-game config */}
+        {!['TRIVIA', 'REALTIME_TRIVIA'].includes(gameType) && 'difficulty' in config && (
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">Difficulty</label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round((config as GapRunConfig).difficulty * 100)}
+              onChange={(e) => setConfig({ ...config, difficulty: Number(e.target.value) / 100 })}
+              className="w-24 accent-[#ffd700]"
+            />
+            <span className="text-xs font-mono text-skin-base w-8 text-right">
+              {Math.round((config as GapRunConfig).difficulty * 100)}%
+            </span>
+          </div>
+        )}
+
+        {gameType === 'TRIVIA' && 'roundCount' in config && (
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">Rounds</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={(config as TriviaConfig).roundCount}
+              onChange={(e) => setConfig({ ...config, roundCount: Math.max(1, Number(e.target.value) || 5) })}
+              className="w-16 bg-skin-panel border border-white/[0.1] rounded-lg px-2 py-1.5 text-xs font-mono text-skin-base focus:border-skin-gold/50 focus:outline-none"
+            />
+          </div>
+        )}
+
+        {gameType === 'REALTIME_TRIVIA' && 'questionTimer' in config && (
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">Timer</label>
+            <input
+              type="number"
+              min={3}
+              max={30}
+              value={Math.round((config as RealtimeTriviaConfig).questionTimer / 1000)}
+              onChange={(e) => setConfig({ ...config, questionTimer: Math.max(3000, Number(e.target.value) * 1000 || 8000) })}
+              className="w-16 bg-skin-panel border border-white/[0.1] rounded-lg px-2 py-1.5 text-xs font-mono text-skin-base focus:border-skin-gold/50 focus:outline-none"
+            />
+            <span className="text-[10px] font-mono text-skin-dim">sec</span>
+          </div>
+        )}
 
         <button
-          onClick={() => resetCartridge(gameType, seed)}
+          onClick={() => resetCartridge(gameType, config)}
           className="px-4 py-1.5 bg-white/[0.06] border border-white/[0.1] rounded-lg text-xs font-mono font-bold text-skin-dim uppercase tracking-wider hover:bg-white/[0.1] hover:text-skin-base transition-colors"
         >
           Reset
@@ -212,6 +316,14 @@ export default function GameDevHarness() {
             </div>
           )}
           {cartridge && gameType === 'GAP_RUN' && <GapRun {...commonProps} />}
+          {cartridge && gameType === 'GRID_PUSH' && <GridPush {...commonProps} />}
+          {cartridge && gameType === 'SEQUENCE' && <SequenceGame {...commonProps} />}
+          {cartridge && gameType === 'REACTION_TIME' && <ReactionTime {...commonProps} />}
+          {cartridge && gameType === 'COLOR_MATCH' && <ColorMatch {...commonProps} />}
+          {cartridge && gameType === 'STACKER' && <Stacker {...commonProps} />}
+          {cartridge && gameType === 'QUICK_MATH' && <QuickMath {...commonProps} />}
+          {cartridge && gameType === 'SIMON_SAYS' && <SimonSays {...commonProps} />}
+          {cartridge && gameType === 'AIM_TRAINER' && <AimTrainer {...commonProps} />}
           {cartridge && gameType === 'TRIVIA' && <Trivia {...commonProps} />}
           {cartridge && gameType === 'REALTIME_TRIVIA' && <RealtimeTrivia {...commonProps} />}
         </div>

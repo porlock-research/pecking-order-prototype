@@ -21,6 +21,7 @@ export function projectGameCartridge(gameCtx: any, playerId: string): any {
       ready: gameCtx.ready ?? true,
       seed: gameCtx.seed,
       timeLimit: gameCtx.timeLimit,
+      difficulty: gameCtx.difficulty,
       ...safeState,
       roundDeadline: safeState.questionStartedAt
         ? safeState.questionStartedAt + 15_000
