@@ -555,12 +555,33 @@ export default {
       }
 
       try {
-        const tables = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'];
-        for (const table of tables) {
+        // Allowlist prevents SQL injection — only these table names are accepted
+        const ALLOWED_TABLES = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'];
+        // FK-safe default order (children before parents)
+        const DEFAULT_ORDER = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'];
+
+        let requested: string[] = DEFAULT_ORDER;
+        try {
+          const body = await request.json() as any;
+          if (Array.isArray(body?.tables) && body.tables.length > 0) {
+            const valid = body.tables.filter((t: string) => ALLOWED_TABLES.includes(t));
+            if (valid.length === 0) {
+              return new Response(JSON.stringify({ error: `Invalid tables. Allowed: ${ALLOWED_TABLES.join(', ')}` }), {
+                status: 400, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+              });
+            }
+            // Sort by FK-safe order
+            requested = DEFAULT_ORDER.filter(t => valid.includes(t));
+          }
+        } catch {
+          // No body or invalid JSON — use defaults
+        }
+
+        for (const table of requested) {
           await env.DB.prepare(`DELETE FROM ${table}`).run();
         }
-        console.log('[Admin] All D1 tables wiped');
-        return new Response(JSON.stringify({ ok: true, tablesCleared: tables }), {
+        console.log('[Admin] D1 tables wiped:', requested);
+        return new Response(JSON.stringify({ ok: true, tablesCleared: requested }), {
           status: 200,
           headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
         });

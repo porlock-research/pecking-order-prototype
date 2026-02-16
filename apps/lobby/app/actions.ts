@@ -722,9 +722,22 @@ export async function sendAdminCommand(gameId: string, command: any) {
   }
 }
 
-// ── Admin: Full Database Reset ───────────────────────────────────────────
+// ── Admin: Database Reset ────────────────────────────────────────────────
 
-export async function resetAllDatabases(): Promise<{ success: boolean; error?: string; details?: { lobby: string[]; gameServer: string[] } }> {
+// FK-safe order for lobby tables (children before parents)
+export const LOBBY_TABLES = ['Invites', 'GameSessions', 'Sessions', 'MagicLinks', 'Users'] as const;
+export const GAME_SERVER_TABLES = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'] as const;
+
+export interface ResetTablesInput {
+  lobbyTables: string[];
+  gameServerTables: string[];
+}
+
+export async function resetSelectedTables(input: ResetTablesInput): Promise<{
+  success: boolean;
+  error?: string;
+  details?: { lobby: string[]; gameServer: string[] };
+}> {
   const env = await getEnv();
   const db = await getDB();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
@@ -733,32 +746,45 @@ export async function resetAllDatabases(): Promise<{ success: boolean; error?: s
   const lobbyCleared: string[] = [];
   const gameServerCleared: string[] = [];
 
-  // 1. Wipe lobby D1 tables (FK order: Invites → GameSessions → Sessions → MagicLinks → Users)
-  // PersonaPool is seed data — keep it.
-  const lobbyTables = ['Invites', 'GameSessions', 'Sessions', 'MagicLinks', 'Users'];
-  try {
-    for (const table of lobbyTables) {
-      await db.prepare(`DELETE FROM ${table}`).run();
-      lobbyCleared.push(table);
+  // 1. Wipe selected lobby tables in FK-safe order
+  if (input.lobbyTables.length > 0) {
+    // Filter and sort by FK-safe order
+    const ordered = (LOBBY_TABLES as readonly string[]).filter(t => input.lobbyTables.includes(t));
+    try {
+      for (const table of ordered) {
+        await db.prepare(`DELETE FROM ${table}`).run();
+        lobbyCleared.push(table);
+      }
+    } catch (err: any) {
+      return { success: false, error: `Lobby DB reset failed at ${lobbyCleared.length ? lobbyCleared[lobbyCleared.length - 1] : '?'}: ${err.message}` };
     }
-  } catch (err: any) {
-    return { success: false, error: `Lobby DB reset failed: ${err.message}` };
   }
 
-  // 2. Wipe game-server D1 tables via its admin endpoint
-  try {
-    const res = await fetch(`${GAME_SERVER_HOST}/api/admin/reset-db`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${AUTH_SECRET}` },
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Game server ${res.status}: ${body}`);
+  // 2. Wipe selected game-server tables via its admin endpoint
+  if (input.gameServerTables.length > 0) {
+    try {
+      const res = await fetch(`${GAME_SERVER_HOST}/api/admin/reset-db`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AUTH_SECRET}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tables: input.gameServerTables }),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Game server ${res.status}: ${body}`);
+      }
+      const data = await res.json() as any;
+      gameServerCleared.push(...(data.tablesCleared || []));
+    } catch (err: any) {
+      const partial = lobbyCleared.length ? `Lobby cleared (${lobbyCleared.join(', ')}), but g` : 'G';
+      return { success: false, error: `${partial}ame server failed: ${err.message}` };
     }
-    const data = await res.json() as any;
-    gameServerCleared.push(...(data.tablesCleared || []));
-  } catch (err: any) {
-    return { success: false, error: `Lobby cleared (${lobbyCleared.join(', ')}), but game server failed: ${err.message}` };
+  }
+
+  if (lobbyCleared.length === 0 && gameServerCleared.length === 0) {
+    return { success: false, error: 'No tables selected' };
   }
 
   return { success: true, details: { lobby: lobbyCleared, gameServer: gameServerCleared } };
