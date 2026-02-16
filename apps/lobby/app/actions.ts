@@ -725,10 +725,10 @@ export async function sendAdminCommand(gameId: string, command: any) {
 // ── Admin: Database Reset ────────────────────────────────────────────────
 
 // FK-safe order for lobby tables (children before parents)
-export const LOBBY_TABLES = ['Invites', 'GameSessions', 'Sessions', 'MagicLinks', 'Users'] as const;
-export const GAME_SERVER_TABLES = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'] as const;
+const LOBBY_TABLES = ['Invites', 'GameSessions', 'Sessions', 'MagicLinks', 'Users'] as const;
+const GAME_SERVER_TABLES = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'] as const;
 
-export interface ResetTablesInput {
+interface ResetTablesInput {
   lobbyTables: string[];
   gameServerTables: string[];
 }
