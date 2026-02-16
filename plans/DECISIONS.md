@@ -579,3 +579,35 @@ This document tracks significant architectural decisions, their context, and con
     *   Push subscriptions are always keyed to the correct user identity for the active game.
     *   Switching between local and production environments doesn't leave stale VAPID keys or push subscriptions.
     *   `AUTH_SECRET` must be set in game server `.dev.vars` for local JWT verification (was previously undefined, causing `HMAC key length (0)` errors).
+
+## [ADR-051] Sync Decision Game Factory
+*   **Date:** 2026-02-15
+*   **Status:** Accepted
+*   **Context:** Group minigames where all players submit a decision simultaneously, then results are revealed, share the same lifecycle (COLLECTING → REVEAL) but differ in game logic.
+*   **Decision:** `createSyncDecisionMachine(config)` factory in `packages/game-cartridges/`. Config provides `getEligiblePlayers`, `validateDecision`, `calculateResults`, and optional `initExtra` for game-specific context. Three games implemented: BET_BET_BET, BLIND_AUCTION, KINGS_RANSOM.
+*   **Consequences:**
+    *   New sync decision games require only a config object + client component — no machine boilerplate.
+    *   L1 projection strips other players' decisions during COLLECTING phase, reveals all on REVEAL.
+    *   Sync decision games share event namespace pattern `GAME.{TYPE}.SUBMIT`.
+
+## [ADR-052] Game History Persistence
+*   **Date:** 2026-02-15
+*   **Status:** Accepted
+*   **Context:** When a game actor completes, L3 cleans up the cartridge and `activeGameCartridge` becomes null in SYSTEM.SYNC, causing the game UI to vanish immediately. Players lose visibility into results, and there's no way to browse past games.
+*   **Decision:** Store completed game results in L2 context (`gameHistory: GameHistoryEntry[]`). Enrich `GameOutput` with optional `gameType` and `summary` fields across all machine types. `recordGameResult` action appends to the array on `CARTRIDGE.GAME_RESULT`. Projected through SYSTEM.SYNC unfiltered (all results are public after completion). Client `GameHistory` component renders below `GamePanel`, collapsible, grouped by day.
+*   **Consequences:**
+    *   Game results persist across the entire game lifetime (L2 context survives day transitions).
+    *   Multiple games per day accumulate in the array.
+    *   Pre-existing snapshots without `gameHistory` handled via `?? []` fallback.
+    *   `GameOutput` contract is backward-compatible (new fields are optional).
+
+## [ADR-053] Admin Database Reset
+*   **Date:** 2026-02-15
+*   **Status:** Accepted
+*   **Context:** During development, D1 tables accumulate stale sessions, game records, and push subscriptions that can interfere with testing. Need a clean-slate reset without re-running migrations.
+*   **Decision:** `POST /api/admin/reset-db` on game server, gated by `ALLOW_DB_RESET=true` env var (only in `.dev.vars`, never deployed). Lobby admin dashboard (`/admin`) calls this endpoint plus directly wipes its own D1 tables (Invites, GameSessions, Sessions, MagicLinks, Users). PersonaPool seed data is preserved.
+*   **Consequences:**
+    *   Single button resets both databases for a clean dev environment.
+    *   `ALLOW_DB_RESET` env gate prevents accidental production data loss — deployed environments return 403.
+    *   Lobby tables are wiped in FK-safe order (children before parents).
+    *   Still requires AUTH_SECRET even in dev, for defense-in-depth.
