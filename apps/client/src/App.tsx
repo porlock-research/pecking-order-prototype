@@ -229,6 +229,7 @@ function LauncherScreen() {
 
 function RosterRow({ player, playerId }: { player: any; playerId: string }) {
   const isMe = player.id === playerId;
+  const isOnline = useGameStore((s) => s.onlinePlayers.includes(player.id));
   return (
     <li
       className={`flex items-center justify-between p-3 rounded-xl border transition-all
@@ -238,8 +239,11 @@ function RosterRow({ player, playerId }: { player: any; playerId: string }) {
         }`}
     >
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-gold avatar-ring">
-          {player.personaName?.charAt(0)?.toUpperCase() || '?'}
+        <div className="relative">
+          <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-gold avatar-ring">
+            {player.personaName?.charAt(0)?.toUpperCase() || '?'}
+          </div>
+          <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green' : 'bg-skin-dim/40'}`} />
         </div>
         <div className="flex flex-col">
           <span className="font-bold text-sm">
@@ -265,6 +269,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
 
   const me = roster[playerId];
   const aliveCount = Object.values(roster).filter((p: any) => p.status === 'ALIVE').length;
+  const onlineCount = useGameStore((s) => s.onlinePlayers.length);
 
   return (
     <div className="fixed inset-0 flex flex-col bg-skin-fill text-skin-base font-body overflow-hidden bg-grid-pattern selection:bg-skin-gold selection:text-skin-inverted">
@@ -286,7 +291,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
           <PushPrompt token={token} />
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-pill bg-skin-green/10 border border-skin-green/20">
             <span className="w-1.5 h-1.5 rounded-full bg-skin-green animate-pulse-live" />
-            <span className="text-[9px] font-mono text-skin-green uppercase tracking-widest font-bold">Online</span>
+            <span className="text-[9px] font-mono text-skin-green uppercase tracking-widest font-bold">{onlineCount} Online</span>
           </div>
           {me && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-skin-gold/10 border border-skin-gold/20">

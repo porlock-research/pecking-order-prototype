@@ -76,7 +76,7 @@ export interface SyncDeps {
 }
 
 /** Build the per-player SYSTEM.SYNC message object. */
-export function buildSyncPayload(deps: SyncDeps, playerId: string): any {
+export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers?: string[]): any {
   const { snapshot, l3Context, chatLog, cartridges } = deps;
 
   const playerChatLog = chatLog.filter((msg: any) =>
@@ -110,16 +110,17 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string): any {
       winner: snapshot.context.winner,
       gameHistory: snapshot.context.gameHistory ?? [],
       dmStats,
+      ...(onlinePlayers ? { onlinePlayers } : {}),
     },
   };
 }
 
 /** Broadcast per-player SYNC to all connected clients. */
-export function broadcastSync(deps: SyncDeps, getConnections: () => Iterable<Connection>): void {
+export function broadcastSync(deps: SyncDeps, getConnections: () => Iterable<Connection>, onlinePlayers?: string[]): void {
   for (const ws of getConnections()) {
     const state = ws.state as { playerId: string } | null;
     const pid = state?.playerId;
     if (!pid) continue;
-    ws.send(JSON.stringify(buildSyncPayload(deps, pid)));
+    ws.send(JSON.stringify(buildSyncPayload(deps, pid, onlinePlayers)));
   }
 }

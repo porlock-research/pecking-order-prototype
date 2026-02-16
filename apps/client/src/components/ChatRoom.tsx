@@ -1,16 +1,42 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
-import { ChatMessage, GAME_MASTER_ID } from '@pecking-order/shared-types';
+import { ChatMessage, GAME_MASTER_ID, SocialPlayer } from '@pecking-order/shared-types';
+
+function TypingIndicator({ typingPlayers, channel, playerId, roster }: {
+  typingPlayers: Record<string, string>;
+  channel: string;
+  playerId: string | null;
+  roster: Record<string, SocialPlayer>;
+}) {
+  const typers = Object.entries(typingPlayers)
+    .filter(([pid, ch]) => ch === channel && pid !== playerId)
+    .map(([pid]) => roster[pid]?.personaName || 'Someone');
+
+  if (typers.length === 0) return null;
+
+  const text = typers.length === 1
+    ? `${typers[0]} is typing...`
+    : `${typers.join(', ')} are typing...`;
+
+  return (
+    <div className="px-2 pb-1.5 text-[11px] font-mono text-skin-dim/70 animate-fade-in">
+      {text}
+    </div>
+  );
+}
 
 interface ChatRoomProps {
   engine: {
     sendMessage: (content: string, targetId?: string) => void;
+    sendTyping: (channel?: string) => void;
+    stopTyping: (channel?: string) => void;
   };
 }
 
 export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
   const { playerId, roster } = useGameStore();
   const rawChatLog = useGameStore(s => s.chatLog);
+  const typingPlayers = useGameStore(s => s.typingPlayers);
   const chatLog = useMemo(() => rawChatLog.filter(m => m.channel === 'MAIN'), [rawChatLog]);
   const [inputValue, setInputValue] = useState('');
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
@@ -37,6 +63,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
 
     setOptimisticMessages(prev => [...prev, optimisticMsg]);
     engine.sendMessage(inputValue);
+    engine.stopTyping('MAIN');
     setInputValue('');
 
     // Remove optimistic message after 5 seconds if server doesn't confirm (simple cleanup)
@@ -145,11 +172,15 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
 
       {/* Input Area (Fixed at bottom of this container) */}
       <div className="absolute bottom-0 left-0 right-0 p-3 bg-skin-panel/80 backdrop-blur-lg border-t border-white/[0.06]">
+        <TypingIndicator typingPlayers={typingPlayers} channel="MAIN" playerId={playerId} roster={roster} />
         <form className="flex gap-2 items-center max-w-3xl mx-auto" onSubmit={handleSend}>
           <input
             type="text"
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              if (e.target.value) engine.sendTyping('MAIN');
+            }}
             placeholder="Spill the tea..."
             maxLength={280}
             className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-sm text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:border-transparent focus:shadow-[0_0_15px_var(--po-pink-dim)] placeholder:text-skin-dim transition-all"

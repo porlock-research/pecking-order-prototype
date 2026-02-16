@@ -52,6 +52,7 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 - **Auth & invites** — shared `@pecking-order/auth` JWT package, lobby D1 (Users, Sessions, MagicLinks, GameSessions, Invites, PersonaPool), magic link login, invite codes, character selection from 24-persona pool
 - **Clean client URLs** — sessionStorage + replaceState pattern, invite code as canonical URL identifier (ADR-045, ADR-046)
 - **JWT-secured WebSocket** — game server verifies JWT on connect, POST /init auth via shared secret (ADR-044)
+- **Player presence & typing indicators** — ephemeral L1 presence tracking (not persisted to XState), online dots on roster, dynamic header count, typing indicators in group chat and DMs with 3s auto-stop (ADR-054)
 
 ---
 
@@ -123,3 +124,4 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 | PWA push notifications (DO storage, WebSocket-based) | `feat/pwa-push-notifications` |
 | D1 push subscriptions, HTTP push API, client launcher, inviteCode plumbing | `feat/app-structure-architecture` |
 | Lobby env vars (getCloudflareContext), push subscription reliability, VAPID key handling, tsup DTS fix | `fix/post-merge-misc` |
+| Player presence & typing indicators (ephemeral L1, roster dots, header count, chat/DM typing) | `main` |

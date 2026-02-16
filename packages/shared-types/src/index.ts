@@ -280,6 +280,13 @@ export interface GameHistoryEntry {
   summary: Record<string, any>;
 }
 
+// --- Presence ---
+
+export interface PresenceState {
+  onlinePlayers: string[];           // playerIds with active WebSocket connections
+  typing: Record<string, string>;    // playerId → channel ('MAIN' | targetPlayerId for DM)
+}
+
 // --- Ticker (News Feed) ---
 
 export interface TickerMessage {

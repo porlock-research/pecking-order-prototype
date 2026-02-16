@@ -611,3 +611,14 @@ This document tracks significant architectural decisions, their context, and con
     *   `ALLOW_DB_RESET` env gate prevents accidental production data loss — deployed environments return 403.
     *   Lobby tables are wiped in FK-safe order (children before parents).
     *   Still requires AUTH_SECRET even in dev, for defense-in-depth.
+
+## [ADR-054] Player Presence & Typing Indicators
+*   **Date:** 2026-02-16
+*   **Status:** Accepted
+*   **Context:** The game had no awareness of which players are online or typing. The header showed a hardcoded "Online" pill. Typing indicators create social tension — core to the game's dynamic. Some minigames (sync decision, real-time trivia) benefit from knowing who's connected.
+*   **Decision:** Presence is **ephemeral** — lives in L1 (`GameServer` instance memory via `connectedPlayers: Map<string, Set<string>>`), NOT in L2/L3 XState context. This avoids persisting transient data in DO snapshots and avoids triggering duplicate SYSTEM.SYNC broadcasts. `PRESENCE.UPDATE` broadcasts the full online list on connect/disconnect. `PRESENCE.TYPING` and `PRESENCE.STOP_TYPING` are relayed peer-to-peer through L1 without touching XState. `onlinePlayers` is included in SYSTEM.SYNC for initial load. Client auto-stops typing after 3s of no keystrokes. Multi-tab handled via `Set<connectionId>` per player.
+*   **Consequences:**
+    *   Zero impact on XState state machines — no new context fields, no new events in L2/L3.
+    *   Presence resets on DO eviction (acceptable — clients reconnect and re-register).
+    *   Typing indicators are fire-and-forget (no persistence, no guaranteed delivery).
+    *   DM typing uses partner's playerId as channel — only the intended recipient sees the indicator.

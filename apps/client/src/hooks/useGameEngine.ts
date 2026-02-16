@@ -1,3 +1,4 @@
+import { useRef, useCallback } from "react";
 import usePartySocket from "partysocket/react";
 import { useGameStore } from "../store/useGameStore";
 
@@ -10,6 +11,9 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
   const setDmRejection = useGameStore((s) => s.setDmRejection);
   const setSilverTransferRejection = useGameStore((s) => s.setSilverTransferRejection);
   const setPerkResult = useGameStore((s) => s.setPerkResult);
+  const setOnlinePlayers = useGameStore((s) => s.setOnlinePlayers);
+  const setTyping = useGameStore((s) => s.setTyping);
+  const clearTyping = useGameStore((s) => s.clearTyping);
 
   // Use token-based auth when available, fall back to plain playerId for debug
   const query = token ? { token } : { playerId };
@@ -39,6 +43,12 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
           setSilverTransferRejection(data.reason);
         } else if (data.type === "PERK.RESULT" || data.type === "PERK.REJECTED") {
           setPerkResult(data);
+        } else if (data.type === "PRESENCE.UPDATE") {
+          setOnlinePlayers(data.onlinePlayers);
+        } else if (data.type === "PRESENCE.TYPING") {
+          setTyping(data.playerId, data.channel);
+        } else if (data.type === "PRESENCE.STOP_TYPING") {
+          clearTyping(data.playerId);
         }
       } catch (err) {
         console.error("Failed to parse message", err);
@@ -86,6 +96,26 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     socket.send(JSON.stringify({ type: 'SOCIAL.USE_PERK', perkType, targetId }));
   };
 
+  // Typing indicators with auto-stop after 3s of no keystrokes
+  const typingTimeoutRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const sendTyping = useCallback((channel: string = 'MAIN') => {
+    socket.send(JSON.stringify({ type: 'PRESENCE.TYPING', channel }));
+    if (typingTimeoutRef.current[channel]) clearTimeout(typingTimeoutRef.current[channel]);
+    typingTimeoutRef.current[channel] = setTimeout(() => {
+      socket.send(JSON.stringify({ type: 'PRESENCE.STOP_TYPING', channel }));
+      delete typingTimeoutRef.current[channel];
+    }, 3000);
+  }, [socket]);
+
+  const stopTyping = useCallback((channel: string = 'MAIN') => {
+    socket.send(JSON.stringify({ type: 'PRESENCE.STOP_TYPING', channel }));
+    if (typingTimeoutRef.current[channel]) {
+      clearTimeout(typingTimeoutRef.current[channel]);
+      delete typingTimeoutRef.current[channel];
+    }
+  }, [socket]);
+
   return {
     socket,
     sendMessage,
@@ -94,6 +124,8 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     sendVoteAction,
     sendGameAction,
     sendActivityAction,
-    sendPerk
+    sendPerk,
+    sendTyping,
+    stopTyping,
   };
 };

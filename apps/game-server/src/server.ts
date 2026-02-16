@@ -31,6 +31,7 @@ export class GameServer extends Server<Env> {
   private tickerHistory: TickerMessage[] = [];
   private lastDebugSummary: string = '';
   private scheduler: Scheduler<Env>;
+  private connectedPlayers = new Map<string, Set<string>>();  // playerId → Set<connectionId>
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -53,6 +54,22 @@ export class GameServer extends Server<Env> {
       clientHost: this.env.GAME_CLIENT_HOST || 'https://pecking-order-client.pages.dev',
       inviteCode: snapshot?.context.inviteCode || '',
     };
+  }
+
+  // --- PRESENCE ---
+
+  private getOnlinePlayerIds(): string[] {
+    return Array.from(this.connectedPlayers.keys());
+  }
+
+  private broadcastPresence(): void {
+    const msg = JSON.stringify({
+      type: 'PRESENCE.UPDATE',
+      onlinePlayers: this.getOnlinePlayerIds(),
+    });
+    for (const ws of this.getConnections()) {
+      ws.send(msg);
+    }
   }
 
   // --- 1. LIFECYCLE ---
@@ -195,7 +212,7 @@ export class GameServer extends Server<Env> {
 
       // C. Broadcast SYSTEM.SYNC to all clients
       const cartridges = extractCartridges(snapshot);
-      broadcastSync({ snapshot, l3Context, chatLog, cartridges }, () => this.getConnections());
+      broadcastSync({ snapshot, l3Context, chatLog, cartridges }, () => this.getConnections(), this.getOnlinePlayerIds());
 
       // D. Ticker: detect state transitions + push notifications
       const l3StateJson = l3Snapshot ? JSON.stringify(l3Snapshot.value) : '';
@@ -379,11 +396,18 @@ export class GameServer extends Server<Env> {
     ws.setState({ playerId });
     console.log(`[L1] Player Connected: ${playerId}${token ? ' (JWT)' : ' (legacy)'}`);
 
+    // Track connection for presence
+    const connId = ws.id;
+    const existing = this.connectedPlayers.get(playerId) || new Set();
+    existing.add(connId);
+    this.connectedPlayers.set(playerId, existing);
+
     const snapshot = this.actor?.getSnapshot();
     if (snapshot) {
       const { l3Context, chatLog } = extractL3Context(snapshot, this.lastKnownChatLog);
       const cartridges = extractCartridges(snapshot);
-      ws.send(JSON.stringify(buildSyncPayload({ snapshot, l3Context, chatLog, cartridges }, playerId)));
+      const onlinePlayers = this.getOnlinePlayerIds();
+      ws.send(JSON.stringify(buildSyncPayload({ snapshot, l3Context, chatLog, cartridges }, playerId, onlinePlayers)));
 
       if (this.tickerHistory.length > 0) {
         ws.send(JSON.stringify({ type: 'TICKER.HISTORY', messages: this.tickerHistory }));
@@ -392,6 +416,22 @@ export class GameServer extends Server<Env> {
         ws.send(JSON.stringify({ type: 'TICKER.DEBUG', summary: this.lastDebugSummary }));
       }
     }
+
+    this.broadcastPresence();
+  }
+
+  onClose(ws: Connection) {
+    const state = ws.state as { playerId: string } | null;
+    if (!state?.playerId) return;
+
+    const conns = this.connectedPlayers.get(state.playerId);
+    if (conns) {
+      conns.delete(ws.id);
+      if (conns.size === 0) {
+        this.connectedPlayers.delete(state.playerId);
+      }
+    }
+    this.broadcastPresence();
   }
 
   private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER', 'SOCIAL.USE_PERK'];
@@ -406,6 +446,30 @@ export class GameServer extends Server<Env> {
       if (!state?.playerId) {
         console.warn("[L1] Message received from connection without playerId");
         ws.close(4001, "Missing Identity");
+        return;
+      }
+
+      // Presence: relay typing indicators without touching XState
+      if (event.type === 'PRESENCE.TYPING') {
+        const msg = JSON.stringify({
+          type: 'PRESENCE.TYPING',
+          playerId: state.playerId,
+          channel: event.channel || 'MAIN',
+        });
+        for (const other of this.getConnections()) {
+          if (other !== ws) other.send(msg);
+        }
+        return;
+      }
+      if (event.type === 'PRESENCE.STOP_TYPING') {
+        const msg = JSON.stringify({
+          type: 'PRESENCE.STOP_TYPING',
+          playerId: state.playerId,
+          channel: event.channel || 'MAIN',
+        });
+        for (const other of this.getConnections()) {
+          if (other !== ws) other.send(msg);
+        }
         return;
       }
 

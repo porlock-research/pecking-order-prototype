@@ -1,10 +1,30 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
-import { ChatMessage, GAME_MASTER_ID } from '@pecking-order/shared-types';
+import { ChatMessage, GAME_MASTER_ID, SocialPlayer } from '@pecking-order/shared-types';
+
+function DmTypingIndicator({ typingPlayers, partnerId, playerId, roster }: {
+  typingPlayers: Record<string, string>;
+  partnerId: string;
+  playerId: string | null;
+  roster: Record<string, SocialPlayer>;
+}) {
+  // In DMs, the partner's typing channel should be MY playerId (they're typing to me)
+  const isPartnerTyping = playerId && typingPlayers[partnerId] === playerId;
+  if (!isPartnerTyping) return null;
+
+  const name = roster[partnerId]?.personaName || 'Someone';
+  return (
+    <div className="px-2 pb-1.5 text-[11px] font-mono text-skin-dim/70 animate-fade-in">
+      {name} is typing...
+    </div>
+  );
+}
 
 interface DirectMessagesProps {
   engine: {
     sendDM: (targetId: string, content: string) => void;
+    sendTyping: (channel?: string) => void;
+    stopTyping: (channel?: string) => void;
   };
 }
 
@@ -29,6 +49,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
   const { playerId, roster, dmRejection, clearDmRejection } = useGameStore();
   const chatLog = useGameStore(s => s.chatLog);
   const dmStats = useGameStore(s => s.dmStats);
+  const typingPlayers = useGameStore(s => s.typingPlayers);
   const [activePartnerId, setActivePartnerId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [showNewDm, setShowNewDm] = useState(false);
@@ -79,6 +100,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
     e.preventDefault();
     if (!inputValue.trim() || !activePartnerId) return;
     engine.sendDM(activePartnerId, inputValue);
+    engine.stopTyping(activePartnerId);
     setInputValue('');
   };
 
@@ -178,6 +200,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
 
         {/* Input */}
         <div className="absolute bottom-0 left-0 right-0 p-3 bg-skin-panel/80 backdrop-blur-lg border-t border-white/[0.06]">
+          <DmTypingIndicator typingPlayers={typingPlayers} partnerId={activePartnerId} playerId={playerId} roster={roster} />
           {dmRejection && (
             <div className="mb-2 px-3 py-1.5 rounded-lg bg-skin-danger/10 border border-skin-danger/20 text-skin-danger text-xs font-mono animate-fade-in">
               {REJECTION_LABELS[dmRejection.reason] || dmRejection.reason}
@@ -187,7 +210,10 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
             <input
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                if (e.target.value && activePartnerId) engine.sendTyping(activePartnerId);
+              }}
               placeholder="Private message..."
               maxLength={280}
               className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-sm text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:border-transparent focus:shadow-[0_0_15px_var(--po-pink-dim)] placeholder:text-skin-dim transition-all"
@@ -236,6 +262,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 p-3 bg-skin-panel/80 backdrop-blur-lg border-t border-white/[0.06]">
+          <DmTypingIndicator typingPlayers={typingPlayers} partnerId={activePartnerId} playerId={playerId} roster={roster} />
           {dmRejection && (
             <div className="mb-2 px-3 py-1.5 rounded-lg bg-skin-danger/10 border border-skin-danger/20 text-skin-danger text-xs font-mono animate-fade-in">
               {REJECTION_LABELS[dmRejection.reason] || dmRejection.reason}
@@ -245,7 +272,10 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
             <input
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                if (e.target.value && activePartnerId) engine.sendTyping(activePartnerId);
+              }}
               placeholder="Private message..."
               maxLength={280}
               className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-sm text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:border-transparent focus:shadow-[0_0_15px_var(--po-pink-dim)] placeholder:text-skin-dim transition-all"

@@ -21,6 +21,8 @@ interface GameState {
   winner: { playerId: string; mechanism: string; summary: Record<string, any> } | null;
   gameHistory: GameHistoryEntry[];
   dmStats: { charsUsed: number; charsLimit: number; partnersUsed: number; partnersLimit: number } | null;
+  onlinePlayers: string[];
+  typingPlayers: Record<string, string>;  // playerId → channel
   dmRejection: { reason: DmRejectionReason; timestamp: number } | null;
   silverTransferRejection: { reason: string; timestamp: number } | null;
   lastPerkResult: any | null;
@@ -40,6 +42,9 @@ interface GameState {
   clearSilverTransferRejection: () => void;
   setPerkResult: (result: any) => void;
   clearPerkResult: () => void;
+  setOnlinePlayers: (players: string[]) => void;
+  setTyping: (playerId: string, channel: string) => void;
+  clearTyping: (playerId: string) => void;
 }
 
 // Selectors
@@ -82,6 +87,8 @@ export const useGameStore = create<GameState>((set) => ({
   winner: null,
   gameHistory: [],
   dmStats: null,
+  onlinePlayers: [],
+  typingPlayers: {},
   dmRejection: null,
   silverTransferRejection: null,
   lastPerkResult: null,
@@ -103,6 +110,7 @@ export const useGameStore = create<GameState>((set) => ({
     winner: data.context?.winner ?? null,
     gameHistory: data.context?.gameHistory ?? state.gameHistory,
     dmStats: data.context?.dmStats ?? null,
+    onlinePlayers: data.context?.onlinePlayers ?? state.onlinePlayers,
   })),
 
   addChatMessage: (msg) => set((state) => ({
@@ -128,4 +136,13 @@ export const useGameStore = create<GameState>((set) => ({
 
   setPerkResult: (result) => set({ lastPerkResult: { ...result, timestamp: Date.now() } }),
   clearPerkResult: () => set({ lastPerkResult: null }),
+
+  setOnlinePlayers: (players) => set({ onlinePlayers: players }),
+  setTyping: (playerId, channel) => set((state) => ({
+    typingPlayers: { ...state.typingPlayers, [playerId]: channel },
+  })),
+  clearTyping: (playerId) => set((state) => {
+    const { [playerId]: _, ...rest } = state.typingPlayers;
+    return { typingPlayers: rest };
+  }),
 }));
