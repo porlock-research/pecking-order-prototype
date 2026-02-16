@@ -108,6 +108,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string): any {
       activeGameCartridge,
       activePromptCartridge: projectPromptCartridge(cartridges.activePromptCartridge),
       winner: snapshot.context.winner,
+      gameHistory: snapshot.context.gameHistory ?? [],
       dmStats,
     },
   };

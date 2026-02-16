@@ -6,6 +6,7 @@ import { DirectMessages } from './components/DirectMessages';
 import { NewsTicker } from './components/NewsTicker';
 import VotingPanel from './cartridges/Voting';
 import GamePanel from './cartridges/GamePanel';
+import GameHistory from './cartridges/GameHistory';
 import PromptPanel from './cartridges/PromptPanel';
 import PerkPanel from './components/PerkPanel';
 
@@ -347,6 +348,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
             {/* Voting, Game, Activity & Perk panels (inline with content) */}
             <VotingPanel engine={engine} />
             <GamePanel engine={engine} />
+            <GameHistory />
             <PromptPanel engine={engine} />
             <PerkPanel engine={engine} />
 

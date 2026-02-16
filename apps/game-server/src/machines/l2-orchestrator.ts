@@ -1,7 +1,7 @@
 import { setup, assign, sendTo, raise } from 'xstate';
 import { dailySessionMachine } from './l3-session';
 import { postGameMachine } from './l4-post-game';
-import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent } from '@pecking-order/shared-types';
+import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry } from '@pecking-order/shared-types';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from './cartridges/prompts/_contract';
 
@@ -24,6 +24,7 @@ export interface GameContext {
   lastJournalEntry: number; // Triggers state change for syncing
   pendingElimination: VoteResult | null;
   winner: { playerId: string; mechanism: 'FINALS'; summary: Record<string, any> } | null;
+  gameHistory: GameHistoryEntry[];
 }
 
 export type GameEvent =
@@ -81,6 +82,7 @@ export const orchestratorMachine = setup({
     lastJournalEntry: 0,
     pendingElimination: null,
     winner: null,
+    gameHistory: [],
   },
   states: {
     uninitialized: {
@@ -147,7 +149,7 @@ export const orchestratorMachine = setup({
             'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }: any) => event) },
             'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }: any) => event) },
             'CARTRIDGE.VOTE_RESULT': { actions: 'storeVoteResult' },
-            'CARTRIDGE.GAME_RESULT': { actions: ['applyGameRewards', 'emitGameResultFact'] },
+            'CARTRIDGE.GAME_RESULT': { actions: ['applyGameRewards', 'recordGameResult', 'emitGameResultFact'] },
             'CARTRIDGE.PLAYER_GAME_RESULT': { actions: ['applyPlayerGameReward', 'emitPlayerGameResultFact'] },
             'CARTRIDGE.PROMPT_RESULT': { actions: ['applyPromptRewards', 'emitPromptResultFact'] },
             'DM.REJECTED': { actions: 'sendDmRejection' },

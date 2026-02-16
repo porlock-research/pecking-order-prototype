@@ -223,8 +223,10 @@ export const realtimeTriviaMachine = setup({
   },
   initial: 'loading',
   output: ({ context }) => ({
+    gameType: 'REALTIME_TRIVIA' as const,
     silverRewards: context.silverRewards,
     goldContribution: context.goldContribution,
+    summary: { scores: context.scores, correctCounts: context.correctCounts },
   }),
   states: {
     loading: {

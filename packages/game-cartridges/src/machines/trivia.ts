@@ -283,13 +283,20 @@ export const triviaMachine = setup({
   initial: 'loading',
   output: ({ context }) => {
     const silverRewards: Record<string, number> = {};
+    const players: Record<string, { score: number; correctCount: number; silverReward: number }> = {};
     for (const [pid, player] of Object.entries(context.players)) {
       // Completed players already rewarded via CARTRIDGE.PLAYER_GAME_RESULT
       if (player.status !== 'COMPLETED') {
         silverRewards[pid] = player.score; // partial credit
       }
+      players[pid] = { score: player.score, correctCount: player.correctCount, silverReward: player.silverReward };
     }
-    return { silverRewards, goldContribution: context.goldContribution };
+    return {
+      gameType: 'TRIVIA' as const,
+      silverRewards,
+      goldContribution: context.goldContribution,
+      summary: { players },
+    };
   },
   states: {
     loading: {

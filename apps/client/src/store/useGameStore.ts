@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType } from '@pecking-order/shared-types';
+import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry } from '@pecking-order/shared-types';
 
 interface DmThread {
   partnerId: string;
@@ -19,6 +19,7 @@ interface GameState {
   activeGameCartridge: any | null;
   activePromptCartridge: any | null;
   winner: { playerId: string; mechanism: string; summary: Record<string, any> } | null;
+  gameHistory: GameHistoryEntry[];
   dmStats: { charsUsed: number; charsLimit: number; partnersUsed: number; partnersLimit: number } | null;
   dmRejection: { reason: DmRejectionReason; timestamp: number } | null;
   silverTransferRejection: { reason: string; timestamp: number } | null;
@@ -79,6 +80,7 @@ export const useGameStore = create<GameState>((set) => ({
   activeGameCartridge: null,
   activePromptCartridge: null,
   winner: null,
+  gameHistory: [],
   dmStats: null,
   dmRejection: null,
   silverTransferRejection: null,
@@ -99,6 +101,7 @@ export const useGameStore = create<GameState>((set) => ({
     activeGameCartridge: data.context?.activeGameCartridge ?? null,
     activePromptCartridge: data.context?.activePromptCartridge ?? null,
     winner: data.context?.winner ?? null,
+    gameHistory: data.context?.gameHistory ?? state.gameHistory,
     dmStats: data.context?.dmStats ?? null,
   })),
 

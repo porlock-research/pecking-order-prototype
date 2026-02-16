@@ -1,7 +1,7 @@
 import { assign, raise } from 'xstate';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from '../cartridges/prompts/_contract';
-import { PERK_COSTS, type PerkType } from '@pecking-order/shared-types';
+import { PERK_COSTS, type PerkType, type GameHistoryEntry } from '@pecking-order/shared-types';
 
 /**
  * L2 Economy Subsystem — all silver mutation logic in one place.
@@ -63,6 +63,20 @@ export const l2EconomyActions = {
       return updated;
     },
   }),
+  recordGameResult: assign({
+    gameHistory: ({ context, event }: any) => {
+      const result = event.result as GameOutput;
+      const entry: GameHistoryEntry = {
+        gameType: result.gameType || 'UNKNOWN',
+        dayIndex: context.dayIndex,
+        timestamp: Date.now(),
+        silverRewards: result.silverRewards || {},
+        goldContribution: result.goldContribution || 0,
+        summary: result.summary || {},
+      };
+      return [...(context.gameHistory || []), entry];
+    },
+  }),
   emitGameResultFact: raise(({ event }: any) => {
     const result = event.result as GameOutput;
     return {
@@ -71,6 +85,7 @@ export const l2EconomyActions = {
         type: 'GAME_RESULT',
         actorId: 'SYSTEM',
         payload: {
+          gameType: result.gameType,
           players: Object.fromEntries(
             Object.entries(result.silverRewards || {}).map(([pid, silver]: [string, any]) => [pid, { silverReward: silver }]),
           ),

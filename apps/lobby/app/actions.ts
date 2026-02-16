@@ -722,6 +722,48 @@ export async function sendAdminCommand(gameId: string, command: any) {
   }
 }
 
+// ── Admin: Full Database Reset ───────────────────────────────────────────
+
+export async function resetAllDatabases(): Promise<{ success: boolean; error?: string; details?: { lobby: string[]; gameServer: string[] } }> {
+  const env = await getEnv();
+  const db = await getDB();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+
+  const lobbyCleared: string[] = [];
+  const gameServerCleared: string[] = [];
+
+  // 1. Wipe lobby D1 tables (FK order: Invites → GameSessions → Sessions → MagicLinks → Users)
+  // PersonaPool is seed data — keep it.
+  const lobbyTables = ['Invites', 'GameSessions', 'Sessions', 'MagicLinks', 'Users'];
+  try {
+    for (const table of lobbyTables) {
+      await db.prepare(`DELETE FROM ${table}`).run();
+      lobbyCleared.push(table);
+    }
+  } catch (err: any) {
+    return { success: false, error: `Lobby DB reset failed: ${err.message}` };
+  }
+
+  // 2. Wipe game-server D1 tables via its admin endpoint
+  try {
+    const res = await fetch(`${GAME_SERVER_HOST}/api/admin/reset-db`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${AUTH_SECRET}` },
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Game server ${res.status}: ${body}`);
+    }
+    const data = await res.json() as any;
+    gameServerCleared.push(...(data.tablesCleared || []));
+  } catch (err: any) {
+    return { success: false, error: `Lobby cleared (${lobbyCleared.join(', ')}), but game server failed: ${err.message}` };
+  }
+
+  return { success: true, details: { lobby: lobbyCleared, gameServer: gameServerCleared } };
+}
+
 // ── Game Status Polling ──────────────────────────────────────────────────
 
 export async function getGameSessionStatus(inviteCode: string): Promise<{

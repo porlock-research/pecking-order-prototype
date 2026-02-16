@@ -536,6 +536,43 @@ export default {
       return new Response('Method not allowed', { status: 405, headers: CORS_HEADERS });
     }
 
+    // Admin: wipe all D1 tables (dev reset — requires ALLOW_DB_RESET=true in env)
+    if (url.pathname === '/api/admin/reset-db') {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { status: 204, headers: CORS_HEADERS });
+      }
+      if (request.method !== 'POST') {
+        return new Response('Method not allowed', { status: 405, headers: CORS_HEADERS });
+      }
+
+      if ((env as any).ALLOW_DB_RESET !== 'true') {
+        return new Response('Forbidden — ALLOW_DB_RESET not enabled in this environment', { status: 403, headers: CORS_HEADERS });
+      }
+
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || authHeader !== `Bearer ${env.AUTH_SECRET}`) {
+        return new Response('Unauthorized', { status: 401, headers: CORS_HEADERS });
+      }
+
+      try {
+        const tables = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'];
+        for (const table of tables) {
+          await env.DB.prepare(`DELETE FROM ${table}`).run();
+        }
+        console.log('[Admin] All D1 tables wiped');
+        return new Response(JSON.stringify({ ok: true, tablesCleared: tables }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+        });
+      } catch (err) {
+        console.error('[Admin] DB reset failed:', err);
+        return new Response(JSON.stringify({ error: String(err) }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+        });
+      }
+    }
+
     return (await routePartykitRequest(request, env)) || new Response("Not Found", { status: 404 });
   },
 } satisfies ExportedHandler<Env>;
