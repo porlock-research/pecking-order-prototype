@@ -28,6 +28,9 @@ const AVAILABLE_GAME_TYPES = [
   { value: 'QUICK_MATH', label: 'Quick Math' },
   { value: 'SIMON_SAYS', label: 'Simon Says' },
   { value: 'AIM_TRAINER', label: 'Aim Trainer' },
+  { value: 'BET_BET_BET', label: 'Bet Bet Bet' },
+  { value: 'BLIND_AUCTION', label: 'Blind Auction' },
+  { value: 'KINGS_RANSOM', label: "King's Ransom" },
 ];
 
 const AVAILABLE_ACTIVITY_TYPES = [

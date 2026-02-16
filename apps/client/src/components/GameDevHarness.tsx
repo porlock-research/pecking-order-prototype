@@ -13,6 +13,9 @@ import {
   aimTrainerMachine,
   triviaMachine,
   realtimeTriviaMachine,
+  betBetBetMachine,
+  blindAuctionMachine,
+  kingsRansomMachine,
   FALLBACK_QUESTIONS,
   projectGameCartridge,
 } from '@pecking-order/game-cartridges';
@@ -27,10 +30,13 @@ import SimonSays from '../cartridges/SimonSays';
 import AimTrainer from '../cartridges/AimTrainer';
 import RealtimeTrivia from '../cartridges/RealtimeTrivia';
 import Trivia from '../cartridges/Trivia';
+import BetBetBet from '../cartridges/BetBetBet';
+import BlindAuction from '../cartridges/BlindAuction';
+import KingsRansom from '../cartridges/KingsRansom';
 
 // --- Types ---
 
-type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA';
+type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA' | 'BET_BET_BET' | 'BLIND_AUCTION' | 'KINGS_RANSOM';
 
 interface GapRunConfig {
   difficulty: number; // 0-1
@@ -59,6 +65,9 @@ function defaultConfig(type: GameType): GameConfig {
     case 'AIM_TRAINER': return { difficulty: 0.2 };
     case 'TRIVIA': return { roundCount: 5 };
     case 'REALTIME_TRIVIA': return { questionTimer: 8000 };
+    case 'BET_BET_BET': return { difficulty: 0.2 };
+    case 'BLIND_AUCTION': return { difficulty: 0.2 };
+    case 'KINGS_RANSOM': return { difficulty: 0.2 };
   }
 }
 
@@ -93,6 +102,9 @@ function getMachine(type: GameType) {
     case 'AIM_TRAINER': return aimTrainerMachine;
     case 'TRIVIA': return triviaMachine;
     case 'REALTIME_TRIVIA': return realtimeTriviaMachine;
+    case 'BET_BET_BET': return betBetBetMachine;
+    case 'BLIND_AUCTION': return blindAuctionMachine;
+    case 'KINGS_RANSOM': return kingsRansomMachine;
   }
 }
 
@@ -148,10 +160,15 @@ export default function GameDevHarness() {
       emitRoundSync: () => logEvent('FACT.RECORD', { type: 'GAME_ROUND' }),
       reportResults: ({ context }: any) => logEvent('FACT.RECORD', {
         type: 'GAME_RESULT', gameType: context.gameType,
+        silverRewards: context.results?.silverRewards,
       }),
       emitPlayerGameResult: ({ event }: any) => logEvent('CARTRIDGE.PLAYER_GAME_RESULT', {
         playerId: event.playerId, silverReward: event.silverReward,
       }),
+      emitDecisionFact: ({ event }: any) => logEvent('FACT.RECORD', {
+        type: 'GAME_DECISION', actorId: event.senderId,
+      }),
+      emitAllSubmitted: () => logEvent('FACT.RECORD', { type: 'ALL_SUBMITTED' }),
     };
 
     // Build provide overrides per game type
@@ -249,6 +266,9 @@ export default function GameDevHarness() {
           <option value="AIM_TRAINER">AIM_TRAINER</option>
           <option value="TRIVIA">TRIVIA</option>
           <option value="REALTIME_TRIVIA">REALTIME_TRIVIA</option>
+          <option value="BET_BET_BET">BET_BET_BET</option>
+          <option value="BLIND_AUCTION">BLIND_AUCTION</option>
+          <option value="KINGS_RANSOM">KINGS_RANSOM</option>
         </select>
 
         {/* Per-game config */}
@@ -298,6 +318,43 @@ export default function GameDevHarness() {
           </div>
         )}
 
+        {['BET_BET_BET', 'BLIND_AUCTION', 'KINGS_RANSOM'].includes(gameType) && (
+          <>
+            <button
+              onClick={() => {
+                if (!actorRef.current) return;
+                const botIds = ['dev-p2', 'dev-p3'];
+                for (const botId of botIds) {
+                  let payload: Record<string, any> = {};
+                  if (gameType === 'BET_BET_BET') {
+                    payload = { amount: Math.floor(Math.random() * 30) + 1 };
+                  } else if (gameType === 'BLIND_AUCTION') {
+                    payload = { slot: Math.floor(Math.random() * 3) + 1, amount: Math.floor(Math.random() * 20) };
+                  } else if (gameType === 'KINGS_RANSOM') {
+                    payload = { action: Math.random() > 0.5 ? 'STEAL' : 'PROTECT' };
+                  }
+                  actorRef.current.send({ type: `GAME.${gameType}.SUBMIT`, senderId: botId, ...payload });
+                  setEventLog(prev => [...prev, { ts: Date.now(), type: `GAME.${gameType}.SUBMIT`, payload: { senderId: botId, ...payload }, label: 'Bot Submit' }]);
+                }
+              }}
+              className="px-4 py-1.5 bg-purple-500/10 border border-purple-500/30 rounded-lg text-xs font-mono font-bold text-purple-400 uppercase tracking-wider hover:bg-purple-500/20 transition-colors"
+            >
+              Submit Bots
+            </button>
+            <button
+              onClick={() => {
+                if (actorRef.current) {
+                  actorRef.current.send({ type: 'INTERNAL.END_GAME' });
+                  setEventLog(prev => [...prev, { ts: Date.now(), type: 'INTERNAL.END_GAME', label: 'Manual Trigger' }]);
+                }
+              }}
+              className="px-4 py-1.5 bg-skin-gold/10 border border-skin-gold/30 rounded-lg text-xs font-mono font-bold text-skin-gold uppercase tracking-wider hover:bg-skin-gold/20 transition-colors"
+            >
+              End Game (Reveal)
+            </button>
+          </>
+        )}
+
         <button
           onClick={() => resetCartridge(gameType, config)}
           className="px-4 py-1.5 bg-white/[0.06] border border-white/[0.1] rounded-lg text-xs font-mono font-bold text-skin-dim uppercase tracking-wider hover:bg-white/[0.1] hover:text-skin-base transition-colors"
@@ -326,6 +383,9 @@ export default function GameDevHarness() {
           {cartridge && gameType === 'AIM_TRAINER' && <AimTrainer {...commonProps} />}
           {cartridge && gameType === 'TRIVIA' && <Trivia {...commonProps} />}
           {cartridge && gameType === 'REALTIME_TRIVIA' && <RealtimeTrivia {...commonProps} />}
+          {cartridge && gameType === 'BET_BET_BET' && <BetBetBet {...commonProps} />}
+          {cartridge && gameType === 'BLIND_AUCTION' && <BlindAuction {...commonProps} />}
+          {cartridge && gameType === 'KINGS_RANSOM' && <KingsRansom {...commonProps} />}
         </div>
       </div>
 

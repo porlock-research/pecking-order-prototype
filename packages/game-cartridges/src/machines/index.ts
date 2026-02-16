@@ -1,6 +1,9 @@
 export { createArcadeMachine } from './arcade-machine';
 export type { ArcadeGameConfig, ArcadePlayerState, ArcadeGameContext } from './arcade-machine';
 
+export { createSyncDecisionMachine } from './sync-decision-machine';
+export type { SyncDecisionConfig, SyncDecisionContext, SyncDecisionResult } from './sync-decision-machine';
+
 export { gapRunMachine } from './gap-run';
 export { gridPushMachine } from './grid-push';
 export { sequenceMachine } from './sequence';
@@ -12,6 +15,9 @@ export { simonSaysMachine } from './simon-says';
 export { aimTrainerMachine } from './aim-trainer';
 export { triviaMachine } from './trivia';
 export { realtimeTriviaMachine } from './realtime-trivia';
+export { betBetBetMachine } from './bet-bet-bet';
+export { blindAuctionMachine } from './blind-auction';
+export { kingsRansomMachine } from './kings-ransom';
 
 import { gapRunMachine } from './gap-run';
 import { gridPushMachine } from './grid-push';
@@ -24,6 +30,9 @@ import { simonSaysMachine } from './simon-says';
 import { aimTrainerMachine } from './aim-trainer';
 import { triviaMachine } from './trivia';
 import { realtimeTriviaMachine } from './realtime-trivia';
+import { betBetBetMachine } from './bet-bet-bet';
+import { blindAuctionMachine } from './blind-auction';
+import { kingsRansomMachine } from './kings-ransom';
 
 export const GAME_REGISTRY = {
   GAP_RUN: gapRunMachine,
@@ -37,4 +46,7 @@ export const GAME_REGISTRY = {
   AIM_TRAINER: aimTrainerMachine,
   REALTIME_TRIVIA: realtimeTriviaMachine,
   TRIVIA: triviaMachine,
+  BET_BET_BET: betBetBetMachine,
+  BLIND_AUCTION: blindAuctionMachine,
+  KINGS_RANSOM: kingsRansomMachine,
 } as const;

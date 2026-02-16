@@ -11,6 +11,9 @@ import SimonSays from './SimonSays';
 import AimTrainer from './AimTrainer';
 import RealtimeTrivia from './RealtimeTrivia';
 import Trivia from './Trivia';
+import BetBetBet from './BetBetBet';
+import BlindAuction from './BlindAuction';
+import KingsRansom from './KingsRansom';
 
 interface GamePanelProps {
   engine: {
@@ -55,6 +58,12 @@ export default function GamePanel({ engine }: GamePanelProps) {
       return <RealtimeTrivia {...common} />;
     case 'TRIVIA':
       return <Trivia {...common} />;
+    case 'BET_BET_BET':
+      return <BetBetBet {...common} />;
+    case 'BLIND_AUCTION':
+      return <BlindAuction {...common} />;
+    case 'KINGS_RANSOM':
+      return <KingsRansom {...common} />;
     default:
       return (
         <div className="mx-4 my-2 p-4 rounded-xl bg-glass border border-white/[0.06] text-center">

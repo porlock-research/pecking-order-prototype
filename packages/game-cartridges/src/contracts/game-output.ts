@@ -13,6 +13,10 @@
  *   include incomplete players (partial credit).
  * - **Sync games** (e.g. REALTIME_TRIVIA): Return full silverRewards in output
  *   from the final state (batch reward at game end).
+ * - **Sync decision games** (e.g. BET_BET_BET, BLIND_AUCTION, KINGS_RANSOM):
+ *   All players submit decisions during COLLECTING phase. On INTERNAL.END_GAME,
+ *   calculateResults computes silverRewards (can be negative). Returns full
+ *   silverRewards in output. Context exposes SyncDecisionContext for projection.
  *
  * IMPORTANT: currentQuestion must NOT include correctIndex —
  * the context is broadcast to clients. Only reveal correctIndex
@@ -39,4 +43,6 @@ export interface BaseGameContext {
 export interface GameOutput {
   silverRewards: Record<string, number>;
   goldContribution: number;
+  gameType?: string;
+  summary?: Record<string, any>;
 }

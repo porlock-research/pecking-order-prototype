@@ -62,6 +62,7 @@ export const GameTypeSchema = z.enum([
   "TRIVIA", "REALTIME_TRIVIA",
   "GAP_RUN", "GRID_PUSH", "SEQUENCE",
   "REACTION_TIME", "COLOR_MATCH", "STACKER", "QUICK_MATH", "SIMON_SAYS", "AIM_TRAINER",
+  "BET_BET_BET", "BLIND_AUCTION", "KINGS_RANSOM",
   "NONE",
 ]);
 export type GameType = z.infer<typeof GameTypeSchema>;
@@ -268,6 +269,17 @@ export const PERK_COSTS: Record<PerkType, number> = {
 
 export const GAME_MASTER_ID: string = 'GAME_MASTER';
 
+// --- Game History ---
+
+export interface GameHistoryEntry {
+  gameType: string;
+  dayIndex: number;
+  timestamp: number;
+  silverRewards: Record<string, number>;
+  goldContribution: number;
+  summary: Record<string, any>;
+}
+
 // --- Ticker (News Feed) ---
 
 export interface TickerMessage {
@@ -322,6 +334,15 @@ export type AimTrainerClientEvent =
   | { type: 'GAME.AIM_TRAINER.START' }
   | { type: 'GAME.AIM_TRAINER.RESULT'; targetsHit: number; totalTargets: number; score: number; timeElapsed: number };
 
+export type BetBetBetClientEvent =
+  | { type: 'GAME.BET_BET_BET.SUBMIT'; amount: number };
+
+export type BlindAuctionClientEvent =
+  | { type: 'GAME.BLIND_AUCTION.SUBMIT'; slot: number; amount: number };
+
+export type KingsRansomClientEvent =
+  | { type: 'GAME.KINGS_RANSOM.SUBMIT'; action: 'STEAL' | 'PROTECT' };
+
 export type GameClientEvent =
   | GapRunClientEvent
   | TriviaClientEvent
@@ -333,7 +354,10 @@ export type GameClientEvent =
   | StackerClientEvent
   | QuickMathClientEvent
   | SimonSaysClientEvent
-  | AimTrainerClientEvent;
+  | AimTrainerClientEvent
+  | BetBetBetClientEvent
+  | BlindAuctionClientEvent
+  | KingsRansomClientEvent;
 
 // --- Per-Game Projected State (what the client renders) ---
 
@@ -402,4 +426,25 @@ export interface RealtimeTriviaProjection {
   correctCounts?: Record<string, number>;
 }
 
-export type GameProjection = ArcadeGameProjection | TriviaProjection | RealtimeTriviaProjection;
+/** Projection for sync decision games (all-players-at-once, collect-then-reveal) */
+export interface SyncDecisionProjection {
+  gameType: string;
+  phase: 'COLLECTING' | 'REVEAL';
+  eligiblePlayers: string[];
+  submitted: Record<string, boolean>;
+  /** Only present during COLLECTING — the current player's own decision */
+  myDecision?: Record<string, any> | null;
+  /** Only present during REVEAL — all players' decisions */
+  decisions?: Record<string, any>;
+  /** Only present during REVEAL */
+  results: {
+    silverRewards: Record<string, number>;
+    goldContribution: number;
+    shieldWinnerId?: string | null;
+    summary: Record<string, any>;
+  } | null;
+  /** Game-specific extra fields (e.g. prizes, kingId, vaultAmount) */
+  [key: string]: any;
+}
+
+export type GameProjection = ArcadeGameProjection | TriviaProjection | RealtimeTriviaProjection | SyncDecisionProjection;
