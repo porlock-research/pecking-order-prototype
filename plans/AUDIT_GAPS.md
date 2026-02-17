@@ -20,8 +20,8 @@ Registry pattern (`cartridges/voting/_registry.ts`) maps `VoteType` → machine.
 ### #3 Daily Games / Cartridge System — DONE
 Game cartridge registry with spawn-based dynamic dispatch. Two game types: TRIVIA (async per-player, 5 rounds, 15s countdown, speed bonuses) and REALTIME_TRIVIA (broadcast to all, shared timer). OpenTriviaDB integration with fallback to hardcoded pool. Per-player SYNC projection strips other players' answers. L2 `applyGameRewards` updates roster silver. Client: `GamePanel` router → `Trivia` / `RealtimeTrivia` components.
 
-### #4 DM Constraints — DONE
-Full DM system: L3 guards enforce DM window (`OPEN_DMS`/`CLOSE_DMS`), 3 partner/day limit, 1200 char/day limit, 1 silver cost, target validation. L1 per-player chatLog filtering. Targeted `DM.REJECTED` delivery with reason codes. Client DM tab with thread list and conversation view.
+### #4 DM Constraints — DONE (upgraded to channel-based model)
+Full DM system with unified channel architecture (ADR-056): `channelId`-based routing replaces binary `channel: 'MAIN' | 'DM'`. L3 guards enforce DM window, 1200 char/day limit, 1 silver cost, target validation. 1-to-1 DM partner limit removed (unlimited partners). Group DM 3-channel/day limit typed but deferred. L1 per-player channel-based filtering. Targeted `DM.REJECTED` delivery with reason codes. Client DM tab with channel-based thread derivation and inline silver transfer UI.
 
 ### #5 Activity Layer / Quizzes — DONE
 6 prompt types: PLAYER_PICK, PREDICTION, WOULD_YOU_RATHER, HOT_TAKE, CONFESSION (two-phase), GUESS_WHO (two-phase). Registry/contract/spawn pattern matching voting and games. L1 `projectPromptCartridge()` strips sensitive author mappings from SYNC. Silver rewards per type. Client: `PromptPanel` router → 6 type-specific components.
@@ -33,7 +33,7 @@ Expanded to `EXECUTIONER | MAJORITY | BUBBLE | SECOND_TO_LAST | PODIUM_SACRIFICE
 `VOTE.*`, `GAME.*`, `ACTIVITY.*` wildcard forwarding at L1/L2/L3. Sub-namespaces: `GAME.TRIVIA.*`, `ACTIVITY.PROMPT.*`, `ACTIVITY.WYR.*`, `ACTIVITY.HOTTAKE.*`, `ACTIVITY.CONFESSION.*`, `ACTIVITY.GUESSWHO.*`. Only `SOCIAL.USE_POWER` and `GAME.DUEL_ACCEPT` remain (blocked on powers and DUELS).
 
 ### #10 Timeline Actions — DONE
-Full set: `INJECT_PROMPT`, `START_ACTIVITY`, `END_ACTIVITY`, `OPEN_DMS`, `CLOSE_DMS`, `START_GAME`, `END_GAME`, `OPEN_VOTING`, `CLOSE_VOTING`, `END_DAY`.
+Full set: `INJECT_PROMPT`, `OPEN_GROUP_CHAT`, `START_ACTIVITY`, `END_ACTIVITY`, `OPEN_DMS`, `CLOSE_DMS`, `START_GAME`, `END_GAME`, `OPEN_VOTING`, `CLOSE_VOTING`, `CLOSE_GROUP_CHAT`, `END_DAY`.
 
 ### #11 Cartridge I/O Contract — DONE
 All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input. Output follows `FACT.RECORD` protocol. Context structs are the rendering contract for SYSTEM.SYNC.
@@ -54,6 +54,7 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 - **JWT-secured WebSocket** — game server verifies JWT on connect, POST /init auth via shared secret (ADR-044)
 - **Player presence & typing indicators** — ephemeral L1 presence tracking (not persisted to XState), online dots on roster, dynamic header count, typing indicators in group chat and DMs with 3s auto-stop (ADR-054)
 - **Mode-driven live game pattern** — Touch Screen game (hold-to-win) establishes the pattern for real-time PvP minigames. One XState machine handles SOLO + LIVE via guard-based routing. LiveGameWrapper client component for consistent chrome. 4 events (START/READY/TOUCH/RELEASE), server-authoritative timing. (ADR-055)
+- **Unified chat channel architecture** — `channelId`-based routing replaces binary `channel: 'MAIN' | 'DM'`. Channels are interaction contexts with types (MAIN/DM/GROUP_DM/GAME_DM), capabilities (CHAT/SILVER_TRANSFER/GAME_ACTIONS), and constraints (exempt, silverCost). Group chat gating via `OPEN_GROUP_CHAT`/`CLOSE_GROUP_CHAT` timeline events. Game DM channel infra for future Art Match/Gem Trade. Inline silver transfer UI in DM thread footer. (ADR-056)
 
 ---
 
@@ -105,6 +106,8 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 
 - **Live game pattern (ADR-055) needs architectural revisit** — The mode-driven approach (SOLO + LIVE in one machine, LiveGameWrapper) works for Touch Screen but may not be the right long-term pattern. Keep live games separate from core infrastructure until the approach is validated with more game types. Revisit before building additional live PvP games (Art Match, The Split, Gem Trade).
 
+- **Channel system deferred items** — Group DM creation UI + `SOCIAL.CREATE_CHANNEL` client flow not built. `ECONOMY.*` event namespace rename (`SOCIAL.SEND_SILVER` → `ECONOMY.TRANSFER`) noted for future clean separation. Deprecated `channel`/`targetId` fields on `ChatMessage` should be removed once all clients are updated. Per-channel message caps not implemented (all channels share 50-message global cap).
+
 - **Cloudflare Pages preview URLs break staging flow** — Feature branches deploy the client to preview URLs (`https://{branch}.pecking-order-client.pages.dev/`) but the lobby's `GAME_CLIENT_HOST` points to the production Pages URL. Game server and lobby are Workers (single deployment per env), so only the client gets branch-specific URLs. Options: (a) deploy-staging workflow uses `wrangler pages deploy --branch=main` to always target production URL, (b) lobby reads branch from a header/env and constructs preview URL dynamically, (c) accept that staging client always trails behind and test feature branches via manual `wrangler pages deploy` to production.
 
 ---
@@ -129,3 +132,4 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 | Lobby env vars (getCloudflareContext), push subscription reliability, VAPID key handling, tsup DTS fix | `fix/post-merge-misc` |
 | Player presence & typing indicators (ephemeral L1, roster dots, header count, chat/DM typing) | `main` |
 | Touch Screen game + mode-driven live game pattern (ADR-055), LiveGameWrapper | `feature/touch-screen-live-game` |
+| Unified chat channel architecture (ADR-056), group chat gating, game DM infra, inline silver transfer | `feature/unified-chat-channels` |

@@ -60,7 +60,7 @@ function createDefaultDay(): DebugDayConfig {
     voteType: 'MAJORITY',
     gameType: 'TRIVIA',
     activityType: 'PLAYER_PICK',
-    events: { INJECT_PROMPT: true, START_ACTIVITY: true, END_ACTIVITY: true, OPEN_DMS: true, START_GAME: true, END_GAME: true, OPEN_VOTING: true, CLOSE_VOTING: true, CLOSE_DMS: true, END_DAY: true },
+    events: { INJECT_PROMPT: true, OPEN_GROUP_CHAT: true, START_ACTIVITY: true, END_ACTIVITY: true, OPEN_DMS: true, START_GAME: true, END_GAME: true, OPEN_VOTING: true, CLOSE_VOTING: true, CLOSE_DMS: true, CLOSE_GROUP_CHAT: true, END_DAY: true },
   };
 }
 

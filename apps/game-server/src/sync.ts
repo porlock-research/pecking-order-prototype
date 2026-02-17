@@ -79,9 +79,22 @@ export interface SyncDeps {
 export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers?: string[]): any {
   const { snapshot, l3Context, chatLog, cartridges } = deps;
 
-  const playerChatLog = chatLog.filter((msg: any) =>
-    msg.channel === 'MAIN' ||
-    (msg.channel === 'DM' && (msg.senderId === playerId || msg.targetId === playerId))
+  const channels = l3Context.channels || {};
+  const playerChatLog = chatLog.filter((msg: any) => {
+    if (msg.channelId) {
+      const ch = channels[msg.channelId];
+      if (!ch) return msg.channelId === 'MAIN';
+      if (ch.type === 'MAIN') return true;
+      return ch.memberIds.includes(playerId);
+    }
+    // Legacy path
+    return msg.channel === 'MAIN' || (msg.channel === 'DM' && (msg.senderId === playerId || msg.targetId === playerId));
+  });
+
+  const playerChannels = Object.fromEntries(
+    Object.entries(channels).filter(([_, ch]: [string, any]) =>
+      ch.type === 'MAIN' || ch.memberIds.includes(playerId)
+    )
   );
 
   const activeGameCartridge = projectGameCartridge(cartridges.rawGameCartridge, playerId);
@@ -104,6 +117,8 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       roster: snapshot.context.roster,
       manifest: snapshot.context.manifest,
       chatLog: playerChatLog,
+      channels: playerChannels,
+      groupChatOpen: l3Context.groupChatOpen ?? false,
       activeVotingCartridge: cartridges.activeVotingCartridge,
       activeGameCartridge,
       activePromptCartridge: projectPromptCartridge(cartridges.activePromptCartridge),

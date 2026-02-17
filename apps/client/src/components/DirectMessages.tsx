@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { ChatMessage, GAME_MASTER_ID, SocialPlayer } from '@pecking-order/shared-types';
+import { Coins } from 'lucide-react';
 
 function DmTypingIndicator({ typingPlayers, partnerId, playerId, roster }: {
   typingPlayers: Record<string, string>;
@@ -23,6 +24,7 @@ function DmTypingIndicator({ typingPlayers, partnerId, playerId, roster }: {
 interface DirectMessagesProps {
   engine: {
     sendDM: (targetId: string, content: string) => void;
+    sendSilver: (amount: number, targetId: string) => void;
     sendTyping: (channel?: string) => void;
     stopTyping: (channel?: string) => void;
   };
@@ -30,11 +32,20 @@ interface DirectMessagesProps {
 
 const REJECTION_LABELS: Record<string, string> = {
   DMS_CLOSED: 'DMs are currently closed',
+  GROUP_CHAT_CLOSED: 'Group chat is currently closed',
   PARTNER_LIMIT: "You've reached your daily conversation limit",
   CHAR_LIMIT: 'Daily character limit reached',
   INSUFFICIENT_SILVER: 'Not enough silver (costs 1 silver)',
   TARGET_ELIMINATED: 'This player has been eliminated',
   SELF_DM: 'Cannot message yourself',
+};
+
+const SILVER_REJECTION_LABELS: Record<string, string> = {
+  SELF_SEND: 'Cannot send silver to yourself',
+  INVALID_AMOUNT: 'Invalid amount',
+  INSUFFICIENT_SILVER: 'Not enough silver',
+  TARGET_ELIMINATED: 'This player has been eliminated',
+  TARGET_NOT_FOUND: 'Player not found',
 };
 
 function resolvePartner(partnerId: string, roster: Record<string, any>): { name: string; initial: string; isGameMaster: boolean } {
@@ -48,16 +59,45 @@ function resolvePartner(partnerId: string, roster: Record<string, any>): { name:
 export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
   const { playerId, roster, dmRejection, clearDmRejection } = useGameStore();
   const chatLog = useGameStore(s => s.chatLog);
+  const channels = useGameStore(s => s.channels);
   const dmStats = useGameStore(s => s.dmStats);
   const typingPlayers = useGameStore(s => s.typingPlayers);
+  const silverTransferRejection = useGameStore(s => s.silverTransferRejection);
+  const clearSilverTransferRejection = useGameStore(s => s.clearSilverTransferRejection);
   const [activePartnerId, setActivePartnerId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [showNewDm, setShowNewDm] = useState(false);
+  const [showSilverTransfer, setShowSilverTransfer] = useState(false);
+  const [silverAmount, setSilverAmount] = useState('');
+  const [silverSent, setSilverSent] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Derive DM threads via useMemo (not a store selector) to avoid infinite loop
+  // Derive DM threads from channels (with legacy fallback)
   const threads = useMemo(() => {
     if (!playerId) return [];
+
+    // Channel-based derivation
+    const dmChannels = Object.values(channels).filter(
+      ch => ch.type === 'DM' && ch.memberIds.includes(playerId)
+    );
+
+    if (dmChannels.length > 0) {
+      return dmChannels.map(ch => {
+        const partnerId = ch.memberIds.find(id => id !== playerId) || ch.memberIds[0];
+        const messages = chatLog
+          .filter((m: ChatMessage) => m.channelId === ch.id)
+          .sort((a, b) => a.timestamp - b.timestamp);
+        return {
+          partnerId,
+          messages,
+          lastTimestamp: messages.length > 0 ? messages[messages.length - 1].timestamp : ch.createdAt,
+        };
+      })
+      .filter(t => t.messages.length > 0)
+      .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+    }
+
+    // Legacy fallback
     const dmMessages = chatLog.filter((m: ChatMessage) => m.channel === 'DM');
     const threadMap = new Map<string, ChatMessage[]>();
     for (const msg of dmMessages) {
@@ -73,7 +113,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
         lastTimestamp: messages[messages.length - 1].timestamp,
       }))
       .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
-  }, [chatLog, playerId]);
+  }, [chatLog, channels, playerId]);
 
   // Server-authoritative DM stats (includes perk overrides)
   const charsRemaining = dmStats ? Math.max(0, dmStats.charsLimit - dmStats.charsUsed) : 0;
@@ -96,12 +136,35 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
     }
   }, [activeThread?.messages?.length]);
 
+  // Auto-clear silver transfer rejection after 4 seconds
+  useEffect(() => {
+    if (!silverTransferRejection) return;
+    const timer = setTimeout(clearSilverTransferRejection, 4000);
+    return () => clearTimeout(timer);
+  }, [silverTransferRejection, clearSilverTransferRejection]);
+
+  // Clear silver sent confirmation after 2 seconds
+  useEffect(() => {
+    if (!silverSent) return;
+    const timer = setTimeout(() => setSilverSent(false), 2000);
+    return () => clearTimeout(timer);
+  }, [silverSent]);
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || !activePartnerId) return;
     engine.sendDM(activePartnerId, inputValue);
     engine.stopTyping(activePartnerId);
     setInputValue('');
+  };
+
+  const handleSendSilver = () => {
+    const amount = parseInt(silverAmount, 10);
+    if (!amount || amount <= 0 || !activePartnerId) return;
+    engine.sendSilver(amount, activePartnerId);
+    setSilverAmount('');
+    setShowSilverTransfer(false);
+    setSilverSent(true);
   };
 
   const handleStartNewDm = (partnerId: string) => {
@@ -147,6 +210,92 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
       </div>
     );
   }
+
+  // Shared footer for DM thread views (existing thread + new conversation)
+  const mySilver = playerId ? (roster[playerId]?.silver ?? 0) : 0;
+  const isPartnerGameMaster = activePartnerId === GAME_MASTER_ID;
+  const canSendSilver = activePartnerId && !isPartnerGameMaster;
+
+  const renderThreadFooter = () => (
+    <div className="absolute bottom-0 left-0 right-0 p-3 bg-skin-panel/80 backdrop-blur-lg border-t border-white/[0.06]">
+      <DmTypingIndicator typingPlayers={typingPlayers} partnerId={activePartnerId!} playerId={playerId} roster={roster} />
+      {dmRejection && (
+        <div className="mb-2 px-3 py-1.5 rounded-lg bg-skin-danger/10 border border-skin-danger/20 text-skin-danger text-xs font-mono animate-fade-in">
+          {REJECTION_LABELS[dmRejection.reason] || dmRejection.reason}
+        </div>
+      )}
+      {silverTransferRejection && (
+        <div className="mb-2 px-3 py-1.5 rounded-lg bg-skin-danger/10 border border-skin-danger/20 text-skin-danger text-xs font-mono animate-fade-in">
+          {SILVER_REJECTION_LABELS[silverTransferRejection.reason] || silverTransferRejection.reason}
+        </div>
+      )}
+      {silverSent && (
+        <div className="mb-2 px-3 py-1.5 rounded-lg bg-skin-gold/10 border border-skin-gold/20 text-skin-gold text-xs font-mono animate-fade-in">
+          Silver sent!
+        </div>
+      )}
+      {showSilverTransfer && canSendSilver && (
+        <div className="mb-2 flex gap-2 items-center max-w-3xl mx-auto animate-fade-in">
+          <span className="text-[10px] font-mono text-skin-dim shrink-0">Send silver</span>
+          <input
+            type="number"
+            min="1"
+            max={mySilver}
+            value={silverAmount}
+            onChange={(e) => setSilverAmount(e.target.value)}
+            placeholder="Amt"
+            className="w-20 bg-skin-deep border border-skin-gold/20 rounded-full px-3 py-1.5 text-xs font-mono text-skin-base focus:outline-none focus:ring-1 focus:ring-skin-gold placeholder:text-skin-dim"
+          />
+          <button
+            onClick={handleSendSilver}
+            disabled={!silverAmount || parseInt(silverAmount, 10) <= 0 || parseInt(silverAmount, 10) > mySilver}
+            className="bg-skin-gold/20 text-skin-gold border border-skin-gold/30 rounded-full px-3 py-1.5 text-[10px] font-bold font-mono uppercase tracking-wider hover:bg-skin-gold/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Send
+          </button>
+          <button
+            onClick={() => { setShowSilverTransfer(false); setSilverAmount(''); }}
+            className="text-skin-dim hover:text-skin-base text-xs font-mono transition-colors"
+          >
+            cancel
+          </button>
+          <span className="text-[9px] font-mono text-skin-dim ml-auto">{mySilver} available</span>
+        </div>
+      )}
+      <form className="flex gap-2 items-center max-w-3xl mx-auto" onSubmit={handleSend}>
+        {canSendSilver && !showSilverTransfer && (
+          <button
+            type="button"
+            onClick={() => setShowSilverTransfer(true)}
+            title="Send silver"
+            className="shrink-0 w-9 h-9 rounded-full bg-skin-gold/10 border border-skin-gold/20 flex items-center justify-center text-skin-gold hover:bg-skin-gold/20 transition-all"
+          >
+            <Coins className="w-4 h-4" />
+          </button>
+        )}
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            if (e.target.value && activePartnerId) engine.sendTyping(activePartnerId);
+          }}
+          placeholder="Private message..."
+          maxLength={280}
+          className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-sm text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:border-transparent focus:shadow-[0_0_15px_var(--po-pink-dim)] placeholder:text-skin-dim transition-all"
+        />
+        <button
+          type="submit"
+          disabled={!inputValue.trim()}
+          className="bg-skin-pink text-skin-base rounded-full p-3 font-bold hover:brightness-110 active:translate-y-[2px] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-btn"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+          </svg>
+        </button>
+      </form>
+    </div>
+  );
 
   // Thread view
   if (activePartnerId && activeThread) {
@@ -198,37 +347,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
           })}
         </div>
 
-        {/* Input */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 bg-skin-panel/80 backdrop-blur-lg border-t border-white/[0.06]">
-          <DmTypingIndicator typingPlayers={typingPlayers} partnerId={activePartnerId} playerId={playerId} roster={roster} />
-          {dmRejection && (
-            <div className="mb-2 px-3 py-1.5 rounded-lg bg-skin-danger/10 border border-skin-danger/20 text-skin-danger text-xs font-mono animate-fade-in">
-              {REJECTION_LABELS[dmRejection.reason] || dmRejection.reason}
-            </div>
-          )}
-          <form className="flex gap-2 items-center max-w-3xl mx-auto" onSubmit={handleSend}>
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => {
-                setInputValue(e.target.value);
-                if (e.target.value && activePartnerId) engine.sendTyping(activePartnerId);
-              }}
-              placeholder="Private message..."
-              maxLength={280}
-              className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-sm text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:border-transparent focus:shadow-[0_0_15px_var(--po-pink-dim)] placeholder:text-skin-dim transition-all"
-            />
-            <button
-              type="submit"
-              disabled={!inputValue.trim()}
-              className="bg-skin-pink text-skin-base rounded-full p-3 font-bold hover:brightness-110 active:translate-y-[2px] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-btn"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-              </svg>
-            </button>
-          </form>
-        </div>
+        {renderThreadFooter()}
       </div>
     );
   }
@@ -261,36 +380,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-3 bg-skin-panel/80 backdrop-blur-lg border-t border-white/[0.06]">
-          <DmTypingIndicator typingPlayers={typingPlayers} partnerId={activePartnerId} playerId={playerId} roster={roster} />
-          {dmRejection && (
-            <div className="mb-2 px-3 py-1.5 rounded-lg bg-skin-danger/10 border border-skin-danger/20 text-skin-danger text-xs font-mono animate-fade-in">
-              {REJECTION_LABELS[dmRejection.reason] || dmRejection.reason}
-            </div>
-          )}
-          <form className="flex gap-2 items-center max-w-3xl mx-auto" onSubmit={handleSend}>
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => {
-                setInputValue(e.target.value);
-                if (e.target.value && activePartnerId) engine.sendTyping(activePartnerId);
-              }}
-              placeholder="Private message..."
-              maxLength={280}
-              className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-sm text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:border-transparent focus:shadow-[0_0_15px_var(--po-pink-dim)] placeholder:text-skin-dim transition-all"
-            />
-            <button
-              type="submit"
-              disabled={!inputValue.trim()}
-              className="bg-skin-pink text-skin-base rounded-full p-3 font-bold hover:brightness-110 active:translate-y-[2px] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-btn"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-              </svg>
-            </button>
-          </form>
-        </div>
+        {renderThreadFooter()}
       </div>
     );
   }

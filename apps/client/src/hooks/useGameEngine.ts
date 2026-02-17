@@ -1,6 +1,7 @@
 import { useRef, useCallback } from "react";
 import usePartySocket from "partysocket/react";
 import { useGameStore } from "../store/useGameStore";
+import { dmChannelId } from "@pecking-order/shared-types";
 
 export const useGameEngine = (gameId: string, playerId: string, token?: string | null) => {
   const sync = useGameStore((s) => s.sync);
@@ -57,18 +58,22 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
   });
 
   const sendMessage = (content: string, targetId?: string) => {
+    const channelId = targetId ? dmChannelId(playerId, targetId) : 'MAIN';
     socket.send(JSON.stringify({
       type: "SOCIAL.SEND_MSG",
       content,
-      targetId
+      channelId,
+      targetId,  // kept for backward compat
     }));
   };
 
   const sendDM = (targetId: string, content: string) => {
+    const channelId = dmChannelId(playerId, targetId);
     socket.send(JSON.stringify({
       type: "SOCIAL.SEND_MSG",
       content,
-      targetId
+      channelId,
+      targetId,  // kept for backward compat
     }));
   };
 

@@ -28,6 +28,7 @@ export class GameServer extends Server<Env> {
   private lastBroadcastState: string = '';
   private sentPushKeys = new Set<string>();
   private lastKnownDmsOpen: boolean = false;
+  private lastKnownGroupChatOpen: boolean = false;
   private tickerHistory: TickerMessage[] = [];
   private lastDebugSummary: string = '';
   private scheduler: Scheduler<Env>;
@@ -253,6 +254,18 @@ export class GameServer extends Server<Env> {
           timestamp: Date.now(),
         }, this.tickerHistory, () => this.getConnections());
       }
+
+      // G. Ticker: detect group chat open/close changes
+      const currentGroupChatOpen = l3Context.groupChatOpen ?? false;
+      if (currentGroupChatOpen !== this.lastKnownGroupChatOpen) {
+        this.lastKnownGroupChatOpen = currentGroupChatOpen;
+        this.tickerHistory = broadcastTicker({
+          id: crypto.randomUUID(),
+          text: currentGroupChatOpen ? 'Group chat is now open!' : 'Group chat is now closed.',
+          category: 'SYSTEM',
+          timestamp: Date.now(),
+        }, this.tickerHistory, () => this.getConnections());
+      }
     });
 
     this.actor.start();
@@ -434,7 +447,7 @@ export class GameServer extends Server<Env> {
     this.broadcastPresence();
   }
 
-  private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER', 'SOCIAL.USE_PERK'];
+  private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER', 'SOCIAL.USE_PERK', 'SOCIAL.CREATE_CHANNEL'];
 
   onMessage(ws: Connection, message: string) {
     try {

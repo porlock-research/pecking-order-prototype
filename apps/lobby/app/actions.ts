@@ -14,6 +14,7 @@ export interface DebugDayConfig {
   activityType: string;
   events: {
     INJECT_PROMPT: boolean;
+    OPEN_GROUP_CHAT: boolean;
     START_ACTIVITY: boolean;
     END_ACTIVITY: boolean;
     OPEN_DMS: boolean;
@@ -22,6 +23,7 @@ export interface DebugDayConfig {
     OPEN_VOTING: boolean;
     CLOSE_VOTING: boolean;
     CLOSE_DMS: boolean;
+    CLOSE_GROUP_CHAT: boolean;
     END_DAY: boolean;
   };
 }
@@ -606,6 +608,7 @@ function buildManifestDays(
   if ((mode === 'DEBUG_PECKING_ORDER') && debugConfig) {
     const EVENT_MESSAGES: Record<string, string> = {
       INJECT_PROMPT: 'Chat prompt injected.',
+      OPEN_GROUP_CHAT: 'Group chat is now open!',
       START_ACTIVITY: 'Activity started!',
       END_ACTIVITY: 'Activity ended.',
       OPEN_DMS: 'DMs are now open.',
@@ -614,6 +617,7 @@ function buildManifestDays(
       OPEN_VOTING: 'Voting is now open!',
       CLOSE_VOTING: 'Voting is now closed.',
       CLOSE_DMS: 'DMs are now closed.',
+      CLOSE_GROUP_CHAT: 'Group chat is now closed.',
       END_DAY: 'Day has ended.',
     };
 
@@ -637,8 +641,8 @@ function buildManifestDays(
 
       let eventOffset = 0;
       for (const eventKey of [
-        'INJECT_PROMPT', 'START_ACTIVITY', 'END_ACTIVITY', 'OPEN_DMS',
-        'START_GAME', 'END_GAME', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'END_DAY',
+        'INJECT_PROMPT', 'OPEN_GROUP_CHAT', 'START_ACTIVITY', 'END_ACTIVITY', 'OPEN_DMS',
+        'START_GAME', 'END_GAME', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'CLOSE_GROUP_CHAT', 'END_DAY',
       ] as const) {
         if ((eventKey === 'START_ACTIVITY' || eventKey === 'END_ACTIVITY') && day.activityType === 'NONE') continue;
         if (day.events[eventKey]) {

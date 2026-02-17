@@ -1,21 +1,34 @@
 import type { ChatMessage, SocialPlayer } from '@pecking-order/shared-types';
+import { dmChannelId } from '@pecking-order/shared-types';
 
 const MAX_CHAT_LOG = 50;
 
 export function buildChatMessage(
   senderId: string,
   content: string,
-  channel: 'MAIN' | 'DM',
-  targetId?: string,
+  channelId: string,
 ): ChatMessage {
+  // Derive deprecated fields for backward compat
+  const channel = channelId === 'MAIN' ? 'MAIN' as const : 'DM' as const;
+  const targetId = channelId.startsWith('dm:')
+    ? channelId.split(':').find(s => s !== 'dm' && s !== senderId)
+    : undefined;
   return {
     id: crypto.randomUUID(),
     senderId,
     timestamp: Date.now(),
     content,
+    channelId,
     channel,
     targetId,
   };
+}
+
+/** Bridge old events (with targetId) to channelId-based model */
+export function resolveChannelId(event: any): string {
+  if (event.channelId) return event.channelId;
+  if (event.targetId) return dmChannelId(event.senderId, event.targetId);
+  return 'MAIN';
 }
 
 export function appendToChatLog(

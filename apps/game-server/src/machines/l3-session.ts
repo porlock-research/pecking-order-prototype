@@ -1,5 +1,5 @@
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
-import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType } from '@pecking-order/shared-types';
+import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, dmChannelId } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from './cartridges/voting/_registry';
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 import { PROMPT_REGISTRY } from './cartridges/prompts/_registry';
@@ -10,7 +10,7 @@ import { l3VotingActions } from './actions/l3-voting';
 import { l3GameActions } from './actions/l3-games';
 import { l3ActivityActions } from './actions/l3-activity';
 import { l3PerkActions, l3PerkGuards } from './actions/l3-perks';
-import { buildChatMessage, appendToChatLog } from './actions/social-helpers';
+import { buildChatMessage, appendToChatLog, resolveChannelId } from './actions/social-helpers';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 
 // 1. Define strict types
@@ -26,6 +26,9 @@ export interface DailyContext {
   dmPartnersByPlayer: Record<string, string[]>;
   dmCharsByPlayer: Record<string, number>;
   perkOverrides: Record<string, { extraPartners: number; extraChars: number }>;
+  channels: Record<string, Channel>;
+  groupChatOpen: boolean;
+  dmGroupsByPlayer: Record<string, string[]>;
 }
 
 export type DailyEvent =
@@ -36,6 +39,10 @@ export type DailyEvent =
   | { type: 'INTERNAL.CLOSE_VOTING' }
   | { type: 'INTERNAL.OPEN_DMS' }
   | { type: 'INTERNAL.CLOSE_DMS' }
+  | { type: 'INTERNAL.OPEN_GROUP_CHAT' }
+  | { type: 'INTERNAL.CLOSE_GROUP_CHAT' }
+  | { type: 'GAME.CHANNEL.CREATE'; channelId: string; memberIds: string[]; gameType: string; label?: string; capabilities?: string[] }
+  | { type: 'GAME.CHANNEL.DESTROY' }
   | { type: 'INTERNAL.INJECT_PROMPT'; payload: any }
   | { type: 'INTERNAL.START_GAME'; payload?: any }
   | { type: 'INTERNAL.END_GAME' }
@@ -86,6 +93,16 @@ export const dailySessionMachine = setup({
     dmPartnersByPlayer: {},
     dmCharsByPlayer: {},
     perkOverrides: {},
+    channels: {
+      'MAIN': {
+        id: 'MAIN', type: 'MAIN' as const,
+        memberIds: Object.keys(input.roster || {}),
+        createdBy: 'SYSTEM', createdAt: Date.now(),
+        capabilities: ['CHAT' as const],
+      },
+    },
+    groupChatOpen: false,
+    dmGroupsByPlayer: {},
   }),
   entry: [
     sendParent({ type: 'INTERNAL.READY' })
@@ -103,15 +120,18 @@ export const dailySessionMachine = setup({
               on: {
                 'SOCIAL.SEND_MSG': [
                   {
-                    guard: 'isDmAllowed',
-                    actions: ['processDm', 'emitChatFact'],
+                    guard: 'isChannelMessageAllowed',
+                    actions: ['processChannelMessage', 'emitChatFact'],
                   },
                   {
-                    guard: ({ event }: any) => !!event.targetId,
-                    actions: ['rejectDm'],
+                    guard: ({ event }: any) => {
+                      const chId = resolveChannelId(event);
+                      return chId !== 'MAIN';
+                    },
+                    actions: ['rejectChannelMessage'],
                   },
                   {
-                    actions: ['processMessage', 'emitChatFact'],
+                    actions: ['rejectChannelMessage'],  // MAIN closed fallback
                   }
                 ],
                 'SOCIAL.SEND_SILVER': [
@@ -124,6 +144,8 @@ export const dailySessionMachine = setup({
                 ],
                 'INTERNAL.OPEN_DMS': { actions: assign({ dmsOpen: true }) },
                 'INTERNAL.CLOSE_DMS': { actions: assign({ dmsOpen: false }) },
+                'INTERNAL.OPEN_GROUP_CHAT': { actions: assign({ groupChatOpen: true }) },
+                'INTERNAL.CLOSE_GROUP_CHAT': { actions: assign({ groupChatOpen: false }) },
               }
             }
           }
@@ -141,8 +163,10 @@ export const dailySessionMachine = setup({
                   actions: enqueueActions(({ context, event, enqueue }: any) => {
                     const text = event.payload?.text || event.payload?.msg || 'The Game Master speaks...';
                     const targetId = event.payload?.targetId;
-                    const channel = targetId ? 'DM' as const : 'MAIN' as const;
-                    const msg = buildChatMessage(GAME_MASTER_ID, text, channel, targetId);
+                    const channelId = targetId
+                      ? dmChannelId(GAME_MASTER_ID, targetId)
+                      : 'MAIN';
+                    const msg = buildChatMessage(GAME_MASTER_ID, text, channelId);
                     enqueue.assign({ chatLog: appendToChatLog(context.chatLog, msg) });
                     // Emit DM_SENT fact for targeted messages so push notifications fire
                     if (targetId) {
@@ -152,7 +176,7 @@ export const dailySessionMachine = setup({
                           type: 'DM_SENT',
                           actorId: GAME_MASTER_ID,
                           targetId,
-                          payload: { content: text },
+                          payload: { content: text, channelId },
                           timestamp: Date.now(),
                         },
                       });
@@ -172,9 +196,11 @@ export const dailySessionMachine = setup({
                 'CARTRIDGE.PLAYER_GAME_RESULT': {
                   actions: ['applyPlayerGameRewardLocally', 'forwardPlayerGameResultToL2']
                 },
+                'GAME.CHANNEL.CREATE': { actions: 'createGameChannel' },
+                'GAME.CHANNEL.DESTROY': { actions: 'destroyGameChannels' },
                 'INTERNAL.END_GAME': { actions: 'forwardToGameChild' },
                 '*': {
-                  guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('GAME.'),
+                  guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('GAME.') && !event.type.startsWith('GAME.CHANNEL.'),
                   actions: 'forwardToGameChild',
                 }
               }

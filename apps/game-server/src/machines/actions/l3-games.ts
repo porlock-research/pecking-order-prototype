@@ -20,9 +20,26 @@ export const l3GameActions = {
       });
     },
   }),
-  cleanupGameCartridge: enqueueActions(({ enqueue }: any) => {
+  cleanupGameCartridge: enqueueActions(({ context, enqueue }: any) => {
     enqueue.stopChild('activeGameCartridge');
-    enqueue.assign({ activeGameCartridgeRef: null });
+    // Remove all GAME_DM channels and their messages
+    const channels = { ...context.channels };
+    let hasGameChannels = false;
+    for (const [id, ch] of Object.entries(channels)) {
+      if ((ch as any).type === 'GAME_DM') {
+        delete channels[id];
+        hasGameChannels = true;
+      }
+    }
+    if (hasGameChannels) {
+      const chatLog = context.chatLog.filter((msg: any) => {
+        if (!msg.channelId) return true;
+        return !msg.channelId.startsWith('game-dm:');
+      });
+      enqueue.assign({ activeGameCartridgeRef: null, channels, chatLog });
+    } else {
+      enqueue.assign({ activeGameCartridgeRef: null });
+    }
   }),
   applyGameRewardsLocally: assign({
     roster: ({ context, event }: any) => {

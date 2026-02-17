@@ -44,7 +44,7 @@ export const LobbySchema = z.object({
 
 export const TimelineEventSchema = z.object({
   time: z.string(), // "09:00" or ISO string
-  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "START_GAME", "END_GAME", "END_DAY"]),
+  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "OPEN_GROUP_CHAT", "CLOSE_GROUP_CHAT", "START_GAME", "END_GAME", "END_DAY"]),
   payload: z.any().optional(),
 });
 
@@ -193,8 +193,9 @@ export const ChatMessageSchema = z.object({
   senderId: z.string(),
   timestamp: z.number(),
   content: z.string().max(280),
-  channel: z.enum(["MAIN", "DM"]),
-  targetId: z.string().optional()
+  channelId: z.string(),                         // Channel-based routing
+  channel: z.enum(["MAIN", "DM"]).optional(),    // DEPRECATED — kept for migration
+  targetId: z.string().optional(),               // DEPRECATED — kept for migration
 });
 
 export const SocialEventSchema = z.discriminatedUnion("type", [
@@ -234,8 +235,44 @@ export interface CartridgeProps {
 export const DM_MAX_PARTNERS_PER_DAY = 3;
 export const DM_MAX_CHARS_PER_DAY = 1200;
 export const DM_SILVER_COST = 1;
+export const DM_MAX_GROUPS_PER_DAY = 3;  // for future group DMs
 
-export type DmRejectionReason = 'DMS_CLOSED' | 'PARTNER_LIMIT' | 'CHAR_LIMIT' | 'SELF_DM' | 'TARGET_ELIMINATED' | 'INSUFFICIENT_SILVER';
+export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LIMIT' | 'CHAR_LIMIT' | 'SELF_DM' | 'TARGET_ELIMINATED' | 'INSUFFICIENT_SILVER';
+
+// --- Channel System ---
+
+export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM']);
+export type ChannelType = z.infer<typeof ChannelTypeSchema>;
+
+export type ChannelCapability = 'CHAT' | 'SILVER_TRANSFER' | 'GAME_ACTIONS';
+
+export interface Channel {
+  id: string;
+  type: ChannelType;
+  memberIds: string[];
+  createdBy: string;           // playerId | 'SYSTEM' | 'GAME:{type}'
+  createdAt: number;
+  label?: string;
+  gameType?: string;           // For GAME_DM: which game created this channel
+  capabilities?: ChannelCapability[];
+  constraints?: {
+    exempt?: boolean;          // exempt from daily limits + open/close flags
+    silverCost?: number;       // per-message cost (default: 1 for DM, 0 for MAIN/GAME_DM)
+  };
+}
+
+export function dmChannelId(a: string, b: string): string {
+  const sorted = [a, b].sort();
+  return `dm:${sorted[0]}:${sorted[1]}`;
+}
+
+export function groupDmChannelId(memberIds: string[]): string {
+  return `gdm:${[...memberIds].sort().join(':')}`;
+}
+
+export function gameDmChannelId(gameType: string, memberIds: string[]): string {
+  return `game-dm:${gameType}:${[...memberIds].sort().join(':')}`;
+}
 
 export interface DmRejectedEvent {
   type: 'DM.REJECTED';

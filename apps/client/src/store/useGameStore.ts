@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry } from '@pecking-order/shared-types';
+import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel } from '@pecking-order/shared-types';
 
 interface DmThread {
   partnerId: string;
@@ -12,6 +12,8 @@ interface GameState {
   dayIndex: number;
   roster: Record<string, SocialPlayer>;
   chatLog: ChatMessage[];
+  channels: Record<string, Channel>;
+  groupChatOpen: boolean;
   manifest: any;
   serverState: string | null;
   playerId: string | null;
@@ -49,21 +51,42 @@ interface GameState {
 
 // Selectors
 export const selectMainChat = (state: GameState): ChatMessage[] =>
-  state.chatLog.filter(m => m.channel === 'MAIN');
+  state.chatLog.filter(m => m.channelId === 'MAIN' || (!m.channelId && m.channel === 'MAIN'));
 
 export const selectDmThreads = (state: GameState): DmThread[] => {
   const pid = state.playerId;
   if (!pid) return [];
+
+  // Channel-based: derive threads from DM channels
+  const dmChannels = Object.values(state.channels).filter(
+    ch => ch.type === 'DM' && ch.memberIds.includes(pid)
+  );
+
+  if (dmChannels.length > 0) {
+    return dmChannels.map(ch => {
+      const partnerId = ch.memberIds.find(id => id !== pid) || ch.memberIds[0];
+      const messages = state.chatLog
+        .filter(m => m.channelId === ch.id)
+        .sort((a, b) => a.timestamp - b.timestamp);
+      return {
+        partnerId,
+        messages,
+        lastTimestamp: messages.length > 0 ? messages[messages.length - 1].timestamp : ch.createdAt,
+      };
+    })
+    .filter(t => t.messages.length > 0)
+    .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+  }
+
+  // Legacy fallback: derive from message channel field
   const dmMessages = state.chatLog.filter(m => m.channel === 'DM');
   const threadMap = new Map<string, ChatMessage[]>();
-
   for (const msg of dmMessages) {
     const partnerId = msg.senderId === pid ? msg.targetId! : msg.senderId;
     const existing = threadMap.get(partnerId) || [];
     existing.push(msg);
     threadMap.set(partnerId, existing);
   }
-
   return Array.from(threadMap.entries())
     .map(([partnerId, messages]) => ({
       partnerId,
@@ -73,11 +96,21 @@ export const selectDmThreads = (state: GameState): DmThread[] => {
     .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
 };
 
+export const selectGameDmChannels = (state: GameState): Channel[] => {
+  const pid = state.playerId;
+  if (!pid) return [];
+  return Object.values(state.channels).filter(
+    ch => ch.type === 'GAME_DM' && ch.memberIds.includes(pid)
+  );
+};
+
 export const useGameStore = create<GameState>((set) => ({
   gameId: null,
   dayIndex: 0,
   roster: {},
   chatLog: [],
+  channels: {},
+  groupChatOpen: false,
   manifest: null,
   serverState: null,
   playerId: null,
@@ -102,6 +135,8 @@ export const useGameStore = create<GameState>((set) => ({
     // Server is authoritative, but never wipe a populated chatLog with an empty one
     // (protects against stale syncs from unrelated L2 state changes)
     chatLog: data.context?.chatLog?.length ? data.context.chatLog : state.chatLog,
+    channels: data.context?.channels ?? state.channels,
+    groupChatOpen: data.context?.groupChatOpen ?? state.groupChatOpen,
     manifest: data.context?.manifest || null,
     serverState: data.state || null,
     activeVotingCartridge: data.context?.activeVotingCartridge ?? null,

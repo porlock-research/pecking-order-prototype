@@ -37,7 +37,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
   const { playerId, roster } = useGameStore();
   const rawChatLog = useGameStore(s => s.chatLog);
   const typingPlayers = useGameStore(s => s.typingPlayers);
-  const chatLog = useMemo(() => rawChatLog.filter(m => m.channel === 'MAIN'), [rawChatLog]);
+  const groupChatOpen = useGameStore(s => s.groupChatOpen);
+  const chatLog = useMemo(() => rawChatLog.filter(m => m.channelId === 'MAIN' || (!m.channelId && m.channel === 'MAIN')), [rawChatLog]);
   const [inputValue, setInputValue] = useState('');
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -58,6 +59,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
       senderId: playerId,
       timestamp: Date.now(),
       content: inputValue,
+      channelId: 'MAIN',
       channel: 'MAIN',
     };
 
@@ -173,6 +175,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
       {/* Input Area (Fixed at bottom of this container) */}
       <div className="absolute bottom-0 left-0 right-0 p-3 bg-skin-panel/80 backdrop-blur-lg border-t border-white/[0.06]">
         <TypingIndicator typingPlayers={typingPlayers} channel="MAIN" playerId={playerId} roster={roster} />
+        {!groupChatOpen && (
+          <div className="mb-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-skin-dim text-xs font-mono text-center">
+            Group chat is currently closed
+          </div>
+        )}
         <form className="flex gap-2 items-center max-w-3xl mx-auto" onSubmit={handleSend}>
           <input
             type="text"
@@ -181,13 +188,14 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
               setInputValue(e.target.value);
               if (e.target.value) engine.sendTyping('MAIN');
             }}
-            placeholder="Spill the tea..."
+            placeholder={groupChatOpen ? "Spill the tea..." : "Chat closed..."}
             maxLength={280}
-            className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-sm text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:border-transparent focus:shadow-[0_0_15px_var(--po-pink-dim)] placeholder:text-skin-dim transition-all"
+            disabled={!groupChatOpen}
+            className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-sm text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:border-transparent focus:shadow-[0_0_15px_var(--po-pink-dim)] placeholder:text-skin-dim transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           />
           <button
             type="submit"
-            disabled={!inputValue.trim()}
+            disabled={!inputValue.trim() || !groupChatOpen}
             className="bg-skin-pink text-white rounded-full px-4 py-3 font-display font-bold text-xs uppercase tracking-wider hover:brightness-110 active:translate-y-[1px] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             SHOUT &gt;

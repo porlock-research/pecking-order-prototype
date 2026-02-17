@@ -644,3 +644,36 @@ This document tracks significant architectural decisions, their context, and con
     *   `.provide()` remains available for radical per-mode overrides if a future game needs completely different behavior.
     *   Dev harness supports mode toggle (Solo/Live) and bot controls (Ready Bots, Touch Bots, Release Bot).
     *   Lobby debug config gains game mode selector per day.
+
+## [ADR-056] Unified Chat Channel Architecture
+*   **Date:** 2026-02-16
+*   **Status:** Accepted
+*   **Context:** The chat system used a binary model: `channel: 'MAIN' | 'DM'` with 1-to-1 DMs keyed by `targetId`. This didn't support group chat scheduling (open/close windows), group DMs (spec says "Max 3 different group chats per day"), per-game DM channels (Art Match/Gem Trade need ephemeral exempt channels), or contextual actions within channels (silver transfers in DMs, trade offers in game DMs).
+*   **Decision:** Replace the binary model with a `channelId`-based system where **channels are interaction contexts, not just message containers**:
+    *   `Channel` type: `{ id, type, memberIds, createdBy, createdAt, capabilities?, constraints?, gameType?, label? }`.
+    *   `ChannelType`: `'MAIN' | 'DM' | 'GROUP_DM' | 'GAME_DM'`.
+    *   `ChannelCapability`: `'CHAT' | 'SILVER_TRANSFER' | 'GAME_ACTIONS'` — channels declare what actions are available; client renders UI based on them.
+    *   Channel ID helpers: `dmChannelId(a, b)` → `dm:{sorted}`, `groupDmChannelId(ids)` → `gdm:{sorted}`, `gameDmChannelId(type, ids)` → `game-dm:{type}:{sorted}`.
+    *   `ChatMessage.channelId` replaces `channel` + `targetId` (deprecated fields kept for migration).
+    *   `resolveChannelId(event)` bridges old events (with `targetId`) to new model.
+    *   L3 context gains `channels: Record<string, Channel>`, `groupChatOpen: boolean`, `dmGroupsByPlayer: Record<string, string[]>`.
+    *   `MAIN` channel auto-created on L3 init with all roster members.
+    *   DM channels lazy-created on first message via `processChannelMessage`.
+    *   Game channels created/destroyed by game cartridges via `GAME.CHANNEL.CREATE` / `GAME.CHANNEL.DESTROY` events. Destroyed automatically on game cleanup.
+    *   `groupChatOpen` defaults `false`; toggled by `OPEN_GROUP_CHAT` / `CLOSE_GROUP_CHAT` timeline events (same pattern as `OPEN_DMS` / `CLOSE_DMS`).
+    *   MAIN channel messages blocked when `groupChatOpen === false`. Client input disabled with "Group chat is closed" message.
+    *   GAME_DM channels are `constraints.exempt: true` — always open regardless of `dmsOpen`/`groupChatOpen`, no silver cost.
+    *   Silver transfers allowed even when DMs are closed (`isSilverTransferAllowed` does NOT check `dmsOpen`).
+    *   1-to-1 DMs: unlimited partners (no more 3-partner cap). Char limit + silver cost still apply.
+    *   Group DMs (future): separate 3-channel/day limit via `dmGroupsByPlayer`.
+    *   **Contextual actions** work via existing event routing — `SOCIAL.*` and `GAME.*` namespaces handle everything. `channelId` is context, not a new routing dimension.
+    *   Per-player SYNC filtering: each player only sees channels they belong to and messages within those channels.
+    *   Inline silver transfer UI in DM thread footer (coin button → amount input → send), driven by `SILVER_TRANSFER` capability.
+*   **Consequences:**
+    *   Group chat is now schedulable — game designers control when players can talk in the main room.
+    *   New game types (Art Match, Gem Trade) can create ephemeral DM channels for paired/grouped interactions without touching core routing.
+    *   `capabilities` field enables capability-driven UI rendering — client checks what actions a channel supports rather than hard-coding by type.
+    *   Old events with `targetId` but no `channelId` still work via `resolveChannelId()` backward compat bridge.
+    *   Deprecated `channel` and `targetId` fields on `ChatMessage` can be removed once all clients are updated.
+    *   Group DM creation UI is typed but not built yet (deferred).
+    *   No D1 schema changes — channels live in L3 context only.
