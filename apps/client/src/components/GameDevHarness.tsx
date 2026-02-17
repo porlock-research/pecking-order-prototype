@@ -20,21 +20,21 @@ import {
   FALLBACK_QUESTIONS,
   projectGameCartridge,
 } from '@pecking-order/game-cartridges';
-import GapRun from '../cartridges/GapRun';
-import GridPush from '../cartridges/GridPush';
-import SequenceGame from '../cartridges/SequenceGame';
-import ReactionTime from '../cartridges/ReactionTime';
-import ColorMatch from '../cartridges/ColorMatch';
-import Stacker from '../cartridges/Stacker';
-import QuickMath from '../cartridges/QuickMath';
-import SimonSays from '../cartridges/SimonSays';
-import AimTrainer from '../cartridges/AimTrainer';
-import RealtimeTrivia from '../cartridges/RealtimeTrivia';
-import Trivia from '../cartridges/Trivia';
-import BetBetBet from '../cartridges/BetBetBet';
-import BlindAuction from '../cartridges/BlindAuction';
-import KingsRansom from '../cartridges/KingsRansom';
-import TouchScreen from '../cartridges/TouchScreen';
+import GapRun from '../cartridges/games/gap-run/GapRun';
+import GridPush from '../cartridges/games/grid-push/GridPush';
+import SequenceGame from '../cartridges/games/sequence/SequenceGame';
+import ReactionTime from '../cartridges/games/reaction-time/ReactionTime';
+import ColorMatch from '../cartridges/games/color-match/ColorMatch';
+import Stacker from '../cartridges/games/stacker/Stacker';
+import QuickMath from '../cartridges/games/quick-math/QuickMath';
+import SimonSays from '../cartridges/games/simon-says/SimonSays';
+import AimTrainer from '../cartridges/games/aim-trainer/AimTrainer';
+import RealtimeTrivia from '../cartridges/games/realtime-trivia/RealtimeTrivia';
+import Trivia from '../cartridges/games/trivia/Trivia';
+import BetBetBet from '../cartridges/games/bet-bet-bet/BetBetBet';
+import BlindAuction from '../cartridges/games/blind-auction/BlindAuction';
+import KingsRansom from '../cartridges/games/kings-ransom/KingsRansom';
+import TouchScreen from '../cartridges/games/touch-screen/TouchScreen';
 
 // --- Types ---
 

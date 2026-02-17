@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { LiveGameProjection, SocialPlayer } from '@pecking-order/shared-types';
-import LiveGameWrapper from './LiveGameWrapper';
+import LiveGameWrapper from '../wrappers/LiveGameWrapper';
 
 interface TouchScreenProps {
   cartridge: LiveGameProjection;

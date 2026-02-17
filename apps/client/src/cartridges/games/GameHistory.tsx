@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useGameStore } from '../store/useGameStore';
+import { useGameStore } from '../../store/useGameStore';
 import type { GameHistoryEntry } from '@pecking-order/shared-types';
 import { Coins, ChevronDown, ChevronRight, Trophy, Clock } from 'lucide-react';
 

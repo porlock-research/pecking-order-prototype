@@ -5,7 +5,7 @@ import {
   CartridgeContainer,
   CartridgeHeader,
   CelebrationSequence,
-} from './game-shared';
+} from '../shared';
 
 interface ArcadeGameWrapperProps {
   cartridge: ArcadeGameProjection;

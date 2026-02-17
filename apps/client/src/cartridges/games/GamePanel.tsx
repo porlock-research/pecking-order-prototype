@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useGameStore } from '../store/useGameStore';
-import GapRun from './GapRun';
-import GridPush from './GridPush';
-import SequenceGame from './SequenceGame';
-import ReactionTime from './ReactionTime';
-import ColorMatch from './ColorMatch';
-import Stacker from './Stacker';
-import QuickMath from './QuickMath';
-import SimonSays from './SimonSays';
-import AimTrainer from './AimTrainer';
-import RealtimeTrivia from './RealtimeTrivia';
-import Trivia from './Trivia';
-import BetBetBet from './BetBetBet';
-import BlindAuction from './BlindAuction';
-import KingsRansom from './KingsRansom';
-import TouchScreen from './TouchScreen';
+import { useGameStore } from '../../store/useGameStore';
+import GapRun from './gap-run/GapRun';
+import GridPush from './grid-push/GridPush';
+import SequenceGame from './sequence/SequenceGame';
+import ReactionTime from './reaction-time/ReactionTime';
+import ColorMatch from './color-match/ColorMatch';
+import Stacker from './stacker/Stacker';
+import QuickMath from './quick-math/QuickMath';
+import SimonSays from './simon-says/SimonSays';
+import AimTrainer from './aim-trainer/AimTrainer';
+import RealtimeTrivia from './realtime-trivia/RealtimeTrivia';
+import Trivia from './trivia/Trivia';
+import BetBetBet from './bet-bet-bet/BetBetBet';
+import BlindAuction from './blind-auction/BlindAuction';
+import KingsRansom from './kings-ransom/KingsRansom';
+import TouchScreen from './touch-screen/TouchScreen';
 
 interface GamePanelProps {
   engine: {

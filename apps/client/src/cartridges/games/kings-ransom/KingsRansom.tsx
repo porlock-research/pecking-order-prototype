@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { SyncDecisionProjection, SocialPlayer } from '@pecking-order/shared-types';
-import SyncDecisionWrapper from './SyncDecisionWrapper';
+import SyncDecisionWrapper from '../wrappers/SyncDecisionWrapper';
 
 interface KingsRansomProps {
   cartridge: SyncDecisionProjection;

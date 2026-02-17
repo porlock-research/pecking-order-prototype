@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGameStore } from '../store/useGameStore';
+import { useGameStore } from '../../store/useGameStore';
 import PlayerPickPrompt from './PlayerPickPrompt';
 import PredictionPrompt from './PredictionPrompt';
 import WouldYouRatherPrompt from './WouldYouRatherPrompt';

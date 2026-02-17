@@ -7,7 +7,7 @@ import {
   CartridgeHeader,
   OptionGrid,
   ResultFeedback,
-} from './game-shared';
+} from '../shared';
 
 interface TriviaProps {
   cartridge: RealtimeTriviaProjection;

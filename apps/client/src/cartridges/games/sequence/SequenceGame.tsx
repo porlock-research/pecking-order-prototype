@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ArcadeGameProjection, SocialPlayer } from '@pecking-order/shared-types';
-import ArcadeGameWrapper from './ArcadeGameWrapper';
+import ArcadeGameWrapper from '../wrappers/ArcadeGameWrapper';
 import SequenceRenderer from './SequenceRenderer';
 
 interface SequenceGameProps {

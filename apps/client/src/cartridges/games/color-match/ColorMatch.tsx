@@ -1,9 +1,9 @@
 import React from 'react';
 import type { ArcadeGameProjection, SocialPlayer } from '@pecking-order/shared-types';
-import ArcadeGameWrapper from './ArcadeGameWrapper';
-import QuickMathRenderer from './QuickMathRenderer';
+import ArcadeGameWrapper from '../wrappers/ArcadeGameWrapper';
+import ColorMatchRenderer from './ColorMatchRenderer';
 
-interface QuickMathProps {
+interface ColorMatchProps {
   cartridge: ArcadeGameProjection;
   playerId: string;
   roster: Record<string, SocialPlayer>;
@@ -11,13 +11,13 @@ interface QuickMathProps {
   onDismiss?: () => void;
 }
 
-export default function QuickMath(props: QuickMathProps) {
+export default function ColorMatch(props: ColorMatchProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Quick Math"
-      description="Solve arithmetic problems as fast as you can. 5 seconds per question, 15 questions total. Difficulty increases with harder operations."
-      Renderer={QuickMathRenderer}
+      title="Color Match"
+      description="A word appears in a different color. Tap the COLOR the word is painted in, not what it says! The Stroop effect makes this harder than it sounds."
+      Renderer={ColorMatchRenderer}
       renderBreakdown={(result) => {
         const correct = result.correctAnswers || 0;
         const total = result.totalRounds || 0;

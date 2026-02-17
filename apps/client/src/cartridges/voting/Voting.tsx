@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGameStore } from '../store/useGameStore';
+import { useGameStore } from '../../store/useGameStore';
 import MajorityVoting from './MajorityVoting';
 import ExecutionerVoting from './ExecutionerVoting';
 import BubbleVoting from './BubbleVoting';
