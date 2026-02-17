@@ -2,15 +2,17 @@ import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useGameStore } from './store/useGameStore';
 import { useGameEngine } from './hooks/useGameEngine';
 import { Timeline } from './components/timeline/Timeline';
-import { DirectMessages } from './components/DirectMessages';
+import { PeopleList } from './components/people/PeopleList';
+import { PlayerDetailView } from './components/people/PlayerDetailView';
+import { GroupThreadView } from './components/people/GroupThreadView';
 import { NewsTicker } from './components/NewsTicker';
 import PerkPanel from './components/panels/PerkPanel';
 
 const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
 import { formatPhase } from './utils/formatState';
-import { Coins, MessageCircle, Mail, Users } from 'lucide-react';
+import { Coins, MessageCircle, Users } from 'lucide-react';
 import { decodeGameToken } from '@pecking-order/auth';
-import { PlayerStatuses } from '@pecking-order/shared-types';
+import { PlayerStatuses, ChannelTypes } from '@pecking-order/shared-types';
 import { PushPrompt } from './components/PushPrompt';
 
 /**
@@ -224,12 +226,13 @@ function LauncherScreen() {
   );
 }
 
-function RosterRow({ player, playerId }: { player: any; playerId: string }) {
+function RosterRow({ player, playerId, onClick }: { player: any; playerId: string; onClick?: () => void }) {
   const isMe = player.id === playerId;
   const isOnline = useGameStore((s) => s.onlinePlayers.includes(player.id));
   return (
     <li
-      className={`flex items-center justify-between p-3 rounded-xl border transition-all
+      onClick={onClick}
+      className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer
         ${isMe
           ? 'bg-skin-gold/10 border-skin-gold/30'
           : 'bg-glass border-white/[0.06] hover:border-white/20'
@@ -258,15 +261,205 @@ function RosterRow({ player, playerId }: { player: any; playerId: string }) {
   );
 }
 
+function NewDmPicker({ roster, playerId, onSelect, onBack }: {
+  roster: Record<string, any>;
+  playerId: string;
+  onSelect: (id: string) => void;
+  onBack: () => void;
+}) {
+  const available = Object.values(roster).filter(
+    (p: any) => p.id !== playerId && p.status === PlayerStatuses.ALIVE
+  );
+  return (
+    <div className="flex flex-col h-full">
+      <div className="shrink-0 px-4 py-3 border-b border-white/[0.06] bg-skin-panel/40 flex items-center gap-3">
+        <button onClick={onBack} className="text-skin-dim hover:text-skin-base font-mono text-lg transition-colors">{'<-'}</button>
+        <span className="text-sm font-bold text-skin-pink uppercase tracking-wider font-display">New Message</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {available.map((p: any) => (
+          <button
+            key={p.id}
+            onClick={() => onSelect(p.id)}
+            className="w-full flex items-center gap-3 p-3 rounded-xl bg-glass border border-white/[0.06] hover:border-skin-pink/30 transition-all"
+          >
+            <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-pink avatar-ring">
+              {p.personaName?.charAt(0)?.toUpperCase() || '?'}
+            </div>
+            <span className="font-bold text-sm text-skin-base">{p.personaName}</span>
+          </button>
+        ))}
+        {available.length === 0 && (
+          <div className="text-center text-skin-dim text-sm py-8">No players available</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NewGroupPicker({ roster, playerId, onBack, engine }: {
+  roster: Record<string, any>;
+  playerId: string;
+  onBack: () => void;
+  engine: { createGroupDm: (memberIds: string[]) => void };
+}) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const dmRejection = useGameStore(s => s.dmRejection);
+
+  const available = Object.values(roster).filter(
+    (p: any) => p.id !== playerId && p.status === PlayerStatuses.ALIVE
+  );
+
+  const handleCreate = () => {
+    if (selected.length < 2) return;
+    engine.createGroupDm(selected);
+    onBack();
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="shrink-0 px-4 py-3 border-b border-white/[0.06] bg-skin-panel/40 flex items-center gap-3">
+        <button onClick={onBack} className="text-skin-dim hover:text-skin-base font-mono text-lg transition-colors">{'<-'}</button>
+        <span className="text-sm font-bold text-skin-pink uppercase tracking-wider font-display">New Group</span>
+        <span className="text-[10px] font-mono text-skin-dim ml-auto">{selected.length} selected</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {available.map((p: any) => {
+          const isSelected = selected.includes(p.id);
+          return (
+            <button
+              key={p.id}
+              onClick={() => setSelected(prev => isSelected ? prev.filter(id => id !== p.id) : [...prev, p.id])}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl bg-glass border transition-all ${
+                isSelected ? 'border-skin-pink/50 bg-skin-pink/10' : 'border-white/[0.06] hover:border-skin-pink/30'
+              }`}
+            >
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center text-xs shrink-0 ${
+                isSelected ? 'border-skin-pink bg-skin-pink text-skin-base' : 'border-white/20'
+              }`}>
+                {isSelected && '\u2713'}
+              </div>
+              <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-pink avatar-ring">
+                {p.personaName?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+              <span className="font-bold text-sm text-skin-base">{p.personaName}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="shrink-0 p-4 border-t border-white/[0.06] bg-skin-panel/40">
+        {dmRejection && (
+          <div className="mb-2 px-3 py-1.5 rounded-lg bg-skin-danger/10 border border-skin-danger/20 text-skin-danger text-xs font-mono animate-fade-in">
+            {dmRejection.reason}
+          </div>
+        )}
+        <button
+          onClick={handleCreate}
+          disabled={selected.length < 2}
+          className="w-full bg-skin-pink text-skin-base rounded-full py-3 font-bold text-sm hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-btn"
+        >
+          Create Group ({selected.length} members)
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function GameShell({ gameId, playerId, token }: { gameId: string, playerId: string, token: string | null }) {
   const { dayIndex, roster, serverState } = useGameStore();
   const engine = useGameEngine(gameId, playerId, token);
-  const [activeTab, setActiveTab] = useState<'chat' | 'dms' | 'roster'>('chat');
-  const hasDms = useGameStore(s => s.chatLog.some(m => m.channel === 'DM'));
+  const [activeTab, setActiveTab] = useState<'chat' | 'people'>('chat');
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [showNewDm, setShowNewDm] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+
+  const hasDms = useGameStore(s => {
+    const channels = s.channels;
+    return Object.values(channels).some(ch =>
+      (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.GROUP_DM) &&
+      ch.memberIds.includes(playerId) &&
+      s.chatLog.some(m => m.channelId === ch.id)
+    );
+  });
 
   const me = roster[playerId];
   const aliveCount = Object.values(roster).filter((p: any) => p.status === PlayerStatuses.ALIVE).length;
   const onlineCount = useGameStore((s) => s.onlinePlayers.length);
+
+  const handleSelectPlayer = (id: string) => {
+    setSelectedPlayerId(id);
+    setSelectedGroupId(null);
+    setShowNewDm(false);
+    setShowNewGroup(false);
+    setActiveTab('people');
+  };
+
+  const handleSelectGroup = (channelId: string) => {
+    setSelectedGroupId(channelId);
+    setSelectedPlayerId(null);
+    setShowNewDm(false);
+    setShowNewGroup(false);
+    setActiveTab('people');
+  };
+
+  const handleBackToList = () => {
+    setSelectedPlayerId(null);
+    setSelectedGroupId(null);
+    setShowNewDm(false);
+    setShowNewGroup(false);
+  };
+
+  // Render People tab content based on navigation state
+  const renderPeopleContent = () => {
+    if (showNewDm) {
+      return (
+        <NewDmPicker
+          roster={roster}
+          playerId={playerId}
+          onSelect={handleSelectPlayer}
+          onBack={() => setShowNewDm(false)}
+        />
+      );
+    }
+    if (showNewGroup) {
+      return (
+        <NewGroupPicker
+          roster={roster}
+          playerId={playerId}
+          onBack={() => setShowNewGroup(false)}
+          engine={engine}
+        />
+      );
+    }
+    if (selectedGroupId) {
+      return (
+        <GroupThreadView
+          channelId={selectedGroupId}
+          onBack={handleBackToList}
+          engine={engine}
+        />
+      );
+    }
+    if (selectedPlayerId) {
+      return (
+        <PlayerDetailView
+          targetPlayerId={selectedPlayerId}
+          onBack={handleBackToList}
+          engine={engine}
+        />
+      );
+    }
+    return (
+      <PeopleList
+        onSelectPlayer={handleSelectPlayer}
+        onSelectGroup={handleSelectGroup}
+        onNewDm={() => setShowNewDm(true)}
+        onNewGroup={() => setShowNewGroup(true)}
+        engine={engine}
+      />
+    );
+  };
 
   return (
     <div className="fixed inset-0 flex flex-col bg-skin-fill text-skin-base font-body overflow-hidden bg-grid-pattern selection:bg-skin-gold selection:text-skin-inverted">
@@ -305,7 +498,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
         {/* Two-panel desktop layout */}
         <div className="flex-1 overflow-hidden flex">
 
-          {/* Desktop Sidebar: THE CAST */}
+          {/* Desktop Sidebar: THE CAST (clickable) */}
           <aside className="hidden lg:flex lg:flex-col w-72 shrink-0 border-r border-white/[0.06] bg-skin-panel/20">
             <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between">
               <h2 className="text-xs font-black text-skin-base uppercase tracking-widest font-display">The Cast</h2>
@@ -315,7 +508,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
             </div>
             <ul className="flex-1 overflow-y-auto p-3 space-y-2">
               {Object.values(roster).map((p: any) => (
-                <RosterRow key={p.id} player={p} playerId={playerId} />
+                <RosterRow key={p.id} player={p} playerId={playerId} onClick={() => handleSelectPlayer(p.id)} />
               ))}
             </ul>
             <PerkPanel engine={engine} />
@@ -328,7 +521,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
             <div className="hidden lg:flex border-b border-white/[0.06] bg-skin-panel/30">
               {([
                 { key: 'chat' as const, label: 'Comms' },
-                { key: 'dms' as const, label: 'DMs' },
+                { key: 'people' as const, label: 'People' },
               ]).map(tab => {
                 const isActive = activeTab === tab.key;
                 return (
@@ -351,38 +544,22 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
             {/* Content area */}
             <div className="flex-1 overflow-hidden relative flex flex-col">
               {activeTab === 'chat' && <Timeline engine={engine} />}
-              {activeTab === 'dms' && <DirectMessages engine={engine} />}
-              {activeTab === 'roster' && (
-                <div className="absolute inset-0 overflow-y-auto p-4 scroll-smooth lg:hidden">
-                  <div className="space-y-4 max-w-md mx-auto animate-fade-in">
-                    <h2 className="text-xl font-black text-skin-base tracking-tighter border-b border-white/10 pb-2 mb-4 font-display">
-                      THE CAST
-                    </h2>
-                    <ul className="space-y-2">
-                      {Object.values(roster).map((p: any) => (
-                        <RosterRow key={p.id} player={p} playerId={playerId} />
-                      ))}
-                    </ul>
-                    <PerkPanel engine={engine} />
-                  </div>
-                </div>
-              )}
+              {activeTab === 'people' && renderPeopleContent()}
             </div>
           </div>
         </div>
 
       </main>
 
-      {/* Footer Nav (mobile only) */}
+      {/* Footer Nav (mobile only) — 2 tabs */}
       <footer className="shrink-0 bg-skin-panel/90 backdrop-blur-md border-t border-white/[0.06] pb-safe lg:hidden">
         <nav className="flex items-stretch h-14">
           {([
             { key: 'chat' as const, label: 'Comms', Icon: MessageCircle, accent: 'text-skin-gold', bar: 'bg-skin-gold' },
-            { key: 'dms' as const, label: 'DMs', Icon: Mail, accent: 'text-skin-pink', bar: 'bg-skin-pink' },
-            { key: 'roster' as const, label: 'Roster', Icon: Users, accent: 'text-skin-gold', bar: 'bg-skin-gold' },
+            { key: 'people' as const, label: 'People', Icon: Users, accent: 'text-skin-pink', bar: 'bg-skin-pink' },
           ]).map(tab => {
             const isActive = activeTab === tab.key;
-            const hasBadge = tab.key === 'dms' && !isActive && hasDms;
+            const hasBadge = tab.key === 'people' && !isActive && hasDms;
             return (
               <button
                 key={tab.key}

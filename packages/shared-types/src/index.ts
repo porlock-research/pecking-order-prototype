@@ -339,6 +339,7 @@ export interface TickerMessage {
   text: string;
   category: 'SOCIAL' | 'GAME' | 'VOTE' | 'ELIMINATION' | 'SYSTEM';
   timestamp: number;
+  involvedPlayerIds?: string[];
 }
 
 // --- Per-Game Client Events ---

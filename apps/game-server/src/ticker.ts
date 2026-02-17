@@ -28,10 +28,12 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
         text: `${name(fact.actorId)} sent ${fact.payload?.amount || '?'} silver to ${name(fact.targetId)}`,
         category: TickerCategories.SOCIAL,
         timestamp: fact.timestamp,
+        involvedPlayerIds: [fact.actorId, fact.targetId].filter(Boolean),
       };
     case FactTypes.GAME_RESULT: {
       const players = fact.payload?.players;
       if (players) {
+        const playerIds = Object.keys(players);
         const sorted = Object.entries(players)
           .map(([pid, data]: [string, any]) => ({ pid, silver: data.silverReward || 0 }))
           .sort((a, b) => b.silver - a.silver);
@@ -41,6 +43,7 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
             text: `${name(sorted[0].pid)} earned ${sorted[0].silver} silver in today's game!`,
             category: TickerCategories.GAME,
             timestamp: fact.timestamp,
+            involvedPlayerIds: playerIds,
           };
         }
       }
@@ -52,6 +55,7 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
         text: `${name(fact.actorId)} earned ${fact.payload?.silverReward || 0} silver in today's game!`,
         category: TickerCategories.GAME,
         timestamp: fact.timestamp,
+        involvedPlayerIds: [fact.actorId],
       };
     case FactTypes.ELIMINATION:
       return {
@@ -59,6 +63,7 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
         text: `${name(fact.targetId || fact.actorId)} has been eliminated!`,
         category: TickerCategories.ELIMINATION,
         timestamp: fact.timestamp,
+        involvedPlayerIds: [fact.targetId || fact.actorId].filter(Boolean),
       };
     case FactTypes.WINNER_DECLARED:
       return {
@@ -66,6 +71,7 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
         text: `${name(fact.targetId || fact.actorId)} has won the game!`,
         category: TickerCategories.SYSTEM,
         timestamp: fact.timestamp,
+        involvedPlayerIds: [fact.targetId || fact.actorId].filter(Boolean),
       };
     case FactTypes.PERK_USED: {
       const perkType = fact.payload?.perkType || 'unknown';
@@ -79,18 +85,21 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
         text: `${name(fact.actorId)} used ${perkLabels[perkType] || perkType}!`,
         category: TickerCategories.SOCIAL,
         timestamp: fact.timestamp,
+        involvedPlayerIds: [fact.actorId],
       };
     }
     case FactTypes.PROMPT_RESULT: {
       const rewards = fact.payload?.silverRewards;
       if (rewards) {
+        const rewardPlayerIds = Object.keys(rewards);
         const totalSilver = Object.values(rewards).reduce((sum: number, v: any) => sum + (v || 0), 0);
         if (totalSilver > 0) {
           return {
             id: crypto.randomUUID(),
-            text: `Activity complete! ${Object.keys(rewards).length} players earned ${totalSilver} silver total.`,
+            text: `Activity complete! ${rewardPlayerIds.length} players earned ${totalSilver} silver total.`,
             category: TickerCategories.SOCIAL,
             timestamp: fact.timestamp,
+            involvedPlayerIds: rewardPlayerIds,
           };
         }
       }
