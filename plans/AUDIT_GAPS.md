@@ -53,6 +53,7 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 - **Clean client URLs** — sessionStorage + replaceState pattern, invite code as canonical URL identifier (ADR-045, ADR-046)
 - **JWT-secured WebSocket** — game server verifies JWT on connect, POST /init auth via shared secret (ADR-044)
 - **Player presence & typing indicators** — ephemeral L1 presence tracking (not persisted to XState), online dots on roster, dynamic header count, typing indicators in group chat and DMs with 3s auto-stop (ADR-054)
+- **Mode-driven live game pattern** — Touch Screen game (hold-to-win) establishes the pattern for real-time PvP minigames. One XState machine handles SOLO + LIVE via guard-based routing. LiveGameWrapper client component for consistent chrome. 4 events (START/READY/TOUCH/RELEASE), server-authoritative timing. (ADR-055)
 
 ---
 
@@ -63,7 +64,7 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 | Feature | Spec Reference | Effort | Notes |
 |---------|---------------|--------|-------|
 | **DUELS voting mechanic** | "Every player names a player. Two with highest score enter skill-based duel." | High | Needs a real-time minigame subsystem (not just voting). Could reuse REALTIME_TRIVIA as the duel game. |
-| **More game types** | Crystal Ball, Guess Who Said It, Luck, Skill Challenges, Trust Chains | High | Each is a new cartridge machine. TRIVIA and REALTIME_TRIVIA cover "Timed Trivia". Others are net-new. |
+| **More game types** | Crystal Ball, Guess Who Said It, Luck, Skill Challenges, Trust Chains | High | Each is a new cartridge machine. TRIVIA and REALTIME_TRIVIA cover "Timed Trivia". TOUCH_SCREEN establishes the live PvP pattern (ADR-055). Others are net-new. |
 | **Spectator polish** | "They can still spectate and vote in finals. Cannot win." | Low | Eliminated players can connect but chat/voting guards need tightening. Should see all chats read-only. |
 | **Identity check on winning** | "If 2+ people correctly guessed your real identity, you cannot win" | Medium | Needs a "guess identity" mechanic (new activity type or separate system), plus validation in FINALS resolution. |
 | **Leaderboard** | "Leaderboard" listed as MVP feature | Low | Client-side sort of roster by silver. No server work needed. |
@@ -125,3 +126,4 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 | D1 push subscriptions, HTTP push API, client launcher, inviteCode plumbing | `feat/app-structure-architecture` |
 | Lobby env vars (getCloudflareContext), push subscription reliability, VAPID key handling, tsup DTS fix | `fix/post-merge-misc` |
 | Player presence & typing indicators (ephemeral L1, roster dots, header count, chat/DM typing) | `main` |
+| Touch Screen game + mode-driven live game pattern (ADR-055), LiveGameWrapper | `feature/touch-screen-live-game` |

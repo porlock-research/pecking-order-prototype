@@ -622,3 +622,25 @@ This document tracks significant architectural decisions, their context, and con
     *   Presence resets on DO eviction (acceptable — clients reconnect and re-register).
     *   Typing indicators are fire-and-forget (no persistence, no guaranteed delivery).
     *   DM typing uses partner's playerId as channel — only the intended recipient sees the indicator.
+
+## [ADR-055] Mode-Driven Live Game Pattern (Touch Screen)
+*   **Date:** 2026-02-16
+*   **Status:** Accepted
+*   **Context:** Existing game cartridges fall into two categories: (1) async per-player arcade games (client-authoritative, via `createArcadeMachine`), and (2) broadcast trivia (server-authoritative, custom machine). Neither pattern supports simultaneous real-time PvP games where all players interact in the same shared state (e.g., hold-to-win, art match, gem trade). A new pattern is needed that handles both single-player practice and multiplayer competition from one machine.
+*   **Decision:** Introduce a **mode-driven live game pattern** — one XState machine handles both SOLO and LIVE modes via guard-based routing at an `init` transient state:
+    *   `init` uses `always` transitions: `[isLiveMode] → ready`, else `→ waitingForStart`.
+    *   **SOLO path**: `waitingForStart → countdown → active → completed`. Player clicks Start, then interacts during ACTIVE.
+    *   **LIVE path**: `ready → countdown → active → completed`. Players ready up (with timeout), then all interact simultaneously during ACTIVE.
+    *   Core gameplay (`active` + `completed`) is shared across modes — mode only affects the entry path.
+    *   `GameCartridgeInput` gains optional `mode: 'SOLO' | 'LIVE'` field (defaults to `'SOLO'` for backward compat). L3 passes `manifest.gameMode` through to game input.
+    *   `LiveGameProjection` type for SYNC — exposes `phase`, `eligiblePlayers`, `readyPlayers`, `countdownStartedAt`, `playStartedAt`, and game-specific fields via index signature.
+    *   Context uses game-specific keys (`holdStates`, not `players`/`decisions`/`submitted`) → falls through to broadcast projection path in `projectGameCartridge()`. No projection changes needed.
+    *   **Touch Screen** is the first game using this pattern. 4 events: `GAME.TOUCH_SCREEN.START` (launch), `GAME.TOUCH_SCREEN.READY` (live ready-up), `GAME.TOUCH_SCREEN.TOUCH` (start holding), `GAME.TOUCH_SCREEN.RELEASE` (let go). Server-authoritative timing. Longest hold wins.
+    *   **LiveGameWrapper** client component provides consistent chrome for all live games: WAITING_FOR_START (start button), READY (ready-up with player list + countdown bar), COUNTDOWN (3-2-1 animation), ACTIVE (delegates to `renderGame()`), COMPLETED (CelebrationSequence). Games only implement the ACTIVE phase content.
+*   **Consequences:**
+    *   Future live games (Art Match, The Split, Gem Trade) follow the same structure: all modes in one machine, guard routing at init, shared core states.
+    *   LiveGameWrapper is reusable — games only implement `renderGame()` and optional `renderBreakdown()`.
+    *   Existing arcade and trivia games are unaffected (`mode` defaults to undefined, ignored by their machines).
+    *   `.provide()` remains available for radical per-mode overrides if a future game needs completely different behavior.
+    *   Dev harness supports mode toggle (Solo/Live) and bot controls (Ready Bots, Touch Bots, Release Bot).
+    *   Lobby debug config gains game mode selector per day.
