@@ -21,6 +21,7 @@ out/
 # Misc
 .DS_Store
 *.pem
+*.sqlite
 
 # Environment Variables
 .env
