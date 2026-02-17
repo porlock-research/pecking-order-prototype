@@ -106,6 +106,8 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
     charsLimit: 1200 + overrides.extraChars,
     partnersUsed: ((l3Context.dmPartnersByPlayer || {})[playerId] || []).length,
     partnersLimit: 3 + overrides.extraPartners,
+    groupsUsed: ((l3Context.dmGroupsByPlayer || {})[playerId] || []).length,
+    groupsLimit: 3,
   };
 
   return {

@@ -46,6 +46,8 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
           setPerkResult(data);
         } else if (data.type === "PRESENCE.UPDATE") {
           setOnlinePlayers(data.onlinePlayers);
+        } else if (data.type === "CHANNEL.REJECTED") {
+          setDmRejection(data.reason);
         } else if (data.type === "PRESENCE.TYPING") {
           setTyping(data.playerId, data.channel);
         } else if (data.type === "PRESENCE.STOP_TYPING") {
@@ -97,6 +99,18 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     socket.send(JSON.stringify({ type, ...payload }));
   };
 
+  const sendToChannel = (channelId: string, content: string) => {
+    socket.send(JSON.stringify({
+      type: "SOCIAL.SEND_MSG",
+      content,
+      channelId,
+    }));
+  };
+
+  const createGroupDm = (memberIds: string[]) => {
+    socket.send(JSON.stringify({ type: 'SOCIAL.CREATE_CHANNEL', memberIds }));
+  };
+
   const sendPerk = (perkType: string, targetId?: string) => {
     socket.send(JSON.stringify({ type: 'SOCIAL.USE_PERK', perkType, targetId }));
   };
@@ -126,6 +140,8 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     sendMessage,
     sendDM,
     sendSilver,
+    sendToChannel,
+    createGroupDm,
     sendVoteAction,
     sendGameAction,
     sendActivityAction,

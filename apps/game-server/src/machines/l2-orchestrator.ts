@@ -46,6 +46,7 @@ export type GameEvent =
   | { type: 'PERK.RESULT'; senderId: string; result: any }
   | { type: 'PERK.REJECTED'; senderId: string; reason: string }
   | { type: 'SILVER_TRANSFER.REJECTED'; senderId: string; reason: string }
+  | { type: 'CHANNEL.REJECTED'; reason: string; senderId: string }
   | DmRejectedEvent
   | (SocialEvent & { senderId: string });
 
@@ -155,6 +156,8 @@ export const orchestratorMachine = setup({
             'DM.REJECTED': { actions: 'sendDmRejection' },
             'SILVER_TRANSFER.REJECTED': { actions: 'sendSilverTransferRejection' },
             'SOCIAL.USE_PERK': { actions: sendTo('l3-session', ({ event }: any) => event) },
+            'SOCIAL.CREATE_CHANNEL': { actions: sendTo('l3-session', ({ event }: any) => event) },
+            'CHANNEL.REJECTED': { actions: 'sendChannelRejection' },
             'PERK.RESULT': { actions: 'deliverPerkResult' },
             'PERK.REJECTED': { actions: 'deliverPerkResult' },
             '*': [

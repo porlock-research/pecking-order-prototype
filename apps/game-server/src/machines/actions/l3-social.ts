@@ -1,6 +1,6 @@
 import { assign, sendParent } from 'xstate';
 import type { DmRejectionReason, Channel } from '@pecking-order/shared-types';
-import { DM_MAX_CHARS_PER_DAY, dmChannelId } from '@pecking-order/shared-types';
+import { DM_MAX_CHARS_PER_DAY, DM_MAX_GROUPS_PER_DAY, dmChannelId, groupDmChannelId } from '@pecking-order/shared-types';
 import { buildChatMessage, appendToChatLog, deductSilver, transferSilverBetween, resolveChannelId } from './social-helpers';
 
 export const l3SocialActions = {
@@ -41,14 +41,19 @@ export const l3SocialActions = {
     // Update DM tracking (skip for MAIN and exempt channels)
     let dmPartnersByPlayer = context.dmPartnersByPlayer;
     let dmCharsByPlayer = context.dmCharsByPlayer;
-    if (!isMainOrExempt && channelId.startsWith('dm:')) {
-      const targetId = channelId.split(':').find((s: string) => s !== 'dm' && s !== senderId);
-      if (targetId) {
-        const partners = dmPartnersByPlayer[senderId] || [];
-        if (!partners.includes(targetId)) {
-          dmPartnersByPlayer = { ...dmPartnersByPlayer, [senderId]: [...partners, targetId] };
+    const isDmOrGroupDm = channelId.startsWith('dm:') || channelId.startsWith('gdm:');
+    if (!isMainOrExempt && isDmOrGroupDm) {
+      // Partner tracking: only for 1-to-1 DMs
+      if (channelId.startsWith('dm:')) {
+        const targetId = channelId.split(':').find((s: string) => s !== 'dm' && s !== senderId);
+        if (targetId) {
+          const partners = dmPartnersByPlayer[senderId] || [];
+          if (!partners.includes(targetId)) {
+            dmPartnersByPlayer = { ...dmPartnersByPlayer, [senderId]: [...partners, targetId] };
+          }
         }
       }
+      // Char tracking: shared pool for both 1-to-1 and group DMs
       const charsUsed = dmCharsByPlayer[senderId] || 0;
       dmCharsByPlayer = { ...dmCharsByPlayer, [senderId]: charsUsed + event.content.length };
     }
@@ -95,6 +100,17 @@ export const l3SocialActions = {
         reason = 'SELF_DM';
       } else if (targetId && context.roster[targetId]?.status === 'ELIMINATED') {
         reason = 'TARGET_ELIMINATED';
+      } else if ((context.roster[senderId]?.silver ?? 0) < 1) {
+        reason = 'INSUFFICIENT_SILVER';
+      } else {
+        const charsUsed = context.dmCharsByPlayer[senderId] || 0;
+        if (charsUsed + content.length > charLimit) {
+          reason = 'CHAR_LIMIT';
+        }
+      }
+    } else if (channelId.startsWith('gdm:')) {
+      if (!channel) {
+        reason = 'INVALID_MEMBERS'; // Group DM channel doesn't exist (must be pre-created)
       } else if ((context.roster[senderId]?.silver ?? 0) < 1) {
         reason = 'INSUFFICIENT_SILVER';
       } else {
@@ -171,9 +187,100 @@ export const l3SocialActions = {
     }
     return { channels, chatLog };
   }),
+
+  // Group DM channel creation
+  createGroupDmChannel: assign(({ context, event }: any) => {
+    if (event.type !== 'SOCIAL.CREATE_CHANNEL') return {};
+    const senderId = event.senderId;
+    const allMembers = [senderId, ...event.memberIds];
+    const channelId = groupDmChannelId(allMembers);
+
+    // Idempotent: if channel already exists, no-op
+    if (context.channels[channelId]) return {};
+
+    const newChannel: Channel = {
+      id: channelId,
+      type: 'GROUP_DM',
+      memberIds: allMembers,
+      createdBy: senderId,
+      createdAt: Date.now(),
+      capabilities: ['CHAT'],
+    };
+
+    const dmGroupsByPlayer = { ...context.dmGroupsByPlayer };
+    const groups = dmGroupsByPlayer[senderId] || [];
+    dmGroupsByPlayer[senderId] = [...groups, channelId];
+
+    return {
+      channels: { ...context.channels, [channelId]: newChannel },
+      dmGroupsByPlayer,
+    };
+  }),
+
+  // Group DM creation rejected: determine reason and notify parent
+  rejectGroupDmCreation: sendParent(({ context, event }: any): any => {
+    if (event.type !== 'SOCIAL.CREATE_CHANNEL') return { type: 'NOOP' };
+    const senderId = event.senderId;
+    const memberIds = event.memberIds || [];
+
+    let reason: DmRejectionReason = 'DMS_CLOSED';
+    if (!context.dmsOpen) {
+      reason = 'DMS_CLOSED';
+    } else if (memberIds.length < 2) {
+      reason = 'INVALID_MEMBERS';
+    } else if (memberIds.includes(senderId)) {
+      reason = 'INVALID_MEMBERS';
+    } else {
+      // Check all members exist and are alive
+      const allValid = memberIds.every((id: string) =>
+        context.roster[id] && context.roster[id].status === 'ALIVE'
+      );
+      if (!allValid) {
+        // Determine if it's eliminated or invalid
+        const hasEliminated = memberIds.some((id: string) =>
+          context.roster[id]?.status === 'ELIMINATED'
+        );
+        reason = hasEliminated ? 'TARGET_ELIMINATED' : 'INVALID_MEMBERS';
+      } else {
+        reason = 'GROUP_LIMIT';
+      }
+    }
+
+    return { type: 'CHANNEL.REJECTED', reason, senderId };
+  }),
 };
 
 export const l3SocialGuards = {
+  isGroupDmCreationAllowed: ({ context, event }: any) => {
+    if (event.type !== 'SOCIAL.CREATE_CHANNEL') return false;
+    if (!context.dmsOpen) return false;
+
+    const senderId = event.senderId;
+    const memberIds = event.memberIds || [];
+
+    // Must be alive
+    if (context.roster[senderId]?.status !== 'ALIVE') return false;
+
+    // Need at least 2 other members, no self-inclusion
+    if (memberIds.length < 2) return false;
+    if (memberIds.includes(senderId)) return false;
+
+    // All members must exist in roster and be alive
+    for (const id of memberIds) {
+      if (!context.roster[id] || context.roster[id].status !== 'ALIVE') return false;
+    }
+
+    // Idempotent: if channel already exists, allow (no limit consumed)
+    const allMembers = [senderId, ...memberIds];
+    const channelId = groupDmChannelId(allMembers);
+    if (context.channels[channelId]) return true;
+
+    // Check group creation limit
+    const groups = context.dmGroupsByPlayer[senderId] || [];
+    if (groups.length >= DM_MAX_GROUPS_PER_DAY) return false;
+
+    return true;
+  },
   isSilverTransferAllowed: ({ context, event }: any) => {
     if (event.type !== 'SOCIAL.SEND_SILVER') return false;
     const { senderId, targetId, amount } = event;
@@ -197,6 +304,10 @@ export const l3SocialGuards = {
 
     // DM/GROUP_DM: check dmsOpen + limits
     if (!context.dmsOpen) return false;
+
+    // Group DMs must be pre-created (no lazy creation)
+    if (channelId.startsWith('gdm:') && !channel) return false;
+
     const senderId = event.senderId;
     const target = channelId.startsWith('dm:')
       ? channelId.split(':').find((s: string) => s !== 'dm' && s !== senderId)

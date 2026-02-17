@@ -131,6 +131,10 @@ export class GameServer extends Server<Env> {
           if (event.type !== 'SILVER_TRANSFER.REJECTED') return;
           this.sendToPlayer(event.senderId, { type: 'SILVER_TRANSFER.REJECTED', reason: event.reason });
         },
+        sendChannelRejection: ({ event }: any) => {
+          if (event.type !== 'CHANNEL.REJECTED') return;
+          this.sendToPlayer(event.senderId, { type: 'CHANNEL.REJECTED', reason: event.reason });
+        },
         deliverPerkResult: ({ event }: any) => {
           if (event.type !== 'PERK.RESULT' && event.type !== 'PERK.REJECTED') return;
           this.sendToPlayer(event.senderId, event);

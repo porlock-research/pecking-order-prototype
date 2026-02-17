@@ -142,6 +142,10 @@ export const dailySessionMachine = setup({
                   { guard: 'canAffordPerk', actions: ['deductPerkCost', 'recordPerkOverride', 'emitPerkFact'] },
                   { actions: ['rejectPerk'] }
                 ],
+                'SOCIAL.CREATE_CHANNEL': [
+                  { guard: 'isGroupDmCreationAllowed', actions: ['createGroupDmChannel'] },
+                  { actions: ['rejectGroupDmCreation'] }
+                ],
                 'INTERNAL.OPEN_DMS': { actions: assign({ dmsOpen: true }) },
                 'INTERNAL.CLOSE_DMS': { actions: assign({ dmsOpen: false }) },
                 'INTERNAL.OPEN_GROUP_CHAT': { actions: assign({ groupChatOpen: true }) },

@@ -199,15 +199,19 @@ export const ChatMessageSchema = z.object({
 });
 
 export const SocialEventSchema = z.discriminatedUnion("type", [
-  z.object({ 
-    type: z.literal("SOCIAL.SEND_MSG"), 
-    content: z.string(), 
-    targetId: z.string().optional() 
+  z.object({
+    type: z.literal("SOCIAL.SEND_MSG"),
+    content: z.string(),
+    targetId: z.string().optional()
   }),
-  z.object({ 
-    type: z.literal("SOCIAL.SEND_SILVER"), 
-    amount: z.number().positive(), 
-    targetId: z.string() 
+  z.object({
+    type: z.literal("SOCIAL.SEND_SILVER"),
+    amount: z.number().positive(),
+    targetId: z.string()
+  }),
+  z.object({
+    type: z.literal("SOCIAL.CREATE_CHANNEL"),
+    memberIds: z.array(z.string()).min(2),  // excludes sender (injected by L1)
   })
 ]);
 
@@ -237,7 +241,7 @@ export const DM_MAX_CHARS_PER_DAY = 1200;
 export const DM_SILVER_COST = 1;
 export const DM_MAX_GROUPS_PER_DAY = 3;  // for future group DMs
 
-export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LIMIT' | 'CHAR_LIMIT' | 'SELF_DM' | 'TARGET_ELIMINATED' | 'INSUFFICIENT_SILVER';
+export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LIMIT' | 'CHAR_LIMIT' | 'SELF_DM' | 'TARGET_ELIMINATED' | 'INSUFFICIENT_SILVER' | 'GROUP_LIMIT' | 'INVALID_MEMBERS';
 
 // --- Channel System ---
 

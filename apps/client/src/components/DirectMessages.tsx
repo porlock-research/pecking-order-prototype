@@ -25,6 +25,8 @@ interface DirectMessagesProps {
   engine: {
     sendDM: (targetId: string, content: string) => void;
     sendSilver: (amount: number, targetId: string) => void;
+    sendToChannel: (channelId: string, content: string) => void;
+    createGroupDm: (memberIds: string[]) => void;
     sendTyping: (channel?: string) => void;
     stopTyping: (channel?: string) => void;
   };
@@ -38,6 +40,8 @@ const REJECTION_LABELS: Record<string, string> = {
   INSUFFICIENT_SILVER: 'Not enough silver (costs 1 silver)',
   TARGET_ELIMINATED: 'This player has been eliminated',
   SELF_DM: 'Cannot message yourself',
+  GROUP_LIMIT: "You've reached your daily group DM limit (3)",
+  INVALID_MEMBERS: 'Invalid group members',
 };
 
 const SILVER_REJECTION_LABELS: Record<string, string> = {
@@ -65,8 +69,11 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
   const silverTransferRejection = useGameStore(s => s.silverTransferRejection);
   const clearSilverTransferRejection = useGameStore(s => s.clearSilverTransferRejection);
   const [activePartnerId, setActivePartnerId] = useState<string | null>(null);
+  const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [showNewDm, setShowNewDm] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
   const [showSilverTransfer, setShowSilverTransfer] = useState(false);
   const [silverAmount, setSilverAmount] = useState('');
   const [silverSent, setSilverSent] = useState(false);
@@ -76,24 +83,31 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
   const threads = useMemo(() => {
     if (!playerId) return [];
 
-    // Channel-based derivation
+    // Channel-based derivation (DM + GROUP_DM)
     const dmChannels = Object.values(channels).filter(
-      ch => ch.type === 'DM' && ch.memberIds.includes(playerId)
+      ch => (ch.type === 'DM' || ch.type === 'GROUP_DM') && ch.memberIds.includes(playerId)
     );
 
     if (dmChannels.length > 0) {
       return dmChannels.map(ch => {
-        const partnerId = ch.memberIds.find(id => id !== playerId) || ch.memberIds[0];
+        const isGroup = ch.type === 'GROUP_DM';
+        const partnerId = isGroup
+          ? ch.id
+          : (ch.memberIds.find(id => id !== playerId) || ch.memberIds[0]);
         const messages = chatLog
           .filter((m: ChatMessage) => m.channelId === ch.id)
           .sort((a, b) => a.timestamp - b.timestamp);
         return {
           partnerId,
+          channelId: ch.id,
           messages,
           lastTimestamp: messages.length > 0 ? messages[messages.length - 1].timestamp : ch.createdAt,
+          isGroup,
+          memberIds: isGroup ? ch.memberIds : undefined,
         };
       })
-      .filter(t => t.messages.length > 0)
+      // Group threads show even if empty; 1-to-1 only if messages exist
+      .filter(t => t.isGroup || t.messages.length > 0)
       .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
     }
 
@@ -109,6 +123,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
     return Array.from(threadMap.entries())
       .map(([partnerId, messages]) => ({
         partnerId,
+        channelId: `dm:${[playerId, partnerId].sort().join(':')}`,
         messages: messages.sort((a, b) => a.timestamp - b.timestamp),
         lastTimestamp: messages[messages.length - 1].timestamp,
       }))
@@ -120,6 +135,9 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
   const charsLimit = dmStats?.charsLimit ?? 1200;
   const partnersRemaining = dmStats ? Math.max(0, dmStats.partnersLimit - dmStats.partnersUsed) : 0;
   const partnersLimit = dmStats?.partnersLimit ?? 3;
+  const groupsUsed = dmStats?.groupsUsed ?? 0;
+  const groupsLimit = dmStats?.groupsLimit ?? 3;
+  const groupsRemaining = Math.max(0, groupsLimit - groupsUsed);
 
   // Auto-clear rejection after 4 seconds
   useEffect(() => {
@@ -129,7 +147,9 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
   }, [dmRejection, clearDmRejection]);
 
   // Scroll to bottom when active thread changes
-  const activeThread = threads.find(t => t.partnerId === activePartnerId);
+  const activeThread = activeChannelId
+    ? threads.find(t => t.channelId === activeChannelId)
+    : threads.find(t => t.partnerId === activePartnerId);
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -153,8 +173,13 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || !activePartnerId) return;
-    engine.sendDM(activePartnerId, inputValue);
-    engine.stopTyping(activePartnerId);
+    if (activeChannelId?.startsWith('gdm:')) {
+      engine.sendToChannel(activeChannelId, inputValue);
+      engine.stopTyping(activeChannelId);
+    } else {
+      engine.sendDM(activePartnerId, inputValue);
+      engine.stopTyping(activePartnerId);
+    }
     setInputValue('');
   };
 
@@ -169,7 +194,20 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
 
   const handleStartNewDm = (partnerId: string) => {
     setActivePartnerId(partnerId);
+    setActiveChannelId(null);
     setShowNewDm(false);
+  };
+
+  const handleCreateGroup = () => {
+    if (selectedGroupMembers.length < 2) return;
+    engine.createGroupDm(selectedGroupMembers);
+    setSelectedGroupMembers([]);
+    setShowNewGroup(false);
+  };
+
+  const handleOpenThread = (thread: typeof threads[0]) => {
+    setActivePartnerId(thread.partnerId);
+    setActiveChannelId(thread.channelId);
   };
 
   // Available players to DM (alive, not me)
@@ -211,10 +249,74 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
     );
   }
 
+  // Group creation picker
+  if (showNewGroup) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="shrink-0 px-4 py-3 border-b border-white/[0.06] bg-skin-panel/40 flex items-center gap-3">
+          <button
+            onClick={() => { setShowNewGroup(false); setSelectedGroupMembers([]); }}
+            className="text-skin-dim hover:text-skin-base font-mono text-lg transition-colors"
+          >
+            {'<-'}
+          </button>
+          <span className="text-sm font-bold text-skin-pink uppercase tracking-wider font-display">New Group</span>
+          <span className="text-[10px] font-mono text-skin-dim ml-auto">{selectedGroupMembers.length} selected</span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {availablePlayers.map(p => {
+            const isSelected = selectedGroupMembers.includes(p.id);
+            return (
+              <button
+                key={p.id}
+                onClick={() => {
+                  setSelectedGroupMembers(prev =>
+                    isSelected ? prev.filter(id => id !== p.id) : [...prev, p.id]
+                  );
+                }}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl bg-glass border transition-all ${
+                  isSelected ? 'border-skin-pink/50 bg-skin-pink/10' : 'border-white/[0.06] hover:border-skin-pink/30'
+                }`}
+              >
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center text-xs shrink-0 ${
+                  isSelected ? 'border-skin-pink bg-skin-pink text-skin-base' : 'border-white/20'
+                }`}>
+                  {isSelected && '\u2713'}
+                </div>
+                <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-pink avatar-ring">
+                  {p.personaName?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+                <span className="font-bold text-sm text-skin-base">{p.personaName}</span>
+              </button>
+            );
+          })}
+          {availablePlayers.length === 0 && (
+            <div className="text-center text-skin-dim text-sm py-8">No players available</div>
+          )}
+        </div>
+        <div className="shrink-0 p-4 border-t border-white/[0.06] bg-skin-panel/40">
+          {dmRejection && (
+            <div className="mb-2 px-3 py-1.5 rounded-lg bg-skin-danger/10 border border-skin-danger/20 text-skin-danger text-xs font-mono animate-fade-in">
+              {REJECTION_LABELS[dmRejection.reason] || dmRejection.reason}
+            </div>
+          )}
+          <button
+            onClick={handleCreateGroup}
+            disabled={selectedGroupMembers.length < 2}
+            className="w-full bg-skin-pink text-skin-base rounded-full py-3 font-bold text-sm hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-btn"
+          >
+            Create Group ({selectedGroupMembers.length} members)
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Shared footer for DM thread views (existing thread + new conversation)
   const mySilver = playerId ? (roster[playerId]?.silver ?? 0) : 0;
+  const isGroupThread = activeChannelId?.startsWith('gdm:');
   const isPartnerGameMaster = activePartnerId === GAME_MASTER_ID;
-  const canSendSilver = activePartnerId && !isPartnerGameMaster;
+  const canSendSilver = activePartnerId && !isPartnerGameMaster && !isGroupThread;
 
   const renderThreadFooter = () => (
     <div className="absolute bottom-0 left-0 right-0 p-3 bg-skin-panel/80 backdrop-blur-lg border-t border-white/[0.06]">
@@ -278,7 +380,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
           value={inputValue}
           onChange={(e) => {
             setInputValue(e.target.value);
-            if (e.target.value && activePartnerId) engine.sendTyping(activePartnerId);
+            if (e.target.value && activePartnerId) engine.sendTyping(isGroupThread ? activeChannelId! : activePartnerId);
           }}
           placeholder="Private message..."
           maxLength={280}
@@ -299,35 +401,56 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
 
   // Thread view
   if (activePartnerId && activeThread) {
-    const partnerInfo = resolvePartner(activePartnerId, roster);
+    const isGroup = activeThread.isGroup;
+    const groupMemberNames = isGroup && activeThread.memberIds
+      ? activeThread.memberIds
+          .filter(id => id !== playerId)
+          .map(id => roster[id]?.personaName || 'Unknown')
+          .join(', ')
+      : '';
+    const partnerInfo = isGroup
+      ? { name: groupMemberNames, initial: activeThread.memberIds?.filter(id => id !== playerId).slice(0, 2).map(id => roster[id]?.personaName?.charAt(0)?.toUpperCase() || '?').join('') || 'G', isGameMaster: false }
+      : resolvePartner(activePartnerId, roster);
     return (
       <div className="flex flex-col h-full relative">
         {/* Header */}
         <div className="shrink-0 px-4 py-3 border-b border-white/[0.06] bg-skin-panel/40 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => setActivePartnerId(null)}
-              className="text-skin-dim hover:text-skin-base font-mono text-lg transition-colors"
+              onClick={() => { setActivePartnerId(null); setActiveChannelId(null); }}
+              className="text-skin-dim hover:text-skin-base font-mono text-lg transition-colors shrink-0"
             >
               {'<-'}
             </button>
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-mono avatar-ring ${partnerInfo.isGameMaster ? 'bg-skin-gold/20 text-skin-gold' : 'bg-skin-panel text-skin-pink'}`}>
-              {partnerInfo.initial}
-            </div>
-            <span className={`text-sm font-bold ${partnerInfo.isGameMaster ? 'text-skin-gold' : 'text-skin-base'}`}>{partnerInfo.name}</span>
+            {isGroup ? (
+              <div className="w-7 h-7 rounded-full bg-skin-panel flex items-center justify-center text-[10px] font-bold font-mono text-skin-pink avatar-ring shrink-0">
+                {partnerInfo.initial}
+              </div>
+            ) : (
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-mono avatar-ring shrink-0 ${partnerInfo.isGameMaster ? 'bg-skin-gold/20 text-skin-gold' : 'bg-skin-panel text-skin-pink'}`}>
+                {partnerInfo.initial}
+              </div>
+            )}
+            <span className={`text-sm font-bold truncate ${partnerInfo.isGameMaster ? 'text-skin-gold' : 'text-skin-base'}`}>{partnerInfo.name}</span>
           </div>
-          <span className="font-mono text-[10px] text-skin-dim">{charsRemaining}/{charsLimit}</span>
+          <span className="font-mono text-[10px] text-skin-dim shrink-0">{charsRemaining}/{charsLimit}</span>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth pb-20" ref={scrollRef}>
           {activeThread.messages.map(msg => {
             const isMe = msg.senderId === playerId;
+            const senderName = isGroup && !isMe
+              ? (roster[msg.senderId]?.personaName || 'Unknown')
+              : null;
             return (
               <div
                 key={msg.id}
                 className={`flex flex-col max-w-[85%] ${isMe ? 'ml-auto items-end' : 'mr-auto items-start'} slide-up-in`}
               >
+                {senderName && (
+                  <span className="text-[10px] font-mono text-skin-pink mb-1 ml-1">{senderName}</span>
+                )}
                 <div
                   className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words relative group
                     ${isMe
@@ -360,7 +483,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
         <div className="shrink-0 px-4 py-3 border-b border-white/[0.06] bg-skin-panel/40 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setActivePartnerId(null)}
+              onClick={() => { setActivePartnerId(null); setActiveChannelId(null); }}
               className="text-skin-dim hover:text-skin-base font-mono text-lg transition-colors"
             >
               {'<-'}
@@ -398,15 +521,29 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
             </span>
           )}
         </div>
-        <button
-          onClick={() => setShowNewDm(true)}
-          className="text-[10px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-3 py-1 text-skin-pink uppercase tracking-widest hover:bg-skin-pink/20 transition-colors"
-        >
-          + New
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowNewGroup(true)}
+            className="text-[10px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-3 py-1 text-skin-pink uppercase tracking-widest hover:bg-skin-pink/20 transition-colors"
+          >
+            + Group <span className="text-skin-dim">{groupsRemaining}/{groupsLimit}</span>
+          </button>
+          <button
+            onClick={() => setShowNewDm(true)}
+            className="text-[10px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-3 py-1 text-skin-pink uppercase tracking-widest hover:bg-skin-pink/20 transition-colors"
+          >
+            + New
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {dmRejection && (
+          <div className="mb-2 px-3 py-1.5 rounded-lg bg-skin-danger/10 border border-skin-danger/20 text-skin-danger text-xs font-mono animate-fade-in">
+            {REJECTION_LABELS[dmRejection.reason] || dmRejection.reason}
+          </div>
+        )}
+
         {threads.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full space-y-3">
             <div className="w-14 h-14 rounded-full bg-glass border border-white/10 flex items-center justify-center glow-breathe">
@@ -422,6 +559,41 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
         )}
 
         {threads.map(thread => {
+          if (thread.isGroup) {
+            const memberNames = (thread.memberIds || [])
+              .filter(id => id !== playerId)
+              .map(id => roster[id]?.personaName || 'Unknown');
+            const initials = memberNames.slice(0, 2).map(n => n.charAt(0).toUpperCase()).join('');
+            const lastMsg = thread.messages[thread.messages.length - 1];
+            const lastSenderName = lastMsg ? (roster[lastMsg.senderId]?.personaName || 'Unknown') : '';
+            const isFromMe = lastMsg?.senderId === playerId;
+
+            return (
+              <button
+                key={thread.channelId}
+                onClick={() => handleOpenThread(thread)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-glass border border-white/[0.06] hover:border-skin-pink/30 transition-all text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-skin-panel flex items-center justify-center text-[11px] font-bold font-mono text-skin-pink avatar-ring shrink-0">
+                  {initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="font-bold text-sm truncate text-skin-base">
+                      {memberNames.join(', ')}
+                    </span>
+                    <span className="text-[9px] font-mono text-skin-dim shrink-0 ml-2">
+                      {lastMsg ? new Date(thread.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'New'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-skin-dim truncate">
+                    {lastMsg ? `${isFromMe ? 'You' : lastSenderName}: ${lastMsg.content}` : 'No messages yet'}
+                  </p>
+                </div>
+              </button>
+            );
+          }
+
           const partnerInfo = resolvePartner(thread.partnerId, roster);
           const lastMsg = thread.messages[thread.messages.length - 1];
           const isFromMe = lastMsg?.senderId === playerId;
@@ -429,7 +601,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
           return (
             <button
               key={thread.partnerId}
-              onClick={() => setActivePartnerId(thread.partnerId)}
+              onClick={() => handleOpenThread(thread)}
               className="w-full flex items-center gap-3 p-3 rounded-xl bg-glass border border-white/[0.06] hover:border-skin-pink/30 transition-all text-left"
             >
               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold font-mono avatar-ring shrink-0 ${partnerInfo.isGameMaster ? 'bg-skin-gold/20 text-skin-gold' : 'bg-skin-panel text-skin-pink'}`}>

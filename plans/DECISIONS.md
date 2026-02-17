@@ -675,5 +675,5 @@ This document tracks significant architectural decisions, their context, and con
     *   `capabilities` field enables capability-driven UI rendering — client checks what actions a channel supports rather than hard-coding by type.
     *   Old events with `targetId` but no `channelId` still work via `resolveChannelId()` backward compat bridge.
     *   Deprecated `channel` and `targetId` fields on `ChatMessage` can be removed once all clients are updated.
-    *   Group DM creation UI is typed but not built yet (deferred).
+    *   Group DM creation fully wired: `SOCIAL.CREATE_CHANNEL` → L3 guard/action → channel appears in SYNC. Server-confirmed (not optimistic) — creation can fail with `CHANNEL.REJECTED`. Idempotent via deterministic `groupDmChannelId()`. No silver transfer in group DMs (ambiguous recipient). Group messages share the 1200 char/day pool with 1-to-1 DMs. Client: multi-select group creation picker, group thread view with sender labels.
     *   No D1 schema changes — channels live in L3 context only.
