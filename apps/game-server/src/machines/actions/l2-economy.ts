@@ -144,4 +144,63 @@ export const l2EconomyActions = {
       },
     } as any;
   }),
+
+  // --- Completed phase recording (for timeline) ---
+
+  recordCompletedVoting: assign({
+    completedPhases: ({ context, event }: any) => {
+      const result = event.result;
+      return [...(context.completedPhases || []), {
+        kind: 'voting' as const,
+        dayIndex: context.dayIndex,
+        completedAt: Date.now(),
+        mechanism: result.mechanism,
+        eliminatedId: result.eliminatedId,
+        winnerId: result.winnerId || null,
+        summary: result.summary || {},
+      }];
+    },
+  }),
+  recordCompletedGame: assign({
+    completedPhases: ({ context, event }: any) => {
+      const result = event.result as GameOutput;
+      // Trivia emits per-player results via CARTRIDGE.PLAYER_GAME_RESULT,
+      // so result.silverRewards may be sparse. Merge from summary.players.
+      let silverRewards = result.silverRewards || {};
+      const summaryPlayers = result.summary?.players as Record<string, { silverReward?: number }> | undefined;
+      if (summaryPlayers) {
+        const merged = { ...silverRewards };
+        for (const [pid, data] of Object.entries(summaryPlayers)) {
+          if (!(pid in merged) || merged[pid] === 0) {
+            merged[pid] = data.silverReward ?? 0;
+          }
+        }
+        silverRewards = merged;
+      }
+      return [...(context.completedPhases || []), {
+        kind: 'game' as const,
+        dayIndex: context.dayIndex,
+        completedAt: Date.now(),
+        gameType: result.gameType || 'UNKNOWN',
+        silverRewards,
+        goldContribution: result.goldContribution || 0,
+        summary: result.summary || {},
+      }];
+    },
+  }),
+  recordCompletedPrompt: assign({
+    completedPhases: ({ context, event }: any) => {
+      const result = event.result as PromptOutput;
+      return [...(context.completedPhases || []), {
+        kind: 'prompt' as const,
+        dayIndex: context.dayIndex,
+        completedAt: Date.now(),
+        promptType: event.promptType || 'UNKNOWN',
+        promptText: event.promptText || '',
+        silverRewards: result.silverRewards || {},
+        participantCount: event.participantCount || 0,
+        results: event.results || null,
+      }];
+    },
+  }),
 };

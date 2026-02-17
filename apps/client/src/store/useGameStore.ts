@@ -10,6 +10,13 @@ interface DmThread {
   memberIds?: string[];
 }
 
+export interface CompletedCartridge {
+  kind: 'voting' | 'game' | 'prompt';
+  snapshot: any;   // L2 result data (mechanism, gameType, silverRewards, etc.)
+  completedAt: number;
+  key: string;
+}
+
 interface GameState {
   gameId: string | null;
   dayIndex: number;
@@ -23,6 +30,7 @@ interface GameState {
   activeVotingCartridge: any | null;
   activeGameCartridge: any | null;
   activePromptCartridge: any | null;
+  completedCartridges: CompletedCartridge[];
   winner: { playerId: string; mechanism: string; summary: Record<string, any> } | null;
   gameHistory: GameHistoryEntry[];
   dmStats: { charsUsed: number; charsLimit: number; partnersUsed: number; partnersLimit: number; groupsUsed: number; groupsLimit: number } | null;
@@ -128,6 +136,7 @@ export const useGameStore = create<GameState>((set) => ({
   activeVotingCartridge: null,
   activeGameCartridge: null,
   activePromptCartridge: null,
+  completedCartridges: [],
   winner: null,
   gameHistory: [],
   dmStats: null,
@@ -139,25 +148,39 @@ export const useGameStore = create<GameState>((set) => ({
   tickerMessages: [],
   debugTicker: null,
 
-  sync: (data) => set((state) => ({
-    gameId: data.context?.gameId || state.gameId,
-    dayIndex: data.context?.dayIndex || 0,
-    roster: data.context?.roster || {},
-    // Server is authoritative, but never wipe a populated chatLog with an empty one
-    // (protects against stale syncs from unrelated L2 state changes)
-    chatLog: data.context?.chatLog?.length ? data.context.chatLog : state.chatLog,
-    channels: data.context?.channels ?? state.channels,
-    groupChatOpen: data.context?.groupChatOpen ?? state.groupChatOpen,
-    manifest: data.context?.manifest || null,
-    serverState: data.state || null,
-    activeVotingCartridge: data.context?.activeVotingCartridge ?? null,
-    activeGameCartridge: data.context?.activeGameCartridge ?? null,
-    activePromptCartridge: data.context?.activePromptCartridge ?? null,
-    winner: data.context?.winner ?? null,
-    gameHistory: data.context?.gameHistory ?? state.gameHistory,
-    dmStats: data.context?.dmStats ?? null,
-    onlinePlayers: data.context?.onlinePlayers ?? state.onlinePlayers,
-  })),
+  sync: (data) => set((state) => {
+    // Map server completedPhases to client CompletedCartridge format
+    const serverPhases: any[] = data.context?.completedPhases ?? [];
+    const completedCartridges: CompletedCartridge[] = serverPhases.map((p: any) => {
+      const kind = p.kind as 'voting' | 'game' | 'prompt';
+      const typeKey = p.mechanism || p.gameType || p.promptType || 'UNKNOWN';
+      return {
+        kind,
+        snapshot: p,
+        completedAt: p.completedAt,
+        key: `${kind}-${p.dayIndex}-${typeKey}`,
+      };
+    });
+
+    return {
+      gameId: data.context?.gameId || state.gameId,
+      dayIndex: data.context?.dayIndex || 0,
+      roster: data.context?.roster || {},
+      chatLog: data.context?.chatLog?.length ? data.context.chatLog : state.chatLog,
+      channels: data.context?.channels ?? state.channels,
+      groupChatOpen: data.context?.groupChatOpen ?? state.groupChatOpen,
+      manifest: data.context?.manifest || null,
+      serverState: data.state || null,
+      activeVotingCartridge: data.context?.activeVotingCartridge ?? null,
+      activeGameCartridge: data.context?.activeGameCartridge ?? null,
+      activePromptCartridge: data.context?.activePromptCartridge ?? null,
+      completedCartridges,
+      winner: data.context?.winner ?? null,
+      gameHistory: data.context?.gameHistory ?? state.gameHistory,
+      dmStats: data.context?.dmStats ?? null,
+      onlinePlayers: data.context?.onlinePlayers ?? state.onlinePlayers,
+    };
+  }),
 
   addChatMessage: (msg) => set((state) => ({
     chatLog: [...state.chatLog, msg]

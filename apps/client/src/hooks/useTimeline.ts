@@ -8,6 +8,7 @@ export function useTimeline(): TimelineEntry[] {
   const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
   const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
   const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
+  const completedCartridges = useGameStore(s => s.completedCartridges);
 
   return useMemo(() => {
     const entries: TimelineEntry[] = [];
@@ -19,6 +20,16 @@ export function useTimeline(): TimelineEntry[] {
 
     for (const t of tickerMessages) {
       entries.push({ kind: 'system', key: `sys-${t.id}`, timestamp: t.timestamp, data: t });
+    }
+
+    // Include completed cartridges as timeline entries
+    for (const c of completedCartridges) {
+      entries.push({
+        kind: 'completed-cartridge',
+        key: c.key,
+        timestamp: c.completedAt,
+        data: { kind: c.kind, snapshot: c.snapshot },
+      });
     }
 
     // Sort chronologically
@@ -36,5 +47,5 @@ export function useTimeline(): TimelineEntry[] {
     }
 
     return entries;
-  }, [chatLog, tickerMessages, activeVotingCartridge, activeGameCartridge, activePromptCartridge]);
+  }, [chatLog, tickerMessages, activeVotingCartridge, activeGameCartridge, activePromptCartridge, completedCartridges]);
 }

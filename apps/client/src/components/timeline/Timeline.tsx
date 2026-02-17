@@ -3,7 +3,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { useTimeline } from '../../hooks/useTimeline';
 import { TimelineChatBubble } from './TimelineChatBubble';
 import { TimelineSystemEvent } from './TimelineSystemEvent';
-import { TimelineCartridgeCard } from './TimelineCartridgeCard';
+import { TimelineCartridgeCard, CompletedCartridgeCard } from './TimelineCartridgeCard';
 import { TimelineInput } from './TimelineInput';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { ArrowDown } from 'lucide-react';
@@ -132,6 +132,8 @@ export const Timeline: React.FC<TimelineProps> = ({ engine }) => {
             case 'game':
             case 'prompt':
               return <TimelineCartridgeCard key={entry.key} entry={entry} engine={engine} />;
+            case 'completed-cartridge':
+              return <CompletedCartridgeCard key={entry.key} entry={entry} />;
           }
         })}
 

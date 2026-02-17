@@ -25,6 +25,12 @@ export interface GameContext {
   pendingElimination: VoteResult | null;
   winner: { playerId: string; mechanism: 'FINALS'; summary: Record<string, any> } | null;
   gameHistory: GameHistoryEntry[];
+  completedPhases: Array<{
+    kind: 'voting' | 'game' | 'prompt';
+    dayIndex: number;
+    completedAt: number;
+    [key: string]: any;
+  }>;
 }
 
 export type GameEvent =
@@ -40,7 +46,7 @@ export type GameEvent =
   | { type: 'CARTRIDGE.VOTE_RESULT'; result: VoteResult }
   | { type: 'CARTRIDGE.GAME_RESULT'; result: GameOutput }
   | { type: 'CARTRIDGE.PLAYER_GAME_RESULT'; playerId: string; silverReward: number }
-  | { type: 'CARTRIDGE.PROMPT_RESULT'; result: PromptOutput }
+  | { type: 'CARTRIDGE.PROMPT_RESULT'; result: PromptOutput; promptType?: string; promptText?: string; participantCount?: number; results?: any }
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
   | { type: 'SOCIAL.USE_PERK'; senderId: string; perkType: string; targetId?: string }
   | { type: 'PERK.RESULT'; senderId: string; result: any }
@@ -84,6 +90,7 @@ export const orchestratorMachine = setup({
     pendingElimination: null,
     winner: null,
     gameHistory: [],
+    completedPhases: [],
   },
   states: {
     uninitialized: {
@@ -149,10 +156,10 @@ export const orchestratorMachine = setup({
             },
             'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }: any) => event) },
             'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }: any) => event) },
-            'CARTRIDGE.VOTE_RESULT': { actions: 'storeVoteResult' },
-            'CARTRIDGE.GAME_RESULT': { actions: ['applyGameRewards', 'recordGameResult', 'emitGameResultFact'] },
+            'CARTRIDGE.VOTE_RESULT': { actions: ['storeVoteResult', 'recordCompletedVoting'] },
+            'CARTRIDGE.GAME_RESULT': { actions: ['applyGameRewards', 'recordGameResult', 'recordCompletedGame', 'emitGameResultFact'] },
             'CARTRIDGE.PLAYER_GAME_RESULT': { actions: ['applyPlayerGameReward', 'emitPlayerGameResultFact'] },
-            'CARTRIDGE.PROMPT_RESULT': { actions: ['applyPromptRewards', 'emitPromptResultFact'] },
+            'CARTRIDGE.PROMPT_RESULT': { actions: ['applyPromptRewards', 'recordCompletedPrompt', 'emitPromptResultFact'] },
             'DM.REJECTED': { actions: 'sendDmRejection' },
             'SILVER_TRANSFER.REJECTED': { actions: 'sendSilverTransferRejection' },
             'SOCIAL.USE_PERK': { actions: sendTo('l3-session', ({ event }: any) => event) },
