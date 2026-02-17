@@ -27,8 +27,8 @@ export const NewsTicker: React.FC = () => {
 
   return (
     <div className="shrink-0">
-      {/* Debug strip */}
-      {debugTicker && (
+      {/* Debug strip — dev only */}
+      {import.meta.env.DEV && debugTicker && (
         <div className="bg-black/60 border-t border-skin-green/20 py-0.5 px-4 flex items-center gap-1.5 overflow-hidden">
           <Bug size={9} className="shrink-0 text-skin-green opacity-70" />
           <span className="text-[9px] font-mono text-skin-green/80 uppercase tracking-widest truncate">

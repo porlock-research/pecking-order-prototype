@@ -164,10 +164,10 @@ export const useGameStore = create<GameState>((set) => ({
   })),
 
   addTickerMessage: (msg) => set((state) => ({
-    tickerMessages: [...state.tickerMessages, msg].slice(-20)
+    tickerMessages: [...state.tickerMessages, msg].slice(-200)
   })),
 
-  setTickerMessages: (msgs) => set({ tickerMessages: msgs.slice(-20) }),
+  setTickerMessages: (msgs) => set({ tickerMessages: msgs.slice(-200) }),
 
   setDebugTicker: (summary) => set({ debugTicker: summary }),
 

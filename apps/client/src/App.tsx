@@ -1,17 +1,13 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useGameStore } from './store/useGameStore';
 import { useGameEngine } from './hooks/useGameEngine';
-import { ChatRoom } from './components/ChatRoom';
+import { Timeline } from './components/timeline/Timeline';
 import { DirectMessages } from './components/DirectMessages';
 import { NewsTicker } from './components/NewsTicker';
-import VotingPanel from './components/panels/VotingPanel';
-import GamePanel from './components/panels/GamePanel';
-import GameHistory from './components/panels/GameHistory';
-import PromptPanel from './components/panels/PromptPanel';
 import PerkPanel from './components/panels/PerkPanel';
 
 const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
-import { formatState, formatPhase } from './utils/formatState';
+import { formatPhase } from './utils/formatState';
 import { Coins, MessageCircle, Mail, Users } from 'lucide-react';
 import { decodeGameToken } from '@pecking-order/auth';
 import { PlayerStatuses } from '@pecking-order/shared-types';
@@ -255,7 +251,7 @@ function RosterRow({ player, playerId }: { player: any; playerId: string }) {
         </div>
       </div>
       <div className="flex items-center gap-1 font-mono text-sm text-skin-gold font-bold">
-        <Coins size={12} className="text-gray-300" />
+        <Coins size={12} className="text-skin-dim" />
         {player.silver}
       </div>
     </li>
@@ -296,7 +292,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
           </div>
           {me && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-skin-gold/10 border border-skin-gold/20">
-              <Coins size={12} className="text-gray-300" />
+              <Coins size={12} className="text-skin-dim" />
               <span className="font-mono font-bold text-skin-gold text-sm">{me.silver}</span>
             </div>
           )}
@@ -322,6 +318,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
                 <RosterRow key={p.id} player={p} playerId={playerId} />
               ))}
             </ul>
+            <PerkPanel engine={engine} />
           </aside>
 
           {/* Main content column */}
@@ -330,7 +327,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
             {/* Desktop content switcher (replaces footer nav on lg+) */}
             <div className="hidden lg:flex border-b border-white/[0.06] bg-skin-panel/30">
               {([
-                { key: 'chat' as const, label: 'Green Room' },
+                { key: 'chat' as const, label: 'Comms' },
                 { key: 'dms' as const, label: 'DMs' },
               ]).map(tab => {
                 const isActive = activeTab === tab.key;
@@ -351,16 +348,9 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
               })}
             </div>
 
-            {/* Voting, Game, Activity & Perk panels (inline with content) */}
-            <VotingPanel engine={engine} />
-            <GamePanel engine={engine} />
-            <GameHistory />
-            <PromptPanel engine={engine} />
-            <PerkPanel engine={engine} />
-
             {/* Content area */}
-            <div className="flex-1 overflow-hidden relative">
-              {activeTab === 'chat' && <ChatRoom engine={engine} />}
+            <div className="flex-1 overflow-hidden relative flex flex-col">
+              {activeTab === 'chat' && <Timeline engine={engine} />}
               {activeTab === 'dms' && <DirectMessages engine={engine} />}
               {activeTab === 'roster' && (
                 <div className="absolute inset-0 overflow-y-auto p-4 scroll-smooth lg:hidden">
@@ -373,6 +363,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
                         <RosterRow key={p.id} player={p} playerId={playerId} />
                       ))}
                     </ul>
+                    <PerkPanel engine={engine} />
                   </div>
                 </div>
               )}
@@ -415,18 +406,20 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
       {/* News Ticker */}
       <NewsTicker />
 
-      {/* Admin Link (Bottom Right Floating) — links to lobby admin panel */}
-      <div className="fixed bottom-24 right-4 z-50">
-        <a
-          href={`${import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000'}/admin/game/${gameId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="h-12 w-12 rounded-full bg-skin-danger text-skin-inverted shadow-glow glow-breathe flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border-2 border-white/20 font-mono font-bold text-lg"
-          title="Lobby Admin Panel"
-        >
-          {'⚙'}
-        </a>
-      </div>
+      {/* Admin Link (Bottom Right Floating) — dev only */}
+      {import.meta.env.DEV && (
+        <div className="fixed bottom-24 right-4 z-50">
+          <a
+            href={`${import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000'}/admin/game/${gameId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-12 w-12 rounded-full bg-skin-danger text-skin-inverted shadow-glow glow-breathe flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border-2 border-white/20 font-mono font-bold text-lg"
+            title="Lobby Admin Panel"
+          >
+            {'⚙'}
+          </a>
+        </div>
+      )}
 
     </div>
   );
