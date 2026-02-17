@@ -5,11 +5,13 @@ import { Timeline } from './components/timeline/Timeline';
 import { PeopleList } from './components/people/PeopleList';
 import { PlayerDetailView } from './components/people/PlayerDetailView';
 import { GroupThreadView } from './components/people/GroupThreadView';
-import { NewsTicker } from './components/NewsTicker';
+// NewsTicker kept but hidden — content absorbed into timeline system events
+// import { NewsTicker } from './components/NewsTicker';
 import PerkPanel from './components/panels/PerkPanel';
 
 const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
-import { formatPhase } from './utils/formatState';
+// formatPhase no longer used — phase badge removed from header
+// import { formatPhase } from './utils/formatState';
 import { Coins, MessageCircle, Users } from 'lucide-react';
 import { decodeGameToken } from '@pecking-order/auth';
 import { PlayerStatuses, ChannelTypes } from '@pecking-order/shared-types';
@@ -366,7 +368,7 @@ function NewGroupPicker({ roster, playerId, onBack, engine }: {
 }
 
 function GameShell({ gameId, playerId, token }: { gameId: string, playerId: string, token: string | null }) {
-  const { dayIndex, roster, serverState } = useGameStore();
+  const { roster } = useGameStore();
   const engine = useGameEngine(gameId, playerId, token);
   const [activeTab, setActiveTab] = useState<'chat' | 'people'>('chat');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -466,14 +468,11 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
 
       {/* Header */}
       <header className="shrink-0 bg-skin-panel/90 backdrop-blur-md border-b border-white/[0.06] px-4 py-2.5 flex items-center justify-between shadow-card z-50">
-        {/* Left: Title + Phase */}
+        {/* Left: Title */}
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-black font-display tracking-tighter text-skin-gold italic text-glow leading-none">
             PECKING ORDER
           </h1>
-          <span className="badge-skew text-[9px] py-0.5 px-2">
-            {formatPhase(serverState)}
-          </span>
         </div>
 
         {/* Right: Push + Online pill + Silver */}
@@ -580,8 +579,8 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
         </nav>
       </footer>
 
-      {/* News Ticker */}
-      <NewsTicker />
+      {/* News Ticker — hidden; content now lives in the timeline as system events */}
+      {/* <NewsTicker /> */}
 
       {/* Admin Link (Bottom Right Floating) — dev only */}
       {import.meta.env.DEV && (
