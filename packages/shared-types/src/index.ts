@@ -2,6 +2,7 @@ import { z } from "zod";
 
 // --- Re-export centralized constants ---
 export * from './events';
+export { Config } from './config';
 
 // --- Enums ---
 
@@ -237,12 +238,13 @@ export interface CartridgeProps {
   onAction: (action: any) => void;
 }
 
-// --- DM Constants ---
+// --- DM Constants (backward compat — canonical values in Config) ---
 
-export const DM_MAX_PARTNERS_PER_DAY = 3;
-export const DM_MAX_CHARS_PER_DAY = 1200;
-export const DM_SILVER_COST = 1;
-export const DM_MAX_GROUPS_PER_DAY = 3;  // for future group DMs
+import { Config } from './config';
+export const DM_MAX_PARTNERS_PER_DAY = Config.dm.maxPartnersPerDay;
+export const DM_MAX_CHARS_PER_DAY = Config.dm.maxCharsPerDay;
+export const DM_SILVER_COST = Config.dm.silverCost;
+export const DM_MAX_GROUPS_PER_DAY = Config.dm.maxGroupsPerDay;
 
 export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LIMIT' | 'CHAR_LIMIT' | 'SELF_DM' | 'TARGET_ELIMINATED' | 'INSUFFICIENT_SILVER' | 'GROUP_LIMIT' | 'INVALID_MEMBERS';
 
@@ -306,11 +308,7 @@ export interface PromptCartridgeInput {
 export const PerkTypeSchema = z.enum(['SPY_DMS', 'EXTRA_DM_PARTNER', 'EXTRA_DM_CHARS']);
 export type PerkType = z.infer<typeof PerkTypeSchema>;
 
-export const PERK_COSTS: Record<PerkType, number> = {
-  SPY_DMS: 5,
-  EXTRA_DM_PARTNER: 3,
-  EXTRA_DM_CHARS: 2,
-};
+export const PERK_COSTS: Record<PerkType, number> = Config.perk.costs;
 
 // --- Game Master ---
 

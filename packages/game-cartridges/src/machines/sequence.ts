@@ -5,18 +5,18 @@
  * recall specific positions. Sequence length increases each round.
  * Uses the generic arcade machine factory.
  */
+import { Config } from '@pecking-order/shared-types';
 import { createArcadeMachine } from './arcade-machine';
 
-const TIME_LIMIT_MS = 180_000; // 3 minutes
-const MAX_SILVER = 15;
+const { timeLimitMs, silverPerRound, roundsPerGold } = Config.game.sequence;
 
 export const sequenceMachine = createArcadeMachine({
   gameType: 'SEQUENCE',
-  defaultTimeLimit: TIME_LIMIT_MS,
+  defaultTimeLimit: timeLimitMs,
   computeRewards: (result) => {
     const correctRounds = result.correctRounds || 0;
-    const silver = Math.min(MAX_SILVER, correctRounds * 2);
-    const gold = Math.floor(correctRounds / 3);
+    const silver = Math.min(Config.game.arcade.maxSilver, correctRounds * silverPerRound);
+    const gold = Math.floor(correctRounds / roundsPerGold);
     return { silver, gold };
   },
 });

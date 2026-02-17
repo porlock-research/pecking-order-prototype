@@ -8,18 +8,13 @@
  */
 import { setup, assign, sendParent, enqueueActions, fromPromise, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
-import { Events, FactTypes, ArcadePhases, TriviaEvents } from '@pecking-order/shared-types';
+import { Events, FactTypes, ArcadePhases, TriviaEvents, Config } from '@pecking-order/shared-types';
 import type { GameEvent, GameOutput } from '../contracts';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from '../helpers/trivia-api';
 
 // --- Scoring Constants ---
-const TOTAL_ROUNDS = 5;
-const QUESTION_TIME_MS = 15_000;
-const BASE_SILVER = 2;
-const MAX_SPEED_BONUS = 3;
-const PERFECT_BONUS = 5;
-const GOLD_PER_CORRECT = 1;
+const { totalRounds: TOTAL_ROUNDS, questionTimeMs: QUESTION_TIME_MS, baseSilver: BASE_SILVER, maxSpeedBonus: MAX_SPEED_BONUS, perfectBonus: PERFECT_BONUS, goldPerCorrect: GOLD_PER_CORRECT, questionPoolSize, networkGraceMs } = Config.game.trivia;
 
 function pickRandomQuestions(pool: TriviaQuestion[], count: number): TriviaQuestion[] {
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
@@ -89,7 +84,7 @@ export const triviaMachine = setup({
   },
   actors: {
     fetchQuestions: fromPromise(async () => {
-      return await fetchTriviaQuestions(50);
+      return await fetchTriviaQuestions(questionPoolSize);
     }),
   },
   guards: {},
@@ -139,7 +134,7 @@ export const triviaMachine = setup({
 
       // Validate timing (1s grace for network latency)
       const elapsed = Date.now() - player.questionStartedAt;
-      const withinTime = elapsed <= QUESTION_TIME_MS + 1000;
+      const withinTime = elapsed <= QUESTION_TIME_MS + networkGraceMs;
 
       const validAnswer = typeof answerIndex === 'number' && answerIndex >= 0 && answerIndex <= 3;
       const correct = withinTime && validAnswer && answerIndex === q.correctIndex;

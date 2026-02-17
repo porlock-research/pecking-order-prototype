@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ArcadeGameProjection, SocialPlayer } from '@pecking-order/shared-types';
+import { Config } from '@pecking-order/shared-types';
 import ArcadeGameWrapper from '../wrappers/ArcadeGameWrapper';
 import GapRunRenderer from './GapRunRenderer';
 
@@ -24,9 +25,10 @@ export default function GapRun(props: GapRunProps) {
         const distance = result.distance || 0;
         const jumps = result.jumps || 0;
         const timeElapsed = result.timeElapsed || 0;
-        const distanceSilver = Math.min(15, Math.floor(distance / 100));
-        const survived = distance > 0 && timeElapsed >= (props.cartridge.timeLimit || 45000) - 1000;
-        const survivalBonus = survived ? 5 : 0;
+        const { maxDistanceSilver, distancePerSilver, survivalGraceMs, survivalBonus: survivalBonusValue } = Config.game.gapRun;
+        const distanceSilver = Math.min(maxDistanceSilver, Math.floor(distance / distancePerSilver));
+        const survived = distance > 0 && timeElapsed >= (props.cartridge.timeLimit || Config.game.gapRun.timeLimitMs) - survivalGraceMs;
+        const survivalBonus = survived ? survivalBonusValue : 0;
 
         return (
           <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">

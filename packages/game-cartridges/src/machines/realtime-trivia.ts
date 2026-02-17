@@ -1,18 +1,12 @@
 import { setup, assign, sendParent, fromPromise, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
-import { Events, FactTypes, RealtimeTriviaPhases, RealtimeTriviaEvents } from '@pecking-order/shared-types';
+import { Events, FactTypes, RealtimeTriviaPhases, RealtimeTriviaEvents, Config } from '@pecking-order/shared-types';
 import type { BaseGameContext, GameEvent, GameOutput } from '../contracts';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from '../helpers/trivia-api';
 
 // --- Scoring Constants ---
-const TOTAL_ROUNDS = 5;
-const QUESTION_TIME_MS = 15_000;
-const RESULT_DISPLAY_MS = 3_000;
-const BASE_SILVER = 2;       // per correct answer
-const MAX_SPEED_BONUS = 3;   // max speed bonus (answer instantly)
-const PERFECT_BONUS = 5;     // bonus for 5/5 correct
-const GOLD_PER_CORRECT = 1;  // collective gold per correct answer
+const { totalRounds: TOTAL_ROUNDS, questionTimeMs: QUESTION_TIME_MS, resultDisplayMs: RESULT_DISPLAY_MS, baseSilver: BASE_SILVER, maxSpeedBonus: MAX_SPEED_BONUS, perfectBonus: PERFECT_BONUS, goldPerCorrect: GOLD_PER_CORRECT, questionPoolSize } = Config.game.trivia;
 
 function pickRandomQuestions(pool: TriviaQuestion[], count: number): TriviaQuestion[] {
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
@@ -47,7 +41,7 @@ export const realtimeTriviaMachine = setup({
   },
   actors: {
     fetchQuestions: fromPromise(async () => {
-      return await fetchTriviaQuestions(50);
+      return await fetchTriviaQuestions(questionPoolSize);
     }),
   },
   delays: {

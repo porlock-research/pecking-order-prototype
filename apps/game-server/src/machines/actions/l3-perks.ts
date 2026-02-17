@@ -1,5 +1,5 @@
 import { assign, sendParent } from 'xstate';
-import { PERK_COSTS, type PerkType, Events, FactTypes, PlayerStatuses } from '@pecking-order/shared-types';
+import { PERK_COSTS, Config, type PerkType, Events, FactTypes, PlayerStatuses } from '@pecking-order/shared-types';
 
 export const l3PerkActions = {
   deductPerkCost: assign({
@@ -22,7 +22,7 @@ export const l3PerkActions = {
       if (perkType === 'EXTRA_DM_PARTNER') {
         updated.extraPartners = current.extraPartners + 1;
       } else if (perkType === 'EXTRA_DM_CHARS') {
-        updated.extraChars = current.extraChars + 600;
+        updated.extraChars = current.extraChars + Config.perk.extraCharsBonus;
       }
       // SPY_DMS doesn't modify overrides
       return { ...context.perkOverrides, [senderId]: updated };

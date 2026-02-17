@@ -14,7 +14,7 @@
  */
 import { setup, assign, sendParent, enqueueActions, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
-import { Events, FactTypes, ArcadePhases } from '@pecking-order/shared-types';
+import { Events, FactTypes, ArcadePhases, Config } from '@pecking-order/shared-types';
 import type { GameEvent, GameOutput } from '../contracts';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 
@@ -66,7 +66,7 @@ export interface ArcadeGameContext {
 // --- Factory ---
 
 export function createArcadeMachine(config: ArcadeGameConfig) {
-  const { gameType, computeRewards, defaultTimeLimit = 45_000 } = config;
+  const { gameType, computeRewards, defaultTimeLimit = Config.game.arcade.defaultTimeLimitMs } = config;
   const START_EVENT = Events.Game.start(gameType);
   const RESULT_EVENT = Events.Game.result(gameType);
 
@@ -213,7 +213,7 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
       const seed = (Date.now() ^ (input.dayIndex * 2654435761)) >>> 0;
 
       // Default difficulty scales with day (day 1 = 0, day 7 ~ 0.9)
-      const difficulty = input.difficulty ?? Math.min(1, (input.dayIndex - 1) * 0.15);
+      const difficulty = input.difficulty ?? Math.min(1, (input.dayIndex - 1) * Config.game.arcade.difficultyScalePerDay);
 
       return {
         gameType,

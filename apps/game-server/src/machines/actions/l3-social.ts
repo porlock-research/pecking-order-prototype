@@ -1,6 +1,6 @@
 import { assign, sendParent } from 'xstate';
 import type { DmRejectionReason, Channel } from '@pecking-order/shared-types';
-import { DM_MAX_CHARS_PER_DAY, DM_MAX_GROUPS_PER_DAY, dmChannelId, groupDmChannelId, Events, FactTypes, PlayerStatuses } from '@pecking-order/shared-types';
+import { DM_MAX_CHARS_PER_DAY, DM_MAX_GROUPS_PER_DAY, Config, dmChannelId, groupDmChannelId, Events, FactTypes, PlayerStatuses } from '@pecking-order/shared-types';
 import { buildChatMessage, appendToChatLog, deductSilver, transferSilverBetween, resolveChannelId } from './social-helpers';
 
 export const l3SocialActions = {
@@ -33,7 +33,7 @@ export const l3SocialActions = {
     const ch = channels[channelId];
     const isExempt = ch?.constraints?.exempt;
     const isMainOrExempt = channelId === 'MAIN' || isExempt;
-    const silverCost = isMainOrExempt ? 0 : (ch?.constraints?.silverCost ?? 1);
+    const silverCost = isMainOrExempt ? 0 : (ch?.constraints?.silverCost ?? Config.dm.silverCost);
     const roster = silverCost > 0
       ? deductSilver(context.roster, senderId, silverCost)
       : context.roster;
@@ -100,7 +100,7 @@ export const l3SocialActions = {
         reason = 'SELF_DM';
       } else if (targetId && context.roster[targetId]?.status === PlayerStatuses.ELIMINATED) {
         reason = 'TARGET_ELIMINATED';
-      } else if ((context.roster[senderId]?.silver ?? 0) < 1) {
+      } else if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) {
         reason = 'INSUFFICIENT_SILVER';
       } else {
         const charsUsed = context.dmCharsByPlayer[senderId] || 0;
@@ -111,7 +111,7 @@ export const l3SocialActions = {
     } else if (channelId.startsWith('gdm:')) {
       if (!channel) {
         reason = 'INVALID_MEMBERS'; // Group DM channel doesn't exist (must be pre-created)
-      } else if ((context.roster[senderId]?.silver ?? 0) < 1) {
+      } else if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) {
         reason = 'INSUFFICIENT_SILVER';
       } else {
         const charsUsed = context.dmCharsByPlayer[senderId] || 0;
@@ -314,7 +314,7 @@ export const l3SocialGuards = {
       : null;
     if (senderId === target) return false;
     if (target && context.roster[target]?.status === PlayerStatuses.ELIMINATED) return false;
-    if ((context.roster[senderId]?.silver ?? 0) < 1) return false;
+    if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) return false;
     // Char limit
     const overrides = context.perkOverrides?.[senderId] || { extraPartners: 0, extraChars: 0 };
     const charLimit = DM_MAX_CHARS_PER_DAY + overrides.extraChars;

@@ -5,6 +5,7 @@
  * Highest bidder per slot wins the prize. Sole bidders pay nothing.
  * Silver spent becomes gold contribution.
  */
+import { Config } from '@pecking-order/shared-types';
 import { createSyncDecisionMachine, type SyncDecisionResult } from './sync-decision-machine';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 
@@ -20,10 +21,9 @@ export interface AuctionPrize {
 }
 
 const PRIZE_POOL: AuctionPrize[] = [
-  { type: 'SILVER', label: '+5 silver', value: 5 },
-  { type: 'SILVER', label: '+10 silver', value: 10 },
-  { type: 'SILVER', label: '+15 silver', value: 15 },
-  { type: 'SILVER', label: '+20 silver', value: 20 },
+  ...Config.game.blindAuction.prizePool.map((v) => ({
+    type: 'SILVER' as const, label: `+${v} silver`, value: v,
+  })),
   { type: 'SHIELD', label: 'Shield', value: 0 },
   { type: 'CURSE_NO_DM', label: 'Curse: No DMs', value: 0 },
   { type: 'CURSE_HALF_VOTE', label: 'Curse: Half Vote', value: 0 },
@@ -38,7 +38,7 @@ function generatePrizes(dayIndex: number): AuctionPrize[] {
     const j = seed % (i + 1);
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return shuffled.slice(0, 3);
+  return shuffled.slice(0, Config.game.blindAuction.prizeSlots);
 }
 
 export const blindAuctionMachine = createSyncDecisionMachine<AuctionDecision>({
@@ -50,7 +50,7 @@ export const blindAuctionMachine = createSyncDecisionMachine<AuctionDecision>({
     const silver = context.roster[playerId]?.silver ?? 0;
     return (
       typeof decision.slot === 'number' &&
-      [1, 2, 3].includes(decision.slot) &&
+      decision.slot >= 1 && decision.slot <= Config.game.blindAuction.prizeSlots &&
       typeof decision.amount === 'number' &&
       Number.isInteger(decision.amount) &&
       decision.amount >= 0 &&
@@ -70,7 +70,10 @@ export const blindAuctionMachine = createSyncDecisionMachine<AuctionDecision>({
     }
 
     // Group bids by slot
-    const slotBids: Record<number, { pid: string; amount: number }[]> = { 1: [], 2: [], 3: [] };
+    const numSlots = Config.game.blindAuction.prizeSlots;
+    const slotBids: Record<number, { pid: string; amount: number }[]> = {};
+    const slotWinners: Record<number, string | null> = {};
+    for (let s = 1; s <= numSlots; s++) { slotBids[s] = []; slotWinners[s] = null; }
     for (const [pid, d] of Object.entries(decisions)) {
       if (slotBids[d.slot]) {
         slotBids[d.slot].push({ pid, amount: d.amount });
@@ -78,9 +81,8 @@ export const blindAuctionMachine = createSyncDecisionMachine<AuctionDecision>({
     }
 
     let totalSilverSpent = 0;
-    const slotWinners: Record<number, string | null> = { 1: null, 2: null, 3: null };
 
-    for (const slot of [1, 2, 3]) {
+    for (let slot = 1; slot <= numSlots; slot++) {
       const bids = slotBids[slot].sort((a, b) => b.amount - a.amount);
       if (bids.length === 0) continue;
 
@@ -114,7 +116,7 @@ export const blindAuctionMachine = createSyncDecisionMachine<AuctionDecision>({
 
     // Determine shield winner from prizes
     let shieldWinnerId: string | null = null;
-    for (const slot of [1, 2, 3]) {
+    for (let slot = 1; slot <= numSlots; slot++) {
       if (prizes[slot - 1].type === 'SHIELD' && slotWinners[slot]) {
         shieldWinnerId = slotWinners[slot];
       }

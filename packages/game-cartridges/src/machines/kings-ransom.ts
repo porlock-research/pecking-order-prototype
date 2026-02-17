@@ -6,9 +6,9 @@
  * - Steals > Protects: stealers split double vault, King gets shield, protectors get nothing
  * - Tie: silver returns to King, nobody gains
  */
+import { Config, type SocialPlayer } from '@pecking-order/shared-types';
 import { createSyncDecisionMachine, type SyncDecisionResult } from './sync-decision-machine';
 import { getAlivePlayerIds } from '../helpers/alive-players';
-import type { SocialPlayer } from '@pecking-order/shared-types';
 
 interface RansomDecision {
   action: 'STEAL' | 'PROTECT';
@@ -27,7 +27,7 @@ function findKing(roster: Record<string, SocialPlayer>): string {
 }
 
 function calculateVault(kingSilver: number): number {
-  return Math.max(10, Math.floor(kingSilver * 0.3));
+  return Math.max(Config.game.kingsRansom.vaultMinimum, Math.floor(kingSilver * Config.game.kingsRansom.vaultFraction));
 }
 
 export const kingsRansomMachine = createSyncDecisionMachine<RansomDecision>({

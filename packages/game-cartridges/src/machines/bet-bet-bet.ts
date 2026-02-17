@@ -5,6 +5,7 @@
  * pot. The lowest bettor pays double. Any tied amount = all tied players pay 5x.
  * Shield goes to closest-to-median without going over.
  */
+import { Config } from '@pecking-order/shared-types';
 import { createSyncDecisionMachine, type SyncDecisionResult } from './sync-decision-machine';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 import { getMedian } from '../helpers/decision-helpers';
@@ -64,7 +65,7 @@ export const betBetBetMachine = createSyncDecisionMachine<BetDecision>({
     for (const [amountStr, pids] of Object.entries(tiedGroups)) {
       const amount = Number(amountStr);
       for (const pid of pids) {
-        const penalty = Math.min(amount * 5, context.roster[pid]?.silver ?? 0);
+        const penalty = Math.min(amount * Config.game.betBetBet.tiePenaltyMultiplier, context.roster[pid]?.silver ?? 0);
         silverRewards[pid] = -penalty;
       }
     }

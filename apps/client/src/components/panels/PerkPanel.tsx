@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../../store/useGameStore';
-import { PERK_COSTS, type PerkType, PlayerStatuses } from '@pecking-order/shared-types';
+import { PERK_COSTS, Config, type PerkType, PlayerStatuses } from '@pecking-order/shared-types';
 import { Eye, UserPlus, MessageSquarePlus, X, Coins, Check } from 'lucide-react';
 
 interface PerkPanelProps {
@@ -12,12 +12,12 @@ interface PerkPanelProps {
 const PERK_INFO: { type: PerkType; label: string; desc: string; icon: typeof Eye; needsTarget: boolean }[] = [
   { type: 'SPY_DMS', label: 'Spy DMs', desc: 'See last 3 DMs a player sent', icon: Eye, needsTarget: true },
   { type: 'EXTRA_DM_PARTNER', label: '+1 DM Partner', desc: 'DM one more person today', icon: UserPlus, needsTarget: false },
-  { type: 'EXTRA_DM_CHARS', label: '+600 DM Chars', desc: 'Extend your DM character limit', icon: MessageSquarePlus, needsTarget: false },
+  { type: 'EXTRA_DM_CHARS', label: `+${Config.perk.extraCharsBonus} DM Chars`, desc: 'Extend your DM character limit', icon: MessageSquarePlus, needsTarget: false },
 ];
 
 const PERK_SUCCESS_LABELS: Record<string, string> = {
   EXTRA_DM_PARTNER: '+1 DM partner unlocked for today!',
-  EXTRA_DM_CHARS: '+600 DM characters unlocked for today!',
+  EXTRA_DM_CHARS: `+${Config.perk.extraCharsBonus} DM characters unlocked for today!`,
 };
 
 export default function PerkPanel({ engine }: PerkPanelProps) {

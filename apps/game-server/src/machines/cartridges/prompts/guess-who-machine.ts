@@ -6,13 +6,13 @@
  * Silver rewards: +5 participation, +5 per correct guess, +5 per player fooled.
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import { Events, FactTypes, PromptPhases, ActivityEvents, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, ActivityEvents, Config, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
-const SILVER_PARTICIPATION = 5;
-const SILVER_PER_CORRECT_GUESS = 5;
-const SILVER_PER_FOOLED = 5;
+const SILVER_PARTICIPATION = Config.prompt.silverParticipation;
+const SILVER_PER_CORRECT_GUESS = Config.prompt.guessWho.silverPerCorrectGuess;
+const SILVER_PER_FOOLED = Config.prompt.guessWho.silverPerFooled;
 
 interface GuessWhoContext {
   promptType: 'GUESS_WHO';
@@ -106,7 +106,7 @@ export const guessWhoMachine = setup({
       if (!senderId || !text) return {};
       if (!context.eligibleVoters.includes(senderId)) return {};
       if (senderId in context.answers) return {};
-      return { answers: { ...context.answers, [senderId]: String(text).slice(0, 280) } };
+      return { answers: { ...context.answers, [senderId]: String(text).slice(0, Config.chat.maxMessageLength) } };
     }),
     buildAnonymousAnswers: assign(({ context }) => {
       const entries = Object.values(context.answers).map((text, i) => ({ index: i, text }));

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, ActivityEvents, Config, type SocialPlayer } from '@pecking-order/shared-types';
 import { PenLine } from 'lucide-react';
 
 interface ConfessionCartridge {
@@ -96,13 +96,13 @@ export default function ConfessionPrompt({ cartridge, playerId, roster, engine }
             <div className="space-y-3">
               <textarea
                 value={confessionText}
-                onChange={(e) => setConfessionText(e.target.value.slice(0, 280))}
+                onChange={(e) => setConfessionText(e.target.value.slice(0, Config.chat.maxMessageLength))}
                 placeholder="Write your anonymous confession..."
                 className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg px-4 py-3 text-sm text-skin-base placeholder:text-skin-dim/40 focus:outline-none focus:border-skin-pink/30 resize-none"
                 rows={3}
               />
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-skin-dim/40">{confessionText.length}/280</span>
+                <span className="text-[10px] font-mono text-skin-dim/40">{confessionText.length}/{Config.chat.maxMessageLength}</span>
                 <button
                   onClick={handleSubmitConfession}
                   disabled={!confessionText.trim()}

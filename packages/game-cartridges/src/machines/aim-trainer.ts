@@ -4,18 +4,18 @@
  * Precision minigame. Circles appear at random positions and shrink.
  * Tap before they vanish — smaller when tapped = more points.
  */
+import { Config } from '@pecking-order/shared-types';
 import { createArcadeMachine } from './arcade-machine';
 
-const TIME_LIMIT_MS = 60_000;
-const MAX_SILVER = 15;
+const { timeLimitMs, scorePerSilver, scorePerGold } = Config.game.aimTrainer;
 
 export const aimTrainerMachine = createArcadeMachine({
   gameType: 'AIM_TRAINER',
-  defaultTimeLimit: TIME_LIMIT_MS,
+  defaultTimeLimit: timeLimitMs,
   computeRewards: (result) => {
     const score = result.score || 0;
-    const silver = Math.min(MAX_SILVER, Math.floor(score / 10));
-    const gold = Math.floor(score / 50);
+    const silver = Math.min(Config.game.arcade.maxSilver, Math.floor(score / scorePerSilver));
+    const gold = Math.floor(score / scorePerGold);
     return { silver, gold };
   },
 });

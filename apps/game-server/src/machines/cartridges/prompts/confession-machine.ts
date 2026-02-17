@@ -6,13 +6,13 @@
  * Silver rewards: +5 for submitting, +5 for voting, +15 for winning confession.
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import { Events, FactTypes, PromptPhases, ActivityEvents, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, ActivityEvents, Config, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
-const SILVER_SUBMIT = 5;
-const SILVER_VOTE = 5;
-const SILVER_WINNER = 15;
+const SILVER_SUBMIT = Config.prompt.confession.silverSubmit;
+const SILVER_VOTE = Config.prompt.confession.silverVote;
+const SILVER_WINNER = Config.prompt.confession.silverWinner;
 
 interface ConfessionContext {
   promptType: 'CONFESSION';
@@ -104,7 +104,7 @@ export const confessionMachine = setup({
       if (!senderId || !text) return {};
       if (!context.eligibleVoters.includes(senderId)) return {};
       if (senderId in context.confessions) return {};
-      return { confessions: { ...context.confessions, [senderId]: String(text).slice(0, 280) } };
+      return { confessions: { ...context.confessions, [senderId]: String(text).slice(0, Config.chat.maxMessageLength) } };
     }),
     buildAnonymousConfessions: assign(({ context }) => {
       const entries = Object.values(context.confessions).map((text, i) => ({ index: i, text }));

@@ -5,12 +5,12 @@
  * Silver rewards: +5 per response, +10 per mutual pick (both players).
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import { Events, FactTypes, PromptPhases, ActivityEvents, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, ActivityEvents, Config, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput, PromptResult } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
-const SILVER_PER_RESPONSE = 5;
-const SILVER_MUTUAL_BONUS = 10;
+const SILVER_PER_RESPONSE = Config.prompt.silverParticipation;
+const SILVER_MUTUAL_BONUS = Config.prompt.silverMutualBonus;
 
 interface PlayerPickContext {
   promptType: 'PLAYER_PICK';

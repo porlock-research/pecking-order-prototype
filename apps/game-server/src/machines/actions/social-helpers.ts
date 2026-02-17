@@ -1,7 +1,7 @@
 import type { ChatMessage, SocialPlayer } from '@pecking-order/shared-types';
-import { dmChannelId } from '@pecking-order/shared-types';
+import { dmChannelId, Config } from '@pecking-order/shared-types';
 
-const MAX_CHAT_LOG = 50;
+const MAX_CHAT_LOG = Config.chat.maxLogSize;
 
 export function buildChatMessage(
   senderId: string,

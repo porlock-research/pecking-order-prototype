@@ -4,14 +4,14 @@
  * Reflex minigame. Player waits for a color change, taps as fast as possible.
  * Multiple rounds, score = average reaction time (lower = better silver).
  */
+import { Config } from '@pecking-order/shared-types';
 import { createArcadeMachine } from './arcade-machine';
 
-const TIME_LIMIT_MS = 60_000;
-const MAX_SILVER = 15;
+const { timeLimitMs, roundsPerGold } = Config.game.reactionTime;
 
 export const reactionTimeMachine = createArcadeMachine({
   gameType: 'REACTION_TIME',
-  defaultTimeLimit: TIME_LIMIT_MS,
+  defaultTimeLimit: timeLimitMs,
   computeRewards: (result) => {
     const avgMs = result.avgReactionMs || 9999;
     const rounds = result.roundsCompleted || 0;
@@ -26,8 +26,8 @@ export const reactionTimeMachine = createArcadeMachine({
     else if (avgMs < 500) silver = 4;
     else if (avgMs < 700) silver = 2;
     else silver = 1;
-    silver = Math.min(MAX_SILVER, silver);
-    const gold = Math.floor(rounds / 3);
+    silver = Math.min(Config.game.arcade.maxSilver, silver);
+    const gold = Math.floor(rounds / roundsPerGold);
     return { silver, gold };
   },
 });

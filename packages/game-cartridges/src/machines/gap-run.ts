@@ -4,22 +4,21 @@
  * Async per-player side-scrolling minigame. Uses the generic arcade machine
  * factory — only defines game-specific reward logic.
  */
+import { Config } from '@pecking-order/shared-types';
 import { createArcadeMachine } from './arcade-machine';
 
-const TIME_LIMIT_MS = 45_000;
-const MAX_DISTANCE_SILVER = 15;
-const SURVIVAL_BONUS = 5;
+const { timeLimitMs, maxDistanceSilver, survivalBonus, distancePerSilver, survivalGraceMs, distancePerGold } = Config.game.gapRun;
 
 export const gapRunMachine = createArcadeMachine({
   gameType: 'GAP_RUN',
-  defaultTimeLimit: TIME_LIMIT_MS,
+  defaultTimeLimit: timeLimitMs,
   computeRewards: (result, timeElapsed, timeLimit) => {
     const distance = result.distance || 0;
-    const distanceSilver = Math.min(MAX_DISTANCE_SILVER, Math.floor(distance / 100));
-    const survivalBonus = timeElapsed >= timeLimit - 1000 ? SURVIVAL_BONUS : 0;
+    const distanceSilver = Math.min(maxDistanceSilver, Math.floor(distance / distancePerSilver));
+    const bonus = timeElapsed >= timeLimit - survivalGraceMs ? survivalBonus : 0;
     return {
-      silver: distanceSilver + survivalBonus,
-      gold: Math.floor(distance / 500),
+      silver: distanceSilver + bonus,
+      gold: Math.floor(distance / distancePerGold),
     };
   },
 });

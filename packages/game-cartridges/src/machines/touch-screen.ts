@@ -20,14 +20,14 @@
  */
 import { setup, assign, sendParent, enqueueActions, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
-import { Events, FactTypes, LiveGamePhases } from '@pecking-order/shared-types';
+import { Events, FactTypes, LiveGamePhases, Config } from '@pecking-order/shared-types';
 import type { GameEvent, GameOutput } from '../contracts';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 
 // --- Delays ---
-const READY_TIMEOUT = 15_000;
-const COUNTDOWN_DURATION = 3_000;
-const MAX_HOLD_TIME = 300_000; // 5 minutes
+const READY_TIMEOUT = Config.game.touchScreen.readyTimeoutMs;
+const COUNTDOWN_DURATION = Config.game.touchScreen.countdownMs;
+const MAX_HOLD_TIME = Config.game.touchScreen.maxHoldTimeMs;
 
 // --- Context ---
 
@@ -62,7 +62,7 @@ export interface TouchScreenContext {
 }
 
 // --- Reward tiers by rank (0-indexed) ---
-const SILVER_BY_RANK = [15, 10, 7, 3];
+const SILVER_BY_RANK = Config.game.touchScreen.silverByRank;
 
 function computeRewards(holdStates: Record<string, HoldState>): TouchScreenResults {
   const now = Date.now();
@@ -91,7 +91,7 @@ function computeRewards(holdStates: Record<string, HoldState>): TouchScreenResul
 
   return {
     silverRewards,
-    goldContribution: Math.floor(totalDuration / 5000),
+    goldContribution: Math.floor(totalDuration / Config.game.touchScreen.msPerGoldUnit),
     shieldWinnerId: ranked.length > 0 ? ranked[0][0] : null,
     summary: {
       rankings: ranked.map(([pid, hs]) => ({ playerId: pid, duration: hs.duration })),

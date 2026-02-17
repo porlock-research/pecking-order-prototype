@@ -1,5 +1,5 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
-import { LiveGamePhases } from '@pecking-order/shared-types';
+import { LiveGamePhases, Config } from '@pecking-order/shared-types';
 import type { LiveGameProjection, SocialPlayer } from '@pecking-order/shared-types';
 import {
   CountdownBar,
@@ -126,7 +126,7 @@ function ReadyPhase({
   const isReady = readyPlayers.includes(playerId);
 
   // Approximate deadline from sync
-  const readyDeadline = Date.now() + 15_000;
+  const readyDeadline = Date.now() + Config.game.touchScreen.readyTimeoutMs;
 
   return (
     <div className="p-4 space-y-4">
@@ -137,7 +137,7 @@ function ReadyPhase({
         </p>
       </div>
 
-      <CountdownBar deadline={readyDeadline} totalMs={15_000} />
+      <CountdownBar deadline={readyDeadline} totalMs={Config.game.touchScreen.readyTimeoutMs} />
 
       <button
         onClick={() => !isReady && engine.sendGameAction(readyEvent)}
@@ -184,7 +184,7 @@ function CountdownPhase({ countdownStartedAt }: { countdownStartedAt: number }) 
   useEffect(() => {
     const tick = () => {
       const elapsed = Date.now() - countdownStartedAt;
-      const remaining = Math.ceil((3000 - elapsed) / 1000);
+      const remaining = Math.ceil((Config.game.touchScreen.countdownMs - elapsed) / 1000);
       setCount(Math.max(0, remaining));
     };
     tick();

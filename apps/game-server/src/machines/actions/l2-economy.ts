@@ -1,7 +1,7 @@
 import { assign, raise } from 'xstate';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from '../cartridges/prompts/_contract';
-import { PERK_COSTS, type PerkType, type GameHistoryEntry, Events, FactTypes } from '@pecking-order/shared-types';
+import { PERK_COSTS, Config, type PerkType, type GameHistoryEntry, Events, FactTypes } from '@pecking-order/shared-types';
 
 /**
  * L2 Economy Subsystem — all silver mutation logic in one place.
@@ -20,7 +20,7 @@ export const l2EconomyActions = {
         case FactTypes.DM_SENT: {
           const sender = context.roster[fact.actorId];
           if (!sender) return context.roster;
-          return { ...context.roster, [fact.actorId]: { ...sender, silver: sender.silver - 1 } };
+          return { ...context.roster, [fact.actorId]: { ...sender, silver: sender.silver - Config.dm.silverCost } };
         }
         case FactTypes.SILVER_TRANSFER: {
           const from = context.roster[fact.actorId];
