@@ -31,6 +31,7 @@ const AVAILABLE_GAME_TYPES = [
   { value: 'BET_BET_BET', label: 'Bet Bet Bet' },
   { value: 'BLIND_AUCTION', label: 'Blind Auction' },
   { value: 'KINGS_RANSOM', label: "King's Ransom" },
+  { value: 'TOUCH_SCREEN', label: 'Touch Screen' },
 ];
 
 const AVAILABLE_ACTIVITY_TYPES = [
@@ -111,6 +112,13 @@ export default function LobbyRoot() {
   function handleGameTypeChange(dayIdx: number, gameType: string) {
     setDebugConfig(prev => {
       const days = prev.days.map((d, i) => i === dayIdx ? { ...d, gameType } : d);
+      return { ...prev, days };
+    });
+  }
+
+  function handleGameModeChange(dayIdx: number, gameMode: string) {
+    setDebugConfig(prev => {
+      const days = prev.days.map((d, i) => i === dayIdx ? { ...d, gameMode } : d);
       return { ...prev, days };
     });
   }
@@ -303,7 +311,7 @@ export default function LobbyRoot() {
                           DAY_{String(idx + 1).padStart(2, '0')}
                         </div>
 
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                           <div className="relative">
                             <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Vote</label>
                             <select
@@ -326,6 +334,17 @@ export default function LobbyRoot() {
                               {AVAILABLE_GAME_TYPES.map(gt => (
                                 <option key={gt.value} value={gt.value}>{gt.label}</option>
                               ))}
+                            </select>
+                          </div>
+                          <div className="relative">
+                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Mode</label>
+                            <select
+                              value={day.gameMode || 'SOLO'}
+                              onChange={(e) => handleGameModeChange(idx, e.target.value)}
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                            >
+                              <option value="SOLO">Solo</option>
+                              <option value="LIVE">Live</option>
                             </select>
                           </div>
                           <div className="relative">

@@ -14,6 +14,7 @@ import Trivia from './Trivia';
 import BetBetBet from './BetBetBet';
 import BlindAuction from './BlindAuction';
 import KingsRansom from './KingsRansom';
+import TouchScreen from './TouchScreen';
 
 interface GamePanelProps {
   engine: {
@@ -64,6 +65,8 @@ export default function GamePanel({ engine }: GamePanelProps) {
       return <BlindAuction {...common} />;
     case 'KINGS_RANSOM':
       return <KingsRansom {...common} />;
+    case 'TOUCH_SCREEN':
+      return <TouchScreen {...common} />;
     default:
       return (
         <div className="mx-4 my-2 p-4 rounded-xl bg-glass border border-white/[0.06] text-center">

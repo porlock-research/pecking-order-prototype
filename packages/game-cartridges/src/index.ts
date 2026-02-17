@@ -22,5 +22,6 @@ export {
   quickMathMachine, simonSaysMachine, aimTrainerMachine,
   triviaMachine, realtimeTriviaMachine,
   betBetBetMachine, blindAuctionMachine, kingsRansomMachine,
+  touchScreenMachine,
   GAME_REGISTRY,
 } from './machines';

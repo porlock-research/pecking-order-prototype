@@ -16,7 +16,7 @@ export const l3GameActions = {
       console.log(`[L3] Spawning game cartridge: ${key}`);
       return (spawn as any)(key, {
         id: 'activeGameCartridge',
-        input: { gameType: key, roster: context.roster, dayIndex: context.dayIndex },
+        input: { gameType: key, roster: context.roster, dayIndex: context.dayIndex, mode: context.manifest?.gameMode },
       });
     },
   }),

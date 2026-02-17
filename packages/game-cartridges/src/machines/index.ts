@@ -18,6 +18,7 @@ export { realtimeTriviaMachine } from './realtime-trivia';
 export { betBetBetMachine } from './bet-bet-bet';
 export { blindAuctionMachine } from './blind-auction';
 export { kingsRansomMachine } from './kings-ransom';
+export { touchScreenMachine } from './touch-screen';
 
 import { gapRunMachine } from './gap-run';
 import { gridPushMachine } from './grid-push';
@@ -33,6 +34,7 @@ import { realtimeTriviaMachine } from './realtime-trivia';
 import { betBetBetMachine } from './bet-bet-bet';
 import { blindAuctionMachine } from './blind-auction';
 import { kingsRansomMachine } from './kings-ransom';
+import { touchScreenMachine } from './touch-screen';
 
 export const GAME_REGISTRY = {
   GAP_RUN: gapRunMachine,
@@ -49,4 +51,5 @@ export const GAME_REGISTRY = {
   BET_BET_BET: betBetBetMachine,
   BLIND_AUCTION: blindAuctionMachine,
   KINGS_RANSOM: kingsRansomMachine,
+  TOUCH_SCREEN: touchScreenMachine,
 } as const;

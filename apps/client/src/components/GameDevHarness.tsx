@@ -16,6 +16,7 @@ import {
   betBetBetMachine,
   blindAuctionMachine,
   kingsRansomMachine,
+  touchScreenMachine,
   FALLBACK_QUESTIONS,
   projectGameCartridge,
 } from '@pecking-order/game-cartridges';
@@ -33,10 +34,11 @@ import Trivia from '../cartridges/Trivia';
 import BetBetBet from '../cartridges/BetBetBet';
 import BlindAuction from '../cartridges/BlindAuction';
 import KingsRansom from '../cartridges/KingsRansom';
+import TouchScreen from '../cartridges/TouchScreen';
 
 // --- Types ---
 
-type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA' | 'BET_BET_BET' | 'BLIND_AUCTION' | 'KINGS_RANSOM';
+type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA' | 'BET_BET_BET' | 'BLIND_AUCTION' | 'KINGS_RANSOM' | 'TOUCH_SCREEN';
 
 interface GapRunConfig {
   difficulty: number; // 0-1
@@ -50,7 +52,12 @@ interface RealtimeTriviaConfig {
   questionTimer: number; // ms
 }
 
-type GameConfig = GapRunConfig | TriviaConfig | RealtimeTriviaConfig;
+interface LiveGameConfig {
+  difficulty: number;
+  liveMode: boolean;
+}
+
+type GameConfig = GapRunConfig | TriviaConfig | RealtimeTriviaConfig | LiveGameConfig;
 
 function defaultConfig(type: GameType): GameConfig {
   switch (type) {
@@ -68,6 +75,7 @@ function defaultConfig(type: GameType): GameConfig {
     case 'BET_BET_BET': return { difficulty: 0.2 };
     case 'BLIND_AUCTION': return { difficulty: 0.2 };
     case 'KINGS_RANSOM': return { difficulty: 0.2 };
+    case 'TOUCH_SCREEN': return { difficulty: 0.2, liveMode: false };
   }
 }
 
@@ -105,6 +113,7 @@ function getMachine(type: GameType) {
     case 'BET_BET_BET': return betBetBetMachine;
     case 'BLIND_AUCTION': return blindAuctionMachine;
     case 'KINGS_RANSOM': return kingsRansomMachine;
+    case 'TOUCH_SCREEN': return touchScreenMachine;
   }
 }
 
@@ -141,6 +150,9 @@ export default function GameDevHarness() {
     const ARCADE_TYPES: string[] = ['GAP_RUN', 'GRID_PUSH', 'SEQUENCE', 'REACTION_TIME', 'COLOR_MATCH', 'STACKER', 'QUICK_MATH', 'SIMON_SAYS', 'AIM_TRAINER'];
     if (ARCADE_TYPES.includes(type) && 'difficulty' in cfg) {
       input.difficulty = cfg.difficulty;
+    }
+    if ('liveMode' in cfg) {
+      input.mode = (cfg as LiveGameConfig).liveMode ? 'LIVE' : 'SOLO';
     }
 
     // Stub sendParent actions: machines use sendParent for fact pipeline,
@@ -269,7 +281,31 @@ export default function GameDevHarness() {
           <option value="BET_BET_BET">BET_BET_BET</option>
           <option value="BLIND_AUCTION">BLIND_AUCTION</option>
           <option value="KINGS_RANSOM">KINGS_RANSOM</option>
+          <option value="TOUCH_SCREEN">TOUCH_SCREEN</option>
         </select>
+
+        {/* Mode toggle (live games) */}
+        {'liveMode' in config && (
+          <div className="flex items-center gap-1 bg-white/[0.04] rounded-lg p-0.5">
+            {([false, true] as const).map((isLive) => (
+              <button
+                key={isLive ? 'LIVE' : 'SOLO'}
+                onClick={() => {
+                  const newCfg = { ...config, liveMode: isLive };
+                  setConfig(newCfg);
+                  resetCartridge(gameType, newCfg);
+                }}
+                className={`px-3 py-1 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
+                  (config as LiveGameConfig).liveMode === isLive
+                    ? 'bg-skin-gold/20 text-skin-gold'
+                    : 'text-skin-dim hover:text-skin-base'
+                }`}
+              >
+                {isLive ? 'LIVE' : 'SOLO'}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Per-game config */}
         {!['TRIVIA', 'REALTIME_TRIVIA'].includes(gameType) && 'difficulty' in config && (
@@ -316,6 +352,60 @@ export default function GameDevHarness() {
             />
             <span className="text-[10px] font-mono text-skin-dim">sec</span>
           </div>
+        )}
+
+        {gameType === 'TOUCH_SCREEN' && (
+          <>
+            <button
+              onClick={() => {
+                if (!actorRef.current) return;
+                const botIds = ['dev-p2', 'dev-p3'];
+                for (const botId of botIds) {
+                  actorRef.current.send({ type: 'GAME.TOUCH_SCREEN.READY', senderId: botId });
+                  setEventLog(prev => [...prev, { ts: Date.now(), type: 'GAME.TOUCH_SCREEN.READY', payload: { senderId: botId }, label: 'Bot Ready' }]);
+                }
+              }}
+              className="px-4 py-1.5 bg-skin-green/10 border border-skin-green/30 rounded-lg text-xs font-mono font-bold text-skin-green uppercase tracking-wider hover:bg-skin-green/20 transition-colors"
+            >
+              Ready Bots
+            </button>
+            <button
+              onClick={() => {
+                if (!actorRef.current) return;
+                const botIds = ['dev-p2', 'dev-p3'];
+                for (const botId of botIds) {
+                  actorRef.current.send({ type: 'GAME.TOUCH_SCREEN.TOUCH', senderId: botId });
+                  setEventLog(prev => [...prev, { ts: Date.now(), type: 'GAME.TOUCH_SCREEN.TOUCH', payload: { senderId: botId }, label: 'Bot Touch' }]);
+                }
+              }}
+              className="px-4 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded-lg text-xs font-mono font-bold text-blue-400 uppercase tracking-wider hover:bg-blue-500/20 transition-colors"
+            >
+              Touch Bots
+            </button>
+            <button
+              onClick={() => {
+                if (!actorRef.current) return;
+                const botIds = ['dev-p2', 'dev-p3'];
+                const botId = botIds[Math.floor(Math.random() * botIds.length)];
+                actorRef.current.send({ type: 'GAME.TOUCH_SCREEN.RELEASE', senderId: botId });
+                setEventLog(prev => [...prev, { ts: Date.now(), type: 'GAME.TOUCH_SCREEN.RELEASE', payload: { senderId: botId }, label: 'Bot Release' }]);
+              }}
+              className="px-4 py-1.5 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-mono font-bold text-red-400 uppercase tracking-wider hover:bg-red-500/20 transition-colors"
+            >
+              Release Bot
+            </button>
+            <button
+              onClick={() => {
+                if (actorRef.current) {
+                  actorRef.current.send({ type: 'INTERNAL.END_GAME' });
+                  setEventLog(prev => [...prev, { ts: Date.now(), type: 'INTERNAL.END_GAME', label: 'Manual Trigger' }]);
+                }
+              }}
+              className="px-4 py-1.5 bg-skin-gold/10 border border-skin-gold/30 rounded-lg text-xs font-mono font-bold text-skin-gold uppercase tracking-wider hover:bg-skin-gold/20 transition-colors"
+            >
+              End Game
+            </button>
+          </>
         )}
 
         {['BET_BET_BET', 'BLIND_AUCTION', 'KINGS_RANSOM'].includes(gameType) && (
@@ -386,6 +476,7 @@ export default function GameDevHarness() {
           {cartridge && gameType === 'BET_BET_BET' && <BetBetBet {...commonProps} />}
           {cartridge && gameType === 'BLIND_AUCTION' && <BlindAuction {...commonProps} />}
           {cartridge && gameType === 'KINGS_RANSOM' && <KingsRansom {...commonProps} />}
+          {cartridge && gameType === 'TOUCH_SCREEN' && <TouchScreen {...commonProps} />}
         </div>
       </div>
 

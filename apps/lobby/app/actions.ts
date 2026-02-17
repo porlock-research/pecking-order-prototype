@@ -10,6 +10,7 @@ import { requireAuth, getSession, generateId, generateInviteCode } from '@/lib/a
 export interface DebugDayConfig {
   voteType: string;
   gameType: string;
+  gameMode?: string;
   activityType: string;
   events: {
     INJECT_PROMPT: boolean;
@@ -660,6 +661,7 @@ function buildManifestDays(
         theme: `Debug Day ${i + 1}`,
         voteType: day.voteType,
         gameType: day.gameType,
+        ...(day.gameMode ? { gameMode: day.gameMode } : {}),
         timeline,
       };
     });

@@ -63,6 +63,7 @@ export const GameTypeSchema = z.enum([
   "GAP_RUN", "GRID_PUSH", "SEQUENCE",
   "REACTION_TIME", "COLOR_MATCH", "STACKER", "QUICK_MATH", "SIMON_SAYS", "AIM_TRAINER",
   "BET_BET_BET", "BLIND_AUCTION", "KINGS_RANSOM",
+  "TOUCH_SCREEN",
   "NONE",
 ]);
 export type GameType = z.infer<typeof GameTypeSchema>;
@@ -72,6 +73,7 @@ export interface GameCartridgeInput {
   roster: Record<string, SocialPlayer>;
   dayIndex: number;
   difficulty?: number; // 0-1 scale, overrides default day-based difficulty
+  mode?: 'SOLO' | 'LIVE'; // default: 'SOLO' (backward compat with existing games)
 }
 
 export type VotingPhase = "EXPLAIN" | "VOTING" | "REVEAL" | "EXECUTIONER_PICKING" | "WINNER";
@@ -94,6 +96,7 @@ export const DailyManifestSchema = z.object({
   theme: z.string(),
   voteType: VoteTypeSchema,
   gameType: GameTypeSchema.default("NONE"),
+  gameMode: z.enum(["SOLO", "LIVE"]).optional(),
   timeline: z.array(TimelineEventSchema),
 });
 
@@ -350,6 +353,12 @@ export type BlindAuctionClientEvent =
 export type KingsRansomClientEvent =
   | { type: 'GAME.KINGS_RANSOM.SUBMIT'; action: 'STEAL' | 'PROTECT' };
 
+export type TouchScreenClientEvent =
+  | { type: 'GAME.TOUCH_SCREEN.START' }
+  | { type: 'GAME.TOUCH_SCREEN.READY' }
+  | { type: 'GAME.TOUCH_SCREEN.TOUCH' }
+  | { type: 'GAME.TOUCH_SCREEN.RELEASE' };
+
 export type GameClientEvent =
   | GapRunClientEvent
   | TriviaClientEvent
@@ -364,7 +373,8 @@ export type GameClientEvent =
   | AimTrainerClientEvent
   | BetBetBetClientEvent
   | BlindAuctionClientEvent
-  | KingsRansomClientEvent;
+  | KingsRansomClientEvent
+  | TouchScreenClientEvent;
 
 // --- Per-Game Projected State (what the client renders) ---
 
@@ -454,4 +464,22 @@ export interface SyncDecisionProjection {
   [key: string]: any;
 }
 
-export type GameProjection = ArcadeGameProjection | TriviaProjection | RealtimeTriviaProjection | SyncDecisionProjection;
+/** Projection for live/simultaneous games (mode-driven, broadcast state) */
+export interface LiveGameProjection {
+  gameType: string;
+  mode: 'SOLO' | 'LIVE';
+  phase: string;
+  eligiblePlayers: string[];
+  readyPlayers: string[];
+  countdownStartedAt: number | null;
+  playStartedAt: number | null;
+  results: {
+    silverRewards: Record<string, number>;
+    goldContribution: number;
+    shieldWinnerId?: string | null;
+    summary: Record<string, any>;
+  } | null;
+  [key: string]: any; // game-specific fields (holdStates, etc.)
+}
+
+export type GameProjection = ArcadeGameProjection | TriviaProjection | RealtimeTriviaProjection | SyncDecisionProjection | LiveGameProjection;
