@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 import { Trophy } from 'lucide-react';
 
 interface FinalsVotingProps {
@@ -125,7 +125,7 @@ export default function FinalsVoting({ cartridge, playerId, roster, engine }: Fi
               <button
                 key={targetId}
                 disabled={!!myVote || !canVote || isFinalist}
-                onClick={() => engine.sendVoteAction('VOTE.FINALS.CAST', targetId)}
+                onClick={() => engine.sendVoteAction(VoteEvents.FINALS.CAST, targetId)}
                 className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left
                   ${isSelected
                     ? 'border-skin-gold bg-skin-gold/20 ring-2 ring-skin-gold'

@@ -6,7 +6,7 @@
  * Silver rewards: +5 for submitting, +5 for voting, +15 for winning confession.
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import { Events, FactTypes, PromptPhases, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, ActivityEvents, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
@@ -99,7 +99,7 @@ export const confessionMachine = setup({
   guards: {} as any,
   actions: {
     recordConfession: assign(({ context, event }) => {
-      if (event.type !== 'ACTIVITY.CONFESSION.SUBMIT') return {};
+      if (event.type !== ActivityEvents.CONFESSION.SUBMIT) return {};
       const { senderId, text } = event as any;
       if (!senderId || !text) return {};
       if (!context.eligibleVoters.includes(senderId)) return {};
@@ -114,7 +114,7 @@ export const confessionMachine = setup({
       };
     }),
     recordVote: assign(({ context, event }) => {
-      if (event.type !== 'ACTIVITY.CONFESSION.VOTE') return {};
+      if (event.type !== ActivityEvents.CONFESSION.VOTE) return {};
       const { senderId, confessionIndex } = event as any;
       if (!senderId || confessionIndex == null) return {};
       if (!context.eligibleVoters.includes(senderId)) return {};
@@ -164,7 +164,7 @@ export const confessionMachine = setup({
   states: {
     collecting: {
       on: {
-        'ACTIVITY.CONFESSION.SUBMIT': [
+        [ActivityEvents.CONFESSION.SUBMIT]: [
           {
             guard: ({ context, event }: any) => {
               const senderId = event.senderId;
@@ -187,7 +187,7 @@ export const confessionMachine = setup({
     },
     voting: {
       on: {
-        'ACTIVITY.CONFESSION.VOTE': [
+        [ActivityEvents.CONFESSION.VOTE]: [
           {
             guard: ({ context, event }: any) => {
               const senderId = event.senderId;

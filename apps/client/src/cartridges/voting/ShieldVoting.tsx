@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 
 interface ShieldVotingProps {
   cartridge: any;
@@ -113,7 +113,7 @@ export default function ShieldVoting({ cartridge, playerId, roster, engine }: Sh
               <button
                 key={targetId}
                 disabled={!!myVote || !canVote}
-                onClick={() => engine.sendVoteAction('VOTE.SHIELD.SAVE', targetId)}
+                onClick={() => engine.sendVoteAction(VoteEvents.SHIELD.SAVE, targetId)}
                 className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left
                   ${isSelected
                     ? 'border-skin-pink bg-skin-pink/20 ring-2 ring-skin-pink'

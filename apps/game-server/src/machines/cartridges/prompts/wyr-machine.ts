@@ -5,7 +5,7 @@
  * Silver rewards: +5 per response, +10 for minority choice (null if tied).
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import { Events, FactTypes, PromptPhases, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, ActivityEvents, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
@@ -56,7 +56,7 @@ export const wyrMachine = setup({
   guards: {} as any,
   actions: {
     recordChoice: assign(({ context, event }) => {
-      if (event.type !== 'ACTIVITY.WYR.CHOOSE') return {};
+      if (event.type !== ActivityEvents.WYR.CHOOSE) return {};
       const { senderId, choice } = event as any;
       if (!senderId || !choice) return {};
       if (!context.eligibleVoters.includes(senderId)) return {};
@@ -106,7 +106,7 @@ export const wyrMachine = setup({
   states: {
     active: {
       on: {
-        'ACTIVITY.WYR.CHOOSE': [
+        [ActivityEvents.WYR.CHOOSE]: [
           {
             guard: ({ context, event }: any) => {
               const senderId = event.senderId;

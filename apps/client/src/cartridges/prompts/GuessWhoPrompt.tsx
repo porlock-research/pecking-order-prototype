@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PromptPhases, type SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
 import { HelpCircle } from 'lucide-react';
 
 interface GuessWhoCartridge {
@@ -43,7 +43,7 @@ export default function GuessWhoPrompt({ cartridge, playerId, roster, engine }: 
   const handleSubmitAnswer = () => {
     if (answerSubmitted || !answerText.trim()) return;
     setAnswerSubmitted(true);
-    engine.sendActivityAction('ACTIVITY.GUESSWHO.ANSWER', { text: answerText.trim() });
+    engine.sendActivityAction(ActivityEvents.GUESSWHO.ANSWER, { text: answerText.trim() });
   };
 
   const handleGuessChange = (answerIndex: number, guessedPlayerId: string) => {
@@ -53,7 +53,7 @@ export default function GuessWhoPrompt({ cartridge, playerId, roster, engine }: 
   const handleSubmitGuesses = () => {
     if (guessSubmitted || hasGuessed) return;
     setGuessSubmitted(true);
-    engine.sendActivityAction('ACTIVITY.GUESSWHO.GUESS', { guesses: guessMap });
+    engine.sendActivityAction(ActivityEvents.GUESSWHO.GUESS, { guesses: guessMap });
   };
 
   const allGuessed = anonymousAnswers.every(a => guessMap[a.index]);

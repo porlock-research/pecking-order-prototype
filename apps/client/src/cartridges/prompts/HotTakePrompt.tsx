@@ -1,5 +1,5 @@
 import React from 'react';
-import { PromptPhases, type SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
 import { Flame } from 'lucide-react';
 
 interface HotTakeCartridge {
@@ -34,7 +34,7 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
 
   const handleStance = (stance: 'AGREE' | 'DISAGREE') => {
     if (hasResponded || phase !== PromptPhases.ACTIVE) return;
-    engine.sendActivityAction('ACTIVITY.HOTTAKE.RESPOND', { stance });
+    engine.sendActivityAction(ActivityEvents.HOTTAKE.RESPOND, { stance });
   };
 
   return (

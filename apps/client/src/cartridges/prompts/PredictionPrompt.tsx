@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PromptPhases, type SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
 import { Crosshair } from 'lucide-react';
 
 interface PredictionCartridge {
@@ -36,7 +36,7 @@ export default function PredictionPrompt({ cartridge, playerId, roster, engine }
   const handleSubmit = (targetId: string) => {
     if (hasResponded || phase !== PromptPhases.ACTIVE) return;
     setSelectedTarget(targetId);
-    engine.sendActivityAction('ACTIVITY.PROMPT.SUBMIT', { targetId });
+    engine.sendActivityAction(ActivityEvents.PROMPT.SUBMIT, { targetId });
   };
 
   const targets = eligibleVoters.filter(id => id !== playerId);

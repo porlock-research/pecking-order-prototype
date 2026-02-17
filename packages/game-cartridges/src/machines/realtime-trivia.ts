@@ -1,6 +1,6 @@
 import { setup, assign, sendParent, fromPromise, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
-import { Events, FactTypes, RealtimeTriviaPhases } from '@pecking-order/shared-types';
+import { Events, FactTypes, RealtimeTriviaPhases, RealtimeTriviaEvents } from '@pecking-order/shared-types';
 import type { BaseGameContext, GameEvent, GameOutput } from '../contracts';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from '../helpers/trivia-api';
@@ -86,7 +86,7 @@ export const realtimeTriviaMachine = setup({
     }),
     recordAnswer: assign({
       answers: ({ context, event }) => {
-        if (!event.type.startsWith('GAME.REALTIME_TRIVIA.ANSWER')) return context.answers;
+        if (event.type !== RealtimeTriviaEvents.ANSWER) return context.answers;
         const { senderId, answerIndex } = event as any;
         if (!context.alivePlayers.includes(senderId)) return context.answers;
         // Only first answer counts
@@ -253,7 +253,7 @@ export const realtimeTriviaMachine = setup({
         QUESTION_TIMER: { target: 'roundResult' },
       },
       on: {
-        'GAME.REALTIME_TRIVIA.ANSWER': {
+        [RealtimeTriviaEvents.ANSWER]: {
           target: 'roundResult',
           actions: 'recordAnswer',
         },

@@ -1,5 +1,5 @@
 import { setup, assign, sendParent } from 'xstate';
-import { Events, FactTypes, VotingPhases } from '@pecking-order/shared-types';
+import { Events, FactTypes, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 import type { VoteResult, VotingCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { BaseVoteContext, VoteEvent } from './_contract';
 import { getAlivePlayerIds } from './_helpers';
@@ -19,14 +19,14 @@ export const shieldMachine = setup({
   actions: {
     recordVote: assign({
       votes: ({ context, event }) => {
-        if (event.type !== 'VOTE.SHIELD.SAVE') return context.votes;
+        if (event.type !== VoteEvents.SHIELD.SAVE) return context.votes;
         if (!context.eligibleVoters.includes(event.senderId)) return context.votes;
         if (!context.eligibleTargets.includes(event.targetId!)) return context.votes;
         return { ...context.votes, [event.senderId]: event.targetId! };
       },
     }),
     emitVoteCastFact: sendParent(({ event }) => {
-      if (event.type !== 'VOTE.SHIELD.SAVE')
+      if (event.type !== VoteEvents.SHIELD.SAVE)
         return { type: Events.Fact.RECORD, fact: { type: FactTypes.VOTE_CAST, actorId: '', timestamp: 0 } };
       return {
         type: Events.Fact.RECORD,
@@ -107,7 +107,7 @@ export const shieldMachine = setup({
   states: {
     active: {
       on: {
-        'VOTE.SHIELD.SAVE': { actions: ['recordVote', 'emitVoteCastFact'] },
+        [VoteEvents.SHIELD.SAVE]: { actions: ['recordVote', 'emitVoteCastFact'] },
         'INTERNAL.CLOSE_VOTING': { target: 'completed' },
       },
     },

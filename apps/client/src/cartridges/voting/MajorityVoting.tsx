@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 
 interface MajorityVotingProps {
   cartridge: any;
@@ -109,7 +109,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
               <button
                 key={targetId}
                 disabled={!!myVote || !canVote}
-                onClick={() => engine.sendVoteAction('VOTE.MAJORITY.CAST', targetId)}
+                onClick={() => engine.sendVoteAction(VoteEvents.MAJORITY.CAST, targetId)}
                 className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left
                   ${isSelected
                     ? 'border-skin-gold bg-skin-gold/20 ring-2 ring-skin-gold'

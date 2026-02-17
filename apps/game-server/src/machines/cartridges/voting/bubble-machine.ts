@@ -1,5 +1,5 @@
 import { setup, assign, sendParent } from 'xstate';
-import { Events, FactTypes, VotingPhases } from '@pecking-order/shared-types';
+import { Events, FactTypes, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 import type { VoteResult, VotingCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { BaseVoteContext, VoteEvent } from './_contract';
 import { getAlivePlayerIds, getTop3SilverIds } from './_helpers';
@@ -20,14 +20,14 @@ export const bubbleMachine = setup({
   actions: {
     recordVote: assign({
       votes: ({ context, event }) => {
-        if (event.type !== 'VOTE.BUBBLE.CAST') return context.votes;
+        if (event.type !== VoteEvents.BUBBLE.CAST) return context.votes;
         if (!context.eligibleVoters.includes(event.senderId)) return context.votes;
         if (!context.eligibleTargets.includes(event.targetId!)) return context.votes;
         return { ...context.votes, [event.senderId]: event.targetId! };
       },
     }),
     emitVoteCastFact: sendParent(({ event }) => {
-      if (event.type !== 'VOTE.BUBBLE.CAST')
+      if (event.type !== VoteEvents.BUBBLE.CAST)
         return { type: Events.Fact.RECORD, fact: { type: FactTypes.VOTE_CAST, actorId: '', timestamp: 0 } };
       return {
         type: Events.Fact.RECORD,
@@ -112,7 +112,7 @@ export const bubbleMachine = setup({
   states: {
     active: {
       on: {
-        'VOTE.BUBBLE.CAST': { actions: ['recordVote', 'emitVoteCastFact'] },
+        [VoteEvents.BUBBLE.CAST]: { actions: ['recordVote', 'emitVoteCastFact'] },
         'INTERNAL.CLOSE_VOTING': { target: 'completed' },
       },
     },

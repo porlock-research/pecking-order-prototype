@@ -5,7 +5,7 @@
  * Silver rewards: +5 per response, +10 for minority stance (null if tied).
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import { Events, FactTypes, PromptPhases, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, ActivityEvents, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
@@ -54,7 +54,7 @@ export const hotTakeMachine = setup({
   guards: {} as any,
   actions: {
     recordStance: assign(({ context, event }) => {
-      if (event.type !== 'ACTIVITY.HOTTAKE.RESPOND') return {};
+      if (event.type !== ActivityEvents.HOTTAKE.RESPOND) return {};
       const { senderId, stance } = event as any;
       if (!senderId || !stance) return {};
       if (!context.eligibleVoters.includes(senderId)) return {};
@@ -102,7 +102,7 @@ export const hotTakeMachine = setup({
   states: {
     active: {
       on: {
-        'ACTIVITY.HOTTAKE.RESPOND': [
+        [ActivityEvents.HOTTAKE.RESPOND]: [
           {
             guard: ({ context, event }: any) => {
               const senderId = event.senderId;

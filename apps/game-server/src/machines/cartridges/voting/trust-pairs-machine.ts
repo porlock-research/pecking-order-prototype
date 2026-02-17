@@ -1,5 +1,5 @@
 import { setup, assign, sendParent } from 'xstate';
-import { Events, FactTypes, VotingPhases } from '@pecking-order/shared-types';
+import { Events, FactTypes, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 import type { VoteResult, VotingCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { BaseVoteContext, VoteEvent } from './_contract';
 import { getAlivePlayerIds } from './_helpers';
@@ -23,7 +23,7 @@ export const trustPairsMachine = setup({
   actions: {
     recordTrust: assign({
       trustPicks: ({ context, event }) => {
-        if (event.type !== 'VOTE.TRUST_PAIRS.TRUST') return context.trustPicks;
+        if (event.type !== VoteEvents.TRUST_PAIRS.TRUST) return context.trustPicks;
         if (!context.eligibleVoters.includes(event.senderId)) return context.trustPicks;
         // Can't trust self
         if (event.targetId === event.senderId) return context.trustPicks;
@@ -32,7 +32,7 @@ export const trustPairsMachine = setup({
       },
     }),
     emitTrustFact: sendParent(({ event }) => {
-      if (event.type !== 'VOTE.TRUST_PAIRS.TRUST')
+      if (event.type !== VoteEvents.TRUST_PAIRS.TRUST)
         return { type: Events.Fact.RECORD, fact: { type: FactTypes.VOTE_CAST, actorId: '', timestamp: 0 } };
       return {
         type: Events.Fact.RECORD,
@@ -47,21 +47,21 @@ export const trustPairsMachine = setup({
     }),
     recordEliminate: assign({
       votePicks: ({ context, event }) => {
-        if (event.type !== 'VOTE.TRUST_PAIRS.ELIMINATE') return context.votePicks;
+        if (event.type !== VoteEvents.TRUST_PAIRS.ELIMINATE) return context.votePicks;
         if (!context.eligibleVoters.includes(event.senderId)) return context.votePicks;
         if (!context.eligibleTargets.includes(event.targetId!)) return context.votePicks;
         return { ...context.votePicks, [event.senderId]: event.targetId! };
       },
       // Mirror to votes for BaseVoteContext compat
       votes: ({ context, event }) => {
-        if (event.type !== 'VOTE.TRUST_PAIRS.ELIMINATE') return context.votes;
+        if (event.type !== VoteEvents.TRUST_PAIRS.ELIMINATE) return context.votes;
         if (!context.eligibleVoters.includes(event.senderId)) return context.votes;
         if (!context.eligibleTargets.includes(event.targetId!)) return context.votes;
         return { ...context.votes, [event.senderId]: event.targetId! };
       },
     }),
     emitEliminateFact: sendParent(({ event }) => {
-      if (event.type !== 'VOTE.TRUST_PAIRS.ELIMINATE')
+      if (event.type !== VoteEvents.TRUST_PAIRS.ELIMINATE)
         return { type: Events.Fact.RECORD, fact: { type: FactTypes.VOTE_CAST, actorId: '', timestamp: 0 } };
       return {
         type: Events.Fact.RECORD,
@@ -165,8 +165,8 @@ export const trustPairsMachine = setup({
   states: {
     active: {
       on: {
-        'VOTE.TRUST_PAIRS.TRUST': { actions: ['recordTrust', 'emitTrustFact'] },
-        'VOTE.TRUST_PAIRS.ELIMINATE': { actions: ['recordEliminate', 'emitEliminateFact'] },
+        [VoteEvents.TRUST_PAIRS.TRUST]: { actions: ['recordTrust', 'emitTrustFact'] },
+        [VoteEvents.TRUST_PAIRS.ELIMINATE]: { actions: ['recordEliminate', 'emitEliminateFact'] },
         'INTERNAL.CLOSE_VOTING': { target: 'completed' },
       },
     },

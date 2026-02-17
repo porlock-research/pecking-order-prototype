@@ -165,6 +165,47 @@ export const TickerCategories = {
   SYSTEM: 'SYSTEM',
 } as const;
 
+// --- VOTE EVENT CONSTANTS ---
+
+export const VoteEvents = {
+  MAJORITY:         { CAST: 'VOTE.MAJORITY.CAST' },
+  EXECUTIONER:      { ELECT: 'VOTE.EXECUTIONER.ELECT', PICK: 'VOTE.EXECUTIONER.PICK' },
+  BUBBLE:           { CAST: 'VOTE.BUBBLE.CAST' },
+  PODIUM_SACRIFICE: { CAST: 'VOTE.PODIUM_SACRIFICE.CAST' },
+  SECOND_TO_LAST:   {},  // no client events (display-only)
+  SHIELD:           { SAVE: 'VOTE.SHIELD.SAVE' },
+  TRUST_PAIRS:      { TRUST: 'VOTE.TRUST_PAIRS.TRUST', ELIMINATE: 'VOTE.TRUST_PAIRS.ELIMINATE' },
+  FINALS:           { CAST: 'VOTE.FINALS.CAST' },
+} as const;
+
+// --- ACTIVITY EVENT CONSTANTS ---
+
+export const ActivityEvents = {
+  PROMPT:     { SUBMIT: 'ACTIVITY.PROMPT.SUBMIT' },
+  WYR:        { CHOOSE: 'ACTIVITY.WYR.CHOOSE' },
+  HOTTAKE:    { RESPOND: 'ACTIVITY.HOTTAKE.RESPOND' },
+  CONFESSION: { SUBMIT: 'ACTIVITY.CONFESSION.SUBMIT', VOTE: 'ACTIVITY.CONFESSION.VOTE' },
+  GUESSWHO:   { ANSWER: 'ACTIVITY.GUESSWHO.ANSWER', GUESS: 'ACTIVITY.GUESSWHO.GUESS' },
+} as const;
+
+// --- GAME-SPECIFIC EVENT CONSTANTS (non-generic games only) ---
+
+export const TriviaEvents = {
+  START: 'GAME.TRIVIA.START',
+  ANSWER: 'GAME.TRIVIA.ANSWER',
+} as const;
+
+export const RealtimeTriviaEvents = {
+  ANSWER: 'GAME.REALTIME_TRIVIA.ANSWER',
+} as const;
+
+export const TouchScreenEvents = {
+  START: 'GAME.TOUCH_SCREEN.START',
+  READY: 'GAME.TOUCH_SCREEN.READY',
+  TOUCH: 'GAME.TOUCH_SCREEN.TOUCH',
+  RELEASE: 'GAME.TOUCH_SCREEN.RELEASE',
+} as const;
+
 // --- ALLOWED CLIENT EVENTS (for L1 allowlist) ---
 
 export const ALLOWED_CLIENT_EVENTS = [

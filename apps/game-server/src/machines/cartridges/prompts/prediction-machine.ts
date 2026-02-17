@@ -5,7 +5,7 @@
  * Silver rewards: +5 per response, +10 for picking the most-predicted player (consensus).
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import { Events, FactTypes, PromptPhases, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, ActivityEvents, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
@@ -66,7 +66,7 @@ export const predictionMachine = setup({
   guards: {} as any,
   actions: {
     recordResponse: assign(({ context, event }) => {
-      if (event.type !== 'ACTIVITY.PROMPT.SUBMIT') return {};
+      if (event.type !== ActivityEvents.PROMPT.SUBMIT) return {};
       const { senderId, targetId } = event as any;
       if (!senderId || !targetId) return {};
       if (!context.eligibleVoters.includes(senderId)) return {};
@@ -114,7 +114,7 @@ export const predictionMachine = setup({
   states: {
     active: {
       on: {
-        'ACTIVITY.PROMPT.SUBMIT': [
+        [ActivityEvents.PROMPT.SUBMIT]: [
           {
             guard: ({ context, event }: any) => {
               const senderId = event.senderId;

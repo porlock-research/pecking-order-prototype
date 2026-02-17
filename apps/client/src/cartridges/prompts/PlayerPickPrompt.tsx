@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PromptPhases, type SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
 import { Users, Heart } from 'lucide-react';
 
 interface PromptCartridge {
@@ -36,7 +36,7 @@ export default function PlayerPickPrompt({ cartridge, playerId, roster, engine }
   const handleSubmit = (targetId: string) => {
     if (hasResponded || phase !== PromptPhases.ACTIVE) return;
     setSelectedTarget(targetId);
-    engine.sendActivityAction('ACTIVITY.PROMPT.SUBMIT', { targetId });
+    engine.sendActivityAction(ActivityEvents.PROMPT.SUBMIT, { targetId });
   };
 
   // Pick targets = all eligible except self

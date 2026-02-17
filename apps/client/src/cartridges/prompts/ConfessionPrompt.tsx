@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PromptPhases, type SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
 import { PenLine } from 'lucide-react';
 
 interface ConfessionCartridge {
@@ -51,13 +51,13 @@ export default function ConfessionPrompt({ cartridge, playerId, roster, engine }
   const handleSubmitConfession = () => {
     if (submitted || !confessionText.trim()) return;
     setSubmitted(true);
-    engine.sendActivityAction('ACTIVITY.CONFESSION.SUBMIT', { text: confessionText.trim() });
+    engine.sendActivityAction(ActivityEvents.CONFESSION.SUBMIT, { text: confessionText.trim() });
   };
 
   const handleVote = (confessionIndex: number) => {
     if (hasVoted || votedIndex !== null) return;
     setVotedIndex(confessionIndex);
-    engine.sendActivityAction('ACTIVITY.CONFESSION.VOTE', { confessionIndex });
+    engine.sendActivityAction(ActivityEvents.CONFESSION.VOTE, { confessionIndex });
   };
 
   return (

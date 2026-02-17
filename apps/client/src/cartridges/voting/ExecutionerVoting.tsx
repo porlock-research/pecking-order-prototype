@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 
 interface ExecutionerVotingProps {
   cartridge: any;
@@ -122,7 +122,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
                   return (
                     <button
                       key={targetId}
-                      onClick={() => engine.sendVoteAction('VOTE.EXECUTIONER.PICK', targetId)}
+                      onClick={() => engine.sendVoteAction(VoteEvents.EXECUTIONER.PICK, targetId)}
                       className="flex items-center gap-2 p-2 rounded-xl bg-skin-deep/40 border border-white/[0.06] hover:border-skin-danger hover:bg-skin-danger/10 transition-all text-left"
                     >
                       <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-gold avatar-ring shrink-0">
@@ -195,7 +195,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
               <button
                 key={targetId}
                 disabled={!!myVote || !canVote}
-                onClick={() => engine.sendVoteAction('VOTE.EXECUTIONER.ELECT', targetId)}
+                onClick={() => engine.sendVoteAction(VoteEvents.EXECUTIONER.ELECT, targetId)}
                 className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left
                   ${isSelected
                     ? 'border-skin-gold bg-skin-gold/20 ring-2 ring-skin-gold'

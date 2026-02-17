@@ -5,7 +5,7 @@
  * Silver rewards: +5 per response, +10 per mutual pick (both players).
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import { Events, FactTypes, PromptPhases, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, ActivityEvents, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput, PromptResult } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
@@ -78,7 +78,7 @@ export const playerPickMachine = setup({
   },
   actions: {
     recordResponse: assign(({ context, event }) => {
-      if (event.type !== 'ACTIVITY.PROMPT.SUBMIT') return {};
+      if (event.type !== ActivityEvents.PROMPT.SUBMIT) return {};
       const { senderId, targetId } = event as any;
       if (!senderId || !targetId) return {};
       if (!context.eligibleVoters.includes(senderId)) return {};
@@ -128,7 +128,7 @@ export const playerPickMachine = setup({
   states: {
     active: {
       on: {
-        'ACTIVITY.PROMPT.SUBMIT': [
+        [ActivityEvents.PROMPT.SUBMIT]: [
           {
             guard: ({ context, event }: any) => {
               // Check if this response would make all responded

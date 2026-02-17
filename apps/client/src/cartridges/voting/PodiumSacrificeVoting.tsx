@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 
 interface PodiumSacrificeVotingProps {
   cartridge: any;
@@ -130,7 +130,7 @@ export default function PodiumSacrificeVoting({ cartridge, playerId, roster, eng
               <button
                 key={targetId}
                 disabled={!!myVote || !canVote}
-                onClick={() => engine.sendVoteAction('VOTE.PODIUM_SACRIFICE.CAST', targetId)}
+                onClick={() => engine.sendVoteAction(VoteEvents.PODIUM_SACRIFICE.CAST, targetId)}
                 className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left
                   ${isSelected
                     ? 'border-skin-orange bg-skin-orange/20 ring-2 ring-skin-orange'

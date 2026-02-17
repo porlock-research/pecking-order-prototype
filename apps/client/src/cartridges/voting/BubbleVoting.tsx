@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 
 interface BubbleVotingProps {
   cartridge: any;
@@ -142,7 +142,7 @@ export default function BubbleVoting({ cartridge, playerId, roster, engine }: Bu
               <button
                 key={targetId}
                 disabled={!!myVote || !canVote}
-                onClick={() => engine.sendVoteAction('VOTE.BUBBLE.CAST', targetId)}
+                onClick={() => engine.sendVoteAction(VoteEvents.BUBBLE.CAST, targetId)}
                 className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left
                   ${isSelected
                     ? 'border-skin-info bg-skin-info/20 ring-2 ring-skin-info'

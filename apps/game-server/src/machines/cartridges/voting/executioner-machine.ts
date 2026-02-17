@@ -1,5 +1,5 @@
 import { setup, assign, sendParent } from 'xstate';
-import { Events, FactTypes, VotingPhases } from '@pecking-order/shared-types';
+import { Events, FactTypes, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 import type { VoteResult, VotingCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { BaseVoteContext, VoteEvent } from './_contract';
 import { getAlivePlayerIds, getTop3SilverIds } from './_helpers';
@@ -21,27 +21,27 @@ export const executionerMachine = setup({
   },
   guards: {
     isExecutioner: ({ context, event }) => {
-      if (event.type !== 'VOTE.EXECUTIONER.PICK') return false;
+      if (event.type !== VoteEvents.EXECUTIONER.PICK) return false;
       return event.senderId === context.executionerId;
     },
   },
   actions: {
     recordElectionVote: assign({
       electionVotes: ({ context, event }) => {
-        if (event.type !== 'VOTE.EXECUTIONER.ELECT') return context.electionVotes;
+        if (event.type !== VoteEvents.EXECUTIONER.ELECT) return context.electionVotes;
         if (!context.eligibleVoters.includes(event.senderId)) return context.electionVotes;
         if (!context.eligibleTargets.includes(event.targetId!)) return context.electionVotes;
         return { ...context.electionVotes, [event.senderId]: event.targetId! };
       },
       votes: ({ context, event }) => {
-        if (event.type !== 'VOTE.EXECUTIONER.ELECT') return context.votes;
+        if (event.type !== VoteEvents.EXECUTIONER.ELECT) return context.votes;
         if (!context.eligibleVoters.includes(event.senderId)) return context.votes;
         if (!context.eligibleTargets.includes(event.targetId!)) return context.votes;
         return { ...context.votes, [event.senderId]: event.targetId! };
       },
     }),
     emitVoteCastFact: sendParent(({ event }) => {
-      if (event.type !== 'VOTE.EXECUTIONER.ELECT')
+      if (event.type !== VoteEvents.EXECUTIONER.ELECT)
         return { type: Events.Fact.RECORD, fact: { type: FactTypes.VOTE_CAST, actorId: '', timestamp: 0 } };
       return {
         type: Events.Fact.RECORD,
@@ -90,7 +90,7 @@ export const executionerMachine = setup({
     }),
     recordPick: assign({
       results: ({ context, event }) => {
-        if (event.type !== 'VOTE.EXECUTIONER.PICK') return context.results;
+        if (event.type !== VoteEvents.EXECUTIONER.PICK) return context.results;
         return {
           eliminatedId: event.targetId!,
           mechanism: 'EXECUTIONER' as const,
@@ -101,7 +101,7 @@ export const executionerMachine = setup({
         };
       },
       votes: ({ context, event }) => {
-        if (event.type !== 'VOTE.EXECUTIONER.PICK') return context.votes;
+        if (event.type !== VoteEvents.EXECUTIONER.PICK) return context.votes;
         return { [event.senderId]: event.targetId! };
       },
       phase: VotingPhases.REVEAL,
@@ -139,7 +139,7 @@ export const executionerMachine = setup({
   states: {
     electing: {
       on: {
-        'VOTE.EXECUTIONER.ELECT': { actions: ['recordElectionVote', 'emitVoteCastFact'] },
+        [VoteEvents.EXECUTIONER.ELECT]: { actions: ['recordElectionVote', 'emitVoteCastFact'] },
         'INTERNAL.CLOSE_VOTING': {
           target: 'executionerPicking',
           actions: 'resolveElection',
@@ -148,7 +148,7 @@ export const executionerMachine = setup({
     },
     executionerPicking: {
       on: {
-        'VOTE.EXECUTIONER.PICK': {
+        [VoteEvents.EXECUTIONER.PICK]: {
           guard: 'isExecutioner',
           target: 'completed',
           actions: 'recordPick',

@@ -8,7 +8,7 @@
  */
 import { setup, assign, sendParent, enqueueActions, fromPromise, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
-import { Events, FactTypes, ArcadePhases } from '@pecking-order/shared-types';
+import { Events, FactTypes, ArcadePhases, TriviaEvents } from '@pecking-order/shared-types';
 import type { GameEvent, GameOutput } from '../contracts';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from '../helpers/trivia-api';
@@ -104,7 +104,7 @@ export const triviaMachine = setup({
     }),
 
     startPlayer: assign(({ context, event }) => {
-      if (event.type !== Events.Game.start('TRIVIA')) return {};
+      if (event.type !== TriviaEvents.START) return {};
       const senderId = (event as any).senderId as string;
       const player = context.players[senderId];
       if (!player || player.status !== ArcadePhases.NOT_STARTED) return {};
@@ -129,7 +129,7 @@ export const triviaMachine = setup({
     }),
 
     processAnswer: enqueueActions(({ enqueue, context, event }) => {
-      if (!event.type.startsWith(Events.Game.event('TRIVIA', 'ANSWER'))) return;
+      if (event.type !== TriviaEvents.ANSWER) return;
       const { senderId, answerIndex } = event as any;
       const player = context.players[senderId];
       if (!player || player.status !== ArcadePhases.PLAYING) return;
@@ -319,8 +319,8 @@ export const triviaMachine = setup({
     active: {
       entry: 'emitRoundSync',
       on: {
-        'GAME.TRIVIA.START': { target: 'active', reenter: true, actions: 'startPlayer' },
-        'GAME.TRIVIA.ANSWER': { target: 'active', reenter: true, actions: 'processAnswer' },
+        [TriviaEvents.START]: { target: 'active', reenter: true, actions: 'startPlayer' },
+        [TriviaEvents.ANSWER]: { target: 'active', reenter: true, actions: 'processAnswer' },
         'PLAYER_COMPLETED': {
           actions: 'emitPlayerGameResult',
         },

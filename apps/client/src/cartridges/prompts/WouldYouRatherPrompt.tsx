@@ -1,5 +1,5 @@
 import React from 'react';
-import { PromptPhases, type SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
 import { Scale } from 'lucide-react';
 
 interface WyrCartridge {
@@ -37,7 +37,7 @@ export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engi
 
   const handleChoose = (choice: 'A' | 'B') => {
     if (hasResponded || phase !== PromptPhases.ACTIVE) return;
-    engine.sendActivityAction('ACTIVITY.WYR.CHOOSE', { choice });
+    engine.sendActivityAction(ActivityEvents.WYR.CHOOSE, { choice });
   };
 
   return (

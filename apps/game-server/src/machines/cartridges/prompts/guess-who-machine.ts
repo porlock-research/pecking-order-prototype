@@ -6,7 +6,7 @@
  * Silver rewards: +5 participation, +5 per correct guess, +5 per player fooled.
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import { Events, FactTypes, PromptPhases, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, ActivityEvents, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
@@ -101,7 +101,7 @@ export const guessWhoMachine = setup({
   guards: {} as any,
   actions: {
     recordAnswer: assign(({ context, event }) => {
-      if (event.type !== 'ACTIVITY.GUESSWHO.ANSWER') return {};
+      if (event.type !== ActivityEvents.GUESSWHO.ANSWER) return {};
       const { senderId, text } = event as any;
       if (!senderId || !text) return {};
       if (!context.eligibleVoters.includes(senderId)) return {};
@@ -116,7 +116,7 @@ export const guessWhoMachine = setup({
       };
     }),
     recordGuesses: assign(({ context, event }) => {
-      if (event.type !== 'ACTIVITY.GUESSWHO.GUESS') return {};
+      if (event.type !== ActivityEvents.GUESSWHO.GUESS) return {};
       const { senderId, guesses: guessMap } = event as any;
       if (!senderId || !guessMap) return {};
       if (!context.eligibleVoters.includes(senderId)) return {};
@@ -165,7 +165,7 @@ export const guessWhoMachine = setup({
   states: {
     answering: {
       on: {
-        'ACTIVITY.GUESSWHO.ANSWER': [
+        [ActivityEvents.GUESSWHO.ANSWER]: [
           {
             guard: ({ context, event }: any) => {
               const senderId = event.senderId;
@@ -188,7 +188,7 @@ export const guessWhoMachine = setup({
     },
     guessing: {
       on: {
-        'ACTIVITY.GUESSWHO.GUESS': [
+        [ActivityEvents.GUESSWHO.GUESS]: [
           {
             guard: ({ context, event }: any) => {
               const senderId = event.senderId;

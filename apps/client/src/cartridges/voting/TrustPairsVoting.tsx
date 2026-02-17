@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 
 interface TrustPairsVotingProps {
   cartridge: any;
@@ -147,7 +147,7 @@ export default function TrustPairsVoting({ cartridge, playerId, roster, engine }
                 <button
                   key={`trust-${targetId}`}
                   disabled={!!myTrust || !canVote}
-                  onClick={() => engine.sendVoteAction('VOTE.TRUST_PAIRS.TRUST', targetId)}
+                  onClick={() => engine.sendVoteAction(VoteEvents.TRUST_PAIRS.TRUST, targetId)}
                   className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border transition-all
                     ${isSelected
                       ? 'border-skin-green bg-skin-green/20 ring-2 ring-skin-green'
@@ -200,7 +200,7 @@ export default function TrustPairsVoting({ cartridge, playerId, roster, engine }
                 <button
                   key={`elim-${targetId}`}
                   disabled={!!myEliminate || !canVote}
-                  onClick={() => engine.sendVoteAction('VOTE.TRUST_PAIRS.ELIMINATE', targetId)}
+                  onClick={() => engine.sendVoteAction(VoteEvents.TRUST_PAIRS.ELIMINATE, targetId)}
                   className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border transition-all
                     ${isSelected
                       ? 'border-skin-danger bg-skin-danger/20 ring-2 ring-skin-danger'
