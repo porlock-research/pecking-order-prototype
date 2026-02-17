@@ -5,6 +5,7 @@
 
 // Game cartridge projection is now in the shared package
 export { projectGameCartridge } from '@pecking-order/game-cartridges';
+import { PromptPhases, PromptTypes } from '@pecking-order/shared-types';
 
 /**
  * Project prompt cartridge context for SYSTEM.SYNC.
@@ -17,12 +18,12 @@ export function projectPromptCartridge(promptCtx: any): any {
 
   const { promptType, phase } = promptCtx;
 
-  if (promptType === 'CONFESSION' && (phase === 'COLLECTING' || phase === 'VOTING')) {
+  if (promptType === PromptTypes.CONFESSION && (phase === PromptPhases.COLLECTING || phase === PromptPhases.VOTING)) {
     const { confessions, ...safe } = promptCtx;
     return safe;
   }
 
-  if (promptType === 'GUESS_WHO' && (phase === 'ANSWERING' || phase === 'GUESSING')) {
+  if (promptType === PromptTypes.GUESS_WHO && (phase === PromptPhases.ANSWERING || phase === PromptPhases.GUESSING)) {
     const { answers, ...safe } = promptCtx;
     return safe;
   }

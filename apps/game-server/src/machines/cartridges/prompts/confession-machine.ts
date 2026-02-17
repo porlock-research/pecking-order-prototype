@@ -6,7 +6,7 @@
  * Silver rewards: +5 for submitting, +5 for voting, +15 for winning confession.
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import type { PromptCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
@@ -109,7 +109,7 @@ export const confessionMachine = setup({
     buildAnonymousConfessions: assign(({ context }) => {
       const entries = Object.values(context.confessions).map((text, i) => ({ index: i, text }));
       return {
-        phase: 'VOTING' as const,
+        phase: PromptPhases.VOTING,
         anonymousConfessions: shuffleArray(entries),
       };
     }),
@@ -123,13 +123,13 @@ export const confessionMachine = setup({
       return { votes: { ...context.votes, [senderId]: confessionIndex } };
     }),
     calculateResults: assign(({ context }) => ({
-      phase: 'RESULTS' as const,
+      phase: PromptPhases.RESULTS,
       results: resolveResults(context.confessions, context.anonymousConfessions, context.votes),
     })),
     emitPromptResultFact: sendParent(({ context }): AnyEventObject => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'PROMPT_RESULT' as any,
+        type: FactTypes.PROMPT_RESULT as any,
         actorId: 'SYSTEM',
         payload: {
           promptType: 'CONFESSION',
@@ -147,7 +147,7 @@ export const confessionMachine = setup({
     return {
       promptType: 'CONFESSION' as const,
       promptText: input.promptText,
-      phase: 'COLLECTING' as const,
+      phase: PromptPhases.COLLECTING,
       eligibleVoters: alive,
       confessions: {},
       anonymousConfessions: [],

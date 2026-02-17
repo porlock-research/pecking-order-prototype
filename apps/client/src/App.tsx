@@ -14,6 +14,7 @@ const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
 import { formatState, formatPhase } from './utils/formatState';
 import { Coins, MessageCircle, Mail, Users } from 'lucide-react';
 import { decodeGameToken } from '@pecking-order/auth';
+import { PlayerStatuses } from '@pecking-order/shared-types';
 import { PushPrompt } from './components/PushPrompt';
 
 /**
@@ -268,7 +269,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
   const hasDms = useGameStore(s => s.chatLog.some(m => m.channel === 'DM'));
 
   const me = roster[playerId];
-  const aliveCount = Object.values(roster).filter((p: any) => p.status === 'ALIVE').length;
+  const aliveCount = Object.values(roster).filter((p: any) => p.status === PlayerStatuses.ALIVE).length;
   const onlineCount = useGameStore((s) => s.onlinePlayers.length);
 
   return (

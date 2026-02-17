@@ -1,4 +1,5 @@
 import { setup, assign, sendParent } from 'xstate';
+import { Events, FactTypes, VotingPhases } from '@pecking-order/shared-types';
 import type { VoteResult, VotingCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { BaseVoteContext, VoteEvent } from './_contract';
 import { getAlivePlayerIds, getTop3SilverIds } from './_helpers';
@@ -27,11 +28,11 @@ export const bubbleMachine = setup({
     }),
     emitVoteCastFact: sendParent(({ event }) => {
       if (event.type !== 'VOTE.BUBBLE.CAST')
-        return { type: 'FACT.RECORD', fact: { type: 'VOTE_CAST', actorId: '', timestamp: 0 } };
+        return { type: Events.Fact.RECORD, fact: { type: FactTypes.VOTE_CAST, actorId: '', timestamp: 0 } };
       return {
-        type: 'FACT.RECORD',
+        type: Events.Fact.RECORD,
         fact: {
-          type: 'VOTE_CAST',
+          type: FactTypes.VOTE_CAST,
           actorId: event.senderId,
           targetId: event.targetId,
           payload: { mechanism: 'BUBBLE' },
@@ -76,12 +77,12 @@ export const bubbleMachine = setup({
           summary: { tallies, immunePlayerIds: context.immunePlayerIds },
         };
       },
-      phase: 'REVEAL',
+      phase: VotingPhases.REVEAL,
     }),
     reportResults: sendParent(({ context }) => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'GAME_RESULT',
+        type: FactTypes.GAME_RESULT,
         actorId: 'SYSTEM',
         payload: context.results,
         timestamp: Date.now(),
@@ -96,7 +97,7 @@ export const bubbleMachine = setup({
     const targets = alive.filter(id => !immune.includes(id));
     return {
       voteType: 'BUBBLE',
-      phase: 'VOTING',
+      phase: VotingPhases.VOTING,
       eligibleVoters: alive,
       eligibleTargets: targets,
       votes: {},

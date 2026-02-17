@@ -1,9 +1,10 @@
 import { assign, enqueueActions } from 'xstate';
+import { Events, FactTypes, PlayerStatuses } from '@pecking-order/shared-types';
 
 export const l2EliminationActions = {
   storeVoteResult: assign({
     pendingElimination: ({ event }: any) =>
-      event.type === 'CARTRIDGE.VOTE_RESULT' ? event.result : null,
+      event.type === Events.Cartridge.VOTE_RESULT ? event.result : null,
   }),
   processNightSummary: enqueueActions(({ enqueue, context }: any) => {
     const pending = context.pendingElimination;
@@ -14,13 +15,13 @@ export const l2EliminationActions = {
       enqueue.assign({
         roster: {
           ...context.roster,
-          [id]: { ...context.roster[id], status: 'ELIMINATED' as const },
+          [id]: { ...context.roster[id], status: PlayerStatuses.ELIMINATED },
         },
       });
       enqueue.raise({
-        type: 'FACT.RECORD',
+        type: Events.Fact.RECORD,
         fact: {
-          type: 'ELIMINATION',
+          type: FactTypes.ELIMINATION,
           actorId: 'SYSTEM',
           targetId: id,
           payload: { mechanism: pending.mechanism, summary: pending.summary },
@@ -36,9 +37,9 @@ export const l2EliminationActions = {
         winner: { playerId: winnerId, mechanism: 'FINALS', summary: pending.summary },
       });
       enqueue.raise({
-        type: 'FACT.RECORD',
+        type: Events.Fact.RECORD,
         fact: {
-          type: 'WINNER_DECLARED',
+          type: FactTypes.WINNER_DECLARED,
           actorId: 'SYSTEM',
           targetId: winnerId,
           payload: pending.summary,

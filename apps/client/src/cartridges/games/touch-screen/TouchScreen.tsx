@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Events } from '@pecking-order/shared-types';
 import type { LiveGameProjection, SocialPlayer } from '@pecking-order/shared-types';
 import LiveGameWrapper from '../wrappers/LiveGameWrapper';
 
@@ -34,8 +35,8 @@ export default function TouchScreen({ cartridge, playerId, roster, engine, onDis
       onDismiss={onDismiss}
       title="Touch Screen"
       description="Hold the button as long as you can. Longer = more silver."
-      startEvent="GAME.TOUCH_SCREEN.START"
-      readyEvent="GAME.TOUCH_SCREEN.READY"
+      startEvent={Events.Game.start('TOUCH_SCREEN')}
+      readyEvent={Events.Game.event('TOUCH_SCREEN', 'READY')}
       renderGame={() => (
         <ActiveGame
           cartridge={cartridge}
@@ -106,14 +107,14 @@ function ActiveGame({
     touchSent.current = true;
     localHoldStart.current = Date.now();
     setLocalHolding(true);
-    engine.sendGameAction('GAME.TOUCH_SCREEN.TOUCH');
+    engine.sendGameAction(Events.Game.event('TOUCH_SCREEN', 'TOUCH'));
   }, [myHold, engine]);
 
   const handlePointerUp = useCallback(() => {
     if (releaseSent.current || showIdle) return;
     releaseSent.current = true;
     setLocalHolding(false);
-    engine.sendGameAction('GAME.TOUCH_SCREEN.RELEASE');
+    engine.sendGameAction(Events.Game.event('TOUCH_SCREEN', 'RELEASE'));
   }, [showIdle, engine]);
 
   // Other players (live mode only)

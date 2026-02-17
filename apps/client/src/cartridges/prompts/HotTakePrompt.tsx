@@ -1,5 +1,5 @@
 import React from 'react';
-import type { SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, type SocialPlayer } from '@pecking-order/shared-types';
 import { Flame } from 'lucide-react';
 
 interface HotTakeCartridge {
@@ -33,7 +33,7 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
   const totalEligible = eligibleVoters.length;
 
   const handleStance = (stance: 'AGREE' | 'DISAGREE') => {
-    if (hasResponded || phase !== 'ACTIVE') return;
+    if (hasResponded || phase !== PromptPhases.ACTIVE) return;
     engine.sendActivityAction('ACTIVITY.HOTTAKE.RESPOND', { stance });
   };
 
@@ -55,7 +55,7 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
       </div>
 
       {/* Active Phase */}
-      {phase === 'ACTIVE' && (
+      {phase === PromptPhases.ACTIVE && (
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
@@ -93,7 +93,7 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
       )}
 
       {/* Results Phase */}
-      {phase === 'RESULTS' && results && (
+      {phase === PromptPhases.RESULTS && results && (
         <div className="p-4 space-y-4 animate-fade-in">
           <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
             Results

@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
 
 interface TrustPairsVotingProps {
   cartridge: any;
@@ -25,7 +25,7 @@ export default function TrustPairsVoting({ cartridge, playerId, roster, engine }
   const myTrust = trustPicks?.[playerId] ?? null;
   const myEliminate = votePicks?.[playerId] ?? null;
 
-  if (phase === 'REVEAL') {
+  if (phase === VotingPhases.REVEAL) {
     const revealTallies: Record<string, number> = results?.summary?.tallies ?? {};
     const eliminatedId: string | null = results?.eliminatedId ?? null;
     const pairs: string[][] = results?.summary?.mutualPairs ?? mutualPairs ?? [];

@@ -20,6 +20,7 @@
  */
 import { setup, assign, sendParent, enqueueActions, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, LiveGamePhases } from '@pecking-order/shared-types';
 import type { GameEvent, GameOutput } from '../contracts';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 
@@ -110,10 +111,10 @@ export const touchScreenMachine = setup({
   },
   guards: {
     isLiveMode: ({ context }: any) => context.mode === 'LIVE',
-    isStartEvent: ({ event }: any) => event.type === 'GAME.TOUCH_SCREEN.START',
-    isReadyEvent: ({ event }: any) => event.type === 'GAME.TOUCH_SCREEN.READY',
-    isTouchEvent: ({ event }: any) => event.type === 'GAME.TOUCH_SCREEN.TOUCH',
-    isReleaseEvent: ({ event }: any) => event.type === 'GAME.TOUCH_SCREEN.RELEASE',
+    isStartEvent: ({ event }: any) => event.type === Events.Game.start('TOUCH_SCREEN'),
+    isReadyEvent: ({ event }: any) => event.type === Events.Game.event('TOUCH_SCREEN', 'READY'),
+    isTouchEvent: ({ event }: any) => event.type === Events.Game.event('TOUCH_SCREEN', 'TOUCH'),
+    isReleaseEvent: ({ event }: any) => event.type === Events.Game.event('TOUCH_SCREEN', 'RELEASE'),
     anyReady: ({ context }: any) => context.readyPlayers.length > 0,
   } as any,
   delays: {
@@ -141,13 +142,13 @@ export const touchScreenMachine = setup({
 
     setCountdownStart: assign({
       countdownStartedAt: () => Date.now(),
-      phase: () => 'COUNTDOWN' as const,
+      phase: () => LiveGamePhases.COUNTDOWN,
     }),
 
     // Sets up the active phase — no hold entries yet (those come from TOUCH events)
     initActivePhase: assign({
       playStartedAt: () => Date.now(),
-      phase: () => 'ACTIVE' as const,
+      phase: () => LiveGamePhases.ACTIVE,
     }),
 
     // Player starts holding (on TOUCH event)
@@ -199,13 +200,13 @@ export const touchScreenMachine = setup({
 
     computeResults: assign(({ context }: any) => ({
       results: computeRewards(context.holdStates),
-      phase: 'COMPLETED' as const,
+      phase: LiveGamePhases.COMPLETED,
     })),
 
     reportResults: sendParent(({ context }: any): AnyEventObject => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'GAME_RESULT' as any,
+        type: FactTypes.GAME_RESULT as any,
         actorId: 'SYSTEM',
         payload: {
           gameType: 'TOUCH_SCREEN',
@@ -218,9 +219,9 @@ export const touchScreenMachine = setup({
     })),
 
     emitSync: sendParent((): AnyEventObject => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'GAME_ROUND' as any,
+        type: FactTypes.GAME_ROUND as any,
         actorId: 'SYSTEM',
         payload: {},
         timestamp: Date.now(),
@@ -234,7 +235,7 @@ export const touchScreenMachine = setup({
     return {
       gameType: 'TOUCH_SCREEN' as const,
       mode: (input.mode ?? 'SOLO') as 'SOLO' | 'LIVE',
-      phase: 'INIT' as const,
+      phase: LiveGamePhases.INIT,
       eligiblePlayers: eligible,
       readyPlayers: [],
       startedBy: null,
@@ -264,7 +265,7 @@ export const touchScreenMachine = setup({
 
     // Solo mode: wait for the player to click Start
     waitingForStart: {
-      entry: assign({ phase: () => 'WAITING_FOR_START' as const }),
+      entry: assign({ phase: () => LiveGamePhases.WAITING_FOR_START }),
       on: {
         '*': [
           { guard: 'isStartEvent', actions: ['recordStarter'], target: 'countdown' },
@@ -275,7 +276,7 @@ export const touchScreenMachine = setup({
 
     // Live mode: wait for players to ready up
     ready: {
-      entry: assign({ phase: () => 'READY' as const }),
+      entry: assign({ phase: () => LiveGamePhases.READY }),
       on: {
         '*': [
           { guard: 'isReadyEvent', actions: ['addReadyPlayer', 'emitSync'] },

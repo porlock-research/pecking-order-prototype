@@ -1,4 +1,5 @@
 import React from 'react';
+import { VoteTypes } from '@pecking-order/shared-types';
 import { useGameStore } from '../../store/useGameStore';
 import MajorityVoting from './MajorityVoting';
 import ExecutionerVoting from './ExecutionerVoting';
@@ -25,21 +26,21 @@ export default function VotingPanel({ engine }: VotingPanelProps) {
   const common = { cartridge: activeVotingCartridge, playerId: playerId!, roster, engine };
 
   switch (activeVotingCartridge.voteType) {
-    case 'MAJORITY':
+    case VoteTypes.MAJORITY:
       return <MajorityVoting {...common} />;
-    case 'EXECUTIONER':
+    case VoteTypes.EXECUTIONER:
       return <ExecutionerVoting {...common} />;
-    case 'BUBBLE':
+    case VoteTypes.BUBBLE:
       return <BubbleVoting {...common} />;
-    case 'PODIUM_SACRIFICE':
+    case VoteTypes.PODIUM_SACRIFICE:
       return <PodiumSacrificeVoting {...common} />;
-    case 'SECOND_TO_LAST':
+    case VoteTypes.SECOND_TO_LAST:
       return <SecondToLastVoting {...common} />;
-    case 'SHIELD':
+    case VoteTypes.SHIELD:
       return <ShieldVoting {...common} />;
-    case 'TRUST_PAIRS':
+    case VoteTypes.TRUST_PAIRS:
       return <TrustPairsVoting {...common} />;
-    case 'FINALS':
+    case VoteTypes.FINALS:
       return <FinalsVoting {...common} />;
     default:
       return (

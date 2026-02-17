@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ArcadePhases, Events } from '@pecking-order/shared-types';
 import type { SocialPlayer, TriviaProjection } from '@pecking-order/shared-types';
 import {
   CountdownBar,
@@ -98,7 +99,7 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
 
   // Initialize immediately if already COMPLETED on mount (reconnect)
   const [completionReady, setCompletionReady] = useState(
-    status === 'COMPLETED' && !lastRoundResult,
+    status === ArcadePhases.COMPLETED && !lastRoundResult,
   );
 
   // When lastRoundResult arrives mid-game (round advanced), show result briefly
@@ -118,7 +119,7 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
 
   // Completion: show last-round feedback briefly, then celebration
   useEffect(() => {
-    if (status === 'COMPLETED') {
+    if (status === ArcadePhases.COMPLETED) {
       if (lastRoundResult && selectedAnswer !== null) {
         const timer = setTimeout(() => setCompletionReady(true), 1500);
         return () => clearTimeout(timer);
@@ -130,24 +131,24 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
 
   // Auto-submit on timeout (answerIndex -1 = no answer)
   useEffect(() => {
-    if (status !== 'PLAYING' || !roundDeadline || selectedAnswer !== null) return;
+    if (status !== ArcadePhases.PLAYING || !roundDeadline || selectedAnswer !== null) return;
     const remaining = roundDeadline - Date.now();
     if (remaining <= 0) {
-      engine.sendGameAction('GAME.TRIVIA.ANSWER', { answerIndex: -1 });
+      engine.sendGameAction(Events.Game.event('TRIVIA', 'ANSWER'), { answerIndex: -1 });
       return;
     }
     const timer = setTimeout(() => {
-      engine.sendGameAction('GAME.TRIVIA.ANSWER', { answerIndex: -1 });
+      engine.sendGameAction(Events.Game.event('TRIVIA', 'ANSWER'), { answerIndex: -1 });
     }, remaining + 200);
     return () => clearTimeout(timer);
   }, [roundDeadline, status, selectedAnswer]);
 
-  const handleStart = () => engine.sendGameAction('GAME.TRIVIA.START');
+  const handleStart = () => engine.sendGameAction(Events.Game.start('TRIVIA'));
 
   const handleAnswer = (idx: number) => {
     if (selectedAnswer !== null || showingResult) return;
     setSelectedAnswer(idx);
-    engine.sendGameAction('GAME.TRIVIA.ANSWER', { answerIndex: idx });
+    engine.sendGameAction(Events.Game.event('TRIVIA', 'ANSWER'), { answerIndex: idx });
   };
 
   const isPerfect = correctCount === totalRounds;
@@ -155,9 +156,9 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
   const perfectBonus = isPerfect ? PERFECT_BONUS_AMT : 0;
   const speedBonuses = Math.max(0, score - baseSilver - perfectBonus);
 
-  const roundInfo = status === 'NOT_STARTED'
+  const roundInfo = status === ArcadePhases.NOT_STARTED
     ? undefined
-    : status === 'COMPLETED'
+    : status === ArcadePhases.COMPLETED
       ? `${totalRounds}/${totalRounds}`
       : `${currentRound}/${totalRounds}`;
 
@@ -166,12 +167,12 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
       <CartridgeHeader
         label="Trivia"
         roundInfo={roundInfo}
-        score={status !== 'NOT_STARTED' ? score : undefined}
-        showScore={status !== 'NOT_STARTED'}
+        score={status !== ArcadePhases.NOT_STARTED ? score : undefined}
+        showScore={status !== ArcadePhases.NOT_STARTED}
       />
 
       {/* LOADING: Fetching questions */}
-      {status === 'NOT_STARTED' && cartridge.ready === false && (
+      {status === ArcadePhases.NOT_STARTED && cartridge.ready === false && (
         <div className="p-6 text-center space-y-3">
           <span className="inline-block w-5 h-5 border-2 border-skin-gold border-t-transparent rounded-full spin-slow" />
           <p className="text-sm font-mono text-skin-dim animate-pulse">Loading questions...</p>
@@ -179,7 +180,7 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
       )}
 
       {/* PREGAME: Start Button */}
-      {status === 'NOT_STARTED' && cartridge.ready !== false && (
+      {status === ArcadePhases.NOT_STARTED && cartridge.ready !== false && (
         <div className="p-6 space-y-4 text-center">
           <div className="space-y-2">
             <p className="text-sm font-bold text-skin-base">Daily Trivia Challenge</p>
@@ -198,7 +199,7 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
       )}
 
       {/* PLAYING: Show result overlay or current question */}
-      {status === 'PLAYING' && (
+      {status === ArcadePhases.PLAYING && (
         <>
           {!showingResult && (
             <div className="px-4 pt-2">
@@ -232,12 +233,12 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
       )}
 
       {/* COMPLETED Phase 1: Last Round Feedback */}
-      {status === 'COMPLETED' && !completionReady && lastRoundResult && (
+      {status === ArcadePhases.COMPLETED && !completionReady && lastRoundResult && (
         <RoundResult result={lastRoundResult} selectedAnswer={selectedAnswer} />
       )}
 
       {/* COMPLETED Phase 2: Celebration Sequence */}
-      {status === 'COMPLETED' && completionReady && (
+      {status === ArcadePhases.COMPLETED && completionReady && (
         <CelebrationSequence
           title="Trivia Complete"
           subtitle={isPerfect ? 'Perfect Score!' : undefined}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { RealtimeTriviaPhases, Events } from '@pecking-order/shared-types';
 import type { SocialPlayer, RealtimeTriviaProjection } from '@pecking-order/shared-types';
 import {
   CountdownBar,
@@ -29,15 +30,15 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
   }, [currentRound]);
 
   const handleAnswer = (idx: number) => {
-    if (selectedAnswer !== null || phase !== 'QUESTION') return;
+    if (selectedAnswer !== null || phase !== RealtimeTriviaPhases.QUESTION) return;
     setSelectedAnswer(idx);
-    engine.sendGameAction('GAME.REALTIME_TRIVIA.ANSWER', { answerIndex: idx });
+    engine.sendGameAction(Events.Game.event('REALTIME_TRIVIA', 'ANSWER'), { answerIndex: idx });
   };
 
-  const isShowingResult = phase === 'RESULT' && lastRoundResults != null;
+  const isShowingResult = phase === RealtimeTriviaPhases.RESULT && lastRoundResults != null;
   const myResult = lastRoundResults?.playerResults?.[playerId];
   const correctIdx = lastRoundResults?.correctIndex;
-  const showQuestion = phase === 'QUESTION' || (isShowingResult && currentQuestion);
+  const showQuestion = phase === RealtimeTriviaPhases.QUESTION || (isShowingResult && currentQuestion);
 
   const sortedScores = Object.entries(scores)
     .sort(([, a], [, b]) => b - a)
@@ -52,7 +53,7 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
       />
 
       {/* Timer (only during active question, not during result) */}
-      {phase === 'QUESTION' && (
+      {phase === RealtimeTriviaPhases.QUESTION && (
         <div className="px-4 pt-2">
           <CountdownBar deadline={roundDeadline} />
         </div>
@@ -82,7 +83,7 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
           )}
 
           {/* Pre-answer hint */}
-          {phase === 'QUESTION' && selectedAnswer !== null && !isShowingResult && (
+          {phase === RealtimeTriviaPhases.QUESTION && selectedAnswer !== null && !isShowingResult && (
             <p className="text-xs font-mono text-skin-dim text-center animate-fade-in">
               Answer locked. The faster you answer, the more silver you earn.
             </p>
@@ -91,7 +92,7 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
       )}
 
       {/* Scoreboard Phase (Final) */}
-      {phase === 'SCOREBOARD' && (
+      {phase === RealtimeTriviaPhases.SCOREBOARD && (
         <div className="p-4 space-y-4 animate-fade-in">
           <p className="text-center text-sm font-bold text-skin-gold uppercase tracking-wider font-display">
             Final Scoreboard
@@ -138,7 +139,7 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
       )}
 
       {/* Waiting / Loading Phase */}
-      {phase === 'WAITING' && (
+      {phase === RealtimeTriviaPhases.WAITING && (
         <div className="p-6 text-center space-y-3">
           {cartridge.ready === false ? (
             <>

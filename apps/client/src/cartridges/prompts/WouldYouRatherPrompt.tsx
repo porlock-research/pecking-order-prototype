@@ -1,5 +1,5 @@
 import React from 'react';
-import type { SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, type SocialPlayer } from '@pecking-order/shared-types';
 import { Scale } from 'lucide-react';
 
 interface WyrCartridge {
@@ -36,7 +36,7 @@ export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engi
   const totalEligible = eligibleVoters.length;
 
   const handleChoose = (choice: 'A' | 'B') => {
-    if (hasResponded || phase !== 'ACTIVE') return;
+    if (hasResponded || phase !== PromptPhases.ACTIVE) return;
     engine.sendActivityAction('ACTIVITY.WYR.CHOOSE', { choice });
   };
 
@@ -58,7 +58,7 @@ export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engi
       </div>
 
       {/* Active Phase */}
-      {phase === 'ACTIVE' && (
+      {phase === PromptPhases.ACTIVE && (
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
@@ -99,7 +99,7 @@ export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engi
       )}
 
       {/* Results Phase */}
-      {phase === 'RESULTS' && results && (
+      {phase === PromptPhases.RESULTS && results && (
         <div className="p-4 space-y-4 animate-fade-in">
           <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
             Results

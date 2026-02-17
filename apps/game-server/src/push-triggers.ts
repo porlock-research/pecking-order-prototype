@@ -6,7 +6,7 @@
  * Notification URLs are constructed from clientHost + inviteCode.
  */
 import type { PushTrigger, GameManifest } from "@pecking-order/shared-types";
-import { DEFAULT_PUSH_CONFIG } from "@pecking-order/shared-types";
+import { DEFAULT_PUSH_CONFIG, FactTypes } from "@pecking-order/shared-types";
 import { getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { sendPushNotification } from "./push-send";
 
@@ -106,21 +106,21 @@ export function handleFactPush(
 ): void {
   const name = (id: string) => ctx.roster[id]?.personaName || id;
 
-  if (fact.type === 'DM_SENT' && fact.targetId) {
+  if (fact.type === FactTypes.DM_SENT && fact.targetId) {
     if (!isPushEnabled(manifest, 'DM_SENT')) return;
     pushToPlayer(ctx, fact.targetId, {
       title: 'Pecking Order',
       body: `${name(fact.actorId)} sent you a DM`,
       tag: 'dm',
     }).catch(err => console.error('[L1] [Push] Error:', err));
-  } else if (fact.type === 'ELIMINATION') {
+  } else if (fact.type === FactTypes.ELIMINATION) {
     if (!isPushEnabled(manifest, 'ELIMINATION')) return;
     pushBroadcast(ctx, {
       title: 'Pecking Order',
       body: `${name(fact.targetId || fact.actorId)} has been eliminated!`,
       tag: 'elimination',
     }).catch(err => console.error('[L1] [Push] Error:', err));
-  } else if (fact.type === 'WINNER_DECLARED') {
+  } else if (fact.type === FactTypes.WINNER_DECLARED) {
     if (!isPushEnabled(manifest, 'WINNER_DECLARED')) return;
     pushBroadcast(ctx, {
       title: 'Pecking Order',

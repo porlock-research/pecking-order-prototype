@@ -15,6 +15,7 @@
  */
 import { setup, assign, sendParent, enqueueActions, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, SyncDecisionPhases } from '@pecking-order/shared-types';
 import type { GameEvent, GameOutput } from '../contracts';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 
@@ -68,7 +69,7 @@ export function createSyncDecisionMachine<TDecision = Record<string, any>>(
   config: SyncDecisionConfig<TDecision>,
 ) {
   const { gameType, getEligiblePlayers, validateDecision, calculateResults, initExtra } = config;
-  const SUBMIT_EVENT = `GAME.${gameType}.SUBMIT`;
+  const SUBMIT_EVENT = Events.Game.event(gameType, 'SUBMIT');
 
   return setup({
     types: {
@@ -111,9 +112,9 @@ export function createSyncDecisionMachine<TDecision = Record<string, any>>(
       }),
 
       emitDecisionFact: sendParent(({ event }: any): AnyEventObject => ({
-        type: 'FACT.RECORD',
+        type: Events.Fact.RECORD,
         fact: {
-          type: 'GAME_DECISION' as any,
+          type: FactTypes.GAME_DECISION as any,
           actorId: event.senderId,
           payload: { gameType },
           timestamp: Date.now(),
@@ -125,13 +126,13 @@ export function createSyncDecisionMachine<TDecision = Record<string, any>>(
           context.decisions as Record<string, TDecision>,
           context,
         );
-        return { results, phase: 'REVEAL' as const };
+        return { results, phase: SyncDecisionPhases.REVEAL };
       }),
 
       reportResults: sendParent(({ context }: any): AnyEventObject => ({
-        type: 'FACT.RECORD',
+        type: Events.Fact.RECORD,
         fact: {
-          type: 'GAME_RESULT' as any,
+          type: FactTypes.GAME_RESULT as any,
           actorId: 'SYSTEM',
           payload: {
             gameType,
@@ -144,9 +145,9 @@ export function createSyncDecisionMachine<TDecision = Record<string, any>>(
       })),
 
       emitSync: sendParent((): AnyEventObject => ({
-        type: 'FACT.RECORD',
+        type: Events.Fact.RECORD,
         fact: {
-          type: 'GAME_ROUND' as any,
+          type: FactTypes.GAME_ROUND as any,
           actorId: 'SYSTEM',
           payload: {},
           timestamp: Date.now(),
@@ -154,9 +155,9 @@ export function createSyncDecisionMachine<TDecision = Record<string, any>>(
       })),
 
       emitAllSubmitted: sendParent((): AnyEventObject => ({
-        type: 'FACT.RECORD',
+        type: Events.Fact.RECORD,
         fact: {
-          type: 'ALL_SUBMITTED' as any,
+          type: FactTypes.ALL_SUBMITTED as any,
           actorId: 'SYSTEM',
           payload: { gameType },
           timestamp: Date.now(),
@@ -176,7 +177,7 @@ export function createSyncDecisionMachine<TDecision = Record<string, any>>(
 
       return {
         gameType,
-        phase: 'COLLECTING' as const,
+        phase: SyncDecisionPhases.COLLECTING,
         eligiblePlayers: eligible,
         decisions: {},
         submitted,

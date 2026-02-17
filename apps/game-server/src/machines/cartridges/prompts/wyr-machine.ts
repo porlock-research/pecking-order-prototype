@@ -5,7 +5,7 @@
  * Silver rewards: +5 per response, +10 for minority choice (null if tied).
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import type { PromptCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
@@ -65,13 +65,13 @@ export const wyrMachine = setup({
       return { choices: { ...context.choices, [senderId]: choice } };
     }),
     calculateResults: assign(({ context }) => ({
-      phase: 'RESULTS' as const,
+      phase: PromptPhases.RESULTS,
       results: resolveResults(context.choices, context.optionA, context.optionB),
     })),
     emitPromptResultFact: sendParent(({ context }): AnyEventObject => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'PROMPT_RESULT' as any,
+        type: FactTypes.PROMPT_RESULT as any,
         actorId: 'SYSTEM',
         payload: {
           promptType: 'WOULD_YOU_RATHER',
@@ -89,7 +89,7 @@ export const wyrMachine = setup({
     return {
       promptType: 'WOULD_YOU_RATHER' as const,
       promptText: input.promptText,
-      phase: 'ACTIVE' as const,
+      phase: PromptPhases.ACTIVE,
       optionA: input.optionA || 'Option A',
       optionB: input.optionB || 'Option B',
       eligibleVoters: alive,

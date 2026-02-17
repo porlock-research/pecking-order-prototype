@@ -1,7 +1,7 @@
 import { setup, assign, sendTo, raise } from 'xstate';
 import { dailySessionMachine } from './l3-session';
 import { postGameMachine } from './l4-post-game';
-import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry } from '@pecking-order/shared-types';
+import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, Events } from '@pecking-order/shared-types';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from './cartridges/prompts/_contract';
 
@@ -162,15 +162,15 @@ export const orchestratorMachine = setup({
             'PERK.REJECTED': { actions: 'deliverPerkResult' },
             '*': [
               {
-                guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('VOTE.'),
+                guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Vote.PREFIX),
                 actions: sendTo('l3-session', ({ event }: any) => event),
               },
               {
-                guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('GAME.'),
+                guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Game.PREFIX),
                 actions: sendTo('l3-session', ({ event }: any) => event),
               },
               {
-                guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('ACTIVITY.'),
+                guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX),
                 actions: sendTo('l3-session', ({ event }: any) => event),
               }
             ],

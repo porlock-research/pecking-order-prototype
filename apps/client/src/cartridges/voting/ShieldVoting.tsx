@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
 
 interface ShieldVotingProps {
   cartridge: any;
@@ -19,7 +19,7 @@ export default function ShieldVoting({ cartridge, playerId, roster, engine }: Sh
     saveCounts[targetId] = (saveCounts[targetId] || 0) + 1;
   }
 
-  if (phase === 'REVEAL') {
+  if (phase === VotingPhases.REVEAL) {
     const revealSaves: Record<string, number> = results?.summary?.saveCounts ?? saveCounts;
     const eliminatedId: string | null = results?.eliminatedId ?? null;
 

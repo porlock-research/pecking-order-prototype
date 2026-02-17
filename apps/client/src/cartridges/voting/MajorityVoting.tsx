@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
 
 interface MajorityVotingProps {
   cartridge: any;
@@ -19,7 +19,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
     tallies[targetId] = (tallies[targetId] || 0) + 1;
   }
 
-  if (phase === 'REVEAL') {
+  if (phase === VotingPhases.REVEAL) {
     const revealTallies: Record<string, number> = results?.summary?.tallies ?? tallies;
     const eliminatedId: string | null = results?.eliminatedId ?? null;
 

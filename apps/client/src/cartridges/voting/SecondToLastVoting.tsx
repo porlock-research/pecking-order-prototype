@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
 
 interface SecondToLastVotingProps {
   cartridge: any;
@@ -31,7 +31,7 @@ export default function SecondToLastVoting({ cartridge, playerId, roster }: Seco
       <div className="h-1 vote-strip-second" />
       <div className="p-4 space-y-3">
         <h3 className="text-sm font-mono font-bold text-skin-dim uppercase tracking-widest text-center">
-          {phase === 'REVEAL' ? 'SECOND TO LAST -- RESULTS' : 'SECOND TO LAST'}
+          {phase === VotingPhases.REVEAL ? 'SECOND TO LAST -- RESULTS' : 'SECOND TO LAST'}
         </h3>
 
         <p className="text-[10px] font-mono text-skin-dim text-center uppercase">

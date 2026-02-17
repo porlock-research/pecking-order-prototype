@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, type SocialPlayer } from '@pecking-order/shared-types';
 import { Users, Heart } from 'lucide-react';
 
 interface PromptCartridge {
@@ -34,7 +34,7 @@ export default function PlayerPickPrompt({ cartridge, playerId, roster, engine }
   const name = (id: string) => roster[id]?.personaName || id;
 
   const handleSubmit = (targetId: string) => {
-    if (hasResponded || phase !== 'ACTIVE') return;
+    if (hasResponded || phase !== PromptPhases.ACTIVE) return;
     setSelectedTarget(targetId);
     engine.sendActivityAction('ACTIVITY.PROMPT.SUBMIT', { targetId });
   };
@@ -61,7 +61,7 @@ export default function PlayerPickPrompt({ cartridge, playerId, roster, engine }
       </div>
 
       {/* Active Phase */}
-      {phase === 'ACTIVE' && (
+      {phase === PromptPhases.ACTIVE && (
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
@@ -111,7 +111,7 @@ export default function PlayerPickPrompt({ cartridge, playerId, roster, engine }
       )}
 
       {/* Results Phase */}
-      {phase === 'RESULTS' && results && (
+      {phase === PromptPhases.RESULTS && results && (
         <div className="p-4 space-y-4 animate-fade-in">
           <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
             Results

@@ -1,4 +1,5 @@
 import { setup, assign, sendParent } from 'xstate';
+import { Events, FactTypes, VotingPhases } from '@pecking-order/shared-types';
 import type { VoteResult, VotingCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { BaseVoteContext, VoteEvent } from './_contract';
 import { getAlivePlayerIds, getEliminatedPlayerIds } from './_helpers';
@@ -27,11 +28,11 @@ export const finalsMachine = setup({
     }),
     emitVoteCastFact: sendParent(({ event }) => {
       if (event.type !== 'VOTE.FINALS.CAST')
-        return { type: 'FACT.RECORD', fact: { type: 'VOTE_CAST', actorId: '', timestamp: 0 } };
+        return { type: Events.Fact.RECORD, fact: { type: FactTypes.VOTE_CAST, actorId: '', timestamp: 0 } };
       return {
-        type: 'FACT.RECORD',
+        type: Events.Fact.RECORD,
         fact: {
-          type: 'VOTE_CAST',
+          type: FactTypes.VOTE_CAST,
           actorId: event.senderId,
           targetId: event.targetId,
           payload: { mechanism: 'FINALS' },
@@ -105,16 +106,16 @@ export const finalsMachine = setup({
         // Will be set by the results calculation above — re-derive for context sync
         return null; // Placeholder, actual value comes from results
       },
-      phase: 'WINNER',
+      phase: VotingPhases.WINNER,
     }),
     // After calculateResults runs, extract winnerId from results for context access
     syncWinnerId: assign({
       winnerId: ({ context }) => context.results?.winnerId ?? null,
     }),
     reportResults: sendParent(({ context }) => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'GAME_RESULT',
+        type: FactTypes.GAME_RESULT,
         actorId: 'SYSTEM',
         payload: context.results,
         timestamp: Date.now(),
@@ -128,7 +129,7 @@ export const finalsMachine = setup({
     const eliminated = getEliminatedPlayerIds(input.roster);
     return {
       voteType: 'FINALS',
-      phase: 'VOTING',
+      phase: VotingPhases.VOTING,
       eligibleVoters: eliminated,    // Only eliminated players vote
       eligibleTargets: alive,         // Vote for alive players
       votes: {},

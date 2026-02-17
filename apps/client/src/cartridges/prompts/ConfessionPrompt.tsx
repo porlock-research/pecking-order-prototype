@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, type SocialPlayer } from '@pecking-order/shared-types';
 import { PenLine } from 'lucide-react';
 
 interface ConfessionCartridge {
@@ -32,7 +32,7 @@ interface ConfessionPromptProps {
 
 export default function ConfessionPrompt({ cartridge, playerId, roster, engine }: ConfessionPromptProps) {
   const { promptText, phase, eligibleVoters, anonymousConfessions, votes, results } = cartridge;
-  const respondedCount = phase === 'COLLECTING'
+  const respondedCount = phase === PromptPhases.COLLECTING
     ? eligibleVoters.filter(id => {
         // We can't see confessions map (stripped), but we know if we submitted
         // Track our own submission via local state
@@ -69,19 +69,19 @@ export default function ConfessionPrompt({ cartridge, playerId, roster, engine }
             Confession
           </span>
           <span className="text-xs font-mono text-skin-dim">
-            {phase === 'COLLECTING' ? 'Write your confession' : phase === 'VOTING' ? `${Object.keys(votes).length}/${totalEligible} voted` : 'Results'}
+            {phase === PromptPhases.COLLECTING ? 'Write your confession' : phase === PromptPhases.VOTING ? `${Object.keys(votes).length}/${totalEligible} voted` : 'Results'}
           </span>
         </div>
-        {phase === 'COLLECTING' && submitted && (
+        {phase === PromptPhases.COLLECTING && submitted && (
           <span className="text-[10px] font-mono text-skin-green uppercase tracking-wider">Submitted</span>
         )}
-        {phase === 'VOTING' && (hasVoted || votedIndex !== null) && (
+        {phase === PromptPhases.VOTING && (hasVoted || votedIndex !== null) && (
           <span className="text-[10px] font-mono text-skin-green uppercase tracking-wider">Voted</span>
         )}
       </div>
 
       {/* Collecting Phase */}
-      {phase === 'COLLECTING' && (
+      {phase === PromptPhases.COLLECTING && (
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
@@ -122,7 +122,7 @@ export default function ConfessionPrompt({ cartridge, playerId, roster, engine }
       )}
 
       {/* Voting Phase */}
-      {phase === 'VOTING' && (
+      {phase === PromptPhases.VOTING && (
         <div className="p-4 space-y-4">
           <p className="text-sm font-bold text-skin-base text-center">Vote for the best confession</p>
           <div className="space-y-2">
@@ -153,7 +153,7 @@ export default function ConfessionPrompt({ cartridge, playerId, roster, engine }
       )}
 
       {/* Results Phase */}
-      {phase === 'RESULTS' && results && (
+      {phase === PromptPhases.RESULTS && results && (
         <div className="p-4 space-y-4 animate-fade-in">
           <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
             Results

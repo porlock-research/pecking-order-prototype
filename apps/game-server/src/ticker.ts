@@ -3,6 +3,7 @@
  * debug summary, and broadcast helpers.
  */
 import type { TickerMessage } from "@pecking-order/shared-types";
+import { Events, FactTypes, TickerCategories } from "@pecking-order/shared-types";
 import type { Connection } from "partyserver";
 
 // --- Pure functions ---
@@ -21,14 +22,14 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
   const name = (id: string) => roster[id]?.personaName || id;
 
   switch (fact.type) {
-    case 'SILVER_TRANSFER':
+    case FactTypes.SILVER_TRANSFER:
       return {
         id: crypto.randomUUID(),
         text: `${name(fact.actorId)} sent ${fact.payload?.amount || '?'} silver to ${name(fact.targetId)}`,
-        category: 'SOCIAL',
+        category: TickerCategories.SOCIAL,
         timestamp: fact.timestamp,
       };
-    case 'GAME_RESULT': {
+    case FactTypes.GAME_RESULT: {
       const players = fact.payload?.players;
       if (players) {
         const sorted = Object.entries(players)
@@ -38,35 +39,35 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
           return {
             id: crypto.randomUUID(),
             text: `${name(sorted[0].pid)} earned ${sorted[0].silver} silver in today's game!`,
-            category: 'GAME',
+            category: TickerCategories.GAME,
             timestamp: fact.timestamp,
           };
         }
       }
       return null;
     }
-    case 'PLAYER_GAME_RESULT':
+    case FactTypes.PLAYER_GAME_RESULT:
       return {
         id: crypto.randomUUID(),
         text: `${name(fact.actorId)} earned ${fact.payload?.silverReward || 0} silver in today's game!`,
-        category: 'GAME',
+        category: TickerCategories.GAME,
         timestamp: fact.timestamp,
       };
-    case 'ELIMINATION':
+    case FactTypes.ELIMINATION:
       return {
         id: crypto.randomUUID(),
         text: `${name(fact.targetId || fact.actorId)} has been eliminated!`,
-        category: 'ELIMINATION',
+        category: TickerCategories.ELIMINATION,
         timestamp: fact.timestamp,
       };
-    case 'WINNER_DECLARED':
+    case FactTypes.WINNER_DECLARED:
       return {
         id: crypto.randomUUID(),
         text: `${name(fact.targetId || fact.actorId)} has won the game!`,
-        category: 'SYSTEM',
+        category: TickerCategories.SYSTEM,
         timestamp: fact.timestamp,
       };
-    case 'PERK_USED': {
+    case FactTypes.PERK_USED: {
       const perkType = fact.payload?.perkType || 'unknown';
       const perkLabels: Record<string, string> = {
         SPY_DMS: 'Spy DMs',
@@ -76,11 +77,11 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
       return {
         id: crypto.randomUUID(),
         text: `${name(fact.actorId)} used ${perkLabels[perkType] || perkType}!`,
-        category: 'SOCIAL',
+        category: TickerCategories.SOCIAL,
         timestamp: fact.timestamp,
       };
     }
-    case 'PROMPT_RESULT': {
+    case FactTypes.PROMPT_RESULT: {
       const rewards = fact.payload?.silverRewards;
       if (rewards) {
         const totalSilver = Object.values(rewards).reduce((sum: number, v: any) => sum + (v || 0), 0);
@@ -88,7 +89,7 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
           return {
             id: crypto.randomUUID(),
             text: `Activity complete! ${Object.keys(rewards).length} players earned ${totalSilver} silver total.`,
-            category: 'SOCIAL',
+            category: TickerCategories.SOCIAL,
             timestamp: fact.timestamp,
           };
         }
@@ -105,22 +106,22 @@ export function stateToTicker(stateStr: string, context: any): TickerMessage | n
   const dayIndex = context?.dayIndex || 0;
 
   if (stateStr.includes('nightSummary')) {
-    return { id: crypto.randomUUID(), text: 'Night has fallen...', category: 'SYSTEM', timestamp: Date.now() };
+    return { id: crypto.randomUUID(), text: 'Night has fallen...', category: TickerCategories.SYSTEM, timestamp: Date.now() };
   }
   if (stateStr.includes('morningBriefing')) {
-    return { id: crypto.randomUUID(), text: `Day ${dayIndex} has begun!`, category: 'SYSTEM', timestamp: Date.now() };
+    return { id: crypto.randomUUID(), text: `Day ${dayIndex} has begun!`, category: TickerCategories.SYSTEM, timestamp: Date.now() };
   }
   if (stateStr.includes('voting')) {
-    return { id: crypto.randomUUID(), text: 'Voting has begun!', category: 'VOTE', timestamp: Date.now() };
+    return { id: crypto.randomUUID(), text: 'Voting has begun!', category: TickerCategories.VOTE, timestamp: Date.now() };
   }
   if (stateStr.includes('dailyGame')) {
-    return { id: crypto.randomUUID(), text: "Today's game is starting!", category: 'GAME', timestamp: Date.now() };
+    return { id: crypto.randomUUID(), text: "Today's game is starting!", category: TickerCategories.GAME, timestamp: Date.now() };
   }
   if (stateStr.includes('gameSummary')) {
-    return { id: crypto.randomUUID(), text: 'The winner has been crowned!', category: 'SYSTEM', timestamp: Date.now() };
+    return { id: crypto.randomUUID(), text: 'The winner has been crowned!', category: TickerCategories.SYSTEM, timestamp: Date.now() };
   }
   if (stateStr.includes('gameOver')) {
-    return { id: crypto.randomUUID(), text: 'The game is over!', category: 'SYSTEM', timestamp: Date.now() };
+    return { id: crypto.randomUUID(), text: 'The game is over!', category: TickerCategories.SYSTEM, timestamp: Date.now() };
   }
   return null;
 }
@@ -154,7 +155,7 @@ export function broadcastTicker(
   getConnections: () => Iterable<Connection>,
 ): TickerMessage[] {
   const updated = [...tickerHistory, msg].slice(-20);
-  const payload = JSON.stringify({ type: 'TICKER.UPDATE', message: msg });
+  const payload = JSON.stringify({ type: Events.Ticker.UPDATE, message: msg });
   for (const ws of getConnections()) {
     ws.send(payload);
   }
@@ -163,7 +164,7 @@ export function broadcastTicker(
 
 /** Broadcast a debug ticker summary to all connected clients. */
 export function broadcastDebugTicker(summary: string, getConnections: () => Iterable<Connection>): void {
-  const payload = JSON.stringify({ type: 'TICKER.DEBUG', summary });
+  const payload = JSON.stringify({ type: Events.Ticker.DEBUG, summary });
   for (const ws of getConnections()) {
     ws.send(payload);
   }

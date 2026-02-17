@@ -1,4 +1,5 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
+import { LiveGamePhases } from '@pecking-order/shared-types';
 import type { LiveGameProjection, SocialPlayer } from '@pecking-order/shared-types';
 import {
   CountdownBar,
@@ -49,12 +50,12 @@ export default function LiveGameWrapper({
     <CartridgeContainer>
       <CartridgeHeader
         label={title}
-        score={phase === 'COMPLETED' ? mySilver : undefined}
-        showScore={phase === 'COMPLETED'}
+        score={phase === LiveGamePhases.COMPLETED ? mySilver : undefined}
+        showScore={phase === LiveGamePhases.COMPLETED}
       />
 
       {/* WAITING_FOR_START (solo) — matches ArcadeGameWrapper start screen */}
-      {phase === 'WAITING_FOR_START' && (
+      {phase === LiveGamePhases.WAITING_FOR_START && (
         <div className="p-6 space-y-4 text-center">
           <div className="space-y-2">
             <p className="text-sm font-bold text-skin-base">{title}</p>
@@ -70,7 +71,7 @@ export default function LiveGameWrapper({
       )}
 
       {/* READY (live) — ready up + player list */}
-      {phase === 'READY' && (
+      {phase === LiveGamePhases.READY && (
         <ReadyPhase
           cartridge={cartridge}
           playerId={playerId}
@@ -81,15 +82,15 @@ export default function LiveGameWrapper({
       )}
 
       {/* COUNTDOWN — 3-2-1 */}
-      {phase === 'COUNTDOWN' && (
+      {phase === LiveGamePhases.COUNTDOWN && (
         <CountdownPhase countdownStartedAt={cartridge.countdownStartedAt as number} />
       )}
 
       {/* ACTIVE — game-specific content, fully delegated to the game component */}
-      {phase === 'ACTIVE' && renderGame()}
+      {phase === LiveGamePhases.ACTIVE && renderGame()}
 
       {/* COMPLETED — CelebrationSequence */}
-      {phase === 'COMPLETED' && results && (
+      {phase === LiveGamePhases.COMPLETED && results && (
         <CelebrationSequence
           title={`${title} Complete`}
           subtitle={!isSolo && results.shieldWinnerId

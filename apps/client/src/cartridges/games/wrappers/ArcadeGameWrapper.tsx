@@ -1,4 +1,5 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
+import { ArcadePhases, Events } from '@pecking-order/shared-types';
 import type { ArcadeGameProjection, ArcadeRendererProps, SocialPlayer } from '@pecking-order/shared-types';
 import {
   CountdownBar,
@@ -33,7 +34,7 @@ export default function ArcadeGameWrapper({
   const { status, silverReward, goldContribution, seed, timeLimit, difficulty, gameType } = cartridge;
 
   const [gamePhase, setGamePhase] = useState<'NOT_STARTED' | 'PLAYING' | 'DEAD' | 'COMPLETED'>(
-    status === 'COMPLETED' ? 'COMPLETED' : 'NOT_STARTED'
+    status === ArcadePhases.COMPLETED ? 'COMPLETED' : 'NOT_STARTED'
   );
   const [gameDeadline, setGameDeadline] = useState<number | null>(null);
   const [finalResult, setFinalResult] = useState<Record<string, number>>(
@@ -41,7 +42,7 @@ export default function ArcadeGameWrapper({
   );
 
   const handleStart = () => {
-    engine.sendGameAction(`GAME.${gameType}.START`);
+    engine.sendGameAction(Events.Game.start(gameType));
     setGamePhase('PLAYING');
     setGameDeadline(Date.now() + timeLimit);
   };
@@ -49,16 +50,16 @@ export default function ArcadeGameWrapper({
   const handleResult = (result: Record<string, number>) => {
     setFinalResult(result);
     setGamePhase('DEAD');
-    engine.sendGameAction(`GAME.${gameType}.RESULT`, result);
+    engine.sendGameAction(Events.Game.result(gameType), result);
   };
 
   // Transition from DEAD -> COMPLETED when server confirms
   useEffect(() => {
-    if (status === 'COMPLETED' && gamePhase === 'DEAD') {
+    if (status === ArcadePhases.COMPLETED && gamePhase === 'DEAD') {
       const timer = setTimeout(() => setGamePhase('COMPLETED'), 1200);
       return () => clearTimeout(timer);
     }
-    if (status === 'COMPLETED' && gamePhase === 'NOT_STARTED') {
+    if (status === ArcadePhases.COMPLETED && gamePhase === 'NOT_STARTED') {
       setGamePhase('COMPLETED');
     }
   }, [status, gamePhase]);

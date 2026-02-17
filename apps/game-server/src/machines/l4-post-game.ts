@@ -1,5 +1,6 @@
 import { setup, assign, sendParent } from 'xstate';
 import type { ChatMessage, SocialPlayer, Fact } from '@pecking-order/shared-types';
+import { Events, FactTypes } from '@pecking-order/shared-types';
 import { buildChatMessage, appendToChatLog } from './actions/social-helpers';
 
 interface PostGameContext {
@@ -21,7 +22,7 @@ export const postGameMachine = setup({
   actions: {
     processMessage: assign({
       chatLog: ({ context, event }: any) => {
-        if (event.type !== 'SOCIAL.SEND_MSG') return context.chatLog;
+        if (event.type !== Events.Social.SEND_MSG) return context.chatLog;
         const sender = context.roster[event.senderId];
         if (!sender) return context.chatLog;
         // Post-game: group chat only, no DMs, no silver cost
@@ -30,12 +31,12 @@ export const postGameMachine = setup({
       },
     }),
     emitChatFact: sendParent(({ event }: any) => {
-      if (event.type !== 'SOCIAL.SEND_MSG')
-        return { type: 'FACT.RECORD', fact: { type: 'CHAT_MSG', actorId: '', timestamp: 0 } };
+      if (event.type !== Events.Social.SEND_MSG)
+        return { type: Events.Fact.RECORD, fact: { type: FactTypes.CHAT_MSG, actorId: '', timestamp: 0 } };
       return {
-        type: 'FACT.RECORD',
+        type: Events.Fact.RECORD,
         fact: {
-          type: 'CHAT_MSG',
+          type: FactTypes.CHAT_MSG,
           actorId: event.senderId,
           payload: { content: event.content },
           timestamp: Date.now(),

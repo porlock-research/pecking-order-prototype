@@ -6,7 +6,7 @@
  * Silver rewards: +5 participation, +5 per correct guess, +5 per player fooled.
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import type { PromptCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
@@ -111,7 +111,7 @@ export const guessWhoMachine = setup({
     buildAnonymousAnswers: assign(({ context }) => {
       const entries = Object.values(context.answers).map((text, i) => ({ index: i, text }));
       return {
-        phase: 'GUESSING' as const,
+        phase: PromptPhases.GUESSING,
         anonymousAnswers: shuffleArray(entries),
       };
     }),
@@ -124,13 +124,13 @@ export const guessWhoMachine = setup({
       return { guesses: { ...context.guesses, [senderId]: guessMap } };
     }),
     calculateResults: assign(({ context }) => ({
-      phase: 'RESULTS' as const,
+      phase: PromptPhases.RESULTS,
       results: resolveResults(context.answers, context.anonymousAnswers, context.guesses),
     })),
     emitPromptResultFact: sendParent(({ context }): AnyEventObject => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'PROMPT_RESULT' as any,
+        type: FactTypes.PROMPT_RESULT as any,
         actorId: 'SYSTEM',
         payload: {
           promptType: 'GUESS_WHO',
@@ -148,7 +148,7 @@ export const guessWhoMachine = setup({
     return {
       promptType: 'GUESS_WHO' as const,
       promptText: input.promptText,
-      phase: 'ANSWERING' as const,
+      phase: PromptPhases.ANSWERING,
       eligibleVoters: alive,
       answers: {},
       anonymousAnswers: [],

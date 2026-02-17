@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { GameTypes } from '@pecking-order/shared-types';
 import { useGameStore } from '../../store/useGameStore';
 import GapRun from './gap-run/GapRun';
 import GridPush from './grid-push/GridPush';
@@ -37,35 +38,35 @@ export default function GamePanel({ engine }: GamePanelProps) {
   const common = { cartridge: activeGameCartridge, playerId: playerId!, roster, engine, onDismiss };
 
   switch (activeGameCartridge.gameType) {
-    case 'GAP_RUN':
+    case GameTypes.GAP_RUN:
       return <GapRun {...common} />;
-    case 'GRID_PUSH':
+    case GameTypes.GRID_PUSH:
       return <GridPush {...common} />;
-    case 'SEQUENCE':
+    case GameTypes.SEQUENCE:
       return <SequenceGame {...common} />;
-    case 'REACTION_TIME':
+    case GameTypes.REACTION_TIME:
       return <ReactionTime {...common} />;
-    case 'COLOR_MATCH':
+    case GameTypes.COLOR_MATCH:
       return <ColorMatch {...common} />;
-    case 'STACKER':
+    case GameTypes.STACKER:
       return <Stacker {...common} />;
-    case 'QUICK_MATH':
+    case GameTypes.QUICK_MATH:
       return <QuickMath {...common} />;
-    case 'SIMON_SAYS':
+    case GameTypes.SIMON_SAYS:
       return <SimonSays {...common} />;
-    case 'AIM_TRAINER':
+    case GameTypes.AIM_TRAINER:
       return <AimTrainer {...common} />;
-    case 'REALTIME_TRIVIA':
+    case GameTypes.REALTIME_TRIVIA:
       return <RealtimeTrivia {...common} />;
-    case 'TRIVIA':
+    case GameTypes.TRIVIA:
       return <Trivia {...common} />;
-    case 'BET_BET_BET':
+    case GameTypes.BET_BET_BET:
       return <BetBetBet {...common} />;
-    case 'BLIND_AUCTION':
+    case GameTypes.BLIND_AUCTION:
       return <BlindAuction {...common} />;
-    case 'KINGS_RANSOM':
+    case GameTypes.KINGS_RANSOM:
       return <KingsRansom {...common} />;
-    case 'TOUCH_SCREEN':
+    case GameTypes.TOUCH_SCREEN:
       return <TouchScreen {...common} />;
     default:
       return (

@@ -14,6 +14,7 @@
  */
 import { setup, assign, sendParent, enqueueActions, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, ArcadePhases } from '@pecking-order/shared-types';
 import type { GameEvent, GameOutput } from '../contracts';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 
@@ -40,7 +41,7 @@ export interface ArcadePlayerState {
 
 function createPlayerState(): ArcadePlayerState {
   return {
-    status: 'NOT_STARTED',
+    status: ArcadePhases.NOT_STARTED,
     startedAt: 0,
     result: null,
     silverReward: 0,
@@ -66,8 +67,8 @@ export interface ArcadeGameContext {
 
 export function createArcadeMachine(config: ArcadeGameConfig) {
   const { gameType, computeRewards, defaultTimeLimit = 45_000 } = config;
-  const START_EVENT = `GAME.${gameType}.START`;
-  const RESULT_EVENT = `GAME.${gameType}.RESULT`;
+  const START_EVENT = Events.Game.start(gameType);
+  const RESULT_EVENT = Events.Game.result(gameType);
 
   return setup({
     types: {
@@ -84,14 +85,14 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
       startPlayer: assign(({ context, event }: any) => {
         const senderId = event.senderId as string;
         const player = context.players[senderId];
-        if (!player || player.status !== 'NOT_STARTED') return {};
+        if (!player || player.status !== ArcadePhases.NOT_STARTED) return {};
 
         return {
           players: {
             ...context.players,
             [senderId]: {
               ...player,
-              status: 'PLAYING' as const,
+              status: ArcadePhases.PLAYING,
               startedAt: Date.now(),
             },
           },
@@ -101,7 +102,7 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
       processResult: enqueueActions(({ enqueue, context, event }: any) => {
         const senderId = event.senderId as string;
         const player = context.players[senderId];
-        if (!player || player.status !== 'PLAYING') return;
+        if (!player || player.status !== ArcadePhases.PLAYING) return;
 
         // Validate server-side timing
         const serverElapsed = Date.now() - player.startedAt;
@@ -130,7 +131,7 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
             ...context.players,
             [senderId]: {
               ...player,
-              status: 'COMPLETED' as const,
+              status: ArcadePhases.COMPLETED,
               result,
               silverReward: silver,
             },
@@ -142,7 +143,7 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
 
         // Check if all alive players are done
         const allDone = context.alivePlayers.every((pid: string) =>
-          pid === senderId ? true : context.players[pid]?.status === 'COMPLETED'
+          pid === senderId ? true : context.players[pid]?.status === ArcadePhases.COMPLETED
         );
         if (allDone) {
           enqueue.raise({ type: 'ALL_COMPLETE' } as any);
@@ -152,7 +153,7 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
       finalizeResults: assign(({ context }: any) => {
         const updatedPlayers = { ...context.players };
         for (const [pid, player] of Object.entries(updatedPlayers) as [string, ArcadePlayerState][]) {
-          if (player.status !== 'COMPLETED') {
+          if (player.status !== ArcadePhases.COMPLETED) {
             const { silver } = computeRewards(
               player.result || {},
               player.result?.timeElapsed || 0,
@@ -165,9 +166,9 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
       }),
 
       reportResults: sendParent(({ context }: any): AnyEventObject => ({
-        type: 'FACT.RECORD',
+        type: Events.Fact.RECORD,
         fact: {
-          type: 'GAME_RESULT' as any,
+          type: FactTypes.GAME_RESULT as any,
           actorId: 'SYSTEM',
           payload: {
             gameType,
@@ -184,9 +185,9 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
       })),
 
       emitSync: sendParent((): AnyEventObject => ({
-        type: 'FACT.RECORD',
+        type: Events.Fact.RECORD,
         fact: {
-          type: 'GAME_ROUND' as any,
+          type: FactTypes.GAME_ROUND as any,
           actorId: 'SYSTEM',
           payload: {},
           timestamp: Date.now(),
@@ -194,7 +195,7 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
       })),
 
       emitPlayerGameResult: sendParent(({ event }: any): AnyEventObject => ({
-        type: 'CARTRIDGE.PLAYER_GAME_RESULT',
+        type: Events.Cartridge.PLAYER_GAME_RESULT,
         playerId: event.playerId,
         silverReward: event.silverReward,
       })),
@@ -232,7 +233,7 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
       const silverRewards: Record<string, number> = {};
       const playerResults: Record<string, { silverReward: number; result: Record<string, number> | null }> = {};
       for (const [pid, player] of Object.entries(context.players) as [string, ArcadePlayerState][]) {
-        if (player.status !== 'COMPLETED') {
+        if (player.status !== ArcadePhases.COMPLETED) {
           silverRewards[pid] = player.silverReward;
         }
         playerResults[pid] = { silverReward: player.silverReward, result: player.result };

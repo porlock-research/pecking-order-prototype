@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
 
 interface ExecutionerVotingProps {
   cartridge: any;
@@ -20,7 +20,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
   } = cartridge;
 
   // REVEAL phase
-  if (phase === 'REVEAL') {
+  if (phase === VotingPhases.REVEAL) {
     const eliminatedId: string | null = results?.eliminatedId ?? null;
     const exId: string | null = results?.summary?.executionerId ?? executionerId ?? null;
     const revealTallies: Record<string, number> = results?.summary?.electionTallies ?? electionTallies ?? {};
@@ -86,7 +86,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
   }
 
   // EXECUTIONER_PICKING phase
-  if (phase === 'EXECUTIONER_PICKING') {
+  if (phase === VotingPhases.EXECUTIONER_PICKING) {
     const isExecutioner = playerId === executionerId;
     const executioner = executionerId ? roster[executionerId] : null;
 

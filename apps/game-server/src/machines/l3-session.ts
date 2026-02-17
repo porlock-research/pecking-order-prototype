@@ -1,5 +1,5 @@
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
-import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, dmChannelId } from '@pecking-order/shared-types';
+import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, dmChannelId, Events, FactTypes, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from './cartridges/voting/_registry';
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 import { PROMPT_REGISTRY } from './cartridges/prompts/_registry';
@@ -11,7 +11,6 @@ import { l3GameActions } from './actions/l3-games';
 import { l3ActivityActions } from './actions/l3-activity';
 import { l3PerkActions, l3PerkGuards } from './actions/l3-perks';
 import { buildChatMessage, appendToChatLog, resolveChannelId } from './actions/social-helpers';
-import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 
 // 1. Define strict types
 export interface DailyContext {
@@ -175,9 +174,9 @@ export const dailySessionMachine = setup({
                     // Emit DM_SENT fact for targeted messages so push notifications fire
                     if (targetId) {
                       enqueue.raise({
-                        type: 'FACT.RECORD',
+                        type: Events.Fact.RECORD,
                         fact: {
-                          type: 'DM_SENT',
+                          type: FactTypes.DM_SENT,
                           actorId: GAME_MASTER_ID,
                           targetId,
                           payload: { content: text, channelId },
@@ -204,7 +203,7 @@ export const dailySessionMachine = setup({
                 'GAME.CHANNEL.DESTROY': { actions: 'destroyGameChannels' },
                 'INTERNAL.END_GAME': { actions: 'forwardToGameChild' },
                 '*': {
-                  guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('GAME.') && !event.type.startsWith('GAME.CHANNEL.'),
+                  guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Game.PREFIX) && !event.type.startsWith(Events.Game.CHANNEL_PREFIX),
                   actions: 'forwardToGameChild',
                 }
               }
@@ -219,7 +218,7 @@ export const dailySessionMachine = setup({
                 },
                 'INTERNAL.CLOSE_VOTING': { actions: 'forwardToVotingChild' },
                 '*': {
-                  guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('VOTE.'),
+                  guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Vote.PREFIX),
                   actions: 'forwardToVotingChild',
                 }
               }
@@ -246,7 +245,7 @@ export const dailySessionMachine = setup({
                 },
                 'INTERNAL.END_ACTIVITY': { actions: 'forwardToPromptChild' },
                 '*': {
-                  guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith('ACTIVITY.'),
+                  guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX),
                   actions: 'forwardToPromptChild',
                 }
               }

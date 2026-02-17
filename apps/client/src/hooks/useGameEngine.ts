@@ -1,7 +1,7 @@
 import { useRef, useCallback } from "react";
 import usePartySocket from "partysocket/react";
 import { useGameStore } from "../store/useGameStore";
-import { dmChannelId } from "@pecking-order/shared-types";
+import { dmChannelId, Events } from "@pecking-order/shared-types";
 
 export const useGameEngine = (gameId: string, playerId: string, token?: string | null) => {
   const sync = useGameStore((s) => s.sync);
@@ -28,29 +28,29 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
       try {
         const data = JSON.parse(event.data);
 
-        if (data.type === "SYSTEM.SYNC") {
+        if (data.type === Events.System.SYNC) {
           sync(data);
         } else if (data.type === "SOCIAL.MSG_RECEIVED") {
           addChatMessage(data.payload);
-        } else if (data.type === "TICKER.UPDATE") {
+        } else if (data.type === Events.Ticker.UPDATE) {
           addTickerMessage(data.message);
-        } else if (data.type === "TICKER.HISTORY") {
+        } else if (data.type === Events.Ticker.HISTORY) {
           setTickerMessages(data.messages);
-        } else if (data.type === "TICKER.DEBUG") {
+        } else if (data.type === Events.Ticker.DEBUG) {
           setDebugTicker(data.summary);
-        } else if (data.type === "DM.REJECTED") {
+        } else if (data.type === Events.Rejection.DM) {
           setDmRejection(data.reason);
-        } else if (data.type === "SILVER_TRANSFER.REJECTED") {
+        } else if (data.type === Events.Rejection.SILVER_TRANSFER) {
           setSilverTransferRejection(data.reason);
-        } else if (data.type === "PERK.RESULT" || data.type === "PERK.REJECTED") {
+        } else if (data.type === Events.Perk.RESULT || data.type === Events.Rejection.PERK) {
           setPerkResult(data);
-        } else if (data.type === "PRESENCE.UPDATE") {
+        } else if (data.type === Events.Presence.UPDATE) {
           setOnlinePlayers(data.onlinePlayers);
-        } else if (data.type === "CHANNEL.REJECTED") {
+        } else if (data.type === Events.Rejection.CHANNEL) {
           setDmRejection(data.reason);
-        } else if (data.type === "PRESENCE.TYPING") {
+        } else if (data.type === Events.Presence.TYPING) {
           setTyping(data.playerId, data.channel);
-        } else if (data.type === "PRESENCE.STOP_TYPING") {
+        } else if (data.type === Events.Presence.STOP_TYPING) {
           clearTyping(data.playerId);
         }
       } catch (err) {
@@ -62,7 +62,7 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
   const sendMessage = (content: string, targetId?: string) => {
     const channelId = targetId ? dmChannelId(playerId, targetId) : 'MAIN';
     socket.send(JSON.stringify({
-      type: "SOCIAL.SEND_MSG",
+      type: Events.Social.SEND_MSG,
       content,
       channelId,
       targetId,  // kept for backward compat
@@ -72,7 +72,7 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
   const sendDM = (targetId: string, content: string) => {
     const channelId = dmChannelId(playerId, targetId);
     socket.send(JSON.stringify({
-      type: "SOCIAL.SEND_MSG",
+      type: Events.Social.SEND_MSG,
       content,
       channelId,
       targetId,  // kept for backward compat
@@ -81,7 +81,7 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
 
   const sendSilver = (amount: number, targetId: string) => {
     socket.send(JSON.stringify({
-      type: "SOCIAL.SEND_SILVER",
+      type: Events.Social.SEND_SILVER,
       amount,
       targetId
     }));
@@ -101,34 +101,34 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
 
   const sendToChannel = (channelId: string, content: string) => {
     socket.send(JSON.stringify({
-      type: "SOCIAL.SEND_MSG",
+      type: Events.Social.SEND_MSG,
       content,
       channelId,
     }));
   };
 
   const createGroupDm = (memberIds: string[]) => {
-    socket.send(JSON.stringify({ type: 'SOCIAL.CREATE_CHANNEL', memberIds }));
+    socket.send(JSON.stringify({ type: Events.Social.CREATE_CHANNEL, memberIds }));
   };
 
   const sendPerk = (perkType: string, targetId?: string) => {
-    socket.send(JSON.stringify({ type: 'SOCIAL.USE_PERK', perkType, targetId }));
+    socket.send(JSON.stringify({ type: Events.Social.USE_PERK, perkType, targetId }));
   };
 
   // Typing indicators with auto-stop after 3s of no keystrokes
   const typingTimeoutRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const sendTyping = useCallback((channel: string = 'MAIN') => {
-    socket.send(JSON.stringify({ type: 'PRESENCE.TYPING', channel }));
+    socket.send(JSON.stringify({ type: Events.Presence.TYPING, channel }));
     if (typingTimeoutRef.current[channel]) clearTimeout(typingTimeoutRef.current[channel]);
     typingTimeoutRef.current[channel] = setTimeout(() => {
-      socket.send(JSON.stringify({ type: 'PRESENCE.STOP_TYPING', channel }));
+      socket.send(JSON.stringify({ type: Events.Presence.STOP_TYPING, channel }));
       delete typingTimeoutRef.current[channel];
     }, 3000);
   }, [socket]);
 
   const stopTyping = useCallback((channel: string = 'MAIN') => {
-    socket.send(JSON.stringify({ type: 'PRESENCE.STOP_TYPING', channel }));
+    socket.send(JSON.stringify({ type: Events.Presence.STOP_TYPING, channel }));
     if (typingTimeoutRef.current[channel]) {
       clearTimeout(typingTimeoutRef.current[channel]);
       delete typingTimeoutRef.current[channel];

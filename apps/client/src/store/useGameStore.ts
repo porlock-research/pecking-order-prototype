@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel } from '@pecking-order/shared-types';
+import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes } from '@pecking-order/shared-types';
 
 interface DmThread {
   partnerId: string;
@@ -62,12 +62,12 @@ export const selectDmThreads = (state: GameState): DmThread[] => {
 
   // Channel-based: derive threads from DM + GROUP_DM channels
   const dmChannels = Object.values(state.channels).filter(
-    ch => (ch.type === 'DM' || ch.type === 'GROUP_DM') && ch.memberIds.includes(pid)
+    ch => (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.GROUP_DM) && ch.memberIds.includes(pid)
   );
 
   if (dmChannels.length > 0) {
     return dmChannels.map(ch => {
-      const isGroup = ch.type === 'GROUP_DM';
+      const isGroup = ch.type === ChannelTypes.GROUP_DM;
       const partnerId = isGroup
         ? ch.id  // For groups, use channelId as the thread key
         : (ch.memberIds.find(id => id !== pid) || ch.memberIds[0]);
@@ -111,7 +111,7 @@ export const selectGameDmChannels = (state: GameState): Channel[] => {
   const pid = state.playerId;
   if (!pid) return [];
   return Object.values(state.channels).filter(
-    ch => ch.type === 'GAME_DM' && ch.memberIds.includes(pid)
+    ch => ch.type === ChannelTypes.GAME_DM && ch.memberIds.includes(pid)
   );
 };
 

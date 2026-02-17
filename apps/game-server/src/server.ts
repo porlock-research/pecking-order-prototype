@@ -3,6 +3,7 @@ import { createActor, ActorRefFrom } from "xstate";
 import { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Scheduler } from "partywhen";
 import type { TickerMessage } from "@pecking-order/shared-types";
+import { Events, FactTypes, ALLOWED_CLIENT_EVENTS as CLIENT_EVENTS } from "@pecking-order/shared-types";
 import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, savePushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { flattenState, factToTicker, stateToTicker, buildDebugSummary, broadcastTicker, broadcastDebugTicker } from "./ticker";
 import { extractCartridges, extractL3Context, buildSyncPayload, broadcastSync } from "./sync";
@@ -42,7 +43,7 @@ export class GameServer extends Server<Env> {
 
   async wakeUpL2() {
     console.log("[L1] PartyWhen Task Triggered: wakeUpL2");
-    this.actor?.send({ type: "SYSTEM.WAKEUP" });
+    this.actor?.send({ type: Events.System.WAKEUP });
   }
 
   /** Build a PushContext for the push-triggers module. */
@@ -65,7 +66,7 @@ export class GameServer extends Server<Env> {
 
   private broadcastPresence(): void {
     const msg = JSON.stringify({
-      type: 'PRESENCE.UPDATE',
+      type: Events.Presence.UPDATE,
       onlinePlayers: this.getOnlinePlayerIds(),
     });
     for (const ws of this.getConnections()) {
@@ -92,7 +93,7 @@ export class GameServer extends Server<Env> {
     const machineWithPersistence = orchestratorMachine.provide({
       actions: {
         persistFactToD1: ({ event }: any) => {
-          if (event.type !== 'FACT.RECORD') return;
+          if (event.type !== Events.Fact.RECORD) return;
           const fact = event.fact;
 
           if (!isJournalable(fact.type)) {
@@ -108,7 +109,7 @@ export class GameServer extends Server<Env> {
           persistFactToD1(this.env.DB, gameId, dayIndex, fact);
 
           // Perk results: deliver confirmation back to the player
-          if (fact.type === 'PERK_USED') {
+          if (fact.type === FactTypes.PERK_USED) {
             this.handlePerkResult(fact, gameId);
           }
 
@@ -124,19 +125,19 @@ export class GameServer extends Server<Env> {
           handleFactPush(this.getPushContext(), fact, manifest);
         },
         sendDmRejection: ({ event }: any) => {
-          if (event.type !== 'DM.REJECTED') return;
-          this.sendToPlayer(event.senderId, { type: 'DM.REJECTED', reason: event.reason });
+          if (event.type !== Events.Rejection.DM) return;
+          this.sendToPlayer(event.senderId, { type: Events.Rejection.DM, reason: event.reason });
         },
         sendSilverTransferRejection: ({ event }: any) => {
-          if (event.type !== 'SILVER_TRANSFER.REJECTED') return;
-          this.sendToPlayer(event.senderId, { type: 'SILVER_TRANSFER.REJECTED', reason: event.reason });
+          if (event.type !== Events.Rejection.SILVER_TRANSFER) return;
+          this.sendToPlayer(event.senderId, { type: Events.Rejection.SILVER_TRANSFER, reason: event.reason });
         },
         sendChannelRejection: ({ event }: any) => {
-          if (event.type !== 'CHANNEL.REJECTED') return;
-          this.sendToPlayer(event.senderId, { type: 'CHANNEL.REJECTED', reason: event.reason });
+          if (event.type !== Events.Rejection.CHANNEL) return;
+          this.sendToPlayer(event.senderId, { type: Events.Rejection.CHANNEL, reason: event.reason });
         },
         deliverPerkResult: ({ event }: any) => {
-          if (event.type !== 'PERK.RESULT' && event.type !== 'PERK.REJECTED') return;
+          if (event.type !== Events.Perk.RESULT && event.type !== Events.Rejection.PERK) return;
           this.sendToPlayer(event.senderId, event);
         },
       }
@@ -312,7 +313,7 @@ export class GameServer extends Server<Env> {
       const gameId = pathParts[pathParts.length - 2];
 
       this.actor?.send({
-        type: "SYSTEM.INIT",
+        type: Events.System.INIT,
         payload: { roster: json.roster, manifest: json.manifest },
         gameId,
         inviteCode: json.inviteCode || '',
@@ -357,15 +358,15 @@ export class GameServer extends Server<Env> {
       console.log(`[L1] Admin Command: ${body.type}`);
 
       if (body.type === "NEXT_STAGE") {
-        this.actor?.send({ type: "ADMIN.NEXT_STAGE" });
+        this.actor?.send({ type: Events.Admin.NEXT_STAGE });
       } else if (body.type === "INJECT_TIMELINE_EVENT") {
         this.actor?.send({
-          type: "ADMIN.INJECT_TIMELINE_EVENT",
+          type: Events.Admin.INJECT_TIMELINE_EVENT,
           payload: { action: body.action, payload: body.payload },
         });
       } else if (body.type === "SEND_GAME_MASTER_MSG") {
         this.actor?.send({
-          type: "ADMIN.INJECT_TIMELINE_EVENT",
+          type: Events.Admin.INJECT_TIMELINE_EVENT,
           payload: {
             action: "INJECT_PROMPT",
             payload: { text: body.content, targetId: body.targetId },
@@ -427,10 +428,10 @@ export class GameServer extends Server<Env> {
       ws.send(JSON.stringify(buildSyncPayload({ snapshot, l3Context, chatLog, cartridges }, playerId, onlinePlayers)));
 
       if (this.tickerHistory.length > 0) {
-        ws.send(JSON.stringify({ type: 'TICKER.HISTORY', messages: this.tickerHistory }));
+        ws.send(JSON.stringify({ type: Events.Ticker.HISTORY, messages: this.tickerHistory }));
       }
       if (this.lastDebugSummary) {
-        ws.send(JSON.stringify({ type: 'TICKER.DEBUG', summary: this.lastDebugSummary }));
+        ws.send(JSON.stringify({ type: Events.Ticker.DEBUG, summary: this.lastDebugSummary }));
       }
     }
 
@@ -451,7 +452,7 @@ export class GameServer extends Server<Env> {
     this.broadcastPresence();
   }
 
-  private static ALLOWED_CLIENT_EVENTS = ['SOCIAL.SEND_MSG', 'SOCIAL.SEND_SILVER', 'SOCIAL.USE_PERK', 'SOCIAL.CREATE_CHANNEL'];
+  private static ALLOWED_CLIENT_EVENTS = CLIENT_EVENTS as readonly string[];
 
   onMessage(ws: Connection, message: string) {
     try {
@@ -467,9 +468,9 @@ export class GameServer extends Server<Env> {
       }
 
       // Presence: relay typing indicators without touching XState
-      if (event.type === 'PRESENCE.TYPING') {
+      if (event.type === Events.Presence.TYPING) {
         const msg = JSON.stringify({
-          type: 'PRESENCE.TYPING',
+          type: Events.Presence.TYPING,
           playerId: state.playerId,
           channel: event.channel || 'MAIN',
         });
@@ -478,9 +479,9 @@ export class GameServer extends Server<Env> {
         }
         return;
       }
-      if (event.type === 'PRESENCE.STOP_TYPING') {
+      if (event.type === Events.Presence.STOP_TYPING) {
         const msg = JSON.stringify({
-          type: 'PRESENCE.STOP_TYPING',
+          type: Events.Presence.STOP_TYPING,
           playerId: state.playerId,
           channel: event.channel || 'MAIN',
         });
@@ -491,9 +492,9 @@ export class GameServer extends Server<Env> {
       }
 
       const isAllowed = GameServer.ALLOWED_CLIENT_EVENTS.includes(event.type)
-        || (typeof event.type === 'string' && event.type.startsWith('VOTE.'))
-        || (typeof event.type === 'string' && event.type.startsWith('GAME.'))
-        || (typeof event.type === 'string' && event.type.startsWith('ACTIVITY.'));
+        || (typeof event.type === 'string' && event.type.startsWith(Events.Vote.PREFIX))
+        || (typeof event.type === 'string' && event.type.startsWith(Events.Game.PREFIX))
+        || (typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX));
       if (!isAllowed) {
         console.warn(`[L1] Rejected event type from client: ${event.type}`);
         return;
@@ -530,21 +531,21 @@ export class GameServer extends Server<Env> {
     if (perkType === 'SPY_DMS' && fact.targetId) {
       querySpyDms(this.env.DB, gameId, fact.targetId).then((messages) => {
         this.actor?.send({
-          type: 'PERK.RESULT',
+          type: Events.Perk.RESULT,
           senderId: fact.actorId,
           result: { perkType: 'SPY_DMS', success: true, data: { messages } },
         } as any);
       }).catch((err: any) => {
         console.error('[L1] SPY_DMS D1 query failed:', err);
         this.actor?.send({
-          type: 'PERK.RESULT',
+          type: Events.Perk.RESULT,
           senderId: fact.actorId,
           result: { perkType: 'SPY_DMS', success: false, data: { messages: [] } },
         } as any);
       });
     } else {
       this.actor?.send({
-        type: 'PERK.RESULT',
+        type: Events.Perk.RESULT,
         senderId: fact.actorId,
         result: { perkType, success: true },
       } as any);

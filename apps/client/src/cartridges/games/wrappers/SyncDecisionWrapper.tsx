@@ -1,4 +1,5 @@
 import React, { useState, type ReactNode } from 'react';
+import { SyncDecisionPhases, Events } from '@pecking-order/shared-types';
 import type { SyncDecisionProjection, SocialPlayer } from '@pecking-order/shared-types';
 import {
   CartridgeContainer,
@@ -50,7 +51,7 @@ export default function SyncDecisionWrapper({
   const totalEligible = eligiblePlayers.length;
 
   const handleSubmit = (decision: Record<string, any>) => {
-    engine.sendGameAction(`GAME.${gameType}.SUBMIT`, decision);
+    engine.sendGameAction(Events.Game.event(gameType, 'SUBMIT'), decision);
     setLocalSubmitted(true);
   };
 
@@ -60,11 +61,11 @@ export default function SyncDecisionWrapper({
     <CartridgeContainer>
       <CartridgeHeader
         label={title}
-        roundInfo={phase === 'COLLECTING' ? `${submittedCount}/${totalEligible} submitted` : undefined}
+        roundInfo={phase === SyncDecisionPhases.COLLECTING ? `${submittedCount}/${totalEligible} submitted` : undefined}
       />
 
       {/* COLLECTING: Not yet submitted */}
-      {phase === 'COLLECTING' && !showSubmitted && isEligible && (
+      {phase === SyncDecisionPhases.COLLECTING && !showSubmitted && isEligible && (
         <div className="p-4 space-y-4">
           <p className="text-xs text-skin-dim leading-relaxed text-center">{description}</p>
           {renderDecisionInput({ playerId, roster, cartridge, onSubmit: handleSubmit })}
@@ -72,7 +73,7 @@ export default function SyncDecisionWrapper({
       )}
 
       {/* COLLECTING: Already submitted — waiting */}
-      {phase === 'COLLECTING' && (showSubmitted || !isEligible) && (
+      {phase === SyncDecisionPhases.COLLECTING && (showSubmitted || !isEligible) && (
         <div className="p-6 text-center space-y-4">
           <div className="space-y-2">
             <span className="inline-block w-5 h-5 border-2 border-skin-gold border-t-transparent rounded-full spin-slow" />
@@ -107,7 +108,7 @@ export default function SyncDecisionWrapper({
       )}
 
       {/* REVEAL */}
-      {phase === 'REVEAL' && cartridge.results && (
+      {phase === SyncDecisionPhases.REVEAL && cartridge.results && (
         <div className="space-y-0">
           {renderReveal({
             decisions: cartridge.decisions ?? {},

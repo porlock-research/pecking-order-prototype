@@ -1,3 +1,5 @@
+import { SyncDecisionPhases } from '@pecking-order/shared-types';
+
 /** Fields to strip from sync decision projections (internal/server-only) */
 const SYNC_DECISION_INTERNAL_FIELDS = new Set(['roster', 'dayIndex']);
 
@@ -27,7 +29,7 @@ export function projectGameCartridge(gameCtx: any, playerId: string): any {
 
   // Sync decision games have a `decisions` record + `submitted` record
   if (gameCtx.decisions !== undefined && gameCtx.submitted !== undefined) {
-    if (gameCtx.phase === 'COLLECTING') {
+    if (gameCtx.phase === SyncDecisionPhases.COLLECTING) {
       // Strip decision values — only show who has submitted + player's own decision
       return {
         gameType: gameCtx.gameType,

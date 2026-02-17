@@ -5,7 +5,7 @@
  * Silver rewards: +5 per response, +10 for minority stance (null if tied).
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import type { PromptCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
@@ -63,13 +63,13 @@ export const hotTakeMachine = setup({
       return { stances: { ...context.stances, [senderId]: stance } };
     }),
     calculateResults: assign(({ context }) => ({
-      phase: 'RESULTS' as const,
+      phase: PromptPhases.RESULTS,
       results: resolveResults(context.stances, context.promptText),
     })),
     emitPromptResultFact: sendParent(({ context }): AnyEventObject => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'PROMPT_RESULT' as any,
+        type: FactTypes.PROMPT_RESULT as any,
         actorId: 'SYSTEM',
         payload: {
           promptType: 'HOT_TAKE',
@@ -87,7 +87,7 @@ export const hotTakeMachine = setup({
     return {
       promptType: 'HOT_TAKE' as const,
       promptText: input.promptText,
-      phase: 'ACTIVE' as const,
+      phase: PromptPhases.ACTIVE,
       eligibleVoters: alive,
       stances: {},
       results: null,

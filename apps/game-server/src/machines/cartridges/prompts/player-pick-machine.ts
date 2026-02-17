@@ -5,7 +5,7 @@
  * Silver rewards: +5 per response, +10 per mutual pick (both players).
  */
 import { setup, assign, sendParent, type AnyEventObject } from 'xstate';
-import type { PromptCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PromptPhases, type PromptCartridgeInput, type SocialPlayer } from '@pecking-order/shared-types';
 import type { PromptEvent, PromptOutput, PromptResult } from './_contract';
 import { getAlivePlayerIds } from '../voting/_helpers';
 
@@ -89,13 +89,13 @@ export const playerPickMachine = setup({
       };
     }),
     calculateResults: assign(({ context }) => ({
-      phase: 'RESULTS' as const,
+      phase: PromptPhases.RESULTS,
       results: resolveResults(context.responses),
     })),
     emitPromptResultFact: sendParent(({ context }): AnyEventObject => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'PROMPT_RESULT' as any,
+        type: FactTypes.PROMPT_RESULT as any,
         actorId: 'SYSTEM',
         payload: {
           promptType: 'PLAYER_PICK',
@@ -113,7 +113,7 @@ export const playerPickMachine = setup({
     return {
       promptType: 'PLAYER_PICK' as const,
       promptText: input.promptText,
-      phase: 'ACTIVE' as const,
+      phase: PromptPhases.ACTIVE,
       eligibleVoters: alive,
       responses: {},
       results: null,

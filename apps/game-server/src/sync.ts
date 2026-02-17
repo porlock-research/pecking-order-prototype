@@ -4,6 +4,7 @@
  * the subscribe callback and onConnect handler.
  */
 import type { Connection } from "partyserver";
+import { Events } from "@pecking-order/shared-types";
 import { projectGameCartridge, projectPromptCartridge } from "./projections";
 
 export interface CartridgeSnapshots {
@@ -111,7 +112,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
   };
 
   return {
-    type: "SYSTEM.SYNC",
+    type: Events.System.SYNC,
     state: snapshot.value,
     context: {
       gameId: snapshot.context.gameId,

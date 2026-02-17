@@ -1,7 +1,7 @@
 import { assign, raise } from 'xstate';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from '../cartridges/prompts/_contract';
-import { PERK_COSTS, type PerkType, type GameHistoryEntry } from '@pecking-order/shared-types';
+import { PERK_COSTS, type PerkType, type GameHistoryEntry, Events, FactTypes } from '@pecking-order/shared-types';
 
 /**
  * L2 Economy Subsystem — all silver mutation logic in one place.
@@ -14,15 +14,15 @@ export const l2EconomyActions = {
 
   applyFactToRoster: assign({
     roster: ({ context, event }: any) => {
-      if (event.type !== 'FACT.RECORD') return context.roster;
+      if (event.type !== Events.Fact.RECORD) return context.roster;
       const fact = event.fact;
       switch (fact.type) {
-        case 'DM_SENT': {
+        case FactTypes.DM_SENT: {
           const sender = context.roster[fact.actorId];
           if (!sender) return context.roster;
           return { ...context.roster, [fact.actorId]: { ...sender, silver: sender.silver - 1 } };
         }
-        case 'SILVER_TRANSFER': {
+        case FactTypes.SILVER_TRANSFER: {
           const from = context.roster[fact.actorId];
           const to = context.roster[fact.targetId];
           if (!from || !to) return context.roster;
@@ -33,7 +33,7 @@ export const l2EconomyActions = {
             [fact.targetId]: { ...to, silver: to.silver + amount },
           };
         }
-        case 'PERK_USED': {
+        case FactTypes.PERK_USED: {
           const player = context.roster[fact.actorId];
           if (!player) return context.roster;
           const cost = PERK_COSTS[fact.payload?.perkType as PerkType] || 0;
@@ -49,7 +49,7 @@ export const l2EconomyActions = {
 
   applyGameRewards: assign({
     roster: ({ context, event }: any) => {
-      if (event.type !== 'CARTRIDGE.GAME_RESULT') return context.roster;
+      if (event.type !== Events.Cartridge.GAME_RESULT) return context.roster;
       const result = event.result as GameOutput;
       if (!result?.silverRewards) return context.roster;
       const updated = { ...context.roster };
@@ -79,9 +79,9 @@ export const l2EconomyActions = {
   emitGameResultFact: raise(({ event }: any) => {
     const result = event.result as GameOutput;
     return {
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'GAME_RESULT',
+        type: FactTypes.GAME_RESULT,
         actorId: 'SYSTEM',
         payload: {
           gameType: result.gameType,
@@ -104,9 +104,9 @@ export const l2EconomyActions = {
     },
   }),
   emitPlayerGameResultFact: raise(({ event }: any) => ({
-    type: 'FACT.RECORD',
+    type: Events.Fact.RECORD,
     fact: {
-      type: 'PLAYER_GAME_RESULT',
+      type: FactTypes.PLAYER_GAME_RESULT,
       actorId: event.playerId,
       payload: { silverReward: event.silverReward },
       timestamp: Date.now(),
@@ -117,7 +117,7 @@ export const l2EconomyActions = {
 
   applyPromptRewards: assign({
     roster: ({ context, event }: any) => {
-      if (event.type !== 'CARTRIDGE.PROMPT_RESULT') return context.roster;
+      if (event.type !== Events.Cartridge.PROMPT_RESULT) return context.roster;
       const result = event.result as PromptOutput;
       if (!result?.silverRewards) return context.roster;
       const updated = { ...context.roster };
@@ -133,9 +133,9 @@ export const l2EconomyActions = {
   emitPromptResultFact: raise(({ event }: any) => {
     const result = event.result as PromptOutput;
     return {
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'PROMPT_RESULT',
+        type: FactTypes.PROMPT_RESULT,
         actorId: 'SYSTEM',
         payload: {
           silverRewards: result.silverRewards || {},

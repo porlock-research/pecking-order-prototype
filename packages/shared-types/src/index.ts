@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// --- Re-export centralized constants ---
+export * from './events';
+
 // --- Enums ---
 
 export enum GameStatus {
@@ -524,3 +527,11 @@ export interface LiveGameProjection {
 }
 
 export type GameProjection = ArcadeGameProjection | TriviaProjection | RealtimeTriviaProjection | SyncDecisionProjection | LiveGameProjection;
+
+// --- FRIENDLY ALIASES for Zod enum values ---
+
+export const GameTypes = GameTypeSchema.enum;
+export const VoteTypes = VoteTypeSchema.enum;
+export const PromptTypes = PromptTypeSchema.enum;
+export const ChannelTypes = ChannelTypeSchema.enum;
+export const PerkTypes = PerkTypeSchema.enum;

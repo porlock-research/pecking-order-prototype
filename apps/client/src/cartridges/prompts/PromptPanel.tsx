@@ -1,4 +1,5 @@
 import React from 'react';
+import { PromptTypes } from '@pecking-order/shared-types';
 import { useGameStore } from '../../store/useGameStore';
 import PlayerPickPrompt from './PlayerPickPrompt';
 import PredictionPrompt from './PredictionPrompt';
@@ -23,17 +24,17 @@ export default function PromptPanel({ engine }: PromptPanelProps) {
   const common = { cartridge: activePromptCartridge, playerId: playerId!, roster, engine };
 
   switch (activePromptCartridge.promptType) {
-    case 'PLAYER_PICK':
+    case PromptTypes.PLAYER_PICK:
       return <PlayerPickPrompt {...common} />;
-    case 'PREDICTION':
+    case PromptTypes.PREDICTION:
       return <PredictionPrompt {...common} />;
-    case 'WOULD_YOU_RATHER':
+    case PromptTypes.WOULD_YOU_RATHER:
       return <WouldYouRatherPrompt {...common} />;
-    case 'HOT_TAKE':
+    case PromptTypes.HOT_TAKE:
       return <HotTakePrompt {...common} />;
-    case 'CONFESSION':
+    case PromptTypes.CONFESSION:
       return <ConfessionPrompt {...common} />;
-    case 'GUESS_WHO':
+    case PromptTypes.GUESS_WHO:
       return <GuessWhoPrompt {...common} />;
     default:
       return (

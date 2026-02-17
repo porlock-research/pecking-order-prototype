@@ -1,5 +1,6 @@
 import { setup, assign, sendParent, fromPromise, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, RealtimeTriviaPhases } from '@pecking-order/shared-types';
 import type { BaseGameContext, GameEvent, GameOutput } from '../contracts';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from '../helpers/trivia-api';
@@ -74,7 +75,7 @@ export const realtimeTriviaMachine = setup({
       const q = context.questions[context.currentRound - 1];
       const now = Date.now();
       return {
-        phase: 'QUESTION' as const,
+        phase: RealtimeTriviaPhases.QUESTION,
         // Strip correctIndex — clients see context via SYSTEM.SYNC
         currentQuestion: q ? { question: q.question, options: q.options, category: q.category, difficulty: q.difficulty } : null,
         roundDeadline: now + QUESTION_TIME_MS,
@@ -127,7 +128,7 @@ export const realtimeTriviaMachine = setup({
       }
 
       return {
-        phase: 'RESULT' as const,
+        phase: RealtimeTriviaPhases.RESULT,
         scores: newScores,
         correctCounts: newCorrectCounts,
         goldContribution: context.goldContribution + roundGold,
@@ -142,9 +143,9 @@ export const realtimeTriviaMachine = setup({
     // Emit a lightweight fact to trigger L3 → L2 context bump → SYSTEM.SYNC broadcast.
     // Without this, trivia internal state changes never reach clients.
     emitRoundSync: sendParent(({ context }): AnyEventObject => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'GAME_ROUND' as any,
+        type: FactTypes.GAME_ROUND as any,
         actorId: 'SYSTEM',
         payload: { round: context.currentRound, phase: context.phase },
         timestamp: Date.now(),
@@ -165,7 +166,7 @@ export const realtimeTriviaMachine = setup({
       }
 
       return {
-        phase: 'SCOREBOARD' as const,
+        phase: RealtimeTriviaPhases.SCOREBOARD,
         scores: newScores,
         silverRewards: rewards,
         currentQuestion: null,
@@ -173,9 +174,9 @@ export const realtimeTriviaMachine = setup({
       };
     }),
     reportResults: sendParent(({ context }) => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'GAME_RESULT',
+        type: FactTypes.GAME_RESULT,
         actorId: 'SYSTEM',
         payload: {
           gameType: 'REALTIME_TRIVIA',
@@ -201,7 +202,7 @@ export const realtimeTriviaMachine = setup({
 
     return {
       gameType: 'REALTIME_TRIVIA',
-      phase: 'WAITING',
+      phase: RealtimeTriviaPhases.WAITING,
       currentRound: 1,
       totalRounds: TOTAL_ROUNDS,
       scores: initialScores,

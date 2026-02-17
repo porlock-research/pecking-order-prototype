@@ -1,6 +1,7 @@
 import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
 import type { PromptOutput } from '../cartridges/prompts/_contract';
 import { PROMPT_REGISTRY } from '../cartridges/prompts/_registry';
+import { Events } from '@pecking-order/shared-types';
 
 export const l3ActivityActions = {
   spawnPromptCartridge: assign({
@@ -43,7 +44,7 @@ export const l3ActivityActions = {
     },
   }),
   forwardPromptResultToL2: sendParent(({ event }: any) => ({
-    type: 'CARTRIDGE.PROMPT_RESULT',
+    type: Events.Cartridge.PROMPT_RESULT,
     result: (event as any).output as PromptOutput,
   })),
   forwardToPromptChild: sendTo('activePromptCartridge', ({ event }: any) => event),

@@ -1,5 +1,6 @@
 import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
 import type { VoteResult } from '@pecking-order/shared-types';
+import { Events } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from '../cartridges/voting/_registry';
 
 export const l3VotingActions = {
@@ -18,7 +19,7 @@ export const l3VotingActions = {
     },
   }),
   forwardVoteResultToL2: sendParent(({ event }: any) => ({
-    type: 'CARTRIDGE.VOTE_RESULT',
+    type: Events.Cartridge.VOTE_RESULT,
     result: (event as any).output as VoteResult,
   })),
   cleanupVotingCartridge: enqueueActions(({ enqueue }: any) => {

@@ -8,6 +8,7 @@
  */
 import { setup, assign, sendParent, enqueueActions, fromPromise, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, ArcadePhases } from '@pecking-order/shared-types';
 import type { GameEvent, GameOutput } from '../contracts';
 import { getAlivePlayerIds } from '../helpers/alive-players';
 import { fetchTriviaQuestions, FALLBACK_QUESTIONS, type TriviaQuestion } from '../helpers/trivia-api';
@@ -103,10 +104,10 @@ export const triviaMachine = setup({
     }),
 
     startPlayer: assign(({ context, event }) => {
-      if (event.type !== 'GAME.TRIVIA.START') return {};
+      if (event.type !== Events.Game.start('TRIVIA')) return {};
       const senderId = (event as any).senderId as string;
       const player = context.players[senderId];
-      if (!player || player.status !== 'NOT_STARTED') return {};
+      if (!player || player.status !== ArcadePhases.NOT_STARTED) return {};
 
       const questions = pickRandomQuestions(context.questionPool, TOTAL_ROUNDS);
       const q = questions[0];
@@ -116,7 +117,7 @@ export const triviaMachine = setup({
           ...context.players,
           [senderId]: {
             ...player,
-            status: 'PLAYING' as const,
+            status: ArcadePhases.PLAYING,
             currentRound: 1,
             questions,
             questionStartedAt: Date.now(),
@@ -128,10 +129,10 @@ export const triviaMachine = setup({
     }),
 
     processAnswer: enqueueActions(({ enqueue, context, event }) => {
-      if (!event.type.startsWith('GAME.TRIVIA.ANSWER')) return;
+      if (!event.type.startsWith(Events.Game.event('TRIVIA', 'ANSWER'))) return;
       const { senderId, answerIndex } = event as any;
       const player = context.players[senderId];
-      if (!player || player.status !== 'PLAYING') return;
+      if (!player || player.status !== ArcadePhases.PLAYING) return;
 
       const q = player.questions[player.currentRound - 1];
       if (!q) return;
@@ -176,7 +177,7 @@ export const triviaMachine = setup({
           ...context.players,
           [senderId]: {
             ...player,
-            status: isComplete ? 'COMPLETED' as const : 'PLAYING' as const,
+            status: isComplete ? ArcadePhases.COMPLETED : ArcadePhases.PLAYING,
             currentRound: isComplete ? player.currentRound : nextRound,
             score: isComplete ? finalScore : newScore,
             correctCount: newCorrectCount,
@@ -206,7 +207,7 @@ export const triviaMachine = setup({
       // Check if ALL alive players are now complete
       if (isComplete) {
         const allDone = context.alivePlayers.every(pid =>
-          pid === senderId ? true : context.players[pid]?.status === 'COMPLETED'
+          pid === senderId ? true : context.players[pid]?.status === ArcadePhases.COMPLETED
         );
         if (allDone) {
           enqueue.raise({ type: 'ALL_COMPLETE' } as any);
@@ -218,7 +219,7 @@ export const triviaMachine = setup({
       // For players who didn't finish, their current score is their reward
       const updatedPlayers = { ...context.players };
       for (const [pid, player] of Object.entries(updatedPlayers)) {
-        if (player.status !== 'COMPLETED') {
+        if (player.status !== ArcadePhases.COMPLETED) {
           updatedPlayers[pid] = { ...player, silverReward: player.score };
         }
       }
@@ -226,9 +227,9 @@ export const triviaMachine = setup({
     }),
 
     reportResults: sendParent(({ context }): AnyEventObject => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'GAME_RESULT' as any,
+        type: FactTypes.GAME_RESULT as any,
         actorId: 'SYSTEM',
         payload: {
           gameType: 'TRIVIA',
@@ -245,9 +246,9 @@ export const triviaMachine = setup({
     })),
 
     emitRoundSync: sendParent((): AnyEventObject => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'GAME_ROUND' as any,
+        type: FactTypes.GAME_ROUND as any,
         actorId: 'SYSTEM',
         payload: {},
         timestamp: Date.now(),
@@ -255,7 +256,7 @@ export const triviaMachine = setup({
     })),
 
     emitPlayerGameResult: sendParent(({ event }): AnyEventObject => ({
-      type: 'CARTRIDGE.PLAYER_GAME_RESULT',
+      type: Events.Cartridge.PLAYER_GAME_RESULT,
       playerId: (event as any).playerId,
       silverReward: (event as any).silverReward,
     })),
@@ -286,7 +287,7 @@ export const triviaMachine = setup({
     const players: Record<string, { score: number; correctCount: number; silverReward: number }> = {};
     for (const [pid, player] of Object.entries(context.players)) {
       // Completed players already rewarded via CARTRIDGE.PLAYER_GAME_RESULT
-      if (player.status !== 'COMPLETED') {
+      if (player.status !== ArcadePhases.COMPLETED) {
         silverRewards[pid] = player.score; // partial credit
       }
       players[pid] = { score: player.score, correctCount: player.correctCount, silverReward: player.silverReward };

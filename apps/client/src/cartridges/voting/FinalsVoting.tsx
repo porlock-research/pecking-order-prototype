@@ -1,5 +1,5 @@
 import React from 'react';
-import { SocialPlayer } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
 import { Trophy } from 'lucide-react';
 
 interface FinalsVotingProps {
@@ -21,7 +21,7 @@ export default function FinalsVoting({ cartridge, playerId, roster, engine }: Fi
     tallies[targetId] = (tallies[targetId] || 0) + 1;
   }
 
-  if (phase === 'WINNER') {
+  if (phase === VotingPhases.WINNER) {
     const voteCounts: Record<string, number> = results?.summary?.voteCounts ?? tallies;
     const winnerId: string | null = results?.winnerId ?? null;
     const winnerPlayer = winnerId ? roster[winnerId] : null;

@@ -1,12 +1,12 @@
 import { assign, sendParent } from 'xstate';
 import type { DmRejectionReason, Channel } from '@pecking-order/shared-types';
-import { DM_MAX_CHARS_PER_DAY, DM_MAX_GROUPS_PER_DAY, dmChannelId, groupDmChannelId } from '@pecking-order/shared-types';
+import { DM_MAX_CHARS_PER_DAY, DM_MAX_GROUPS_PER_DAY, dmChannelId, groupDmChannelId, Events, FactTypes, PlayerStatuses } from '@pecking-order/shared-types';
 import { buildChatMessage, appendToChatLog, deductSilver, transferSilverBetween, resolveChannelId } from './social-helpers';
 
 export const l3SocialActions = {
   // Unified message handler — replaces processMessage + processDm
   processChannelMessage: assign(({ context, event }: any) => {
-    if (event.type !== 'SOCIAL.SEND_MSG') return {};
+    if (event.type !== Events.Social.SEND_MSG) return {};
     const senderId = event.senderId;
     const channelId = resolveChannelId(event);
     const channel = context.channels[channelId];
@@ -63,13 +63,13 @@ export const l3SocialActions = {
 
   // Side-effect: emit FACT.RECORD to L2 for journaling + sync trigger
   emitChatFact: sendParent(({ event }: any) => {
-    if (event.type !== 'SOCIAL.SEND_MSG') return { type: 'FACT.RECORD', fact: { type: 'CHAT_MSG', actorId: '', timestamp: 0 } };
+    if (event.type !== Events.Social.SEND_MSG) return { type: Events.Fact.RECORD, fact: { type: FactTypes.CHAT_MSG, actorId: '', timestamp: 0 } };
     const channelId = resolveChannelId(event);
     const isDM = channelId !== 'MAIN';
     return {
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: isDM ? 'DM_SENT' : 'CHAT_MSG',
+        type: isDM ? FactTypes.DM_SENT : FactTypes.CHAT_MSG,
         actorId: event.senderId,
         targetId: event.targetId,
         payload: { content: event.content, channelId },
@@ -80,7 +80,7 @@ export const l3SocialActions = {
 
   // Channel message rejected: determine reason and notify parent (L2 → L1 → client)
   rejectChannelMessage: sendParent(({ context, event }: any): any => {
-    if (event.type !== 'SOCIAL.SEND_MSG') return { type: 'NOOP' };
+    if (event.type !== Events.Social.SEND_MSG) return { type: 'NOOP' };
     const senderId = event.senderId;
     const channelId = resolveChannelId(event);
     const content = event.content;
@@ -98,7 +98,7 @@ export const l3SocialActions = {
       const targetId = channelId.split(':').find((s: string) => s !== 'dm' && s !== senderId);
       if (senderId === targetId) {
         reason = 'SELF_DM';
-      } else if (targetId && context.roster[targetId]?.status === 'ELIMINATED') {
+      } else if (targetId && context.roster[targetId]?.status === PlayerStatuses.ELIMINATED) {
         reason = 'TARGET_ELIMINATED';
       } else if ((context.roster[senderId]?.silver ?? 0) < 1) {
         reason = 'INSUFFICIENT_SILVER';
@@ -121,23 +121,23 @@ export const l3SocialActions = {
       }
     }
 
-    return { type: 'DM.REJECTED', reason, senderId };
+    return { type: Events.Rejection.DM, reason, senderId };
   }),
 
   // Pure context update — transfers silver between players
   transferSilver: assign({
     roster: ({ context, event }: any) => {
-      if (event.type !== 'SOCIAL.SEND_SILVER') return context.roster;
+      if (event.type !== Events.Social.SEND_SILVER) return context.roster;
       return transferSilverBetween(context.roster, event.senderId, event.targetId, event.amount);
     },
   }),
   // Side-effect: emit FACT.RECORD for silver transfer
   emitSilverFact: sendParent(({ event }: any) => {
-    if (event.type !== 'SOCIAL.SEND_SILVER') return { type: 'FACT.RECORD', fact: { type: 'SILVER_TRANSFER', actorId: '', timestamp: 0 } };
+    if (event.type !== Events.Social.SEND_SILVER) return { type: Events.Fact.RECORD, fact: { type: FactTypes.SILVER_TRANSFER, actorId: '', timestamp: 0 } };
     return {
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'SILVER_TRANSFER',
+        type: FactTypes.SILVER_TRANSFER,
         actorId: event.senderId,
         targetId: event.targetId,
         payload: { amount: event.amount },
@@ -148,15 +148,15 @@ export const l3SocialActions = {
   forwardToL2: sendParent(({ event }: any) => event),
   // Silver transfer rejected: notify parent (L2 → L1 → client)
   rejectSilverTransfer: sendParent(({ context, event }: any): any => {
-    if (event.type !== 'SOCIAL.SEND_SILVER') return { type: 'NOOP' };
+    if (event.type !== Events.Social.SEND_SILVER) return { type: 'NOOP' };
     const { senderId, targetId, amount } = event;
     let reason = 'UNKNOWN';
     if (senderId === targetId) reason = 'SELF_SEND';
     else if (!amount || amount <= 0) reason = 'INVALID_AMOUNT';
     else if ((context.roster[senderId]?.silver ?? 0) < amount) reason = 'INSUFFICIENT_SILVER';
-    else if (context.roster[targetId]?.status === 'ELIMINATED') reason = 'TARGET_ELIMINATED';
+    else if (context.roster[targetId]?.status === PlayerStatuses.ELIMINATED) reason = 'TARGET_ELIMINATED';
     else if (!context.roster[targetId]) reason = 'TARGET_NOT_FOUND';
-    return { type: 'SILVER_TRANSFER.REJECTED', senderId, reason };
+    return { type: Events.Rejection.SILVER_TRANSFER, senderId, reason };
   }),
 
   // Game channel management
@@ -190,7 +190,7 @@ export const l3SocialActions = {
 
   // Group DM channel creation
   createGroupDmChannel: assign(({ context, event }: any) => {
-    if (event.type !== 'SOCIAL.CREATE_CHANNEL') return {};
+    if (event.type !== Events.Social.CREATE_CHANNEL) return {};
     const senderId = event.senderId;
     const allMembers = [senderId, ...event.memberIds];
     const channelId = groupDmChannelId(allMembers);
@@ -219,7 +219,7 @@ export const l3SocialActions = {
 
   // Group DM creation rejected: determine reason and notify parent
   rejectGroupDmCreation: sendParent(({ context, event }: any): any => {
-    if (event.type !== 'SOCIAL.CREATE_CHANNEL') return { type: 'NOOP' };
+    if (event.type !== Events.Social.CREATE_CHANNEL) return { type: 'NOOP' };
     const senderId = event.senderId;
     const memberIds = event.memberIds || [];
 
@@ -233,7 +233,7 @@ export const l3SocialActions = {
     } else {
       // Check all members exist and are alive
       const allValid = memberIds.every((id: string) =>
-        context.roster[id] && context.roster[id].status === 'ALIVE'
+        context.roster[id] && context.roster[id].status === PlayerStatuses.ALIVE
       );
       if (!allValid) {
         // Determine if it's eliminated or invalid
@@ -246,20 +246,20 @@ export const l3SocialActions = {
       }
     }
 
-    return { type: 'CHANNEL.REJECTED', reason, senderId };
+    return { type: Events.Rejection.CHANNEL, reason, senderId };
   }),
 };
 
 export const l3SocialGuards = {
   isGroupDmCreationAllowed: ({ context, event }: any) => {
-    if (event.type !== 'SOCIAL.CREATE_CHANNEL') return false;
+    if (event.type !== Events.Social.CREATE_CHANNEL) return false;
     if (!context.dmsOpen) return false;
 
     const senderId = event.senderId;
     const memberIds = event.memberIds || [];
 
     // Must be alive
-    if (context.roster[senderId]?.status !== 'ALIVE') return false;
+    if (context.roster[senderId]?.status !== PlayerStatuses.ALIVE) return false;
 
     // Need at least 2 other members, no self-inclusion
     if (memberIds.length < 2) return false;
@@ -267,7 +267,7 @@ export const l3SocialGuards = {
 
     // All members must exist in roster and be alive
     for (const id of memberIds) {
-      if (!context.roster[id] || context.roster[id].status !== 'ALIVE') return false;
+      if (!context.roster[id] || context.roster[id].status !== PlayerStatuses.ALIVE) return false;
     }
 
     // Idempotent: if channel already exists, allow (no limit consumed)
@@ -282,17 +282,17 @@ export const l3SocialGuards = {
     return true;
   },
   isSilverTransferAllowed: ({ context, event }: any) => {
-    if (event.type !== 'SOCIAL.SEND_SILVER') return false;
+    if (event.type !== Events.Social.SEND_SILVER) return false;
     const { senderId, targetId, amount } = event;
     if (senderId === targetId) return false;
     if (!amount || amount <= 0) return false;
     if ((context.roster[senderId]?.silver ?? 0) < amount) return false;
     if (!context.roster[targetId]) return false;
-    if (context.roster[targetId]?.status === 'ELIMINATED') return false;
+    if (context.roster[targetId]?.status === PlayerStatuses.ELIMINATED) return false;
     return true;
   },
   isChannelMessageAllowed: ({ context, event }: any) => {
-    if (event.type !== 'SOCIAL.SEND_MSG') return false;
+    if (event.type !== Events.Social.SEND_MSG) return false;
     const channelId = resolveChannelId(event);
     const channel = context.channels[channelId];
 
@@ -313,7 +313,7 @@ export const l3SocialGuards = {
       ? channelId.split(':').find((s: string) => s !== 'dm' && s !== senderId)
       : null;
     if (senderId === target) return false;
-    if (target && context.roster[target]?.status === 'ELIMINATED') return false;
+    if (target && context.roster[target]?.status === PlayerStatuses.ELIMINATED) return false;
     if ((context.roster[senderId]?.silver ?? 0) < 1) return false;
     // Char limit
     const overrides = context.perkOverrides?.[senderId] || { extraPartners: 0, extraChars: 0 };

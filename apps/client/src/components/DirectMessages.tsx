@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
-import { ChatMessage, GAME_MASTER_ID, SocialPlayer } from '@pecking-order/shared-types';
+import { ChatMessage, GAME_MASTER_ID, SocialPlayer, PlayerStatuses, ChannelTypes } from '@pecking-order/shared-types';
 import { Coins } from 'lucide-react';
 
 function DmTypingIndicator({ typingPlayers, partnerId, playerId, roster }: {
@@ -85,12 +85,12 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
 
     // Channel-based derivation (DM + GROUP_DM)
     const dmChannels = Object.values(channels).filter(
-      ch => (ch.type === 'DM' || ch.type === 'GROUP_DM') && ch.memberIds.includes(playerId)
+      ch => (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.GROUP_DM) && ch.memberIds.includes(playerId)
     );
 
     if (dmChannels.length > 0) {
       return dmChannels.map(ch => {
-        const isGroup = ch.type === 'GROUP_DM';
+        const isGroup = ch.type === ChannelTypes.GROUP_DM;
         const partnerId = isGroup
           ? ch.id
           : (ch.memberIds.find(id => id !== playerId) || ch.memberIds[0]);
@@ -212,7 +212,7 @@ export const DirectMessages: React.FC<DirectMessagesProps> = ({ engine }) => {
 
   // Available players to DM (alive, not me)
   const availablePlayers = Object.values(roster).filter(
-    p => p.id !== playerId && p.status === 'ALIVE'
+    p => p.id !== playerId && p.status === PlayerStatuses.ALIVE
   );
 
   // New DM picker

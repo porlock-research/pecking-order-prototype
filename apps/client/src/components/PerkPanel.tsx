@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
-import { PERK_COSTS, type PerkType } from '@pecking-order/shared-types';
+import { PERK_COSTS, type PerkType, PlayerStatuses } from '@pecking-order/shared-types';
 import { Eye, UserPlus, MessageSquarePlus, X, Coins, Check } from 'lucide-react';
 
 interface PerkPanelProps {
@@ -63,7 +63,7 @@ export default function PerkPanel({ engine }: PerkPanelProps) {
   };
 
   const alivePlayers = Object.values(roster).filter(
-    (p: any) => p.status === 'ALIVE' && p.id !== playerId
+    (p: any) => p.status === PlayerStatuses.ALIVE && p.id !== playerId
   );
 
   // SPY_DMS result overlay

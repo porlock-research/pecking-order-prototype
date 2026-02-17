@@ -1,4 +1,5 @@
 import { setup, assign, sendParent } from 'xstate';
+import { Events, FactTypes, VotingPhases } from '@pecking-order/shared-types';
 import type { VoteResult, VotingCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
 import type { BaseVoteContext, VoteEvent } from './_contract';
 import { getSilverRanking } from './_helpers';
@@ -37,12 +38,12 @@ export const secondToLastMachine = setup({
           summary: { silverRanking: ranking },
         };
       },
-      phase: 'REVEAL',
+      phase: VotingPhases.REVEAL,
     }),
     reportResults: sendParent(({ context }) => ({
-      type: 'FACT.RECORD',
+      type: Events.Fact.RECORD,
       fact: {
-        type: 'GAME_RESULT',
+        type: FactTypes.GAME_RESULT,
         actorId: 'SYSTEM',
         payload: context.results,
         timestamp: Date.now(),
@@ -55,7 +56,7 @@ export const secondToLastMachine = setup({
     const ranking = getSilverRanking(input.roster);
     return {
       voteType: 'SECOND_TO_LAST',
-      phase: 'VOTING',
+      phase: VotingPhases.VOTING,
       eligibleVoters: [],
       eligibleTargets: [],
       votes: {},

@@ -1,6 +1,7 @@
 import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
+import { Events } from '@pecking-order/shared-types';
 
 export const l3GameActions = {
   spawnGameCartridge: assign({
@@ -55,7 +56,7 @@ export const l3GameActions = {
     },
   }),
   forwardGameResultToL2: sendParent(({ event }: any) => ({
-    type: 'CARTRIDGE.GAME_RESULT',
+    type: Events.Cartridge.GAME_RESULT,
     result: (event as any).output as GameOutput,
   })),
   forwardToGameChild: sendTo('activeGameCartridge', ({ event }: any) => event),

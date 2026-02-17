@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { SocialPlayer } from '@pecking-order/shared-types';
+import { PromptPhases, type SocialPlayer } from '@pecking-order/shared-types';
 import { HelpCircle } from 'lucide-react';
 
 interface GuessWhoCartridge {
@@ -67,19 +67,19 @@ export default function GuessWhoPrompt({ cartridge, playerId, roster, engine }: 
             Guess Who
           </span>
           <span className="text-xs font-mono text-skin-dim">
-            {phase === 'ANSWERING' ? 'Answer the prompt' : phase === 'GUESSING' ? `${Object.keys(guesses).length}/${totalEligible} guessed` : 'Results'}
+            {phase === PromptPhases.ANSWERING ? 'Answer the prompt' : phase === PromptPhases.GUESSING ? `${Object.keys(guesses).length}/${totalEligible} guessed` : 'Results'}
           </span>
         </div>
-        {phase === 'ANSWERING' && answerSubmitted && (
+        {phase === PromptPhases.ANSWERING && answerSubmitted && (
           <span className="text-[10px] font-mono text-skin-green uppercase tracking-wider">Submitted</span>
         )}
-        {phase === 'GUESSING' && (hasGuessed || guessSubmitted) && (
+        {phase === PromptPhases.GUESSING && (hasGuessed || guessSubmitted) && (
           <span className="text-[10px] font-mono text-skin-green uppercase tracking-wider">Guessed</span>
         )}
       </div>
 
       {/* Answering Phase */}
-      {phase === 'ANSWERING' && (
+      {phase === PromptPhases.ANSWERING && (
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
@@ -120,7 +120,7 @@ export default function GuessWhoPrompt({ cartridge, playerId, roster, engine }: 
       )}
 
       {/* Guessing Phase */}
-      {phase === 'GUESSING' && (
+      {phase === PromptPhases.GUESSING && (
         <div className="p-4 space-y-4">
           <p className="text-sm font-bold text-skin-base text-center">Who wrote each answer?</p>
 
@@ -161,7 +161,7 @@ export default function GuessWhoPrompt({ cartridge, playerId, roster, engine }: 
       )}
 
       {/* Results Phase */}
-      {phase === 'RESULTS' && results && (
+      {phase === PromptPhases.RESULTS && results && (
         <div className="p-4 space-y-4 animate-fade-in">
           <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
             Results
