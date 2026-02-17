@@ -108,6 +108,8 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 
 - **Channel system deferred items** — Group DM creation UI + `SOCIAL.CREATE_CHANNEL` client flow not built. `ECONOMY.*` event namespace rename (`SOCIAL.SEND_SILVER` → `ECONOMY.TRANSFER`) noted for future clean separation. Deprecated `channel`/`targetId` fields on `ChatMessage` should be removed once all clients are updated. Per-channel message caps not implemented (all channels share 50-message global cap).
 
+- **Snapshot schema migration / validation needed** — Old persisted DO snapshots break silently when new context fields are added (e.g., `channels`, `groupChatOpen`). Games created before a deploy resume with stale context, causing events to be silently dropped or guards to fail on missing fields. Need: (a) schema version stamping on persisted snapshots, (b) migration logic in `onStart` to backfill missing fields, (c) better error logging when event handlers receive unexpected context shapes. Current workaround: create a new game after deploys that change L2/L3 context shape.
+
 - **Cloudflare Pages preview URLs break staging flow** — Feature branches deploy the client to preview URLs (`https://{branch}.pecking-order-client.pages.dev/`) but the lobby's `GAME_CLIENT_HOST` points to the production Pages URL. Game server and lobby are Workers (single deployment per env), so only the client gets branch-specific URLs. Options: (a) deploy-staging workflow uses `wrangler pages deploy --branch=main` to always target production URL, (b) lobby reads branch from a header/env and constructs preview URL dynamically, (c) accept that staging client always trails behind and test feature branches via manual `wrangler pages deploy` to production.
 
 ---

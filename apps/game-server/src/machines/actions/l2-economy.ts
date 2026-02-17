@@ -27,10 +27,9 @@ export const l2EconomyActions = {
           const to = context.roster[fact.targetId];
           if (!from || !to) return context.roster;
           const amount = fact.payload?.amount || 0;
-          // Gift bonus: sender gets +2 silver for generosity
           return {
             ...context.roster,
-            [fact.actorId]: { ...from, silver: from.silver - amount + 2 },
+            [fact.actorId]: { ...from, silver: from.silver - amount },
             [fact.targetId]: { ...to, silver: to.silver + amount },
           };
         }
