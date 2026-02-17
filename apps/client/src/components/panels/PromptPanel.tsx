@@ -1,12 +1,12 @@
 import React from 'react';
 import { PromptTypes } from '@pecking-order/shared-types';
 import { useGameStore } from '../../store/useGameStore';
-import PlayerPickPrompt from './PlayerPickPrompt';
-import PredictionPrompt from './PredictionPrompt';
-import WouldYouRatherPrompt from './WouldYouRatherPrompt';
-import HotTakePrompt from './HotTakePrompt';
-import ConfessionPrompt from './ConfessionPrompt';
-import GuessWhoPrompt from './GuessWhoPrompt';
+import PlayerPickPrompt from '../../cartridges/prompts/PlayerPickPrompt';
+import PredictionPrompt from '../../cartridges/prompts/PredictionPrompt';
+import WouldYouRatherPrompt from '../../cartridges/prompts/WouldYouRatherPrompt';
+import HotTakePrompt from '../../cartridges/prompts/HotTakePrompt';
+import ConfessionPrompt from '../../cartridges/prompts/ConfessionPrompt';
+import GuessWhoPrompt from '../../cartridges/prompts/GuessWhoPrompt';
 
 interface PromptPanelProps {
   engine: {

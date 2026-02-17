@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useGameStore } from '../store/useGameStore';
+import { useGameStore } from '../../store/useGameStore';
 import { PERK_COSTS, type PerkType, PlayerStatuses } from '@pecking-order/shared-types';
 import { Eye, UserPlus, MessageSquarePlus, X, Coins, Check } from 'lucide-react';
 

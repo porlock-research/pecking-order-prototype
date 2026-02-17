@@ -1,14 +1,14 @@
 import React from 'react';
 import { VoteTypes } from '@pecking-order/shared-types';
 import { useGameStore } from '../../store/useGameStore';
-import MajorityVoting from './MajorityVoting';
-import ExecutionerVoting from './ExecutionerVoting';
-import BubbleVoting from './BubbleVoting';
-import PodiumSacrificeVoting from './PodiumSacrificeVoting';
-import SecondToLastVoting from './SecondToLastVoting';
-import ShieldVoting from './ShieldVoting';
-import TrustPairsVoting from './TrustPairsVoting';
-import FinalsVoting from './FinalsVoting';
+import MajorityVoting from '../../cartridges/voting/MajorityVoting';
+import ExecutionerVoting from '../../cartridges/voting/ExecutionerVoting';
+import BubbleVoting from '../../cartridges/voting/BubbleVoting';
+import PodiumSacrificeVoting from '../../cartridges/voting/PodiumSacrificeVoting';
+import SecondToLastVoting from '../../cartridges/voting/SecondToLastVoting';
+import ShieldVoting from '../../cartridges/voting/ShieldVoting';
+import TrustPairsVoting from '../../cartridges/voting/TrustPairsVoting';
+import FinalsVoting from '../../cartridges/voting/FinalsVoting';
 
 interface VotingPanelProps {
   engine: {

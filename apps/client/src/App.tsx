@@ -4,11 +4,11 @@ import { useGameEngine } from './hooks/useGameEngine';
 import { ChatRoom } from './components/ChatRoom';
 import { DirectMessages } from './components/DirectMessages';
 import { NewsTicker } from './components/NewsTicker';
-import VotingPanel from './cartridges/voting/Voting';
-import GamePanel from './cartridges/games/GamePanel';
-import GameHistory from './cartridges/games/GameHistory';
-import PromptPanel from './cartridges/prompts/PromptPanel';
-import PerkPanel from './components/PerkPanel';
+import VotingPanel from './components/panels/VotingPanel';
+import GamePanel from './components/panels/GamePanel';
+import GameHistory from './components/panels/GameHistory';
+import PromptPanel from './components/panels/PromptPanel';
+import PerkPanel from './components/panels/PerkPanel';
 
 const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
 import { formatState, formatPhase } from './utils/formatState';
