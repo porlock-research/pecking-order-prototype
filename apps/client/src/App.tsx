@@ -255,9 +255,17 @@ function RosterRow({ player, playerId, onClick }: { player: any; playerId: strin
           <span className="text-[10px] font-mono text-skin-dim uppercase tracking-wider">{player.status}</span>
         </div>
       </div>
-      <div className="flex items-center gap-1 font-mono text-sm text-skin-gold font-bold">
-        <Coins size={12} className="text-skin-dim" />
-        {player.silver}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 font-mono text-sm text-skin-gold font-bold">
+          <Coins size={12} className="text-skin-dim" />
+          {player.silver}
+        </div>
+        {player.gold > 0 && (
+          <div className="flex items-center gap-1 font-mono text-sm text-amber-400 font-bold">
+            <Trophy size={12} />
+            {player.gold}
+          </div>
+        )}
       </div>
     </li>
   );
