@@ -4,7 +4,7 @@ import { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Scheduler } from "partywhen";
 import type { TickerMessage } from "@pecking-order/shared-types";
 import { Events, FactTypes, ALLOWED_CLIENT_EVENTS as CLIENT_EVENTS } from "@pecking-order/shared-types";
-import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, savePushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
+import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, readGoldBalances, creditGold, savePushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { flattenState, factToTicker, stateToTicker, buildDebugSummary, broadcastTicker, broadcastDebugTicker } from "./ticker";
 import { extractCartridges, extractL3Context, buildSyncPayload, broadcastSync } from "./sync";
 import { stateToPush, handleFactPush, pushBroadcast, type PushContext } from "./push-triggers";
@@ -33,6 +33,7 @@ export class GameServer extends Server<Env> {
   private tickerHistory: TickerMessage[] = [];
   private lastDebugSummary: string = '';
   private scheduler: Scheduler<Env>;
+  private goldCredited = false;
   private connectedPlayers = new Map<string, Set<string>>();  // playerId → Set<connectionId>
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -243,9 +244,21 @@ export class GameServer extends Server<Env> {
         this.lastBroadcastState = currentStateStr;
       }
 
-      // E. Update D1 when game ends
+      // E. Update D1 when game ends + persist gold payouts
       if (currentStateStr.includes('gameOver') && snapshot.context.gameId) {
         updateGameEnd(this.env.DB, snapshot.context.gameId, snapshot.context.roster);
+
+        // Persist gold payouts to cross-tournament wallets (idempotent guard)
+        if (!this.goldCredited) {
+          const payouts = snapshot.context.goldPayouts || [];
+          for (const payout of payouts) {
+            const realUserId = snapshot.context.roster[payout.playerId]?.realUserId;
+            if (realUserId && payout.amount > 0) {
+              creditGold(this.env.DB, realUserId, payout.amount);
+            }
+          }
+          if (payouts.length > 0) this.goldCredited = true;
+        }
       }
 
       // F. Ticker: detect DM open/close changes
@@ -311,6 +324,17 @@ export class GameServer extends Server<Env> {
       const json = await req.json() as any;
       const pathParts = url.pathname.split('/');
       const gameId = pathParts[pathParts.length - 2];
+
+      // Enrich roster with persistent gold from D1
+      const realUserIds = Object.values(json.roster || {}).map((p: any) => p.realUserId).filter(Boolean);
+      if (realUserIds.length > 0) {
+        const goldBalances = await readGoldBalances(this.env.DB, realUserIds);
+        for (const p of Object.values(json.roster) as any[]) {
+          if (p.realUserId) {
+            p.gold = goldBalances.get(p.realUserId) || 0;
+          }
+        }
+      }
 
       this.actor?.send({
         type: Events.System.INIT,
@@ -638,9 +662,9 @@ export default {
 
       try {
         // Allowlist prevents SQL injection — only these table names are accepted
-        const ALLOWED_TABLES = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'];
+        const ALLOWED_TABLES = ['GameJournal', 'Players', 'Games', 'PushSubscriptions', 'UserWallets'];
         // FK-safe default order (children before parents)
-        const DEFAULT_ORDER = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'];
+        const DEFAULT_ORDER = ['GameJournal', 'Players', 'Games', 'PushSubscriptions', 'UserWallets'];
 
         let requested: string[] = DEFAULT_ORDER;
         try {

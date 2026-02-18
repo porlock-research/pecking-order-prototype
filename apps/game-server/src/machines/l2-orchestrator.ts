@@ -25,6 +25,7 @@ export interface GameContext {
   goldPool: number;
   pendingElimination: VoteResult | null;
   winner: { playerId: string; mechanism: 'FINALS'; summary: Record<string, any> } | null;
+  goldPayouts: Array<{ playerId: string; amount: number; reason: string }>;
   gameHistory: GameHistoryEntry[];
   completedPhases: Array<{
     kind: 'voting' | 'game' | 'prompt';
@@ -91,6 +92,7 @@ export const orchestratorMachine = setup({
     lastProcessedTime: 0,
     lastJournalEntry: 0,
     goldPool: 0,
+    goldPayouts: [],
     pendingElimination: null,
     winner: null,
     gameHistory: [],

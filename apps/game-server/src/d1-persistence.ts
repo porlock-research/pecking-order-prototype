@@ -119,6 +119,47 @@ export async function getPushSubscriptionD1(
   return { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } };
 }
 
+/** Read gold balances for a set of real user IDs. Returns Map<realUserId, gold>. */
+export async function readGoldBalances(
+  db: D1Database,
+  realUserIds: string[],
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  if (realUserIds.length === 0) return result;
+
+  // D1 doesn't support array binds — batch individual queries
+  const stmts = realUserIds.map(id =>
+    db.prepare('SELECT real_user_id, gold FROM UserWallets WHERE real_user_id = ?').bind(id)
+  );
+  try {
+    const results = await db.batch(stmts);
+    for (const res of results) {
+      const row = (res.results as any)?.[0];
+      if (row) result.set(row.real_user_id, row.gold);
+    }
+  } catch (err) {
+    console.error('[L1] Failed to read gold balances:', err);
+  }
+  return result;
+}
+
+/** Credit gold to a player's wallet (additive). Upserts into UserWallets. */
+export async function creditGold(
+  db: D1Database,
+  realUserId: string,
+  goldAmount: number,
+): Promise<void> {
+  try {
+    await db.prepare(
+      `INSERT INTO UserWallets (real_user_id, gold, updated_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(real_user_id) DO UPDATE SET gold = gold + ?, updated_at = ?`
+    ).bind(realUserId, goldAmount, Date.now(), goldAmount, Date.now()).run();
+  } catch (err) {
+    console.error('[L1] Failed to credit gold:', err);
+  }
+}
+
 /** Update Games status to COMPLETED and Players with final silver/gold. Fire-and-forget. */
 export function updateGameEnd(
   db: D1Database,

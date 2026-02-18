@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { ChannelTypes, PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import type { SocialPlayer, ChatMessage } from '@pecking-order/shared-types';
-import { Coins } from 'lucide-react';
+import { Coins, Trophy } from 'lucide-react';
 import PerkPanel from '../panels/PerkPanel';
 
 interface PeopleListProps {
@@ -183,9 +183,17 @@ export const PeopleList: React.FC<PeopleListProps> = ({
                     {isMe && <span className="badge-skew text-[9px] shrink-0">YOU</span>}
                     {isEliminated && <span className="text-[9px] font-mono text-skin-danger uppercase">eliminated</span>}
                   </div>
-                  <div className="flex items-center gap-1 font-mono text-sm text-skin-gold font-bold shrink-0 ml-2">
-                    <Coins size={12} className="text-skin-dim" />
-                    {player.silver}
+                  <div className="flex items-center gap-2 font-mono text-sm font-bold shrink-0 ml-2">
+                    {player.gold > 0 && (
+                      <div className="flex items-center gap-0.5 text-amber-400">
+                        <Trophy size={11} />
+                        {player.gold}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-0.5 text-skin-gold">
+                      <Coins size={12} className="text-skin-dim" />
+                      {player.silver}
+                    </div>
                   </div>
                 </div>
                 {lastDm && (

@@ -16,7 +16,7 @@ export const l2InitializationActions = {
           avatarUrl: p.avatarUrl,
           status: p.isAlive ? PlayerStatuses.ALIVE : PlayerStatuses.ELIMINATED,
           silver: p.silver,
-          gold: 0,
+          gold: p.gold || 0,
           realUserId: p.realUserId || '',
         };
       }

@@ -4,7 +4,7 @@ import { usePlayerTimeline } from '../../hooks/usePlayerTimeline';
 import { TimelineChatBubble } from '../timeline/TimelineChatBubble';
 import { TimelineSystemEvent } from '../timeline/TimelineSystemEvent';
 import { PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
-import { Coins, ArrowLeft } from 'lucide-react';
+import { Coins, ArrowLeft, Trophy } from 'lucide-react';
 
 interface PlayerDetailViewProps {
   targetPlayerId: string;
@@ -158,9 +158,17 @@ export const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({
                 {isOnline ? 'online' : 'offline'}
               </span>
               {!isGameMaster && (
-                <div className="flex items-center gap-1 text-[10px] font-mono text-skin-gold">
-                  <Coins size={10} className="text-skin-dim" />
-                  {target?.silver ?? 0}
+                <div className="flex items-center gap-2 text-[10px] font-mono">
+                  {(target?.gold ?? 0) > 0 && (
+                    <div className="flex items-center gap-0.5 text-amber-400">
+                      <Trophy size={10} />
+                      {target?.gold}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-0.5 text-skin-gold">
+                    <Coins size={10} className="text-skin-dim" />
+                    {target?.silver ?? 0}
+                  </div>
                 </div>
               )}
             </div>

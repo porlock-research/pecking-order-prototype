@@ -74,7 +74,7 @@ All cartridges (voting, game, prompt) receive `{ type, roster, dayIndex }` input
 
 | Feature | Spec Reference | Effort | Notes |
 |---------|---------------|--------|-------|
-| **Gold economy** | "Games increase shared gold prize pool. Winner takes gold pool." | Medium | Add `goldPool` to L2 context. Game cartridges contribute to it. Award to winner in `gameSummary`. Gold persists across games (needs cross-game storage). |
+| ~~**Gold economy**~~ | ~~"Games increase shared gold prize pool. Winner takes gold pool."~~ | ~~DONE~~ | Implemented: `ECONOMY.CONTRIBUTE_GOLD` accumulates `goldPool` in L2. FINALS winner receives pool via `goldPayouts` array. Persistent `UserWallets` D1 table (migration 0004) keyed by `real_user_id`. Gold enriched at init, credited at gameOver. Trophy icon in roster. (ADR-058) |
 | **Destiny system** | Fanatic, Self Hate, Float, Mole, Decoy, Detective | High | Secret objectives assigned at game start. Requires D1 journal queries to evaluate conditions at triggers (ELIMINATION, END_GAME). Gold rewards for completion. New `destinyStatus` tracking. |
 | **Powers (additional types)** | "Pick a player. See the last 3 DMs they sent." | Medium | SPY_DMS perk implemented. Additional power types (if spec calls for more) need new registry entries. |
 | ~~**Extra DMs for silver**~~ | ~~"Extra DM messages, extra character limit" for silver~~ | ~~DONE~~ | Implemented as EXTRA_DM_PARTNER (3 silver) and EXTRA_DM_CHARS (2 silver) perks. |

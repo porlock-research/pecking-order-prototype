@@ -678,6 +678,27 @@ This document tracks significant architectural decisions, their context, and con
     *   Group DM creation fully wired: `SOCIAL.CREATE_CHANNEL` → L3 guard/action → channel appears in SYNC. Server-confirmed (not optimistic) — creation can fail with `CHANNEL.REJECTED`. Idempotent via deterministic `groupDmChannelId()`. No silver transfer in group DMs (ambiguous recipient). Group messages share the 1200 char/day pool with 1-to-1 DMs. Client: multi-select group creation picker, group thread view with sender labels.
     *   No D1 schema changes — channels live in L3 context only.
 
+## [ADR-058] Gold Economy — Persistent Wallets & Multi-Payout Architecture
+
+*   **Date:** 2026-02-18
+*   **Status:** Accepted
+*   **Context:** Gold accumulates during a tournament via `ECONOMY.CONTRIBUTE_GOLD` events (emitted by game cartridges). The gold pool is a shared prize pot displayed in the client header. However, gold died with the tournament — `l2-initialization.ts` hardcoded `gold: 0`, and there was no cross-tournament storage. Additionally, `processNightSummary` SET gold to the pool value instead of ADDING to the player's existing balance.
+*   **Decision:**
+    *   **Persistent wallets**: New `UserWallets` D1 table (migration 0004) keyed by `real_user_id`. One row per human, survives across all tournaments. Lives in game-server D1 (not lobby) because gold is created/consumed within the game lifecycle.
+    *   **Init enrichment**: `handleInit` reads gold balances from D1 via `readGoldBalances()` and enriches the lobby roster before L2 sees it. L2 `initializeContext` reads `p.gold || 0` instead of hardcoded 0.
+    *   **Multi-payout model**: Gold payouts modeled as `goldPayouts: Array<{playerId, amount, reason}>` on L2 context. The pot is a base value; game effects determine recipients and amounts. Gold is inflationary — future mechanics could produce more gold than the pot contains. Currently only the single-winner `WINNER` reason exists.
+    *   **Additive application**: Each payout is added to the recipient's existing gold (`gold + amount`), fixing the SET bug.
+    *   **Pool reset**: `goldPool` resets to 0 after payouts are built, so the header reflects the empty pot post-payout.
+    *   **Atomic D1 upsert**: `creditGold()` uses `INSERT ... ON CONFLICT DO UPDATE SET gold = gold + ?` for atomic additive credit.
+    *   **Idempotent persistence**: `goldCredited` boolean on the `GameServer` class prevents duplicate D1 writes from repeated L2 subscription fires at `gameOver`.
+    *   **SYNC exposure**: `goldPayouts` included in SYNC payload for client game summary display.
+*   **Consequences:**
+    *   Gold persists across tournaments. Winners start their next game with accumulated gold visible in the roster.
+    *   Two distinct gold concepts: **Gold Pool** (tournament-scoped, shared, shown in header, resets each game) vs **Player Gold** (persistent, per-player, shown in roster with Trophy icon).
+    *   Adding new payout reasons (destiny bonuses, achievements) only requires pushing to the `goldPayouts` array in `processNightSummary`.
+    *   Winner declaration requires FINALS voting mechanism — non-FINALS games end without a winner and produce no gold payouts.
+    *   Client roster shows gold (Trophy icon, amber) next to silver (Coins icon) when `player.gold > 0`.
+
 ## [ADR-057] Timeline Polish — Ticker Categories, Cartridge Termination, Delayed Reveals
 
 *   **Status:** Accepted
