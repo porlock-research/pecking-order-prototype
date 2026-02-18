@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import VotingPanel from '../panels/VotingPanel';
 import GamePanel from '../panels/GamePanel';
 import PromptPanel from '../panels/PromptPanel';
 import { useGameStore } from '../../store/useGameStore';
-import { Vote, Gamepad2, MessageSquare, Skull, Trophy, Coins } from 'lucide-react';
+import { Vote, Gamepad2, MessageSquare, Skull, Trophy, Coins, ChevronRight } from 'lucide-react';
 import type { TimelineEntry } from './types';
 
 interface TimelineCartridgeCardProps {
@@ -67,6 +67,8 @@ function getPlayerName(roster: Record<string, any>, id: string | null | undefine
   if (!id) return 'Unknown';
   return roster[id]?.personaName || id.slice(0, 8);
 }
+
+// --- Game helpers ---
 
 interface PlayerRow {
   id: string;
@@ -172,6 +174,25 @@ function getPlayerRows(snapshot: any, roster: Record<string, any>): PlayerRow[] 
   return rows;
 }
 
+// --- Vote helpers ---
+
+function getVoteTotal(snapshot: any): number | null {
+  const summary = snapshot.summary;
+  if (!summary) return null;
+  const countObj = summary.tallies || summary.electionTallies || summary.voteCounts || summary.saveCounts;
+  if (!countObj || typeof countObj !== 'object') return null;
+  const total = Object.values(countObj as Record<string, number>).reduce((a: number, b: any) => a + (b as number), 0);
+  return total > 0 ? total : null;
+}
+
+function hasVotingDetail(snapshot: any): boolean {
+  const summary = snapshot.summary;
+  if (!summary) return false;
+  return !!(summary.tallies || summary.electionTallies || summary.voteCounts || summary.saveCounts || summary.silverRanking);
+}
+
+// --- Prompt helpers ---
+
 function getPromptDetail(snapshot: any, roster: Record<string, any>): string | null {
   const results = snapshot.results;
   if (!results) return null;
@@ -219,69 +240,441 @@ function getPromptDetail(snapshot: any, roster: Record<string, any>): string | n
   }
 }
 
-function getVoteTotal(snapshot: any): number | null {
-  const tallies = snapshot.summary?.tallies;
-  if (!tallies || typeof tallies !== 'object') return null;
-  const total = Object.values(tallies as Record<string, number>).reduce((a: number, b: any) => a + (b as number), 0);
-  return total > 0 ? total : null;
+function hasPromptDetail(snapshot: any): boolean {
+  const results = snapshot.results;
+  if (!results) return false;
+  switch (snapshot.promptType) {
+    case 'WOULD_YOU_RATHER': return !!(results.optionA || results.optionB);
+    case 'HOT_TAKE': return !!results.statement;
+    case 'CONFESSION': return !!results.winnerText;
+    case 'GUESS_WHO': return !!results.correctGuesses && Object.keys(results.correctGuesses).length > 0;
+    case 'PREDICTION': return !!(results.consensusVoters?.length);
+    case 'PLAYER_PICK': return !!(results.mutualPicks?.length);
+    default: return false;
+  }
 }
 
+// --- Shared sub-components ---
+
+const VoteTallyGrid: React.FC<{
+  tallies: Record<string, number> | null | undefined;
+  eliminatedId?: string | null;
+  winnerId?: string | null;
+  immuneIds?: string[];
+  roster: Record<string, any>;
+}> = ({ tallies, eliminatedId, winnerId, immuneIds, roster }) => {
+  if (!tallies || typeof tallies !== 'object') return null;
+
+  const entries = Object.entries(tallies).sort((a, b) => b[1] - a[1]);
+  const maxCount = Math.max(...entries.map(([, c]) => c), 1);
+  const immuneSet = new Set(immuneIds || []);
+
+  return (
+    <div className="space-y-1">
+      {entries.map(([playerId, count]) => {
+        const isEliminated = playerId === eliminatedId;
+        const isWinner = playerId === winnerId;
+        const isImmune = immuneSet.has(playerId);
+        const barWidth = Math.max((count / maxCount) * 100, 4);
+
+        return (
+          <div key={playerId} className="flex items-center gap-2 text-xs">
+            <span className={`w-24 truncate ${
+              isEliminated ? 'text-skin-danger' :
+              isWinner ? 'text-skin-gold font-medium' :
+              isImmune ? 'text-skin-muted line-through' :
+              'text-skin-dim'
+            }`}>
+              {getPlayerName(roster, playerId)}
+            </span>
+            <div className="flex-1 h-3 rounded-full bg-skin-base/10 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${
+                  isEliminated ? 'bg-skin-danger/50' :
+                  isWinner ? 'bg-skin-gold/50' :
+                  isImmune ? 'bg-skin-muted/20' :
+                  'bg-skin-gold/30'
+                }`}
+                style={{ width: `${barWidth}%` }}
+              />
+            </div>
+            <span className={`w-5 text-right tabular-nums ${
+              isEliminated ? 'text-skin-danger' : 'text-skin-muted'
+            }`}>
+              {count}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const SilverRankingList: React.FC<{
+  ranking: Array<{ id: string; silver: number }> | null | undefined;
+  eliminatedId?: string | null;
+  roster: Record<string, any>;
+}> = ({ ranking, eliminatedId, roster }) => {
+  if (!ranking || !Array.isArray(ranking)) return null;
+
+  return (
+    <div className="space-y-0.5">
+      {ranking.map((entry, i) => {
+        const isEliminated = entry.id === eliminatedId;
+        return (
+          <div key={entry.id} className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className={`w-5 text-right tabular-nums ${isEliminated ? 'text-skin-danger font-medium' : 'text-skin-muted'}`}>
+                #{i + 1}
+              </span>
+              <span className={isEliminated ? 'text-skin-danger font-medium' : 'text-skin-dim'}>
+                {getPlayerName(roster, entry.id)}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 text-skin-muted">
+              <Coins size={10} />
+              <span>{entry.silver}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// --- Voting expanded detail ---
+
+const VotingDetail: React.FC<{ voteType: string; snapshot: any; roster: Record<string, any> }> = ({ voteType, snapshot, roster }) => {
+  const summary = snapshot.summary || {};
+  const eliminatedId = snapshot.eliminatedId ?? snapshot.results?.eliminatedId;
+  const winnerId = snapshot.winnerId ?? snapshot.results?.winnerId;
+
+  const detail = (() => {
+    switch (voteType) {
+      case 'MAJORITY':
+      case 'PODIUM_SACRIFICE':
+        return <VoteTallyGrid tallies={summary.tallies} eliminatedId={eliminatedId} roster={roster} />;
+
+      case 'EXECUTIONER':
+        return (
+          <div className="space-y-2">
+            {summary.executionerId && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-skin-muted">Executioner:</span>
+                <span className="text-skin-base font-medium">{getPlayerName(roster, summary.executionerId)}</span>
+              </div>
+            )}
+            {summary.electionTallies && (
+              <VoteTallyGrid tallies={summary.electionTallies} winnerId={summary.executionerId} roster={roster} />
+            )}
+          </div>
+        );
+
+      case 'BUBBLE':
+        return (
+          <div className="space-y-2">
+            {summary.immunePlayerIds?.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {summary.immunePlayerIds.map((id: string) => (
+                  <span key={id} className="text-[10px] px-1.5 py-0.5 rounded-full bg-skin-green/10 text-skin-green">
+                    {getPlayerName(roster, id)} safe
+                  </span>
+                ))}
+              </div>
+            )}
+            <VoteTallyGrid tallies={summary.tallies} eliminatedId={eliminatedId} immuneIds={summary.immunePlayerIds} roster={roster} />
+          </div>
+        );
+
+      case 'SECOND_TO_LAST':
+        return <SilverRankingList ranking={summary.silverRanking} eliminatedId={eliminatedId} roster={roster} />;
+
+      case 'SHIELD':
+        return <VoteTallyGrid tallies={summary.saveCounts} eliminatedId={eliminatedId} roster={roster} />;
+
+      case 'TRUST_PAIRS':
+        return (
+          <div className="space-y-2">
+            {summary.mutualPairs?.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {summary.mutualPairs.map((pair: string[], i: number) => (
+                  <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-full bg-skin-pink/10 text-skin-pink">
+                    {getPlayerName(roster, pair[0])} + {getPlayerName(roster, pair[1])}
+                  </span>
+                ))}
+              </div>
+            )}
+            <VoteTallyGrid tallies={summary.tallies} eliminatedId={eliminatedId} immuneIds={summary.immunePlayerIds} roster={roster} />
+          </div>
+        );
+
+      case 'FINALS':
+        return <VoteTallyGrid tallies={summary.voteCounts} winnerId={winnerId} roster={roster} />;
+
+      default:
+        return null;
+    }
+  })();
+
+  if (!detail) return null;
+  return <div className="mt-2 ml-8">{detail}</div>;
+};
+
+// --- Prompt expanded detail ---
+
+const PromptDetail: React.FC<{ snapshot: any; roster: Record<string, any> }> = ({ snapshot, roster }) => {
+  const results = snapshot.results;
+  if (!results) return null;
+
+  const detail = (() => {
+    switch (snapshot.promptType) {
+      case 'WOULD_YOU_RATHER': {
+        const total = (results.countA || 0) + (results.countB || 0);
+        if (!total) return null;
+        const pctA = Math.round(((results.countA || 0) / total) * 100);
+        const pctB = 100 - pctA;
+        return (
+          <div className="space-y-1.5">
+            <div className="text-xs">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className={results.minorityChoice === 'A' ? 'text-skin-pink font-medium' : 'text-skin-dim'}>
+                  {results.optionA || 'Option A'}
+                </span>
+                <span className="text-skin-muted tabular-nums">{results.countA} ({pctA}%)</span>
+              </div>
+              <div className="h-2 rounded-full bg-skin-base/10 overflow-hidden">
+                <div className="h-full rounded-full bg-skin-pink/40" style={{ width: `${pctA}%` }} />
+              </div>
+            </div>
+            <div className="text-xs">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className={results.minorityChoice === 'B' ? 'text-skin-pink font-medium' : 'text-skin-dim'}>
+                  {results.optionB || 'Option B'}
+                </span>
+                <span className="text-skin-muted tabular-nums">{results.countB} ({pctB}%)</span>
+              </div>
+              <div className="h-2 rounded-full bg-skin-base/10 overflow-hidden">
+                <div className="h-full rounded-full bg-skin-pink/40" style={{ width: `${pctB}%` }} />
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      case 'HOT_TAKE': {
+        const total = (results.agreeCount || 0) + (results.disagreeCount || 0);
+        if (!total) return null;
+        const pctAgree = Math.round(((results.agreeCount || 0) / total) * 100);
+        return (
+          <div className="space-y-1.5">
+            {results.statement && (
+              <p className="text-xs text-skin-dim italic">&ldquo;{results.statement}&rdquo;</p>
+            )}
+            <div className="flex gap-2 text-xs">
+              <div className="flex-1">
+                <div className="flex justify-between mb-0.5">
+                  <span className="text-skin-green">Agree</span>
+                  <span className="text-skin-muted tabular-nums">{results.agreeCount}</span>
+                </div>
+                <div className="h-2 rounded-full bg-skin-base/10 overflow-hidden">
+                  <div className="h-full rounded-full bg-skin-green/40" style={{ width: `${pctAgree}%` }} />
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between mb-0.5">
+                  <span className="text-skin-danger">Disagree</span>
+                  <span className="text-skin-muted tabular-nums">{results.disagreeCount}</span>
+                </div>
+                <div className="h-2 rounded-full bg-skin-base/10 overflow-hidden">
+                  <div className="h-full rounded-full bg-skin-danger/40" style={{ width: `${100 - pctAgree}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      case 'CONFESSION': {
+        if (!results.winnerText) return null;
+        return (
+          <div>
+            <p className="text-xs text-skin-dim italic">&ldquo;{results.winnerText}&rdquo;</p>
+            {results.winnerId && (
+              <p className="text-[10px] text-skin-muted mt-0.5">
+                &mdash; {getPlayerName(roster, results.winnerId)}
+              </p>
+            )}
+          </div>
+        );
+      }
+
+      case 'GUESS_WHO': {
+        const guesses = results.correctGuesses as Record<string, number> | undefined;
+        if (!guesses) return null;
+        const entries = Object.entries(guesses).sort((a, b) => b[1] - a[1]);
+        if (entries.length === 0) return null;
+        return (
+          <div className="space-y-0.5">
+            {entries.map(([pid, count]) => (
+              <div key={pid} className="flex items-center justify-between text-xs">
+                <span className="text-skin-dim truncate">{getPlayerName(roster, pid)}</span>
+                <span className="text-skin-muted tabular-nums">{count} correct</span>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case 'PREDICTION': {
+        const voters = results.consensusVoters as string[] | undefined;
+        if (!voters || voters.length === 0) return null;
+        return (
+          <div>
+            <div className="flex flex-wrap gap-1">
+              {voters.map((id: string) => (
+                <span key={id} className="text-[10px] px-1.5 py-0.5 rounded-full bg-skin-pink/10 text-skin-pink">
+                  {getPlayerName(roster, id)}
+                </span>
+              ))}
+            </div>
+            <p className="text-[10px] text-skin-muted mt-1">picked the consensus</p>
+          </div>
+        );
+      }
+
+      case 'PLAYER_PICK': {
+        const mutualPicks = results.mutualPicks as Array<[string, string]> | undefined;
+        if (!mutualPicks || mutualPicks.length === 0) return null;
+        return (
+          <div>
+            <div className="flex flex-wrap gap-1">
+              {mutualPicks.map(([a, b]: [string, string], i: number) => (
+                <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-full bg-skin-pink/10 text-skin-pink">
+                  {getPlayerName(roster, a)} &harr; {getPlayerName(roster, b)}
+                </span>
+              ))}
+            </div>
+            <p className="text-[10px] text-skin-muted mt-1">mutual picks</p>
+          </div>
+        );
+      }
+
+      default:
+        return null;
+    }
+  })();
+
+  if (!detail) return null;
+  return <div className="mt-2 ml-8">{detail}</div>;
+};
+
+// --- Main summary components ---
+
 const VotingSummary: React.FC<{ snapshot: any; roster: Record<string, any> }> = ({ snapshot, roster }) => {
+  const [expanded, setExpanded] = useState(false);
   const voteType = snapshot.mechanism || snapshot.voteType || 'UNKNOWN';
   const label = VOTE_TYPE_LABELS[voteType] || voteType;
   const eliminatedId = snapshot.eliminatedId ?? snapshot.results?.eliminatedId;
   const winnerId = snapshot.winnerId ?? snapshot.results?.winnerId;
   const voteTotal = getVoteTotal(snapshot);
+  const canExpand = hasVotingDetail(snapshot);
 
   return (
-    <div className="flex items-start gap-2.5">
-      <div className="mt-0.5 w-6 h-6 rounded-full bg-skin-gold/10 flex items-center justify-center flex-shrink-0">
-        <Vote size={13} className="text-skin-gold" />
-      </div>
-      <div className="min-w-0">
-        <span className="text-[11px] font-mono uppercase tracking-wide text-skin-gold">
-          {label}{voteTotal ? ` \u00b7 ${voteTotal} votes` : ''}
-        </span>
-        {eliminatedId && (
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <Skull size={11} className="text-skin-danger flex-shrink-0" />
-            <span className="text-xs text-skin-dim">{getPlayerName(roster, eliminatedId)} eliminated</span>
+    <div>
+      <div
+        className={canExpand ? 'cursor-pointer select-none' : ''}
+        onClick={() => canExpand && setExpanded(!expanded)}
+      >
+        <div className="flex items-start gap-2.5">
+          <div className="mt-0.5 w-6 h-6 rounded-full bg-skin-gold/10 flex items-center justify-center flex-shrink-0">
+            <Vote size={13} className="text-skin-gold" />
           </div>
-        )}
-        {winnerId && (
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <Trophy size={11} className="text-skin-gold flex-shrink-0" />
-            <span className="text-xs text-skin-dim">{getPlayerName(roster, winnerId)} wins!</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-mono uppercase tracking-wide text-skin-gold">
+                {label}{voteTotal ? ` \u00b7 ${voteTotal} votes` : ''}
+              </span>
+              {canExpand && (
+                <ChevronRight
+                  size={14}
+                  className={`text-skin-muted transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
+                />
+              )}
+            </div>
+            {eliminatedId && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Skull size={11} className="text-skin-danger flex-shrink-0" />
+                <span className="text-xs text-skin-dim">{getPlayerName(roster, eliminatedId)} eliminated</span>
+              </div>
+            )}
+            {winnerId && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Trophy size={11} className="text-skin-gold flex-shrink-0" />
+                <span className="text-xs text-skin-dim">{getPlayerName(roster, winnerId)} wins!</span>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
+      {expanded && <VotingDetail voteType={voteType} snapshot={snapshot} roster={roster} />}
     </div>
   );
 };
 
 const GameSummary: React.FC<{ snapshot: any; roster: Record<string, any> }> = ({ snapshot, roster }) => {
+  const [expanded, setExpanded] = useState(false);
   const gameType = snapshot.gameType || 'UNKNOWN';
   const label = GAME_TYPE_LABELS[gameType] || gameType;
   const gold = snapshot.goldContribution || 0;
   const rows = getPlayerRows(snapshot, roster);
+  const bestRow = rows.find(r => r.isBest);
+  const canExpand = rows.length > 1;
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-skin-green/10 flex items-center justify-center flex-shrink-0">
-            <Gamepad2 size={13} className="text-skin-green" />
+      <div
+        className={canExpand ? 'cursor-pointer select-none' : ''}
+        onClick={() => canExpand && setExpanded(!expanded)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-skin-green/10 flex items-center justify-center flex-shrink-0">
+              <Gamepad2 size={13} className="text-skin-green" />
+            </div>
+            <span className="text-[11px] font-mono uppercase tracking-wide text-skin-green">{label}</span>
           </div>
-          <span className="text-[11px] font-mono uppercase tracking-wide text-skin-green">{label}</span>
+          <div className="flex items-center gap-2">
+            {gold > 0 && (
+              <div className="flex items-center gap-1 text-xs text-skin-gold">
+                <Coins size={11} />
+                <span>+{gold}</span>
+              </div>
+            )}
+            {canExpand && (
+              <ChevronRight
+                size={14}
+                className={`text-skin-muted transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
+              />
+            )}
+          </div>
         </div>
-        {gold > 0 && (
-          <div className="flex items-center gap-1 text-xs text-skin-gold">
-            <Coins size={11} />
-            <span>+{gold}</span>
+        {!expanded && bestRow && (
+          <div className="mt-1 ml-8 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Trophy size={11} className="text-skin-gold flex-shrink-0" />
+              <span className="font-medium text-skin-base truncate">{bestRow.name}</span>
+              {bestRow.metric && <span className="text-skin-muted flex-shrink-0">{bestRow.metric}</span>}
+            </div>
+            {bestRow.silver > 0 && (
+              <div className="flex items-center gap-1 text-skin-dim flex-shrink-0 ml-2">
+                <Coins size={10} className="text-skin-dim" />
+                <span>+{bestRow.silver}</span>
+              </div>
+            )}
           </div>
         )}
       </div>
-      {rows.length > 0 && (
+      {expanded && rows.length > 0 && (
         <div className="mt-1.5 space-y-0.5 ml-8">
           {rows.map(row => (
             <div key={row.id} className="flex items-center justify-between text-xs">
@@ -313,27 +706,47 @@ const GameSummary: React.FC<{ snapshot: any; roster: Record<string, any> }> = ({
 };
 
 const PromptSummary: React.FC<{ snapshot: any; roster: Record<string, any> }> = ({ snapshot, roster }) => {
+  const [expanded, setExpanded] = useState(false);
   const promptType = snapshot.promptType || 'UNKNOWN';
   const label = PROMPT_TYPE_LABELS[promptType] || promptType;
   const detail = getPromptDetail(snapshot, roster);
   const participantCount = snapshot.participantCount ?? 0;
+  const canExpand = hasPromptDetail(snapshot);
 
   return (
-    <div className="flex items-start gap-2.5">
-      <div className="mt-0.5 w-6 h-6 rounded-full bg-skin-pink/10 flex items-center justify-center flex-shrink-0">
-        <MessageSquare size={13} className="text-skin-pink" />
+    <div>
+      <div
+        className={canExpand ? 'cursor-pointer select-none' : ''}
+        onClick={() => canExpand && setExpanded(!expanded)}
+      >
+        <div className="flex items-start gap-2.5">
+          <div className="mt-0.5 w-6 h-6 rounded-full bg-skin-pink/10 flex items-center justify-center flex-shrink-0">
+            <MessageSquare size={13} className="text-skin-pink" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-mono uppercase tracking-wide text-skin-pink">
+                {label}{participantCount > 0 ? ` \u00b7 ${participantCount} responded` : ''}
+              </span>
+              {canExpand && (
+                <ChevronRight
+                  size={14}
+                  className={`text-skin-muted transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
+                />
+              )}
+            </div>
+            {detail && (
+              <div className="text-xs text-skin-dim mt-0.5">{detail}</div>
+            )}
+          </div>
+        </div>
       </div>
-      <div className="min-w-0">
-        <span className="text-[11px] font-mono uppercase tracking-wide text-skin-pink">
-          {label}{participantCount > 0 ? ` \u00b7 ${participantCount} responded` : ''}
-        </span>
-        {detail && (
-          <div className="text-xs text-skin-dim mt-0.5">{detail}</div>
-        )}
-      </div>
+      {expanded && <PromptDetail snapshot={snapshot} roster={roster} />}
     </div>
   );
 };
+
+// --- Card wrapper ---
 
 export const CompletedCartridgeCard: React.FC<CompletedCartridgeCardProps> = ({ entry }) => {
   const roster = useGameStore(s => s.roster);

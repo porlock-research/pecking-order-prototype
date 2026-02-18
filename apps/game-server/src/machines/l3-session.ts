@@ -243,7 +243,7 @@ export const dailySessionMachine = setup({
                   target: 'completed',
                   actions: ['applyPromptRewardsLocally', 'forwardPromptResultToL2']
                 },
-                'INTERNAL.END_ACTIVITY': { actions: 'forwardToPromptChild' },
+                'INTERNAL.END_ACTIVITY': { target: 'idle', actions: 'cleanupPromptCartridge' },
                 '*': {
                   guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX),
                   actions: 'forwardToPromptChild',
