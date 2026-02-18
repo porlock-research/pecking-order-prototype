@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { dmChannelId } from '@pecking-order/shared-types';
-import type { TimelineEntry } from '../components/timeline/types';
+import type { TimelineEntry } from '../types/timeline';
 
 /**
  * Merges DM messages with filtered ticker messages for a specific player pair.

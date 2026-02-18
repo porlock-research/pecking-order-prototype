@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useGameStore } from '../../store/useGameStore';
-import { usePlayerTimeline } from '../../hooks/usePlayerTimeline';
-import { TimelineChatBubble } from '../timeline/TimelineChatBubble';
-import { TimelineSystemEvent } from '../timeline/TimelineSystemEvent';
+import { useGameStore } from '../../../store/useGameStore';
+import { usePlayerTimeline } from '../../../hooks/usePlayerTimeline';
+import { TimelineChatBubble } from './TimelineChatBubble';
+import { TimelineSystemEvent } from './TimelineSystemEvent';
 import { PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { Coins, ArrowLeft, Trophy } from 'lucide-react';
 

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import VotingPanel from '../panels/VotingPanel';
-import GamePanel from '../panels/GamePanel';
-import PromptPanel from '../panels/PromptPanel';
-import { useGameStore } from '../../store/useGameStore';
+import VotingPanel from '../../../components/panels/VotingPanel';
+import GamePanel from '../../../components/panels/GamePanel';
+import PromptPanel from '../../../components/panels/PromptPanel';
+import { useGameStore } from '../../../store/useGameStore';
 import { Vote, Gamepad2, MessageSquare, Skull, Trophy, Coins, ChevronRight } from 'lucide-react';
-import type { TimelineEntry } from './types';
+import type { TimelineEntry } from '../../../types/timeline';
 
 interface TimelineCartridgeCardProps {
   entry: Extract<TimelineEntry, { kind: 'voting' | 'game' | 'prompt' }>;

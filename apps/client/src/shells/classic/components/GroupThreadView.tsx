@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { useGameStore } from '../../store/useGameStore';
+import { useGameStore } from '../../../store/useGameStore';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { ArrowLeft } from 'lucide-react';

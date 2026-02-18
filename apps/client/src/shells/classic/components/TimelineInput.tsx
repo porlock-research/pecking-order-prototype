@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGameStore } from '../../store/useGameStore';
+import { useGameStore } from '../../../store/useGameStore';
 import type { SocialPlayer } from '@pecking-order/shared-types';
 
 function TypingIndicator({ typingPlayers, playerId, roster }: {

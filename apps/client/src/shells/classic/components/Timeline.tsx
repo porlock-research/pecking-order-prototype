@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { useGameStore } from '../../store/useGameStore';
-import { useTimeline } from '../../hooks/useTimeline';
+import { useGameStore } from '../../../store/useGameStore';
+import { useTimeline } from '../../../hooks/useTimeline';
 import { TimelineChatBubble } from './TimelineChatBubble';
 import { TimelineSystemEvent } from './TimelineSystemEvent';
 import { TimelineCartridgeCard, CompletedCartridgeCard } from './TimelineCartridgeCard';

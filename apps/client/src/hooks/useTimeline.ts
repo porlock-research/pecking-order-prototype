@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
-import type { TimelineEntry } from '../components/timeline/types';
+import type { TimelineEntry } from '../types/timeline';
 
 export function useTimeline(): TimelineEntry[] {
   const chatLog = useGameStore(s => s.chatLog);
