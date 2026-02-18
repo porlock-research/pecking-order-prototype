@@ -194,7 +194,7 @@ export default function PerkPanel({ engine }: PerkPanelProps) {
               <perk.icon size={14} />
               <span>{perk.label}</span>
               <span className="flex items-center gap-0.5 font-mono text-xs text-skin-gold">
-                <Coins size={10} className="text-gray-400" />
+                <Coins size={10} className="text-skin-dim" />
                 {cost}
               </span>
             </button>

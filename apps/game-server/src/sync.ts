@@ -127,6 +127,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       activePromptCartridge: projectPromptCartridge(cartridges.activePromptCartridge),
       winner: snapshot.context.winner,
       gameHistory: snapshot.context.gameHistory ?? [],
+      completedPhases: snapshot.context.completedPhases ?? [],
       dmStats,
       ...(onlinePlayers ? { onlinePlayers } : {}),
     },

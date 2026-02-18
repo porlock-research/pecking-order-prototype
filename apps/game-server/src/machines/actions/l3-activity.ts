@@ -43,9 +43,19 @@ export const l3ActivityActions = {
       return updated;
     },
   }),
-  forwardPromptResultToL2: sendParent(({ event }: any) => ({
-    type: Events.Cartridge.PROMPT_RESULT,
-    result: (event as any).output as PromptOutput,
-  })),
+  forwardPromptResultToL2: sendParent(({ context, event }: any) => {
+    const ctx = context.activePromptCartridgeRef?.getSnapshot()?.context;
+    // Include rich results but strip sensitive author mappings
+    const results = ctx?.results ? { ...ctx.results } : null;
+    if (results) delete results.indexToAuthor;
+    return {
+      type: Events.Cartridge.PROMPT_RESULT,
+      result: (event as any).output as PromptOutput,
+      promptType: ctx?.promptType || 'UNKNOWN',
+      promptText: ctx?.promptText || '',
+      participantCount: Object.keys(ctx?.responses || ctx?.stances || ctx?.choices || {}).length,
+      results,
+    };
+  }),
   forwardToPromptChild: sendTo('activePromptCartridge', ({ event }: any) => event),
 };

@@ -677,3 +677,19 @@ This document tracks significant architectural decisions, their context, and con
     *   Deprecated `channel` and `targetId` fields on `ChatMessage` can be removed once all clients are updated.
     *   Group DM creation fully wired: `SOCIAL.CREATE_CHANNEL` → L3 guard/action → channel appears in SYNC. Server-confirmed (not optimistic) — creation can fail with `CHANNEL.REJECTED`. Idempotent via deterministic `groupDmChannelId()`. No silver transfer in group DMs (ambiguous recipient). Group messages share the 1200 char/day pool with 1-to-1 DMs. Client: multi-select group creation picker, group thread view with sender labels.
     *   No D1 schema changes — channels live in L3 context only.
+
+## [ADR-057] Timeline Polish — Ticker Categories, Cartridge Termination, Delayed Reveals
+
+*   **Status:** Accepted
+*   **Context:** The timeline feed felt static and cluttered. System "gate" messages ("Group chat is now open!") duplicated information already conveyed by the input bar. Completed cartridge cards had flat, unpolished visuals. Nothing animated. The 5 flat ticker categories (`SOCIAL | GAME | VOTE | ELIMINATION | SYSTEM`) didn't support fine-grained client filtering. Activity cartridges couldn't handle forced termination (END_ACTIVITY) gracefully — the child was killed before computing results, so `completedPhases` was never populated. Voting results appeared immediately in a timeline card at CLOSE_VOTING instead of being delayed until nightSummary for dramatic effect.
+*   **Decision:**
+    *   **Hierarchical ticker categories**: Replaced 5 flat categories with 15 dot-namespaced categories (e.g., `PHASE.DAY_START`, `GATE.CHAT_OPEN`, `GAME.REWARD`, `SOCIAL.TRANSFER`). Client filters by prefix — `GATE.*` messages suppressed from timeline.
+    *   **Cartridge forced-termination pattern**: Never kill spawned cartridge children directly. Always forward termination events to the child, let it compute results and reach its final state, then handle `xstate.done.actor.*` normally. Activity layer uses two-path completion: natural (child finishes in `playing` → `completed`) and forced (`END_ACTIVITY` forwarded + transition to `completed` → `xstate.done.actor` in `completed` → `idle`).
+    *   **Delayed voting reveal**: `recordCompletedVoting` moved from `CARTRIDGE.VOTE_RESULT` handler to `nightSummary` entry actions, reading from `context.pendingElimination`. Voting close and elimination reveal are decoupled for dramatic effect.
+    *   **Visual polish**: framer-motion `AnimatePresence` for expand/collapse (200ms), entrance animations for cards (300–350ms), accent gradient strips on completed cards, category-tinted system event dividers.
+*   **Consequences:**
+    *   Gate messages no longer clutter the timeline — the chat input bar already communicates open/close state.
+    *   New ticker categories can be added without touching client filtering logic (prefix-based).
+    *   All cartridge types (voting, game, prompt) now handle forced termination consistently — forward to child, let it finish, collect results.
+    *   Voting summary cards only appear after nightSummary, preserving the hour-long dramatic delay between voting close and elimination reveal.
+    *   Timeline feels alive with entrance animations and smooth expand/collapse transitions.

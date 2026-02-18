@@ -3,6 +3,7 @@ import { z } from "zod";
 // --- Re-export centralized constants ---
 export * from './events';
 export { Config } from './config';
+import type { TickerCategory } from './events';
 
 // --- Enums ---
 
@@ -337,8 +338,9 @@ export interface PresenceState {
 export interface TickerMessage {
   id: string;
   text: string;
-  category: 'SOCIAL' | 'GAME' | 'VOTE' | 'ELIMINATION' | 'SYSTEM';
+  category: TickerCategory;
   timestamp: number;
+  involvedPlayerIds?: string[];
 }
 
 // --- Per-Game Client Events ---

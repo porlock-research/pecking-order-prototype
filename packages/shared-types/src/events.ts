@@ -158,12 +158,24 @@ export const PlayerStatuses = {
 } as const;
 
 export const TickerCategories = {
-  SOCIAL: 'SOCIAL',
-  GAME: 'GAME',
+  PHASE_DAY_START: 'PHASE.DAY_START',
+  PHASE_NIGHT: 'PHASE.NIGHT',
+  PHASE_GAME_OVER: 'PHASE.GAME_OVER',
+  PHASE_WINNER: 'PHASE.WINNER',
+  GATE_CHAT_OPEN: 'GATE.CHAT_OPEN',
+  GATE_CHAT_CLOSE: 'GATE.CHAT_CLOSE',
+  GATE_DMS_OPEN: 'GATE.DMS_OPEN',
+  GATE_DMS_CLOSE: 'GATE.DMS_CLOSE',
   VOTE: 'VOTE',
+  GAME: 'GAME',
+  GAME_REWARD: 'GAME.REWARD',
+  SOCIAL_TRANSFER: 'SOCIAL.TRANSFER',
+  SOCIAL_PERK: 'SOCIAL.PERK',
+  ACTIVITY: 'ACTIVITY',
   ELIMINATION: 'ELIMINATION',
-  SYSTEM: 'SYSTEM',
 } as const;
+
+export type TickerCategory = typeof TickerCategories[keyof typeof TickerCategories];
 
 // --- VOTE EVENT CONSTANTS ---
 
