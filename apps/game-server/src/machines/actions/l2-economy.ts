@@ -54,16 +54,22 @@ export const l2EconomyActions = {
     if (hasRewards) {
       enqueue.raise({ type: Events.Economy.CREDIT_SILVER, rewards: silverRewards } as any);
     }
+    // Skip gold if already emitted per-player (arcade games)
     const gold = result?.goldContribution || 0;
-    if (gold > 0) {
+    if (gold > 0 && !result?.goldEmittedPerPlayer) {
       enqueue.raise({ type: Events.Economy.CONTRIBUTE_GOLD, amount: gold, source: result.gameType || 'GAME' } as any);
     }
   }),
 
-  raisePlayerGameEconomyEvent: raise(({ event }: any) => ({
-    type: Events.Economy.CREDIT_SILVER,
-    rewards: { [event.playerId]: event.silverReward },
-  } as any)),
+  raisePlayerGameEconomyEvent: enqueueActions(({ enqueue, event }: any) => {
+    const { playerId, silverReward, goldContribution } = event;
+    if (silverReward) {
+      enqueue.raise({ type: Events.Economy.CREDIT_SILVER, rewards: { [playerId]: silverReward } } as any);
+    }
+    if (goldContribution > 0) {
+      enqueue.raise({ type: Events.Economy.CONTRIBUTE_GOLD, amount: goldContribution, source: 'GAME' } as any);
+    }
+  }),
 
   raisePromptEconomyEvents: enqueueActions(({ enqueue, event }: any) => {
     const result = event.result as PromptOutput;
@@ -133,7 +139,7 @@ export const l2EconomyActions = {
     fact: {
       type: FactTypes.PLAYER_GAME_RESULT,
       actorId: event.playerId,
-      payload: { silverReward: event.silverReward },
+      payload: { silverReward: event.silverReward, goldContribution: event.goldContribution || 0 },
       timestamp: Date.now(),
     },
   } as any)),

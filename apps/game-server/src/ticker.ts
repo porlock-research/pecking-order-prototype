@@ -65,14 +65,20 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
       }
       return null;
     }
-    case FactTypes.PLAYER_GAME_RESULT:
+    case FactTypes.PLAYER_GAME_RESULT: {
+      const playerGold = fact.payload?.goldContribution || 0;
+      let playerText = `${name(fact.actorId)} earned ${fact.payload?.silverReward || 0} silver in today's game!`;
+      if (playerGold > 0) {
+        playerText += ` +${playerGold} gold to the prize pool.`;
+      }
       return {
         id: crypto.randomUUID(),
-        text: `${name(fact.actorId)} earned ${fact.payload?.silverReward || 0} silver in today's game!`,
+        text: playerText,
         category: TickerCategories.GAME_REWARD,
         timestamp: fact.timestamp,
         involvedPlayerIds: [fact.actorId],
       };
+    }
     case FactTypes.ELIMINATION:
       return {
         id: crypto.randomUUID(),

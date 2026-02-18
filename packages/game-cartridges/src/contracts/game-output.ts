@@ -43,6 +43,9 @@ export interface BaseGameContext {
 export interface GameOutput {
   silverRewards: Record<string, number>;
   goldContribution: number;
+  /** When true, gold was already emitted per-player via CARTRIDGE.PLAYER_GAME_RESULT.
+   *  L2 should skip ECONOMY.CONTRIBUTE_GOLD from CARTRIDGE.GAME_RESULT to avoid double-counting. */
+  goldEmittedPerPlayer?: boolean;
   gameType?: string;
   summary?: Record<string, any>;
 }

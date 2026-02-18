@@ -139,7 +139,7 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
           goldContribution: context.goldContribution + gold,
         });
 
-        enqueue.raise({ type: 'PLAYER_COMPLETED', playerId: senderId, silverReward: silver } as any);
+        enqueue.raise({ type: 'PLAYER_COMPLETED', playerId: senderId, silverReward: silver, goldContribution: gold } as any);
 
         // Check if all alive players are done
         const allDone = context.alivePlayers.every((pid: string) =>
@@ -198,6 +198,7 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
         type: Events.Cartridge.PLAYER_GAME_RESULT,
         playerId: event.playerId,
         silverReward: event.silverReward,
+        goldContribution: event.goldContribution || 0,
       })),
     } as any,
   }).createMachine({
@@ -242,6 +243,7 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
         gameType: context.gameType,
         silverRewards,
         goldContribution: context.goldContribution,
+        goldEmittedPerPlayer: true,
         summary: { playerResults },
       };
     },

@@ -46,7 +46,7 @@ export type GameEvent =
   | { type: `GAME.${string}`; senderId: string; [key: string]: any }
   | { type: 'CARTRIDGE.VOTE_RESULT'; result: VoteResult }
   | { type: 'CARTRIDGE.GAME_RESULT'; result: GameOutput }
-  | { type: 'CARTRIDGE.PLAYER_GAME_RESULT'; playerId: string; silverReward: number }
+  | { type: 'CARTRIDGE.PLAYER_GAME_RESULT'; playerId: string; silverReward: number; goldContribution?: number }
   | { type: 'CARTRIDGE.PROMPT_RESULT'; result: PromptOutput; promptType?: string; promptText?: string; participantCount?: number; results?: any }
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
   | { type: 'ECONOMY.CREDIT_SILVER'; rewards: Record<string, number> }
