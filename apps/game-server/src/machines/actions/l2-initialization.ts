@@ -25,6 +25,7 @@ export const l2InitializationActions = {
     dayIndex: 0,
     lastProcessedTime: 0,
     lastJournalEntry: 0,
+    goldPool: 0,
   }),
   incrementDay: assign({
     dayIndex: ({ context }: any) => context.dayIndex + 1,

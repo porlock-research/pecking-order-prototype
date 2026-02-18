@@ -8,16 +8,16 @@ export const l2EliminationActions = {
   }),
   processNightSummary: enqueueActions(({ enqueue, context }: any) => {
     const pending = context.pendingElimination;
+    // Build one unified roster update to avoid XState v5 stale-context pitfall
+    const rosterUpdate = { ...context.roster };
+    let rosterChanged = false;
+
     // Elimination (normal vote or FINALS loser)
-    if (pending?.eliminatedId) {
+    if (pending?.eliminatedId && rosterUpdate[pending.eliminatedId]) {
       const id = pending.eliminatedId;
       console.log(`[L2] Eliminating player: ${id}`);
-      enqueue.assign({
-        roster: {
-          ...context.roster,
-          [id]: { ...context.roster[id], status: PlayerStatuses.ELIMINATED },
-        },
-      });
+      rosterUpdate[id] = { ...rosterUpdate[id], status: PlayerStatuses.ELIMINATED };
+      rosterChanged = true;
       enqueue.raise({
         type: Events.Fact.RECORD,
         fact: {
@@ -29,10 +29,16 @@ export const l2EliminationActions = {
         },
       } as any);
     }
-    // FINALS winner declaration (in addition to elimination above)
+
+    // FINALS winner declaration — award gold pool
     if (pending?.winnerId) {
       const winnerId = pending.winnerId;
-      console.log(`[L2] Winner declared: ${winnerId}`);
+      const goldPool = context.goldPool || 0;
+      console.log(`[L2] Winner declared: ${winnerId} (gold pool: ${goldPool})`);
+      if (rosterUpdate[winnerId]) {
+        rosterUpdate[winnerId] = { ...rosterUpdate[winnerId], gold: goldPool };
+        rosterChanged = true;
+      }
       enqueue.assign({
         winner: { playerId: winnerId, mechanism: 'FINALS', summary: pending.summary },
       });
@@ -42,10 +48,14 @@ export const l2EliminationActions = {
           type: FactTypes.WINNER_DECLARED,
           actorId: 'SYSTEM',
           targetId: winnerId,
-          payload: pending.summary,
+          payload: { ...pending.summary, goldPool },
           timestamp: Date.now(),
         },
       } as any);
+    }
+
+    if (rosterChanged) {
+      enqueue.assign({ roster: rosterUpdate });
     }
     enqueue.assign({ pendingElimination: null });
   }),

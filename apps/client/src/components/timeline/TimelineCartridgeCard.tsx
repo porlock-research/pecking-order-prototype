@@ -659,9 +659,9 @@ const GameSummary: React.FC<{ snapshot: any; roster: Record<string, any> }> = ({
           </div>
           <div className="flex items-center gap-2">
             {gold > 0 && (
-              <div className="flex items-center gap-1 text-xs text-skin-gold">
-                <Coins size={11} />
-                <span>+{gold}</span>
+              <div className="flex items-center gap-1 text-xs text-amber-400">
+                <Trophy size={11} />
+                <span>+{gold} gold</span>
               </div>
             )}
             {canExpand && (

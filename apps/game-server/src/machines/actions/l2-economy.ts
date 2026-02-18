@@ -1,13 +1,13 @@
-import { assign, raise } from 'xstate';
+import { assign, raise, enqueueActions } from 'xstate';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from '../cartridges/prompts/_contract';
 import { PERK_COSTS, Config, type PerkType, type GameHistoryEntry, Events, FactTypes } from '@pecking-order/shared-types';
 
 /**
- * L2 Economy Subsystem — all silver mutation logic in one place.
+ * L2 Economy Subsystem — all currency mutation logic in one place.
  *
- * Consolidated from: l2-game-rewards.ts, l2-prompt-rewards.ts, and
- * the SILVER_TRANSFER / DM_SENT cases from l2-facts.ts applyFactToRoster.
+ * Pattern: CARTRIDGE.* events → raise ECONOMY.* events → generic handlers mutate roster/goldPool.
+ * This decouples cartridge lifecycle from currency mutations (ADR-058).
  */
 export const l2EconomyActions = {
   // --- Fact-driven roster mutations ---
@@ -45,23 +45,57 @@ export const l2EconomyActions = {
     },
   }),
 
-  // --- Game cartridge rewards ---
+  // --- Raise actions: translate CARTRIDGE.* → ECONOMY.* ---
 
-  applyGameRewards: assign({
+  raiseGameEconomyEvents: enqueueActions(({ enqueue, event }: any) => {
+    const result = event.result as GameOutput;
+    const silverRewards = result?.silverRewards || {};
+    const hasRewards = Object.values(silverRewards).some((v: any) => v > 0);
+    if (hasRewards) {
+      enqueue.raise({ type: Events.Economy.CREDIT_SILVER, rewards: silverRewards } as any);
+    }
+    const gold = result?.goldContribution || 0;
+    if (gold > 0) {
+      enqueue.raise({ type: Events.Economy.CONTRIBUTE_GOLD, amount: gold, source: result.gameType || 'GAME' } as any);
+    }
+  }),
+
+  raisePlayerGameEconomyEvent: raise(({ event }: any) => ({
+    type: Events.Economy.CREDIT_SILVER,
+    rewards: { [event.playerId]: event.silverReward },
+  } as any)),
+
+  raisePromptEconomyEvents: enqueueActions(({ enqueue, event }: any) => {
+    const result = event.result as PromptOutput;
+    const silverRewards = result?.silverRewards || {};
+    const hasRewards = Object.values(silverRewards).some((v: any) => v > 0);
+    if (hasRewards) {
+      enqueue.raise({ type: Events.Economy.CREDIT_SILVER, rewards: silverRewards } as any);
+    }
+  }),
+
+  // --- ECONOMY.* handlers: generic currency mutations ---
+
+  applySilverCredit: assign({
     roster: ({ context, event }: any) => {
-      if (event.type !== Events.Cartridge.GAME_RESULT) return context.roster;
-      const result = event.result as GameOutput;
-      if (!result?.silverRewards) return context.roster;
+      const rewards = event.rewards as Record<string, number>;
+      if (!rewards) return context.roster;
       const updated = { ...context.roster };
-      for (const [pid, silver] of Object.entries(result.silverRewards)) {
-        if (updated[pid]) {
-          updated[pid] = { ...updated[pid], silver: updated[pid].silver + (silver as number) };
+      for (const [pid, amount] of Object.entries(rewards)) {
+        if (updated[pid] && amount) {
+          updated[pid] = { ...updated[pid], silver: updated[pid].silver + amount };
         }
       }
-      console.log(`[L2] Applied game silver rewards:`, result.silverRewards);
       return updated;
     },
   }),
+
+  applyGoldContribution: assign({
+    goldPool: ({ context, event }: any) => (context.goldPool || 0) + (event.amount || 0),
+  }),
+
+  // --- Game result recording ---
+
   recordGameResult: assign({
     gameHistory: ({ context, event }: any) => {
       const result = event.result as GameOutput;
@@ -94,15 +128,6 @@ export const l2EconomyActions = {
       },
     } as any;
   }),
-  applyPlayerGameReward: assign({
-    roster: ({ context, event }: any) => {
-      const { playerId, silverReward } = event;
-      if (!playerId || !silverReward) return context.roster;
-      const player = context.roster[playerId];
-      if (!player) return context.roster;
-      return { ...context.roster, [playerId]: { ...player, silver: player.silver + silverReward } };
-    },
-  }),
   emitPlayerGameResultFact: raise(({ event }: any) => ({
     type: Events.Fact.RECORD,
     fact: {
@@ -113,23 +138,8 @@ export const l2EconomyActions = {
     },
   } as any)),
 
-  // --- Prompt cartridge rewards ---
+  // --- Prompt result recording ---
 
-  applyPromptRewards: assign({
-    roster: ({ context, event }: any) => {
-      if (event.type !== Events.Cartridge.PROMPT_RESULT) return context.roster;
-      const result = event.result as PromptOutput;
-      if (!result?.silverRewards) return context.roster;
-      const updated = { ...context.roster };
-      for (const [pid, silver] of Object.entries(result.silverRewards)) {
-        if (updated[pid]) {
-          updated[pid] = { ...updated[pid], silver: updated[pid].silver + (silver as number) };
-        }
-      }
-      console.log(`[L2] Applied prompt silver rewards:`, result.silverRewards);
-      return updated;
-    },
-  }),
   emitPromptResultFact: raise(({ event }: any) => {
     const result = event.result as PromptOutput;
     return {

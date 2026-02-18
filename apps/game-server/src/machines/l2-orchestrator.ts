@@ -22,6 +22,7 @@ export interface GameContext {
   lastProcessedTime: number;
   restoredChatLog?: any[]; // For rehydration only
   lastJournalEntry: number; // Triggers state change for syncing
+  goldPool: number;
   pendingElimination: VoteResult | null;
   winner: { playerId: string; mechanism: 'FINALS'; summary: Record<string, any> } | null;
   gameHistory: GameHistoryEntry[];
@@ -48,6 +49,8 @@ export type GameEvent =
   | { type: 'CARTRIDGE.PLAYER_GAME_RESULT'; playerId: string; silverReward: number }
   | { type: 'CARTRIDGE.PROMPT_RESULT'; result: PromptOutput; promptType?: string; promptText?: string; participantCount?: number; results?: any }
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
+  | { type: 'ECONOMY.CREDIT_SILVER'; rewards: Record<string, number> }
+  | { type: 'ECONOMY.CONTRIBUTE_GOLD'; amount: number; source: string }
   | { type: 'SOCIAL.USE_PERK'; senderId: string; perkType: string; targetId?: string }
   | { type: 'PERK.RESULT'; senderId: string; result: any }
   | { type: 'PERK.REJECTED'; senderId: string; reason: string }
@@ -87,6 +90,7 @@ export const orchestratorMachine = setup({
     nextWakeup: null,
     lastProcessedTime: 0,
     lastJournalEntry: 0,
+    goldPool: 0,
     pendingElimination: null,
     winner: null,
     gameHistory: [],
@@ -157,9 +161,11 @@ export const orchestratorMachine = setup({
             'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }: any) => event) },
             'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }: any) => event) },
             'CARTRIDGE.VOTE_RESULT': { actions: ['storeVoteResult'] },
-            'CARTRIDGE.GAME_RESULT': { actions: ['applyGameRewards', 'recordGameResult', 'recordCompletedGame', 'emitGameResultFact'] },
-            'CARTRIDGE.PLAYER_GAME_RESULT': { actions: ['applyPlayerGameReward', 'emitPlayerGameResultFact'] },
-            'CARTRIDGE.PROMPT_RESULT': { actions: ['applyPromptRewards', 'recordCompletedPrompt', 'emitPromptResultFact'] },
+            'CARTRIDGE.GAME_RESULT': { actions: ['recordGameResult', 'recordCompletedGame', 'emitGameResultFact', 'raiseGameEconomyEvents'] },
+            'CARTRIDGE.PLAYER_GAME_RESULT': { actions: ['emitPlayerGameResultFact', 'raisePlayerGameEconomyEvent'] },
+            'CARTRIDGE.PROMPT_RESULT': { actions: ['recordCompletedPrompt', 'emitPromptResultFact', 'raisePromptEconomyEvents'] },
+            'ECONOMY.CREDIT_SILVER': { actions: 'applySilverCredit' },
+            'ECONOMY.CONTRIBUTE_GOLD': { actions: 'applyGoldContribution' },
             'DM.REJECTED': { actions: 'sendDmRejection' },
             'SILVER_TRANSFER.REJECTED': { actions: 'sendSilverTransferRejection' },
             'SOCIAL.USE_PERK': { actions: sendTo('l3-session', ({ event }: any) => event) },
@@ -214,7 +220,9 @@ export const orchestratorMachine = setup({
             ],
             'FACT.RECORD': {
               actions: ['updateJournalTimestamp', 'applyFactToRoster', 'persistFactToD1'],
-            }
+            },
+            'ECONOMY.CREDIT_SILVER': { actions: 'applySilverCredit' },
+            'ECONOMY.CONTRIBUTE_GOLD': { actions: 'applyGoldContribution' },
           }
         }
       },

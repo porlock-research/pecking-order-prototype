@@ -12,7 +12,7 @@ import PerkPanel from './components/panels/PerkPanel';
 const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
 // formatPhase no longer used — phase badge removed from header
 // import { formatPhase } from './utils/formatState';
-import { Coins, MessageCircle, Users } from 'lucide-react';
+import { Coins, Trophy, MessageCircle, Users } from 'lucide-react';
 import { decodeGameToken } from '@pecking-order/auth';
 import { PlayerStatuses, ChannelTypes } from '@pecking-order/shared-types';
 import { PushPrompt } from './components/PushPrompt';
@@ -368,7 +368,7 @@ function NewGroupPicker({ roster, playerId, onBack, engine }: {
 }
 
 function GameShell({ gameId, playerId, token }: { gameId: string, playerId: string, token: string | null }) {
-  const { roster } = useGameStore();
+  const { roster, goldPool } = useGameStore();
   const engine = useGameEngine(gameId, playerId, token);
   const [activeTab, setActiveTab] = useState<'chat' | 'people'>('chat');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -488,6 +488,10 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
               <span className="font-mono font-bold text-skin-gold text-sm">{me.silver}</span>
             </div>
           )}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-pill bg-amber-500/10 border border-amber-500/20">
+            <Trophy size={12} className="text-amber-400" />
+            <span className="font-mono font-bold text-amber-400 text-sm">{goldPool}</span>
+          </div>
         </div>
       </header>
 

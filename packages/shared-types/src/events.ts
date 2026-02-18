@@ -85,6 +85,11 @@ export const Events = {
     PREFIX: 'ACTIVITY.',
     event: (promptType: string, action: string) => `ACTIVITY.${promptType}.${action}`,
   },
+  Economy: {
+    PREFIX: 'ECONOMY.',
+    CREDIT_SILVER: 'ECONOMY.CREDIT_SILVER',
+    CONTRIBUTE_GOLD: 'ECONOMY.CONTRIBUTE_GOLD',
+  },
 } as const;
 
 // --- FACT TYPE CONSTANTS ---
@@ -173,6 +178,7 @@ export const TickerCategories = {
   SOCIAL_PERK: 'SOCIAL.PERK',
   ACTIVITY: 'ACTIVITY',
   ELIMINATION: 'ELIMINATION',
+  GOLD_POOL: 'GOLD.POOL',
 } as const;
 
 export type TickerCategory = typeof TickerCategories[keyof typeof TickerCategories];

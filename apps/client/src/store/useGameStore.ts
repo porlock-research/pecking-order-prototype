@@ -32,6 +32,7 @@ interface GameState {
   activePromptCartridge: any | null;
   completedCartridges: CompletedCartridge[];
   winner: { playerId: string; mechanism: string; summary: Record<string, any> } | null;
+  goldPool: number;
   gameHistory: GameHistoryEntry[];
   dmStats: { charsUsed: number; charsLimit: number; partnersUsed: number; partnersLimit: number; groupsUsed: number; groupsLimit: number } | null;
   onlinePlayers: string[];
@@ -138,6 +139,7 @@ export const useGameStore = create<GameState>((set) => ({
   activePromptCartridge: null,
   completedCartridges: [],
   winner: null,
+  goldPool: 0,
   gameHistory: [],
   dmStats: null,
   onlinePlayers: [],
@@ -176,6 +178,7 @@ export const useGameStore = create<GameState>((set) => ({
       activePromptCartridge: data.context?.activePromptCartridge ?? null,
       completedCartridges,
       winner: data.context?.winner ?? null,
+      goldPool: data.context?.goldPool ?? state.goldPool,
       gameHistory: data.context?.gameHistory ?? state.gameHistory,
       dmStats: data.context?.dmStats ?? null,
       onlinePlayers: data.context?.onlinePlayers ?? state.onlinePlayers,

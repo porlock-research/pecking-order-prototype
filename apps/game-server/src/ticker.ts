@@ -32,20 +32,36 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
       };
     case FactTypes.GAME_RESULT: {
       const players = fact.payload?.players;
+      const gold = fact.payload?.goldContribution || 0;
       if (players) {
         const playerIds = Object.keys(players);
         const sorted = Object.entries(players)
           .map(([pid, data]: [string, any]) => ({ pid, silver: data.silverReward || 0 }))
           .sort((a, b) => b.silver - a.silver);
+        let text = '';
         if (sorted.length > 0 && sorted[0].silver > 0) {
+          text = `${name(sorted[0].pid)} earned ${sorted[0].silver} silver in today's game!`;
+        }
+        if (gold > 0) {
+          text += text ? ` +${gold} gold to the prize pool.` : `+${gold} gold added to the prize pool.`;
+        }
+        if (text) {
           return {
             id: crypto.randomUUID(),
-            text: `${name(sorted[0].pid)} earned ${sorted[0].silver} silver in today's game!`,
+            text,
             category: TickerCategories.GAME_REWARD,
             timestamp: fact.timestamp,
             involvedPlayerIds: playerIds,
           };
         }
+      } else if (gold > 0) {
+        return {
+          id: crypto.randomUUID(),
+          text: `+${gold} gold added to the prize pool.`,
+          category: TickerCategories.GOLD_POOL,
+          timestamp: fact.timestamp,
+          involvedPlayerIds: [],
+        };
       }
       return null;
     }
@@ -65,14 +81,20 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
         timestamp: fact.timestamp,
         involvedPlayerIds: [fact.targetId || fact.actorId].filter(Boolean),
       };
-    case FactTypes.WINNER_DECLARED:
+    case FactTypes.WINNER_DECLARED: {
+      const goldPool = fact.payload?.goldPool || 0;
+      let winText = `${name(fact.targetId || fact.actorId)} has won the game!`;
+      if (goldPool > 0) {
+        winText += ` They claim the ${goldPool} gold prize pool!`;
+      }
       return {
         id: crypto.randomUUID(),
-        text: `${name(fact.targetId || fact.actorId)} has won the game!`,
+        text: winText,
         category: TickerCategories.PHASE_WINNER,
         timestamp: fact.timestamp,
         involvedPlayerIds: [fact.targetId || fact.actorId].filter(Boolean),
       };
+    }
     case FactTypes.PERK_USED: {
       const perkType = fact.payload?.perkType || 'unknown';
       const perkLabels: Record<string, string> = {
