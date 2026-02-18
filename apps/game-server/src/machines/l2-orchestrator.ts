@@ -156,7 +156,7 @@ export const orchestratorMachine = setup({
             },
             'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }: any) => event) },
             'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }: any) => event) },
-            'CARTRIDGE.VOTE_RESULT': { actions: ['storeVoteResult', 'recordCompletedVoting'] },
+            'CARTRIDGE.VOTE_RESULT': { actions: ['storeVoteResult'] },
             'CARTRIDGE.GAME_RESULT': { actions: ['applyGameRewards', 'recordGameResult', 'recordCompletedGame', 'emitGameResultFact'] },
             'CARTRIDGE.PLAYER_GAME_RESULT': { actions: ['applyPlayerGameReward', 'emitPlayerGameResultFact'] },
             'CARTRIDGE.PROMPT_RESULT': { actions: ['applyPromptRewards', 'recordCompletedPrompt', 'emitPromptResultFact'] },
@@ -202,7 +202,7 @@ export const orchestratorMachine = setup({
           }
         },
         nightSummary: {
-          entry: ['processNightSummary', 'scheduleNextTimelineEvent'],
+          entry: ['recordCompletedVoting', 'processNightSummary', 'scheduleNextTimelineEvent'],
           on: {
             'ADMIN.NEXT_STAGE': [
               { guard: ({ context }: any) => context.winner !== null, target: '#pecking-order-l2.gameSummary' },

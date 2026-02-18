@@ -239,11 +239,18 @@ export const dailySessionMachine = setup({
             playing: {
               entry: 'spawnPromptCartridge',
               on: {
+                // Natural completion: all players responded → child reaches final state
                 'xstate.done.actor.activePromptCartridge': {
                   target: 'completed',
                   actions: ['applyPromptRewardsLocally', 'forwardPromptResultToL2']
                 },
-                'INTERNAL.END_ACTIVITY': { target: 'idle', actions: 'cleanupPromptCartridge' },
+                // Forced termination: forward to child so it can calculateResults,
+                // then transition to completed. The child's done event will be
+                // handled by completed's xstate.done.actor handler.
+                'INTERNAL.END_ACTIVITY': {
+                  target: 'completed',
+                  actions: 'forwardToPromptChild',
+                },
                 '*': {
                   guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX),
                   actions: 'forwardToPromptChild',
@@ -251,12 +258,16 @@ export const dailySessionMachine = setup({
               }
             },
             completed: {
-              // Cartridge stays alive so results remain visible in SYSTEM.SYNC.
-              // Only END_ACTIVITY cleans up and returns to idle.
               on: {
+                // Natural path: child completed during playing, END_ACTIVITY cleans up
                 'INTERNAL.END_ACTIVITY': {
                   target: 'idle',
                   actions: 'cleanupPromptCartridge',
+                },
+                // Forced path: child finishes after END_ACTIVITY pushed us here
+                'xstate.done.actor.activePromptCartridge': {
+                  target: 'idle',
+                  actions: ['applyPromptRewardsLocally', 'forwardPromptResultToL2', 'cleanupPromptCartridge'],
                 }
               }
             }

@@ -255,7 +255,7 @@ export class GameServer extends Server<Env> {
         this.tickerHistory = broadcastTicker({
           id: crypto.randomUUID(),
           text: currentDmsOpen ? 'DMs are now open!' : 'DMs are now closed.',
-          category: 'SYSTEM',
+          category: currentDmsOpen ? 'GATE.DMS_OPEN' : 'GATE.DMS_CLOSE',
           timestamp: Date.now(),
         }, this.tickerHistory, () => this.getConnections());
       }
@@ -267,7 +267,7 @@ export class GameServer extends Server<Env> {
         this.tickerHistory = broadcastTicker({
           id: crypto.randomUUID(),
           text: currentGroupChatOpen ? 'Group chat is now open!' : 'Group chat is now closed.',
-          category: 'SYSTEM',
+          category: currentGroupChatOpen ? 'GATE.CHAT_OPEN' : 'GATE.CHAT_CLOSE',
           timestamp: Date.now(),
         }, this.tickerHistory, () => this.getConnections());
       }

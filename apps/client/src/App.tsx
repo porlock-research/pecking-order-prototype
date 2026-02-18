@@ -582,20 +582,7 @@ function GameShell({ gameId, playerId, token }: { gameId: string, playerId: stri
       {/* News Ticker — hidden; content now lives in the timeline as system events */}
       {/* <NewsTicker /> */}
 
-      {/* Admin Link (Bottom Right Floating) — dev only */}
-      {import.meta.env.DEV && (
-        <div className="fixed bottom-24 right-4 z-50">
-          <a
-            href={`${import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000'}/admin/game/${gameId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="h-12 w-12 rounded-full bg-skin-danger text-skin-inverted shadow-glow glow-breathe flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border-2 border-white/20 font-mono font-bold text-lg"
-            title="Lobby Admin Panel"
-          >
-            {'⚙'}
-          </a>
-        </div>
-      )}
+      {/* Admin Link — removed; was overlapping the shout/send button */}
 
     </div>
   );

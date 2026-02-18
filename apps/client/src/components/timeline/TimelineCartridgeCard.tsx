@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import VotingPanel from '../panels/VotingPanel';
 import GamePanel from '../panels/GamePanel';
 import PromptPanel from '../panels/PromptPanel';
@@ -586,7 +587,7 @@ const VotingSummary: React.FC<{ snapshot: any; roster: Record<string, any> }> = 
         onClick={() => canExpand && setExpanded(!expanded)}
       >
         <div className="flex items-start gap-2.5">
-          <div className="mt-0.5 w-6 h-6 rounded-full bg-skin-gold/10 flex items-center justify-center flex-shrink-0">
+          <div className="mt-0.5 w-6 h-6 rounded-full bg-skin-gold/10 flex items-center justify-center flex-shrink-0 shadow-[0_0_8px_var(--po-gold-dim)]">
             <Vote size={13} className="text-skin-gold" />
           </div>
           <div className="min-w-0 flex-1">
@@ -616,7 +617,20 @@ const VotingSummary: React.FC<{ snapshot: any; roster: Record<string, any> }> = 
           </div>
         </div>
       </div>
-      {expanded && <VotingDetail voteType={voteType} snapshot={snapshot} roster={roster} />}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="voting-detail"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            style={{ overflow: 'hidden' }}
+          >
+            <VotingDetail voteType={voteType} snapshot={snapshot} roster={roster} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -638,7 +652,7 @@ const GameSummary: React.FC<{ snapshot: any; roster: Record<string, any> }> = ({
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-skin-green/10 flex items-center justify-center flex-shrink-0">
+            <div className="w-6 h-6 rounded-full bg-skin-green/10 flex items-center justify-center flex-shrink-0 shadow-[0_0_8px_var(--po-green-dim)]">
               <Gamepad2 size={13} className="text-skin-green" />
             </div>
             <span className="text-[11px] font-mono uppercase tracking-wide text-skin-green">{label}</span>
@@ -674,33 +688,44 @@ const GameSummary: React.FC<{ snapshot: any; roster: Record<string, any> }> = ({
           </div>
         )}
       </div>
-      {expanded && rows.length > 0 && (
-        <div className="mt-1.5 space-y-0.5 ml-8">
-          {rows.map(row => (
-            <div key={row.id} className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5 min-w-0">
-                {row.isBest ? (
-                  <Trophy size={11} className="text-skin-gold flex-shrink-0" />
-                ) : (
-                  <span className="w-[11px] flex-shrink-0" />
-                )}
-                <span className={row.isBest ? 'font-medium text-skin-base truncate' : 'text-skin-dim truncate'}>
-                  {row.name}
-                </span>
-                {row.metric && (
-                  <span className="text-skin-muted flex-shrink-0">{row.metric}</span>
-                )}
-              </div>
-              {row.silver > 0 && (
-                <div className="flex items-center gap-1 text-skin-dim flex-shrink-0 ml-2">
-                  <Coins size={10} className="text-skin-dim" />
-                  <span>+{row.silver}</span>
+      <AnimatePresence initial={false}>
+        {expanded && rows.length > 0 && (
+          <motion.div
+            key="game-detail"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="mt-1.5 space-y-0.5 ml-8">
+              {rows.map(row => (
+                <div key={row.id} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {row.isBest ? (
+                      <Trophy size={11} className="text-skin-gold flex-shrink-0" />
+                    ) : (
+                      <span className="w-[11px] flex-shrink-0" />
+                    )}
+                    <span className={row.isBest ? 'font-medium text-skin-base truncate' : 'text-skin-dim truncate'}>
+                      {row.name}
+                    </span>
+                    {row.metric && (
+                      <span className="text-skin-muted flex-shrink-0">{row.metric}</span>
+                    )}
+                  </div>
+                  {row.silver > 0 && (
+                    <div className="flex items-center gap-1 text-skin-dim flex-shrink-0 ml-2">
+                      <Coins size={10} className="text-skin-dim" />
+                      <span>+{row.silver}</span>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -720,7 +745,7 @@ const PromptSummary: React.FC<{ snapshot: any; roster: Record<string, any> }> = 
         onClick={() => canExpand && setExpanded(!expanded)}
       >
         <div className="flex items-start gap-2.5">
-          <div className="mt-0.5 w-6 h-6 rounded-full bg-skin-pink/10 flex items-center justify-center flex-shrink-0">
+          <div className="mt-0.5 w-6 h-6 rounded-full bg-skin-pink/10 flex items-center justify-center flex-shrink-0" style={{ boxShadow: '0 0 8px rgba(236, 73, 153, 0.2)' }}>
             <MessageSquare size={13} className="text-skin-pink" />
           </div>
           <div className="min-w-0 flex-1">
@@ -741,7 +766,20 @@ const PromptSummary: React.FC<{ snapshot: any; roster: Record<string, any> }> = 
           </div>
         </div>
       </div>
-      {expanded && <PromptDetail snapshot={snapshot} roster={roster} />}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="prompt-detail"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            style={{ overflow: 'hidden' }}
+          >
+            <PromptDetail snapshot={snapshot} roster={roster} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -753,16 +791,25 @@ export const CompletedCartridgeCard: React.FC<CompletedCartridgeCardProps> = ({ 
   const { kind, snapshot } = entry.data;
 
   const borderColor = kind === 'voting'
-    ? 'border-skin-gold/20'
+    ? 'border-skin-gold/30'
     : kind === 'game'
-      ? 'border-skin-green/20'
-      : 'border-skin-pink/20';
+      ? 'border-skin-green/30'
+      : 'border-skin-pink/30';
+
+  const stripClass = kind === 'voting'
+    ? 'cartridge-strip-voting'
+    : kind === 'game'
+      ? 'cartridge-strip-game'
+      : 'cartridge-strip-prompt';
 
   return (
-    <div className={`rounded-lg border ${borderColor} bg-glass px-3 py-2.5`}>
-      {kind === 'voting' && <VotingSummary snapshot={snapshot} roster={roster} />}
-      {kind === 'game' && <GameSummary snapshot={snapshot} roster={roster} />}
-      {kind === 'prompt' && <PromptSummary snapshot={snapshot} roster={roster} />}
+    <div className={`rounded-xl border ${borderColor} bg-glass shadow-card overflow-hidden`}>
+      <div className={`h-[2px] ${stripClass}`} />
+      <div className="px-3 py-2.5">
+        {kind === 'voting' && <VotingSummary snapshot={snapshot} roster={roster} />}
+        {kind === 'game' && <GameSummary snapshot={snapshot} roster={roster} />}
+        {kind === 'prompt' && <PromptSummary snapshot={snapshot} roster={roster} />}
+      </div>
     </div>
   );
 };

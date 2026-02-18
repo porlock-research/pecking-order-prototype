@@ -18,6 +18,11 @@
 .vote-strip-second      { background: linear-gradient(90deg, transparent, var(--po-text-dim), transparent); }
 .vote-strip-trust       { background: linear-gradient(90deg, transparent, var(--po-green), transparent); }
 
+/* Cartridge accent strips — gradient bar at top of completed cartridge cards */
+.cartridge-strip-voting  { background: linear-gradient(90deg, transparent, var(--po-gold), transparent); }
+.cartridge-strip-game    { background: linear-gradient(90deg, transparent, var(--po-green), transparent); }
+.cartridge-strip-prompt  { background: linear-gradient(90deg, transparent, var(--po-pink), transparent); }
+
 /* Avatar ring — subtle gold glow around player circles */
 .avatar-ring {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1), 0 0 8px rgba(251, 191, 36, 0.15);

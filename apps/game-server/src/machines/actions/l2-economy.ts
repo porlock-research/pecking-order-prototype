@@ -147,9 +147,12 @@ export const l2EconomyActions = {
 
   // --- Completed phase recording (for timeline) ---
 
+  /** Record voting result in completedPhases. Called at nightSummary entry
+   *  (not at CARTRIDGE.VOTE_RESULT time) so the reveal is delayed for dramatic effect. */
   recordCompletedVoting: assign({
-    completedPhases: ({ context, event }: any) => {
-      const result = event.result;
+    completedPhases: ({ context }: any) => {
+      const result = context.pendingElimination;
+      if (!result) return context.completedPhases || [];
       return [...(context.completedPhases || []), {
         kind: 'voting' as const,
         dayIndex: context.dayIndex,

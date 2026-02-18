@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { useGameStore } from '../../store/useGameStore';
 import { useTimeline } from '../../hooks/useTimeline';
 import { TimelineChatBubble } from './TimelineChatBubble';
@@ -131,9 +132,27 @@ export const Timeline: React.FC<TimelineProps> = ({ engine }) => {
             case 'voting':
             case 'game':
             case 'prompt':
-              return <TimelineCartridgeCard key={entry.key} entry={entry} engine={engine} />;
+              return (
+                <motion.div
+                  key={entry.key}
+                  initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <TimelineCartridgeCard entry={entry} engine={engine} />
+                </motion.div>
+              );
             case 'completed-cartridge':
-              return <CompletedCartridgeCard key={entry.key} entry={entry} />;
+              return (
+                <motion.div
+                  key={entry.key}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <CompletedCartridgeCard entry={entry} />
+                </motion.div>
+              );
           }
         })}
 

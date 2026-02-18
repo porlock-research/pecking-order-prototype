@@ -26,7 +26,7 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
       return {
         id: crypto.randomUUID(),
         text: `${name(fact.actorId)} sent ${fact.payload?.amount || '?'} silver to ${name(fact.targetId)}`,
-        category: TickerCategories.SOCIAL,
+        category: TickerCategories.SOCIAL_TRANSFER,
         timestamp: fact.timestamp,
         involvedPlayerIds: [fact.actorId, fact.targetId].filter(Boolean),
       };
@@ -41,7 +41,7 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
           return {
             id: crypto.randomUUID(),
             text: `${name(sorted[0].pid)} earned ${sorted[0].silver} silver in today's game!`,
-            category: TickerCategories.GAME,
+            category: TickerCategories.GAME_REWARD,
             timestamp: fact.timestamp,
             involvedPlayerIds: playerIds,
           };
@@ -53,7 +53,7 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
       return {
         id: crypto.randomUUID(),
         text: `${name(fact.actorId)} earned ${fact.payload?.silverReward || 0} silver in today's game!`,
-        category: TickerCategories.GAME,
+        category: TickerCategories.GAME_REWARD,
         timestamp: fact.timestamp,
         involvedPlayerIds: [fact.actorId],
       };
@@ -69,7 +69,7 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
       return {
         id: crypto.randomUUID(),
         text: `${name(fact.targetId || fact.actorId)} has won the game!`,
-        category: TickerCategories.SYSTEM,
+        category: TickerCategories.PHASE_WINNER,
         timestamp: fact.timestamp,
         involvedPlayerIds: [fact.targetId || fact.actorId].filter(Boolean),
       };
@@ -83,7 +83,7 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
       return {
         id: crypto.randomUUID(),
         text: `${name(fact.actorId)} used ${perkLabels[perkType] || perkType}!`,
-        category: TickerCategories.SOCIAL,
+        category: TickerCategories.SOCIAL_PERK,
         timestamp: fact.timestamp,
         involvedPlayerIds: [fact.actorId],
       };
@@ -97,7 +97,7 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
           return {
             id: crypto.randomUUID(),
             text: `Activity complete! ${rewardPlayerIds.length} players earned ${totalSilver} silver total.`,
-            category: TickerCategories.SOCIAL,
+            category: TickerCategories.ACTIVITY,
             timestamp: fact.timestamp,
             involvedPlayerIds: rewardPlayerIds,
           };
@@ -115,10 +115,10 @@ export function stateToTicker(stateStr: string, context: any): TickerMessage | n
   const dayIndex = context?.dayIndex || 0;
 
   if (stateStr.includes('nightSummary')) {
-    return { id: crypto.randomUUID(), text: 'Night has fallen...', category: TickerCategories.SYSTEM, timestamp: Date.now() };
+    return { id: crypto.randomUUID(), text: 'Night has fallen...', category: TickerCategories.PHASE_NIGHT, timestamp: Date.now() };
   }
   if (stateStr.includes('morningBriefing')) {
-    return { id: crypto.randomUUID(), text: `Day ${dayIndex} has begun!`, category: TickerCategories.SYSTEM, timestamp: Date.now() };
+    return { id: crypto.randomUUID(), text: `Day ${dayIndex} has begun!`, category: TickerCategories.PHASE_DAY_START, timestamp: Date.now() };
   }
   if (stateStr.includes('voting')) {
     return { id: crypto.randomUUID(), text: 'Voting has begun!', category: TickerCategories.VOTE, timestamp: Date.now() };
@@ -127,10 +127,10 @@ export function stateToTicker(stateStr: string, context: any): TickerMessage | n
     return { id: crypto.randomUUID(), text: "Today's game is starting!", category: TickerCategories.GAME, timestamp: Date.now() };
   }
   if (stateStr.includes('gameSummary')) {
-    return { id: crypto.randomUUID(), text: 'The winner has been crowned!', category: TickerCategories.SYSTEM, timestamp: Date.now() };
+    return { id: crypto.randomUUID(), text: 'The winner has been crowned!', category: TickerCategories.PHASE_WINNER, timestamp: Date.now() };
   }
   if (stateStr.includes('gameOver')) {
-    return { id: crypto.randomUUID(), text: 'The game is over!', category: TickerCategories.SYSTEM, timestamp: Date.now() };
+    return { id: crypto.randomUUID(), text: 'The game is over!', category: TickerCategories.PHASE_GAME_OVER, timestamp: Date.now() };
   }
   return null;
 }

@@ -19,6 +19,7 @@ export function useTimeline(): TimelineEntry[] {
     }
 
     for (const t of tickerMessages) {
+      if (t.category.startsWith('GATE.')) continue;
       entries.push({ kind: 'system', key: `sys-${t.id}`, timestamp: t.timestamp, data: t });
     }
 
