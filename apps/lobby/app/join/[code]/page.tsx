@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { useSwipeable } from 'react-swipeable';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getInviteInfo, getRandomPersonas, acceptInvite } from '../../actions';
+import { getInviteInfo, getRandomPersonas, redrawPersonas, acceptInvite } from '../../actions';
 import type { GameInfo, Persona } from '../../actions';
 
 type PersonaWithImage = Persona & { imageUrl: string; fullImageUrl: string };
@@ -65,6 +65,7 @@ export default function InvitePage() {
   const [customBio, setCustomBio] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [drawKey, setDrawKey] = useState(0);
 
   // Direction tracking — derived synchronously during render (same pattern as SwipeableTabs)
   const prevIndexRef = useRef(0);
@@ -126,6 +127,7 @@ export default function InvitePage() {
 
     if (result.success && result.personas) {
       setPersonas(result.personas);
+      setDrawKey((k) => k + 1);
       setActiveIndex(0);
       prevIndexRef.current = 0;
       directionRef.current = 0;
@@ -151,7 +153,20 @@ export default function InvitePage() {
         setError('That character was just taken! Drawing new characters...');
         setSelectedPersona(null);
         setCustomBio('');
-        await drawPersonas();
+        setIsDrawing(true);
+        const redrawResult = await redrawPersonas(code);
+        setIsDrawing(false);
+        if (redrawResult.success && redrawResult.personas) {
+          setPersonas(redrawResult.personas);
+          setDrawKey((k) => k + 1);
+          setActiveIndex(0);
+          prevIndexRef.current = 0;
+          directionRef.current = 0;
+          setSelectedPersona(redrawResult.personas[0]);
+          setStep(1);
+        } else {
+          setError(redrawResult.error || 'Failed to draw characters');
+        }
       } else {
         setError(result.error || 'Failed to join');
       }
@@ -194,7 +209,25 @@ export default function InvitePage() {
   const activePersona = personas[activeIndex];
 
   return (
-    <div className="min-h-screen bg-skin-deep bg-grid-pattern flex flex-col items-center p-4 py-8 font-body text-skin-base relative selection:bg-skin-gold/30">
+    <div className="min-h-screen bg-skin-deep bg-grid-pattern flex flex-col items-center p-4 py-8 font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
+      {/* Blurred full-body background — crossfades with active persona */}
+      <AnimatePresence mode="popLayout">
+        {activePersona && step === 1 && (
+          <motion.img
+            key={activePersona.id}
+            src={activePersona.fullImageUrl}
+            alt=""
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.55 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="absolute inset-0 w-full h-full object-cover object-top blur-[10px] scale-110 pointer-events-none"
+          />
+        )}
+      </AnimatePresence>
+      {/* Dark overlay to keep text readable over the blurred bg */}
+      <div className="absolute inset-0 bg-skin-deep/60 pointer-events-none" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
 
       <div className="max-w-lg w-full relative z-10 space-y-6">
@@ -268,12 +301,42 @@ export default function InvitePage() {
                   </div>
                 </div>
 
-                {isDrawing ? (
-                  <div className="text-center py-12">
-                    <div className="text-skin-dim font-mono text-sm animate-pulse">Drawing characters...</div>
+                {isDrawing || personas.length === 0 ? (
+                  <div className="space-y-5">
+                    {/* Skeleton hero */}
+                    <div
+                      className="relative rounded-2xl overflow-hidden"
+                      style={{ height: '55vh', minHeight: '360px', maxHeight: '520px' }}
+                    >
+                      <div className="absolute inset-0 bg-skin-input/20 animate-pulse" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-skin-deep/90 via-transparent to-transparent pointer-events-none" />
+                      <div className="absolute bottom-5 left-5 right-5 space-y-2">
+                        <div className="h-7 w-44 bg-skin-input/30 rounded animate-pulse" />
+                        <div className="h-3 w-28 bg-skin-input/20 rounded animate-pulse" />
+                      </div>
+                    </div>
+                    {/* Skeleton description */}
+                    <div className="h-[3.75rem] flex items-center justify-center">
+                      <div className="h-4 w-52 bg-skin-input/20 animate-pulse rounded" />
+                    </div>
+                    {/* Skeleton thumbnails */}
+                    <div className="flex justify-center gap-5">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="flex flex-col items-center gap-1.5">
+                          <div className="w-16 h-16 rounded-full bg-skin-input/20 animate-pulse" />
+                          <div className="h-2.5 w-10 bg-skin-input/20 animate-pulse rounded" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : (
-                  <>
+                  <motion.div
+                    key={`draw-${drawKey}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.4 }}
+                    className="space-y-5"
+                  >
                     {/* Hero Image Area — swipeable with directional slide */}
                     <div
                       {...swipeHandlers}
@@ -357,8 +420,8 @@ export default function InvitePage() {
                       )}
                     </div>
 
-                    {/* Description — slides with softer motion */}
-                    <div className="relative overflow-hidden" style={{ minHeight: '2.5rem' }}>
+                    {/* Description — fixed height, slides with softer motion */}
+                    <div className="relative overflow-hidden h-[3.75rem]">
                       <AnimatePresence initial={false} custom={directionRef.current} mode="popLayout">
                         <motion.p
                           key={activeIndex}
@@ -368,7 +431,7 @@ export default function InvitePage() {
                           animate="center"
                           exit="exit"
                           transition={{ ...SPRING_SWIPE, stiffness: 200 }}
-                          className="text-sm text-skin-dim/70 text-center leading-relaxed px-2"
+                          className="absolute inset-0 text-base font-display font-bold text-skin-dim/80 text-center leading-snug px-4 flex items-center justify-center"
                         >
                           {activePersona?.description}
                         </motion.p>
@@ -413,7 +476,7 @@ export default function InvitePage() {
                         </motion.button>
                       ))}
                     </div>
-                  </>
+                  </motion.div>
                 )}
 
                 {error && (
@@ -422,21 +485,45 @@ export default function InvitePage() {
                   </div>
                 )}
 
-                <button
-                  onClick={() => {
-                    setError(null);
-                    setStep(2);
-                  }}
-                  disabled={!selectedPersona}
-                  className={`w-full py-5 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all
-                    ${
-                      !selectedPersona
-                        ? 'bg-skin-input text-skin-dim/40 cursor-not-allowed'
-                        : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
-                    }`}
-                >
-                  {selectedPersona ? 'Lock In' : 'Select a Character'}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={async () => {
+                      setIsDrawing(true);
+                      setError(null);
+                      const result = await redrawPersonas(code);
+                      setIsDrawing(false);
+                      if (result.success && result.personas) {
+                        setPersonas(result.personas);
+                        setDrawKey((k) => k + 1);
+                        setActiveIndex(0);
+                        prevIndexRef.current = 0;
+                        directionRef.current = 0;
+                        setSelectedPersona(result.personas[0]);
+                      } else {
+                        setError(result.error || 'Failed to redraw');
+                      }
+                    }}
+                    disabled={isDrawing}
+                    className="px-5 py-5 border border-skin-base text-skin-dim rounded-xl font-display font-bold text-sm uppercase tracking-widest hover:bg-skin-input/30 transition-all disabled:opacity-40 disabled:cursor-wait"
+                  >
+                    Redraw
+                  </button>
+                  <button
+                    onClick={() => {
+                      setError(null);
+                      setStep(2);
+                    }}
+                    disabled={!selectedPersona}
+                    className={`flex-1 py-5 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all
+                      ${
+                        !selectedPersona
+                          ? 'bg-skin-input text-skin-dim/40 cursor-not-allowed'
+                          : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
+                      }`}
+                  >
+                    {selectedPersona ? 'Lock In' : 'Select a Character'}
+                  </button>
+                </div>
               </div>
             )}
 

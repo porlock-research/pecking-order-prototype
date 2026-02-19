@@ -78,6 +78,11 @@ interface InviteRow {
   persona_name: string | null;
 }
 
+// ── Persona Draw Config ──────────────────────────────────────────────────
+
+const DRAW_SIZE = 3;                  // How many personas to present per draw
+const DRAW_TTL_MS = 15 * 60 * 1000;  // 15 min lock TTL
+
 // ── Game Creation ────────────────────────────────────────────────────────
 
 export async function createGame(
@@ -203,14 +208,15 @@ export async function getInviteInfo(code: string): Promise<{
   };
 }
 
-// ── Random Persona Draw ──────────────────────────────────────────────────
+// ── Random Persona Draw (Idempotent + Locking) ─────────────────────────
 
 export async function getRandomPersonas(
   code: string,
   theme?: string
 ): Promise<{ success: boolean; personas?: (Persona & { imageUrl: string; fullImageUrl: string })[]; error?: string }> {
-  await requireAuth(`/join/${code}`);
+  const session = await requireAuth(`/join/${code}`);
   const db = await getDB();
+  const now = Date.now();
 
   // Find game
   const game = await db
@@ -222,29 +228,75 @@ export async function getRandomPersonas(
     return { success: false, error: 'Game not found' };
   }
 
-  // Get taken persona IDs for this game
-  const { results: taken } = await db
+  // Check for existing non-expired draw for this user+game
+  const existingDraw = await db
+    .prepare('SELECT persona_ids, expires_at FROM PersonaDraws WHERE game_id = ? AND user_id = ?')
+    .bind(game.id, session.userId)
+    .first<{ persona_ids: string; expires_at: number }>();
+
+  if (existingDraw && existingDraw.expires_at > now) {
+    // Return the persisted draw (idempotent reload)
+    const drawIds: string[] = JSON.parse(existingDraw.persona_ids);
+    const { results: drawnPersonas } = await db
+      .prepare(
+        `SELECT id, name, stereotype, description, theme FROM PersonaPool WHERE id IN (${drawIds.map(() => '?').join(',')})`
+      )
+      .bind(...drawIds)
+      .all<Persona>();
+
+    // Maintain the original draw order
+    const byId = new Map(drawnPersonas.map((p) => [p.id, p]));
+    const ordered = drawIds.map((id) => byId.get(id)).filter(Boolean) as Persona[];
+
+    return {
+      success: true,
+      personas: ordered.map((p) => ({
+        ...p,
+        imageUrl: personaImageUrl(p.id, 'medium'),
+        fullImageUrl: personaImageUrl(p.id, 'full'),
+      })),
+    };
+  }
+
+  // Expired draw — clean it up
+  if (existingDraw) {
+    await db
+      .prepare('DELETE FROM PersonaDraws WHERE game_id = ? AND user_id = ?')
+      .bind(game.id, session.userId)
+      .run();
+  }
+
+  // Get locked persona IDs = confirmed picks + active draws from OTHER users
+  const { results: confirmedPicks } = await db
     .prepare('SELECT persona_id FROM Invites WHERE game_id = ? AND persona_id IS NOT NULL')
     .bind(game.id)
     .all<{ persona_id: string }>();
 
-  const takenIds = new Set(taken.map((t) => t.persona_id));
+  const { results: activeDraws } = await db
+    .prepare('SELECT persona_ids FROM PersonaDraws WHERE game_id = ? AND user_id != ? AND expires_at > ?')
+    .bind(game.id, session.userId, now)
+    .all<{ persona_ids: string }>();
+
+  const lockedIds = new Set<string>();
+  for (const row of confirmedPicks) lockedIds.add(row.persona_id);
+  for (const row of activeDraws) {
+    const ids: string[] = JSON.parse(row.persona_ids);
+    for (const id of ids) lockedIds.add(id);
+  }
 
   // Query available personas
   const themeFilter = theme ? ' AND theme = ?' : '';
   const query = `SELECT id, name, stereotype, description, theme FROM PersonaPool WHERE 1=1${themeFilter} ORDER BY id`;
-  const stmt = theme
-    ? db.prepare(query).bind(theme)
-    : db.prepare(query);
+  const stmt = theme ? db.prepare(query).bind(theme) : db.prepare(query);
   const { results: allPersonas } = await stmt.all<Persona>();
 
-  const available = allPersonas.filter((p) => !takenIds.has(p.id));
+  const available = allPersonas.filter((p) => !lockedIds.has(p.id));
 
-  if (available.length < 3) {
+  if (available.length < DRAW_SIZE) {
     return { success: false, error: 'Not enough characters available' };
   }
 
-  // Cryptographic shuffle, pick 3
+  // Cryptographic shuffle, pick DRAW_SIZE
   const shuffled = [...available];
   const arr = new Uint32Array(shuffled.length);
   crypto.getRandomValues(arr);
@@ -253,13 +305,52 @@ export async function getRandomPersonas(
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
 
-  const picked = shuffled.slice(0, 3).map((p) => ({
-    ...p,
-    imageUrl: personaImageUrl(p.id, 'medium'),
-    fullImageUrl: personaImageUrl(p.id, 'full'),
-  }));
+  const picked = shuffled.slice(0, DRAW_SIZE);
+  const pickedIds = picked.map((p) => p.id);
 
-  return { success: true, personas: picked };
+  // Persist draw (INSERT OR REPLACE to handle race with expired cleanup)
+  await db
+    .prepare(
+      'INSERT OR REPLACE INTO PersonaDraws (game_id, user_id, persona_ids, expires_at, created_at) VALUES (?, ?, ?, ?, ?)'
+    )
+    .bind(game.id, session.userId, JSON.stringify(pickedIds), now + DRAW_TTL_MS, now)
+    .run();
+
+  return {
+    success: true,
+    personas: picked.map((p) => ({
+      ...p,
+      imageUrl: personaImageUrl(p.id, 'medium'),
+      fullImageUrl: personaImageUrl(p.id, 'full'),
+    })),
+  };
+}
+
+// ── Re-Draw Personas ────────────────────────────────────────────────────
+
+export async function redrawPersonas(
+  code: string,
+  theme?: string
+): Promise<{ success: boolean; personas?: (Persona & { imageUrl: string; fullImageUrl: string })[]; error?: string }> {
+  const session = await requireAuth(`/join/${code}`);
+  const db = await getDB();
+
+  const game = await db
+    .prepare('SELECT id FROM GameSessions WHERE invite_code = ?')
+    .bind(code.toUpperCase())
+    .first<{ id: string }>();
+
+  if (!game) {
+    return { success: false, error: 'Game not found' };
+  }
+
+  // Delete existing draw so getRandomPersonas generates a fresh one
+  await db
+    .prepare('DELETE FROM PersonaDraws WHERE game_id = ? AND user_id = ?')
+    .bind(game.id, session.userId)
+    .run();
+
+  return getRandomPersonas(code, theme);
 }
 
 // ── Accept Invite ────────────────────────────────────────────────────────
@@ -325,6 +416,12 @@ export async function acceptInvite(
   await db
     .prepare('UPDATE Invites SET accepted_by = ?, persona_id = ?, custom_bio = ?, accepted_at = ? WHERE id = ?')
     .bind(session.userId, personaId, bio, now, slot.id)
+    .run();
+
+  // Release draw lock — unchosen personas go back to the pool
+  await db
+    .prepare('DELETE FROM PersonaDraws WHERE game_id = ? AND user_id = ?')
+    .bind(game.id, session.userId)
     .run();
 
   // Check if all slots are filled
@@ -783,7 +880,7 @@ export async function sendAdminCommand(gameId: string, command: any) {
 // ── Admin: Database Reset ────────────────────────────────────────────────
 
 // FK-safe order for lobby tables (children before parents)
-const LOBBY_TABLES = ['Invites', 'GameSessions', 'Sessions', 'MagicLinks', 'Users'] as const;
+const LOBBY_TABLES = ['PersonaDraws', 'Invites', 'GameSessions', 'Sessions', 'MagicLinks', 'Users'] as const;
 const GAME_SERVER_TABLES = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'] as const;
 
 interface ResetTablesInput {
