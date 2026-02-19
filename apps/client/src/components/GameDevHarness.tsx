@@ -1,42 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { createActor, fromPromise, type AnyActorRef, type Snapshot } from 'xstate';
 import type { SocialPlayer, GameProjection } from '@pecking-order/shared-types';
-import {
-  gapRunMachine,
-  gridPushMachine,
-  sequenceMachine,
-  reactionTimeMachine,
-  colorMatchMachine,
-  stackerMachine,
-  quickMathMachine,
-  simonSaysMachine,
-  aimTrainerMachine,
-  triviaMachine,
-  realtimeTriviaMachine,
-  betBetBetMachine,
-  blindAuctionMachine,
-  kingsRansomMachine,
-  touchScreenMachine,
-  theSplitMachine,
-  FALLBACK_QUESTIONS,
-  projectGameCartridge,
-} from '@pecking-order/game-cartridges';
-import GapRun from '../cartridges/games/gap-run/GapRun';
-import GridPush from '../cartridges/games/grid-push/GridPush';
-import SequenceGame from '../cartridges/games/sequence/SequenceGame';
-import ReactionTime from '../cartridges/games/reaction-time/ReactionTime';
-import ColorMatch from '../cartridges/games/color-match/ColorMatch';
-import Stacker from '../cartridges/games/stacker/Stacker';
-import QuickMath from '../cartridges/games/quick-math/QuickMath';
-import SimonSays from '../cartridges/games/simon-says/SimonSays';
-import AimTrainer from '../cartridges/games/aim-trainer/AimTrainer';
-import RealtimeTrivia from '../cartridges/games/realtime-trivia/RealtimeTrivia';
-import Trivia from '../cartridges/games/trivia/Trivia';
-import BetBetBet from '../cartridges/games/bet-bet-bet/BetBetBet';
-import BlindAuction from '../cartridges/games/blind-auction/BlindAuction';
-import KingsRansom from '../cartridges/games/kings-ransom/KingsRansom';
-import TouchScreen from '../cartridges/games/touch-screen/TouchScreen';
-import TheSplit from '../cartridges/games/the-split/TheSplit';
 
 // --- Types ---
 
@@ -61,33 +25,110 @@ interface LiveGameConfig {
 
 type GameConfig = GapRunConfig | TriviaConfig | RealtimeTriviaConfig | LiveGameConfig;
 
-function defaultConfig(type: GameType): GameConfig {
-  switch (type) {
-    case 'GAP_RUN': return { difficulty: 0.2 };
-    case 'GRID_PUSH': return { difficulty: 0.2 };
-    case 'SEQUENCE': return { difficulty: 0.2 };
-    case 'REACTION_TIME': return { difficulty: 0.2 };
-    case 'COLOR_MATCH': return { difficulty: 0.2 };
-    case 'STACKER': return { difficulty: 0.2 };
-    case 'QUICK_MATH': return { difficulty: 0.2 };
-    case 'SIMON_SAYS': return { difficulty: 0.2 };
-    case 'AIM_TRAINER': return { difficulty: 0.2 };
-    case 'TRIVIA': return { roundCount: 5 };
-    case 'REALTIME_TRIVIA': return { questionTimer: 8000 };
-    case 'BET_BET_BET': return { difficulty: 0.2 };
-    case 'BLIND_AUCTION': return { difficulty: 0.2 };
-    case 'KINGS_RANSOM': return { difficulty: 0.2 };
-    case 'TOUCH_SCREEN': return { difficulty: 0.2, liveMode: false };
-    case 'THE_SPLIT': return { difficulty: 0.2 };
-  }
-}
-
 interface LogEntry {
   ts: number;
   type: string;
   payload?: Record<string, any>;
   label?: string;
 }
+
+// --- Lazy Registry ---
+
+interface GameDef {
+  loadMachine: () => Promise<any>;
+  Component: React.LazyExoticComponent<React.ComponentType<any>>;
+  defaultConfig: GameConfig;
+  botPayload?: () => Record<string, any>;
+}
+
+const GAME_DEFS: Record<GameType, GameDef> = {
+  GAP_RUN: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.gapRunMachine),
+    Component: lazy(() => import('../cartridges/games/gap-run/GapRun')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  GRID_PUSH: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.gridPushMachine),
+    Component: lazy(() => import('../cartridges/games/grid-push/GridPush')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  SEQUENCE: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.sequenceMachine),
+    Component: lazy(() => import('../cartridges/games/sequence/SequenceGame')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  REACTION_TIME: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.reactionTimeMachine),
+    Component: lazy(() => import('../cartridges/games/reaction-time/ReactionTime')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  COLOR_MATCH: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.colorMatchMachine),
+    Component: lazy(() => import('../cartridges/games/color-match/ColorMatch')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  STACKER: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.stackerMachine),
+    Component: lazy(() => import('../cartridges/games/stacker/Stacker')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  QUICK_MATH: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.quickMathMachine),
+    Component: lazy(() => import('../cartridges/games/quick-math/QuickMath')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  SIMON_SAYS: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.simonSaysMachine),
+    Component: lazy(() => import('../cartridges/games/simon-says/SimonSays')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  AIM_TRAINER: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.aimTrainerMachine),
+    Component: lazy(() => import('../cartridges/games/aim-trainer/AimTrainer')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  TRIVIA: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.triviaMachine),
+    Component: lazy(() => import('../cartridges/games/trivia/Trivia')),
+    defaultConfig: { roundCount: 5 },
+  },
+  REALTIME_TRIVIA: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.realtimeTriviaMachine),
+    Component: lazy(() => import('../cartridges/games/realtime-trivia/RealtimeTrivia')),
+    defaultConfig: { questionTimer: 8000 },
+  },
+  BET_BET_BET: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.betBetBetMachine),
+    Component: lazy(() => import('../cartridges/games/bet-bet-bet/BetBetBet')),
+    defaultConfig: { difficulty: 0.2 },
+    botPayload: () => ({ amount: Math.floor(Math.random() * 30) + 1 }),
+  },
+  BLIND_AUCTION: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.blindAuctionMachine),
+    Component: lazy(() => import('../cartridges/games/blind-auction/BlindAuction')),
+    defaultConfig: { difficulty: 0.2 },
+    botPayload: () => ({ slot: Math.floor(Math.random() * 3) + 1, amount: Math.floor(Math.random() * 20) }),
+  },
+  KINGS_RANSOM: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.kingsRansomMachine),
+    Component: lazy(() => import('../cartridges/games/kings-ransom/KingsRansom')),
+    defaultConfig: { difficulty: 0.2 },
+    botPayload: () => ({ action: Math.random() > 0.5 ? 'STEAL' : 'PROTECT' }),
+  },
+  TOUCH_SCREEN: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.touchScreenMachine),
+    Component: lazy(() => import('../cartridges/games/touch-screen/TouchScreen')),
+    defaultConfig: { difficulty: 0.2, liveMode: false },
+  },
+  THE_SPLIT: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.theSplitMachine),
+    Component: lazy(() => import('../cartridges/games/the-split/TheSplit')),
+    defaultConfig: { difficulty: 0.2 },
+    botPayload: () => ({ action: Math.random() > 0.5 ? 'SPLIT' : 'STEAL' }),
+  },
+};
+
+const GAME_TYPES = Object.keys(GAME_DEFS) as GameType[];
 
 // --- Mock Data ---
 
@@ -98,36 +139,14 @@ const MOCK_ROSTER: Record<string, SocialPlayer> = {
 };
 const MOCK_PLAYER_ID = 'dev-p1';
 
-// --- Machine Selection ---
-
-function getMachine(type: GameType) {
-  switch (type) {
-    case 'GAP_RUN': return gapRunMachine;
-    case 'GRID_PUSH': return gridPushMachine;
-    case 'SEQUENCE': return sequenceMachine;
-    case 'REACTION_TIME': return reactionTimeMachine;
-    case 'COLOR_MATCH': return colorMatchMachine;
-    case 'STACKER': return stackerMachine;
-    case 'QUICK_MATH': return quickMathMachine;
-    case 'SIMON_SAYS': return simonSaysMachine;
-    case 'AIM_TRAINER': return aimTrainerMachine;
-    case 'TRIVIA': return triviaMachine;
-    case 'REALTIME_TRIVIA': return realtimeTriviaMachine;
-    case 'BET_BET_BET': return betBetBetMachine;
-    case 'BLIND_AUCTION': return blindAuctionMachine;
-    case 'KINGS_RANSOM': return kingsRansomMachine;
-    case 'TOUCH_SCREEN': return touchScreenMachine;
-    case 'THE_SPLIT': return theSplitMachine;
-  }
-}
-
 // --- Main Component ---
 
 export default function GameDevHarness() {
   const [gameType, setGameType] = useState<GameType>('GAP_RUN');
-  const [config, setConfig] = useState<GameConfig>(defaultConfig('GAP_RUN'));
+  const [config, setConfig] = useState<GameConfig>(GAME_DEFS.GAP_RUN.defaultConfig);
   const [cartridge, setCartridge] = useState<GameProjection | null>(null);
   const [eventLog, setEventLog] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const actorRef = useRef<AnyActorRef | null>(null);
 
@@ -136,8 +155,8 @@ export default function GameDevHarness() {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [eventLog]);
 
-  // --- Reset: stop old actor, create new one ---
-  const resetCartridge = useCallback((type: GameType, cfg: GameConfig) => {
+  // --- Reset: stop old actor, async-load machine, create new actor ---
+  const resetCartridge = useCallback(async (type: GameType, cfg: GameConfig) => {
     // Stop existing actor
     if (actorRef.current) {
       actorRef.current.stop();
@@ -146,8 +165,16 @@ export default function GameDevHarness() {
 
     setEventLog([]);
     setCartridge(null);
+    setLoading(true);
 
-    const machine = getMachine(type);
+    const [machine, pkg] = await Promise.all([
+      GAME_DEFS[type].loadMachine(),
+      import('@pecking-order/game-cartridges'),
+    ]);
+    const { projectGameCartridge, FALLBACK_QUESTIONS } = pkg;
+
+    setLoading(false);
+
     const input: any = { gameType: type, roster: MOCK_ROSTER, dayIndex: 1 };
 
     // Pass per-game config into machine input
@@ -252,6 +279,9 @@ export default function GameDevHarness() {
     },
   };
 
+  const def = GAME_DEFS[gameType];
+  const ActiveComponent = def.Component;
+
   return (
     <div className="fixed inset-0 flex flex-col bg-skin-fill text-skin-base font-body overflow-hidden bg-grid-pattern">
       {/* Top bar */}
@@ -264,29 +294,16 @@ export default function GameDevHarness() {
           value={gameType}
           onChange={(e) => {
             const t = e.target.value as GameType;
-            const newCfg = defaultConfig(t);
+            const newCfg = GAME_DEFS[t].defaultConfig;
             setGameType(t);
             setConfig(newCfg);
             resetCartridge(t, newCfg);
           }}
           className="bg-skin-panel border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs font-mono text-skin-base focus:border-skin-gold/50 focus:outline-none"
         >
-          <option value="GAP_RUN">GAP_RUN</option>
-          <option value="GRID_PUSH">GRID_PUSH</option>
-          <option value="SEQUENCE">SEQUENCE</option>
-          <option value="REACTION_TIME">REACTION_TIME</option>
-          <option value="COLOR_MATCH">COLOR_MATCH</option>
-          <option value="STACKER">STACKER</option>
-          <option value="QUICK_MATH">QUICK_MATH</option>
-          <option value="SIMON_SAYS">SIMON_SAYS</option>
-          <option value="AIM_TRAINER">AIM_TRAINER</option>
-          <option value="TRIVIA">TRIVIA</option>
-          <option value="REALTIME_TRIVIA">REALTIME_TRIVIA</option>
-          <option value="BET_BET_BET">BET_BET_BET</option>
-          <option value="BLIND_AUCTION">BLIND_AUCTION</option>
-          <option value="KINGS_RANSOM">KINGS_RANSOM</option>
-          <option value="TOUCH_SCREEN">TOUCH_SCREEN</option>
-          <option value="THE_SPLIT">THE_SPLIT</option>
+          {GAME_TYPES.map(t => (
+            <option key={t} value={t}>{t}</option>
+          ))}
         </select>
 
         {/* Mode toggle (live games) */}
@@ -413,23 +430,14 @@ export default function GameDevHarness() {
           </>
         )}
 
-        {['BET_BET_BET', 'BLIND_AUCTION', 'KINGS_RANSOM', 'THE_SPLIT'].includes(gameType) && (
+        {gameType !== 'TOUCH_SCREEN' && def.botPayload && (
           <>
             <button
               onClick={() => {
                 if (!actorRef.current) return;
                 const botIds = ['dev-p2', 'dev-p3'];
                 for (const botId of botIds) {
-                  let payload: Record<string, any> = {};
-                  if (gameType === 'BET_BET_BET') {
-                    payload = { amount: Math.floor(Math.random() * 30) + 1 };
-                  } else if (gameType === 'BLIND_AUCTION') {
-                    payload = { slot: Math.floor(Math.random() * 3) + 1, amount: Math.floor(Math.random() * 20) };
-                  } else if (gameType === 'KINGS_RANSOM') {
-                    payload = { action: Math.random() > 0.5 ? 'STEAL' : 'PROTECT' };
-                  } else if (gameType === 'THE_SPLIT') {
-                    payload = { action: Math.random() > 0.5 ? 'SPLIT' : 'STEAL' };
-                  }
+                  const payload = def.botPayload!();
                   actorRef.current.send({ type: `GAME.${gameType}.SUBMIT`, senderId: botId, ...payload });
                   setEventLog(prev => [...prev, { ts: Date.now(), type: `GAME.${gameType}.SUBMIT`, payload: { senderId: botId, ...payload }, label: 'Bot Submit' }]);
                 }
@@ -463,28 +471,20 @@ export default function GameDevHarness() {
       {/* Middle: Game cartridge */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-md mx-auto">
-          {!cartridge && (
+          {(loading || !cartridge) && (
             <div className="p-6 text-center">
               <span className="inline-block w-5 h-5 border-2 border-skin-gold border-t-transparent rounded-full spin-slow" />
               <p className="text-sm font-mono text-skin-dim animate-pulse mt-2">Loading machine...</p>
             </div>
           )}
-          {cartridge && gameType === 'GAP_RUN' && <GapRun {...commonProps} />}
-          {cartridge && gameType === 'GRID_PUSH' && <GridPush {...commonProps} />}
-          {cartridge && gameType === 'SEQUENCE' && <SequenceGame {...commonProps} />}
-          {cartridge && gameType === 'REACTION_TIME' && <ReactionTime {...commonProps} />}
-          {cartridge && gameType === 'COLOR_MATCH' && <ColorMatch {...commonProps} />}
-          {cartridge && gameType === 'STACKER' && <Stacker {...commonProps} />}
-          {cartridge && gameType === 'QUICK_MATH' && <QuickMath {...commonProps} />}
-          {cartridge && gameType === 'SIMON_SAYS' && <SimonSays {...commonProps} />}
-          {cartridge && gameType === 'AIM_TRAINER' && <AimTrainer {...commonProps} />}
-          {cartridge && gameType === 'TRIVIA' && <Trivia {...commonProps} />}
-          {cartridge && gameType === 'REALTIME_TRIVIA' && <RealtimeTrivia {...commonProps} />}
-          {cartridge && gameType === 'BET_BET_BET' && <BetBetBet {...commonProps} />}
-          {cartridge && gameType === 'BLIND_AUCTION' && <BlindAuction {...commonProps} />}
-          {cartridge && gameType === 'KINGS_RANSOM' && <KingsRansom {...commonProps} />}
-          {cartridge && gameType === 'TOUCH_SCREEN' && <TouchScreen {...commonProps} />}
-          {cartridge && gameType === 'THE_SPLIT' && <TheSplit {...commonProps} />}
+          <Suspense fallback={
+            <div className="p-6 text-center">
+              <span className="inline-block w-5 h-5 border-2 border-skin-gold border-t-transparent rounded-full spin-slow" />
+              <p className="text-sm font-mono text-skin-dim animate-pulse mt-2">Loading component...</p>
+            </div>
+          }>
+            {cartridge && !loading && <ActiveComponent {...commonProps} />}
+          </Suspense>
         </div>
       </div>
 

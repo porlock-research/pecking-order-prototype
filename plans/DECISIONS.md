@@ -743,3 +743,24 @@ This document tracks significant architectural decisions, their context, and con
     *   Sonner centralizes all toast notifications with consistent styling, replacing scattered inline AnimatePresence blocks.
     *   Classic shell is completely untouched — theme CSS changes (glass-elevated) are additive.
     *   `springs.ts` is the single source of truth for animation feel — changing a spring config affects all components consistently.
+
+## [ADR-060] Lazy-Load Game Machines & Components in Dev Harness
+
+*   **Date:** 2026-02-19
+*   **Status:** Accepted
+*   **Context:** `GameDevHarness.tsx` statically imported all 16 game machines from `@pecking-order/game-cartridges` and all 16 React game components. This put everything into one chunk (~85KB), even though the harness only displays one game at a time. The `/dev/games` route loaded slowly and bloated the initial bundle unnecessarily.
+*   **Decision:** Replace static imports with a **lazy registry** (`GAME_DEFS: Record<GameType, GameDef>`). Each entry provides:
+    *   `loadMachine: () => Promise<any>` — dynamic `import()` resolving the machine from the package index.
+    *   `Component: React.LazyExoticComponent` — `React.lazy()` wrapping the game's default export.
+    *   `defaultConfig: GameConfig` — replaces the `defaultConfig()` switch function.
+    *   `botPayload?: () => Record<string, any>` — replaces the if/else bot payload chain.
+    *   `resetCartridge` becomes `async` — loads machine + `projectGameCartridge`/`FALLBACK_QUESTIONS` via `Promise.all`, with a `loading` state for the spinner.
+    *   Render block: single `<Suspense>` + `<ActiveComponent>` replaces 16 conditional lines.
+    *   Dropdown options generated from `Object.keys(GAME_DEFS)`.
+    *   `getMachine()` and `defaultConfig()` functions deleted.
+*   **Consequences:**
+    *   `GameDevHarness` chunk dropped from ~85KB to ~44KB. Each game component is its own chunk (~3–9KB each).
+    *   Vite caches the dynamic `import('@pecking-order/game-cartridges')` after the first game load — subsequent switches are instant.
+    *   Adding a new game to the harness requires only a new entry in `GAME_DEFS` (no switch cases, no static imports).
+    *   `React.lazy` provides per-component code splitting with a `<Suspense>` fallback spinner.
+    *   Bot buttons for sync-decision games are driven by `def.botPayload` — TOUCH_SCREEN keeps its custom buttons via special-case check (structurally different from simple submit).
