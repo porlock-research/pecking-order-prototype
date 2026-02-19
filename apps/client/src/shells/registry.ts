@@ -23,7 +23,7 @@ export function getActiveShellId(): string {
   const fromStorage = localStorage.getItem(STORAGE_KEY);
   if (fromStorage && SHELL_REGISTRY.some(s => s.id === fromStorage)) return fromStorage;
 
-  return 'classic';
+  return 'immersive';
 }
 
 export function setActiveShellId(id: string): void {

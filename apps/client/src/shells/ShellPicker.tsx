@@ -2,7 +2,7 @@ import React from 'react';
 import { SHELL_REGISTRY, getActiveShellId, setActiveShellId } from './registry';
 
 export function ShellPicker() {
-  if (!import.meta.env.DEV) return null;
+
 
   const currentId = getActiveShellId();
   const current = SHELL_REGISTRY.find(s => s.id === currentId);
