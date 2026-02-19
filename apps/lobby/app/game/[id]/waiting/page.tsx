@@ -101,8 +101,16 @@ export default function WaitingRoom() {
                     : 'bg-skin-input/10 border-dashed border-skin-base/20'
                   }`}
               >
-                <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-skin-deep/60 text-xl">
-                  {slot.personaAvatar || '?'}
+                <div className="w-10 h-10 rounded-lg bg-skin-deep/60 overflow-hidden flex items-center justify-center">
+                  {slot.personaImageUrl ? (
+                    <img
+                      src={slot.personaImageUrl}
+                      alt={slot.personaName || ''}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xl text-skin-dim/30">?</span>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   {slot.acceptedBy ? (

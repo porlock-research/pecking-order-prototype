@@ -69,6 +69,13 @@ export default function AdminPage() {
     <div className="max-w-xl mx-auto py-12 px-6 space-y-8">
       <h1 className="text-2xl font-bold">Admin Dashboard</h1>
 
+      <section className="border rounded-lg p-4 space-y-2 bg-gray-50">
+        <h2 className="text-lg font-semibold">Manage</h2>
+        <a href="/admin/personas" className="inline-block px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">
+          Persona Pool
+        </a>
+      </section>
+
       <section className="border border-red-300 rounded-lg p-4 space-y-4 bg-red-50">
         <h2 className="text-lg font-semibold text-red-800">Database Reset</h2>
         <p className="text-xs text-red-600">

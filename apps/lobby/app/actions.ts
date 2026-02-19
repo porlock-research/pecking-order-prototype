@@ -37,8 +37,14 @@ export interface DebugManifestConfig {
 export interface Persona {
   id: string;
   name: string;
-  avatar: string;
-  bio: string;
+  stereotype: string;
+  description: string;
+  theme: string;
+}
+
+function personaImageUrl(id: string, variant: 'headshot' | 'medium' | 'full'): string {
+  // PERSONA_ASSETS_URL is resolved at runtime from env — empty string for local dev (R2 binding serves via miniflare)
+  return `/api/persona-image/${id}/${variant}.png`;
 }
 
 export interface GameSlot {
@@ -46,7 +52,7 @@ export interface GameSlot {
   acceptedBy: string | null;
   personaId: string | null;
   personaName: string | null;
-  personaAvatar: string | null;
+  personaImageUrl: string | null;
   displayName: string | null;
 }
 
@@ -59,7 +65,6 @@ export interface GameInfo {
   inviteCode: string;
   hostUserId: string;
   slots: GameSlot[];
-  availablePersonas: Persona[];
 }
 
 // ── D1 Row Types ─────────────────────────────────────────────────────────
@@ -71,7 +76,6 @@ interface InviteRow {
   display_name: string | null;
   email: string | null;
   persona_name: string | null;
-  persona_avatar: string | null;
 }
 
 // ── Game Creation ────────────────────────────────────────────────────────
@@ -161,7 +165,7 @@ export async function getInviteInfo(code: string): Promise<{
     .prepare(
       `SELECT i.slot_index, i.accepted_by, i.persona_id,
               u.display_name, u.email,
-              pp.name as persona_name, pp.avatar as persona_avatar
+              pp.name as persona_name
        FROM Invites i
        LEFT JOIN Users u ON u.id = i.accepted_by
        LEFT JOIN PersonaPool pp ON pp.id = i.persona_id
@@ -171,24 +175,12 @@ export async function getInviteInfo(code: string): Promise<{
     .bind(game.id)
     .all<InviteRow>();
 
-  // Get taken persona IDs
-  const takenPersonaIds = new Set(
-    invites.filter((i) => i.persona_id).map((i) => i.persona_id!)
-  );
-
-  // Get all personas, filter out taken ones
-  const { results: allPersonas } = await db
-    .prepare('SELECT id, name, avatar, bio FROM PersonaPool ORDER BY name')
-    .all<Persona>();
-
-  const availablePersonas = allPersonas.filter((p) => !takenPersonaIds.has(p.id));
-
   const slots: GameSlot[] = invites.map((inv) => ({
     slotIndex: inv.slot_index,
     acceptedBy: inv.accepted_by,
     personaId: inv.persona_id,
     personaName: inv.persona_name,
-    personaAvatar: inv.persona_avatar,
+    personaImageUrl: inv.persona_id ? personaImageUrl(inv.persona_id, 'headshot') : null,
     displayName: inv.display_name || inv.email?.split('@')[0] || null,
   }));
 
@@ -205,18 +197,76 @@ export async function getInviteInfo(code: string): Promise<{
       inviteCode: game.invite_code,
       hostUserId: game.host_user_id,
       slots,
-      availablePersonas,
     },
     currentUserId: session.userId,
     alreadyJoined,
   };
 }
 
+// ── Random Persona Draw ──────────────────────────────────────────────────
+
+export async function getRandomPersonas(
+  code: string,
+  theme?: string
+): Promise<{ success: boolean; personas?: (Persona & { imageUrl: string })[]; error?: string }> {
+  await requireAuth(`/join/${code}`);
+  const db = await getDB();
+
+  // Find game
+  const game = await db
+    .prepare('SELECT id FROM GameSessions WHERE invite_code = ?')
+    .bind(code.toUpperCase())
+    .first<{ id: string }>();
+
+  if (!game) {
+    return { success: false, error: 'Game not found' };
+  }
+
+  // Get taken persona IDs for this game
+  const { results: taken } = await db
+    .prepare('SELECT persona_id FROM Invites WHERE game_id = ? AND persona_id IS NOT NULL')
+    .bind(game.id)
+    .all<{ persona_id: string }>();
+
+  const takenIds = new Set(taken.map((t) => t.persona_id));
+
+  // Query available personas
+  const themeFilter = theme ? ' AND theme = ?' : '';
+  const query = `SELECT id, name, stereotype, description, theme FROM PersonaPool WHERE 1=1${themeFilter} ORDER BY id`;
+  const stmt = theme
+    ? db.prepare(query).bind(theme)
+    : db.prepare(query);
+  const { results: allPersonas } = await stmt.all<Persona>();
+
+  const available = allPersonas.filter((p) => !takenIds.has(p.id));
+
+  if (available.length < 3) {
+    return { success: false, error: 'Not enough characters available' };
+  }
+
+  // Cryptographic shuffle, pick 3
+  const shuffled = [...available];
+  const arr = new Uint32Array(shuffled.length);
+  crypto.getRandomValues(arr);
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = arr[i] % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  const picked = shuffled.slice(0, 3).map((p) => ({
+    ...p,
+    imageUrl: personaImageUrl(p.id, 'medium'),
+  }));
+
+  return { success: true, personas: picked };
+}
+
 // ── Accept Invite ────────────────────────────────────────────────────────
 
 export async function acceptInvite(
   code: string,
-  personaId: string
+  personaId: string,
+  customBio: string
 ): Promise<{ success: boolean; error?: string }> {
   const session = await requireAuth(`/join/${code}`);
   const db = await getDB();
@@ -230,6 +280,12 @@ export async function acceptInvite(
 
   if (!game || game.status !== 'RECRUITING') {
     return { success: false, error: 'Game is not accepting players' };
+  }
+
+  // Validate bio
+  const bio = customBio.trim();
+  if (!bio || bio.length > 280) {
+    return { success: false, error: 'Bio must be between 1 and 280 characters' };
   }
 
   // Check user not already in this game
@@ -266,8 +322,8 @@ export async function acceptInvite(
 
   // Claim slot
   await db
-    .prepare('UPDATE Invites SET accepted_by = ?, persona_id = ?, accepted_at = ? WHERE id = ?')
-    .bind(session.userId, personaId, now, slot.id)
+    .prepare('UPDATE Invites SET accepted_by = ?, persona_id = ?, custom_bio = ?, accepted_at = ? WHERE id = ?')
+    .bind(session.userId, personaId, bio, now, slot.id)
     .run();
 
   // Check if all slots are filled
@@ -331,8 +387,8 @@ export async function startGame(
   // Load accepted invites with persona data
   const { results: invites } = await db
     .prepare(
-      `SELECT i.slot_index, i.accepted_by, i.persona_id,
-              pp.name as persona_name, pp.avatar as persona_avatar, pp.bio as persona_bio
+      `SELECT i.slot_index, i.accepted_by, i.persona_id, i.custom_bio,
+              pp.name as persona_name, pp.description as persona_description
        FROM Invites i
        JOIN PersonaPool pp ON pp.id = i.persona_id
        WHERE i.game_id = ? AND i.accepted_by IS NOT NULL
@@ -343,9 +399,9 @@ export async function startGame(
       slot_index: number;
       accepted_by: string;
       persona_id: string;
+      custom_bio: string | null;
       persona_name: string;
-      persona_avatar: string;
-      persona_bio: string;
+      persona_description: string;
     }>();
 
   // Build roster
@@ -359,8 +415,8 @@ export async function startGame(
     roster[pid] = {
       realUserId: inv.accepted_by,
       personaName: inv.persona_name,
-      avatarUrl: inv.persona_avatar,
-      bio: inv.persona_bio,
+      avatarUrl: personaImageUrl(inv.persona_id, 'headshot'),
+      bio: inv.custom_bio || inv.persona_description,
       isAlive: true,
       isSpectator: false,
       silver: 50,
@@ -466,29 +522,24 @@ export async function startDebugGame(
   const dayCount = debugConfig?.dayCount ?? 7;
   const playerCount = dayCount + 1;
 
-  const ALL_PERSONAS = [
-    { name: 'Countess Snuffles', emoji: '🐱' },
-    { name: 'Dr. Spatula', emoji: '🍔' },
-    { name: 'Baron Von Bon Bon', emoji: '🍬' },
-    { name: 'Captain Quack', emoji: '🦆' },
-    { name: 'Lady Fingers', emoji: '💅' },
-    { name: 'Sir Loin', emoji: '🥩' },
-    { name: 'Madame Mist', emoji: '🌫️' },
-    { name: 'Professor Puns', emoji: '🤡' },
-  ];
+  // Query personas from D1
+  const db = await getDB();
+  const { results: dbPersonas } = await db
+    .prepare('SELECT id, name, description FROM PersonaPool ORDER BY id LIMIT ?')
+    .bind(playerCount)
+    .all<{ id: string; name: string; description: string }>();
 
   const roster: Roster = {};
   const tokens: Record<string, string> = {};
-  const personas = ALL_PERSONAS.slice(0, playerCount);
 
-  for (let i = 0; i < personas.length; i++) {
-    const p = personas[i];
-    const id = `p${i + 1}`;
-    roster[id] = {
+  for (let i = 0; i < dbPersonas.length; i++) {
+    const p = dbPersonas[i];
+    const pid = `p${i + 1}`;
+    roster[pid] = {
       realUserId: `debug-user-${i + 1}`,
       personaName: p.name,
-      avatarUrl: p.emoji,
-      bio: 'Ready to win.',
+      avatarUrl: personaImageUrl(p.id, 'headshot'),
+      bio: p.description,
       isAlive: true,
       isSpectator: false,
       silver: 50,
@@ -496,11 +547,11 @@ export async function startDebugGame(
       destinyId: i === 0 ? 'FANATIC' : 'FLOAT',
     };
 
-    tokens[id] = await signGameToken(
+    tokens[pid] = await signGameToken(
       {
         sub: `debug-user-${i + 1}`,
         gameId: GAME_ID,
-        playerId: id,
+        playerId: pid,
         personaName: p.name,
       },
       AUTH_SECRET
@@ -822,7 +873,7 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     .prepare(
       `SELECT i.slot_index, i.accepted_by, i.persona_id,
               u.display_name, u.email,
-              pp.name as persona_name, pp.avatar as persona_avatar
+              pp.name as persona_name
        FROM Invites i
        LEFT JOIN Users u ON u.id = i.accepted_by
        LEFT JOIN PersonaPool pp ON pp.id = i.persona_id
@@ -837,7 +888,7 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     acceptedBy: inv.accepted_by,
     personaId: inv.persona_id,
     personaName: inv.persona_name,
-    personaAvatar: inv.persona_avatar,
+    personaImageUrl: inv.persona_id ? personaImageUrl(inv.persona_id, 'headshot') : null,
     displayName: inv.display_name || inv.email?.split('@')[0] || null,
   }));
 

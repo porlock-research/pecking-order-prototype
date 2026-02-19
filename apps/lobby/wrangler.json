@@ -16,8 +16,15 @@
   },
   "vars": {
     "GAME_SERVER_HOST": "https://game-server.porlock.workers.dev",
-    "GAME_CLIENT_HOST": "https://pecking-order-client.pages.dev"
+    "GAME_CLIENT_HOST": "https://pecking-order-client.pages.dev",
+    "PERSONA_ASSETS_URL": ""
   },
+  "r2_buckets": [
+    {
+      "binding": "PERSONA_BUCKET",
+      "bucket_name": "pecking-order-assets"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
