@@ -3,17 +3,33 @@ import { SyncDecisionPhases } from '@pecking-order/shared-types';
 /** Fields to strip from sync decision projections (internal/server-only) */
 const SYNC_DECISION_INTERNAL_FIELDS = new Set(['roster', 'dayIndex']);
 
+/** Fields managed by the framework — never pass through as "extra" */
+const SYNC_DECISION_FRAMEWORK_FIELDS = new Set([
+  'gameType', 'phase', 'eligiblePlayers', 'decisions', 'submitted', 'results',
+  'currentRound', 'totalRounds', 'roundResults',
+]);
+
 /** Extract public extra fields from sync decision context */
 function pickPublicFields(gameCtx: any): Record<string, any> {
   const public_: Record<string, any> = {};
   for (const [key, value] of Object.entries(gameCtx)) {
     if (
       SYNC_DECISION_INTERNAL_FIELDS.has(key) ||
-      ['gameType', 'phase', 'eligiblePlayers', 'decisions', 'submitted', 'results'].includes(key)
+      SYNC_DECISION_FRAMEWORK_FIELDS.has(key)
     ) continue;
     public_[key] = value;
   }
   return public_;
+}
+
+/** Multi-round fields, included when totalRounds > 1 */
+function pickRoundFields(gameCtx: any): Record<string, any> {
+  if (!gameCtx.totalRounds || gameCtx.totalRounds <= 1) return {};
+  return {
+    currentRound: gameCtx.currentRound,
+    totalRounds: gameCtx.totalRounds,
+    roundResults: gameCtx.roundResults ?? [],
+  };
 }
 
 /**
@@ -38,10 +54,24 @@ export function projectGameCartridge(gameCtx: any, playerId: string): any {
         submitted: gameCtx.submitted,
         myDecision: gameCtx.decisions[playerId] ?? null,
         results: null,
+        ...pickRoundFields(gameCtx),
         ...pickPublicFields(gameCtx),
       };
     }
-    // REVEAL: show all decisions + results
+    if (gameCtx.phase === SyncDecisionPhases.ROUND_REVEAL) {
+      // Show all decisions for this round + latest round result
+      return {
+        gameType: gameCtx.gameType,
+        phase: gameCtx.phase,
+        eligiblePlayers: gameCtx.eligiblePlayers,
+        submitted: gameCtx.submitted,
+        decisions: gameCtx.decisions,
+        results: null,
+        ...pickRoundFields(gameCtx),
+        ...pickPublicFields(gameCtx),
+      };
+    }
+    // REVEAL: show all decisions + final results
     return {
       gameType: gameCtx.gameType,
       phase: gameCtx.phase,
@@ -49,6 +79,7 @@ export function projectGameCartridge(gameCtx: any, playerId: string): any {
       submitted: gameCtx.submitted,
       decisions: gameCtx.decisions,
       results: gameCtx.results,
+      ...pickRoundFields(gameCtx),
       ...pickPublicFields(gameCtx),
     };
   }

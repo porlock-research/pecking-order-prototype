@@ -32,6 +32,7 @@ const AVAILABLE_GAME_TYPES = [
   { value: 'BLIND_AUCTION', label: 'Blind Auction' },
   { value: 'KINGS_RANSOM', label: "King's Ransom" },
   { value: 'TOUCH_SCREEN', label: 'Touch Screen' },
+  { value: 'THE_SPLIT', label: 'The Split' },
 ];
 
 const AVAILABLE_ACTIVITY_TYPES = [

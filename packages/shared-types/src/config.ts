@@ -110,5 +110,11 @@ export const Config = {
       vaultMinimum: 10,
       vaultFraction: 0.3,
     },
+    theSplit: {
+      basePot: 5,
+      potIncrement: 5,
+      revealDurationMs: 8_000,
+      winnerBonus: 10,
+    },
   },
 } as const;

@@ -17,6 +17,7 @@ import {
   blindAuctionMachine,
   kingsRansomMachine,
   touchScreenMachine,
+  theSplitMachine,
   FALLBACK_QUESTIONS,
   projectGameCartridge,
 } from '@pecking-order/game-cartridges';
@@ -35,10 +36,11 @@ import BetBetBet from '../cartridges/games/bet-bet-bet/BetBetBet';
 import BlindAuction from '../cartridges/games/blind-auction/BlindAuction';
 import KingsRansom from '../cartridges/games/kings-ransom/KingsRansom';
 import TouchScreen from '../cartridges/games/touch-screen/TouchScreen';
+import TheSplit from '../cartridges/games/the-split/TheSplit';
 
 // --- Types ---
 
-type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA' | 'BET_BET_BET' | 'BLIND_AUCTION' | 'KINGS_RANSOM' | 'TOUCH_SCREEN';
+type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA' | 'BET_BET_BET' | 'BLIND_AUCTION' | 'KINGS_RANSOM' | 'TOUCH_SCREEN' | 'THE_SPLIT';
 
 interface GapRunConfig {
   difficulty: number; // 0-1
@@ -76,6 +78,7 @@ function defaultConfig(type: GameType): GameConfig {
     case 'BLIND_AUCTION': return { difficulty: 0.2 };
     case 'KINGS_RANSOM': return { difficulty: 0.2 };
     case 'TOUCH_SCREEN': return { difficulty: 0.2, liveMode: false };
+    case 'THE_SPLIT': return { difficulty: 0.2 };
   }
 }
 
@@ -114,6 +117,7 @@ function getMachine(type: GameType) {
     case 'BLIND_AUCTION': return blindAuctionMachine;
     case 'KINGS_RANSOM': return kingsRansomMachine;
     case 'TOUCH_SCREEN': return touchScreenMachine;
+    case 'THE_SPLIT': return theSplitMachine;
   }
 }
 
@@ -282,6 +286,7 @@ export default function GameDevHarness() {
           <option value="BLIND_AUCTION">BLIND_AUCTION</option>
           <option value="KINGS_RANSOM">KINGS_RANSOM</option>
           <option value="TOUCH_SCREEN">TOUCH_SCREEN</option>
+          <option value="THE_SPLIT">THE_SPLIT</option>
         </select>
 
         {/* Mode toggle (live games) */}
@@ -408,7 +413,7 @@ export default function GameDevHarness() {
           </>
         )}
 
-        {['BET_BET_BET', 'BLIND_AUCTION', 'KINGS_RANSOM'].includes(gameType) && (
+        {['BET_BET_BET', 'BLIND_AUCTION', 'KINGS_RANSOM', 'THE_SPLIT'].includes(gameType) && (
           <>
             <button
               onClick={() => {
@@ -422,6 +427,8 @@ export default function GameDevHarness() {
                     payload = { slot: Math.floor(Math.random() * 3) + 1, amount: Math.floor(Math.random() * 20) };
                   } else if (gameType === 'KINGS_RANSOM') {
                     payload = { action: Math.random() > 0.5 ? 'STEAL' : 'PROTECT' };
+                  } else if (gameType === 'THE_SPLIT') {
+                    payload = { action: Math.random() > 0.5 ? 'SPLIT' : 'STEAL' };
                   }
                   actorRef.current.send({ type: `GAME.${gameType}.SUBMIT`, senderId: botId, ...payload });
                   setEventLog(prev => [...prev, { ts: Date.now(), type: `GAME.${gameType}.SUBMIT`, payload: { senderId: botId, ...payload }, label: 'Bot Submit' }]);
@@ -477,6 +484,7 @@ export default function GameDevHarness() {
           {cartridge && gameType === 'BLIND_AUCTION' && <BlindAuction {...commonProps} />}
           {cartridge && gameType === 'KINGS_RANSOM' && <KingsRansom {...commonProps} />}
           {cartridge && gameType === 'TOUCH_SCREEN' && <TouchScreen {...commonProps} />}
+          {cartridge && gameType === 'THE_SPLIT' && <TheSplit {...commonProps} />}
         </div>
       </div>
 

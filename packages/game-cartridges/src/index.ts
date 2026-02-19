@@ -13,7 +13,7 @@ export type { ArcadeGameConfig, ArcadePlayerState, ArcadeGameContext } from './m
 
 // Sync decision factory + types
 export { createSyncDecisionMachine } from './machines/sync-decision-machine';
-export type { SyncDecisionConfig, SyncDecisionContext, SyncDecisionResult } from './machines/sync-decision-machine';
+export type { SyncDecisionConfig, SyncDecisionContext, SyncDecisionResult, RoundResult, MultiRoundConfig } from './machines/sync-decision-machine';
 
 // Machines + Registry
 export {
@@ -22,6 +22,6 @@ export {
   quickMathMachine, simonSaysMachine, aimTrainerMachine,
   triviaMachine, realtimeTriviaMachine,
   betBetBetMachine, blindAuctionMachine, kingsRansomMachine,
-  touchScreenMachine,
+  touchScreenMachine, theSplitMachine,
   GAME_REGISTRY,
 } from './machines';

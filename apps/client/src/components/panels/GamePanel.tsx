@@ -16,6 +16,7 @@ import BetBetBet from '../../cartridges/games/bet-bet-bet/BetBetBet';
 import BlindAuction from '../../cartridges/games/blind-auction/BlindAuction';
 import KingsRansom from '../../cartridges/games/kings-ransom/KingsRansom';
 import TouchScreen from '../../cartridges/games/touch-screen/TouchScreen';
+import TheSplit from '../../cartridges/games/the-split/TheSplit';
 
 interface GamePanelProps {
   engine: {
@@ -68,6 +69,8 @@ export default function GamePanel({ engine }: GamePanelProps) {
       return <KingsRansom {...common} />;
     case GameTypes.TOUCH_SCREEN:
       return <TouchScreen {...common} />;
+    case GameTypes.THE_SPLIT:
+      return <TheSplit {...common} />;
     default:
       return (
         <div className="mx-4 my-2 p-4 rounded-xl bg-glass border border-white/[0.06] text-center">

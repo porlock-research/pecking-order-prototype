@@ -1,4 +1,4 @@
-import React, { useState, type ReactNode } from 'react';
+import React, { useState, useEffect, type ReactNode } from 'react';
 import { SyncDecisionPhases, Events } from '@pecking-order/shared-types';
 import type { SyncDecisionProjection, SocialPlayer } from '@pecking-order/shared-types';
 import {
@@ -29,6 +29,22 @@ interface SyncDecisionWrapperProps {
     roster: Record<string, SocialPlayer>;
     playerId: string;
   }) => ReactNode;
+  /** Optional: render round-specific header (e.g. pairing info, pot amount) */
+  renderRoundHeader?: (props: {
+    cartridge: SyncDecisionProjection;
+    roster: Record<string, SocialPlayer>;
+    playerId: string;
+  }) => ReactNode;
+  /** Optional: render round reveal (defaults to renderReveal with round result) */
+  renderRoundReveal?: (props: {
+    decisions: Record<string, any>;
+    roundResult: { silverRewards: Record<string, number>; goldContribution: number; summary: Record<string, any> };
+    roundResults: Array<{ silverRewards: Record<string, number>; goldContribution: number; summary: Record<string, any> }>;
+    roster: Record<string, SocialPlayer>;
+    playerId: string;
+    currentRound: number;
+    totalRounds: number;
+  }) => ReactNode;
 }
 
 export default function SyncDecisionWrapper({
@@ -41,14 +57,29 @@ export default function SyncDecisionWrapper({
   description,
   renderDecisionInput,
   renderReveal,
+  renderRoundHeader,
+  renderRoundReveal,
 }: SyncDecisionWrapperProps) {
   const { phase, submitted, eligiblePlayers, gameType } = cartridge;
   const hasSubmitted = submitted[playerId] ?? false;
   const isEligible = eligiblePlayers.includes(playerId);
   const [localSubmitted, setLocalSubmitted] = useState(false);
+  const [lastSeenRound, setLastSeenRound] = useState(cartridge.currentRound ?? 0);
+
+  const isMultiRound = (cartridge.totalRounds ?? 1) > 1;
+  const currentRound = cartridge.currentRound ?? 0;
+  const totalRounds = cartridge.totalRounds ?? 1;
 
   const submittedCount = Object.values(submitted).filter(Boolean).length;
   const totalEligible = eligiblePlayers.length;
+
+  // Reset localSubmitted when round changes (multi-round)
+  useEffect(() => {
+    if (isMultiRound && currentRound !== lastSeenRound) {
+      setLocalSubmitted(false);
+      setLastSeenRound(currentRound);
+    }
+  }, [currentRound, lastSeenRound, isMultiRound]);
 
   const handleSubmit = (decision: Record<string, any>) => {
     engine.sendGameAction(Events.Game.event(gameType, 'SUBMIT'), decision);
@@ -57,12 +88,27 @@ export default function SyncDecisionWrapper({
 
   const showSubmitted = hasSubmitted || localSubmitted;
 
+  // Build round info string
+  let roundInfo: string | undefined;
+  if (isMultiRound && phase === SyncDecisionPhases.COLLECTING) {
+    roundInfo = `Round ${currentRound + 1}/${totalRounds} \u00B7 ${submittedCount}/${totalEligible} submitted`;
+  } else if (phase === SyncDecisionPhases.COLLECTING) {
+    roundInfo = `${submittedCount}/${totalEligible} submitted`;
+  } else if (isMultiRound && phase === SyncDecisionPhases.ROUND_REVEAL) {
+    roundInfo = `Round ${currentRound + 1}/${totalRounds}`;
+  }
+
   return (
     <CartridgeContainer>
       <CartridgeHeader
         label={title}
-        roundInfo={phase === SyncDecisionPhases.COLLECTING ? `${submittedCount}/${totalEligible} submitted` : undefined}
+        roundInfo={roundInfo}
       />
+
+      {/* Round header (multi-round only) */}
+      {isMultiRound && phase === SyncDecisionPhases.COLLECTING && renderRoundHeader && (
+        renderRoundHeader({ cartridge, roster, playerId })
+      )}
 
       {/* COLLECTING: Not yet submitted */}
       {phase === SyncDecisionPhases.COLLECTING && !showSubmitted && isEligible && (
@@ -107,7 +153,32 @@ export default function SyncDecisionWrapper({
         </div>
       )}
 
-      {/* REVEAL */}
+      {/* ROUND_REVEAL (multi-round only) */}
+      {phase === SyncDecisionPhases.ROUND_REVEAL && isMultiRound && (
+        <div className="space-y-0">
+          {renderRoundReveal ? (
+            renderRoundReveal({
+              decisions: cartridge.decisions ?? {},
+              roundResult: cartridge.roundResults?.[cartridge.roundResults.length - 1] ?? { silverRewards: {}, goldContribution: 0, summary: {} },
+              roundResults: cartridge.roundResults ?? [],
+              roster,
+              playerId,
+              currentRound,
+              totalRounds,
+            })
+          ) : (
+            // Fallback: use renderReveal with the latest round result
+            cartridge.roundResults?.[cartridge.roundResults.length - 1] && renderReveal({
+              decisions: cartridge.decisions ?? {},
+              results: cartridge.roundResults[cartridge.roundResults.length - 1] as any,
+              roster,
+              playerId,
+            })
+          )}
+        </div>
+      )}
+
+      {/* REVEAL (final) */}
       {phase === SyncDecisionPhases.REVEAL && cartridge.results && (
         <div className="space-y-0">
           {renderReveal({

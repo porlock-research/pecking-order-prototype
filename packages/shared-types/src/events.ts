@@ -138,6 +138,7 @@ export const PromptPhases = {
 
 export const SyncDecisionPhases = {
   COLLECTING: 'COLLECTING',
+  ROUND_REVEAL: 'ROUND_REVEAL',
   REVEAL: 'REVEAL',
 } as const;
 

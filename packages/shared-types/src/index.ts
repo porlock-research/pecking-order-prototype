@@ -67,7 +67,7 @@ export const GameTypeSchema = z.enum([
   "TRIVIA", "REALTIME_TRIVIA",
   "GAP_RUN", "GRID_PUSH", "SEQUENCE",
   "REACTION_TIME", "COLOR_MATCH", "STACKER", "QUICK_MATH", "SIMON_SAYS", "AIM_TRAINER",
-  "BET_BET_BET", "BLIND_AUCTION", "KINGS_RANSOM",
+  "BET_BET_BET", "BLIND_AUCTION", "KINGS_RANSOM", "THE_SPLIT",
   "TOUCH_SCREEN",
   "NONE",
 ]);
@@ -404,6 +404,9 @@ export type TouchScreenClientEvent =
   | { type: 'GAME.TOUCH_SCREEN.TOUCH' }
   | { type: 'GAME.TOUCH_SCREEN.RELEASE' };
 
+export type TheSplitClientEvent =
+  | { type: 'GAME.THE_SPLIT.SUBMIT'; action: 'SPLIT' | 'STEAL' };
+
 export type GameClientEvent =
   | GapRunClientEvent
   | TriviaClientEvent
@@ -419,6 +422,7 @@ export type GameClientEvent =
   | BetBetBetClientEvent
   | BlindAuctionClientEvent
   | KingsRansomClientEvent
+  | TheSplitClientEvent
   | TouchScreenClientEvent;
 
 // --- Per-Game Projected State (what the client renders) ---
@@ -491,7 +495,7 @@ export interface RealtimeTriviaProjection {
 /** Projection for sync decision games (all-players-at-once, collect-then-reveal) */
 export interface SyncDecisionProjection {
   gameType: string;
-  phase: 'COLLECTING' | 'REVEAL';
+  phase: 'COLLECTING' | 'ROUND_REVEAL' | 'REVEAL';
   eligiblePlayers: string[];
   submitted: Record<string, boolean>;
   /** Only present during COLLECTING — the current player's own decision */
@@ -505,6 +509,10 @@ export interface SyncDecisionProjection {
     shieldWinnerId?: string | null;
     summary: Record<string, any>;
   } | null;
+  /** Multi-round fields (optional, present when rounds config is used) */
+  currentRound?: number;
+  totalRounds?: number;
+  roundResults?: Array<{ silverRewards: Record<string, number>; goldContribution: number; summary: Record<string, any> }>;
   /** Game-specific extra fields (e.g. prizes, kingId, vaultAmount) */
   [key: string]: any;
 }

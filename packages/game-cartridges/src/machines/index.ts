@@ -2,7 +2,7 @@ export { createArcadeMachine } from './arcade-machine';
 export type { ArcadeGameConfig, ArcadePlayerState, ArcadeGameContext } from './arcade-machine';
 
 export { createSyncDecisionMachine } from './sync-decision-machine';
-export type { SyncDecisionConfig, SyncDecisionContext, SyncDecisionResult } from './sync-decision-machine';
+export type { SyncDecisionConfig, SyncDecisionContext, SyncDecisionResult, RoundResult, MultiRoundConfig } from './sync-decision-machine';
 
 export { gapRunMachine } from './gap-run';
 export { gridPushMachine } from './grid-push';
@@ -19,6 +19,7 @@ export { betBetBetMachine } from './bet-bet-bet';
 export { blindAuctionMachine } from './blind-auction';
 export { kingsRansomMachine } from './kings-ransom';
 export { touchScreenMachine } from './touch-screen';
+export { theSplitMachine } from './the-split';
 
 import { gapRunMachine } from './gap-run';
 import { gridPushMachine } from './grid-push';
@@ -35,6 +36,7 @@ import { betBetBetMachine } from './bet-bet-bet';
 import { blindAuctionMachine } from './blind-auction';
 import { kingsRansomMachine } from './kings-ransom';
 import { touchScreenMachine } from './touch-screen';
+import { theSplitMachine } from './the-split';
 
 export const GAME_REGISTRY = {
   GAP_RUN: gapRunMachine,
@@ -52,4 +54,5 @@ export const GAME_REGISTRY = {
   BLIND_AUCTION: blindAuctionMachine,
   KINGS_RANSOM: kingsRansomMachine,
   TOUCH_SCREEN: touchScreenMachine,
+  THE_SPLIT: theSplitMachine,
 } as const;
