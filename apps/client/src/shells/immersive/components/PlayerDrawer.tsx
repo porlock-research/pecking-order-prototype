@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Drawer } from 'vaul';
+import { toast } from 'sonner';
 import { useGameStore } from '../../../store/useGameStore';
 import { usePlayerTimeline } from '../../../hooks/usePlayerTimeline';
 import { ChatBubble } from './ChatBubble';
@@ -7,6 +8,7 @@ import { SystemEvent } from './SystemEvent';
 import { PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { Coins, Trophy, Send } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { SPRING, TAP } from '../springs';
 
 interface PlayerDrawerProps {
   targetPlayerId: string | null;
@@ -58,10 +60,11 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
     }
   }, [entries.length]);
 
+  // Show DM rejections as toasts instead of inline banners
   useEffect(() => {
     if (!dmRejection) return;
-    const timer = setTimeout(clearDmRejection, 4000);
-    return () => clearTimeout(timer);
+    toast.error(REJECTION_LABELS[dmRejection.reason] || dmRejection.reason);
+    clearDmRejection();
   }, [dmRejection, clearDmRejection]);
 
   const handleSend = (e: React.FormEvent) => {
@@ -107,10 +110,13 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
           {target && (
             <div className="shrink-0 px-5 pb-3 border-b border-white/[0.06] flex items-center gap-3">
               <div className="relative shrink-0">
-                <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold font-mono avatar-ring
-                  ${isGameMaster ? 'bg-skin-gold/20 text-skin-gold' : 'bg-skin-panel text-skin-gold'}`}>
+                <motion.div
+                  layoutId={`avatar-${targetPlayerId}`}
+                  className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold font-mono
+                    ${isGameMaster ? 'bg-skin-gold/20 text-skin-gold' : 'bg-skin-panel text-skin-gold'}`}
+                >
                   {isGameMaster ? 'GM' : target.personaName?.charAt(0)?.toUpperCase() || '?'}
-                </div>
+                </motion.div>
                 <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green' : 'bg-skin-dim/40'}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -147,11 +153,11 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
           <div className="flex-1 overflow-y-auto p-4 space-y-3 scroll-smooth" ref={scrollRef}>
             {entries.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 space-y-3">
-                <div className="w-14 h-14 rounded-full bg-glass border border-white/10 flex items-center justify-center glow-breathe">
-                  <span className="font-mono text-xl text-skin-dim">(@)</span>
+                <div className="w-14 h-14 rounded-full bg-skin-glass-elevated border border-white/10 flex items-center justify-center">
+                  <span className="text-2xl">🤫</span>
                 </div>
-                <span className="text-sm font-display tracking-wide text-skin-dim shimmer uppercase">
-                  {isMe ? 'Your Profile' : 'No Interactions Yet'}
+                <span className="text-base font-display text-skin-dim italic">
+                  {isMe ? 'Your Profile' : 'No whispers exchanged yet. Start scheming?'}
                 </span>
               </div>
             )}
@@ -179,12 +185,6 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
           {/* Input */}
           {!isMe && targetPlayerId && (
             <div className="shrink-0 p-3 bg-skin-panel/80 backdrop-blur-lg border-t border-white/[0.06]">
-              {dmRejection && (
-                <div className="mb-2 px-3 py-1.5 rounded-lg bg-skin-danger/10 border border-skin-danger/20 text-skin-danger text-xs font-mono animate-fade-in">
-                  {REJECTION_LABELS[dmRejection.reason] || dmRejection.reason}
-                </div>
-              )}
-
               {showSilverTransfer && canSendSilver && (
                 <div className="mb-2 flex gap-2 items-center animate-fade-in">
                   <span className="text-[10px] font-mono text-skin-dim shrink-0">Send silver</span>
@@ -208,13 +208,15 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
 
               <form className="flex gap-2 items-center" onSubmit={handleSend}>
                 {canSendSilver && !showSilverTransfer && (
-                  <button
+                  <motion.button
                     type="button"
                     onClick={() => setShowSilverTransfer(true)}
-                    className="shrink-0 w-10 h-10 rounded-full bg-skin-gold/10 border border-skin-gold/20 flex items-center justify-center text-skin-gold"
+                    className="shrink-0 w-11 h-11 rounded-full bg-skin-gold/10 border border-skin-gold/20 flex items-center justify-center text-skin-gold"
+                    whileTap={TAP.button}
+                    transition={SPRING.button}
                   >
                     <Coins className="w-4 h-4" />
-                  </button>
+                  </motion.button>
                 )}
                 <input
                   type="text"
@@ -231,7 +233,8 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
                   type="submit"
                   disabled={!inputValue.trim()}
                   className="shrink-0 w-12 h-12 rounded-full bg-skin-pink text-white flex items-center justify-center disabled:opacity-50 shadow-btn"
-                  whileTap={{ scale: 0.88 }}
+                  whileTap={TAP.fab}
+                  transition={SPRING.button}
                 >
                   <Send size={18} />
                 </motion.button>

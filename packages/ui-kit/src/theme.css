@@ -18,7 +18,8 @@
   --po-bg-panel: #4c1d95;
   --po-bg-input: #5b21b6;
   --po-bg-bubble: #3b1a7e;
-  --po-bg-glass: rgba(255, 255, 255, 0.05);
+  --po-bg-glass: rgba(255, 255, 255, 0.08);
+  --po-bg-glass-elevated: rgba(255, 255, 255, 0.14);
 
   /* Text */
   --po-text: #ffffff;
@@ -70,7 +71,8 @@
   --po-bg-panel: #1a1a2e;
   --po-bg-input: #16213e;
   --po-bg-bubble: #0f3460;
-  --po-bg-glass: rgba(255, 255, 255, 0.03);
+  --po-bg-glass: rgba(255, 255, 255, 0.05);
+  --po-bg-glass-elevated: rgba(255, 255, 255, 0.10);
 
   /* Text */
   --po-text: #e0e0e0;

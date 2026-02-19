@@ -714,3 +714,32 @@ This document tracks significant architectural decisions, their context, and con
     *   All cartridge types (voting, game, prompt) now handle forced termination consistently — forward to child, let it finish, collect results.
     *   Voting summary cards only appear after nightSummary, preserving the hour-long dramatic delay between voting close and elimination reveal.
     *   Timeline feels alive with entrance animations and smooth expand/collapse transitions.
+
+## [ADR-059] Immersive Shell UI Overhaul — Touch Feel, Chat Personality, Game Drama
+
+*   **Status:** Accepted
+*   **Context:** The immersive shell was functionally correct but felt like a prototype. Every surface was `bg-glass border border-white/[0.06]` — glass on glass with no visual hierarchy. Chat bubbles were flat rectangles. Game moments (eliminations, wins) arrived as plain system events with no drama. Touch targets were below Apple HIG minimums. Inline toast code in PerkFAB was ~50 lines of AnimatePresence for three result types. Typing indicators showed raw text with no personality. Empty states showed cryptic symbols like `(@)`.
+*   **Decision:**
+    *   **Glass contrast upgrade**: Bumped `--po-bg-glass` from 0.05→0.08 (reality-tv) / 0.03→0.05 (cyberpunk). Added `--po-bg-glass-elevated` at 0.14/0.10 for cards that need to pop above the base glass layer. Mapped to `bg-skin-glass-elevated` in tailwind preset.
+    *   **Centralized spring physics** (`springs.ts`): Five named spring configs (`button`, `snappy`, `bouncy`, `gentle`, `swipe`) and four tap scale presets (`button: 0.95`, `card: 0.98`, `bubble: 0.97`, `fab: 0.90`). All immersive components import from this single file so every interaction feels like the same physical world.
+    *   **Bigger touch targets**: Footer nav `h-[72px]` (was `h-16`), icons 24px (was 22), header pills `min-h-[32px]` with `text-[11px]` (was `text-[9px]`/`text-[10px]`), PerkFAB `w-16 h-16` (was `w-14 h-14`), context menu items `py-3 text-base` (was `py-2.5 text-sm`).
+    *   **Sonner toast system**: Added `sonner` (~7KB gzip) for toast notifications. Replaced ~50 lines of inline AnimatePresence toast rendering in PerkFAB with `toast.success()`/`toast.error()`/`toast.custom()`. DM rejections in PlayerDrawer also use sonner. Ambient game toasts fire from ticker watcher (silver transfers, rewards, phase changes).
+    *   **Chat bubble redesign**: Own messages solid `bg-skin-pink` with `rounded-br-sm` tail + inner shadow. Other messages `bg-skin-glass-elevated` with `rounded-bl-sm` tail + border. Game Master messages have Crown icon + `border-l-[3px]` gold accent. Colored avatar circles by deterministic player index. Sender names in `text-skin-gold font-bold`.
+    *   **Emoji reactions**: Long-press (500ms) shows floating reaction bar (6 game-themed emoji: skull, eyes, fire, chicken, crown, laugh) with staggered scale-in. Tapping an emoji shows a rising float animation. Reactions are local-only (no server persistence). Context menu actions appear separately for other players' messages.
+    *   **Tap to reply**: Single tap on a message sets `replyTarget` in Timeline. Reply preview appears above FloatingInput with pink left border + truncated quote + X dismiss. Cleared on send.
+    *   **Typing indicator personality**: Avatar circle + name + "is scheming..." with three bouncing dots (staggered 150ms). Multiple typers: "X and 2 others are scheming..."
+    *   **DramaticReveal overlay**: Full-screen `z-[70]` overlay for ELIMINATION (skull + red glow pulse + screen shake, 3s auto-dismiss) and WINNER_DECLARED (confetti via canvas-confetti + crown + gold amount). Async-first: tracks `lastSeenEliminationId`/`lastSeenWinnerId` in localStorage keyed by gameId. Queues unseen reveals on SYNC and plays them sequentially. Works for both live events and catch-up on app reopen.
+    *   **CartridgeWrapper**: Wraps VotingPanel/GamePanel/PromptPanel with bouncy entry animation (`SPRING.bouncy`) and `glow-breathe` border in cartridge accent color (gold/green/pink).
+    *   **Return-to-action pill**: When an active cartridge exists and user has scrolled away, a floating pill appears ("Return to Vote"/"Return to Game"/"Return to Activity") in the cartridge's accent color. Tapping scrolls the cartridge into view.
+    *   **People list hierarchy**: "You" card pinned at top with DM stats (chars/partners remaining). Separate "Alive" and "Eliminated" sections with count badges. Eliminated collapsed by default with chevron toggle. Groups collapsible (show 2, "Show N more"). `layoutId` avatars for shared-element transitions to PlayerDrawer.
+    *   **Expandable header**: Tap header → expands to show Day number, phase label (via `formatPhase()`), and "X of Y alive" count. Auto-collapses after 3s.
+    *   **Page indicator dots**: Two small dots between header and content, active dot slides with `layoutId` animation.
+    *   **Thematic empty states**: Timeline: chicken emoji + "The room is quiet... for now." PlayerDrawer: "No whispers exchanged yet. Start scheming?"
+    *   **Message grouping**: Consecutive messages from same sender within 2 minutes hide avatar + name, reduce gap.
+*   **Consequences:**
+    *   Immersive shell feels physically responsive — every button has spring-based press feedback through shared constants.
+    *   Chat has visual hierarchy: own messages (solid pink) vs others (elevated glass) vs Game Master (gold accent) are instantly distinguishable.
+    *   Eliminations and wins are cinematic moments, not just another timeline entry. localStorage tracking means players who open the app hours later still get the reveal.
+    *   Sonner centralizes all toast notifications with consistent styling, replacing scattered inline AnimatePresence blocks.
+    *   Classic shell is completely untouched — theme CSS changes (glass-elevated) are additive.
+    *   `springs.ts` is the single source of truth for animation feel — changing a spring config affects all components consistently.

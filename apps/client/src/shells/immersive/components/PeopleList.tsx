@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import React, { useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../store/useGameStore';
 import { ChannelTypes, PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
-import { Coins, Trophy, Skull } from 'lucide-react';
+import { Coins, Trophy, Skull, ChevronDown } from 'lucide-react';
+import { SPRING, TAP } from '../springs';
 
 interface PeopleListProps {
   onSelectPlayer: (playerId: string) => void;
@@ -18,6 +19,9 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
   const channels = useGameStore(s => s.channels);
   const onlinePlayers = useGameStore(s => s.onlinePlayers);
   const dmStats = useGameStore(s => s.dmStats);
+
+  const [eliminatedExpanded, setEliminatedExpanded] = useState(false);
+  const [groupsExpanded, setGroupsExpanded] = useState(true);
 
   const groupThreads = useMemo(() => {
     if (!playerId) return [];
@@ -53,17 +57,22 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
     return map;
   }, [chatLog, channels, playerId]);
 
-  const sortedPlayers = useMemo(() => {
-    return Object.values(roster)
-      .filter(p => p.id !== GAME_MASTER_ID)
-      .sort((a, b) => {
-        if (a.status !== b.status) return a.status === PlayerStatuses.ALIVE ? -1 : 1;
-        return a.personaName.localeCompare(b.personaName);
-      });
-  }, [roster]);
+  const { alivePlayers, eliminatedPlayers, mePlayer } = useMemo(() => {
+    const all = Object.values(roster).filter(p => p.id !== GAME_MASTER_ID);
+    const me = all.find(p => p.id === playerId);
+    const alive = all
+      .filter(p => p.status === PlayerStatuses.ALIVE && p.id !== playerId)
+      .sort((a, b) => a.personaName.localeCompare(b.personaName));
+    const eliminated = all
+      .filter(p => p.status === PlayerStatuses.ELIMINATED)
+      .sort((a, b) => a.personaName.localeCompare(b.personaName));
+    return { alivePlayers: alive, eliminatedPlayers: eliminated, mePlayer: me };
+  }, [roster, playerId]);
 
   const groupsUsed = dmStats?.groupsUsed ?? 0;
   const groupsLimit = dmStats?.groupsLimit ?? 3;
+
+  const visibleGroups = groupsExpanded ? groupThreads : groupThreads.slice(0, 2);
 
   return (
     <div className="flex flex-col h-full">
@@ -72,115 +81,161 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
         <div className="flex items-center gap-2">
           <motion.button
             onClick={onNewGroup}
-            className="text-[10px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-3 py-1.5 text-skin-pink uppercase tracking-widest"
-            whileTap={{ scale: 0.95 }}
+            className="text-[11px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-3 py-1.5 text-skin-pink uppercase tracking-widest min-h-[32px]"
+            whileTap={TAP.button}
+            transition={SPRING.button}
           >
             + Group <span className="text-skin-dim">{Math.max(0, groupsLimit - groupsUsed)}/{groupsLimit}</span>
           </motion.button>
           <motion.button
             onClick={onNewDm}
-            className="text-[10px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-3 py-1.5 text-skin-pink uppercase tracking-widest"
-            whileTap={{ scale: 0.95 }}
+            className="text-[11px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-3 py-1.5 text-skin-pink uppercase tracking-widest min-h-[32px]"
+            whileTap={TAP.button}
+            transition={SPRING.button}
           >
             + DM
           </motion.button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-2">
+        {/* "You" card — pinned at top */}
+        {mePlayer && (
+          <motion.button
+            onClick={() => onSelectPlayer(mePlayer.id)}
+            className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-skin-gold/10 border border-skin-gold/30 text-left"
+            whileTap={TAP.card}
+            transition={SPRING.button}
+          >
+            <div className="relative shrink-0">
+              <motion.div
+                layoutId={`avatar-${mePlayer.id}`}
+                className="w-12 h-12 rounded-full bg-skin-panel flex items-center justify-center text-base font-bold font-mono text-skin-gold"
+              >
+                {mePlayer.personaName?.charAt(0)?.toUpperCase() || '?'}
+              </motion.div>
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-skin-fill bg-skin-green" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="font-bold text-base truncate">{mePlayer.personaName}</span>
+                <span className="badge-skew text-[9px] shrink-0">YOU</span>
+              </div>
+              <div className="flex items-center gap-3 text-xs font-mono text-skin-dim">
+                {dmStats && <span>{dmStats.charsLimit - dmStats.charsUsed} chars left</span>}
+                {dmStats && <span>{dmStats.partnersLimit - dmStats.partnersUsed} partners left</span>}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 font-mono text-sm font-bold shrink-0">
+              {(mePlayer.gold ?? 0) > 0 && (
+                <div className="flex items-center gap-0.5 text-amber-400">
+                  <Trophy size={11} />{mePlayer.gold}
+                </div>
+              )}
+              <div className="flex items-center gap-0.5 text-skin-gold">
+                <Coins size={12} className="text-skin-dim" />{mePlayer.silver}
+              </div>
+            </div>
+          </motion.button>
+        )}
+
         {/* Group DM threads */}
         {groupThreads.length > 0 && (
           <>
-            <div className="px-1 pt-1 pb-2">
+            <div className="px-1 pt-3 pb-1 flex items-center justify-between">
               <span className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">Groups</span>
-            </div>
-            {groupThreads.map((thread, i) => {
-              const lastMsg = thread.messages[thread.messages.length - 1];
-              const isFromMe = lastMsg?.senderId === playerId;
-              const lastSenderName = lastMsg ? (roster[lastMsg.senderId]?.personaName || 'Unknown') : '';
-              const initials = thread.memberNames.slice(0, 2).map(n => n.charAt(0).toUpperCase()).join('');
-
-              return (
-                <motion.button
-                  key={thread.channelId}
-                  onClick={() => onSelectGroup(thread.channelId)}
-                  className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-glass border border-white/[0.06] hover:border-skin-pink/30 transition-all text-left"
-                  whileTap={{ scale: 0.97 }}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
+              {groupThreads.length > 2 && (
+                <button
+                  onClick={() => setGroupsExpanded(!groupsExpanded)}
+                  className="text-[10px] font-mono text-skin-dim flex items-center gap-1"
                 >
-                  <div className="w-12 h-12 rounded-full bg-skin-panel flex items-center justify-center text-[12px] font-bold font-mono text-skin-pink avatar-ring shrink-0">
-                    {initials}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="font-bold text-base truncate text-skin-base">{thread.memberNames.join(', ')}</span>
-                      <span className="text-[9px] font-mono text-skin-dim shrink-0 ml-2">
-                        {lastMsg ? new Date(thread.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'New'}
-                      </span>
+                  {groupsExpanded ? 'Show less' : `Show ${groupThreads.length - 2} more`}
+                  <motion.span animate={{ rotate: groupsExpanded ? 180 : 0 }} transition={SPRING.snappy}>
+                    <ChevronDown size={12} />
+                  </motion.span>
+                </button>
+              )}
+            </div>
+            <AnimatePresence initial={false}>
+              {visibleGroups.map((thread, i) => {
+                const lastMsg = thread.messages[thread.messages.length - 1];
+                const isFromMe = lastMsg?.senderId === playerId;
+                const lastSenderName = lastMsg ? (roster[lastMsg.senderId]?.personaName || 'Unknown') : '';
+                const initials = thread.memberNames.slice(0, 2).map(n => n.charAt(0).toUpperCase()).join('');
+
+                return (
+                  <motion.button
+                    key={thread.channelId}
+                    onClick={() => onSelectGroup(thread.channelId)}
+                    className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-skin-glass-elevated border border-white/[0.06] hover:border-skin-pink/30 transition-all text-left"
+                    whileTap={TAP.card}
+                    transition={SPRING.button}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-skin-panel flex items-center justify-center text-[12px] font-bold font-mono text-skin-pink shrink-0">
+                      {initials}
                     </div>
-                    <p className="text-sm text-skin-dim truncate">
-                      {lastMsg ? `${isFromMe ? 'You' : lastSenderName}: ${lastMsg.content}` : 'No messages yet'}
-                    </p>
-                  </div>
-                </motion.button>
-              );
-            })}
-            <div className="h-px bg-white/[0.06] my-2" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-bold text-base truncate text-skin-base">{thread.memberNames.join(', ')}</span>
+                        <span className="text-[9px] font-mono text-skin-dim shrink-0 ml-2">
+                          {lastMsg ? new Date(thread.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'New'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-skin-dim truncate">
+                        {lastMsg ? `${isFromMe ? 'You' : lastSenderName}: ${lastMsg.content}` : 'No messages yet'}
+                      </p>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </AnimatePresence>
+            <div className="h-px bg-white/[0.06] my-1" />
           </>
         )}
 
-        {/* Player list */}
-        <div className="px-1 pt-1 pb-2">
-          <span className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">Players</span>
+        {/* Alive players */}
+        <div className="px-1 pt-2 pb-1">
+          <span className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">
+            Alive <span className="text-skin-green">({alivePlayers.length})</span>
+          </span>
         </div>
-        {sortedPlayers.map((player, i) => {
-          const isMe = player.id === playerId;
+        {alivePlayers.map((player, i) => {
           const isOnline = onlinePlayers.includes(player.id);
-          const isEliminated = player.status === PlayerStatuses.ELIMINATED;
           const lastDm = lastDmByPlayer.get(player.id);
 
           return (
             <motion.button
               key={player.id}
               onClick={() => onSelectPlayer(player.id)}
-              className={`w-full flex items-center gap-3.5 p-3.5 rounded-xl border transition-all text-left
-                ${isMe ? 'bg-skin-gold/10 border-skin-gold/30' : 'bg-glass border-white/[0.06]'}
-                ${isEliminated ? 'opacity-50' : ''}
-              `}
-              whileTap={{ scale: 0.97 }}
+              className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-skin-glass-elevated border border-white/[0.06] text-left"
+              whileTap={TAP.card}
               initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: isEliminated ? 0.5 : 1, y: 0 }}
-              transition={{ delay: i * 0.02 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...SPRING.button, delay: i * 0.02 }}
             >
               <div className="relative shrink-0">
-                <div className="w-12 h-12 rounded-full bg-skin-panel flex items-center justify-center text-base font-bold font-mono text-skin-gold avatar-ring">
-                  {isEliminated ? (
-                    <Skull size={18} className="text-skin-danger" />
-                  ) : (
-                    player.personaName?.charAt(0)?.toUpperCase() || '?'
-                  )}
-                </div>
-                <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green' : 'bg-skin-dim/40'}`} />
+                <motion.div
+                  layoutId={`avatar-${player.id}`}
+                  className="w-12 h-12 rounded-full bg-skin-panel flex items-center justify-center text-base font-bold font-mono text-skin-gold"
+                >
+                  {player.personaName?.charAt(0)?.toUpperCase() || '?'}
+                </motion.div>
+                <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green animate-pulse-live' : 'bg-skin-dim/40'}`} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-bold text-base truncate">{player.personaName}</span>
-                    {isMe && <span className="badge-skew text-[9px] shrink-0">YOU</span>}
-                    {isEliminated && <span className="text-[9px] font-mono text-skin-danger uppercase">eliminated</span>}
-                  </div>
+                  <span className="font-bold text-base truncate">{player.personaName}</span>
                   <div className="flex items-center gap-2 font-mono text-sm font-bold shrink-0 ml-2">
-                    {player.gold > 0 && (
+                    {(player.gold ?? 0) > 0 && (
                       <div className="flex items-center gap-0.5 text-amber-400">
-                        <Trophy size={11} />
-                        {player.gold}
+                        <Trophy size={11} />{player.gold}
                       </div>
                     )}
                     <div className="flex items-center gap-0.5 text-skin-gold">
-                      <Coins size={12} className="text-skin-dim" />
-                      {player.silver}
+                      <Coins size={12} className="text-skin-dim" />{player.silver}
                     </div>
                   </div>
                 </div>
@@ -193,6 +248,52 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
             </motion.button>
           );
         })}
+
+        {/* Eliminated players — collapsible */}
+        {eliminatedPlayers.length > 0 && (
+          <>
+            <button
+              onClick={() => setEliminatedExpanded(!eliminatedExpanded)}
+              className="w-full px-1 pt-3 pb-1 flex items-center justify-between"
+            >
+              <span className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">
+                Eliminated <span className="text-skin-danger">({eliminatedPlayers.length})</span>
+              </span>
+              <motion.span animate={{ rotate: eliminatedExpanded ? 180 : 0 }} transition={SPRING.snappy}>
+                <ChevronDown size={14} className="text-skin-dim" />
+              </motion.span>
+            </button>
+
+            <AnimatePresence initial={false}>
+              {eliminatedExpanded && eliminatedPlayers.map((player, i) => (
+                <motion.div
+                  key={player.id}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={SPRING.snappy}
+                >
+                  <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-skin-glass border border-white/[0.04] opacity-50">
+                    <div className="relative shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-skin-panel flex items-center justify-center text-base font-bold font-mono text-skin-dim grayscale">
+                        <Skull size={18} className="text-skin-danger" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-base truncate text-skin-dim">{player.personaName}</span>
+                        <span className="text-[9px] font-mono text-skin-danger uppercase">eliminated</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-0.5 font-mono text-sm text-skin-dim shrink-0">
+                      <Coins size={12} />{player.silver}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { LayoutGroup } from 'framer-motion';
+import { Toaster, toast } from 'sonner';
 import { useGameStore } from '../../store/useGameStore';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -9,6 +10,7 @@ import { PeopleList } from './components/PeopleList';
 import { PlayerDrawer } from './components/PlayerDrawer';
 import { ContextMenu } from './components/ContextMenu';
 import { PerkFAB } from './components/PerkFAB';
+import { DramaticReveal } from './components/DramaticReveal';
 import type { ShellProps } from '../types';
 
 // Re-use classic pickers for now (opt-in reuse — exactly as the plan describes)
@@ -29,6 +31,27 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
   // Context menu state
   const [contextTarget, setContextTarget] = useState<string | null>(null);
   const [contextPosition, setContextPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Ticker toast watcher
+  const tickerMessages = useGameStore(s => s.tickerMessages);
+  const lastTickerCountRef = useRef(tickerMessages.length);
+
+  useEffect(() => {
+    const newMessages = tickerMessages.slice(lastTickerCountRef.current);
+    lastTickerCountRef.current = tickerMessages.length;
+
+    for (const msg of newMessages) {
+      if (msg.category === 'SOCIAL.SILVER_TRANSFER') {
+        toast(msg.text, { icon: '💰', duration: 3000 });
+      } else if (msg.category === 'GAME.REWARD') {
+        toast.success(msg.text, { duration: 3000 });
+      } else if (msg.category === 'PHASE.VOTING') {
+        toast(msg.text, { icon: '🗳️', duration: 3000 });
+      } else if (msg.category === 'PHASE.NIGHT') {
+        toast(msg.text, { icon: '🌙', duration: 3000 });
+      }
+    }
+  }, [tickerMessages]);
 
   const handleSelectPlayer = useCallback((id: string) => {
     setDrawerPlayerId(id);
@@ -136,6 +159,24 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
 
         {/* Perk FAB */}
         <PerkFAB engine={engine} />
+
+        {/* Dramatic reveal overlays */}
+        <DramaticReveal />
+
+        {/* Sonner toast container */}
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            className: 'font-body',
+            style: {
+              background: 'var(--po-bg-panel)',
+              color: 'var(--po-text)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              fontFamily: 'var(--po-font-body)',
+            },
+          }}
+          richColors
+        />
 
       </div>
     </LayoutGroup>

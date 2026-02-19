@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { MessageCircle, Users } from 'lucide-react';
 import { useGameStore } from '../../../store/useGameStore';
 import { ChannelTypes } from '@pecking-order/shared-types';
+import { SPRING, TAP } from '../springs';
 
 type TabKey = 'comms' | 'people';
 
@@ -29,7 +30,7 @@ export function Footer({ activeTab, onTabChange, playerId }: FooterProps) {
 
   return (
     <footer className="shrink-0 bg-skin-panel/90 backdrop-blur-md border-t border-white/[0.06] pb-safe">
-      <nav className="flex items-stretch h-16 relative">
+      <nav className="flex items-stretch h-[72px] relative">
         {TABS.map(tab => {
           const isActive = activeTab === tab.key;
           const hasBadge = tab.key === 'people' && !isActive && hasDms;
@@ -40,18 +41,19 @@ export function Footer({ activeTab, onTabChange, playerId }: FooterProps) {
                 ${isActive ? tab.accent : 'text-skin-dim opacity-50'}
               `}
               onClick={() => onTabChange(tab.key)}
-              whileTap={{ scale: 0.92 }}
+              whileTap={TAP.button}
+              transition={SPRING.button}
             >
               <span className="relative">
-                <tab.Icon size={22} />
-                {hasBadge && <span className="absolute -top-1 -right-1.5 w-2.5 h-2.5 rounded-full bg-skin-pink" />}
+                <tab.Icon size={24} />
+                {hasBadge && <span className="absolute -top-1 -right-1.5 w-2.5 h-2.5 rounded-full bg-skin-pink animate-pulse-live" />}
               </span>
               <span className={`text-xs uppercase tracking-widest ${isActive ? 'font-bold' : ''}`}>{tab.label}</span>
               {isActive && (
                 <motion.span
                   layoutId="footer-indicator"
                   className={`absolute top-0 left-2 right-2 h-0.5 ${tab.bar} rounded-full shadow-glow`}
-                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  transition={SPRING.snappy}
                 />
               )}
             </motion.button>

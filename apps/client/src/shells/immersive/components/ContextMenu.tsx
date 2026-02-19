@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Coins, Eye } from 'lucide-react';
 import { useGameStore } from '../../../store/useGameStore';
+import { SPRING, TAP } from '../springs';
 
 interface ContextMenuProps {
   targetPlayerId: string | null;
@@ -41,7 +42,7 @@ export function ContextMenu({ targetPlayerId, position, onClose, onMessage, onSe
   const menuStyle: React.CSSProperties = position ? {
     position: 'fixed',
     left: Math.min(position.x, window.innerWidth - 180),
-    top: Math.min(position.y - 10, window.innerHeight - 160),
+    top: Math.min(position.y - 10, window.innerHeight - 200),
     zIndex: 60,
   } : {};
 
@@ -54,27 +55,28 @@ export function ContextMenu({ targetPlayerId, position, onClose, onMessage, onSe
           initial={{ opacity: 0, scale: 0.85, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.85, y: 8 }}
-          transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          transition={SPRING.snappy}
         >
-          <div className="bg-skin-panel/95 backdrop-blur-xl border border-white/[0.1] rounded-xl shadow-card overflow-hidden min-w-[160px]">
+          <div className="bg-skin-panel/95 backdrop-blur-xl border border-white/[0.1] rounded-xl shadow-card overflow-hidden min-w-[170px]">
             {target && (
-              <div className="px-3 py-2 border-b border-white/[0.06]">
-                <span className="text-xs font-bold text-skin-base">{target.personaName}</span>
+              <div className="px-3 py-2.5 border-b border-white/[0.06]">
+                <span className="text-sm font-bold text-skin-base">{target.personaName}</span>
               </div>
             )}
             {MENU_ITEMS.map(item => (
               <motion.button
                 key={item.key}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-skin-base hover:bg-white/[0.06] transition-colors"
+                className="w-full flex items-center gap-3 px-3 py-3 text-base text-skin-base hover:bg-white/[0.06] transition-colors"
                 onClick={() => {
                   if (targetPlayerId) {
                     actions[item.action](targetPlayerId);
                   }
                   onClose();
                 }}
-                whileTap={{ scale: 0.97 }}
+                whileTap={TAP.button}
+                transition={SPRING.button}
               >
-                <item.Icon size={16} className="text-skin-dim" />
+                <item.Icon size={18} className="text-skin-dim" />
                 <span>{item.label}</span>
               </motion.button>
             ))}

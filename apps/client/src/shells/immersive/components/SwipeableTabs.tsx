@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { useSwipeable } from 'react-swipeable';
 import { AnimatePresence, motion } from 'framer-motion';
+import { SPRING } from '../springs';
 
 type TabKey = 'comms' | 'people';
 
@@ -58,6 +59,28 @@ export function SwipeableTabs({ activeTab, onTabChange, children }: SwipeableTab
 
   return (
     <div {...swipeHandlers} className="flex-1 overflow-hidden relative flex flex-col">
+      {/* Page indicator dots */}
+      <div className="flex justify-center gap-2 py-1.5 shrink-0">
+        {TAB_ORDER.map(tab => (
+          <motion.button
+            key={tab}
+            onClick={() => {
+              directionRef.current = TAB_ORDER.indexOf(tab) > currentIndex ? 1 : -1;
+              onTabChange(tab);
+            }}
+            className="relative w-1.5 h-1.5 rounded-full bg-white/20"
+          >
+            {activeTab === tab && (
+              <motion.span
+                layoutId="tab-dot"
+                className="absolute inset-0 rounded-full bg-skin-gold"
+                transition={SPRING.snappy}
+              />
+            )}
+          </motion.button>
+        ))}
+      </div>
+
       <AnimatePresence initial={false} custom={directionRef.current} mode="popLayout">
         <motion.div
           key={activeTab}
@@ -66,13 +89,8 @@ export function SwipeableTabs({ activeTab, onTabChange, children }: SwipeableTab
           initial="enter"
           animate="center"
           exit="exit"
-          transition={{
-            type: 'spring',
-            stiffness: 300,
-            damping: 30,
-            mass: 0.8,
-          }}
-          className="flex-1 flex flex-col overflow-hidden absolute inset-0"
+          transition={SPRING.swipe}
+          className="flex-1 flex flex-col overflow-hidden absolute inset-0 top-[22px]"
         >
           {children[activeTab]}
         </motion.div>
