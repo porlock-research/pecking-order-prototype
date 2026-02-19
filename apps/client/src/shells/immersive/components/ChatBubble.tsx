@@ -50,34 +50,32 @@ export function ChatBubble({
   const bubbleRef = useRef<HTMLDivElement>(null);
   const isGameMaster = message.senderId === GAME_MASTER_ID;
 
+  const isInteractive = !isMe && !isGameMaster;
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (isGameMaster) return;
+    if (!isInteractive) return;
     setPressed(true);
     const startX = e.clientX;
     const startY = e.clientY;
     timerRef.current = setTimeout(() => {
       setPressed(false);
-      if (!isMe && onLongPress) {
-        // Show reactions + context menu for other players' messages
-        setShowReactions(true);
+      setShowReactions(true);
+      if (onLongPress) {
         onLongPress(message.senderId, { x: startX, y: startY });
-      } else {
-        // For own messages, just show reactions
-        setShowReactions(true);
       }
     }, LONG_PRESS_MS);
-  }, [isGameMaster, isMe, onLongPress, message.senderId]);
+  }, [isInteractive, onLongPress, message.senderId]);
 
   const handlePointerUp = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       // Short tap (not long press) → reply
-      if (pressed && !showReactions && onTapReply && !isGameMaster) {
+      if (pressed && !showReactions && onTapReply) {
         onTapReply(message);
       }
     }
     setPressed(false);
-  }, [pressed, showReactions, onTapReply, message, isGameMaster]);
+  }, [pressed, showReactions, onTapReply, message]);
 
   const handlePointerCancel = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -149,10 +147,12 @@ export function ChatBubble({
           `}
           animate={pressed ? { scale: 0.97 } : { scale: 1 }}
           transition={{ duration: 0.1 }}
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerCancel}
-          onPointerLeave={handlePointerCancel}
+          {...(isInteractive ? {
+            onPointerDown: handlePointerDown,
+            onPointerUp: handlePointerUp,
+            onPointerCancel: handlePointerCancel,
+            onPointerLeave: handlePointerCancel,
+          } : {})}
         >
           {message.content}
         </motion.div>

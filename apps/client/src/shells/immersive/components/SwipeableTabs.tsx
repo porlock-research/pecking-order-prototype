@@ -30,16 +30,21 @@ const variants = {
 };
 
 export function SwipeableTabs({ activeTab, onTabChange, children }: SwipeableTabsProps) {
-  const directionRef = useRef(0);
   const currentIndex = TAB_ORDER.indexOf(activeTab);
+  const prevTabRef = useRef(activeTab);
+  const directionRef = useRef(0);
+
+  // Derive direction synchronously during render so AnimatePresence sees it immediately
+  if (activeTab !== prevTabRef.current) {
+    directionRef.current = TAB_ORDER.indexOf(activeTab) > TAB_ORDER.indexOf(prevTabRef.current) ? 1 : -1;
+    prevTabRef.current = activeTab;
+  }
 
   const swipeHandlers = useSwipeable({
     onSwipedLeft: (e) => {
-      // Ignore swipes starting near the left edge (iOS back gesture zone)
       if (e.initial[0] < LEFT_EDGE_IGNORE) return;
       const next = currentIndex + 1;
       if (next < TAB_ORDER.length) {
-        directionRef.current = 1;
         onTabChange(TAB_ORDER[next]);
       }
     },
@@ -47,7 +52,6 @@ export function SwipeableTabs({ activeTab, onTabChange, children }: SwipeableTab
       if (e.initial[0] < LEFT_EDGE_IGNORE) return;
       const prev = currentIndex - 1;
       if (prev >= 0) {
-        directionRef.current = -1;
         onTabChange(TAB_ORDER[prev]);
       }
     },
@@ -69,10 +73,7 @@ export function SwipeableTabs({ activeTab, onTabChange, children }: SwipeableTab
         {TAB_ORDER.map(tab => (
           <motion.button
             key={tab}
-            onClick={() => {
-              directionRef.current = TAB_ORDER.indexOf(tab) > currentIndex ? 1 : -1;
-              onTabChange(tab);
-            }}
+            onClick={() => onTabChange(tab)}
             className="relative w-1.5 h-1.5 rounded-full bg-white/20"
           >
             {activeTab === tab && (
