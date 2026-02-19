@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Drawer } from 'vaul';
 import { toast } from 'sonner';
 import { useGameStore } from '../../../store/useGameStore';
@@ -11,6 +11,7 @@ interface PerkFABProps {
   engine: {
     sendPerk: (perkType: string, targetId?: string) => void;
   };
+  visible?: boolean;
 }
 
 const PERK_INFO = [
@@ -19,7 +20,7 @@ const PERK_INFO = [
   { type: 'EXTRA_DM_CHARS' as const, label: 'Extra Chars', desc: '+300 DM characters for today', icon: FileText },
 ] as const;
 
-export function PerkFAB({ engine }: PerkFABProps) {
+export function PerkFAB({ engine, visible = true }: PerkFABProps) {
   const [open, setOpen] = useState(false);
   const [pickingTarget, setPickingTarget] = useState<string | null>(null);
   const playerId = useGameStore(s => s.playerId);
@@ -85,15 +86,21 @@ export function PerkFAB({ engine }: PerkFABProps) {
   return (
     <>
       {/* FAB Button */}
-      <motion.button
-        className="fixed bottom-24 right-4 w-16 h-16 rounded-full bg-skin-gold/90 text-skin-inverted flex items-center justify-center shadow-lg z-30"
-        onClick={() => setOpen(true)}
-        whileTap={TAP.fab}
-        transition={SPRING.bouncy}
-        whileHover={{ scale: 1.05 }}
-      >
-        <Sparkles size={24} />
-      </motion.button>
+      <AnimatePresence>
+        {visible && (
+          <motion.button
+            className="fixed bottom-24 right-4 w-16 h-16 rounded-full bg-skin-gold text-skin-inverted flex items-center justify-center shadow-[0_4px_20px_rgba(251,191,36,0.4)] z-30"
+            onClick={() => setOpen(true)}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            whileTap={TAP.fab}
+            transition={SPRING.bouncy}
+          >
+            <Sparkles size={24} />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Perk Drawer */}
       <Drawer.Root open={open} onOpenChange={setOpen}>

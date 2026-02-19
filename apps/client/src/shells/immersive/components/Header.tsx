@@ -21,10 +21,10 @@ export function Header({ token }: HeaderProps) {
   const totalCount = Object.values(roster).length;
   const phase = formatPhase(serverState);
 
-  // Auto-collapse after 3s
+  // Auto-collapse after 4s
   useEffect(() => {
     if (!expanded) return;
-    const timer = setTimeout(() => setExpanded(false), 3000);
+    const timer = setTimeout(() => setExpanded(false), 4000);
     return () => clearTimeout(timer);
   }, [expanded]);
 
@@ -54,16 +54,6 @@ export function Header({ token }: HeaderProps) {
             <span className="w-2 h-2 rounded-full bg-skin-green animate-pulse-live" />
             <span className="text-[11px] font-mono text-skin-green font-bold">{onlineCount}</span>
           </div>
-          {me && (
-            <div className="flex items-center gap-1 px-2.5 py-1 min-h-[32px] rounded-pill bg-skin-gold/10 border border-skin-gold/20">
-              <Coins size={12} className="text-skin-dim" />
-              <span className="font-mono font-bold text-skin-gold text-sm">{me.silver}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-1 px-2.5 py-1 min-h-[32px] rounded-pill bg-amber-500/10 border border-amber-500/20">
-            <Trophy size={12} className="text-amber-400" />
-            <span className="font-mono font-bold text-amber-400 text-sm">{goldPool}</span>
-          </div>
         </div>
       </motion.button>
 
@@ -76,14 +66,39 @@ export function Header({ token }: HeaderProps) {
             transition={SPRING.snappy}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-3 pt-1 flex items-center justify-between border-t border-white/[0.04]">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-mono font-bold text-skin-gold">DAY {dayIndex + 1}</span>
-                <span className="text-xs font-display font-bold text-skin-pink uppercase tracking-wider">{phase}</span>
+            <div className="px-4 pb-3 pt-2 border-t border-white/[0.04] space-y-2">
+              {/* Row 1: Day + Phase + Alive */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono font-bold text-skin-gold">DAY {dayIndex + 1}</span>
+                  <span className="text-xs font-display font-bold text-skin-pink uppercase tracking-wider">{phase}</span>
+                </div>
+                <span className="text-xs font-mono text-skin-dim">
+                  {aliveCount} of {totalCount} alive
+                </span>
               </div>
-              <span className="text-xs font-mono text-skin-dim">
-                {aliveCount} of {totalCount} alive
-              </span>
+              {/* Row 2: Currency */}
+              {me && (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <Coins size={14} className="text-skin-dim" />
+                    <span className="font-mono font-bold text-skin-gold text-sm">{me.silver}</span>
+                    <span className="text-[10px] font-mono text-skin-dim">silver</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Trophy size={14} className="text-amber-400" />
+                    <span className="font-mono font-bold text-amber-400 text-sm">{goldPool}</span>
+                    <span className="text-[10px] font-mono text-skin-dim">gold pool</span>
+                  </div>
+                  {(me.gold ?? 0) > 0 && (
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <Trophy size={12} className="text-amber-400" />
+                      <span className="font-mono font-bold text-amber-400 text-sm">{me.gold}</span>
+                      <span className="text-[10px] font-mono text-skin-dim">your gold</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
         )}

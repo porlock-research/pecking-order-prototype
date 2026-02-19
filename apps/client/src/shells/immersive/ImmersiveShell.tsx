@@ -42,13 +42,13 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
 
     for (const msg of newMessages) {
       if (msg.category === 'SOCIAL.SILVER_TRANSFER') {
-        toast(msg.text, { icon: '💰', duration: 3000 });
+        toast(msg.text, { icon: '💰' });
       } else if (msg.category === 'GAME.REWARD') {
-        toast.success(msg.text, { duration: 3000 });
+        toast.success(msg.text);
       } else if (msg.category === 'PHASE.VOTING') {
-        toast(msg.text, { icon: '🗳️', duration: 3000 });
+        toast(msg.text, { icon: '🗳️' });
       } else if (msg.category === 'PHASE.NIGHT') {
-        toast(msg.text, { icon: '🌙', duration: 3000 });
+        toast(msg.text, { icon: '🌙' });
       }
     }
   }, [tickerMessages]);
@@ -161,8 +161,8 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
           onSpyDms={(id) => engine.sendPerk('SPY_DMS', id)}
         />
 
-        {/* Perk FAB */}
-        <PerkFAB engine={engine} />
+        {/* Perk FAB — only on People tab to avoid overlapping the send button */}
+        <PerkFAB engine={engine} visible={activeTab === 'people'} />
 
         {/* Dramatic reveal overlays */}
         <DramaticReveal />
@@ -170,8 +170,12 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
         {/* Sonner toast container */}
         <Toaster
           position="top-center"
+          visibleToasts={5}
+          gap={6}
+          closeButton
           toastOptions={{
             className: 'font-body',
+            duration: Infinity,
             style: {
               background: 'var(--po-bg-panel)',
               color: 'var(--po-text)',
