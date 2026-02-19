@@ -208,7 +208,7 @@ export async function getInviteInfo(code: string): Promise<{
 export async function getRandomPersonas(
   code: string,
   theme?: string
-): Promise<{ success: boolean; personas?: (Persona & { imageUrl: string })[]; error?: string }> {
+): Promise<{ success: boolean; personas?: (Persona & { imageUrl: string; fullImageUrl: string })[]; error?: string }> {
   await requireAuth(`/join/${code}`);
   const db = await getDB();
 
@@ -256,6 +256,7 @@ export async function getRandomPersonas(
   const picked = shuffled.slice(0, 3).map((p) => ({
     ...p,
     imageUrl: personaImageUrl(p.id, 'medium'),
+    fullImageUrl: personaImageUrl(p.id, 'full'),
   }));
 
   return { success: true, personas: picked };
