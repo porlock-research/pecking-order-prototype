@@ -18,6 +18,7 @@ interface ChatBubbleProps {
   isMe: boolean;
   sender: SocialPlayer | undefined;
   showSender: boolean;
+  showTimestamp?: boolean;
   isOptimistic?: boolean;
   onLongPress?: (playerId: string, position: { x: number; y: number }) => void;
   onTapReply?: (message: ChatMessage) => void;
@@ -35,6 +36,7 @@ export function ChatBubble({
   isMe,
   sender,
   showSender,
+  showTimestamp = true,
   isOptimistic,
   onLongPress,
   onTapReply,
@@ -123,10 +125,6 @@ export function ChatBubble({
       initial={{ opacity: 0, y: 8, scale: 0.97 }}
       animate={{ opacity: isOptimistic ? 0.6 : 1, y: 0, scale: 1 }}
       transition={SPRING.gentle}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
-      onPointerLeave={handlePointerCancel}
     >
       {/* Avatar */}
       {!isMe && showSender && (
@@ -136,14 +134,14 @@ export function ChatBubble({
       )}
       {!isMe && !showSender && <div className="shrink-0 w-8" />}
 
-      <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
         {!isMe && showSender && (
           <span className="text-sm font-bold text-skin-gold mb-1 ml-1">
             {sender?.personaName || 'Unknown'}
           </span>
         )}
         <motion.div
-          className={`px-4 py-2.5 text-base leading-relaxed break-words relative
+          className={`px-4 py-2.5 text-base leading-relaxed break-words [overflow-wrap:anywhere] max-w-full relative
             ${isMe
               ? 'bg-skin-pink text-white rounded-2xl rounded-br-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]'
               : 'bg-skin-glass-elevated border border-white/[0.1] text-skin-base rounded-2xl rounded-bl-sm'
@@ -151,6 +149,10 @@ export function ChatBubble({
           `}
           animate={pressed ? { scale: 0.97 } : { scale: 1 }}
           transition={{ duration: 0.1 }}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          onPointerLeave={handlePointerCancel}
         >
           {message.content}
         </motion.div>
@@ -164,9 +166,11 @@ export function ChatBubble({
           </div>
         )}
 
-        <span className={`text-[9px] font-mono text-skin-dim/50 mt-0.5 ${isMe ? 'mr-1' : 'ml-1'}`}>
-          {formatTime(message.timestamp)}
-        </span>
+        {showTimestamp && (
+          <span className={`text-[9px] font-mono text-skin-dim/50 mt-0.5 ${isMe ? 'mr-1' : 'ml-1'}`}>
+            {formatTime(message.timestamp)}
+          </span>
+        )}
       </div>
 
       {/* Floating emoji animation */}

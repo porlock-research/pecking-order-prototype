@@ -54,6 +54,10 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
   }, [tickerMessages]);
 
   const handleSelectPlayer = useCallback((id: string) => {
+    // Blur the triggering button so Radix Dialog can safely aria-hidden the main content
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setDrawerPlayerId(id);
     setShowNewDm(false);
     setShowNewGroup(false);
@@ -152,8 +156,8 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
           targetPlayerId={contextTarget}
           position={contextPosition}
           onClose={handleCloseContext}
-          onMessage={(id) => setDrawerPlayerId(id)}
-          onSendSilver={(id) => setDrawerPlayerId(id)}
+          onMessage={(id) => { (document.activeElement as HTMLElement)?.blur(); setDrawerPlayerId(id); }}
+          onSendSilver={(id) => { (document.activeElement as HTMLElement)?.blur(); setDrawerPlayerId(id); }}
           onSpyDms={(id) => engine.sendPerk('SPY_DMS', id)}
         />
 

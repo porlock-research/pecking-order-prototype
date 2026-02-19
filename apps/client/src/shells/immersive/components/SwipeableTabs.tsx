@@ -55,10 +55,15 @@ export function SwipeableTabs({ activeTab, onTabChange, children }: SwipeableTab
     trackTouch: true,
     delta: 50,
     preventScrollOnSwipe: false,
+    touchEventOptions: { passive: true },
   });
 
   return (
-    <div {...swipeHandlers} className="flex-1 overflow-hidden relative flex flex-col">
+    <div
+      {...swipeHandlers}
+      className="flex-1 overflow-hidden relative flex flex-col"
+      style={{ touchAction: 'pan-y' }}
+    >
       {/* Page indicator dots */}
       <div className="flex justify-center gap-2 py-1.5 shrink-0">
         {TAB_ORDER.map(tab => (
@@ -81,20 +86,22 @@ export function SwipeableTabs({ activeTab, onTabChange, children }: SwipeableTab
         ))}
       </div>
 
-      <AnimatePresence initial={false} custom={directionRef.current} mode="popLayout">
-        <motion.div
-          key={activeTab}
-          custom={directionRef.current}
-          variants={variants}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={SPRING.swipe}
-          className="flex-1 flex flex-col overflow-hidden absolute inset-0 top-[22px]"
-        >
-          {children[activeTab]}
-        </motion.div>
-      </AnimatePresence>
+      <div className="flex-1 relative overflow-hidden">
+        <AnimatePresence initial={false} custom={directionRef.current}>
+          <motion.div
+            key={activeTab}
+            custom={directionRef.current}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={SPRING.swipe}
+            className="absolute inset-0 flex flex-col"
+          >
+            {children[activeTab]}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

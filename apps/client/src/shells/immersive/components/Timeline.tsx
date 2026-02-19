@@ -108,6 +108,19 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
     return false;
   };
 
+  // Show timestamp on the last message of a group (next entry breaks the group)
+  const shouldShowTimestamp = (index: number): boolean => {
+    const entry = entries[index];
+    if (entry.kind !== 'chat') return true;
+    // Last entry always shows timestamp
+    if (index === entries.length - 1) return true;
+    const next = entries[index + 1];
+    if (next.kind !== 'chat') return true;
+    if (next.data.senderId !== entry.data.senderId) return true;
+    if (next.data.timestamp - entry.data.timestamp > 120000) return true;
+    return false;
+  };
+
   const handleTapReply = useCallback((message: ChatMessage) => {
     setReplyTarget(message);
   }, []);
@@ -121,7 +134,7 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
     <div className="flex-1 flex flex-col overflow-hidden">
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-2 scroll-smooth pb-4"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 scroll-smooth pb-4"
         onScroll={handleScroll}
       >
         {entries.length === 0 && pendingOptimistic.length === 0 && (
@@ -136,25 +149,30 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
         )}
 
         {entries.map((entry, i) => {
+          const isGrouped = entry.kind === 'chat' && !shouldShowSender(i);
+          const spacing = i === 0 ? '' : isGrouped ? 'mt-0.5' : 'mt-2';
+
           switch (entry.kind) {
             case 'chat':
               return (
-                <ChatBubble
-                  key={entry.key}
-                  message={entry.data}
-                  isMe={entry.data.senderId === playerId}
-                  sender={roster[entry.data.senderId]}
-                  showSender={shouldShowSender(i)}
-                  onLongPress={onLongPressBubble}
-                  onTapReply={handleTapReply}
-                  playerIndex={playerIndexMap.get(entry.data.senderId) ?? 0}
-                />
+                <div key={entry.key} className={spacing}>
+                  <ChatBubble
+                    message={entry.data}
+                    isMe={entry.data.senderId === playerId}
+                    sender={roster[entry.data.senderId]}
+                    showSender={shouldShowSender(i)}
+                    showTimestamp={shouldShowTimestamp(i)}
+                    onLongPress={onLongPressBubble}
+                    onTapReply={handleTapReply}
+                    playerIndex={playerIndexMap.get(entry.data.senderId) ?? 0}
+                  />
+                </div>
               );
             case 'system':
-              return <SystemEvent key={entry.key} message={entry.data} />;
+              return <div key={entry.key} className={spacing}><SystemEvent message={entry.data} /></div>;
             case 'voting':
               return (
-                <div key={entry.key} ref={cartridgeRef}>
+                <div key={entry.key} ref={cartridgeRef} className={spacing}>
                   <CartridgeWrapper kind="voting">
                     <VotingPanel engine={engine} />
                   </CartridgeWrapper>
@@ -162,7 +180,7 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
               );
             case 'game':
               return (
-                <div key={entry.key} ref={cartridgeRef}>
+                <div key={entry.key} ref={cartridgeRef} className={spacing}>
                   <CartridgeWrapper kind="game">
                     <GamePanel engine={engine} />
                   </CartridgeWrapper>
@@ -170,7 +188,7 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
               );
             case 'prompt':
               return (
-                <div key={entry.key} ref={cartridgeRef}>
+                <div key={entry.key} ref={cartridgeRef} className={spacing}>
                   <CartridgeWrapper kind="prompt">
                     <PromptPanel engine={engine} />
                   </CartridgeWrapper>

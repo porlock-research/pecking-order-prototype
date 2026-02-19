@@ -96,11 +96,11 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
     <Drawer.Root
       open={!!targetPlayerId}
       onOpenChange={(open) => { if (!open) onClose(); }}
-      snapPoints={[0.5, 0.85]}
     >
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/60 z-40" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-2xl bg-skin-fill border-t border-white/[0.06] max-h-[85vh]">
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-2xl bg-skin-fill border-t border-white/[0.06] max-h-[85vh]" aria-describedby={undefined}>
+          <Drawer.Title className="sr-only">{target?.personaName ?? 'Player'}</Drawer.Title>
           {/* Drag handle */}
           <div className="flex justify-center py-3">
             <div className="w-10 h-1 rounded-full bg-white/20" />
@@ -110,13 +110,12 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
           {target && (
             <div className="shrink-0 px-5 pb-3 border-b border-white/[0.06] flex items-center gap-3">
               <div className="relative shrink-0">
-                <motion.div
-                  layoutId={`avatar-${targetPlayerId}`}
+                <div
                   className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold font-mono
                     ${isGameMaster ? 'bg-skin-gold/20 text-skin-gold' : 'bg-skin-panel text-skin-gold'}`}
                 >
                   {isGameMaster ? 'GM' : target.personaName?.charAt(0)?.toUpperCase() || '?'}
-                </motion.div>
+                </div>
                 <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green' : 'bg-skin-dim/40'}`} />
               </div>
               <div className="flex-1 min-w-0">

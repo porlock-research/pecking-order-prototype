@@ -35,7 +35,7 @@ export function SystemEvent({ message }: { message: TickerMessage }) {
       transition={{ duration: 0.3 }}
     >
       <div className={`flex-1 h-px ${dividerColor}`} />
-      <span className={`text-[10px] font-mono uppercase tracking-wider whitespace-nowrap ${color}`}>
+      <span className={`text-[10px] font-mono uppercase tracking-wider text-center shrink ${color}`}>
         {message.text}
       </span>
       <div className={`flex-1 h-px ${dividerColor}`} />

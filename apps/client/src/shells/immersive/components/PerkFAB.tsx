@@ -99,7 +99,8 @@ export function PerkFAB({ engine }: PerkFABProps) {
       <Drawer.Root open={open} onOpenChange={setOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 z-40" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl bg-skin-fill border-t border-white/[0.06]">
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl bg-skin-fill border-t border-white/[0.06]" aria-describedby={undefined}>
+            <Drawer.Title className="sr-only">Perks</Drawer.Title>
             <div className="flex justify-center py-3">
               <div className="w-10 h-1 rounded-full bg-white/20" />
             </div>
