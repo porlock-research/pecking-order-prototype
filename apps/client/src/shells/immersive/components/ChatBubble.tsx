@@ -144,6 +144,7 @@ export function ChatBubble({
               ? 'bg-skin-pink text-white rounded-2xl rounded-br-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]'
               : 'bg-skin-glass-elevated border border-white/[0.1] text-skin-base rounded-2xl rounded-bl-sm'
             }
+            ${isInteractive ? 'select-none [-webkit-touch-callout:none]' : ''}
           `}
           animate={pressed ? { scale: 0.97 } : { scale: 1 }}
           transition={{ duration: 0.1 }}
@@ -152,6 +153,7 @@ export function ChatBubble({
             onPointerUp: handlePointerUp,
             onPointerCancel: handlePointerCancel,
             onPointerLeave: handlePointerCancel,
+            onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
           } : {})}
         >
           {message.content}
