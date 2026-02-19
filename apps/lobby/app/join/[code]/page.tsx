@@ -28,22 +28,6 @@ const heroVariants = {
   }),
 };
 
-// Softer variant for the text below the hero
-const textVariants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 40 : -40,
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction > 0 ? -40 : 40,
-    opacity: 0,
-  }),
-};
-
 const LEFT_EDGE_IGNORE = 30;
 
 export default function InvitePage() {
@@ -205,11 +189,10 @@ export default function InvitePage() {
 
   if (!game) return null;
 
-  const filledSlots = game.slots.filter((s) => s.acceptedBy);
   const activePersona = personas[activeIndex];
 
   return (
-    <div className="min-h-screen bg-skin-deep bg-grid-pattern flex flex-col items-center p-4 py-8 font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
+    <div className="h-screen h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
       {/* Blurred full-body background — crossfades with active persona */}
       <AnimatePresence mode="popLayout">
         {activePersona && step === 1 && (
@@ -226,13 +209,13 @@ export default function InvitePage() {
           />
         )}
       </AnimatePresence>
-      {/* Dark overlay to keep text readable over the blurred bg */}
       <div className="absolute inset-0 bg-skin-deep/60 pointer-events-none" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
 
-      <div className="max-w-lg w-full relative z-10 space-y-6">
+      {/* Content area — fills viewport above the bottom bar */}
+      <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-6">
         {/* Header */}
-        <header className="text-center space-y-2">
+        <header className="text-center space-y-1 flex-shrink-0">
           <h1 className="text-4xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow">
             PECKING ORDER
           </h1>
@@ -241,38 +224,28 @@ export default function InvitePage() {
           </p>
         </header>
 
-        {/* Game Info Bar */}
-        <div className="bg-skin-panel/30 backdrop-blur-md border border-skin-base rounded-2xl p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-mono text-skin-base">
-              {game.mode.replace(/_/g, ' ')} &middot; {game.dayCount} days &middot; {game.playerCount} players
-            </div>
-            <div className="text-xs font-mono text-skin-dim/60">
-              {filledSlots.length}/{game.playerCount} joined
-            </div>
-          </div>
-        </div>
-
         {/* Already Joined */}
         {alreadyJoined && (
-          <div className="bg-skin-green/10 border border-skin-green/30 rounded-2xl p-6 text-center space-y-3">
-            <div className="text-skin-green font-display font-bold text-sm uppercase tracking-widest">
-              You've Already Joined
+          <div className="flex-1 flex items-center justify-center">
+            <div className="bg-skin-green/10 border border-skin-green/30 rounded-2xl p-6 text-center space-y-3">
+              <div className="text-skin-green font-display font-bold text-sm uppercase tracking-widest">
+                You've Already Joined
+              </div>
+              <a
+                href={`/game/${code}/waiting`}
+                className="inline-block py-3 px-6 bg-skin-green/20 text-skin-green border border-skin-green/40 rounded-xl font-display font-bold text-sm uppercase hover:bg-skin-green/30 transition-all"
+              >
+                Go to Waiting Room
+              </a>
             </div>
-            <a
-              href={`/game/${code}/waiting`}
-              className="inline-block py-3 px-6 bg-skin-green/20 text-skin-green border border-skin-green/40 rounded-xl font-display font-bold text-sm uppercase hover:bg-skin-green/30 transition-all"
-            >
-              Go to Waiting Room
-            </a>
           </div>
         )}
 
         {/* Character Select Wizard */}
         {!alreadyJoined && game.status === 'RECRUITING' && (
-          <>
+          <div className="flex-1 min-h-0 flex flex-col pt-3 gap-3">
             {/* Step indicator */}
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 flex-shrink-0">
               {[1, 2, 3].map((s) => (
                 <div key={s} className="flex items-center gap-2">
                   <div
@@ -292,35 +265,30 @@ export default function InvitePage() {
               ))}
             </div>
 
-            {/* Step 1 — Fighting-Game Character Select */}
+            {/* Step 1 — Persona Select */}
             {step === 1 && (
-              <div className="space-y-5">
-                <div className="text-center">
+              <div className="flex-1 min-h-0 flex flex-col gap-3">
+                <div className="text-center flex-shrink-0">
                   <div className="text-lg font-display font-black text-skin-gold text-glow uppercase tracking-widest">
-                    Choose Your Fighter
+                    Choose Your Persona
                   </div>
                 </div>
 
                 {isDrawing || personas.length === 0 ? (
-                  <div className="space-y-5">
+                  <div className="flex-1 min-h-0 flex flex-col gap-3">
                     {/* Skeleton hero */}
-                    <div
-                      className="relative rounded-2xl overflow-hidden"
-                      style={{ height: '55vh', minHeight: '360px', maxHeight: '520px' }}
-                    >
+                    <div className="flex-1 min-h-0 relative rounded-2xl overflow-hidden">
                       <div className="absolute inset-0 bg-skin-input/20 animate-pulse" />
                       <div className="absolute inset-0 bg-gradient-to-t from-skin-deep/90 via-transparent to-transparent pointer-events-none" />
                       <div className="absolute bottom-5 left-5 right-5 space-y-2">
                         <div className="h-7 w-44 bg-skin-input/30 rounded animate-pulse" />
                         <div className="h-3 w-28 bg-skin-input/20 rounded animate-pulse" />
+                        <div className="h-3 w-56 bg-skin-input/15 rounded animate-pulse mt-1" />
+                        <div className="h-3 w-40 bg-skin-input/15 rounded animate-pulse" />
                       </div>
                     </div>
-                    {/* Skeleton description */}
-                    <div className="h-[3.75rem] flex items-center justify-center">
-                      <div className="h-4 w-52 bg-skin-input/20 animate-pulse rounded" />
-                    </div>
                     {/* Skeleton thumbnails */}
-                    <div className="flex justify-center gap-5">
+                    <div className="flex-shrink-0 flex justify-center gap-5">
                       {[0, 1, 2].map((i) => (
                         <div key={i} className="flex flex-col items-center gap-1.5">
                           <div className="w-16 h-16 rounded-full bg-skin-input/20 animate-pulse" />
@@ -335,13 +303,13 @@ export default function InvitePage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.4 }}
-                    className="space-y-5"
+                    className="flex-1 min-h-0 flex flex-col gap-3"
                   >
-                    {/* Hero Image Area — swipeable with directional slide */}
+                    {/* Hero Image Area — swipeable, fills remaining space */}
                     <div
                       {...swipeHandlers}
-                      className="relative rounded-2xl overflow-hidden glow-breathe"
-                      style={{ height: '55vh', minHeight: '360px', maxHeight: '520px', touchAction: 'pan-y' }}
+                      className="flex-1 min-h-0 relative rounded-2xl overflow-hidden glow-breathe"
+                      style={{ touchAction: 'pan-y' }}
                     >
                       <AnimatePresence initial={false} custom={directionRef.current} mode="popLayout">
                         <motion.div
@@ -354,7 +322,6 @@ export default function InvitePage() {
                           transition={SPRING_SWIPE}
                           className="absolute inset-0"
                         >
-                          {/* Full body image */}
                           <img
                             src={activePersona?.fullImageUrl}
                             alt={activePersona?.name}
@@ -367,23 +334,21 @@ export default function InvitePage() {
                               }
                             }}
                           />
-
-                          {/* Bottom gradient overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-skin-deep/90 via-skin-deep/30 to-transparent pointer-events-none" />
-
-                          {/* Name + stereotype overlay */}
-                          <div className="absolute bottom-5 left-5 right-5 pointer-events-none">
+                          <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/50 via-40% to-transparent pointer-events-none" />
+                          <div className="absolute bottom-5 left-5 right-5 pointer-events-none space-y-1">
                             <div className="text-2xl font-display font-black text-skin-base text-glow leading-tight">
                               {activePersona?.name}
                             </div>
-                            <div className="text-xs font-display font-bold text-skin-gold uppercase tracking-[0.2em] mt-1">
+                            <div className="text-xs font-display font-bold text-skin-gold uppercase tracking-[0.2em]">
                               {activePersona?.stereotype}
                             </div>
+                            <p className="text-sm text-skin-dim/80 leading-snug pt-1">
+                              {activePersona?.description}
+                            </p>
                           </div>
                         </motion.div>
                       </AnimatePresence>
 
-                      {/* Chevron buttons */}
                       {activeIndex > 0 && (
                         <button
                           onClick={() => setActiveIndex((i) => i - 1)}
@@ -391,13 +356,7 @@ export default function InvitePage() {
                           aria-label="Previous character"
                         >
                           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <path
-                              d="M10 4L6 8L10 12"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
+                            <path d="M10 4L6 8L10 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
                       )}
@@ -408,38 +367,14 @@ export default function InvitePage() {
                           aria-label="Next character"
                         >
                           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <path
-                              d="M6 4L10 8L6 12"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
+                            <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
                       )}
                     </div>
 
-                    {/* Description — fixed height, slides with softer motion */}
-                    <div className="relative overflow-hidden h-[3.75rem]">
-                      <AnimatePresence initial={false} custom={directionRef.current} mode="popLayout">
-                        <motion.p
-                          key={activeIndex}
-                          custom={directionRef.current}
-                          variants={textVariants}
-                          initial="enter"
-                          animate="center"
-                          exit="exit"
-                          transition={{ ...SPRING_SWIPE, stiffness: 200 }}
-                          className="absolute inset-0 text-base font-display font-bold text-skin-dim/80 text-center leading-snug px-4 flex items-center justify-center"
-                        >
-                          {activePersona?.description}
-                        </motion.p>
-                      </AnimatePresence>
-                    </div>
-
                     {/* Thumbnail Strip */}
-                    <div className="flex justify-center gap-5">
+                    <div className="flex-shrink-0 flex justify-center gap-5">
                       {personas.map((persona, idx) => (
                         <motion.button
                           key={persona.id}
@@ -478,58 +413,12 @@ export default function InvitePage() {
                     </div>
                   </motion.div>
                 )}
-
-                {error && (
-                  <div className="p-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm font-mono text-center">
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={async () => {
-                      setIsDrawing(true);
-                      setError(null);
-                      const result = await redrawPersonas(code);
-                      setIsDrawing(false);
-                      if (result.success && result.personas) {
-                        setPersonas(result.personas);
-                        setDrawKey((k) => k + 1);
-                        setActiveIndex(0);
-                        prevIndexRef.current = 0;
-                        directionRef.current = 0;
-                        setSelectedPersona(result.personas[0]);
-                      } else {
-                        setError(result.error || 'Failed to redraw');
-                      }
-                    }}
-                    disabled={isDrawing}
-                    className="px-5 py-5 border border-skin-base text-skin-dim rounded-xl font-display font-bold text-sm uppercase tracking-widest hover:bg-skin-input/30 transition-all disabled:opacity-40 disabled:cursor-wait"
-                  >
-                    Redraw
-                  </button>
-                  <button
-                    onClick={() => {
-                      setError(null);
-                      setStep(2);
-                    }}
-                    disabled={!selectedPersona}
-                    className={`flex-1 py-5 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all
-                      ${
-                        !selectedPersona
-                          ? 'bg-skin-input text-skin-dim/40 cursor-not-allowed'
-                          : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
-                      }`}
-                  >
-                    {selectedPersona ? 'Lock In' : 'Select a Character'}
-                  </button>
-                </div>
               </div>
             )}
 
             {/* Step 2 — Bio Authoring */}
             {step === 2 && selectedPersona && (
-              <div className="space-y-6">
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
                 <div className="text-center">
                   <div className="text-xs font-display font-bold text-skin-dim uppercase tracking-widest">
                     Write Your Catfish Bio
@@ -537,7 +426,6 @@ export default function InvitePage() {
                   <p className="text-xs text-skin-dim/60 mt-1">This is what other players will see</p>
                 </div>
 
-                {/* Selected persona preview */}
                 <div className="flex items-center gap-4 bg-skin-panel/30 border border-skin-base rounded-xl p-4">
                   <div className="w-16 h-16 rounded-xl overflow-hidden bg-skin-input/30 flex-shrink-0">
                     <img
@@ -557,7 +445,6 @@ export default function InvitePage() {
                   </div>
                 </div>
 
-                {/* Bio textarea */}
                 <div className="space-y-2">
                   <textarea
                     value={customBio}
@@ -573,33 +460,12 @@ export default function InvitePage() {
                     </span>
                   </div>
                 </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setStep(1)}
-                    className="px-6 py-4 border border-skin-base text-skin-dim rounded-xl font-display font-bold text-sm uppercase tracking-widest hover:bg-skin-input/30 transition-all"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={() => setStep(3)}
-                    disabled={!customBio.trim()}
-                    className={`flex-1 py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all
-                      ${
-                        !customBio.trim()
-                          ? 'bg-skin-input text-skin-dim/40 cursor-not-allowed'
-                          : 'bg-skin-gold text-skin-deep shadow-btn hover:brightness-110 active:scale-[0.99]'
-                      }`}
-                  >
-                    Continue
-                  </button>
-                </div>
               </div>
             )}
 
             {/* Step 3 — Confirm & Join */}
             {step === 3 && selectedPersona && (
-              <div className="space-y-6">
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
                 <div className="text-center">
                   <div className="text-xs font-display font-bold text-skin-dim uppercase tracking-widest">
                     Confirm Your Identity
@@ -607,7 +473,6 @@ export default function InvitePage() {
                   <p className="text-xs text-skin-dim/60 mt-1">This is who you'll be in the game</p>
                 </div>
 
-                {/* Identity card */}
                 <div className="bg-skin-panel/30 border border-skin-gold/30 rounded-2xl overflow-hidden">
                   <div className="aspect-[4/3] sm:aspect-[16/9] bg-skin-input/30 relative overflow-hidden">
                     <img
@@ -637,46 +502,120 @@ export default function InvitePage() {
                     <p className="text-sm text-skin-base leading-relaxed">{customBio}</p>
                   </div>
                 </div>
-
-                {error && (
-                  <div className="p-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm font-mono text-center">
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setStep(2)}
-                    className="px-6 py-4 border border-skin-base text-skin-dim rounded-xl font-display font-bold text-sm uppercase tracking-widest hover:bg-skin-input/30 transition-all"
-                  >
-                    Edit Bio
-                  </button>
-                  <button
-                    onClick={handleJoin}
-                    disabled={isJoining}
-                    className={`flex-1 py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all flex items-center justify-center gap-3
-                      ${
-                        isJoining
-                          ? 'bg-skin-input text-skin-dim/40 cursor-wait'
-                          : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
-                      }`}
-                  >
-                    {isJoining ? (
-                      <>
-                        <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></span>
-                        <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75"></span>
-                        <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150"></span>
-                      </>
-                    ) : (
-                      <>Join Game</>
-                    )}
-                  </button>
-                </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
+
+      {/* Bottom action bar — pinned to viewport bottom */}
+      {!alreadyJoined && game.status === 'RECRUITING' && (
+        <div className="flex-shrink-0 relative z-20 bg-gradient-to-b from-skin-deep/0 to-skin-deep pt-6 pb-4 px-4">
+          <div className="max-w-lg mx-auto">
+            {error && (
+              <div className="p-3 mb-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm font-mono text-center">
+                {error}
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="flex gap-3">
+                <button
+                  onClick={async () => {
+                    setIsDrawing(true);
+                    setError(null);
+                    const result = await redrawPersonas(code);
+                    setIsDrawing(false);
+                    if (result.success && result.personas) {
+                      setPersonas(result.personas);
+                      setDrawKey((k) => k + 1);
+                      setActiveIndex(0);
+                      prevIndexRef.current = 0;
+                      directionRef.current = 0;
+                      setSelectedPersona(result.personas[0]);
+                    } else {
+                      setError(result.error || 'Failed to redraw');
+                    }
+                  }}
+                  disabled={isDrawing}
+                  className="px-5 py-4 border border-skin-base text-skin-dim rounded-xl font-display font-bold text-sm uppercase tracking-widest hover:bg-skin-input/30 transition-all disabled:opacity-40 disabled:cursor-wait"
+                >
+                  Redraw
+                </button>
+                <button
+                  onClick={() => {
+                    setError(null);
+                    setStep(2);
+                  }}
+                  disabled={!selectedPersona}
+                  className={`flex-1 py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all
+                    ${
+                      !selectedPersona
+                        ? 'bg-skin-input text-skin-dim/40 cursor-not-allowed'
+                        : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
+                    }`}
+                >
+                  {selectedPersona ? 'Lock In' : 'Select a Character'}
+                </button>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(1)}
+                  className="px-6 py-4 border border-skin-base text-skin-dim rounded-xl font-display font-bold text-sm uppercase tracking-widest hover:bg-skin-input/30 transition-all"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => setStep(3)}
+                  disabled={!customBio.trim()}
+                  className={`flex-1 py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all
+                    ${
+                      !customBio.trim()
+                        ? 'bg-skin-input text-skin-dim/40 cursor-not-allowed'
+                        : 'bg-skin-gold text-skin-deep shadow-btn hover:brightness-110 active:scale-[0.99]'
+                    }`}
+                >
+                  Continue
+                </button>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(2)}
+                  className="px-6 py-4 border border-skin-base text-skin-dim rounded-xl font-display font-bold text-sm uppercase tracking-widest hover:bg-skin-input/30 transition-all"
+                >
+                  Edit Bio
+                </button>
+                <button
+                  onClick={handleJoin}
+                  disabled={isJoining}
+                  className={`flex-1 py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all flex items-center justify-center gap-3
+                    ${
+                      isJoining
+                        ? 'bg-skin-input text-skin-dim/40 cursor-wait'
+                        : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
+                    }`}
+                >
+                  {isJoining ? (
+                    <>
+                      <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></span>
+                      <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75"></span>
+                      <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150"></span>
+                    </>
+                  ) : (
+                    <>Join Game</>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
