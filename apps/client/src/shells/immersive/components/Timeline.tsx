@@ -26,6 +26,7 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
   const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
   const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
   const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
+  const onlinePlayers = useGameStore(s => s.onlinePlayers);
   const entries = useTimeline();
   const chatLog = useGameStore(s => s.chatLog);
 
@@ -162,6 +163,7 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
                     sender={roster[entry.data.senderId]}
                     showSender={shouldShowSender(i)}
                     showTimestamp={shouldShowTimestamp(i)}
+                    isOnline={onlinePlayers.includes(entry.data.senderId)}
                     onLongPress={onLongPressBubble}
                     onTapReply={handleTapReply}
                     playerIndex={playerIndexMap.get(entry.data.senderId) ?? 0}

@@ -110,14 +110,11 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
           {/* Player header */}
           {(target || isGameMaster) && (
             <div className="shrink-0 px-5 pb-3 border-b border-white/[0.06] flex items-center gap-3">
-              <div className="relative shrink-0">
+              <div className="shrink-0">
                 {isGameMaster ? (
                   <div className="w-[72px] h-[72px] rounded-full bg-skin-gold/20 flex items-center justify-center text-2xl font-bold font-mono text-skin-gold">GM</div>
                 ) : (
-                  <PersonaAvatar avatarUrl={target!.avatarUrl} personaName={target!.personaName} size={72} eliminated={isEliminated} />
-                )}
-                {!isGameMaster && (
-                  <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green' : 'bg-skin-dim/40'}`} />
+                  <PersonaAvatar avatarUrl={target!.avatarUrl} personaName={target!.personaName} size={72} eliminated={isEliminated} isOnline={isOnline} />
                 )}
               </div>
               <div className="flex-1 min-w-0">

@@ -16,6 +16,8 @@ interface PersonaAvatarProps {
   className?: string;
   /** Text color class for the fallback letter */
   fallbackColor?: string;
+  /** Online status — true shows gold ring, false shows subtle ring, undefined shows no ring */
+  isOnline?: boolean;
 }
 
 function getFallbackTextSize(size: number): string {
@@ -43,6 +45,7 @@ export function PersonaAvatar({
   layoutId,
   className = '',
   fallbackColor = 'text-skin-gold',
+  isOnline,
 }: PersonaAvatarProps) {
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -52,9 +55,15 @@ export function PersonaAvatar({
 
   const containerStyle = { width: size, height: size, minWidth: size, minHeight: size };
 
+  const onlineRing = isOnline === true
+    ? 'ring-2 ring-skin-gold/70 shadow-[0_0_6px_rgba(251,191,36,0.3)]'
+    : isOnline === false
+      ? 'ring-1 ring-white/[0.06]'
+      : '';
+
   const circle = (
     <div
-      className={`rounded-full overflow-hidden bg-skin-panel relative flex items-center justify-center ${eliminated ? 'grayscale' : ''} ${className}`}
+      className={`rounded-full overflow-hidden bg-skin-panel relative flex items-center justify-center ${eliminated ? 'grayscale' : ''} ${onlineRing} ${className}`}
       style={containerStyle}
     >
       {showImage ? (

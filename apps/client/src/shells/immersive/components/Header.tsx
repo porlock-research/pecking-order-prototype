@@ -39,9 +39,6 @@ export function Header({ token }: HeaderProps) {
         whileTap={TAP.card}
       >
         <div className="flex items-center gap-2.5">
-          {me && (
-            <PersonaAvatar avatarUrl={me.avatarUrl} personaName={me.personaName} size={36} className="ring-1 ring-white/10 shadow-[0_0_8px_rgba(251,191,36,0.2)]" />
-          )}
           <h1 className="text-base font-black font-display tracking-tighter text-skin-gold italic text-glow leading-none">
             PO
           </h1>
@@ -52,12 +49,15 @@ export function Header({ token }: HeaderProps) {
             <ChevronDown size={14} className="text-skin-dim" />
           </motion.div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <PushPrompt token={token} />
           <div className="flex items-center gap-1 px-2.5 py-1 min-h-[32px] rounded-pill bg-skin-green/10 border border-skin-green/20">
             <span className="w-2 h-2 rounded-full bg-skin-green animate-pulse-live" />
             <span className="text-[11px] font-mono text-skin-green font-bold">{onlineCount}</span>
           </div>
+          {me && (
+            <PersonaAvatar avatarUrl={me.avatarUrl} personaName={me.personaName} size={36} isOnline={true} />
+          )}
         </div>
       </motion.button>
 
@@ -70,35 +70,32 @@ export function Header({ token }: HeaderProps) {
             transition={SPRING.snappy}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-3 pt-2 border-t border-white/[0.04] space-y-2">
-              {/* Row 1: Day + Phase + Alive */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono font-bold text-skin-gold">DAY {dayIndex}</span>
-                  <span className="text-xs font-display font-bold text-skin-pink uppercase tracking-wider">{phase}</span>
-                </div>
-                <span className="text-xs font-mono text-skin-dim">
-                  {aliveCount} of {totalCount} alive
+            <div className="px-4 pb-3 pt-2 border-t border-white/[0.04]">
+              {/* Status row: Day · Phase · Alive */}
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-mono font-bold text-skin-gold">DAY {dayIndex} <span className="text-skin-pink font-display uppercase tracking-wider">{phase}</span></span>
+                <span className="text-[11px] font-mono text-skin-dim">
+                  {aliveCount}/{totalCount} alive
                 </span>
               </div>
-              {/* Row 2: Currency */}
+              {/* Currency grid */}
               {me && (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <Coins size={14} className="text-skin-dim" />
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="flex items-center gap-1.5 bg-white/[0.04] rounded-lg px-2.5 py-1.5">
+                    <Coins size={13} className="text-skin-gold shrink-0" />
                     <span className="font-mono font-bold text-skin-gold text-sm">{me.silver}</span>
-                    <span className="text-[10px] font-mono text-skin-dim">silver</span>
+                    <span className="text-[9px] font-mono text-skin-dim">silver</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Trophy size={14} className="text-amber-400" />
+                  <div className="flex items-center gap-1.5 bg-white/[0.04] rounded-lg px-2.5 py-1.5">
+                    <Trophy size={13} className="text-amber-400 shrink-0" />
                     <span className="font-mono font-bold text-amber-400 text-sm">{goldPool}</span>
-                    <span className="text-[10px] font-mono text-skin-dim">gold pool</span>
+                    <span className="text-[9px] font-mono text-skin-dim">pool</span>
                   </div>
                   {(me.gold ?? 0) > 0 && (
-                    <div className="flex items-center gap-1.5 ml-auto">
-                      <Trophy size={12} className="text-amber-400" />
+                    <div className="flex items-center gap-1.5 bg-white/[0.04] rounded-lg px-2.5 py-1.5">
+                      <Trophy size={13} className="text-amber-400 shrink-0" />
                       <span className="font-mono font-bold text-amber-400 text-sm">{me.gold}</span>
-                      <span className="text-[10px] font-mono text-skin-dim">your gold</span>
+                      <span className="text-[9px] font-mono text-skin-dim">gold</span>
                     </div>
                   )}
                 </div>
@@ -109,7 +106,7 @@ export function Header({ token }: HeaderProps) {
                   href={`${import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000'}/admin/game/${gameId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-[10px] font-mono text-skin-dim hover:text-skin-base transition-colors"
+                  className="flex items-center gap-1.5 mt-2 text-[10px] font-mono text-skin-dim hover:text-skin-base transition-colors"
                   onClick={e => e.stopPropagation()}
                 >
                   <Settings size={12} />

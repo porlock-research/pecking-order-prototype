@@ -15,6 +15,7 @@ interface ChatBubbleProps {
   showSender: boolean;
   showTimestamp?: boolean;
   isOptimistic?: boolean;
+  isOnline?: boolean;
   onLongPress?: (playerId: string, position: { x: number; y: number }) => void;
   onTapReply?: (message: ChatMessage) => void;
   playerIndex?: number;
@@ -33,6 +34,7 @@ export function ChatBubble({
   showSender,
   showTimestamp = true,
   isOptimistic,
+  isOnline,
   onLongPress,
   onTapReply,
   playerIndex = 0,
@@ -120,7 +122,7 @@ export function ChatBubble({
       {/* Avatar */}
       {showSender && (
         <div className="mt-6">
-          <PersonaAvatar avatarUrl={sender?.avatarUrl} personaName={sender?.personaName} size={40} />
+          <PersonaAvatar avatarUrl={sender?.avatarUrl} personaName={sender?.personaName} size={40} isOnline={isOnline} />
         </div>
       )}
       {!showSender && <div className="shrink-0 w-10" />}

@@ -22,7 +22,7 @@ Header shows `DAY {dayIndex + 1}` but `dayIndex` is already 1-based from the ser
 
 The CartridgeWrapper bouncy entry animation only plays if the client is already loaded when the cartridge spawns. If a player opens the client after the cartridge is active (the majority case — push notification → open app), the cartridge renders instantly with no animation. The enter animation should trigger on first render regardless of when the player connects.
 
-**Status**: Not yet investigated
+**Status**: Fixed — CartridgeWrapper defers animation via requestAnimationFrame; initial state paints first, then the bouncy entrance transition fires, making it visible on late join
 
 ## [BUG-011] Toast notifications used redundantly, need intentional strategy
 
@@ -52,13 +52,13 @@ The current NewGroupPicker is reused from the classic shell and doesn't match th
 
 The small green dot for online status is easy to miss. Should be more prominent — e.g. a gold ring around the avatar when online. Also needs to be applied consistently everywhere an avatar appears (PeopleList, chat bubbles, drawers, typing indicator) — currently only shown in PeopleList cards and PlayerDrawer.
 
-**Status**: Not yet investigated
+**Status**: Fixed — Added `isOnline` prop to PersonaAvatar (gold ring-2 + glow when online, subtle ring when offline). Applied consistently across Header, PeopleList, PlayerDrawer, ChatBubble, and FloatingInput typing indicator. Replaced all green dot indicators.
 
 ## [BUG-006] Immersive header layout is cluttered and avatar misplaced
 
 The expanded header view feels disorganized — no clear visual hierarchy or governing layout scheme. The user avatar should be on the right side of the header (not left), and the expanded section needs a cleaner information layout.
 
-**Status**: Not yet investigated
+**Status**: Fixed — Moved avatar to right side of header bar. Expanded section reorganized: single status row (day + phase + alive count), currency values in a clean 3-column grid with subtle card backgrounds.
 
 ## [BUG-005] Completed phase timeline cards lack visual polish (immersive shell)
 

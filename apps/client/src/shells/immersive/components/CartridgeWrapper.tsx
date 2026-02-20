@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SPRING } from '../springs';
 
@@ -23,10 +23,19 @@ export function CartridgeWrapper({ kind, children }: CartridgeWrapperProps) {
   const glowColor = GLOW_COLORS[kind];
   const borderColor = BORDER_COLORS[kind];
 
+  // Defer animation start by one frame so the initial state paints first.
+  // This ensures the bouncy entrance is visible even on late join (player
+  // opens the app after the cartridge is already active on the server).
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      animate={ready ? { opacity: 1, y: 0, scale: 1 } : undefined}
       transition={SPRING.bouncy}
       className={`rounded-2xl border ${borderColor} overflow-hidden backdrop-blur-sm`}
       style={{

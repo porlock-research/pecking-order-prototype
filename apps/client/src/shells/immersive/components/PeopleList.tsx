@@ -124,8 +124,7 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
             transition={SPRING.button}
           >
             <div className="relative shrink-0">
-              <PersonaAvatar avatarUrl={mePlayer.avatarUrl} personaName={mePlayer.personaName} size={56} layoutId={`avatar-${mePlayer.id}`} />
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-skin-fill bg-skin-green" />
+              <PersonaAvatar avatarUrl={mePlayer.avatarUrl} personaName={mePlayer.personaName} size={56} layoutId={`avatar-${mePlayer.id}`} isOnline={true} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
@@ -253,8 +252,7 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
               transition={{ ...SPRING.button, delay: i * 0.02 }}
             >
               <div className="relative shrink-0">
-                <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={56} layoutId={`avatar-${player.id}`} />
-                <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green animate-pulse-live' : 'bg-skin-dim/40'}`} />
+                <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={56} layoutId={`avatar-${player.id}`} isOnline={isOnline} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">

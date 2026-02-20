@@ -53,7 +53,7 @@ function TypingIndicator({ typingPlayers, playerId, roster }: {
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
     >
-      <PersonaAvatar avatarUrl={firstTyper?.avatarUrl} personaName={firstTyper?.personaName} size={32} />
+      <PersonaAvatar avatarUrl={firstTyper?.avatarUrl} personaName={firstTyper?.personaName} size={32} isOnline={true} />
       <span className="text-[11px] font-mono text-skin-dim/70">
         {text} {verb}
       </span>
