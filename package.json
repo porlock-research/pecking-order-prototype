@@ -6,6 +6,7 @@
     "packages/*"
   ],
   "scripts": {
+    "clean": "turbo run clean && rm -rf node_modules/.cache .turbo",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",

@@ -2,6 +2,7 @@
   "name": "game-server",
   "version": "0.0.1",
   "scripts": {
+    "clean": "rm -rf .wrangler/tmp",
     "dev": "wrangler dev",
     "build": "tsc --noEmit",
     "deploy": "wrangler deploy"

@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "clean": "rm -rf dist node_modules/.vite",
     "dev": "vite",
     "build": "vite build",
     "lint": "tsc --noEmit"
