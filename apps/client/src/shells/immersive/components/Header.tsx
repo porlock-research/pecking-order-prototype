@@ -6,6 +6,7 @@ import { formatPhase } from '../../../utils/formatState';
 import { Coins, Trophy, ChevronDown, Settings } from 'lucide-react';
 import { PlayerStatuses } from '@pecking-order/shared-types';
 import { SPRING, TAP } from '../springs';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 interface HeaderProps {
   token: string | null;
@@ -37,7 +38,10 @@ export function Header({ token }: HeaderProps) {
         onClick={toggleExpand}
         whileTap={TAP.card}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          {me && (
+            <PersonaAvatar avatarUrl={me.avatarUrl} personaName={me.personaName} size={28} className="ring-1 ring-white/10" />
+          )}
           <h1 className="text-base font-black font-display tracking-tighter text-skin-gold italic text-glow leading-none">
             PO
           </h1>

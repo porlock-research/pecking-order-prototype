@@ -99,11 +99,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ engine }) => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth pb-20" ref={scrollRef}>
         {displayedMessages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full space-y-3">
-            <div className="w-14 h-14 rounded-full bg-glass border border-white/10 flex items-center justify-center glow-breathe">
-              <span className="font-mono text-xl text-skin-dim">(~)</span>
+            <div className="w-14 h-14 rounded-full bg-glass border border-white/10 flex items-center justify-center">
+              <span className="text-skin-dim/40 font-mono text-lg">...</span>
             </div>
-            <span className="text-xs font-display tracking-wide text-skin-dim shimmer uppercase">
-              Channel Empty
+            <span className="text-xs font-display tracking-wide text-skin-dim uppercase">
+              Channel empty
             </span>
           </div>
         )}

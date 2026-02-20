@@ -140,7 +140,7 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
         {entries.length === 0 && pendingOptimistic.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full space-y-3">
             <div className="w-16 h-16 rounded-full bg-skin-glass-elevated border border-white/10 flex items-center justify-center">
-              <span className="text-3xl">🐔</span>
+              <span className="text-skin-dim/40 font-mono text-lg">...</span>
             </div>
             <span className="text-base font-display text-skin-dim italic">
               The room is quiet... for now.

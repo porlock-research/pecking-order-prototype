@@ -153,10 +153,10 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
             {entries.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 space-y-3">
                 <div className="w-14 h-14 rounded-full bg-skin-glass-elevated border border-white/10 flex items-center justify-center">
-                  <span className="text-2xl">🤫</span>
+                  <span className="text-skin-dim/40 font-mono text-lg">...</span>
                 </div>
                 <span className="text-base font-display text-skin-dim italic">
-                  {isMe ? 'Your Profile' : 'No whispers exchanged yet. Start scheming?'}
+                  {isMe ? 'Your profile' : 'No whispers exchanged yet. Start scheming?'}
                 </span>
               </div>
             )}
