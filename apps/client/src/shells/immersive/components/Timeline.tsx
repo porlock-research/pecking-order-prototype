@@ -129,9 +129,7 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
   // Determine return-to-action pill label + accent colors
   const returnPillLabel = activeVotingCartridge ? 'Return to Vote' : activeGameCartridge ? 'Return to Game' : activePromptCartridge ? 'Return to Activity' : null;
   const returnPillIcon = activeVotingCartridge ? Vote : activeGameCartridge ? Gamepad2 : MessageSquare;
-  const returnPillBorder = activeVotingCartridge ? 'border-skin-gold/40' : activeGameCartridge ? 'border-skin-green/40' : 'border-skin-pink/40';
-  const returnPillTextColor = activeVotingCartridge ? 'text-skin-gold' : activeGameCartridge ? 'text-skin-green' : 'text-skin-pink';
-  const returnPillIconColor = activeVotingCartridge ? 'text-skin-gold' : activeGameCartridge ? 'text-skin-green' : 'text-skin-pink';
+  const returnPillBg = activeVotingCartridge ? 'bg-skin-gold' : activeGameCartridge ? 'bg-skin-green' : 'bg-skin-pink';
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -218,23 +216,24 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Return to action pill */}
+      {/* Return to action pill — glass strip with solid accent button */}
       <AnimatePresence>
         {hasActiveCartridge && userScrolledUp && returnPillLabel && (
           <motion.div
-            className="flex justify-center py-2 z-10"
-            initial={{ opacity: 0, y: 10, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.9 }}
-            transition={SPRING.bouncy}
+            className="flex justify-center px-4 py-2.5 backdrop-blur-md bg-white/[0.04] border-t border-white/[0.06] z-10"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={SPRING.snappy}
           >
             <motion.button
               onClick={scrollToCartridge}
-              className={`flex items-center gap-2.5 px-5 py-3 rounded-full glass-card ${returnPillBorder} shadow-card font-bold text-sm uppercase tracking-wider`}
+              className={`flex items-center gap-2.5 px-6 py-3 rounded-full ${returnPillBg} text-white shadow-btn font-bold text-sm uppercase tracking-wider`}
               whileTap={TAP.button}
+              transition={SPRING.button}
             >
-              {React.createElement(returnPillIcon, { size: 16, className: returnPillIconColor })}
-              <span className={returnPillTextColor}>{returnPillLabel}</span>
+              {React.createElement(returnPillIcon, { size: 16 })}
+              {returnPillLabel}
             </motion.button>
           </motion.div>
         )}
