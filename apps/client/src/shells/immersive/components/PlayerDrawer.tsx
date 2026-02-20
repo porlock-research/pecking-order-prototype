@@ -101,50 +101,54 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/60 z-40" />
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-2xl bg-skin-fill/95 backdrop-blur-xl border-t border-white/[0.06] h-[65vh] max-h-[85vh]" aria-describedby={undefined}>
-          <Drawer.Title className="sr-only">{target?.personaName ?? 'Player'}</Drawer.Title>
+          <Drawer.Title className="sr-only">{isGameMaster ? 'Game Master' : (target?.personaName ?? 'Player')}</Drawer.Title>
           {/* Drag handle */}
           <div className="flex justify-center py-3">
             <div className="w-12 h-1 rounded-full bg-white/20 shadow-[0_0_8px_rgba(255,255,255,0.1)]" />
           </div>
 
           {/* Player header */}
-          {target && (
+          {(target || isGameMaster) && (
             <div className="shrink-0 px-5 pb-3 border-b border-white/[0.06] flex items-center gap-3">
               <div className="relative shrink-0">
                 {isGameMaster ? (
                   <div className="w-[72px] h-[72px] rounded-full bg-skin-gold/20 flex items-center justify-center text-2xl font-bold font-mono text-skin-gold">GM</div>
                 ) : (
-                  <PersonaAvatar avatarUrl={target.avatarUrl} personaName={target.personaName} size={72} eliminated={isEliminated} />
+                  <PersonaAvatar avatarUrl={target!.avatarUrl} personaName={target!.personaName} size={72} eliminated={isEliminated} />
                 )}
-                <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green' : 'bg-skin-dim/40'}`} />
+                {!isGameMaster && (
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green' : 'bg-skin-dim/40'}`} />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className={`font-bold text-base truncate ${isGameMaster ? 'text-skin-gold' : ''}`}>
-                    {isGameMaster ? 'Game Master' : target.personaName}
+                    {isGameMaster ? 'Game Master' : target!.personaName}
                   </span>
                   {isMe && <span className="badge-skew text-[9px]">YOU</span>}
                   {isEliminated && <span className="text-[9px] font-mono text-skin-danger uppercase">eliminated</span>}
                 </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className={`text-[10px] font-mono ${isOnline ? 'text-skin-green' : 'text-skin-dim'}`}>
-                    {isOnline ? 'online' : 'offline'}
-                  </span>
-                  {!isGameMaster && (
+                {isGameMaster ? (
+                  <span className="text-[10px] font-mono text-skin-gold/60 mt-0.5">System</span>
+                ) : (
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className={`text-[10px] font-mono ${isOnline ? 'text-skin-green' : 'text-skin-dim'}`}>
+                      {isOnline ? 'online' : 'offline'}
+                    </span>
                     <div className="flex items-center gap-2 text-[10px] font-mono">
-                      {(target.gold ?? 0) > 0 && (
+                      {(target!.gold ?? 0) > 0 && (
                         <div className="flex items-center gap-0.5 text-amber-400">
-                          <Trophy size={10} />{target.gold}
+                          <Trophy size={10} />{target!.gold}
                         </div>
                       )}
                       <div className="flex items-center gap-0.5 text-skin-gold">
-                        <Coins size={10} className="text-skin-dim" />{target.silver ?? 0}
+                        <Coins size={10} className="text-skin-dim" />{target!.silver ?? 0}
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-              {!isMe && <span className="font-mono text-[10px] text-skin-dim shrink-0">{charsRemaining}/{charsLimit}</span>}
+              {!isMe && !isGameMaster && <span className="font-mono text-[10px] text-skin-dim shrink-0">{charsRemaining}/{charsLimit}</span>}
             </div>
           )}
 
@@ -156,7 +160,7 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
                   <span className="text-skin-dim/40 font-mono text-lg">...</span>
                 </div>
                 <span className="text-base font-display text-skin-dim italic">
-                  {isMe ? 'Your profile' : 'No whispers exchanged yet. Start scheming?'}
+                  {isMe ? 'Your profile' : isGameMaster ? 'No messages from the Game Master yet.' : 'No whispers exchanged yet. Start scheming?'}
                 </span>
               </div>
             )}
@@ -181,8 +185,8 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
             })}
           </div>
 
-          {/* Input */}
-          {!isMe && targetPlayerId && (
+          {/* Input — hidden for Game Master (one-way messages) */}
+          {!isMe && !isGameMaster && targetPlayerId && (
             <div className="shrink-0 p-3 bg-skin-panel/80 backdrop-blur-lg border-t border-white/[0.06]">
               {showSilverTransfer && canSendSilver && (
                 <div className="mb-2 flex gap-2 items-center animate-fade-in">

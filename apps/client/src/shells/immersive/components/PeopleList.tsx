@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../store/useGameStore';
 import { ChannelTypes, PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
-import { Coins, Trophy, ChevronDown } from 'lucide-react';
+import { Coins, Trophy, ChevronDown, Crown } from 'lucide-react';
 import { SPRING, TAP } from '../springs';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
@@ -59,6 +59,19 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
     }
     return map;
   }, [chatLog, channels, playerId]);
+
+  // Detect Game Master DM channel with messages
+  const gmDm = useMemo(() => {
+    if (!playerId) return null;
+    const gmChannel = Object.values(channels).find(
+      ch => ch.type === ChannelTypes.DM && ch.memberIds.includes(GAME_MASTER_ID)
+    );
+    if (!gmChannel) return null;
+    const msgs = chatLog.filter((m: ChatMessage) => m.channelId === gmChannel.id);
+    if (msgs.length === 0) return null;
+    const lastMsg = msgs[msgs.length - 1];
+    return { lastMessage: lastMsg };
+  }, [channels, chatLog, playerId]);
 
   const { alivePlayers, eliminatedPlayers, mePlayer } = useMemo(() => {
     const all = Object.values(roster).filter(p => p.id !== GAME_MASTER_ID);
@@ -133,6 +146,26 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
               <div className="flex items-center gap-0.5 text-skin-gold">
                 <Coins size={12} className="text-skin-dim" />{mePlayer.silver}
               </div>
+            </div>
+          </motion.button>
+        )}
+
+        {/* Game Master DM — shown when GM messages exist */}
+        {gmDm && (
+          <motion.button
+            onClick={() => onSelectPlayer(GAME_MASTER_ID)}
+            className="w-full flex items-center gap-3.5 p-3.5 rounded-xl glass-card border-skin-gold/20 text-left"
+            whileTap={TAP.card}
+            transition={SPRING.button}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="shrink-0 w-14 h-14 rounded-full bg-skin-gold/20 flex items-center justify-center">
+              <Crown size={24} className="text-skin-gold" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="font-bold text-base text-skin-gold">Game Master</span>
+              <p className="text-sm text-skin-dim truncate">{gmDm.lastMessage.content}</p>
             </div>
           </motion.button>
         )}

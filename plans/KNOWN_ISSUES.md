@@ -4,7 +4,7 @@
 
 DMs from the Game Master no longer appear in the sync message. Noticed after immersive shell visual polish changes — unclear if related to the shell changes or a pre-existing server-side issue. Needs investigation.
 
-**Status**: Fixed — INTERNAL.INJECT_PROMPT handler now lazy-creates the DM channel entry in L3 context.channels (following the same pattern as l3-social.ts processChannelMessage), so the SYNC per-player filter includes GM DM messages
+**Status**: Fixed — Two-part fix: (1) Server: INTERNAL.INJECT_PROMPT handler now lazy-creates the DM channel entry in L3 context.channels so SYNC includes GM DMs. (2) Client: PeopleList shows a Game Master card (Crown icon, gold accent) when GM DM messages exist; PlayerDrawer header renders for GAME_MASTER_ID even without a roster entry; input hidden since GM messages are one-way.
 
 ## [BUG-002] Elimination reveal auto-dismisses
 
