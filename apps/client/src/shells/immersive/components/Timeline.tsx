@@ -133,9 +133,10 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="relative flex-1 overflow-hidden">
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 scroll-smooth pb-4"
+        className="h-full overflow-y-auto overflow-x-hidden p-4 scroll-smooth pb-4"
         onScroll={handleScroll}
       >
         {entries.length === 0 && pendingOptimistic.length === 0 && (
@@ -216,14 +217,14 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Return to action pill — glass strip with solid accent button */}
+      {/* Return to action pill — overlays bottom of scroll area */}
       <AnimatePresence>
         {hasActiveCartridge && userScrolledUp && returnPillLabel && (
           <motion.div
-            className="flex justify-center px-4 py-2.5 backdrop-blur-md bg-white/[0.04] border-t border-white/[0.06] z-10"
-            initial={{ opacity: 0, y: 10 }}
+            className="absolute bottom-0 inset-x-0 flex justify-center px-4 py-3 backdrop-blur-md bg-white/[0.05] border-t border-white/[0.06] z-10"
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
+            exit={{ opacity: 0, y: 20 }}
             transition={SPRING.snappy}
           >
             <motion.button
@@ -241,16 +242,15 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
 
       {/* Jump to latest (only when no active cartridge pill) */}
       {userScrolledUp && !hasActiveCartridge && (
-        <div className="relative">
-          <button
-            onClick={scrollToBottom}
-            className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-4 py-2 rounded-full bg-skin-panel/95 border border-white/[0.1] text-xs font-mono text-skin-gold shadow-card backdrop-blur-md hover:border-skin-gold/30 transition-all animate-fade-in z-10"
-          >
-            <ArrowDown size={12} />
-            Jump to latest
-          </button>
-        </div>
+        <button
+          onClick={scrollToBottom}
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-4 py-2 rounded-full bg-skin-panel/95 border border-white/[0.1] text-xs font-mono text-skin-gold shadow-card backdrop-blur-md hover:border-skin-gold/30 transition-all animate-fade-in z-10"
+        >
+          <ArrowDown size={12} />
+          Jump to latest
+        </button>
       )}
+      </div>
 
       <FloatingInput
         engine={engine}
