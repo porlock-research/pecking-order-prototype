@@ -16,7 +16,7 @@ import type { ShellProps } from '../types';
 // Re-use classic pickers for now (opt-in reuse — exactly as the plan describes)
 import { NewDmPicker } from '../classic/components/NewDmPicker';
 import { NewGroupPicker } from '../classic/components/NewGroupPicker';
-import { GroupThreadView } from '../classic/components/GroupThreadView';
+import { GroupDrawer } from './components/GroupDrawer';
 
 type TabKey = 'comms' | 'people';
 
@@ -64,16 +64,12 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
   }, []);
 
   const handleSelectGroup = useCallback((channelId: string) => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setSelectedGroupId(channelId);
     setShowNewDm(false);
     setShowNewGroup(false);
-    setActiveTab('people');
-  }, []);
-
-  const handleBackToList = useCallback(() => {
-    setShowNewDm(false);
-    setShowNewGroup(false);
-    setSelectedGroupId(null);
   }, []);
 
   const handleLongPressBubble = useCallback((targetId: string, position: { x: number; y: number }) => {
@@ -104,15 +100,6 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
           roster={roster}
           playerId={playerId}
           onBack={() => setShowNewGroup(false)}
-          engine={engine}
-        />
-      );
-    }
-    if (selectedGroupId) {
-      return (
-        <GroupThreadView
-          channelId={selectedGroupId}
-          onBack={handleBackToList}
           engine={engine}
         />
       );
@@ -148,6 +135,13 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
         <PlayerDrawer
           targetPlayerId={drawerPlayerId}
           onClose={() => setDrawerPlayerId(null)}
+          engine={engine}
+        />
+
+        {/* Group DM drawer */}
+        <GroupDrawer
+          channelId={selectedGroupId}
+          onClose={() => setSelectedGroupId(null)}
           engine={engine}
         />
 
