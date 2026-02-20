@@ -22,7 +22,7 @@ Header shows `DAY {dayIndex + 1}` but `dayIndex` is already 1-based from the ser
 
 The CartridgeWrapper bouncy entry animation only plays if the client is already loaded when the cartridge spawns. If a player opens the client after the cartridge is active (the majority case — push notification → open app), the cartridge renders instantly with no animation. The enter animation should trigger on first render regardless of when the player connects.
 
-**Status**: Fixed — CartridgeWrapper defers animation via requestAnimationFrame; initial state paints first, then the bouncy entrance transition fires, making it visible on late join
+**Status**: Partially fixed — entrance animation (opacity, y, scale) works but spring overshoot/bounce is not visible. Tried: requestAnimationFrame defer, setTimeout delay, larger y/scale values, separating CSS animation onto a different element. None produced visible bounce. The `SPRING.bouncy` config (stiffness 300, damping 12) should be underdamped but overshoot is imperceptible. Needs deeper investigation into framer-motion spring behavior.
 
 ## [BUG-011] Toast notifications used redundantly, need intentional strategy
 
