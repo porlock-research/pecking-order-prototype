@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { SPRING } from '../springs';
 
@@ -23,21 +23,11 @@ export function CartridgeWrapper({ kind, children }: CartridgeWrapperProps) {
   const glowColor = GLOW_COLORS[kind];
   const borderColor = BORDER_COLORS[kind];
 
-  // Delay animation start so the initial (invisible) state paints and the
-  // page settles before the bouncy entrance fires. Without this, late-join
-  // players (opening the app after the cartridge is already active) would
-  // see the cartridge pop in instantly with no entrance animation.
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => setReady(true), 400);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.96 }}
-      animate={ready ? { opacity: 1, y: 0, scale: 1 } : undefined}
-      transition={SPRING.bouncy}
+      initial={{ opacity: 0, y: 40, scale: 0.92 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ ...SPRING.bouncy, delay: 0.35 }}
       className={`rounded-2xl border ${borderColor} overflow-hidden backdrop-blur-sm`}
       style={{
         animation: 'glow-breathe 3s ease-in-out infinite',
