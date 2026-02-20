@@ -52,13 +52,24 @@ All content is constrained to `max-w-lg` (32rem / 512px). On desktop, this creat
 Every screen uses a **layered background stack** (all `position: absolute`, `pointer-events-none`):
 
 1. **Base**: `bg-skin-deep bg-grid-pattern` — deep purple (#2c003e) with subtle grid overlay
-2. **Blurred hero** (optional): Full-body persona image at low opacity (0.55), `blur-[10px] scale-110`. Crossfades via `AnimatePresence` when the active persona changes. Only shown on persona-centric screens.
+2. **Blurred hero** (optional): Full-body persona image, crossfades via `AnimatePresence` when the active persona changes. Blur and opacity vary by context (see table below).
 3. **Dark overlay**: `bg-skin-deep/60` — ensures text is always readable over the blurred hero
 4. **Radial glow**: `bg-gradient-radial from-skin-panel/40 to-transparent` — centered 800x800 vignette that adds depth
 
 The content sits at `z-10` above all background layers. The bottom bar sits at `z-20`.
 
-**When to use the blurred hero**: Any screen where a persona is the primary focus (character select, bio authoring, confirmation). Not for utility screens (login, waiting room, admin).
+**Per-step background treatment** (invite wizard):
+
+| Context | Blur | Opacity | Persona source |
+|---------|------|---------|----------------|
+| Character select (step 1) | `blur(10px)` | 0.55 | Active persona (changes on browse) |
+| Bio authoring (step 2) | `blur(2px)` | 1.0 | Selected/locked-in persona |
+| Confirmation (step 3) | `blur(8px)` | 0.45 | Selected/locked-in persona |
+| Waiting room | `blur(2px)` | 0.8 | Player's own persona |
+
+The CSS `filter` is applied via inline `style` with a `transition-[filter] duration-500` class for smooth blur changes between steps.
+
+**When to use the blurred hero**: Any screen where a persona is contextually relevant — character select, bio authoring, confirmation, and the waiting room. Not for utility screens (login, admin).
 
 ---
 
@@ -81,6 +92,8 @@ The content sits at `z-10` above all background layers. The bottom bar sits at `
 - Backgrounds: `/30` for cards, `/60` for inputs, `/20` for skeletons
 - Text: `/80` for descriptions, `/60` for hints, `/40` for disabled/inactive
 - Borders: `border-skin-base` (which is `rgba(255,255,255,0.1)`)
+
+**Important: Tailwind `/opacity` modifier caveat.** The skin tokens are defined as raw `var(--po-*)` CSS custom properties. Tailwind's `/80` opacity modifier (e.g., `bg-skin-deep/80`) requires colors in `rgb()` channel format to work — with plain `var()` it silently fails and the browser falls back to transparent/white. For reliable opacity on skin tokens, use inline `style={{ backgroundColor: 'rgba(44, 0, 62, 0.8)' }}` or define the color+opacity as a dedicated token.
 
 ### Accent Rules
 
@@ -166,15 +179,18 @@ Full preview of the player's chosen identity. Uses the hero image in a constrain
 - Image area: `aspect-[4/3] sm:aspect-[16/9]` with gradient overlay and name/stereotype overlaid
 - Bio section below: padding with `text-[10px] font-mono text-skin-dim/50 uppercase` label + `text-sm text-skin-base` content
 
-### Step Indicator
+### Step Indicator (Animated)
 
-Three numbered circles connected by lines.
+Three numbered circles connected by animated fill bars.
 
-- Circle: `w-8 h-8 rounded-full`
-- Active step: `bg-skin-gold text-skin-deep`
-- Completed step: `bg-skin-gold/30 text-skin-gold` with checkmark
+- Circle: `w-8 h-8 rounded-full font-display font-bold` with `transition-all duration-300`
+- Active/completed step: `bg-skin-gold text-skin-deep`
 - Future step: `bg-skin-input text-skin-dim/40`
-- Connector: `w-8 h-px` — `bg-skin-gold/30` if completed, `bg-skin-input` if not
+- Completed step shows checkmark (`✓`)
+- Connector: `w-10 h-0.5 bg-skin-input relative overflow-hidden`
+- Connector fill: `motion.div` with `scaleX` animation from `origin-left`, `bg-skin-gold`
+- Fill animates left-to-right on advance, empties on back navigation
+- Easing: `[0.4, 0, 0.2, 1]` (Material ease-in-out), 400ms duration
 
 ### Bottom Action Bar
 
@@ -213,12 +229,16 @@ hover:bg-skin-input/30 transition-all
 
 ### Form Inputs
 
-**Textarea**:
+**Textarea** (glass style):
 ```
-w-full px-4 py-3 bg-skin-input/60 border border-skin-base rounded-xl
-text-sm text-skin-base placeholder:text-skin-dim/40
-focus:outline-none focus:ring-1 focus:ring-skin-gold/40 resize-none
+w-full px-4 py-3 backdrop-blur-sm rounded-xl resize-none
+text-base font-bold text-skin-gold text-glow
+placeholder:text-skin-dim placeholder:font-normal
+focus:outline-none
+style={{ backgroundColor: 'rgba(44, 0, 62, 0.8)', border: '1px solid var(--po-gold)' }}
 ```
+
+Gold border via inline style (Tailwind opacity modifiers don't work with `var()` tokens). `backdrop-blur-sm` creates a glass effect over the blurred persona background. `text-glow` adds the gold text-shadow to typed content.
 
 Character counter: `text-xs font-mono` — `text-skin-dim/40` normally, `text-skin-pink` when approaching limit (>260/280).
 
@@ -264,15 +284,22 @@ This matches the client app's `SPRING.swipe` for consistency across the product.
 
 | Context | Animation | Duration |
 |---------|-----------|----------|
-| Hero swipe | Spring slide left/right | ~300ms (spring) |
+| Hero swipe | Spring slide left/right (100% translate) | ~300ms (spring) |
+| Step transitions | Spring slide left/right (80% translate) | ~300ms (spring) |
+| Step indicator fill | scaleX from origin-left | 400ms, ease-in-out |
 | Background persona crossfade | Opacity | 500ms |
+| Background blur change | CSS `transition-[filter]` | 500ms |
 | New draw fade-in | Opacity 0→1 | 400ms |
 | Thumbnail stagger | Opacity + translateY | 300ms, 80ms stagger |
 | Thumbnail active state | Ring + scale | 200ms (CSS transition) |
+| Bottom bar button swap | Opacity crossfade | 150ms |
+| Player card entrance (waiting room) | Opacity + translateY (staggered) | 300ms, 60ms stagger |
 
 ### AnimatePresence Modes
 
 - Hero swipe carousel: `mode="popLayout"` — old and new coexist during spring animation
+- Step content slides: `mode="popLayout"` — exiting step slides out while entering step slides in
+- Bottom bar buttons: `mode="wait"` — old buttons fade out before new ones fade in
 - Blurred background crossfade: `mode="popLayout"` — smooth blend between persona images
 
 ### Touch Interaction
@@ -297,10 +324,11 @@ This matches the client app's `SPRING.swipe` for consistency across the product.
 
 ### Step 2: Write Your Catfish Bio
 
-- Should maintain the blurred hero background for persona continuity
-- Compact persona preview card (headshot + name + stereotype)
-- Textarea with character counter
-- Content is centered vertically in available space
+- Near-opaque blurred hero background (`blur(2px)`, opacity 1.0) — persona is the star of this screen
+- Dark overlay ensures readability
+- Persona name + stereotype shown as large centered text (no card — the background IS the persona)
+- Glass-effect textarea: dark translucent background (`rgba(44,0,62,0.8)`), gold border, gold bold text with `text-glow`
+- Content vertically centered via `my-auto`, scrollable as keyboard safety valve
 - Bottom bar: Back (ghost) + Continue (gold)
 
 ### Step 3: Confirm Your Identity
@@ -315,6 +343,22 @@ This matches the client app's `SPRING.swipe` for consistency across the product.
 - Simple centered card with green accent
 - "Go to Waiting Room" link-button
 - No bottom bar, no blurred background
+
+### Waiting Room
+
+- Viewport-locked flex layout (same as invite flow)
+- Blurred hero background using the player's own persona (`blur(2px)`, opacity 0.8)
+- Dark overlay + radial glow (standard background stack)
+- Header: "PECKING ORDER" title + invite code
+- Status badge: animated pulse dot + status text in a glass pill
+- Player list: glass-panel card (`backdrop-blur-md`) with staggered entrance animations
+  - Filled slots: persona headshot + name + stereotype, gold accent
+  - Empty slots: dashed border, pulsing "?" placeholder, dim text
+- Bottom bar: context-dependent CTA
+  - Waiting: share prompt text
+  - Ready: "Launch Game" pink CTA
+  - Started: "Enter Game" green link-button with client URL
+- Loading: skeleton player cards matching final layout dimensions
 
 ### Error State (No Game)
 

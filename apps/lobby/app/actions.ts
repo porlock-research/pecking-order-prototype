@@ -52,6 +52,7 @@ export interface GameSlot {
   acceptedBy: string | null;
   personaId: string | null;
   personaName: string | null;
+  personaStereotype: string | null;
   personaImageUrl: string | null;
   displayName: string | null;
 }
@@ -76,6 +77,7 @@ interface InviteRow {
   display_name: string | null;
   email: string | null;
   persona_name: string | null;
+  persona_stereotype: string | null;
 }
 
 // ── Persona Draw Config ──────────────────────────────────────────────────
@@ -170,7 +172,7 @@ export async function getInviteInfo(code: string): Promise<{
     .prepare(
       `SELECT i.slot_index, i.accepted_by, i.persona_id,
               u.display_name, u.email,
-              pp.name as persona_name
+              pp.name as persona_name, pp.stereotype as persona_stereotype
        FROM Invites i
        LEFT JOIN Users u ON u.id = i.accepted_by
        LEFT JOIN PersonaPool pp ON pp.id = i.persona_id
@@ -185,6 +187,7 @@ export async function getInviteInfo(code: string): Promise<{
     acceptedBy: inv.accepted_by,
     personaId: inv.persona_id,
     personaName: inv.persona_name,
+    personaStereotype: inv.persona_stereotype,
     personaImageUrl: inv.persona_id ? personaImageUrl(inv.persona_id, 'headshot') : null,
     displayName: inv.display_name || inv.email?.split('@')[0] || null,
   }));
@@ -953,6 +956,7 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
   tokens?: Record<string, string>;
   inviteCode?: string;
   clientHost?: string;
+  myPersonaId?: string;
 }> {
   const session = await requireAuth();
   const db = await getDB();
@@ -971,7 +975,7 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     .prepare(
       `SELECT i.slot_index, i.accepted_by, i.persona_id,
               u.display_name, u.email,
-              pp.name as persona_name
+              pp.name as persona_name, pp.stereotype as persona_stereotype
        FROM Invites i
        LEFT JOIN Users u ON u.id = i.accepted_by
        LEFT JOIN PersonaPool pp ON pp.id = i.persona_id
@@ -986,6 +990,7 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     acceptedBy: inv.accepted_by,
     personaId: inv.persona_id,
     personaName: inv.persona_name,
+    personaStereotype: inv.persona_stereotype,
     personaImageUrl: inv.persona_id ? personaImageUrl(inv.persona_id, 'headshot') : null,
     displayName: inv.display_name || inv.email?.split('@')[0] || null,
   }));
@@ -1012,6 +1017,10 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     }
   }
 
+  // Find current user's persona for background image
+  const myInviteForBg = invites.find((i) => i.accepted_by === session.userId);
+  const myPersonaId = myInviteForBg?.persona_id ?? undefined;
+
   const clientHost = (env.GAME_CLIENT_HOST as string) || 'http://localhost:5173';
-  return { status: game.status, slots, tokens, inviteCode: game.invite_code, clientHost };
+  return { status: game.status, slots, tokens, inviteCode: game.invite_code, clientHost, myPersonaId };
 }
