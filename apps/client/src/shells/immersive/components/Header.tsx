@@ -74,7 +74,7 @@ export function Header({ token }: HeaderProps) {
               {/* Row 1: Day + Phase + Alive */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono font-bold text-skin-gold">DAY {dayIndex + 1}</span>
+                  <span className="text-xs font-mono font-bold text-skin-gold">DAY {dayIndex}</span>
                   <span className="text-xs font-display font-bold text-skin-pink uppercase tracking-wider">{phase}</span>
                 </div>
                 <span className="text-xs font-mono text-skin-dim">

@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { LayoutGroup } from 'framer-motion';
-import { Toaster, toast } from 'sonner';
+import { Toaster } from 'sonner';
 import { useGameStore } from '../../store/useGameStore';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -32,26 +32,9 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
   const [contextTarget, setContextTarget] = useState<string | null>(null);
   const [contextPosition, setContextPosition] = useState<{ x: number; y: number } | null>(null);
 
-  // Ticker toast watcher
-  const tickerMessages = useGameStore(s => s.tickerMessages);
-  const lastTickerCountRef = useRef(tickerMessages.length);
-
-  useEffect(() => {
-    const newMessages = tickerMessages.slice(lastTickerCountRef.current);
-    lastTickerCountRef.current = tickerMessages.length;
-
-    for (const msg of newMessages) {
-      if (msg.category === 'SOCIAL.SILVER_TRANSFER') {
-        toast(msg.text, { icon: '💰' });
-      } else if (msg.category === 'GAME.REWARD') {
-        toast.success(msg.text);
-      } else if (msg.category === 'PHASE.VOTING') {
-        toast(msg.text, { icon: '🗳️' });
-      } else if (msg.category === 'PHASE.NIGHT') {
-        toast(msg.text, { icon: '🌙' });
-      }
-    }
-  }, [tickerMessages]);
+  // Toasts are reserved for targeted events only (DM rejections, perk results).
+  // Broadcast events (silver transfers, phase changes, game rewards) are already
+  // visible in the timeline as system events — no duplicate toasts needed.
 
   const handleSelectPlayer = useCallback((id: string) => {
     // Blur the triggering button so Radix Dialog can safely aria-hidden the main content

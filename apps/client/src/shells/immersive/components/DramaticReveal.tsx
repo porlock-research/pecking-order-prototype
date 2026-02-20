@@ -118,12 +118,7 @@ export function DramaticReveal() {
     setCurrent(null);
   }, [current, gameId]);
 
-  // Auto-dismiss eliminations after 3s
-  useEffect(() => {
-    if (!current || current.kind === 'winner') return;
-    const timer = setTimeout(dismiss, 3000);
-    return () => clearTimeout(timer);
-  }, [current, dismiss]);
+  // All reveals persist until manually dismissed (tap to dismiss)
 
   // Fire confetti for winner
   useEffect(() => {

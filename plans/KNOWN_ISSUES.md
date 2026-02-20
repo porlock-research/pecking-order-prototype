@@ -10,13 +10,13 @@ DMs from the Game Master no longer appear in the sync message. Noticed after imm
 
 The DramaticReveal full-screen overlay for eliminations dismisses automatically (3s timer). It should persist until the user manually dismisses it.
 
-**Status**: Not yet investigated
+**Status**: Fixed — removed auto-dismiss timer; all reveals now require tap to dismiss
 
 ## [BUG-003] Header day number off by one
 
 Header shows `DAY {dayIndex + 1}` but `dayIndex` is already 1-based from the server, so day 1 displays as "DAY 2". The `+ 1` in `Header.tsx` should likely be removed.
 
-**Status**: Not yet investigated
+**Status**: Fixed — server increments `dayIndex` from 0 on `morningBriefing` entry, so it arrives 1-based; removed the `+ 1`
 
 ## [BUG-004] Cartridge enter animation missed on late join
 
@@ -28,7 +28,7 @@ The CartridgeWrapper bouncy entry animation only plays if the client is already 
 
 Toasts fire for ticker events that are already visible in the timeline (silver transfers, phase changes, game rewards). This creates duplicate information and notification fatigue. Need a clear policy for when toasts are appropriate — e.g. only for targeted events the player might miss (DM rejections, perk results), not for broadcast events already shown inline.
 
-**Status**: Not yet investigated
+**Status**: Fixed — removed broadcast ticker→toast watcher from ImmersiveShell; toasts now only fire for targeted events (DM rejections, perk results) which are handled in their respective components
 
 ## [BUG-010] Lobby admin panel shows all players as eliminated
 
