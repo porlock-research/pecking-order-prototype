@@ -23,13 +23,14 @@ export function CartridgeWrapper({ kind, children }: CartridgeWrapperProps) {
   const glowColor = GLOW_COLORS[kind];
   const borderColor = BORDER_COLORS[kind];
 
-  // Defer animation start by one frame so the initial state paints first.
-  // This ensures the bouncy entrance is visible even on late join (player
-  // opens the app after the cartridge is already active on the server).
+  // Delay animation start so the initial (invisible) state paints and the
+  // page settles before the bouncy entrance fires. Without this, late-join
+  // players (opening the app after the cartridge is already active) would
+  // see the cartridge pop in instantly with no entrance animation.
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    const id = requestAnimationFrame(() => setReady(true));
-    return () => cancelAnimationFrame(id);
+    const timer = setTimeout(() => setReady(true), 400);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
