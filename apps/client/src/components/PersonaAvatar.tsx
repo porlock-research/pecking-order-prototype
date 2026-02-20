@@ -56,9 +56,9 @@ export function PersonaAvatar({
   const containerStyle = { width: size, height: size, minWidth: size, minHeight: size };
 
   const onlineRing = isOnline === true
-    ? 'ring-2 ring-skin-gold/70 shadow-[0_0_6px_rgba(251,191,36,0.3)]'
+    ? 'ring-2 ring-skin-gold shadow-[0_0_6px_rgba(251,191,36,0.3)]'
     : isOnline === false
-      ? 'ring-1 ring-white/[0.06]'
+      ? 'ring-1 ring-white/10'
       : '';
 
   const circle = (
