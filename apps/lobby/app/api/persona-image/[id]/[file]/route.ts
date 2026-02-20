@@ -1,7 +1,5 @@
 import { getEnv } from '@/lib/db';
 
-export const runtime = 'edge';
-
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string; file: string }> }
