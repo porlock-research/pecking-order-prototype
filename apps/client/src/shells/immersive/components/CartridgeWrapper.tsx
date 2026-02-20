@@ -25,9 +25,9 @@ export function CartridgeWrapper({ kind, children }: CartridgeWrapperProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 40, scale: 0.92 }}
+      initial={{ opacity: 0, y: 100, scale: 0.75 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ ...SPRING.bouncy, delay: 0.35 }}
+      transition={{ ...SPRING.bouncy, delay: 0.5 }}
       className={`rounded-2xl border ${borderColor} overflow-hidden backdrop-blur-sm`}
       style={{
         animation: 'glow-breathe 3s ease-in-out infinite',
