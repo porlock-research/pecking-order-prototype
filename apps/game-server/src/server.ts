@@ -356,7 +356,7 @@ export class GameServer extends Server<Env> {
     const snapshot = this.actor?.getSnapshot();
     const roster = snapshot?.context.roster || {};
     const rosterSummary = Object.fromEntries(
-      Object.entries(roster).map(([id, p]: [string, any]) => [id, { personaName: p.personaName, status: p.isAlive ? 'ALIVE' : 'ELIMINATED' }])
+      Object.entries(roster).map(([id, p]: [string, any]) => [id, { personaName: p.personaName, status: p.status }])
     );
     return new Response(JSON.stringify({
       state: snapshot?.value,

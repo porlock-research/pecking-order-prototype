@@ -4,7 +4,7 @@
 
 DMs from the Game Master no longer appear in the sync message. Noticed after immersive shell visual polish changes — unclear if related to the shell changes or a pre-existing server-side issue. Needs investigation.
 
-**Status**: Not yet investigated
+**Status**: Fixed — INTERNAL.INJECT_PROMPT handler now lazy-creates the DM channel entry in L3 context.channels (following the same pattern as l3-social.ts processChannelMessage), so the SYNC per-player filter includes GM DM messages
 
 ## [BUG-002] Elimination reveal auto-dismisses
 
@@ -34,13 +34,13 @@ Toasts fire for ticker events that are already visible in the timeline (silver t
 
 The admin panel in the lobby always displays players with eliminated status regardless of their actual status. Likely a mapping/projection issue in the admin game state view.
 
-**Status**: Not yet investigated
+**Status**: Fixed — handleGetState() was reading `p.isAlive` (undefined) instead of `p.status`; changed to use `p.status` directly
 
 ## [BUG-009] Irrelevant ticker messages shown in 1-on-1 DMs
 
 The DM timeline shows ticker/system events that are unrelated to the two players in the conversation. The intent is for DM history to include only events where both players are involved (e.g. silver transfers between them, votes involving both). A ticker message should only appear in a DM if both the viewer and the DM partner are in the event's `involvedPlayerIds`.
 
-**Status**: Not yet investigated
+**Status**: Fixed — usePlayerTimeline filter now requires BOTH playerId and targetPlayerId to be in involvedPlayerIds
 
 ## [BUG-008] Group chat creation UI needs redesign
 

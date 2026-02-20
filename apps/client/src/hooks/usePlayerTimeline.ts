@@ -26,9 +26,9 @@ export function usePlayerTimeline(targetPlayerId: string): TimelineEntry[] {
       entries.push({ kind: 'chat', key: `chat-${msg.id}`, timestamp: msg.timestamp, data: msg });
     }
 
-    // Ticker messages involving the target player
+    // Ticker messages involving BOTH players in the DM conversation
     for (const t of tickerMessages) {
-      if (t.involvedPlayerIds && t.involvedPlayerIds.includes(targetPlayerId)) {
+      if (t.involvedPlayerIds && t.involvedPlayerIds.includes(targetPlayerId) && t.involvedPlayerIds.includes(playerId)) {
         entries.push({ kind: 'system', key: `sys-${t.id}`, timestamp: t.timestamp, data: t });
       }
     }

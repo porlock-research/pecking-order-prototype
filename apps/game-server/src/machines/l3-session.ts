@@ -170,6 +170,20 @@ export const dailySessionMachine = setup({
                       ? dmChannelId(GAME_MASTER_ID, targetId)
                       : 'MAIN';
                     const msg = buildChatMessage(GAME_MASTER_ID, text, channelId);
+
+                    // Lazy-create DM channel for GM→player messages so SYNC includes them
+                    if (targetId && !context.channels[channelId]) {
+                      const newChannel: Channel = {
+                        id: channelId,
+                        type: 'DM',
+                        memberIds: [GAME_MASTER_ID, targetId],
+                        createdBy: GAME_MASTER_ID,
+                        createdAt: Date.now(),
+                        capabilities: ['CHAT'],
+                      };
+                      enqueue.assign({ channels: { ...context.channels, [channelId]: newChannel } });
+                    }
+
                     enqueue.assign({ chatLog: appendToChatLog(context.chatLog, msg) });
                     // Emit DM_SENT fact for targeted messages so push notifications fire
                     if (targetId) {
