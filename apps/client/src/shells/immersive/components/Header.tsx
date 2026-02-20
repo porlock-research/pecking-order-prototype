@@ -40,7 +40,7 @@ export function Header({ token }: HeaderProps) {
       >
         <div className="flex items-center gap-2.5">
           {me && (
-            <PersonaAvatar avatarUrl={me.avatarUrl} personaName={me.personaName} size={28} className="ring-1 ring-white/10" />
+            <PersonaAvatar avatarUrl={me.avatarUrl} personaName={me.personaName} size={36} className="ring-1 ring-white/10 shadow-[0_0_8px_rgba(251,191,36,0.2)]" />
           )}
           <h1 className="text-base font-black font-display tracking-tighter text-skin-gold italic text-glow leading-none">
             PO

@@ -53,7 +53,7 @@ function TypingIndicator({ typingPlayers, playerId, roster }: {
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
     >
-      <PersonaAvatar avatarUrl={firstTyper?.avatarUrl} personaName={firstTyper?.personaName} size={24} />
+      <PersonaAvatar avatarUrl={firstTyper?.avatarUrl} personaName={firstTyper?.personaName} size={32} />
       <span className="text-[11px] font-mono text-skin-dim/70">
         {text} {verb}
       </span>
@@ -85,7 +85,7 @@ export function FloatingInput({ engine, replyTarget, onClearReply }: FloatingInp
 
   return (
     <div className="shrink-0 bg-skin-panel/80 backdrop-blur-xl border-t border-white/[0.04]">
-      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.12] to-transparent" />
       <div className="px-3 pt-1.5 pb-3">
         <AnimatePresence>
           <TypingIndicator typingPlayers={typingPlayers} playerId={playerId} roster={roster} />
@@ -130,7 +130,7 @@ export function FloatingInput({ engine, replyTarget, onClearReply }: FloatingInp
             placeholder={groupChatOpen ? "Spill the tea..." : "Chat closed..."}
             maxLength={280}
             disabled={!groupChatOpen}
-            className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-base text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:border-transparent placeholder:text-skin-dim transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-base text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:shadow-[0_0_0_4px_rgba(236,72,153,0.15)] focus:border-transparent placeholder:text-skin-dim transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           />
           <motion.button
             type="submit"

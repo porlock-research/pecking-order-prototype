@@ -24,13 +24,15 @@ function getFallbackTextSize(size: number): string {
   if (size <= 36) return 'text-sm';
   if (size <= 48) return 'text-base';
   if (size <= 56) return 'text-xl';
-  return 'text-2xl';
+  if (size <= 72) return 'text-2xl';
+  return 'text-3xl';
 }
 
 function getSkullSize(size: number): number {
   if (size <= 32) return 10;
   if (size <= 48) return 14;
-  return 18;
+  if (size <= 64) return 18;
+  return 22;
 }
 
 export function PersonaAvatar({

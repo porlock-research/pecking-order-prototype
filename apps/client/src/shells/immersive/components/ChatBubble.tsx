@@ -93,7 +93,7 @@ export function ChatBubble({
         animate={{ opacity: 1, y: 0 }}
         transition={SPRING.gentle}
       >
-        <div className="border-l-[3px] border-skin-gold bg-skin-gold/15 px-5 py-3.5 rounded-r-xl">
+        <div className="border-l-[3px] border-skin-gold bg-skin-gold/15 px-5 py-3.5 rounded-r-xl shadow-[inset_0_0_20px_rgba(251,191,36,0.08)]">
           <div className="flex items-center gap-2 mb-1">
             <Crown size={12} className="text-skin-gold" />
             <span className="text-[11px] font-bold text-skin-gold uppercase tracking-wider font-display">
@@ -119,11 +119,11 @@ export function ChatBubble({
     >
       {/* Avatar */}
       {showSender && (
-        <div className="mt-5">
-          <PersonaAvatar avatarUrl={sender?.avatarUrl} personaName={sender?.personaName} size={32} />
+        <div className="mt-6">
+          <PersonaAvatar avatarUrl={sender?.avatarUrl} personaName={sender?.personaName} size={40} />
         </div>
       )}
-      {!showSender && <div className="shrink-0 w-8" />}
+      {!showSender && <div className="shrink-0 w-10" />}
 
       <div className={`flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
         {!isMe && showSender && (
@@ -135,7 +135,7 @@ export function ChatBubble({
           className={`px-4 py-2.5 text-base leading-relaxed break-words [overflow-wrap:anywhere] max-w-full relative
             ${isMe
               ? 'bg-skin-pink text-white rounded-2xl rounded-br-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]'
-              : 'bg-skin-glass-elevated border border-white/[0.1] text-skin-base rounded-2xl rounded-bl-sm'
+              : 'bubble-glass text-skin-base rounded-2xl rounded-bl-sm'
             }
             ${isInteractive ? 'select-none [-webkit-touch-callout:none]' : ''}
           `}

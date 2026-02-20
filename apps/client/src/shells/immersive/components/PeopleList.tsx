@@ -106,12 +106,12 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
         {mePlayer && (
           <motion.button
             onClick={() => onSelectPlayer(mePlayer.id)}
-            className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-skin-gold/10 border border-skin-gold/30 text-left"
+            className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-skin-gold/10 border border-skin-gold/30 text-left animate-glow-breathe"
             whileTap={TAP.card}
             transition={SPRING.button}
           >
             <div className="relative shrink-0">
-              <PersonaAvatar avatarUrl={mePlayer.avatarUrl} personaName={mePlayer.personaName} size={48} layoutId={`avatar-${mePlayer.id}`} />
+              <PersonaAvatar avatarUrl={mePlayer.avatarUrl} personaName={mePlayer.personaName} size={56} layoutId={`avatar-${mePlayer.id}`} />
               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-skin-fill bg-skin-green" />
             </div>
             <div className="flex-1 min-w-0">
@@ -163,19 +163,19 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
                   <motion.button
                     key={thread.channelId}
                     onClick={() => onSelectGroup(thread.channelId)}
-                    className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-skin-glass-elevated border border-white/[0.06] hover:border-skin-pink/30 transition-all text-left"
+                    className="w-full flex items-center gap-3.5 p-3.5 rounded-xl glass-card hover:border-skin-pink/30 transition-all text-left"
                     whileTap={TAP.card}
                     transition={SPRING.button}
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                   >
-                    <div className="relative shrink-0" style={{ width: 44, height: 44 }}>
+                    <div className="relative shrink-0" style={{ width: 52, height: 52 }}>
                       {thread.otherMemberIds.slice(0, 2).map((id, idx) => {
                         const p = roster[id];
                         return (
-                          <div key={id} className="absolute" style={{ top: idx * 10, left: idx * 10, zIndex: 2 - idx }}>
-                            <PersonaAvatar avatarUrl={p?.avatarUrl} personaName={p?.personaName} size={32} className="ring-2 ring-skin-deep" />
+                          <div key={id} className="absolute" style={{ top: idx * 12, left: idx * 12, zIndex: 2 - idx }}>
+                            <PersonaAvatar avatarUrl={p?.avatarUrl} personaName={p?.personaName} size={36} className="ring-2 ring-skin-deep" />
                           </div>
                         );
                       })}
@@ -213,14 +213,14 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
             <motion.button
               key={player.id}
               onClick={() => onSelectPlayer(player.id)}
-              className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-skin-glass-elevated border border-white/[0.06] text-left"
+              className="w-full flex items-center gap-3.5 p-3.5 rounded-xl glass-card text-left"
               whileTap={TAP.card}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...SPRING.button, delay: i * 0.02 }}
             >
               <div className="relative shrink-0">
-                <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={48} layoutId={`avatar-${player.id}`} />
+                <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={56} layoutId={`avatar-${player.id}`} />
                 <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green animate-pulse-live' : 'bg-skin-dim/40'}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -273,7 +273,7 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
                 >
                   <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-skin-glass border border-white/[0.04] opacity-50">
                     <div className="relative shrink-0">
-                      <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={48} eliminated />
+                      <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={52} eliminated />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
