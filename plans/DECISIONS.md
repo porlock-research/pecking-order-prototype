@@ -764,3 +764,103 @@ This document tracks significant architectural decisions, their context, and con
     *   Adding a new game to the harness requires only a new entry in `GAME_DEFS` (no switch cases, no static imports).
     *   `React.lazy` provides per-component code splitting with a `<Suspense>` fallback spinner.
     *   Bot buttons for sync-decision games are driven by `def.botPayload` — TOUCH_SCREEN keeps its custom buttons via special-case check (structurally different from simple submit).
+
+## [ADR-061] Photo Persona System & Image Delivery
+
+*   **Date:** 2026-02-19
+*   **Status:** Accepted
+*   **Context:** The lobby previously used text-only persona descriptions from a small pool. For a reality TV elimination game, players need to feel like they're choosing a character — large, expressive headshots and full-body images are essential to the theatrical tone. The persona pool also needed to expand with richer metadata (name, stereotype, description, theme).
+*   **Decision:** Revamp the persona system end-to-end:
+    *   **Migration 0004** (`0004_revamp_persona_pool.sql`): Drop and recreate `PersonaPool` with 24 curated characters. Each has an `id` (`persona-01` through `persona-24`), `name`, `stereotype` (e.g., "The Influencer", "The Backstabber"), `description` (snarky one-liner), and `theme` (default: `'DEFAULT'`, extensible for future themed packs).
+    *   **AI-generated images**: Each persona has 3 image variants stored in Cloudflare R2 under `personas/{id}/`:
+        *   `headshot.png` — circular avatar crop (thumbnail strip, player lists)
+        *   `medium.png` — upper-body crop (cast portrait grid, compact cards)
+        *   `full.png` — full-body shot (hero card, blurred backgrounds)
+    *   **R2 bucket**: `PERSONA_BUCKET` binding in lobby `wrangler.toml`. One-time upload via `apps/lobby/scripts/import-personas.ts`.
+    *   **API route** (`/api/persona-image/[id]/[file]`): Edge-runtime Next.js route handler. Validates persona ID format (`/^persona-\d+$/`) and file name against whitelist (`headshot.png`, `medium.png`, `full.png`). Serves from R2 directly with `Cache-Control: public, max-age=86400, s-maxage=604800`. Supports `PERSONA_ASSETS_URL` env var for CDN redirect (302) when a custom domain is configured.
+    *   Helper functions `personaFullUrl(id)`, `personaMediumUrl(id)`, `personaHeadshotUrl(id)` encapsulate the URL pattern.
+*   **Consequences:**
+    *   Persona images are a first-class part of the game experience — character select, bio screen, waiting room, and game client all use them.
+    *   R2 serves images with aggressive caching. CDN redirect path allows putting a custom domain in front without code changes.
+    *   24 personas with 8-player games means the pool is 3x the max player count — enough variety for multiple concurrent games.
+    *   Adding new persona themes requires: SQL insert + R2 upload of 3 images per persona. No code changes.
+
+## [ADR-062] Persistent Persona Draws with D1 Locking
+
+*   **Date:** 2026-02-19
+*   **Status:** Accepted
+*   **Context:** `getRandomPersonas` drew 3 fresh random personas on every call, including page reloads. This caused two problems: (1) refreshing the page gave different characters, breaking the selection flow; (2) two players could see the same persona simultaneously, leading to "already been picked" errors when one tried to confirm.
+*   **Decision:** Persist draws in a new `PersonaDraws` D1 table with TTL-based locking:
+    *   **Migration 0005** (`0005_persona_draws.sql`): `PersonaDraws` table with `game_id`, `user_id`, `persona_ids` (JSON array), `expires_at` (Unix ms), `created_at`. Unique index on `(game_id, user_id)` — one active draw per player per game.
+    *   **Constants**: `DRAW_SIZE = 3` (personas per draw), `DRAW_TTL_MS = 15 * 60 * 1000` (15-minute lock).
+    *   **Idempotent draws**: `getRandomPersonas` checks for an existing non-expired draw first. If found, returns those same personas. If expired, deletes and generates fresh. New draws exclude personas that are either confirmed (in `Invites`) or locked by other players' active draws.
+    *   **`redrawPersonas` server action**: Deletes the player's existing draw, then calls `getRandomPersonas` for a fresh one. Used by the client when a "persona already taken" error occurs, and available for a future re-draw button.
+    *   **Cleanup on accept**: `acceptInvite` deletes the player's `PersonaDraws` row after successfully claiming a slot, releasing the unchosen personas back to the pool.
+*   **Consequences:**
+    *   Reloading the invite page returns the same 3 characters — no more confusion.
+    *   Concurrent players see disjoint persona pools (within TTL window). The existing `acceptInvite` uniqueness check remains as a final safety net.
+    *   Abandoned sessions auto-unlock after 15 minutes — no permanent persona lockout.
+    *   With 24 personas and max 8 players, even with all draws locked simultaneously there are still personas available (24 - 8×3 = 0 at worst, but in practice some will have confirmed already).
+
+## [ADR-063] Fighting-Game Character Select & Step Transitions
+
+*   **Date:** 2026-02-19
+*   **Status:** Accepted
+*   **Context:** The invite wizard was a simple form — functional but flat. For a reality TV game, character selection should feel like picking a fighter in a versus game: dramatic, tactile, and memorable. The 3-step flow (choose → bio → confirm) also needed smooth transitions instead of hard cuts.
+*   **Decision:** Redesign the invite wizard (`apps/lobby/app/join/[code]/page.tsx`) with three major UX upgrades:
+    *   **Swipe carousel character select** (Step 1): Full-viewport hero card with persona's full-body image, gradient text overlay (name, stereotype, description), and `glow-breathe` border animation. Navigate via `react-swipeable` swipe gestures or chevron buttons. Spring physics (`stiffness: 300, damping: 30, mass: 0.8`) matching the client app's `SPRING.swipe`. Circular thumbnail strip below for direct selection. Skeleton loading state with pulsing placeholders matching final layout dimensions.
+    *   **Step slide transitions**: `AnimatePresence mode="popLayout"` wraps step content with directional spring slides (80% translateX). `stepDirectionRef` + `prevStepRef` track direction synchronously during render (before AnimatePresence reads the `custom` prop). Bottom bar buttons crossfade with `AnimatePresence mode="wait"`.
+    *   **Animated step indicator**: Three numbered circles connected by fill bars. `motion.div` with `scaleX` animation from `origin-left`, `bg-skin-gold`. Fill animates left-to-right on advance, empties on back navigation. Completed steps show checkmark.
+    *   **Per-step blurred background**: `STEP_BG` config maps step → `{ blur, opacity }`. Step 1: `blur(10px)`, 0.55 opacity (persona is a backdrop). Step 2: `blur(2px)`, full opacity (persona is the star). Step 3: `blur(8px)`, 0.45 opacity (focus on confirmation card). CSS `filter` with `transition-[filter] duration-500` for smooth changes.
+    *   **Bio screen (Step 2)**: Persona name and stereotype as large centered text over near-opaque background — no card, the background IS the persona. Glass-effect textarea with inline styles (gold border, dark translucent bg, gold bold text with `text-glow`).
+    *   **Viewport-locked layout**: `h-screen h-dvh flex flex-col overflow-hidden` with `flex-1 min-h-0` for hero content. Bottom bar always visible via `flex-shrink-0`.
+*   **Consequences:**
+    *   Character selection feels premium and game-like. Players can swipe through personas like a fighting game roster.
+    *   Step transitions provide spatial continuity — the wizard feels like moving through a physical space, not jumping between pages.
+    *   Direction-aware animations (forward slides right-to-left, back slides left-to-right) provide natural navigation feedback.
+    *   Inline styles for skin-token colors (rgba/var) work around Tailwind's opacity modifier limitation with CSS custom properties.
+    *   Spring physics are consistent with the game client — same muscle memory across lobby and gameplay.
+
+## [ADR-064] Lobby Design Brief
+
+*   **Date:** 2026-02-19
+*   **Status:** Accepted
+*   **Context:** The lobby and invite flow accumulated a cohesive visual language through iterative design: viewport-locked layouts, layered blurred backgrounds, gold/pink accent system, spring physics, glass-effect inputs, skeleton loading. This needed to be documented so future screens maintain consistency and new contributors understand the design decisions.
+*   **Decision:** Create `plans/LOBBY_DESIGN_BRIEF.md` as a comprehensive design reference covering:
+    *   **Mood & tone**: Premium mobile gaming meets late-night reality TV. Dark, saturated, theatrical.
+    *   **Layout principles**: Viewport-locked flex column, `max-w-lg` constraint, flex-1 hero, pinned bottom bar.
+    *   **Background system**: 4-layer stack (base → blurred hero → dark overlay → radial glow) with per-screen blur/opacity table.
+    *   **Color usage**: Token roles (gold = spotlight, pink = action, green = success, dim = secondary). Documented the Tailwind `/opacity` modifier caveat with CSS `var()` tokens.
+    *   **Typography hierarchy**: 10 levels from page title to mono labels, with font family assignments (Poppins display, Inter body, JetBrains Mono metadata).
+    *   **Component catalog**: Hero card, thumbnail strip, persona preview, identity card, step indicator, bottom action bar, buttons (4 variants), glass textarea.
+    *   **Motion system**: Spring physics config, transition types table (8 entries with durations), AnimatePresence mode guide, touch interaction patterns.
+    *   **Screen-by-screen reference**: Steps 1-3, already joined, waiting room, error state.
+    *   **8 design principles**: Persona is the star, no scroll on primary interactions, gold/pink role separation, theatrical text, negative space, skeleton-first, spring vs opacity transitions, mobile-first.
+    *   **"Applying to new screens" checklist**: 7-step guide for lobby screens, 5-step guide for client shells.
+*   **Consequences:**
+    *   New lobby screens can be built with consistent visual language without reverse-engineering existing code.
+    *   The Tailwind opacity caveat is documented — prevents repeating the same debugging session.
+    *   Design decisions are explicit (why gold vs pink, why spring vs opacity) — reduces subjective debates.
+    *   The brief is a living document — updated as new patterns emerge (e.g., waiting room cast grid was added after initial creation).
+
+## [ADR-065] Waiting Room Cast Portrait Grid
+
+*   **Date:** 2026-02-19
+*   **Status:** Accepted
+*   **Context:** The waiting room showed players as a simple text list. Since this is the first time players see the full cast of characters, it should feel like a reality TV cast reveal — dramatic headshots that let players show off their chosen personas and size up the competition.
+*   **Decision:** Redesign the waiting room (`apps/lobby/app/game/[id]/waiting/page.tsx`) as an immersive cast reveal:
+    *   **Cast portrait grid**: 2-column CSS grid (`grid grid-cols-2 gap-3`) with `aspect-[3/4]` cards. Each filled slot shows the persona's `medium.png` image with a gradient overlay (`bg-gradient-to-t from-skin-deep via-skin-deep/40 via-30%`) and name + stereotype overlaid at the bottom. `glow-breathe` border animation on filled cards.
+    *   **Empty slot placeholders**: Dashed border, pulsing "?" and "TBD" text. Dark translucent background. Creates anticipation for unfilled slots.
+    *   **Immersive background**: Player's own persona as blurred full-body background (`blur(2px)`, opacity 0.8), matching the bio screen treatment. Falls back to first filled slot's persona if `myPersonaId` not available.
+    *   **"The Cast" title**: Gold display font heading above the grid, reality TV style.
+    *   **Server data enrichment**: Added `personaStereotype` to `GameSlot` interface and `persona_stereotype` to SQL queries (joins `PersonaPool`). Added `myPersonaId` to `getGameSessionStatus` response for background selection.
+    *   **Staggered card entrance**: Each portrait card animates in with `opacity: 0, scale: 0.9 → 1` with 80ms stagger delay.
+    *   **Skeleton loading**: 4 pulsing `aspect-[3/4]` rectangles matching the final grid layout.
+    *   **Status badge**: Glass pill with animated pulse dot showing game status (waiting/ready/started) with contextual color (dim/gold/green).
+    *   **Bottom bar CTAs**: `AnimatePresence mode="wait"` crossfading between share prompt, "Launch Game" pink CTA, and "Enter Game" green link.
+*   **Consequences:**
+    *   The waiting room feels like a cast announcement screen — players see large, dramatic portraits of everyone who has joined.
+    *   Persona images (the biggest investment of the photo persona system) get maximum visibility at the moment of highest anticipation.
+    *   Empty slots create FOMO — "who's the mystery player?" drives sharing the invite code.
+    *   The viewport-locked layout and background system are consistent with the invite flow — same visual language across the entire lobby experience.
+    *   Adding `personaStereotype` to the SQL query is a minor schema read change — no migration needed, just joins the existing `PersonaPool` table.

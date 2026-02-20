@@ -1,10 +1,11 @@
 #!/usr/bin/env npx tsx
 /**
- * One-time script to upload persona images to R2 bucket.
+ * Upload persona images to R2 bucket.
  *
- * Usage (local dev with miniflare):
+ * Usage:
  *   cd apps/lobby
- *   npx tsx scripts/import-personas.ts
+ *   npx tsx scripts/import-personas.ts           # local (miniflare)
+ *   npx tsx scripts/import-personas.ts --remote   # remote (Cloudflare R2)
  *
  * This uses `wrangler r2 object put` under the hood.
  * Ensure wrangler is installed and the R2 bucket exists.
@@ -14,6 +15,8 @@ import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
+
+const isRemote = process.argv.includes('--remote');
 
 const IMAGES_DIR = resolve(process.env.HOME!, 'Downloads/reality_royale_characters/images');
 const ROSTER_PATH = resolve(process.env.HOME!, 'Downloads/reality_royale_characters/roster.json');
@@ -63,8 +66,9 @@ for (const entry of roster) {
 
     try {
       console.log(`  Uploading ${r2Key}...`);
+      const targetFlag = isRemote ? ' --remote' : ' --local';
       execSync(
-        `npx wrangler r2 object put "${BUCKET_NAME}/${r2Key}" --file="${localFile}" --content-type="image/png" --local`,
+        `npx wrangler r2 object put "${BUCKET_NAME}/${r2Key}" --file="${localFile}" --content-type="image/png"${targetFlag}`,
         { stdio: 'pipe' }
       );
       uploaded++;
