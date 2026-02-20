@@ -191,7 +191,7 @@ export default function InvitePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-skin-deep bg-grid-pattern flex items-center justify-center font-body text-skin-base">
+      <div className="h-screen h-dvh bg-skin-deep bg-grid-pattern flex items-center justify-center font-body text-skin-base">
         <div className="text-skin-dim font-mono text-sm animate-pulse">Loading...</div>
       </div>
     );
@@ -199,7 +199,7 @@ export default function InvitePage() {
 
   if (error && !game) {
     return (
-      <div className="min-h-screen bg-skin-deep bg-grid-pattern flex flex-col items-center justify-center p-4 font-body text-skin-base">
+      <div className="h-screen h-dvh bg-skin-deep bg-grid-pattern flex flex-col items-center justify-center p-4 font-body text-skin-base">
         <div className="max-w-md w-full text-center space-y-6">
           <h1 className="text-4xl font-display font-black text-skin-gold text-glow">PECKING ORDER</h1>
           <div className="bg-skin-panel/30 border border-skin-base rounded-2xl p-8 space-y-4">
@@ -250,10 +250,10 @@ export default function InvitePage() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
 
       {/* Content area — fills viewport above the bottom bar */}
-      <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-6">
+      <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
         {/* Header — fixed, never slides */}
-        <header className="text-center space-y-1 flex-shrink-0">
-          <h1 className="text-4xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow">
+        <header className="text-center space-y-0.5 flex-shrink-0">
+          <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow">
             PECKING ORDER
           </h1>
           <p className="text-sm text-skin-dim font-mono">
@@ -280,9 +280,9 @@ export default function InvitePage() {
 
         {/* Character Select Wizard */}
         {!alreadyJoined && game.status === 'RECRUITING' && (
-          <div className="flex-1 min-h-0 flex flex-col pt-3 gap-3">
+          <div className="flex-1 min-h-0 flex flex-col pt-2 gap-2">
             {/* Step indicator — fixed, animated fill bars */}
-            <div className="flex items-center justify-center flex-shrink-0 py-1">
+            <div className="flex items-center justify-center flex-shrink-0">
               {[1, 2, 3].map((s) => (
                 <div key={s} className="flex items-center">
                   <div
@@ -320,13 +320,13 @@ export default function InvitePage() {
                     className="h-full flex flex-col gap-3"
                   >
                     <div className="text-center flex-shrink-0">
-                      <div className="text-lg font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+                      <div className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
                         Choose Your Persona
                       </div>
                     </div>
 
                     {isDrawing || personas.length === 0 ? (
-                      <div className="flex-1 min-h-0 flex flex-col gap-3">
+                      <div className="flex-1 min-h-0 flex flex-col gap-2">
                         {/* Skeleton hero */}
                         <div className="flex-1 min-h-0 relative rounded-2xl overflow-hidden">
                           <div className="absolute inset-0 bg-skin-input/20 animate-pulse" />
@@ -339,10 +339,10 @@ export default function InvitePage() {
                           </div>
                         </div>
                         {/* Skeleton thumbnails */}
-                        <div className="flex-shrink-0 flex justify-center gap-5">
+                        <div className="flex-shrink-0 flex justify-center gap-4">
                           {[0, 1, 2].map((i) => (
-                            <div key={i} className="flex flex-col items-center gap-1.5">
-                              <div className="w-16 h-16 rounded-full bg-skin-input/20 animate-pulse" />
+                            <div key={i} className="flex flex-col items-center gap-1">
+                              <div className="w-14 h-14 rounded-full bg-skin-input/20 animate-pulse" />
                               <div className="h-2.5 w-10 bg-skin-input/20 animate-pulse rounded" />
                             </div>
                           ))}
@@ -354,7 +354,7 @@ export default function InvitePage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.4 }}
-                        className="flex-1 min-h-0 flex flex-col gap-3"
+                        className="flex-1 min-h-0 flex flex-col gap-2"
                       >
                         {/* Hero Image Area — swipeable, fills remaining space */}
                         <div
@@ -425,19 +425,19 @@ export default function InvitePage() {
                         </div>
 
                         {/* Thumbnail Strip */}
-                        <div className="flex-shrink-0 flex justify-center gap-5">
+                        <div className="flex-shrink-0 flex justify-center gap-4">
                           {personas.map((persona, idx) => (
                             <motion.button
                               key={persona.id}
                               onClick={() => setActiveIndex(idx)}
-                              className="flex flex-col items-center gap-1.5"
+                              className="flex flex-col items-center gap-1"
                               whileTap={{ scale: 0.95 }}
                               initial={{ opacity: 0, y: 12 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: idx * 0.08, duration: 0.3 }}
                             >
                               <div
-                                className={`w-16 h-16 rounded-full overflow-hidden transition-all duration-200 ${
+                                className={`w-14 h-14 rounded-full overflow-hidden transition-all duration-200 ${
                                   idx === activeIndex
                                     ? 'ring-2 ring-skin-gold ring-offset-2 ring-offset-skin-deep scale-110'
                                     : 'opacity-50 grayscale hover:opacity-70'
@@ -479,9 +479,9 @@ export default function InvitePage() {
                     transition={SPRING_SWIPE}
                     className="h-full flex flex-col overflow-y-auto"
                   >
-                    <div className="my-auto space-y-5 py-4">
+                    <div className="my-auto space-y-4 py-2">
                       <div className="text-center flex-shrink-0">
-                        <div className="text-lg font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+                        <div className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
                           Write Your Catfish Bio
                         </div>
                         <p className="text-xs text-skin-dim/60 mt-1">This is what other players will see</p>
@@ -489,7 +489,7 @@ export default function InvitePage() {
 
                       {/* Persona identity — prominent, no card (blurred bg IS the card) */}
                       <div className="text-center space-y-1">
-                        <div className="text-2xl font-display font-black text-skin-base text-glow leading-tight">
+                        <div className="text-xl font-display font-black text-skin-base text-glow leading-tight">
                           {selectedPersona.name}
                         </div>
                         <div className="text-xs font-display font-bold text-skin-gold uppercase tracking-[0.2em]">
@@ -530,16 +530,16 @@ export default function InvitePage() {
                     transition={SPRING_SWIPE}
                     className="h-full flex flex-col overflow-y-auto"
                   >
-                    <div className="my-auto space-y-4 py-4">
+                    <div className="my-auto space-y-3 py-2">
                       <div className="text-center flex-shrink-0">
-                        <div className="text-lg font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+                        <div className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
                           Confirm Your Identity
                         </div>
                         <p className="text-xs text-skin-dim/60 mt-1">This is who you'll be in the game</p>
                       </div>
 
                       <div className="bg-skin-panel/30 border border-skin-gold/30 rounded-2xl overflow-hidden">
-                        <div className="aspect-[4/3] sm:aspect-[16/9] bg-skin-input/30 relative overflow-hidden">
+                        <div className="aspect-[16/9] bg-skin-input/30 relative overflow-hidden">
                           <img
                             src={selectedPersona.fullImageUrl}
                             alt={selectedPersona.name}
@@ -578,7 +578,7 @@ export default function InvitePage() {
 
       {/* Bottom action bar — pinned to viewport bottom, buttons crossfade between steps */}
       {!alreadyJoined && game.status === 'RECRUITING' && (
-        <div className="flex-shrink-0 relative z-20 bg-gradient-to-b from-skin-deep/0 to-skin-deep pt-6 pb-4 px-4">
+        <div className="flex-shrink-0 relative z-20 bg-gradient-to-b from-skin-deep/0 to-skin-deep pt-3 px-4" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
           <div className="max-w-lg mx-auto">
             {error && (
               <div className="p-3 mb-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm font-mono text-center">

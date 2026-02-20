@@ -842,6 +842,14 @@ This document tracks significant architectural decisions, their context, and con
     *   The Tailwind opacity caveat is documented — prevents repeating the same debugging session.
     *   Design decisions are explicit (why gold vs pink, why spring vs opacity) — reduces subjective debates.
     *   The brief is a living document — updated as new patterns emerge (e.g., waiting room cast grid was added after initial creation).
+*   **Update (2026-02-20) — Viewport fit & compact spacing:** The character select, bio, and waiting screens overflowed on small mobile viewports due to generous spacing stacking up. Changes:
+    *   Root layout now exports `viewport-fit: "cover"` — enables `env(safe-area-inset-*)` for iPhone notch/dynamic island/home indicator.
+    *   Content top padding uses `pt-[max(0.5rem,env(safe-area-inset-top))]` instead of fixed `pt-6`.
+    *   Bottom bar uses `paddingBottom: max(0.75rem, env(safe-area-inset-bottom))` instead of fixed `pb-4`, with `pt-3` instead of `pt-6`.
+    *   Page title responsive: `text-3xl md:text-5xl` (was `text-4xl`). Step titles: `text-base` (was `text-lg`).
+    *   Thumbnails: `w-14 h-14` (was `w-16 h-16`). Identity card: `aspect-[16/9]` (was `aspect-[4/3]`).
+    *   Section margins tightened: `mt-2`/`gap-2` between fixed-height elements (was `mt-4`/`gap-3`).
+    *   Net savings: ~60-80px vertical on small viewports. Design brief updated to reflect all new values.
 
 ## [ADR-065] Waiting Room Cast Portrait Grid
 

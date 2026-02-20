@@ -33,9 +33,18 @@ The primary layout is a **full-viewport flex column** that fills exactly the scr
 
 - Outer container: `h-screen h-dvh flex flex-col overflow-hidden`
 - Content area: `flex-1 min-h-0 flex flex-col` with `max-w-lg mx-auto px-4`
+- Content top padding: `pt-[max(0.5rem,env(safe-area-inset-top))]` — respects device safe area (notch/dynamic island), minimal otherwise
 - Hero/main visual: `flex-1 min-h-0` — adapts to available space
 - Bottom bar: `flex-shrink-0` — always visible, never pushed offscreen
 - Fallback: Steps with form content (bio, confirmation) use `overflow-y-auto` as a safety valve
+
+### Safe Area Insets
+
+The root layout exports `viewport-fit: "cover"` via Next.js `Viewport` config. This enables `env(safe-area-inset-*)` CSS values on iOS devices with notch, dynamic island, or home indicator. Content top padding and bottom bar bottom padding use `max()` with safe-area insets to ensure nothing is obscured by device chrome.
+
+### Compact Vertical Spacing
+
+Every pixel of vertical space matters on small mobile viewports. Spacing between fixed-height elements (header, step indicator, section titles) is kept tight — `gap-2`, `mt-2` — to maximize the flex-1 hero/content area. Avoid `mt-4` or larger margins between stacked fixed-height elements.
 
 ### Why This Matters
 
@@ -111,8 +120,8 @@ The CSS `filter` is applied via inline `style` with a `transition-[filter] durat
 
 | Level | Classes | Example |
 |-------|---------|---------|
-| Page title | `text-4xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow` | PECKING ORDER |
-| Step title | `text-lg font-display font-black text-skin-gold text-glow uppercase tracking-widest` | CHOOSE YOUR PERSONA |
+| Page title | `text-3xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow` | PECKING ORDER |
+| Step title | `text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest` | CHOOSE YOUR PERSONA |
 | Step subtitle | `text-xs font-display font-bold text-skin-dim uppercase tracking-widest` | WRITE YOUR CATFISH BIO |
 | Step hint | `text-xs text-skin-dim/60` | This is what other players will see |
 | Hero name | `text-2xl font-display font-black text-skin-base text-glow leading-tight` | Sheila Bear |
@@ -155,10 +164,11 @@ The hero card is the dominant visual element. It fills all available vertical sp
 
 Horizontal row of circular persona headshots below the hero card.
 
-- Circle: `w-16 h-16 rounded-full`
+- Circle: `w-14 h-14 rounded-full`
 - Active: `ring-2 ring-skin-gold ring-offset-2 ring-offset-skin-deep scale-110`
 - Inactive: `opacity-50 grayscale hover:opacity-70`
 - Label below: `text-[10px] font-display font-bold` — first name only
+- Gap between thumbnails: `gap-4`, gap between circle and label: `gap-1`
 - Staggered entrance: `initial={{ opacity: 0, y: 12 }}` with `delay: idx * 0.08`
 
 ### Persona Preview (Compact)
@@ -176,7 +186,7 @@ Used on non-hero screens (bio authoring) to remind the user which character they
 Full preview of the player's chosen identity. Uses the hero image in a constrained aspect ratio.
 
 - Card: `bg-skin-panel/30 border border-skin-gold/30 rounded-2xl overflow-hidden`
-- Image area: `aspect-[4/3] sm:aspect-[16/9]` with gradient overlay and name/stereotype overlaid
+- Image area: `aspect-[16/9]` with gradient overlay and name/stereotype overlaid
 - Bio section below: padding with `text-[10px] font-mono text-skin-dim/50 uppercase` label + `text-sm text-skin-base` content
 
 ### Step Indicator (Animated)
@@ -196,8 +206,9 @@ Three numbered circles connected by animated fill bars.
 
 Always pinned to the viewport bottom. Contains error messages (if any) and action buttons.
 
-- Container: `flex-shrink-0 relative z-20 bg-gradient-to-b from-skin-deep/0 to-skin-deep pt-6 pb-4 px-4`
+- Container: `flex-shrink-0 relative z-20 bg-gradient-to-b from-skin-deep/0 to-skin-deep pt-3 px-4` with `style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}`
 - The gradient fades from transparent (top) to solid `skin-deep` (bottom), blending the bar into the content above
+- Bottom padding uses safe-area inset to clear the iPhone home indicator; falls back to `0.75rem` on devices without one
 - Inner: `max-w-lg mx-auto`
 - Error: `p-3 mb-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm font-mono text-center`
 - Buttons: `flex gap-3` — secondary on left (fixed width), primary on right (`flex-1`)
@@ -250,7 +261,7 @@ All skeletons use `bg-skin-input/20 animate-pulse` with rounded corners. They ma
 
 - Hero skeleton: `flex-1` with gradient overlay and placeholder bars for name/stereotype/description
 - Description bars: `h-7 w-44`, `h-3 w-28`, `h-3 w-56`, `h-3 w-40`
-- Thumbnail skeletons: `w-16 h-16 rounded-full` with `h-2.5 w-10 rounded` label below
+- Thumbnail skeletons: `w-14 h-14 rounded-full` with `h-2.5 w-10 rounded` label below
 - Three thumbnails regardless of `DRAW_SIZE` (matches default)
 
 ### Fade-In Pattern
@@ -393,12 +404,14 @@ This matches the client app's `SPRING.swipe` for consistency across the product.
 When building a new screen in the lobby/invite flow:
 
 1. Start with the viewport-locked flex column layout
-2. Decide if this screen needs the blurred hero background
-3. Place fixed-height elements at top and bottom, let the main content fill the middle with `flex-1`
-4. Use the bottom action bar for all buttons — never inline buttons in scrollable content
-5. Match the typography hierarchy exactly — don't invent new text sizes
-6. Use skeleton loading states that mirror the final layout
-7. Add `motion` fade-in for any content that loads asynchronously
+2. Use safe-area-aware padding: `pt-[max(0.5rem,env(safe-area-inset-top))]` on content, `paddingBottom: max(0.75rem, env(safe-area-inset-bottom))` on bottom bar
+3. Decide if this screen needs the blurred hero background
+4. Place fixed-height elements at top and bottom, let the main content fill the middle with `flex-1`
+5. Keep vertical spacing tight between fixed elements (`gap-2`, `mt-2`) — every pixel matters on small viewports
+6. Use the bottom action bar for all buttons — never inline buttons in scrollable content
+7. Match the typography hierarchy exactly — don't invent new text sizes
+8. Use skeleton loading states that mirror the final layout
+9. Add `motion` fade-in for any content that loads asynchronously
 
 When building a new client app shell:
 

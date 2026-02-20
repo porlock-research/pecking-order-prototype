@@ -95,10 +95,10 @@ export default function WaitingRoom() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
 
       {/* Content */}
-      <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-6">
+      <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
         {/* Header */}
-        <header className="text-center space-y-1 flex-shrink-0">
-          <h1 className="text-4xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow">
+        <header className="text-center space-y-0.5 flex-shrink-0">
+          <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow">
             PECKING ORDER
           </h1>
           <p className="text-sm text-skin-dim font-mono">
@@ -107,7 +107,7 @@ export default function WaitingRoom() {
         </header>
 
         {/* Status badge */}
-        <div className="flex justify-center mt-4 flex-shrink-0">
+        <div className="flex justify-center mt-2 flex-shrink-0">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -141,14 +141,14 @@ export default function WaitingRoom() {
         </div>
 
         {/* Cast title */}
-        <div className="text-center mt-4 flex-shrink-0">
-          <div className="text-lg font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+        <div className="text-center mt-2 flex-shrink-0">
+          <div className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
             The Cast
           </div>
         </div>
 
         {/* Cast grid */}
-        <div className="flex-1 min-h-0 overflow-y-auto mt-3 pb-2">
+        <div className="flex-1 min-h-0 overflow-y-auto mt-2 pb-2">
           {isLoading ? (
             /* Skeleton grid */
             <div className="grid grid-cols-2 gap-3">
@@ -217,7 +217,7 @@ export default function WaitingRoom() {
       </div>
 
       {/* Bottom action bar */}
-      <div className="flex-shrink-0 relative z-20 bg-gradient-to-b from-skin-deep/0 to-skin-deep pt-6 pb-4 px-4">
+      <div className="flex-shrink-0 relative z-20 bg-gradient-to-b from-skin-deep/0 to-skin-deep pt-3 px-4" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
         <div className="max-w-lg mx-auto">
           {error && (
             <div className="p-3 mb-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm font-mono text-center">
