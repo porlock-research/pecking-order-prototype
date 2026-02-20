@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../../../store/useGameStore';
 import { PlayerStatuses } from '@pecking-order/shared-types';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 interface NewGroupPickerProps {
   roster: Record<string, any>;
@@ -46,9 +47,7 @@ export function NewGroupPicker({ roster, playerId, onBack, engine }: NewGroupPic
               }`}>
                 {isSelected && '\u2713'}
               </div>
-              <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-pink avatar-ring">
-                {p.personaName?.charAt(0)?.toUpperCase() || '?'}
-              </div>
+              <PersonaAvatar avatarUrl={p.avatarUrl} personaName={p.personaName} size={36} />
               <span className="font-bold text-sm text-skin-base">{p.personaName}</span>
             </button>
           );

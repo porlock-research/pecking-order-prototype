@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
 import { Users, Heart } from 'lucide-react';
+import { PersonaAvatar } from '../../components/PersonaAvatar';
 
 interface PromptCartridge {
   promptType: 'PLAYER_PICK';
@@ -89,9 +90,7 @@ export default function PlayerPickPrompt({ cartridge, playerId, roster, engine }
                         : 'bg-white/[0.03] border-white/[0.06] text-skin-base hover:bg-white/[0.06] hover:border-white/10 active:scale-[0.98]'
                       }`}
                   >
-                    <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-gold avatar-ring">
-                      {player.personaName?.charAt(0)?.toUpperCase() || '?'}
-                    </div>
+                    <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={32} />
                     <span className="font-medium">{player.personaName}</span>
                   </button>
                 );

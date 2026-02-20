@@ -1,5 +1,6 @@
 import React from 'react';
 import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
+import { PersonaAvatar } from '../../components/PersonaAvatar';
 
 interface ExecutionerVotingProps {
   cartridge: any;
@@ -37,9 +38,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
 
           {executioner && (
             <div className="flex items-center justify-center gap-2 text-sm">
-              <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-danger avatar-ring shrink-0">
-                {executioner.personaName?.charAt(0)?.toUpperCase() || '?'}
-              </div>
+              <PersonaAvatar avatarUrl={executioner.avatarUrl} personaName={executioner.personaName} size={32} />
               <span className="font-bold text-skin-base">{executioner.personaName}</span>
               <span className="text-[10px] font-mono text-skin-dim uppercase">was the executioner</span>
             </div>
@@ -47,9 +46,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
 
           {eliminated ? (
             <div className="flex items-center justify-center gap-2 p-3 rounded-xl border border-skin-danger bg-skin-danger/10 elimination-reveal">
-              <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-danger shrink-0">
-                {eliminated.personaName?.charAt(0)?.toUpperCase() || '?'}
-              </div>
+              <PersonaAvatar avatarUrl={eliminated.avatarUrl} personaName={eliminated.personaName} size={32} />
               <div>
                 <div className="text-sm font-bold text-skin-danger">{eliminated.personaName}</div>
                 <span className="text-[10px] font-mono text-skin-danger uppercase animate-flash-update">ELIMINATED</span>
@@ -69,9 +66,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
                     const player = roster[targetId];
                     return (
                       <div key={targetId} className="flex items-center gap-1 p-1.5 rounded-lg bg-skin-deep/40 border border-white/[0.06] text-xs">
-                        <div className="w-6 h-6 rounded-full bg-skin-panel flex items-center justify-center text-[10px] font-bold font-mono text-skin-gold shrink-0">
-                          {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                        </div>
+                        <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={24} />
                         <span className="truncate flex-1 text-skin-base">{player?.personaName || targetId}</span>
                         <span className="font-mono font-bold text-skin-gold">{count as number}</span>
                       </div>
@@ -103,9 +98,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
 
           {executioner && (
             <div className="flex items-center justify-center gap-2 text-sm">
-              <div className="w-8 h-8 rounded-full bg-skin-danger/20 border border-skin-danger/40 flex items-center justify-center text-xs font-bold font-mono text-skin-danger shrink-0">
-                {executioner.personaName?.charAt(0)?.toUpperCase() || '?'}
-              </div>
+              <PersonaAvatar avatarUrl={executioner.avatarUrl} personaName={executioner.personaName} size={32} />
               <span className="font-bold text-skin-base">{executioner.personaName}</span>
               <span className="text-[10px] font-mono bg-skin-danger/20 text-skin-danger px-2 py-0.5 rounded-full uppercase">executioner</span>
             </div>
@@ -125,9 +118,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
                       onClick={() => engine.sendVoteAction(VoteEvents.EXECUTIONER.PICK, targetId)}
                       className="flex items-center gap-2 p-2 rounded-xl bg-skin-deep/40 border border-white/[0.06] hover:border-skin-danger hover:bg-skin-danger/10 transition-all text-left"
                     >
-                      <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-gold avatar-ring shrink-0">
-                        {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
+                      <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
                       <div className="text-xs font-bold truncate text-skin-base">
                         {player?.personaName || targetId}
                       </div>
@@ -204,9 +195,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
                   ${(!!myVote || !canVote) && !isSelected ? 'opacity-40 grayscale' : ''}
                 `}
               >
-                <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-gold avatar-ring shrink-0">
-                  {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                </div>
+                <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-bold truncate text-skin-base">
                     {player?.personaName || targetId}

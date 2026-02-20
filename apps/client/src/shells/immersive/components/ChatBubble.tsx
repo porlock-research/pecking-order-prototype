@@ -4,12 +4,7 @@ import type { ChatMessage, SocialPlayer } from '@pecking-order/shared-types';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { Crown } from 'lucide-react';
 import { SPRING, TAP } from '../springs';
-
-// Player avatar color palette — deterministic by index
-const AVATAR_COLORS = [
-  'bg-pink-600', 'bg-violet-600', 'bg-blue-600', 'bg-teal-600',
-  'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-indigo-600',
-];
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 const REACTIONS = ['💀', '👀', '🔥', '🐔', '👑', '😂'] as const;
 
@@ -90,8 +85,6 @@ export function ChatBubble({
     setTimeout(() => setFloatingEmoji(null), 1000);
   }, []);
 
-  const avatarColor = AVATAR_COLORS[playerIndex % AVATAR_COLORS.length];
-
   if (isGameMaster) {
     return (
       <motion.div
@@ -126,8 +119,8 @@ export function ChatBubble({
     >
       {/* Avatar */}
       {!isMe && showSender && (
-        <div className={`shrink-0 w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center text-sm font-bold text-white mt-5`}>
-          {sender?.personaName?.charAt(0)?.toUpperCase() || '?'}
+        <div className="mt-5">
+          <PersonaAvatar avatarUrl={sender?.avatarUrl} personaName={sender?.personaName} size={32} />
         </div>
       )}
       {!isMe && !showSender && <div className="shrink-0 w-8" />}

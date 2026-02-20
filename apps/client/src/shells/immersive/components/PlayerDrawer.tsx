@@ -9,6 +9,7 @@ import { PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { Coins, Trophy, Send } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SPRING, TAP } from '../springs';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 interface PlayerDrawerProps {
   targetPlayerId: string | null;
@@ -110,12 +111,11 @@ export function PlayerDrawer({ targetPlayerId, onClose, engine }: PlayerDrawerPr
           {target && (
             <div className="shrink-0 px-5 pb-3 border-b border-white/[0.06] flex items-center gap-3">
               <div className="relative shrink-0">
-                <div
-                  className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold font-mono
-                    ${isGameMaster ? 'bg-skin-gold/20 text-skin-gold' : 'bg-skin-panel text-skin-gold'}`}
-                >
-                  {isGameMaster ? 'GM' : target.personaName?.charAt(0)?.toUpperCase() || '?'}
-                </div>
+                {isGameMaster ? (
+                  <div className="w-14 h-14 rounded-full bg-skin-gold/20 flex items-center justify-center text-xl font-bold font-mono text-skin-gold">GM</div>
+                ) : (
+                  <PersonaAvatar avatarUrl={target.avatarUrl} personaName={target.personaName} size={56} eliminated={isEliminated} />
+                )}
                 <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green' : 'bg-skin-dim/40'}`} />
               </div>
               <div className="flex-1 min-w-0">

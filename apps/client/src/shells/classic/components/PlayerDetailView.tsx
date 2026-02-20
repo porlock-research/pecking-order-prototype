@@ -5,6 +5,7 @@ import { TimelineChatBubble } from './TimelineChatBubble';
 import { TimelineSystemEvent } from './TimelineSystemEvent';
 import { PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { Coins, ArrowLeft, Trophy } from 'lucide-react';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 interface PlayerDetailViewProps {
   targetPlayerId: string;
@@ -137,10 +138,11 @@ export const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({
 
           {/* Avatar */}
           <div className="relative shrink-0">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold font-mono avatar-ring
-              ${isGameMaster ? 'bg-skin-gold/20 text-skin-gold' : 'bg-skin-panel text-skin-gold'}`}>
-              {isGameMaster ? 'GM' : target?.personaName?.charAt(0)?.toUpperCase() || '?'}
-            </div>
+            {isGameMaster ? (
+              <div className="w-12 h-12 rounded-full bg-skin-gold/20 flex items-center justify-center text-lg font-bold font-mono text-skin-gold avatar-ring">GM</div>
+            ) : (
+              <PersonaAvatar avatarUrl={target?.avatarUrl} personaName={target?.personaName} size={48} eliminated={isEliminated} />
+            )}
             <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green' : 'bg-skin-dim/40'}`} />
           </div>
 

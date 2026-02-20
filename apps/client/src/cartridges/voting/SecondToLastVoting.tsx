@@ -1,5 +1,6 @@
 import React from 'react';
 import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
+import { PersonaAvatar } from '../../components/PersonaAvatar';
 
 interface SecondToLastVotingProps {
   cartridge: any;
@@ -62,9 +63,7 @@ export default function SecondToLastVoting({ cartridge, playerId, roster }: Seco
                   style={{ width: `${barWidth}%` }}
                 />
                 <span className="text-xs font-mono text-skin-dim w-5 text-right relative z-10">#{i + 1}</span>
-                <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-dim avatar-ring shrink-0 relative z-10">
-                  {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                </div>
+                <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} className="relative z-10" />
                 <div className="flex-1 min-w-0 relative z-10">
                   <div className={`text-xs font-bold truncate ${isEliminated ? 'text-skin-danger' : 'text-skin-base'}`}>
                     {player?.personaName || entry.id}

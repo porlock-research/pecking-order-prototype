@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../store/useGameStore';
 import { ChannelTypes, PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
-import { Coins, Trophy, Skull, ChevronDown } from 'lucide-react';
+import { Coins, Trophy, ChevronDown } from 'lucide-react';
 import { SPRING, TAP } from '../springs';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 interface PeopleListProps {
   onSelectPlayer: (playerId: string) => void;
@@ -108,12 +109,7 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
             transition={SPRING.button}
           >
             <div className="relative shrink-0">
-              <motion.div
-                layoutId={`avatar-${mePlayer.id}`}
-                className="w-12 h-12 rounded-full bg-skin-panel flex items-center justify-center text-base font-bold font-mono text-skin-gold"
-              >
-                {mePlayer.personaName?.charAt(0)?.toUpperCase() || '?'}
-              </motion.div>
+              <PersonaAvatar avatarUrl={mePlayer.avatarUrl} personaName={mePlayer.personaName} size={48} layoutId={`avatar-${mePlayer.id}`} />
               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-skin-fill bg-skin-green" />
             </div>
             <div className="flex-1 min-w-0">
@@ -217,12 +213,7 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
               transition={{ ...SPRING.button, delay: i * 0.02 }}
             >
               <div className="relative shrink-0">
-                <motion.div
-                  layoutId={`avatar-${player.id}`}
-                  className="w-12 h-12 rounded-full bg-skin-panel flex items-center justify-center text-base font-bold font-mono text-skin-gold"
-                >
-                  {player.personaName?.charAt(0)?.toUpperCase() || '?'}
-                </motion.div>
+                <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={48} layoutId={`avatar-${player.id}`} />
                 <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green animate-pulse-live' : 'bg-skin-dim/40'}`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -275,9 +266,7 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
                 >
                   <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-skin-glass border border-white/[0.04] opacity-50">
                     <div className="relative shrink-0">
-                      <div className="w-12 h-12 rounded-full bg-skin-panel flex items-center justify-center text-base font-bold font-mono text-skin-dim grayscale">
-                        <Skull size={18} className="text-skin-danger" />
-                      </div>
+                      <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={48} eliminated />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">

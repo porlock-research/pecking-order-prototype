@@ -1,5 +1,6 @@
 import React from 'react';
 import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
+import { PersonaAvatar } from '../../components/PersonaAvatar';
 
 interface TrustPairsVotingProps {
   cartridge: any;
@@ -47,14 +48,10 @@ export default function TrustPairsVoting({ cartridge, playerId, roster, engine }
                 const b = roster[pair[1]];
                 return (
                   <div key={i} className="flex items-center justify-center gap-2 p-2 rounded-xl border border-skin-green/30 bg-skin-green/10 animate-badge-pop">
-                    <div className="w-7 h-7 rounded-full bg-skin-panel flex items-center justify-center text-[10px] font-bold font-mono text-skin-green shrink-0">
-                      {a?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                    </div>
+                    <PersonaAvatar avatarUrl={a?.avatarUrl} personaName={a?.personaName} size={28} />
                     <span className="text-xs font-bold text-skin-green">{a?.personaName || pair[0]}</span>
                     <span className="text-xs font-mono text-skin-dim">+</span>
-                    <div className="w-7 h-7 rounded-full bg-skin-panel flex items-center justify-center text-[10px] font-bold font-mono text-skin-green shrink-0">
-                      {b?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                    </div>
+                    <PersonaAvatar avatarUrl={b?.avatarUrl} personaName={b?.personaName} size={28} />
                     <span className="text-xs font-bold text-skin-green">{b?.personaName || pair[1]}</span>
                     <span className="text-[10px] font-mono bg-skin-green/20 text-skin-green px-2 py-0.5 rounded-full uppercase ml-1">immune</span>
                   </div>
@@ -82,9 +79,7 @@ export default function TrustPairsVoting({ cartridge, playerId, roster, engine }
                             : 'bg-skin-deep/40 border border-white/[0.06]'
                       }`}
                     >
-                      <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-green avatar-ring shrink-0">
-                        {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
+                      <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
                       <div className="flex-1 min-w-0">
                         <div className={`text-xs font-bold truncate ${isEliminated ? 'text-skin-danger' : 'text-skin-base'}`}>
                           {player?.personaName || targetId}
@@ -156,9 +151,7 @@ export default function TrustPairsVoting({ cartridge, playerId, roster, engine }
                     ${(!!myTrust || !canVote) && !isSelected ? 'opacity-40 grayscale' : ''}
                   `}
                 >
-                  <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-green avatar-ring">
-                    {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
+                  <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
                   <span className="text-[10px] font-bold truncate w-full text-center text-skin-base">
                     {player?.personaName || targetId}
                   </span>
@@ -209,9 +202,7 @@ export default function TrustPairsVoting({ cartridge, playerId, roster, engine }
                     ${(!!myEliminate || !canVote) && !isSelected ? 'opacity-40 grayscale' : ''}
                   `}
                 >
-                  <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-danger avatar-ring">
-                    {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
+                  <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
                   <span className="text-[10px] font-bold truncate w-full text-center text-skin-base">
                     {player?.personaName || targetId}
                   </span>

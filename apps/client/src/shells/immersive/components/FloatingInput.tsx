@@ -4,6 +4,7 @@ import { useGameStore } from '../../../store/useGameStore';
 import type { SocialPlayer, ChatMessage } from '@pecking-order/shared-types';
 import { Send, X } from 'lucide-react';
 import { SPRING, TAP } from '../springs';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 interface FloatingInputProps {
   engine: {
@@ -30,12 +31,14 @@ function TypingIndicator({ typingPlayers, playerId, roster }: {
   playerId: string | null;
   roster: Record<string, SocialPlayer>;
 }) {
-  const typers = Object.entries(typingPlayers)
+  const typerIds = Object.entries(typingPlayers)
     .filter(([pid, ch]) => ch === 'MAIN' && pid !== playerId)
-    .map(([pid]) => roster[pid]?.personaName || 'Someone');
+    .map(([pid]) => pid);
+  const typers = typerIds.map(pid => roster[pid]?.personaName || 'Someone');
 
   if (typers.length === 0) return null;
 
+  const firstTyper = roster[typerIds[0]];
   const verb = 'is scheming';
   const text = typers.length === 1
     ? typers[0]
@@ -50,9 +53,7 @@ function TypingIndicator({ typingPlayers, playerId, roster }: {
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
     >
-      <div className="w-6 h-6 rounded-full bg-skin-panel flex items-center justify-center text-[10px] font-bold text-skin-gold">
-        {typers[0]?.charAt(0)?.toUpperCase() || '?'}
-      </div>
+      <PersonaAvatar avatarUrl={firstTyper?.avatarUrl} personaName={firstTyper?.personaName} size={24} />
       <span className="text-[11px] font-mono text-skin-dim/70">
         {text} {verb}
       </span>

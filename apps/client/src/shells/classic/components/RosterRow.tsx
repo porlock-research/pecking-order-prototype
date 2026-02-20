@@ -1,6 +1,7 @@
 import React from 'react';
 import { useGameStore } from '../../../store/useGameStore';
 import { Coins, Trophy } from 'lucide-react';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 interface RosterRowProps {
   player: any;
@@ -22,9 +23,7 @@ export function RosterRow({ player, playerId, onClick }: RosterRowProps) {
     >
       <div className="flex items-center gap-3">
         <div className="relative">
-          <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-gold avatar-ring">
-            {player.personaName?.charAt(0)?.toUpperCase() || '?'}
-          </div>
+          <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={36} />
           <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green' : 'bg-skin-dim/40'}`} />
         </div>
         <div className="flex flex-col">

@@ -3,6 +3,7 @@ import { useGameStore } from '../../../store/useGameStore';
 import { ChannelTypes, PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import type { SocialPlayer, ChatMessage } from '@pecking-order/shared-types';
 import { Coins, Trophy } from 'lucide-react';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 interface PeopleListProps {
   onSelectPlayer: (playerId: string) => void;
@@ -170,9 +171,7 @@ export const PeopleList: React.FC<PeopleListProps> = ({
               `}
             >
               <div className="relative shrink-0">
-                <div className="w-10 h-10 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-gold avatar-ring">
-                  {player.personaName?.charAt(0)?.toUpperCase() || '?'}
-                </div>
+                <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={40} eliminated={isEliminated} />
                 <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-skin-fill ${isOnline ? 'bg-skin-green' : 'bg-skin-dim/40'}`} />
               </div>
               <div className="flex-1 min-w-0">

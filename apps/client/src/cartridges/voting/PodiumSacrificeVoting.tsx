@@ -1,5 +1,6 @@
 import React from 'react';
 import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
+import { PersonaAvatar } from '../../components/PersonaAvatar';
 
 interface PodiumSacrificeVotingProps {
   cartridge: any;
@@ -46,9 +47,7 @@ export default function PodiumSacrificeVoting({ cartridge, playerId, roster, eng
                         : 'bg-skin-deep/40 border border-white/[0.06]'
                     }`}
                   >
-                    <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-orange avatar-ring shrink-0">
-                      {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                    </div>
+                    <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
                     <div className="flex-1 min-w-0">
                       <div className={`text-xs font-bold truncate ${isEliminated ? 'text-skin-danger' : 'text-skin-base'}`}>
                         {player?.personaName || targetId}
@@ -139,9 +138,7 @@ export default function PodiumSacrificeVoting({ cartridge, playerId, roster, eng
                   ${(!!myVote || !canVote) && !isSelected ? 'opacity-40 grayscale' : ''}
                 `}
               >
-                <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-orange avatar-ring shrink-0">
-                  {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                </div>
+                <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-bold truncate text-skin-base">
                     {player?.personaName || targetId}

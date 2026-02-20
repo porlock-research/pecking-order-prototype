@@ -1,6 +1,7 @@
 import React from 'react';
 import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
 import { Trophy } from 'lucide-react';
+import { PersonaAvatar } from '../../components/PersonaAvatar';
 
 interface FinalsVotingProps {
   cartridge: any;
@@ -36,9 +37,7 @@ export default function FinalsVoting({ cartridge, playerId, roster, engine }: Fi
 
           {winnerPlayer && (
             <div className="flex flex-col items-center gap-2 py-3">
-              <div className="w-16 h-16 rounded-full bg-skin-panel flex items-center justify-center text-2xl font-bold font-mono text-skin-gold avatar-ring ring-2 ring-skin-gold">
-                {winnerPlayer.personaName?.charAt(0)?.toUpperCase() || '?'}
-              </div>
+              <PersonaAvatar avatarUrl={winnerPlayer.avatarUrl} personaName={winnerPlayer.personaName} size={64} className="ring-2 ring-skin-gold" />
               <div className="flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-yellow-400" />
                 <span className="text-lg font-bold text-skin-gold">{winnerPlayer.personaName}</span>
@@ -62,9 +61,7 @@ export default function FinalsVoting({ cartridge, playerId, roster, engine }: Fi
                         : 'bg-skin-deep/40 border border-white/[0.06]'
                     }`}
                   >
-                    <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-gold avatar-ring shrink-0">
-                      {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                    </div>
+                    <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
                     <div className="flex-1 min-w-0">
                       <div className={`text-xs font-bold truncate ${isWinner ? 'text-skin-gold' : 'text-skin-base'}`}>
                         {player?.personaName || targetId}
@@ -134,9 +131,7 @@ export default function FinalsVoting({ cartridge, playerId, roster, engine }: Fi
                   ${(!!myVote || !canVote || isFinalist) && !isSelected ? 'opacity-40 grayscale' : ''}
                 `}
               >
-                <div className="w-8 h-8 rounded-full bg-skin-panel flex items-center justify-center text-xs font-bold font-mono text-skin-gold avatar-ring shrink-0">
-                  {player?.personaName?.charAt(0)?.toUpperCase() || '?'}
-                </div>
+                <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-bold truncate text-skin-base">
                     {player?.personaName || targetId}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { PlayerStatuses } from '@pecking-order/shared-types';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 interface NewDmPickerProps {
   roster: Record<string, any>;
@@ -25,9 +26,7 @@ export function NewDmPicker({ roster, playerId, onSelect, onBack }: NewDmPickerP
             onClick={() => onSelect(p.id)}
             className="w-full flex items-center gap-3 p-3 rounded-xl bg-glass border border-white/[0.06] hover:border-skin-pink/30 transition-all"
           >
-            <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-sm font-bold font-mono text-skin-pink avatar-ring">
-              {p.personaName?.charAt(0)?.toUpperCase() || '?'}
-            </div>
+            <PersonaAvatar avatarUrl={p.avatarUrl} personaName={p.personaName} size={36} />
             <span className="font-bold text-sm text-skin-base">{p.personaName}</span>
           </button>
         ))}
