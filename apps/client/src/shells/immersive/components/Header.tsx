@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../store/useGameStore';
 import { PushPrompt } from '../../../components/PushPrompt';
 import { formatPhase } from '../../../utils/formatState';
-import { Coins, Trophy, ChevronDown } from 'lucide-react';
+import { Coins, Trophy, ChevronDown, Settings } from 'lucide-react';
 import { PlayerStatuses } from '@pecking-order/shared-types';
 import { SPRING, TAP } from '../springs';
 
@@ -12,7 +12,7 @@ interface HeaderProps {
 }
 
 export function Header({ token }: HeaderProps) {
-  const { roster, goldPool, playerId, dayIndex, serverState } = useGameStore();
+  const { roster, goldPool, playerId, dayIndex, serverState, gameId } = useGameStore();
   const onlineCount = useGameStore(s => s.onlinePlayers.length);
   const me = playerId ? roster[playerId] : null;
   const [expanded, setExpanded] = useState(false);
@@ -98,6 +98,19 @@ export function Header({ token }: HeaderProps) {
                     </div>
                   )}
                 </div>
+              )}
+              {/* Admin link — dev only */}
+              {import.meta.env.DEV && gameId && (
+                <a
+                  href={`${import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000'}/admin/game/${gameId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-[10px] font-mono text-skin-dim hover:text-skin-base transition-colors"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <Settings size={12} />
+                  <span>Admin Panel</span>
+                </a>
               )}
             </div>
           </motion.div>

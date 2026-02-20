@@ -118,12 +118,12 @@ export function ChatBubble({
       transition={SPRING.gentle}
     >
       {/* Avatar */}
-      {!isMe && showSender && (
+      {showSender && (
         <div className="mt-5">
           <PersonaAvatar avatarUrl={sender?.avatarUrl} personaName={sender?.personaName} size={32} />
         </div>
       )}
-      {!isMe && !showSender && <div className="shrink-0 w-8" />}
+      {!showSender && <div className="shrink-0 w-8" />}
 
       <div className={`flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
         {!isMe && showSender && (

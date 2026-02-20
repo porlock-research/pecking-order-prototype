@@ -35,9 +35,11 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
         const memberNames = ch.memberIds
           .filter(id => id !== playerId)
           .map(id => roster[id]?.personaName || 'Unknown');
+        const otherMemberIds = ch.memberIds.filter(id => id !== playerId);
         return {
           channelId: ch.id,
           memberNames,
+          otherMemberIds,
           messages,
           lastTimestamp: messages.length > 0 ? messages[messages.length - 1].timestamp : ch.createdAt,
         };
@@ -157,8 +159,6 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
                 const lastMsg = thread.messages[thread.messages.length - 1];
                 const isFromMe = lastMsg?.senderId === playerId;
                 const lastSenderName = lastMsg ? (roster[lastMsg.senderId]?.personaName || 'Unknown') : '';
-                const initials = thread.memberNames.slice(0, 2).map(n => n.charAt(0).toUpperCase()).join('');
-
                 return (
                   <motion.button
                     key={thread.channelId}
@@ -170,8 +170,15 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                   >
-                    <div className="w-12 h-12 rounded-full bg-skin-panel flex items-center justify-center text-[12px] font-bold font-mono text-skin-pink shrink-0">
-                      {initials}
+                    <div className="relative shrink-0" style={{ width: 44, height: 44 }}>
+                      {thread.otherMemberIds.slice(0, 2).map((id, idx) => {
+                        const p = roster[id];
+                        return (
+                          <div key={id} className="absolute" style={{ top: idx * 10, left: idx * 10, zIndex: 2 - idx }}>
+                            <PersonaAvatar avatarUrl={p?.avatarUrl} personaName={p?.personaName} size={32} className="ring-2 ring-skin-deep" />
+                          </div>
+                        );
+                      })}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">

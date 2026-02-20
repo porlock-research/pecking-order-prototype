@@ -117,7 +117,7 @@ export const PeopleList: React.FC<PeopleListProps> = ({
               const lastMsg = thread.messages[thread.messages.length - 1];
               const isFromMe = lastMsg?.senderId === playerId;
               const lastSenderName = lastMsg ? (roster[lastMsg.senderId]?.personaName || 'Unknown') : '';
-              const initials = thread.memberNames.slice(0, 2).map(n => n.charAt(0).toUpperCase()).join('');
+              const otherMemberIds = thread.memberIds.filter(id => id !== playerId);
 
               return (
                 <button
@@ -125,8 +125,15 @@ export const PeopleList: React.FC<PeopleListProps> = ({
                   onClick={() => onSelectGroup(thread.channelId)}
                   className="w-full flex items-center gap-3 p-3 rounded-xl bg-glass border border-white/[0.06] hover:border-skin-pink/30 transition-all text-left"
                 >
-                  <div className="w-10 h-10 rounded-full bg-skin-panel flex items-center justify-center text-[11px] font-bold font-mono text-skin-pink avatar-ring shrink-0">
-                    {initials}
+                  <div className="relative shrink-0" style={{ width: 40, height: 40 }}>
+                    {otherMemberIds.slice(0, 2).map((id, idx) => {
+                      const p = roster[id];
+                      return (
+                        <div key={id} className="absolute" style={{ top: idx * 8, left: idx * 8, zIndex: 2 - idx }}>
+                          <PersonaAvatar avatarUrl={p?.avatarUrl} personaName={p?.personaName} size={28} className="ring-2 ring-skin-deep" />
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">

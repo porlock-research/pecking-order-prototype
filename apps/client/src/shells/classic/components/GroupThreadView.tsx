@@ -3,6 +3,7 @@ import { useGameStore } from '../../../store/useGameStore';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { ArrowLeft } from 'lucide-react';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 interface GroupThreadViewProps {
   channelId: string;
@@ -49,14 +50,10 @@ export const GroupThreadView: React.FC<GroupThreadViewProps> = ({
       .join(', ');
   }, [channel, playerId, roster]);
 
-  const initials = useMemo(() => {
-    if (!channel || !playerId) return 'G';
-    return channel.memberIds
-      .filter(id => id !== playerId)
-      .slice(0, 2)
-      .map(id => roster[id]?.personaName?.charAt(0)?.toUpperCase() || '?')
-      .join('');
-  }, [channel, playerId, roster]);
+  const otherMemberIds = useMemo(() => {
+    if (!channel || !playerId) return [];
+    return channel.memberIds.filter(id => id !== playerId);
+  }, [channel, playerId]);
 
   const messages = useMemo(() => {
     return chatLog
@@ -117,8 +114,15 @@ export const GroupThreadView: React.FC<GroupThreadViewProps> = ({
           >
             <ArrowLeft size={18} />
           </button>
-          <div className="w-9 h-9 rounded-full bg-skin-panel flex items-center justify-center text-[10px] font-bold font-mono text-skin-pink avatar-ring shrink-0">
-            {initials}
+          <div className="relative shrink-0" style={{ width: 36, height: 36 }}>
+            {otherMemberIds.slice(0, 2).map((id, idx) => {
+              const p = roster[id];
+              return (
+                <div key={id} className="absolute" style={{ top: idx * 8, left: idx * 8, zIndex: 2 - idx }}>
+                  <PersonaAvatar avatarUrl={p?.avatarUrl} personaName={p?.personaName} size={24} className="ring-2 ring-skin-deep" />
+                </div>
+              );
+            })}
           </div>
           <span className="text-sm font-bold truncate text-skin-base">{memberNames}</span>
         </div>
@@ -140,28 +144,34 @@ export const GroupThreadView: React.FC<GroupThreadViewProps> = ({
 
         {messages.map(msg => {
           const isMe = msg.senderId === playerId;
-          const senderName = !isMe ? (roster[msg.senderId]?.personaName || 'Unknown') : null;
+          const senderPlayer = roster[msg.senderId];
+          const senderName = !isMe ? (senderPlayer?.personaName || 'Unknown') : null;
           return (
             <div
               key={msg.id}
-              className={`flex flex-col max-w-[85%] ${isMe ? 'ml-auto items-end' : 'mr-auto items-start'} slide-up-in`}
+              className={`flex gap-2.5 max-w-[85%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'} slide-up-in`}
             >
-              {senderName && (
-                <span className="text-[10px] font-mono text-skin-pink mb-1 ml-1">{senderName}</span>
-              )}
-              <div
-                className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words relative group
-                  ${isMe
-                    ? 'bg-skin-pink text-skin-base rounded-tr-sm shadow-glow'
-                    : 'bg-glass border-l-2 border-skin-pink/40 border-r-0 border-t-0 border-b-0 text-skin-base rounded-tl-sm'
-                  }`}
-              >
-                {msg.content}
-                <span className={`absolute -bottom-5 text-[9px] font-mono text-skin-dim opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap
-                  ${isMe ? 'right-0' : 'left-0'}
-                `}>
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+              <div className="mt-1 shrink-0">
+                <PersonaAvatar avatarUrl={senderPlayer?.avatarUrl} personaName={senderPlayer?.personaName} size={28} />
+              </div>
+              <div className={`flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
+                {senderName && (
+                  <span className="text-[10px] font-mono text-skin-pink mb-1 ml-1">{senderName}</span>
+                )}
+                <div
+                  className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words relative group
+                    ${isMe
+                      ? 'bg-skin-pink text-skin-base rounded-br-sm shadow-glow'
+                      : 'bg-glass border-l-2 border-skin-pink/40 border-r-0 border-t-0 border-b-0 text-skin-base rounded-bl-sm'
+                    }`}
+                >
+                  {msg.content}
+                  <span className={`absolute -bottom-5 text-[9px] font-mono text-skin-dim opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap
+                    ${isMe ? 'right-0' : 'left-0'}
+                  `}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               </div>
             </div>
           );
