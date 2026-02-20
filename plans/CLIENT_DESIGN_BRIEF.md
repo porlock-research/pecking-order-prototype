@@ -204,8 +204,7 @@ Avatars use the `PersonaAvatar` component which renders headshot images with a l
 
 ### Visual Treatments
 
-- **Online dot**: `w-3 h-3` (list), `w-4 h-4` (drawer) — `bg-skin-green` with `animate-pulse-live` when online, `bg-skin-dim/40` when offline. Positioned `absolute -bottom-0.5 -right-0.5` with `border-2 border-skin-fill` knockout.
-- **Gold halo**: `shadow-[0_0_8px_rgba(251,191,36,0.2)]` on the header avatar — subtle warm glow.
+- **Online indicator**: `isOnline` prop on `PersonaAvatar`. When `true`: `ring-2 ring-skin-gold` + `shadow-[0_0_6px_rgba(251,191,36,0.3)]` (gold ring with warm glow). When `false`: `ring-1 ring-white/10` (subtle offline ring). Applied consistently across Header, PeopleList, PlayerDrawer, ChatBubble, and typing indicator.
 - **Eliminated**: `grayscale` filter + skull overlay (scales with avatar size via `getSkullSize()`).
 - **Group stacks**: Two avatars offset by 12px diagonally, each with `ring-2 ring-skin-deep` to separate.
 
@@ -363,7 +362,7 @@ border: 1px solid rgba(255,255,255,0.1)
 
 Full-screen overlays for high-drama moments. These are **not** toasts — they demand attention.
 
-**Elimination**: Skull icon (48px) + red glow pulse + shake animation + player name. Currently auto-dismisses at 3s (see [BUG-002] — should persist until tap).
+**Elimination**: Skull icon (48px) + red glow pulse + shake animation + player name. Persists until tap to dismiss.
 
 **Winner**: Crown icon (56px) + gold glow pulse + confetti (canvas-confetti from corners) + player name + gold payout. Manual dismiss only.
 
@@ -400,6 +399,24 @@ Horizontal swipe (delta 50px) switches between Comms and People. Left-edge 30px 
 5. **`glow-breathe` is CSS animation** — runs on compositor thread, doesn't trigger layout.
 6. **Lazy-loaded shell** — `ImmersiveShell` is code-split via the shell registry (`?shell=immersive`).
 7. **Framer Motion `layoutId`** — used sparingly: tab dots, footer indicator. Not on list items (too many).
+
+---
+
+## Technical Gotchas
+
+### Tailwind opacity modifiers don't work with CSS custom property colors
+
+All `skin-*` colors resolve to CSS custom properties (e.g. `ring-skin-gold` → `var(--po-gold)` → `#fbbf24`). Tailwind's opacity modifier syntax (`/70`, `/50`, etc.) requires colors to be in decomposed channel format (`251 191 36`) to generate valid `rgb(R G B / alpha)`. When the color is a hex string wrapped in `var()`, the modifier produces invalid CSS like `rgb(#fbbf24 / 0.7)` which the browser silently ignores — **the entire declaration is dropped with no visual output**.
+
+**Rule**: Never use opacity modifiers on `skin-*` ring/text/bg/border colors. Use the color at full opacity, or use an arbitrary value with explicit rgba:
+
+```
+❌  ring-skin-gold/70        → invalid CSS, silently fails
+✅  ring-skin-gold            → full opacity, works
+✅  ring-[rgba(251,191,36,0.7)] → arbitrary value, works
+```
+
+Standard Tailwind colors (`white`, `black`, `red-500`, etc.) **do** support opacity modifiers because they're defined in channel format internally. So `ring-white/10` and `bg-black/60` are fine.
 
 ---
 
