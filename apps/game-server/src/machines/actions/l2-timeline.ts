@@ -7,6 +7,22 @@ export const l2TimelineActions = {
         console.log('[L2] Debug Mode: Skipping Game Start Alarm. Waiting for Admin trigger.');
         return null;
       }
+
+      // CONFIGURABLE_CYCLE: schedule wakeup for Day 1's first event (Day 0 is pre-game)
+      if (context.manifest?.gameMode === 'CONFIGURABLE_CYCLE') {
+        const day1 = context.manifest.days.find((d: any) => d.dayIndex === 1);
+        if (day1 && day1.timeline.length > 0) {
+          const sorted = [...day1.timeline].sort(
+            (a: any, b: any) => new Date(a.time).getTime() - new Date(b.time).getTime()
+          );
+          const wakeup = new Date(sorted[0].time).getTime();
+          console.log(`[L2] Configurable Cycle: Scheduling game start for Day 1 first event at ${sorted[0].time}`);
+          return wakeup;
+        }
+        console.warn('[L2] Configurable Cycle: No Day 1 events found. Waiting for Admin trigger.');
+        return null;
+      }
+
       console.log('[L2] Scheduling Game Start (1s)...');
       return Date.now() + 1000;
     },

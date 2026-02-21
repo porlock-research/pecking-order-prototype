@@ -608,15 +608,17 @@ export async function startGame(
       .bind(game.id)
       .run();
 
-    // Auto-advance to day 1 (in future this will be a worker alarm)
-    await fetch(`${GAME_SERVER_HOST}/parties/game-server/${game.id}/admin`, {
-      method: 'POST',
-      body: JSON.stringify({ type: 'NEXT_STAGE' }),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AUTH_SECRET}`,
-      },
-    }).catch((err: any) => console.error('[Lobby] Auto-advance failed:', err));
+    // Auto-advance to day 1 — skip for CONFIGURABLE_CYCLE (scheduler handles it via Day 0 → Day 1 alarm)
+    if (game.mode !== 'CONFIGURABLE_CYCLE') {
+      await fetch(`${GAME_SERVER_HOST}/parties/game-server/${game.id}/admin`, {
+        method: 'POST',
+        body: JSON.stringify({ type: 'NEXT_STAGE' }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AUTH_SECRET}`,
+        },
+      }).catch((err: any) => console.error('[Lobby] Auto-advance failed:', err));
+    }
 
     return { success: true, tokens };
   } catch (err: any) {

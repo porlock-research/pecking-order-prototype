@@ -130,10 +130,8 @@ function createConfigurableDay(): ConfigurableDayConfig {
 }
 
 function createDefaultConfigurableConfig(): ConfigurableManifestConfig {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
   return {
-    startDate: toLocalDateString(tomorrow),
+    startDate: toLocalDateString(new Date()), // today is Day 0 (pre-game), Day 1 starts tomorrow
     dayCount: 3,
     days: [createConfigurableDay(), createConfigurableDay(), createConfigurableDay()],
     pushConfig: {
