@@ -298,6 +298,9 @@ export class GameServer extends Server<Env> {
     if (req.method === "POST" && path.endsWith("/init")) {
       return this.handleInit(req, url);
     }
+    if (req.method === "POST" && path.endsWith("/player-joined")) {
+      return this.handlePlayerJoined(req, url);
+    }
     if (req.method === "GET" && path.endsWith("/state")) {
       return this.handleGetState();
     }
@@ -349,6 +352,48 @@ export class GameServer extends Server<Env> {
     } catch (err) {
       console.error("[L1] POST /init failed:", err);
       return new Response("Invalid Payload", { status: 400 });
+    }
+  }
+
+  private async handlePlayerJoined(req: Request, url: URL): Promise<Response> {
+    const authHeader = req.headers.get('Authorization');
+    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
+    try {
+      const json = await req.json() as any;
+      const { playerId, realUserId, personaName, avatarUrl, bio, silver } = json;
+
+      if (!playerId || !realUserId || !personaName) {
+        return new Response('Missing required fields', { status: 400 });
+      }
+
+      // Enrich with persistent gold from D1
+      const goldBalances = await readGoldBalances(this.env.DB, [realUserId]);
+      const gold = goldBalances.get(realUserId) || 0;
+
+      // Send SYSTEM.PLAYER_JOINED to L2
+      this.actor?.send({
+        type: Events.System.PLAYER_JOINED,
+        player: { id: playerId, realUserId, personaName, avatarUrl: avatarUrl || '', bio: bio || '', silver: silver || 50, gold },
+      });
+
+      // Insert player into D1 Players table
+      const pathParts = url.pathname.split('/');
+      const gameId = pathParts[pathParts.length - 2];
+      const playerStmt = this.env.DB.prepare(
+        `INSERT OR IGNORE INTO Players (game_id, player_id, real_user_id, persona_name, avatar_url, status, silver, gold, destiny_id)
+         VALUES (?, ?, ?, ?, ?, 'ALIVE', ?, ?, ?)`
+      );
+      playerStmt.bind(gameId, playerId, realUserId, personaName, avatarUrl || '', silver || 50, gold, null)
+        .run()
+        .catch((err: any) => console.error('[L1] Failed to insert player:', err));
+
+      return new Response(JSON.stringify({ status: 'OK' }), { status: 200 });
+    } catch (err) {
+      console.error('[L1] POST /player-joined failed:', err);
+      return new Response('Invalid Payload', { status: 400 });
     }
   }
 

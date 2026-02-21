@@ -149,6 +149,47 @@ export async function createGame(
   }
   await db.batch(stmts);
 
+  // For CONFIGURABLE_CYCLE: auto-init the DO immediately (empty roster, scheduler starts)
+  if (mode === 'CONFIGURABLE_CYCLE' && config) {
+    try {
+      const env = await getEnv();
+      const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+      const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+
+      const t = (offset: number) => new Date(now + offset).toISOString();
+      const days = buildManifestDays(mode, dayCount, config, t);
+
+      const payload = {
+        lobbyId: `lobby-${now}`,
+        inviteCode,
+        roster: {},
+        manifest: {
+          id: `manifest-${gameId}`,
+          gameMode: mode,
+          days,
+          pushConfig: config.pushConfig,
+        },
+      };
+
+      const validated = InitPayloadSchema.parse(payload);
+      const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/init`;
+
+      await fetch(targetUrl, {
+        method: 'POST',
+        body: JSON.stringify(validated),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${AUTH_SECRET}`,
+        },
+      });
+
+      console.log(`[Lobby] Auto-initialized DO for CONFIGURABLE_CYCLE game ${gameId}`);
+    } catch (err: any) {
+      console.error('[Lobby] Failed to auto-init DO:', err);
+      // Non-fatal: game is created in DB, DO init can be retried
+    }
+  }
+
   return { success: true, gameId, inviteCode };
 }
 
@@ -389,9 +430,9 @@ export async function acceptInvite(
 
   // Find game
   const game = await db
-    .prepare('SELECT id, status, player_count FROM GameSessions WHERE invite_code = ?')
+    .prepare('SELECT id, status, player_count, mode FROM GameSessions WHERE invite_code = ?')
     .bind(code.toUpperCase())
-    .first<{ id: string; status: string; player_count: number }>();
+    .first<{ id: string; status: string; player_count: number; mode: string }>();
 
   if (!game || game.status !== 'RECRUITING') {
     return { success: false, error: 'Game is not accepting players' };
@@ -447,6 +488,43 @@ export async function acceptInvite(
     .bind(game.id, session.userId)
     .run();
 
+  // For CONFIGURABLE_CYCLE: notify the running DO about the new player
+  if (game.mode === 'CONFIGURABLE_CYCLE') {
+    try {
+      const env = await getEnv();
+      const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+      const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+
+      // Fetch persona name for the player
+      const persona = await db
+        .prepare('SELECT name, description FROM PersonaPool WHERE id = ?')
+        .bind(personaId)
+        .first<{ name: string; description: string }>();
+
+      const pid = `p${slot.slot_index}`;
+      const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${game.id}/player-joined`;
+
+      await fetch(targetUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+          playerId: pid,
+          realUserId: session.userId,
+          personaName: persona?.name || 'Unknown',
+          avatarUrl: personaImageUrl(personaId, 'headshot'),
+          bio: bio || persona?.description || '',
+          silver: 50,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${AUTH_SECRET}`,
+        },
+      }).catch((err: any) => console.error('[Lobby] Failed to notify DO of player join:', err));
+    } catch (err: any) {
+      console.error('[Lobby] Player join notification failed:', err);
+      // Non-fatal: player is in DB, DO notification is best-effort
+    }
+  }
+
   // Check if all slots are filled
   const { count } = await db
     .prepare('SELECT COUNT(*) as count FROM Invites WHERE game_id = ? AND accepted_by IS NULL')
@@ -454,9 +532,12 @@ export async function acceptInvite(
     .first<{ count: number }>() || { count: 1 };
 
   if (count === 0) {
+    // CONFIGURABLE_CYCLE: set to STARTED (DO is already running)
+    // Other modes: set to READY (waiting for host to launch)
+    const newStatus = game.mode === 'CONFIGURABLE_CYCLE' ? 'STARTED' : 'READY';
     await db
-      .prepare("UPDATE GameSessions SET status = 'READY' WHERE id = ?")
-      .bind(game.id)
+      .prepare(`UPDATE GameSessions SET status = ? WHERE id = ?`)
+      .bind(newStatus, game.id)
       .run();
   }
 
@@ -1024,15 +1105,16 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
   inviteCode?: string;
   clientHost?: string;
   myPersonaId?: string;
+  mode?: string;
 }> {
   const session = await requireAuth();
   const db = await getDB();
   const env = await getEnv();
 
   const game = await db
-    .prepare('SELECT id, status, invite_code, day_count FROM GameSessions WHERE invite_code = ?')
+    .prepare('SELECT id, status, invite_code, day_count, mode FROM GameSessions WHERE invite_code = ?')
     .bind(inviteCode.toUpperCase())
-    .first<{ id: string; status: string; invite_code: string; day_count: number }>();
+    .first<{ id: string; status: string; invite_code: string; day_count: number; mode: string }>();
 
   if (!game) {
     return { status: 'NOT_FOUND', slots: [] };
@@ -1062,14 +1144,16 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     displayName: inv.display_name || inv.email?.split('@')[0] || null,
   }));
 
-  // If game just started, get token for the current user
+  // Mint token: for STARTED games, or for CONFIGURABLE_CYCLE players who have accepted
   let tokens: Record<string, string> | undefined;
-  if (game.status === 'STARTED') {
+  if (game.status === 'STARTED' || game.mode === 'CONFIGURABLE_CYCLE') {
     const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
     const myInvite = invites.find((i) => i.accepted_by === session.userId);
     if (myInvite) {
-      const idx = invites.filter((i) => i.accepted_by).indexOf(myInvite);
-      const pid = `p${idx + 1}`;
+      // For CONFIGURABLE_CYCLE, use slot_index as pid (deterministic at accept time)
+      const pid = game.mode === 'CONFIGURABLE_CYCLE'
+        ? `p${myInvite.slot_index}`
+        : `p${invites.filter((i) => i.accepted_by).indexOf(myInvite) + 1}`;
       const tokenExpiry = `${(game.day_count || 7) * 2 + 7}d`;
       tokens = {
         [pid]: await signGameToken(
@@ -1091,5 +1175,5 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
   const myPersonaId = myInviteForBg?.persona_id ?? undefined;
 
   const clientHost = (env.GAME_CLIENT_HOST as string) || 'http://localhost:5173';
-  return { status: game.status, slots, tokens, inviteCode: game.invite_code, clientHost, myPersonaId };
+  return { status: game.status, slots, tokens, inviteCode: game.invite_code, clientHost, myPersonaId, mode: game.mode };
 }

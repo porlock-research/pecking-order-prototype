@@ -25,6 +25,7 @@ export default function WaitingRoom() {
   const [isStarting, setIsStarting] = useState(false);
   const [clientHost, setClientHost] = useState('http://localhost:5173');
   const [myPersonaId, setMyPersonaId] = useState<string | null>(null);
+  const [mode, setMode] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -34,6 +35,7 @@ export default function WaitingRoom() {
         setSlots(result.slots);
         if (result.tokens) setTokens(result.tokens);
         if (result.clientHost) setClientHost(result.clientHost);
+        if (result.mode) setMode(result.mode);
         // Find the current user's persona for background
         if (result.myPersonaId) setMyPersonaId(result.myPersonaId);
       } catch {
@@ -65,6 +67,7 @@ export default function WaitingRoom() {
   const isStarted = status === 'STARTED';
   const isLoading = status === 'LOADING';
 
+  const isConfigurableCycle = mode === 'CONFIGURABLE_CYCLE';
   const myPlayerId = tokens ? Object.keys(tokens)[0] : null;
   const myToken = tokens ? Object.values(tokens)[0] : null;
   const clientEntryUrl = myToken ? `${clientHost}/game/${code}?_t=${myToken}` : null;
@@ -226,7 +229,7 @@ export default function WaitingRoom() {
           )}
 
           <AnimatePresence mode="wait">
-            {isReady && !isStarted && (
+            {isReady && !isStarted && !isConfigurableCycle && (
               <motion.div
                 key="launch"
                 initial={{ opacity: 0 }}
@@ -257,7 +260,7 @@ export default function WaitingRoom() {
               </motion.div>
             )}
 
-            {isStarted && clientEntryUrl && (
+            {(isStarted || (isConfigurableCycle && clientEntryUrl)) && clientEntryUrl && (
               <motion.div
                 key="enter"
                 initial={{ opacity: 0 }}
@@ -280,7 +283,7 @@ export default function WaitingRoom() {
               </motion.div>
             )}
 
-            {!isStarted && !isReady && !isLoading && (
+            {!isStarted && !isReady && !isLoading && !isConfigurableCycle && (
               <motion.div
                 key="share"
                 initial={{ opacity: 0 }}
@@ -290,6 +293,20 @@ export default function WaitingRoom() {
               >
                 <p className="text-center text-xs text-skin-dim font-mono">
                   Share the invite code and refresh when everyone has joined.
+                </p>
+              </motion.div>
+            )}
+
+            {isConfigurableCycle && !clientEntryUrl && !isLoading && (
+              <motion.div
+                key="cc-waiting"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <p className="text-center text-xs text-skin-dim font-mono">
+                  Share the invite code. You can enter the game while waiting for other players.
                 </p>
               </motion.div>
             )}

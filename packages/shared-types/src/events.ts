@@ -12,6 +12,7 @@ export const Events = {
   System: {
     SYNC: 'SYSTEM.SYNC',
     INIT: 'SYSTEM.INIT',
+    PLAYER_JOINED: 'SYSTEM.PLAYER_JOINED',
     WAKEUP: 'SYSTEM.WAKEUP',
     PAUSE: 'SYSTEM.PAUSE',
   },
