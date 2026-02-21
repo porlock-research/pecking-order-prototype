@@ -148,9 +148,9 @@ function toISOConfigurableConfig(cfg: ConfigurableManifestConfig): ConfigurableM
   return {
     ...cfg,
     days: cfg.days.map((day, idx) => {
-      // Compute this day's date from startDate + offset
+      // startDate is Day 0 (pre-game), Day 1 starts the next day
       const dayDate = new Date(cfg.startDate);
-      dayDate.setDate(dayDate.getDate() + idx);
+      dayDate.setDate(dayDate.getDate() + idx + 1);
       const dateStr = toLocalDateString(dayDate);
 
       return {
@@ -585,9 +585,9 @@ export default function LobbyRoot() {
                     </div>
                   </div>
 
-                  {/* Start Date */}
+                  {/* Start Date (Day 0 — pre-game, Day 1 begins next day) */}
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-skin-dim/60">Starts</span>
+                    <span className="text-xs font-mono text-skin-dim/60">Day 0 (Pre-Game)</span>
                     <input
                       type="date"
                       value={configurableConfig.startDate}
@@ -599,7 +599,7 @@ export default function LobbyRoot() {
                   <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                     {configurableConfig.days.slice(0, configurableConfig.dayCount).map((day, idx) => {
                       const dayDate = new Date(configurableConfig.startDate);
-                      dayDate.setDate(dayDate.getDate() + idx);
+                      dayDate.setDate(dayDate.getDate() + idx + 1); // startDate is Day 0, Day 1 is next day
                       const dateLabel = dayDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
                       return (
                       <div key={idx} className="border border-skin-base rounded-lg bg-skin-input/40 p-4 space-y-3">
