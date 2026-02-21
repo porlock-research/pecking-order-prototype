@@ -1,7 +1,7 @@
 'use client';
 
 import { createGame, startDebugGame, getAuthStatus, getActiveGames } from './actions';
-import type { DebugManifestConfig, DebugDayConfig, ActiveGame } from './actions';
+import type { DebugManifestConfig, DebugDayConfig, ConfigurableManifestConfig, ConfigurableDayConfig, ConfigurableEventConfig, ActiveGame } from './actions';
 import { useState, useEffect } from 'react';
 
 const AVAILABLE_VOTE_TYPES = [
@@ -76,14 +76,102 @@ function createDefaultManifestConfig(): DebugManifestConfig {
   };
 }
 
+const CONFIGURABLE_EVENT_LABELS: { key: string; label: string }[] = [
+  { key: 'INJECT_PROMPT', label: 'Inject Prompt' },
+  { key: 'OPEN_GROUP_CHAT', label: 'Open Group Chat' },
+  { key: 'START_ACTIVITY', label: 'Start Activity' },
+  { key: 'END_ACTIVITY', label: 'End Activity' },
+  { key: 'OPEN_DMS', label: 'Open DMs' },
+  { key: 'START_GAME', label: 'Start Game' },
+  { key: 'END_GAME', label: 'End Game' },
+  { key: 'OPEN_VOTING', label: 'Open Voting' },
+  { key: 'CLOSE_VOTING', label: 'Close Voting' },
+  { key: 'CLOSE_DMS', label: 'Close DMs' },
+  { key: 'CLOSE_GROUP_CHAT', label: 'Close Group Chat' },
+  { key: 'END_DAY', label: 'End Day' },
+];
+
+// Default times for events within a day (HH:MM)
+const DEFAULT_EVENT_TIMES: Record<string, string> = {
+  INJECT_PROMPT: '09:00',
+  OPEN_GROUP_CHAT: '09:15',
+  START_ACTIVITY: '09:30',
+  END_ACTIVITY: '10:00',
+  OPEN_DMS: '10:15',
+  START_GAME: '11:00',
+  END_GAME: '12:00',
+  OPEN_VOTING: '13:00',
+  CLOSE_VOTING: '15:00',
+  CLOSE_DMS: '16:00',
+  CLOSE_GROUP_CHAT: '16:30',
+  END_DAY: '17:00',
+};
+
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function createConfigurableDay(dayOffset: number): ConfigurableDayConfig {
+  const baseDate = new Date();
+  baseDate.setDate(baseDate.getDate() + 1 + dayOffset); // start tomorrow
+
+  const events: Record<string, ConfigurableEventConfig> = {};
+  for (const { key } of CONFIGURABLE_EVENT_LABELS) {
+    events[key] = { enabled: true, time: DEFAULT_EVENT_TIMES[key] };
+  }
+
+  return {
+    date: toLocalDateString(baseDate),
+    voteType: 'MAJORITY',
+    gameType: 'TRIVIA',
+    activityType: 'PLAYER_PICK',
+    events,
+  };
+}
+
+function createDefaultConfigurableConfig(): ConfigurableManifestConfig {
+  return {
+    dayCount: 3,
+    days: [createConfigurableDay(0), createConfigurableDay(1), createConfigurableDay(2)],
+    pushConfig: {
+      DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
+      DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
+    },
+  };
+}
+
+/** Combine day date (YYYY-MM-DD) + event time (HH:MM) into ISO strings for the server */
+function toISOConfigurableConfig(cfg: ConfigurableManifestConfig): ConfigurableManifestConfig {
+  return {
+    ...cfg,
+    days: cfg.days.map(day => ({
+      ...day,
+      events: Object.fromEntries(
+        Object.entries(day.events).map(([key, evt]) => {
+          let iso: string | null = null;
+          if (evt.enabled && evt.time && day.date) {
+            const d = new Date(`${day.date}T${evt.time}`);
+            if (!isNaN(d.getTime())) iso = d.toISOString();
+          }
+          return [key, { enabled: evt.enabled, time: iso }];
+        })
+      ),
+    })),
+  };
+}
+
 export default function LobbyRoot() {
   const [status, setStatus] = useState<string>('SYSTEM_IDLE');
   const [gameId, setGameId] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [clientHost, setClientHost] = useState<string>('http://localhost:5173');
-  const [mode, setMode] = useState<'PECKING_ORDER' | 'BLITZ' | 'DEBUG_PECKING_ORDER'>('PECKING_ORDER');
+  const [mode, setMode] = useState<'PECKING_ORDER' | 'CONFIGURABLE_CYCLE' | 'DEBUG_PECKING_ORDER'>('PECKING_ORDER');
   const [isLoading, setIsLoading] = useState(false);
   const [debugConfig, setDebugConfig] = useState<DebugManifestConfig>(createDefaultManifestConfig);
+  const [configurableConfig, setConfigurableConfig] = useState<ConfigurableManifestConfig>(createDefaultConfigurableConfig);
   const [tokens, setTokens] = useState<Record<string, string> | null>(null);
   const [skipInvites, setSkipInvites] = useState(false);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
@@ -138,6 +226,92 @@ export default function LobbyRoot() {
     }));
   }
 
+  // ── Configurable Cycle handlers ──
+
+  function handleCfgDayCountChange(delta: number) {
+    setConfigurableConfig(prev => {
+      const newCount = Math.max(1, Math.min(7, prev.dayCount + delta));
+      const days = [...prev.days];
+      while (days.length < newCount) days.push(createConfigurableDay(days.length));
+      return { ...prev, dayCount: newCount, days: days.slice(0, newCount) };
+    });
+  }
+
+  function handleCfgDateChange(dayIdx: number, date: string) {
+    setConfigurableConfig(prev => {
+      const days = prev.days.map((d, i) => i === dayIdx ? { ...d, date } : d);
+      return { ...prev, days };
+    });
+  }
+
+  function handleCfgVoteTypeChange(dayIdx: number, voteType: string) {
+    setConfigurableConfig(prev => {
+      const days = prev.days.map((d, i) => i === dayIdx ? { ...d, voteType } : d);
+      return { ...prev, days };
+    });
+  }
+
+  function handleCfgGameTypeChange(dayIdx: number, gameType: string) {
+    setConfigurableConfig(prev => {
+      const days = prev.days.map((d, i) => i === dayIdx ? { ...d, gameType } : d);
+      return { ...prev, days };
+    });
+  }
+
+  function handleCfgGameModeChange(dayIdx: number, gameMode: string) {
+    setConfigurableConfig(prev => {
+      const days = prev.days.map((d, i) => i === dayIdx ? { ...d, gameMode } : d);
+      return { ...prev, days };
+    });
+  }
+
+  function handleCfgActivityTypeChange(dayIdx: number, activityType: string) {
+    setConfigurableConfig(prev => {
+      const days = prev.days.map((d, i) => i === dayIdx ? { ...d, activityType } : d);
+      return { ...prev, days };
+    });
+  }
+
+  function handleCfgEventToggle(dayIdx: number, eventKey: string) {
+    setConfigurableConfig(prev => {
+      const days = prev.days.map((d, i) => {
+        if (i !== dayIdx) return d;
+        const evt = d.events[eventKey];
+        return {
+          ...d,
+          events: {
+            ...d.events,
+            [eventKey]: { ...evt, enabled: !evt.enabled },
+          },
+        };
+      });
+      return { ...prev, days };
+    });
+  }
+
+  function handleCfgEventTimeChange(dayIdx: number, eventKey: string, localTime: string) {
+    setConfigurableConfig(prev => {
+      const days = prev.days.map((d, i) => {
+        if (i !== dayIdx) return d;
+        return {
+          ...d,
+          events: {
+            ...d.events,
+            [eventKey]: { ...d.events[eventKey], time: localTime || null },
+          },
+        };
+      });
+      return { ...prev, days };
+    });
+  }
+
+  function handleCfgPushToggle(trigger: string) {
+    setConfigurableConfig(prev => ({
+      ...prev,
+      pushConfig: { ...prev.pushConfig, [trigger]: !prev.pushConfig[trigger] },
+    }));
+  }
+
   async function handleCreateGame() {
     setIsLoading(true);
     setStatus('CREATING_GAME...');
@@ -147,7 +321,11 @@ export default function LobbyRoot() {
 
     await new Promise(r => setTimeout(r, 400));
 
-    const config = mode === 'DEBUG_PECKING_ORDER' ? debugConfig : undefined;
+    const config = mode === 'DEBUG_PECKING_ORDER'
+      ? debugConfig
+      : mode === 'CONFIGURABLE_CYCLE'
+        ? toISOConfigurableConfig(configurableConfig)
+        : undefined;
     const result = await createGame(mode, config);
     setIsLoading(false);
 
@@ -168,7 +346,11 @@ export default function LobbyRoot() {
 
     await new Promise(r => setTimeout(r, 800));
 
-    const config = mode === 'DEBUG_PECKING_ORDER' ? debugConfig : undefined;
+    const config = mode === 'DEBUG_PECKING_ORDER'
+      ? debugConfig
+      : mode === 'CONFIGURABLE_CYCLE'
+        ? toISOConfigurableConfig(configurableConfig)
+        : undefined;
     const result = await startDebugGame(mode, config);
     setIsLoading(false);
 
@@ -183,6 +365,7 @@ export default function LobbyRoot() {
   }
 
   const isDebugMode = mode === 'DEBUG_PECKING_ORDER';
+  const isConfigurableMode = mode === 'CONFIGURABLE_CYCLE';
 
   return (
     <div className="min-h-screen bg-skin-deep bg-grid-pattern flex flex-col items-center justify-center p-4 font-body text-skin-base relative selection:bg-skin-gold/30">
@@ -269,7 +452,7 @@ export default function LobbyRoot() {
                     className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-sm hover:border-skin-dim/30"
                   >
                     <option value="PECKING_ORDER">STANDARD_CYCLE (7 Days)</option>
-                    <option value="BLITZ">BLITZ_PROTOCOL (Fast Paced)</option>
+                    <option value="CONFIGURABLE_CYCLE">CONFIGURABLE_CYCLE (Custom)</option>
                     <option value="DEBUG_PECKING_ORDER">DEBUG_OVERRIDE (Manual)</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-skin-dim/50 group-hover:text-skin-dim transition-colors">
@@ -371,30 +554,167 @@ export default function LobbyRoot() {
                 </div>
               )}
 
-              {/* Push Alerts Config (debug mode only) */}
-              {isDebugMode && !gameId && (
+              {/* Configurable Cycle Panel */}
+              {isConfigurableMode && !gameId && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
+                      Custom Schedule
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-skin-dim/60">Days:</span>
+                      <button
+                        onClick={() => handleCfgDayCountChange(-1)}
+                        disabled={configurableConfig.dayCount <= 1}
+                        className="w-7 h-7 flex items-center justify-center bg-skin-input border border-skin-base rounded-lg font-mono text-sm text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                      >
+                        -
+                      </button>
+                      <span className="font-mono text-sm text-skin-gold w-4 text-center">{configurableConfig.dayCount}</span>
+                      <button
+                        onClick={() => handleCfgDayCountChange(1)}
+                        disabled={configurableConfig.dayCount >= 7}
+                        className="w-7 h-7 flex items-center justify-center bg-skin-input border border-skin-base rounded-lg font-mono text-sm text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                    {configurableConfig.days.slice(0, configurableConfig.dayCount).map((day, idx) => (
+                      <div key={idx} className="border border-skin-base rounded-lg bg-skin-input/40 p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="font-mono text-xs text-skin-gold tracking-widest">
+                            DAY_{String(idx + 1).padStart(2, '0')}
+                          </div>
+                          <input
+                            type="date"
+                            value={day.date}
+                            onChange={(e) => handleCfgDateChange(idx, e.target.value)}
+                            className="bg-skin-input text-skin-base border border-skin-base rounded-lg px-2 py-1 text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 transition-all"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-2">
+                          <div className="relative">
+                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Vote</label>
+                            <select
+                              value={day.voteType}
+                              onChange={(e) => handleCfgVoteTypeChange(idx, e.target.value)}
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                            >
+                              {AVAILABLE_VOTE_TYPES.map(vt => (
+                                <option key={vt.value} value={vt.value}>{vt.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="relative">
+                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Game</label>
+                            <select
+                              value={day.gameType}
+                              onChange={(e) => handleCfgGameTypeChange(idx, e.target.value)}
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                            >
+                              {AVAILABLE_GAME_TYPES.map(gt => (
+                                <option key={gt.value} value={gt.value}>{gt.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="relative">
+                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Mode</label>
+                            <select
+                              value={day.gameMode || 'SOLO'}
+                              onChange={(e) => handleCfgGameModeChange(idx, e.target.value)}
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                            >
+                              <option value="SOLO">Solo</option>
+                              <option value="LIVE">Live</option>
+                            </select>
+                          </div>
+                          <div className="relative">
+                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Activity</label>
+                            <select
+                              value={day.activityType}
+                              onChange={(e) => handleCfgActivityTypeChange(idx, e.target.value)}
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                            >
+                              {AVAILABLE_ACTIVITY_TYPES.map(at => (
+                                <option key={at.value} value={at.value}>{at.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Timeline Events */}
+                        <details className="group/events">
+                          <summary className="text-[10px] font-mono text-skin-dim/50 cursor-pointer hover:text-skin-dim transition-colors select-none">
+                            Timeline Events ({Object.values(day.events).filter(e => e.enabled).length}/12)
+                          </summary>
+                          <div className="mt-2 space-y-1.5">
+                            {CONFIGURABLE_EVENT_LABELS.map(({ key, label }) => {
+                              const evt = day.events[key];
+                              return (
+                                <div key={key} className="flex items-center gap-2">
+                                  <label className="relative flex-shrink-0">
+                                    <input
+                                      type="checkbox"
+                                      checked={evt?.enabled ?? true}
+                                      onChange={() => handleCfgEventToggle(idx, key)}
+                                      className="sr-only peer"
+                                    />
+                                    <div className="w-6 h-3 bg-skin-input border border-skin-base rounded-full peer-checked:bg-skin-gold/30 peer-checked:border-skin-gold/50 transition-all" />
+                                    <div className="absolute left-0.5 top-0.5 w-2 h-2 bg-skin-dim/60 rounded-full peer-checked:translate-x-3 peer-checked:bg-skin-gold transition-all" />
+                                  </label>
+                                  <span className={`text-[10px] font-mono w-28 flex-shrink-0 ${evt?.enabled ? 'text-skin-dim' : 'text-skin-dim/30'}`}>
+                                    {label}
+                                  </span>
+                                  <input
+                                    type="time"
+                                    value={evt?.time || ''}
+                                    onChange={(e) => handleCfgEventTimeChange(idx, key, e.target.value)}
+                                    disabled={!evt?.enabled}
+                                    className="bg-skin-input text-skin-base border border-skin-base rounded-lg px-2 py-1 text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 disabled:opacity-30 transition-all"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </details>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Push Alerts Config */}
+              {(isDebugMode || isConfigurableMode) && !gameId && (
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
                     Push Alerts
                   </label>
                   <div className="border border-skin-base rounded-lg bg-skin-input/40 p-3 space-y-1.5">
-                    {PUSH_TRIGGER_LABELS.map(({ key, label }) => (
-                      <label key={key} className="flex items-center justify-between cursor-pointer group">
-                        <span className="text-xs font-mono text-skin-dim/60 group-hover:text-skin-dim transition-colors">
-                          {label}
-                        </span>
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={debugConfig.pushConfig[key] ?? true}
-                            onChange={() => handlePushToggle(key)}
-                            className="sr-only peer"
-                          />
-                          <div className="w-8 h-4 bg-skin-input border border-skin-base rounded-full peer-checked:bg-skin-gold/30 peer-checked:border-skin-gold/50 transition-all" />
-                          <div className="absolute left-0.5 top-0.5 w-3 h-3 bg-skin-dim/60 rounded-full peer-checked:translate-x-4 peer-checked:bg-skin-gold transition-all" />
-                        </div>
-                      </label>
-                    ))}
+                    {PUSH_TRIGGER_LABELS.map(({ key, label }) => {
+                      const pushConfig = isConfigurableMode ? configurableConfig.pushConfig : debugConfig.pushConfig;
+                      const toggleFn = isConfigurableMode ? handleCfgPushToggle : handlePushToggle;
+                      return (
+                        <label key={key} className="flex items-center justify-between cursor-pointer group">
+                          <span className="text-xs font-mono text-skin-dim/60 group-hover:text-skin-dim transition-colors">
+                            {label}
+                          </span>
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              checked={pushConfig[key] ?? true}
+                              onChange={() => toggleFn(key)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-8 h-4 bg-skin-input border border-skin-base rounded-full peer-checked:bg-skin-gold/30 peer-checked:border-skin-gold/50 transition-all" />
+                            <div className="absolute left-0.5 top-0.5 w-3 h-3 bg-skin-dim/60 rounded-full peer-checked:translate-x-4 peer-checked:bg-skin-gold transition-all" />
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               )}

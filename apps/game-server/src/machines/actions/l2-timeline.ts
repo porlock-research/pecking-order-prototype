@@ -33,10 +33,22 @@ export const l2TimelineActions = {
       if (nextEvent) {
         console.log(`[L2] Scheduling next event: ${nextEvent.action} at ${nextEvent.time}`);
         return new Date(nextEvent.time).getTime();
-      } else {
-        console.log(`[L2] No more events for Day ${context.dayIndex}.`);
-        return null;
       }
+
+      // Current day exhausted — look ahead to next day's first event
+      const nextDay = context.manifest.days.find(
+        (d: any) => d.dayIndex === context.dayIndex + 1
+      );
+      if (nextDay && nextDay.timeline.length > 0) {
+        const sorted = [...nextDay.timeline].sort(
+          (a: any, b: any) => new Date(a.time).getTime() - new Date(b.time).getTime()
+        );
+        console.log(`[L2] Day ${context.dayIndex} exhausted. Scheduling wakeup for Day ${nextDay.dayIndex} first event at ${sorted[0].time}`);
+        return new Date(sorted[0].time).getTime();
+      }
+
+      console.log(`[L2] No more events for Day ${context.dayIndex} and no next day found.`);
+      return null;
     },
   }),
   processTimelineEvent: enqueueActions(({ enqueue, context }: any) => {

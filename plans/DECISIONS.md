@@ -872,3 +872,20 @@ This document tracks significant architectural decisions, their context, and con
     *   Empty slots create FOMO — "who's the mystery player?" drives sharing the invite code.
     *   The viewport-locked layout and background system are consistent with the invite flow — same visual language across the entire lobby experience.
     *   Adding `personaStereotype` to the SQL query is a minor schema read change — no migration needed, just joins the existing `PersonaPool` table.
+
+## [ADR-066] Replace BLITZ with CONFIGURABLE_CYCLE + Cross-Day Scheduling Fix
+
+*   **Date:** 2026-02-20
+*   **Status:** Accepted
+*   **Context:** The lobby had three game modes: Standard Cycle (7 days, auto-scheduled), Blitz Protocol (3 days, same as Standard but shorter), and Debug Override (manual admin advance). Blitz added no value — it was just Standard with fewer days. Separately, cross-day transitions were broken for non-debug modes: `scheduleNextTimelineEvent` only looked at the current day's timeline, so after END_DAY fired and the machine entered nightSummary, no alarm was scheduled for the next day's first event.
+*   **Decision:**
+    *   **Rename BLITZ → CONFIGURABLE_CYCLE** in the `gameMode` enum (`shared-types`). BLITZ was never checked in the game server (only `DEBUG_PECKING_ORDER` is), so this is a safe rename.
+    *   **New ConfigurableManifestConfig type**: Each day has a `date` (YYYY-MM-DD) plus per-event `enabled` toggle and `time` (HH:MM). The lobby UI presents a date picker per day and time-only inputs per event — much easier than full datetime pickers.
+    *   **Manifest builder**: New `CONFIGURABLE_CYCLE` branch in `buildManifestDays` uses the host's absolute ISO timestamps (date + time combined at serialization). Timeline entries sorted by time for safety.
+    *   **Cross-day scheduling fix**: When `scheduleNextTimelineEvent` finds no remaining events in the current day, it now looks ahead to the next day's first event and schedules a wakeup alarm for it. This fixes autonomous day transitions for both Standard Cycle and Configurable Cycle modes.
+    *   **Shared constants**: `EVENT_MESSAGES`, `ACTIVITY_PROMPTS`, `ACTIVITY_OPTIONS`, and `TIMELINE_EVENT_KEYS` hoisted to module scope so both Debug and Configurable branches share them.
+*   **Consequences:**
+    *   Hosts get full per-day control (vote type, game type, activity type, individual event scheduling) without needing debug mode.
+    *   PartyWhen alarm system handles all transitions autonomously — no admin intervention needed.
+    *   Cross-day fix means Standard Cycle games can now run multi-day without stalling at nightSummary.
+    *   Debug Override remains unchanged (manual admin advance, 5s gaps).

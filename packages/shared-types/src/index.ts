@@ -131,7 +131,7 @@ export const DEFAULT_PUSH_CONFIG: Record<PushTrigger, boolean> = {
 
 export const GameManifestSchema = z.object({
   id: z.string(),
-  gameMode: z.enum(["PECKING_ORDER", "BLITZ", "DEBUG_PECKING_ORDER"]),
+  gameMode: z.enum(["PECKING_ORDER", "CONFIGURABLE_CYCLE", "DEBUG_PECKING_ORDER"]),
   days: z.array(DailyManifestSchema),
   pushConfig: PushConfigSchema.optional(),
 });
