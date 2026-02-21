@@ -60,6 +60,14 @@ The expanded header view feels disorganized — no clear visual hierarchy or gov
 
 **Status**: Fixed — Moved avatar to right side of header bar. Expanded section reorganized: single status row (day + phase + alive count), currency values in a clean 3-column grid with subtle card backgrounds.
 
+## [BUG-012] iOS standalone PWA does not preserve session
+
+When a player saves the client app to their iOS home screen, the standalone PWA launches without an active session. iOS gives standalone PWAs completely isolated storage (localStorage, cookies, IndexedDB) from Safari. A 4-step recovery chain was implemented (localStorage → Cache API → lobby API → redirect) but does not resolve the issue in practice. The Cache API bridge in the Service Worker may also be sandboxed, and the lobby's `po_session` cookie is unreachable from the standalone context. Needs further research into iOS PWA storage boundaries.
+
+**Relevant files**: `plans/PWA_SESSION_PERSISTENCE.md`, `apps/client/src/sw.ts`, `apps/client/src/App.tsx`, `apps/lobby/app/api/refresh-token/[code]/route.ts`
+
+**Status**: Not resolved — recovery chain implemented but ineffective on iOS standalone PWA. Needs alternative approach.
+
 ## [BUG-005] Completed phase timeline cards lack visual polish (immersive shell)
 
 The timeline cards for completed phases (voting results, game results, prompt results) use plain/minimal styling that doesn't match the premium aesthetic of the live cartridge panels. They should carry the same visual language — accent-colored borders, glass backgrounds, subtle glow — so the timeline reads as a rich history of dramatic events, not a flat log.
