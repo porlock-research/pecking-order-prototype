@@ -122,6 +122,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       chatLog: playerChatLog,
       channels: playerChannels,
       groupChatOpen: l3Context.groupChatOpen ?? false,
+      dmsOpen: l3Context.dmsOpen ?? false,
       activeVotingCartridge: cartridges.activeVotingCartridge,
       activeGameCartridge,
       activePromptCartridge: projectPromptCartridge(cartridges.activePromptCartridge),

@@ -5,6 +5,7 @@ import { useGameStore } from '../../../store/useGameStore';
 import { PlayerStatuses } from '@pecking-order/shared-types';
 import { Skull, Crown } from 'lucide-react';
 import { SPRING } from '../springs';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
 interface Reveal {
   kind: 'elimination' | 'winner';
@@ -59,7 +60,7 @@ export function DramaticReveal() {
 
     // Check eliminations
     for (const pid of eliminatedIds) {
-      if (!seen.eliminations.includes(pid) && pid !== playerId) {
+      if (!seen.eliminations.includes(pid)) {
         newReveals.push({
           kind: 'elimination',
           playerId: pid,
@@ -178,7 +179,7 @@ export function DramaticReveal() {
               }}
             >
               <motion.div
-                className="w-24 h-24 rounded-full bg-skin-danger/20 flex items-center justify-center"
+                className="relative"
                 animate={{
                   boxShadow: [
                     '0 0 20px rgba(239,68,68,0.3)',
@@ -187,8 +188,14 @@ export function DramaticReveal() {
                   ],
                 }}
                 transition={{ duration: 1.5, repeat: Infinity }}
+                style={{ borderRadius: '50%' }}
               >
-                <Skull size={48} className="text-skin-danger" />
+                <PersonaAvatar
+                  avatarUrl={roster[current.playerId]?.avatarUrl}
+                  personaName={current.playerName}
+                  size={96}
+                  eliminated
+                />
               </motion.div>
               <motion.h2
                 className="text-2xl font-black font-display text-white text-center"
@@ -196,7 +203,7 @@ export function DramaticReveal() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                {current.playerName}
+                {current.playerId === playerId ? 'You' : current.playerName}
               </motion.h2>
               <motion.p
                 className="text-sm font-bold text-skin-danger uppercase tracking-[0.3em] font-display"
@@ -204,7 +211,7 @@ export function DramaticReveal() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.5 }}
               >
-                Has Been Eliminated
+                {current.playerId === playerId ? 'Have Been Eliminated' : 'Has Been Eliminated'}
               </motion.p>
               <motion.p
                 className="text-xs text-skin-dim mt-2"

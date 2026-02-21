@@ -47,6 +47,7 @@ export function GroupDrawer({ channelId, onClose, engine }: GroupDrawerProps) {
   const dmRejection = useGameStore(s => s.dmRejection);
   const clearDmRejection = useGameStore(s => s.clearDmRejection);
   const dmStats = useGameStore(s => s.dmStats);
+  const dmsOpen = useGameStore(s => s.dmsOpen);
   const typingPlayers = useGameStore(s => s.typingPlayers);
 
   const [inputValue, setInputValue] = useState('');
@@ -179,6 +180,11 @@ export function GroupDrawer({ channelId, onClose, engine }: GroupDrawerProps) {
 
           {/* Input */}
           <div className="shrink-0 p-3 bg-skin-panel/80 backdrop-blur-lg border-t border-white/[0.06]">
+            {!dmsOpen && (
+              <div className="mb-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-skin-dim text-xs font-mono text-center">
+                DMs are currently closed
+              </div>
+            )}
             <AnimatePresence>
               {typingNames.length > 0 && (
                 <motion.div
@@ -208,14 +214,15 @@ export function GroupDrawer({ channelId, onClose, engine }: GroupDrawerProps) {
                   setInputValue(e.target.value);
                   if (e.target.value && channelId) engine.sendTyping(channelId);
                 }}
-                placeholder="Group message..."
+                placeholder={dmsOpen ? "Group message..." : "DMs closed..."}
                 maxLength={280}
-                className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-base text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink placeholder:text-skin-dim transition-all"
+                disabled={!dmsOpen}
+                className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-base text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink placeholder:text-skin-dim transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               />
               <motion.button
                 type="submit"
-                disabled={!inputValue.trim()}
-                className="shrink-0 w-12 h-12 rounded-full bg-skin-pink text-white flex items-center justify-center disabled:opacity-50 shadow-btn"
+                disabled={!inputValue.trim() || !dmsOpen}
+                className="shrink-0 w-12 h-12 rounded-full bg-skin-pink text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed shadow-btn"
                 whileTap={TAP.fab}
                 transition={SPRING.button}
               >

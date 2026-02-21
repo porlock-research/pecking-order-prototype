@@ -24,6 +24,7 @@ interface GameState {
   chatLog: ChatMessage[];
   channels: Record<string, Channel>;
   groupChatOpen: boolean;
+  dmsOpen: boolean;
   manifest: any;
   serverState: string | null;
   playerId: string | null;
@@ -131,6 +132,7 @@ export const useGameStore = create<GameState>((set) => ({
   chatLog: [],
   channels: {},
   groupChatOpen: false,
+  dmsOpen: false,
   manifest: null,
   serverState: null,
   playerId: null,
@@ -171,6 +173,7 @@ export const useGameStore = create<GameState>((set) => ({
       chatLog: data.context?.chatLog?.length ? data.context.chatLog : state.chatLog,
       channels: data.context?.channels ?? state.channels,
       groupChatOpen: data.context?.groupChatOpen ?? state.groupChatOpen,
+      dmsOpen: data.context?.dmsOpen ?? state.dmsOpen,
       manifest: data.context?.manifest || null,
       serverState: data.state || null,
       activeVotingCartridge: data.context?.activeVotingCartridge ?? null,
