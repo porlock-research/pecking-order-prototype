@@ -40,7 +40,6 @@ export interface ConfigurableEventConfig {
 }
 
 export interface ConfigurableDayConfig {
-  date: string; // YYYY-MM-DD — the calendar date for this day
   voteType: string;
   gameType: string;
   gameMode?: string;
@@ -49,6 +48,7 @@ export interface ConfigurableDayConfig {
 }
 
 export interface ConfigurableManifestConfig {
+  startDate: string; // YYYY-MM-DD — first day of the tournament, subsequent days are consecutive
   dayCount: number;
   days: ConfigurableDayConfig[];
   pushConfig: Record<string, boolean>;

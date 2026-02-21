@@ -91,20 +91,21 @@ const CONFIGURABLE_EVENT_LABELS: { key: string; label: string }[] = [
   { key: 'END_DAY', label: 'End Day' },
 ];
 
-// Default times for events within a day (HH:MM)
+// Default times matching the spec daily schedule (PST)
+// 9-10am: Group Chat | 10am-noon: Game | 10am-11pm: DMs | Throughout: Activities | 8-11pm: Vote | Midnight: Elimination
 const DEFAULT_EVENT_TIMES: Record<string, string> = {
   INJECT_PROMPT: '09:00',
-  OPEN_GROUP_CHAT: '09:15',
-  START_ACTIVITY: '09:30',
-  END_ACTIVITY: '10:00',
-  OPEN_DMS: '10:15',
-  START_GAME: '11:00',
+  OPEN_GROUP_CHAT: '09:00',
+  START_ACTIVITY: '12:00',
+  END_ACTIVITY: '19:30',
+  OPEN_DMS: '10:00',
+  START_GAME: '10:00',
   END_GAME: '12:00',
-  OPEN_VOTING: '13:00',
-  CLOSE_VOTING: '15:00',
-  CLOSE_DMS: '16:00',
-  CLOSE_GROUP_CHAT: '16:30',
-  END_DAY: '17:00',
+  OPEN_VOTING: '20:00',
+  CLOSE_VOTING: '23:00',
+  CLOSE_DMS: '23:00',
+  CLOSE_GROUP_CHAT: '23:30',
+  END_DAY: '23:59',
 };
 
 function toLocalDateString(date: Date): string {
@@ -114,17 +115,13 @@ function toLocalDateString(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function createConfigurableDay(dayOffset: number): ConfigurableDayConfig {
-  const baseDate = new Date();
-  baseDate.setDate(baseDate.getDate() + 1 + dayOffset); // start tomorrow
-
+function createConfigurableDay(): ConfigurableDayConfig {
   const events: Record<string, ConfigurableEventConfig> = {};
   for (const { key } of CONFIGURABLE_EVENT_LABELS) {
     events[key] = { enabled: true, time: DEFAULT_EVENT_TIMES[key] };
   }
 
   return {
-    date: toLocalDateString(baseDate),
     voteType: 'MAJORITY',
     gameType: 'TRIVIA',
     activityType: 'PLAYER_PICK',
@@ -133,9 +130,12 @@ function createConfigurableDay(dayOffset: number): ConfigurableDayConfig {
 }
 
 function createDefaultConfigurableConfig(): ConfigurableManifestConfig {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
   return {
+    startDate: toLocalDateString(tomorrow),
     dayCount: 3,
-    days: [createConfigurableDay(0), createConfigurableDay(1), createConfigurableDay(2)],
+    days: [createConfigurableDay(), createConfigurableDay(), createConfigurableDay()],
     pushConfig: {
       DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
       DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
@@ -143,23 +143,30 @@ function createDefaultConfigurableConfig(): ConfigurableManifestConfig {
   };
 }
 
-/** Combine day date (YYYY-MM-DD) + event time (HH:MM) into ISO strings for the server */
+/** Combine startDate + day index + event time (HH:MM) into ISO strings for the server */
 function toISOConfigurableConfig(cfg: ConfigurableManifestConfig): ConfigurableManifestConfig {
   return {
     ...cfg,
-    days: cfg.days.map(day => ({
-      ...day,
-      events: Object.fromEntries(
-        Object.entries(day.events).map(([key, evt]) => {
-          let iso: string | null = null;
-          if (evt.enabled && evt.time && day.date) {
-            const d = new Date(`${day.date}T${evt.time}`);
-            if (!isNaN(d.getTime())) iso = d.toISOString();
-          }
-          return [key, { enabled: evt.enabled, time: iso }];
-        })
-      ),
-    })),
+    days: cfg.days.map((day, idx) => {
+      // Compute this day's date from startDate + offset
+      const dayDate = new Date(cfg.startDate);
+      dayDate.setDate(dayDate.getDate() + idx);
+      const dateStr = toLocalDateString(dayDate);
+
+      return {
+        ...day,
+        events: Object.fromEntries(
+          Object.entries(day.events).map(([key, evt]) => {
+            let iso: string | null = null;
+            if (evt.enabled && evt.time) {
+              const d = new Date(`${dateStr}T${evt.time}`);
+              if (!isNaN(d.getTime())) iso = d.toISOString();
+            }
+            return [key, { enabled: evt.enabled, time: iso }];
+          })
+        ),
+      };
+    }),
   };
 }
 
@@ -232,16 +239,13 @@ export default function LobbyRoot() {
     setConfigurableConfig(prev => {
       const newCount = Math.max(1, Math.min(7, prev.dayCount + delta));
       const days = [...prev.days];
-      while (days.length < newCount) days.push(createConfigurableDay(days.length));
+      while (days.length < newCount) days.push(createConfigurableDay());
       return { ...prev, dayCount: newCount, days: days.slice(0, newCount) };
     });
   }
 
-  function handleCfgDateChange(dayIdx: number, date: string) {
-    setConfigurableConfig(prev => {
-      const days = prev.days.map((d, i) => i === dayIdx ? { ...d, date } : d);
-      return { ...prev, days };
-    });
+  function handleCfgStartDateChange(date: string) {
+    setConfigurableConfig(prev => ({ ...prev, startDate: date }));
   }
 
   function handleCfgVoteTypeChange(dayIdx: number, voteType: string) {
@@ -581,19 +585,29 @@ export default function LobbyRoot() {
                     </div>
                   </div>
 
+                  {/* Start Date */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono text-skin-dim/60">Starts</span>
+                    <input
+                      type="date"
+                      value={configurableConfig.startDate}
+                      onChange={(e) => handleCfgStartDateChange(e.target.value)}
+                      className="bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 transition-all"
+                    />
+                  </div>
+
                   <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                    {configurableConfig.days.slice(0, configurableConfig.dayCount).map((day, idx) => (
+                    {configurableConfig.days.slice(0, configurableConfig.dayCount).map((day, idx) => {
+                      const dayDate = new Date(configurableConfig.startDate);
+                      dayDate.setDate(dayDate.getDate() + idx);
+                      const dateLabel = dayDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+                      return (
                       <div key={idx} className="border border-skin-base rounded-lg bg-skin-input/40 p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="font-mono text-xs text-skin-gold tracking-widest">
                             DAY_{String(idx + 1).padStart(2, '0')}
                           </div>
-                          <input
-                            type="date"
-                            value={day.date}
-                            onChange={(e) => handleCfgDateChange(idx, e.target.value)}
-                            className="bg-skin-input text-skin-base border border-skin-base rounded-lg px-2 py-1 text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 transition-all"
-                          />
+                          <span className="text-[10px] font-mono text-skin-dim/50">{dateLabel}</span>
                         </div>
 
                         <div className="grid grid-cols-4 gap-2">
@@ -682,7 +696,8 @@ export default function LobbyRoot() {
                           </div>
                         </details>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
