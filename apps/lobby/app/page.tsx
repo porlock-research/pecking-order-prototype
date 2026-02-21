@@ -147,7 +147,7 @@ function toISOConfigurableConfig(cfg: ConfigurableManifestConfig): ConfigurableM
     ...cfg,
     days: cfg.days.map((day, idx) => {
       // startDate is Day 0 (pre-game), Day 1 starts the next day
-      const dayDate = new Date(cfg.startDate);
+      const dayDate = new Date(cfg.startDate + 'T00:00'); // parse as local time
       dayDate.setDate(dayDate.getDate() + idx + 1);
       const dateStr = toLocalDateString(dayDate);
 
@@ -596,7 +596,7 @@ export default function LobbyRoot() {
 
                   <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                     {configurableConfig.days.slice(0, configurableConfig.dayCount).map((day, idx) => {
-                      const dayDate = new Date(configurableConfig.startDate);
+                      const dayDate = new Date(configurableConfig.startDate + 'T00:00'); // parse as local time
                       dayDate.setDate(dayDate.getDate() + idx + 1); // startDate is Day 0, Day 1 is next day
                       const dateLabel = dayDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
                       return (
