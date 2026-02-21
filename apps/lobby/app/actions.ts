@@ -48,7 +48,7 @@ export interface ConfigurableDayConfig {
 }
 
 export interface ConfigurableManifestConfig {
-  startDate: string; // YYYY-MM-DD — first day of the tournament, subsequent days are consecutive
+  startDate: string; // YYYY-MM-DD — Day 1 date (Day 0 pre-game is always today), subsequent days increment
   dayCount: number;
   days: ConfigurableDayConfig[];
   pushConfig: Record<string, boolean>;
@@ -504,7 +504,7 @@ export async function acceptInvite(
       const pid = `p${slot.slot_index}`;
       const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${game.id}/player-joined`;
 
-      await fetch(targetUrl, {
+      const res = await fetch(targetUrl, {
         method: 'POST',
         body: JSON.stringify({
           playerId: pid,
@@ -518,7 +518,21 @@ export async function acceptInvite(
           'Content-Type': 'application/json',
           Authorization: `Bearer ${AUTH_SECRET}`,
         },
-      }).catch((err: any) => console.error('[Lobby] Failed to notify DO of player join:', err));
+      });
+
+      // Game has progressed past pre-game — mark as STARTED so no more joins are accepted
+      if (res.status === 409) {
+        await db
+          .prepare("UPDATE GameSessions SET status = 'STARTED' WHERE id = ?")
+          .bind(game.id)
+          .run();
+        // Undo the slot claim — release the slot so the player isn't stuck in a game they can't enter
+        await db
+          .prepare('UPDATE Invites SET accepted_by = NULL, persona_id = NULL, custom_bio = NULL, accepted_at = NULL WHERE id = ?')
+          .bind(slot.id)
+          .run();
+        return { success: false, error: 'This game has already started and is no longer accepting players' };
+      }
     } catch (err: any) {
       console.error('[Lobby] Player join notification failed:', err);
       // Non-fatal: player is in DB, DO notification is best-effort

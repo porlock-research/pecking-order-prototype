@@ -68,6 +68,21 @@ When a player saves the client app to their iOS home screen, the standalone PWA 
 
 **Status**: Not resolved — recovery chain implemented but ineffective on iOS standalone PWA. Needs alternative approach.
 
+## [BUG-013] Scheduler alarms lost on DO restart (ADR-012 race)
+
+PartyWhen's Scheduler calls `await this.alarm()` inside `blockConcurrencyWhile` during its constructor — before `onStart()` creates the XState actor. If a task is due (`time <= now`), the Scheduler executes it (calling `wakeUpL2`), then deletes it from the `tasks` table. But `this.actor` is undefined at that point, so the WAKEUP is silently swallowed. The task is gone, no alarm remains, and the game is stuck in `preGame` forever.
+
+A buffering workaround was added: `wakeUpL2` sets `pendingWakeup = true` when the actor doesn't exist, and `onStart()` replays it after `actor.start()`. Additionally, `scheduleNextAlarm()` is called after actor start to re-arm future alarms.
+
+This works for the immediate case but exposes a deeper concern: DO alarm persistence in general is fragile. Wrangler dev evicts DOs aggressively, and the composition pattern (ADR-012) means alarm processing is split across Scheduler construction and GameServer lifecycle. In production, WebSocket connections keep DOs alive, but any scenario where a DO is evicted near an alarm boundary risks lost events.
+
+**Potential improvements:**
+- Schema-versioned snapshots with alarm recovery (check `nextWakeup` in context on restore, re-schedule if no alarm exists)
+- Move alarm scheduling out of the subscription callback (which is async but not awaited by XState) into a more deterministic path
+- Consider replacing PartyWhen with direct `ctx.storage.setAlarm()` calls for simpler, more predictable scheduling
+
+**Status**: Partially mitigated — buffered wakeup replay + scheduleNextAlarm after actor start
+
 ## [BUG-005] Completed phase timeline cards lack visual polish (immersive shell)
 
 The timeline cards for completed phases (voting results, game results, prompt results) use plain/minimal styling that doesn't match the premium aesthetic of the live cartridge panels. They should carry the same visual language — accent-colored borders, glass backgrounds, subtle glow — so the timeline reads as a rich history of dramatic events, not a flat log.

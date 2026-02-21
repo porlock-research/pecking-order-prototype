@@ -34,6 +34,7 @@ export class GameServer extends Server<Env> {
   private lastDebugSummary: string = '';
   private scheduler: Scheduler<Env>;
   private goldCredited = false;
+  private pendingWakeup = false;  // Buffered wakeup from Scheduler init (ADR-012)
   private connectedPlayers = new Map<string, Set<string>>();  // playerId → Set<connectionId>
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -44,7 +45,12 @@ export class GameServer extends Server<Env> {
 
   async wakeUpL2() {
     console.log("[L1] PartyWhen Task Triggered: wakeUpL2");
-    this.actor?.send({ type: Events.System.WAKEUP });
+    if (this.actor) {
+      this.actor.send({ type: Events.System.WAKEUP });
+    } else {
+      console.log("[L1] Actor not ready — buffering wakeup for replay after onStart");
+      this.pendingWakeup = true;
+    }
   }
 
   /** Build a PushContext for the push-triggers module. */
@@ -209,12 +215,15 @@ export class GameServer extends Server<Env> {
       // B. Schedule via PartyWhen
       const nextWakeup = snapshot.context.nextWakeup;
       if (nextWakeup && nextWakeup > Date.now()) {
+        console.log(`[L1] Scheduling alarm for ${new Date(nextWakeup).toISOString()} (in ${Math.round((nextWakeup - Date.now()) / 1000)}s)`);
         await this.scheduler.scheduleTask({
           id: `wakeup-${Date.now()}`,
           type: "scheduled",
           time: new Date(nextWakeup),
           callback: { type: "self", function: "wakeUpL2" }
         });
+      } else if (nextWakeup) {
+        console.log(`[L1] nextWakeup ${new Date(nextWakeup).toISOString()} is in the past, skipping alarm`);
       }
 
       // C. Broadcast SYSTEM.SYNC to all clients
@@ -287,6 +296,18 @@ export class GameServer extends Server<Env> {
     });
 
     this.actor.start();
+
+    // Replay any wakeup that fired during Scheduler construction (before actor
+    // existed). See ADR-012: Scheduler.alarm() runs in blockConcurrencyWhile,
+    // which can consume+delete tasks before onStart sets up the actor.
+    if (this.pendingWakeup) {
+      console.log('[L1] Replaying buffered wakeup (fired during Scheduler init)');
+      this.actor.send({ type: Events.System.WAKEUP });
+      this.pendingWakeup = false;
+    }
+
+    // Re-arm alarm for any future tasks still in the table
+    await (this.scheduler as any).scheduleNextAlarm();
   }
 
   // --- 2. HTTP HANDLERS ---
@@ -367,6 +388,16 @@ export class GameServer extends Server<Env> {
 
       if (!playerId || !realUserId || !personaName) {
         return new Response('Missing required fields', { status: 400 });
+      }
+
+      // Reject if the game has progressed past preGame
+      const snapshot = this.actor?.getSnapshot();
+      if (snapshot && snapshot.value !== 'preGame') {
+        console.log(`[L1] Rejecting player-joined: game is in ${JSON.stringify(snapshot.value)}, not preGame`);
+        return new Response(JSON.stringify({ error: 'GAME_STARTED' }), {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
 
       // Enrich with persistent gold from D1

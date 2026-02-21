@@ -875,20 +875,41 @@ This document tracks significant architectural decisions, their context, and con
 
 ## [ADR-066] Replace BLITZ with CONFIGURABLE_CYCLE + Cross-Day Scheduling Fix
 
-*   **Date:** 2026-02-20
+*   **Date:** 2026-02-20 (updated 2026-02-21)
 *   **Status:** Accepted
 *   **Context:** The lobby had three game modes: Standard Cycle (7 days, auto-scheduled), Blitz Protocol (3 days, same as Standard but shorter), and Debug Override (manual admin advance). Blitz added no value — it was just Standard with fewer days. Separately, cross-day transitions were broken for non-debug modes: `scheduleNextTimelineEvent` only looked at the current day's timeline, so after END_DAY fired and the machine entered nightSummary, no alarm was scheduled for the next day's first event.
 *   **Decision:**
     *   **Rename BLITZ → CONFIGURABLE_CYCLE** in the `gameMode` enum (`shared-types`). BLITZ was never checked in the game server (only `DEBUG_PECKING_ORDER` is), so this is a safe rename.
-    *   **Day 0 (pre-game) concept**: The host picks a single start date which is Day 0. Game days are consecutive starting the next day: Day 1 = startDate + 1, Day 2 = startDate + 2, etc. This matches the spec: "Game starts 9am PST the morning after all players accept invites."
-    *   **ConfigurableManifestConfig type**: `startDate` (YYYY-MM-DD) at the top level, plus per-day configs with per-event `enabled` toggle and `time` (HH:MM). At serialization, `toISOConfigurableConfig` combines startDate + day offset + HH:MM into absolute ISO timestamps. Date strings parsed with `T00:00` suffix to force local-time interpretation (bare `YYYY-MM-DD` is UTC midnight, which shifts back a day in negative-offset timezones).
-    *   **Spec-default event times**: 9am group chat + prompt, 10am DMs + game, 12pm activity, 7:30pm end activity, 8pm voting, 11pm close voting + DMs, 11:30pm close group chat, 11:59pm end day.
+    *   **Day 0 is always today (implicit)**. The host picks a `startDate` which is Day 1's date — the first playable day. Day 2 = startDate + 1, Day 3 = startDate + 2, etc. Day 0 (pre-game) is the period between game creation and Day 1. Default `startDate` is tomorrow.
+    *   **ConfigurableManifestConfig type**: `startDate` (YYYY-MM-DD, Day 1's date) at the top level, plus per-day configs with per-event `enabled` toggle and `time` (HH:MM). At serialization, `toISOConfigurableConfig` combines startDate + day index offset + HH:MM into absolute ISO timestamps. Day offset is `idx` (not `idx + 1`), since `startDate` already is Day 1. Date strings parsed with `T00:00` suffix to force local-time interpretation (bare `YYYY-MM-DD` is UTC midnight, which shifts back a day in negative-offset timezones).
+    *   **Events disabled by default**: All timeline events start disabled (but with spec-default times pre-filled). Only explicitly enabled events make it to the manifest. This prevents accidentally scheduling past-time events and gives the host clean control.
+    *   **Spec-default event times** (pre-filled when enabling): 9am group chat + prompt, 10am DMs + game, 12pm activity, 7:30pm end activity, 8pm voting, 11pm close voting + DMs, 11:30pm close group chat, 11:59pm end day.
     *   **Pre-game scheduling**: `scheduleGameStart` reads Day 1's first event time for CONFIGURABLE_CYCLE and sets that as the PartyWhen alarm (instead of `now + 1s`). The lobby skips the immediate `ADMIN.NEXT_STAGE` auto-advance — the alarm handles the Day 0 → Day 1 transition autonomously.
     *   **Cross-day scheduling fix**: When `scheduleNextTimelineEvent` finds no remaining events in the current day, it now looks ahead to the next day's first event and schedules a wakeup alarm for it. This fixes autonomous day transitions for both Standard Cycle and Configurable Cycle modes.
     *   **Shared constants**: `EVENT_MESSAGES`, `ACTIVITY_PROMPTS`, `ACTIVITY_OPTIONS`, and `TIMELINE_EVENT_KEYS` hoisted to module scope so both Debug and Configurable branches share them.
 *   **Consequences:**
-    *   Hosts get full per-day control (vote type, game type, activity type, individual event scheduling) without needing debug mode. The UI is simple: pick a start date, adjust day count, tweak per-day mechanics and event times.
+    *   Hosts get full per-day control (vote type, game type, activity type, individual event scheduling) without needing debug mode. The UI label is "Day 1 Start" — hosts pick when gameplay begins.
     *   PartyWhen alarm system handles all transitions autonomously — no admin intervention needed. Game sits in `preGame` during Day 0, then fires at Day 1's first event.
     *   Cross-day fix means Standard Cycle games can now run multi-day without stalling at nightSummary.
     *   Debug Override remains unchanged (manual admin advance, 5s gaps).
     *   PECKING_ORDER (standard) retains its immediate-start behavior (1s alarm + auto-advance).
+
+## [ADR-067] Auto-Init DO at Game Creation for CONFIGURABLE_CYCLE
+
+*   **Date:** 2026-02-21
+*   **Status:** Accepted
+*   **Context:** Push notifications require the client app's service worker, but players can't reach the client until the DO is initialized and they have a JWT. For Standard Cycle, the DO is initialized when the host clicks "Launch Game" (all players present). For CONFIGURABLE_CYCLE, we want players to enter the client during Day 0 (pre-game) — before Day 1's events fire — so they can subscribe to push and see the roster fill up in real time.
+*   **Decision:**
+    *   **DO initialized at game creation**: `createGame` in the lobby POSTs `/init` to the game server with an empty roster and the full manifest. The DO enters `preGame` state and the scheduler arms Day 1's first alarm immediately. Lobby status stays `RECRUITING` so the invite flow continues working.
+    *   **Players added incrementally**: New `SYSTEM.PLAYER_JOINED` event in shared-types. L2 handles it in `preGame` state via `assign` to merge the player into the roster. New `POST /player-joined` endpoint in L1 with auth, D1 gold enrichment, and D1 Player row insert. `acceptInvite` in the lobby POSTs to this endpoint for CONFIGURABLE_CYCLE games (fire-and-forget with `.catch` logging).
+    *   **Player IDs**: Use `p${slot_index}` as pid. Slots fill sequentially (`ORDER BY slot_index LIMIT 1`), so first player = slot 1 = p1, second = slot 2 = p2, etc. Deterministic at accept time. `startGame` is never called for this mode.
+    *   **Early token minting**: `getGameSessionStatus` mints JWTs for CONFIGURABLE_CYCLE players as soon as they've accepted (even during RECRUITING), using `p${slot_index}` as pid. This lets accepted players enter the client immediately.
+    *   **Waiting room UI**: "Enter Game" button shown for CONFIGURABLE_CYCLE as soon as a token exists (regardless of lobby status). "Launch Game" button hidden. Waiting message: "You can enter the game while waiting for other players."
+    *   **All-slots-filled**: When the last slot fills for CONFIGURABLE_CYCLE, lobby status is set to `STARTED` (not `READY`) since the DO is already running. Other modes keep existing `READY` behavior.
+    *   **Scheduler alarm race fix (BUG-013)**: PartyWhen's Scheduler calls `alarm()` in its constructor (inside `blockConcurrencyWhile`) before `onStart()` creates the actor. If a task is due, `wakeUpL2` fires with `this.actor` undefined — the wakeup is lost and the task is deleted. Fix: `wakeUpL2` buffers the event (`pendingWakeup = true`) when the actor doesn't exist, and `onStart()` replays it after `actor.start()`. Additionally, `scheduleNextAlarm()` is called after actor start to re-arm future alarms.
+*   **Consequences:**
+    *   Players can visit the client app immediately after accepting an invite — no need to wait for all slots to fill.
+    *   Push notification chicken-and-egg solved: players subscribe to push during Day 0 before Day 1 events fire.
+    *   The L2 roster grows incrementally — each `PLAYER_JOINED` triggers L1's subscription → snapshot save → `SYSTEM.SYNC` broadcast. Connected players see new arrivals in real time.
+    *   `startGame` is bypassed entirely for CONFIGURABLE_CYCLE. The DO lifecycle is: `createGame` → init (empty roster) → player joins (one by one) → Day 1 alarm fires → `dayLoop`.
+    *   The alarm race fix (buffered wakeup) also protects Standard Cycle games from edge-case DO restarts near alarm boundaries.

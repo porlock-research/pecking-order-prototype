@@ -118,7 +118,7 @@ function toLocalDateString(date: Date): string {
 function createConfigurableDay(): ConfigurableDayConfig {
   const events: Record<string, ConfigurableEventConfig> = {};
   for (const { key } of CONFIGURABLE_EVENT_LABELS) {
-    events[key] = { enabled: true, time: DEFAULT_EVENT_TIMES[key] };
+    events[key] = { enabled: false, time: DEFAULT_EVENT_TIMES[key] };
   }
 
   return {
@@ -131,7 +131,7 @@ function createConfigurableDay(): ConfigurableDayConfig {
 
 function createDefaultConfigurableConfig(): ConfigurableManifestConfig {
   return {
-    startDate: toLocalDateString(new Date()), // today is Day 0 (pre-game), Day 1 starts tomorrow
+    startDate: toLocalDateString(new Date(Date.now() + 86400000)), // Day 1 date (Day 0 is always today)
     dayCount: 3,
     days: [createConfigurableDay(), createConfigurableDay(), createConfigurableDay()],
     pushConfig: {
@@ -146,11 +146,10 @@ function toISOConfigurableConfig(cfg: ConfigurableManifestConfig): ConfigurableM
   return {
     ...cfg,
     days: cfg.days.map((day, idx) => {
-      // startDate is Day 0 (pre-game), Day 1 starts the next day.
-      // Special case: 1-day games use startDate for Day 1 too (same-day testing).
+      // startDate IS Day 1's date. Day 0 (pre-game) is always today (implicit).
+      // Day 2 = startDate + 1, Day 3 = startDate + 2, etc.
       const dayDate = new Date(cfg.startDate + 'T00:00'); // parse as local time
-      const dayOffset = cfg.dayCount === 1 ? idx : idx + 1;
-      dayDate.setDate(dayDate.getDate() + dayOffset);
+      dayDate.setDate(dayDate.getDate() + idx);
       const dateStr = toLocalDateString(dayDate);
 
       return {
@@ -585,9 +584,9 @@ export default function LobbyRoot() {
                     </div>
                   </div>
 
-                  {/* Start Date (Day 0 — pre-game, Day 1 begins next day) */}
+                  {/* Day 1 date picker (Day 0 is always today) */}
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-skin-dim/60">Day 0 (Pre-Game)</span>
+                    <span className="text-xs font-mono text-skin-dim/60">Day 1 Start</span>
                     <input
                       type="date"
                       value={configurableConfig.startDate}
@@ -599,8 +598,7 @@ export default function LobbyRoot() {
                   <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                     {configurableConfig.days.slice(0, configurableConfig.dayCount).map((day, idx) => {
                       const dayDate = new Date(configurableConfig.startDate + 'T00:00'); // parse as local time
-                      const dayOffset = configurableConfig.dayCount === 1 ? idx : idx + 1;
-                      dayDate.setDate(dayDate.getDate() + dayOffset); // startDate is Day 0, Day 1 is next day (except 1-day games)
+                      dayDate.setDate(dayDate.getDate() + idx); // startDate is Day 1, subsequent days increment
                       const dateLabel = dayDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
                       return (
                       <div key={idx} className="border border-skin-base rounded-lg bg-skin-input/40 p-4 space-y-3">
