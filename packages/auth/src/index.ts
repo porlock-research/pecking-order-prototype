@@ -14,12 +14,13 @@ export interface GameTokenPayload {
 export async function signGameToken(
   payload: Pick<GameTokenPayload, 'sub' | 'gameId' | 'playerId' | 'personaName'>,
   secret: string,
+  expiresIn: string = '30d',
 ): Promise<string> {
   const key = new TextEncoder().encode(secret);
   return new SignJWT({ ...payload } as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('24h')
+    .setExpirationTime(expiresIn)
     .sign(key);
 }
 

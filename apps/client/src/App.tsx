@@ -6,6 +6,23 @@ import { PushPrompt } from './components/PushPrompt';
 
 const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
 
+/** Remove expired po_token_* entries from localStorage on startup. */
+function pruneExpiredTokens() {
+  const now = Math.floor(Date.now() / 1000);
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith('po_token_')) continue;
+    try {
+      const decoded = decodeGameToken(localStorage.getItem(key)!);
+      if (decoded.exp && decoded.exp < now) keysToRemove.push(key);
+    } catch {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+}
+
 /**
  * Extracts a game code from the URL path (e.g. /game/X7K2MP → X7K2MP)
  */
@@ -15,7 +32,7 @@ function getGameCodeFromPath(): string | null {
 }
 
 /**
- * Applies a JWT token: decodes it, sets state, and stores in sessionStorage.
+ * Applies a JWT token: decodes it, sets state, and stores in localStorage.
  * If a gameCode is provided, keys the storage by that code and cleans the URL.
  */
 function applyToken(
@@ -31,9 +48,9 @@ function applyToken(
   setToken(jwt);
   useGameStore.getState().setPlayerId(decoded.playerId);
 
-  // Persist in sessionStorage keyed by game code (for refresh resilience)
+  // Persist in localStorage keyed by game code (survives PWA standalone launches)
   const key = gameCode || decoded.gameId;
-  sessionStorage.setItem(`po_token_${key}`, jwt);
+  localStorage.setItem(`po_token_${key}`, jwt);
 
   // Clean transient params from URL
   if (gameCode) {
@@ -47,6 +64,7 @@ export default function App() {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
+    pruneExpiredTokens();
     const params = new URLSearchParams(window.location.search);
     const gameCode = getGameCodeFromPath();
     const transientToken = params.get('_t');
@@ -61,13 +79,13 @@ export default function App() {
         console.error('Invalid token from redirect');
       }
     } else if (gameCode) {
-      // Clean URL visit: /game/CODE — check sessionStorage
-      const cached = sessionStorage.getItem(`po_token_${gameCode}`);
+      // Clean URL visit: /game/CODE — check localStorage
+      const cached = localStorage.getItem(`po_token_${gameCode}`);
       if (cached) {
         try {
           applyToken(cached, gameCode, setGameId, setPlayerId, setToken);
         } catch {
-          sessionStorage.removeItem(`po_token_${gameCode}`);
+          localStorage.removeItem(`po_token_${gameCode}`);
           console.error('Cached token invalid');
         }
       }
@@ -120,15 +138,15 @@ export default function App() {
 
 /**
  * Launcher screen at `/` — shown when no gameId in URL.
- * Scans sessionStorage for cached game tokens and lists them.
+ * Scans localStorage for cached game tokens and lists them.
  */
 function LauncherScreen() {
   const cachedGames: Array<{ code: string; personaName: string; gameId: string }> = [];
 
-  for (let i = 0; i < sessionStorage.length; i++) {
-    const key = sessionStorage.key(i);
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
     if (key?.startsWith('po_token_')) {
-      const token = sessionStorage.getItem(key);
+      const token = localStorage.getItem(key);
       if (token) {
         try {
           const decoded = decodeGameToken(token);

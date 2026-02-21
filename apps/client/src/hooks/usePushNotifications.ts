@@ -11,12 +11,12 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return arr;
 }
 
-/** Find any cached game JWT from sessionStorage (po_token_* keys). */
+/** Find any cached game JWT from localStorage (po_token_* keys). */
 function findCachedToken(): string | null {
-  for (let i = 0; i < sessionStorage.length; i++) {
-    const key = sessionStorage.key(i);
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
     if (key?.startsWith('po_token_')) {
-      const val = sessionStorage.getItem(key);
+      const val = localStorage.getItem(key);
       if (val) return val;
     }
   }

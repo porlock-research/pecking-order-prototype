@@ -24,13 +24,13 @@ Player                Lobby (Next.js + D1)           Game Server (DO)       Clie
   |-- accept invite ------->| (pick character)             |                       |
   |<-- redirect to waiting -|                              |                       |
   |                         |                              |                       |
-  |-- player clicks launch ->|-- POST /init (Bearer) ------>|                       |
-  |                         |-- mint JWTs ---------------->|                       |
-  |<-- JWT token -----------|                              |                       |
+  |-- click launch -------->|-- POST /init (Bearer) ------>|                       |
+  |                         |<-- 200 OK ------------------|                       |
+  |<-- redirect to client --|------- /game/CODE?_t=JWT ----|---------------------->|
   |                         |                              |                       |
-  |                         |                              |<-- ?token=jwt --------|
-  |                         |                              |-- verify JWT -------->|
-  |                         |                              |<-- SYSTEM.SYNC -------|
+  |                         |                              |<-- WS connect + JWT --|
+  |                         |                              |-- verify JWT          |
+  |                         |                              |-- SYSTEM.SYNC ------->|
 ```
 
 ---
@@ -185,18 +185,30 @@ interface GameTokenPayload {
   playerId: string;   // e.g. "p1", "p2"
   personaName: string;
   iat: number;        // issued at
-  exp: number;        // expires in 24h
+  exp: number;        // expiry derived from game duration
 }
 ```
+
+### Token Expiry
+
+Token lifetime is derived from the game's `day_count` (stored in `GameSessions`):
+
+```
+expiry = (day_count × 2) + 7 days
+```
+
+This gives double the game length plus a 7-day buffer for games that run slower than scheduled. Examples: 3-day game → 13d, 7-day game → 21d, 14-day game → 35d. The default fallback (when `day_count` is unavailable) is 30 days.
 
 ### Signing (Lobby Side)
 
 ```typescript
 import { signGameToken } from '@pecking-order/auth';
 
+const tokenExpiry = `${game.day_count * 2 + 7}d`;
 const token = await signGameToken(
   { sub: userId, gameId, playerId: 'p1', personaName: 'Countess Snuffles' },
-  AUTH_SECRET
+  AUTH_SECRET,
+  tokenExpiry   // optional 3rd param, defaults to '30d'
 );
 ```
 
@@ -209,20 +221,22 @@ On WebSocket connect, the game server checks for a `?token=` query param:
 3. Validates that `playerId` exists in the game's roster.
 4. Attaches `{ playerId }` to connection state.
 
-### Client Side — Clean URL Pattern (sessionStorage + replaceState)
+### Client Side — Clean URL Pattern (localStorage + replaceState)
 
 The client uses an OAuth-style token relay pattern to keep URLs clean and shareable:
 
 1. **Lobby redirect**: When a player enters the game (via waiting room or `/play/{CODE}`), the lobby redirects to `CLIENT_HOST/game/{CODE}?_t={JWT}`.
-2. **Token capture**: The client reads the `_t` param, decodes the JWT, stores it in `sessionStorage` keyed by game code (`po_token_{CODE}`), and immediately cleans the URL via `history.replaceState({}, '', '/game/{CODE}')`.
-3. **Refresh resilience**: On page refresh, the client finds no `_t` param but checks `sessionStorage` for a cached token matching the game code from the URL path.
+2. **Token capture**: The client reads the `_t` param, decodes the JWT, stores it in `localStorage` keyed by game code (`po_token_{CODE}`), and immediately cleans the URL via `history.replaceState({}, '', '/game/{CODE}')`.
+3. **Refresh + PWA resilience**: On page refresh or standalone PWA launch, the client finds no `_t` param but checks `localStorage` for a cached token matching the game code from the URL path. Unlike `sessionStorage`, `localStorage` persists across tab closes, browser restarts, and PWA standalone launches from the home screen.
 4. **Result**: The canonical client URL is always `/game/{CODE}` — clean, shareable, and memorable. The JWT never persists in the URL bar after the initial redirect.
 
 **Entry flow priority** (in `App.tsx`):
 1. `/game/CODE?_t=JWT` — redirect arrival from lobby, store + clean URL
-2. `/game/CODE` — refresh, check sessionStorage for cached token
+2. `/game/CODE` — refresh/PWA launch, check localStorage for cached token
 3. `?token=JWT` — debug links from lobby (direct JWT entry)
 4. `?gameId=&playerId=` — legacy backward compat
+
+**Auto-cleanup**: On every app load, `pruneExpiredTokens()` iterates all `po_token_*` keys in `localStorage`, decodes each JWT, and removes any where `exp < now` or that fail to decode. This prevents stale tokens from accumulating and keeps the launcher screen showing only active games.
 
 **Lobby play route**: `/play/[code]/route.ts` authenticates the user via session cookie, resolves their player slot and JWT, then redirects to the client. This is used when a player visits the lobby play URL directly (not just from the waiting room).
 
@@ -286,9 +300,10 @@ For local dev, `AUTH_SECRET` defaults to `'dev-secret-change-me'` and the game s
 |----------|-----------|
 | Lobby login | Magic link token (5-min, single-use) -> session cookie (HTTP-only, 7-day) |
 | Lobby -> Game Server | Shared secret in `Authorization` header |
-| Client -> Game Server | JWT in WebSocket query param (24h expiry, HS256) |
+| Client -> Game Server | JWT in WebSocket query param (game-duration-based expiry, HS256) |
 | Player identity | `playerId` extracted from verified JWT, not from client-supplied params |
 | Roster validation | Even with valid JWT, `playerId` must exist in game roster |
+| Client token storage | `localStorage` with auto-pruning of expired JWTs on app load |
 
 ### What's NOT yet implemented
 - Email delivery (magic links are displayed in UI, not emailed)

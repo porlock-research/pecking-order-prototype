@@ -525,7 +525,8 @@ export async function startGame(
       destinyId: 'FLOAT',
     };
 
-    // Mint JWT for each player
+    // Mint JWT for each player (expiry = 2× game length + 7 day buffer)
+    const tokenExpiry = `${game.day_count * 2 + 7}d`;
     tokens[pid] = await signGameToken(
       {
         sub: inv.accepted_by,
@@ -533,7 +534,8 @@ export async function startGame(
         playerId: pid,
         personaName: inv.persona_name,
       },
-      AUTH_SECRET
+      AUTH_SECRET,
+      tokenExpiry
     );
   }
 
@@ -648,6 +650,7 @@ export async function startDebugGame(
       destinyId: i === 0 ? 'FANATIC' : 'FLOAT',
     };
 
+    const tokenExpiry = `${dayCount * 2 + 7}d`;
     tokens[pid] = await signGameToken(
       {
         sub: `debug-user-${i + 1}`,
@@ -655,7 +658,8 @@ export async function startDebugGame(
         playerId: pid,
         personaName: p.name,
       },
-      AUTH_SECRET
+      AUTH_SECRET,
+      tokenExpiry
     );
   }
 
@@ -963,9 +967,9 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
   const env = await getEnv();
 
   const game = await db
-    .prepare('SELECT id, status, invite_code FROM GameSessions WHERE invite_code = ?')
+    .prepare('SELECT id, status, invite_code, day_count FROM GameSessions WHERE invite_code = ?')
     .bind(inviteCode.toUpperCase())
-    .first<{ id: string; status: string; invite_code: string }>();
+    .first<{ id: string; status: string; invite_code: string; day_count: number }>();
 
   if (!game) {
     return { status: 'NOT_FOUND', slots: [] };
@@ -1003,6 +1007,7 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     if (myInvite) {
       const idx = invites.filter((i) => i.accepted_by).indexOf(myInvite);
       const pid = `p${idx + 1}`;
+      const tokenExpiry = `${(game.day_count || 7) * 2 + 7}d`;
       tokens = {
         [pid]: await signGameToken(
           {
@@ -1011,7 +1016,8 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
             playerId: pid,
             personaName: myInvite.persona_name!,
           },
-          AUTH_SECRET
+          AUTH_SECRET,
+          tokenExpiry
         ),
       };
     }

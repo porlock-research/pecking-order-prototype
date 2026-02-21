@@ -8,7 +8,7 @@ import { signGameToken } from '@pecking-order/auth';
  *
  * Authenticated redirect: resolves the current user's player slot for the game
  * identified by invite code, mints a JWT, and redirects to the client app with
- * the token as a transient query param. The client stores it in sessionStorage
+ * the token as a transient query param. The client stores it in localStorage
  * and cleans the URL via history.replaceState.
  */
 export async function GET(
@@ -32,9 +32,9 @@ export async function GET(
 
   // Find game by invite code
   const game = await db
-    .prepare('SELECT id, status, invite_code FROM GameSessions WHERE invite_code = ?')
+    .prepare('SELECT id, status, invite_code, day_count FROM GameSessions WHERE invite_code = ?')
     .bind(code.toUpperCase())
-    .first<{ id: string; status: string; invite_code: string }>();
+    .first<{ id: string; status: string; invite_code: string; day_count: number }>();
 
   if (!game) {
     return new Response('Game not found', { status: 404 });
@@ -71,7 +71,8 @@ export async function GET(
   const idx = allAccepted.findIndex((i) => i.accepted_by === session.userId);
   const playerId = `p${idx + 1}`;
 
-  // Mint JWT
+  // Mint JWT (expiry = 2× game length + 7 day buffer)
+  const tokenExpiry = `${(game.day_count || 7) * 2 + 7}d`;
   const token = await signGameToken(
     {
       sub: session.userId,
@@ -79,7 +80,8 @@ export async function GET(
       playerId,
       personaName: invite.persona_name,
     },
-    AUTH_SECRET
+    AUTH_SECRET,
+    tokenExpiry
   );
 
   // Redirect to client with transient token param
