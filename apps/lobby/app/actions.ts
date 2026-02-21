@@ -34,6 +34,26 @@ export interface DebugManifestConfig {
   pushConfig: Record<string, boolean>;
 }
 
+export interface ConfigurableEventConfig {
+  enabled: boolean;
+  time: string | null; // HH:MM in UI state, ISO string after conversion for server
+}
+
+export interface ConfigurableDayConfig {
+  voteType: string;
+  gameType: string;
+  gameMode?: string;
+  activityType: string;
+  events: Record<string, ConfigurableEventConfig>;
+}
+
+export interface ConfigurableManifestConfig {
+  startDate: string; // YYYY-MM-DD — first day of the tournament, subsequent days are consecutive
+  dayCount: number;
+  days: ConfigurableDayConfig[];
+  pushConfig: Record<string, boolean>;
+}
+
 export interface Persona {
   id: string;
   name: string;
@@ -88,14 +108,14 @@ const DRAW_TTL_MS = 15 * 60 * 1000;  // 15 min lock TTL
 // ── Game Creation ────────────────────────────────────────────────────────
 
 export async function createGame(
-  mode: 'PECKING_ORDER' | 'BLITZ' | 'DEBUG_PECKING_ORDER',
-  debugConfig?: DebugManifestConfig
+  mode: 'PECKING_ORDER' | 'CONFIGURABLE_CYCLE' | 'DEBUG_PECKING_ORDER',
+  config?: DebugManifestConfig | ConfigurableManifestConfig
 ): Promise<{ success: boolean; gameId?: string; inviteCode?: string; error?: string }> {
   const session = await requireAuth();
   const db = await getDB();
   const now = Date.now();
 
-  const dayCount = debugConfig?.dayCount ?? (mode === 'BLITZ' ? 3 : 7);
+  const dayCount = config?.dayCount ?? 7;
   const playerCount = dayCount + 1;
   const gameId = `game-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const inviteCode = generateInviteCode();
@@ -113,7 +133,7 @@ export async function createGame(
       mode,
       playerCount,
       dayCount,
-      debugConfig ? JSON.stringify(debugConfig) : null,
+      config ? JSON.stringify(config) : null,
       now
     )
     .run();
@@ -542,12 +562,12 @@ export async function startGame(
   const now = Date.now();
 
   // Build manifest
-  const debugConfigParsed: DebugManifestConfig | null = game.config_json
+  const configParsed: (DebugManifestConfig | ConfigurableManifestConfig) | null = game.config_json
     ? JSON.parse(game.config_json)
     : null;
 
   const t = (offset: number) => new Date(now + offset).toISOString();
-  const days = buildManifestDays(game.mode, game.day_count, debugConfigParsed, t);
+  const days = buildManifestDays(game.mode, game.day_count, configParsed, t);
 
   const payload = {
     lobbyId: `lobby-${Date.now()}`,
@@ -557,7 +577,7 @@ export async function startGame(
       id: `manifest-${game.id}`,
       gameMode: game.mode,
       days,
-      pushConfig: debugConfigParsed?.pushConfig,
+      pushConfig: configParsed?.pushConfig,
     },
   };
 
@@ -588,15 +608,17 @@ export async function startGame(
       .bind(game.id)
       .run();
 
-    // Auto-advance to day 1 (in future this will be a worker alarm)
-    await fetch(`${GAME_SERVER_HOST}/parties/game-server/${game.id}/admin`, {
-      method: 'POST',
-      body: JSON.stringify({ type: 'NEXT_STAGE' }),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AUTH_SECRET}`,
-      },
-    }).catch((err: any) => console.error('[Lobby] Auto-advance failed:', err));
+    // Auto-advance to day 1 — skip for CONFIGURABLE_CYCLE (scheduler handles it via Day 0 → Day 1 alarm)
+    if (game.mode !== 'CONFIGURABLE_CYCLE') {
+      await fetch(`${GAME_SERVER_HOST}/parties/game-server/${game.id}/admin`, {
+        method: 'POST',
+        body: JSON.stringify({ type: 'NEXT_STAGE' }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${AUTH_SECRET}`,
+        },
+      }).catch((err: any) => console.error('[Lobby] Auto-advance failed:', err));
+    }
 
     return { success: true, tokens };
   } catch (err: any) {
@@ -608,8 +630,8 @@ export async function startGame(
 // ── Debug: Quick Start (replaces old startGameStub) ──────────────────────
 
 export async function startDebugGame(
-  mode: 'PECKING_ORDER' | 'BLITZ' | 'DEBUG_PECKING_ORDER' = 'PECKING_ORDER',
-  debugConfig?: DebugManifestConfig
+  mode: 'PECKING_ORDER' | 'CONFIGURABLE_CYCLE' | 'DEBUG_PECKING_ORDER' = 'PECKING_ORDER',
+  debugConfig?: DebugManifestConfig | ConfigurableManifestConfig
 ): Promise<{
   success: boolean;
   gameId?: string;
@@ -755,63 +777,73 @@ export async function getActiveGames(): Promise<ActiveGame[]> {
 
 // ── Shared: Build manifest days ──────────────────────────────────────────
 
+const EVENT_MESSAGES: Record<string, string> = {
+  INJECT_PROMPT: 'Chat prompt injected.',
+  OPEN_GROUP_CHAT: 'Group chat is now open!',
+  START_ACTIVITY: 'Activity started!',
+  END_ACTIVITY: 'Activity ended.',
+  OPEN_DMS: 'DMs are now open.',
+  START_GAME: 'Daily game started!',
+  END_GAME: 'Daily game ended.',
+  OPEN_VOTING: 'Voting is now open!',
+  CLOSE_VOTING: 'Voting is now closed.',
+  CLOSE_DMS: 'DMs are now closed.',
+  CLOSE_GROUP_CHAT: 'Group chat is now closed.',
+  END_DAY: 'Day has ended.',
+};
+
+const ACTIVITY_PROMPTS: Record<string, string> = {
+  PLAYER_PICK: 'Pick your bestie',
+  PREDICTION: 'Who do you think will be eliminated tonight?',
+  WOULD_YOU_RATHER: 'Would you rather...',
+  HOT_TAKE: 'Pineapple belongs on pizza',
+  CONFESSION: 'Confess something about your game strategy',
+  GUESS_WHO: 'What is your biggest fear in this game?',
+  NONE: '',
+};
+
+const ACTIVITY_OPTIONS: Record<string, { optionA: string; optionB: string }> = {
+  WOULD_YOU_RATHER: { optionA: 'Have immunity for one round', optionB: 'Get 50 bonus silver' },
+};
+
+const TIMELINE_EVENT_KEYS = [
+  'INJECT_PROMPT', 'OPEN_GROUP_CHAT', 'START_ACTIVITY', 'END_ACTIVITY', 'OPEN_DMS',
+  'START_GAME', 'END_GAME', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'CLOSE_GROUP_CHAT', 'END_DAY',
+] as const;
+
+function buildEventPayload(eventKey: string, activityType: string) {
+  if (eventKey === 'START_ACTIVITY') {
+    return {
+      msg: EVENT_MESSAGES[eventKey],
+      promptType: activityType,
+      promptText: ACTIVITY_PROMPTS[activityType] || 'Pick a player',
+      ...(ACTIVITY_OPTIONS[activityType] || {}),
+    };
+  }
+  return { msg: EVENT_MESSAGES[eventKey] };
+}
+
 function buildManifestDays(
   mode: string,
   dayCount: number,
-  debugConfig: DebugManifestConfig | null | undefined,
+  config: DebugManifestConfig | ConfigurableManifestConfig | null | undefined,
   t: (offset: number) => string
 ) {
-  if ((mode === 'DEBUG_PECKING_ORDER') && debugConfig) {
-    const EVENT_MESSAGES: Record<string, string> = {
-      INJECT_PROMPT: 'Chat prompt injected.',
-      OPEN_GROUP_CHAT: 'Group chat is now open!',
-      START_ACTIVITY: 'Activity started!',
-      END_ACTIVITY: 'Activity ended.',
-      OPEN_DMS: 'DMs are now open.',
-      START_GAME: 'Daily game started!',
-      END_GAME: 'Daily game ended.',
-      OPEN_VOTING: 'Voting is now open!',
-      CLOSE_VOTING: 'Voting is now closed.',
-      CLOSE_DMS: 'DMs are now closed.',
-      CLOSE_GROUP_CHAT: 'Group chat is now closed.',
-      END_DAY: 'Day has ended.',
-    };
-
-    const ACTIVITY_PROMPTS: Record<string, string> = {
-      PLAYER_PICK: 'Pick your bestie',
-      PREDICTION: 'Who do you think will be eliminated tonight?',
-      WOULD_YOU_RATHER: 'Would you rather...',
-      HOT_TAKE: 'Pineapple belongs on pizza',
-      CONFESSION: 'Confess something about your game strategy',
-      GUESS_WHO: 'What is your biggest fear in this game?',
-      NONE: '',
-    };
-
-    const ACTIVITY_OPTIONS: Record<string, { optionA: string; optionB: string }> = {
-      WOULD_YOU_RATHER: { optionA: 'Have immunity for one round', optionB: 'Get 50 bonus silver' },
-    };
-
+  if ((mode === 'DEBUG_PECKING_ORDER') && config) {
+    const debugConfig = config as DebugManifestConfig;
     return debugConfig.days.slice(0, debugConfig.dayCount).map((day, i) => {
       const baseOffset = i * 30000;
       const timeline: { time: string; action: string; payload: any }[] = [];
 
       let eventOffset = 0;
-      for (const eventKey of [
-        'INJECT_PROMPT', 'OPEN_GROUP_CHAT', 'START_ACTIVITY', 'END_ACTIVITY', 'OPEN_DMS',
-        'START_GAME', 'END_GAME', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'CLOSE_GROUP_CHAT', 'END_DAY',
-      ] as const) {
+      for (const eventKey of TIMELINE_EVENT_KEYS) {
         if ((eventKey === 'START_ACTIVITY' || eventKey === 'END_ACTIVITY') && day.activityType === 'NONE') continue;
         if (day.events[eventKey]) {
-          const payload =
-            eventKey === 'START_ACTIVITY'
-              ? {
-                  msg: EVENT_MESSAGES[eventKey],
-                  promptType: day.activityType,
-                  promptText: ACTIVITY_PROMPTS[day.activityType] || 'Pick a player',
-                  ...(ACTIVITY_OPTIONS[day.activityType] || {}),
-                }
-              : { msg: EVENT_MESSAGES[eventKey] };
-          timeline.push({ time: t(baseOffset + eventOffset), action: eventKey, payload });
+          timeline.push({
+            time: t(baseOffset + eventOffset),
+            action: eventKey,
+            payload: buildEventPayload(eventKey, day.activityType),
+          });
           eventOffset += 5000;
         }
       }
@@ -827,7 +859,38 @@ function buildManifestDays(
     });
   }
 
-  // Default hardcoded manifest
+  if ((mode === 'CONFIGURABLE_CYCLE') && config) {
+    const cfgConfig = config as ConfigurableManifestConfig;
+    return cfgConfig.days.slice(0, cfgConfig.dayCount).map((day, i) => {
+      const timeline: { time: string; action: string; payload: any }[] = [];
+
+      for (const eventKey of TIMELINE_EVENT_KEYS) {
+        if ((eventKey === 'START_ACTIVITY' || eventKey === 'END_ACTIVITY') && day.activityType === 'NONE') continue;
+        const eventCfg = day.events[eventKey];
+        if (eventCfg?.enabled && eventCfg.time) {
+          timeline.push({
+            time: eventCfg.time,
+            action: eventKey,
+            payload: buildEventPayload(eventKey, day.activityType),
+          });
+        }
+      }
+
+      // Sort by time for safety
+      timeline.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+      return {
+        dayIndex: i + 1,
+        theme: `Day ${i + 1}`,
+        voteType: day.voteType,
+        gameType: day.gameType,
+        ...(day.gameMode ? { gameMode: day.gameMode } : {}),
+        timeline,
+      };
+    });
+  }
+
+  // Default hardcoded manifest (PECKING_ORDER)
   const timelineDay1 = [
     { time: t(2000), action: 'INJECT_PROMPT', payload: { msg: 'Chat is open. Who is the imposter?' } },
     { time: t(10000), action: 'OPEN_VOTING', payload: { msg: 'Voting is now open!' } },
