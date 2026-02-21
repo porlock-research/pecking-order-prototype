@@ -6,6 +6,8 @@ import { PushPrompt } from './components/PushPrompt';
 
 const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
 
+const LOBBY_HOST = import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000';
+
 /** Remove expired po_token_* entries from localStorage on startup. */
 function pruneExpiredTokens() {
   const now = Math.floor(Date.now() / 1000);
@@ -31,8 +33,50 @@ function getGameCodeFromPath(): string | null {
   return match ? match[1].toUpperCase() : null;
 }
 
+/** Persist a token to Cache API (shared between Safari and standalone PWA on iOS). */
+function persistToCache(gameCode: string, jwt: string) {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    fetch('/api/session-cache', {
+      method: 'POST',
+      body: JSON.stringify({ key: `po_token_${gameCode}`, value: jwt }),
+    }).catch(() => {}); // fire-and-forget
+  }
+}
+
+/** Try to recover a token from the Cache API (iOS standalone PWA fallback). */
+async function recoverFromCacheApi(gameCode: string): Promise<string | null> {
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    const res = await fetch('/api/session-cache');
+    if (!res.ok) return null;
+    const tokens: Record<string, string> = await res.json();
+    const jwt = tokens[`po_token_${gameCode}`];
+    if (jwt) {
+      const decoded = decodeGameToken(jwt);
+      if (decoded.exp && decoded.exp > Date.now() / 1000) {
+        localStorage.setItem(`po_token_${gameCode}`, jwt); // restore to localStorage
+        return jwt;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+/** Try to mint a fresh JWT via the lobby's refresh-token API (requires po_session cookie). */
+async function refreshFromLobby(gameCode: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${LOBBY_HOST}/api/refresh-token/${gameCode}`, {
+      credentials: 'include', // sends po_session cookie
+    });
+    if (!res.ok) return null;
+    const { token } = await res.json();
+    if (token) return token;
+  } catch {}
+  return null;
+}
+
 /**
- * Applies a JWT token: decodes it, sets state, and stores in localStorage.
+ * Applies a JWT token: decodes it, sets state, stores in localStorage + Cache API.
  * If a gameCode is provided, keys the storage by that code and cleans the URL.
  */
 function applyToken(
@@ -52,6 +96,9 @@ function applyToken(
   const key = gameCode || decoded.gameId;
   localStorage.setItem(`po_token_${key}`, jwt);
 
+  // Also persist to Cache API for iOS standalone PWA cross-boundary sharing
+  persistToCache(key, jwt);
+
   // Clean transient params from URL
   if (gameCode) {
     window.history.replaceState({}, '', `/game/${gameCode}`);
@@ -62,6 +109,7 @@ export default function App() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
     pruneExpiredTokens();
@@ -72,25 +120,28 @@ export default function App() {
 
     if (gameCode && transientToken) {
       // Arrived via lobby redirect: /game/CODE?_t=JWT
-      // Store token, clean URL
       try {
         applyToken(transientToken, gameCode, setGameId, setPlayerId, setToken);
       } catch {
         console.error('Invalid token from redirect');
       }
     } else if (gameCode) {
-      // Clean URL visit: /game/CODE — check localStorage
+      // Clean URL visit: /game/CODE — walk the recovery chain
       const cached = localStorage.getItem(`po_token_${gameCode}`);
       if (cached) {
+        // Step 1: localStorage hit
         try {
           applyToken(cached, gameCode, setGameId, setPlayerId, setToken);
         } catch {
           localStorage.removeItem(`po_token_${gameCode}`);
           console.error('Cached token invalid');
+          // Fall through to async recovery
+          runAsyncRecovery(gameCode);
         }
+      } else {
+        // Steps 2-4: async recovery chain
+        runAsyncRecovery(gameCode);
       }
-      // If no cached token, the "awaiting signal" screen shows —
-      // user needs to visit via lobby /play/CODE to get authenticated
     } else if (rawToken) {
       // Direct JWT entry: ?token=JWT (debug links from lobby)
       try {
@@ -108,6 +159,32 @@ export default function App() {
         useGameStore.getState().setPlayerId(pid);
       }
     }
+
+    async function runAsyncRecovery(code: string) {
+      setRecovering(true);
+      try {
+        // Step 2: Cache API (iOS standalone PWA cross-boundary)
+        const fromCache = await recoverFromCacheApi(code);
+        if (fromCache) {
+          applyToken(fromCache, code, setGameId, setPlayerId, setToken);
+          return;
+        }
+
+        // Step 3: Lobby API (mint fresh JWT via po_session cookie)
+        const fromLobby = await refreshFromLobby(code);
+        if (fromLobby) {
+          applyToken(fromLobby, code, setGameId, setPlayerId, setToken);
+          return;
+        }
+
+        // Step 4: Redirect to lobby (last resort — user may need to log in)
+        window.location.href = `${LOBBY_HOST}/play/${code}`;
+      } catch {
+        window.location.href = `${LOBBY_HOST}/play/${code}`;
+      } finally {
+        setRecovering(false);
+      }
+    }
   }, []);
 
   if (window.location.pathname === '/dev/games') {
@@ -119,6 +196,16 @@ export default function App() {
   }
 
   if (!gameId) {
+    if (recovering) {
+      return (
+        <div className="min-h-screen bg-gradient-velvet flex flex-col items-center justify-center gap-3">
+          <span className="w-6 h-6 border-2 border-skin-gold border-t-transparent rounded-full spin-slow" />
+          <span className="text-skin-gold font-mono animate-shimmer uppercase tracking-widest text-sm">
+            RESTORING_SESSION...
+          </span>
+        </div>
+      );
+    }
     return <LauncherScreen />;
   }
 
@@ -158,8 +245,6 @@ function LauncherScreen() {
       }
     }
   }
-
-  const lobbyHost = import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-velvet text-skin-base p-8 text-center space-y-8 overflow-hidden">
@@ -222,7 +307,7 @@ function LauncherScreen() {
             No active games
           </p>
           <a
-            href={lobbyHost}
+            href={LOBBY_HOST}
             className="inline-block text-xs font-mono text-skin-gold/70 hover:text-skin-gold underline underline-offset-4 uppercase tracking-widest transition-colors"
           >
             Join from the lobby
