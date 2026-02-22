@@ -83,6 +83,16 @@ This works for the immediate case but exposes a deeper concern: DO alarm persist
 
 **Status**: Partially mitigated — buffered wakeup replay + scheduleNextAlarm after actor start
 
+## [BUG-014] Duplicate wakeup tasks from L1 subscription
+
+The L1 actor subscription fires on every L2 context mutation (votes, facts, chat, silver credits, etc.) and was unconditionally calling `scheduler.scheduleTask()` with a unique `Date.now()`-based ID. Since PartyWhen deduplicates by task ID only (`INSERT OR REPLACE`), each call created a new row in the task table with the same target timestamp. During complex transitions (e.g. nightSummary → morningBriefing with elimination + facts), 10+ duplicate tasks accumulated. When they all fired simultaneously, each triggered `wakeUpL2` → L2 recalculated `nextWakeup` → N more tasks scheduled → exponential growth.
+
+**Root cause**: The L1 subscription is the right place for persistence + SYNC broadcast (those must fire on every context change), but alarm scheduling is manifest-driven and should not be reactive to context mutations at all.
+
+**Fix applied**: Removed all scheduling from the L1 subscription. Manifest events are now pre-scheduled as individual PartyWhen tasks at init time (`scheduleManifestAlarms`). Each event gets a unique task ID (e.g. `wakeup-d1-INJECT_PROMPT`). PartyWhen stores all tasks in SQLite and chains the single DO alarm — after processing due tasks, it re-arms for the next. The manifest is the single source of truth for scheduling.
+
+**Status**: Fixed — manifest pre-scheduling in `server.ts handleInit`
+
 ## [BUG-005] Completed phase timeline cards lack visual polish (immersive shell)
 
 The timeline cards for completed phases (voting results, game results, prompt results) use plain/minimal styling that doesn't match the premium aesthetic of the live cartridge panels. They should carry the same visual language — accent-colored borders, glass backgrounds, subtle glow — so the timeline reads as a rich history of dramatic events, not a flat log.

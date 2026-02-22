@@ -53,6 +53,59 @@ export class GameServer extends Server<Env> {
     }
   }
 
+  /**
+   * Schedule all manifest timeline events as individual PartyWhen tasks.
+   * Called once at init — the manifest is the single source of truth.
+   * Each event gets its own task ID so PartyWhen fires them independently.
+   * PartyWhen stores all tasks in SQLite and chains the single DO alarm to
+   * fire for the earliest task. After processing, it re-arms for the next.
+   * For non-CONFIGURABLE_CYCLE modes, schedules a single immediate start.
+   */
+  private async scheduleManifestAlarms(manifest: any) {
+    if (!manifest) return;
+
+    if (manifest.gameMode === 'DEBUG_PECKING_ORDER') {
+      console.log('[L1] Debug mode — no alarms scheduled (admin-triggered)');
+      return;
+    }
+
+    if (manifest.gameMode === 'CONFIGURABLE_CYCLE' && manifest.days) {
+      // Batch-insert all events directly into PartyWhen's SQLite table,
+      // then call scheduleNextAlarm() once to set the DO alarm to the earliest.
+      let count = 0;
+      const now = Date.now();
+      for (const day of manifest.days) {
+        for (const event of day.timeline || []) {
+          const timeMs = new Date(event.time).getTime();
+          if (timeMs > now) {
+            const id = `wakeup-d${day.dayIndex}-${event.action}`;
+            const timestamp = Math.floor(timeMs / 1000);
+            const callback = JSON.stringify({ type: "self", function: "wakeUpL2" });
+            (this.scheduler as any).querySql([{
+              sql: `INSERT OR REPLACE INTO tasks (id, description, payload, callback, type, time)
+                    VALUES (?, ?, ?, ?, 'scheduled', ?)`,
+              params: [id, null, null, callback, timestamp]
+            }]);
+            count++;
+          }
+        }
+      }
+      // Arm the DO alarm for the earliest task
+      await (this.scheduler as any).scheduleNextAlarm();
+      console.log(`[L1] Scheduled ${count} manifest alarms across ${manifest.days.length} days`);
+      return;
+    }
+
+    // Standard PECKING_ORDER: immediate start (1s)
+    await this.scheduler.scheduleTask({
+      id: "wakeup-gamestart",
+      type: "scheduled",
+      time: new Date(Date.now() + 1000),
+      callback: { type: "self", function: "wakeUpL2" }
+    });
+    console.log('[L1] Scheduled immediate game start (1s)');
+  }
+
   /** Build a PushContext for the push-triggers module. */
   private getPushContext(): PushContext {
     const snapshot = this.actor?.getSnapshot();
@@ -212,19 +265,7 @@ export class GameServer extends Server<Env> {
         tickerHistory: this.tickerHistory,
       }));
 
-      // B. Schedule via PartyWhen
-      const nextWakeup = snapshot.context.nextWakeup;
-      if (nextWakeup && nextWakeup > Date.now()) {
-        console.log(`[L1] Scheduling alarm for ${new Date(nextWakeup).toISOString()} (in ${Math.round((nextWakeup - Date.now()) / 1000)}s)`);
-        await this.scheduler.scheduleTask({
-          id: `wakeup-${Date.now()}`,
-          type: "scheduled",
-          time: new Date(nextWakeup),
-          callback: { type: "self", function: "wakeUpL2" }
-        });
-      } else if (nextWakeup) {
-        console.log(`[L1] nextWakeup ${new Date(nextWakeup).toISOString()} is in the past, skipping alarm`);
-      }
+      // B. (Scheduling moved to handleInit — manifest events pre-scheduled at game creation)
 
       // C. Broadcast SYSTEM.SYNC to all clients
       const cartridges = extractCartridges(snapshot);
@@ -366,6 +407,11 @@ export class GameServer extends Server<Env> {
         gameId,
         inviteCode: json.inviteCode || '',
       });
+
+      // Schedule alarms from the manifest — the manifest is the single source
+      // of truth for scheduling. All timeline events are pre-scheduled at init
+      // time; the subscription never touches scheduling.
+      await this.scheduleManifestAlarms(json.manifest);
 
       insertGameAndPlayers(this.env.DB, gameId, json.manifest?.gameMode || 'PECKING_ORDER', json.roster || {});
 
