@@ -1,11 +1,12 @@
 import type { Config } from "tailwindcss";
+import tailwindPreset from "@pecking-order/ui-kit/tailwind-preset";
 
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   presets: [
-    require("@pecking-order/ui-kit/tailwind-preset"),
+    tailwindPreset,
   ],
   theme: {
     extend: {

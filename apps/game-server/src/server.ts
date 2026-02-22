@@ -34,6 +34,7 @@ export class GameServer extends Server<Env> {
   private lastDebugSummary: string = '';
   private scheduler: Scheduler<Env>;
   private goldCredited = false;
+  private pendingWakeup = false;  // Buffered wakeup from Scheduler init (ADR-012)
   private connectedPlayers = new Map<string, Set<string>>();  // playerId → Set<connectionId>
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -44,7 +45,65 @@ export class GameServer extends Server<Env> {
 
   async wakeUpL2() {
     console.log("[L1] PartyWhen Task Triggered: wakeUpL2");
-    this.actor?.send({ type: Events.System.WAKEUP });
+    if (this.actor) {
+      this.actor.send({ type: Events.System.WAKEUP });
+    } else {
+      console.log("[L1] Actor not ready — buffering wakeup for replay after onStart");
+      this.pendingWakeup = true;
+    }
+  }
+
+  /**
+   * Schedule all manifest timeline events as individual PartyWhen tasks.
+   * Called once at init — the manifest is the single source of truth.
+   * Each event gets its own task ID so PartyWhen fires them independently.
+   * PartyWhen stores all tasks in SQLite and chains the single DO alarm to
+   * fire for the earliest task. After processing, it re-arms for the next.
+   * For non-CONFIGURABLE_CYCLE modes, schedules a single immediate start.
+   */
+  private async scheduleManifestAlarms(manifest: any) {
+    if (!manifest) return;
+
+    if (manifest.gameMode === 'DEBUG_PECKING_ORDER') {
+      console.log('[L1] Debug mode — no alarms scheduled (admin-triggered)');
+      return;
+    }
+
+    if (manifest.gameMode === 'CONFIGURABLE_CYCLE' && manifest.days) {
+      // Batch-insert all events directly into PartyWhen's SQLite table,
+      // then call scheduleNextAlarm() once to set the DO alarm to the earliest.
+      let count = 0;
+      const now = Date.now();
+      for (const day of manifest.days) {
+        for (const event of day.timeline || []) {
+          const timeMs = new Date(event.time).getTime();
+          if (timeMs > now) {
+            const id = `wakeup-d${day.dayIndex}-${event.action}`;
+            const timestamp = Math.floor(timeMs / 1000);
+            const callback = JSON.stringify({ type: "self", function: "wakeUpL2" });
+            (this.scheduler as any).querySql([{
+              sql: `INSERT OR REPLACE INTO tasks (id, description, payload, callback, type, time)
+                    VALUES (?, ?, ?, ?, 'scheduled', ?)`,
+              params: [id, null, null, callback, timestamp]
+            }]);
+            count++;
+          }
+        }
+      }
+      // Arm the DO alarm for the earliest task
+      await (this.scheduler as any).scheduleNextAlarm();
+      console.log(`[L1] Scheduled ${count} manifest alarms across ${manifest.days.length} days`);
+      return;
+    }
+
+    // Standard PECKING_ORDER: immediate start (1s)
+    await this.scheduler.scheduleTask({
+      id: "wakeup-gamestart",
+      type: "scheduled",
+      time: new Date(Date.now() + 1000),
+      callback: { type: "self", function: "wakeUpL2" }
+    });
+    console.log('[L1] Scheduled immediate game start (1s)');
   }
 
   /** Build a PushContext for the push-triggers module. */
@@ -206,16 +265,7 @@ export class GameServer extends Server<Env> {
         tickerHistory: this.tickerHistory,
       }));
 
-      // B. Schedule via PartyWhen
-      const nextWakeup = snapshot.context.nextWakeup;
-      if (nextWakeup && nextWakeup > Date.now()) {
-        await this.scheduler.scheduleTask({
-          id: `wakeup-${Date.now()}`,
-          type: "scheduled",
-          time: new Date(nextWakeup),
-          callback: { type: "self", function: "wakeUpL2" }
-        });
-      }
+      // B. (Scheduling moved to handleInit — manifest events pre-scheduled at game creation)
 
       // C. Broadcast SYSTEM.SYNC to all clients
       const cartridges = extractCartridges(snapshot);
@@ -287,6 +337,18 @@ export class GameServer extends Server<Env> {
     });
 
     this.actor.start();
+
+    // Replay any wakeup that fired during Scheduler construction (before actor
+    // existed). See ADR-012: Scheduler.alarm() runs in blockConcurrencyWhile,
+    // which can consume+delete tasks before onStart sets up the actor.
+    if (this.pendingWakeup) {
+      console.log('[L1] Replaying buffered wakeup (fired during Scheduler init)');
+      this.actor.send({ type: Events.System.WAKEUP });
+      this.pendingWakeup = false;
+    }
+
+    // Re-arm alarm for any future tasks still in the table
+    await (this.scheduler as any).scheduleNextAlarm();
   }
 
   // --- 2. HTTP HANDLERS ---
@@ -297,6 +359,9 @@ export class GameServer extends Server<Env> {
 
     if (req.method === "POST" && path.endsWith("/init")) {
       return this.handleInit(req, url);
+    }
+    if (req.method === "POST" && path.endsWith("/player-joined")) {
+      return this.handlePlayerJoined(req, url);
     }
     if (req.method === "GET" && path.endsWith("/state")) {
       return this.handleGetState();
@@ -343,12 +408,69 @@ export class GameServer extends Server<Env> {
         inviteCode: json.inviteCode || '',
       });
 
+      // Schedule alarms from the manifest — the manifest is the single source
+      // of truth for scheduling. All timeline events are pre-scheduled at init
+      // time; the subscription never touches scheduling.
+      await this.scheduleManifestAlarms(json.manifest);
+
       insertGameAndPlayers(this.env.DB, gameId, json.manifest?.gameMode || 'PECKING_ORDER', json.roster || {});
 
       return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
     } catch (err) {
       console.error("[L1] POST /init failed:", err);
       return new Response("Invalid Payload", { status: 400 });
+    }
+  }
+
+  private async handlePlayerJoined(req: Request, url: URL): Promise<Response> {
+    const authHeader = req.headers.get('Authorization');
+    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
+    try {
+      const json = await req.json() as any;
+      const { playerId, realUserId, personaName, avatarUrl, bio, silver } = json;
+
+      if (!playerId || !realUserId || !personaName) {
+        return new Response('Missing required fields', { status: 400 });
+      }
+
+      // Reject if the game has progressed past preGame
+      const snapshot = this.actor?.getSnapshot();
+      if (snapshot && snapshot.value !== 'preGame') {
+        console.log(`[L1] Rejecting player-joined: game is in ${JSON.stringify(snapshot.value)}, not preGame`);
+        return new Response(JSON.stringify({ error: 'GAME_STARTED' }), {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Enrich with persistent gold from D1
+      const goldBalances = await readGoldBalances(this.env.DB, [realUserId]);
+      const gold = goldBalances.get(realUserId) || 0;
+
+      // Send SYSTEM.PLAYER_JOINED to L2
+      this.actor?.send({
+        type: Events.System.PLAYER_JOINED,
+        player: { id: playerId, realUserId, personaName, avatarUrl: avatarUrl || '', bio: bio || '', silver: silver || 50, gold },
+      });
+
+      // Insert player into D1 Players table
+      const pathParts = url.pathname.split('/');
+      const gameId = pathParts[pathParts.length - 2];
+      const playerStmt = this.env.DB.prepare(
+        `INSERT OR IGNORE INTO Players (game_id, player_id, real_user_id, persona_name, avatar_url, status, silver, gold, destiny_id)
+         VALUES (?, ?, ?, ?, ?, 'ALIVE', ?, ?, ?)`
+      );
+      playerStmt.bind(gameId, playerId, realUserId, personaName, avatarUrl || '', silver || 50, gold, null)
+        .run()
+        .catch((err: any) => console.error('[L1] Failed to insert player:', err));
+
+      return new Response(JSON.stringify({ status: 'OK' }), { status: 200 });
+    } catch (err) {
+      console.error('[L1] POST /player-joined failed:', err);
+      return new Response('Invalid Payload', { status: 400 });
     }
   }
 

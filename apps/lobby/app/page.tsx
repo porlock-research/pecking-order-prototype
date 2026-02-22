@@ -118,7 +118,7 @@ function toLocalDateString(date: Date): string {
 function createConfigurableDay(): ConfigurableDayConfig {
   const events: Record<string, ConfigurableEventConfig> = {};
   for (const { key } of CONFIGURABLE_EVENT_LABELS) {
-    events[key] = { enabled: true, time: DEFAULT_EVENT_TIMES[key] };
+    events[key] = { enabled: false, time: DEFAULT_EVENT_TIMES[key] };
   }
 
   return {
@@ -131,7 +131,7 @@ function createConfigurableDay(): ConfigurableDayConfig {
 
 function createDefaultConfigurableConfig(): ConfigurableManifestConfig {
   return {
-    startDate: toLocalDateString(new Date()), // today is Day 0 (pre-game), Day 1 starts tomorrow
+    startDate: toLocalDateString(new Date(Date.now() + 86400000)), // Day 1 date (Day 0 is always today)
     dayCount: 3,
     days: [createConfigurableDay(), createConfigurableDay(), createConfigurableDay()],
     pushConfig: {
@@ -146,9 +146,10 @@ function toISOConfigurableConfig(cfg: ConfigurableManifestConfig): ConfigurableM
   return {
     ...cfg,
     days: cfg.days.map((day, idx) => {
-      // startDate is Day 0 (pre-game), Day 1 starts the next day
+      // startDate IS Day 1's date. Day 2 = startDate + 1, etc.
+      // Speed Run: all days use startDate (no offset) for same-day testing.
       const dayDate = new Date(cfg.startDate + 'T00:00'); // parse as local time
-      dayDate.setDate(dayDate.getDate() + idx + 1);
+      if (!cfg.speedRun) dayDate.setDate(dayDate.getDate() + idx);
       const dateStr = toLocalDateString(dayDate);
 
       return {
@@ -243,7 +244,7 @@ export default function LobbyRoot() {
   }
 
   function handleCfgStartDateChange(date: string) {
-    setConfigurableConfig(prev => ({ ...prev, startDate: date }));
+    setConfigurableConfig(prev => ({ ...prev, startDate: date, speedRun: false }));
   }
 
   function handleCfgVoteTypeChange(dayIdx: number, voteType: string) {
@@ -304,6 +305,47 @@ export default function LobbyRoot() {
         };
       });
       return { ...prev, days };
+    });
+  }
+
+  function handleSpeedRun() {
+    // Realistic game flow: DMs/group chat stay open throughout activities/games/voting.
+    // Complementary events (start/end, open/close) get 5-min durations.
+    // 2-min gaps between phases, 3-min gap between days, 5-min grace period before Day 1.
+    const SPEED_RUN_SCHEDULE: { key: string; offsetMin: number }[] = [
+      { key: 'INJECT_PROMPT', offsetMin: 0 },
+      { key: 'OPEN_GROUP_CHAT', offsetMin: 2 },
+      { key: 'OPEN_DMS', offsetMin: 4 },
+      { key: 'START_ACTIVITY', offsetMin: 6 },
+      { key: 'END_ACTIVITY', offsetMin: 11 },   // +5 from START_ACTIVITY
+      { key: 'START_GAME', offsetMin: 13 },
+      { key: 'END_GAME', offsetMin: 18 },        // +5 from START_GAME
+      { key: 'OPEN_VOTING', offsetMin: 20 },
+      { key: 'CLOSE_VOTING', offsetMin: 25 },    // +5 from OPEN_VOTING
+      { key: 'CLOSE_DMS', offsetMin: 27 },
+      { key: 'CLOSE_GROUP_CHAT', offsetMin: 29 },
+      { key: 'END_DAY', offsetMin: 31 },
+    ];
+    const DAY_DURATION = 31; // last event offset within a day
+    const INTER_DAY_GAP = 3;
+    const GRACE_PERIOD = 5;
+
+    setConfigurableConfig(prev => {
+      const now = new Date();
+      const startDate = toLocalDateString(now);
+      const days = prev.days.slice(0, prev.dayCount).map((day, dayIdx) => {
+        const dayBaseMin = GRACE_PERIOD + dayIdx * (DAY_DURATION + INTER_DAY_GAP);
+        const events: Record<string, ConfigurableEventConfig> = {};
+        for (const { key, offsetMin } of SPEED_RUN_SCHEDULE) {
+          const t = new Date(now.getTime() + (dayBaseMin + offsetMin) * 60000);
+          const hh = String(t.getHours()).padStart(2, '0');
+          const mm = String(t.getMinutes()).padStart(2, '0');
+          events[key] = { enabled: true, time: `${hh}:${mm}` };
+        }
+        return { ...day, events };
+      });
+      while (days.length < prev.days.length) days.push(prev.days[days.length]);
+      return { ...prev, startDate, days, speedRun: true };
     });
   }
 
@@ -560,9 +602,17 @@ export default function LobbyRoot() {
               {isConfigurableMode && !gameId && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
-                      Custom Schedule
-                    </label>
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
+                        Custom Schedule
+                      </label>
+                      <button
+                        onClick={handleSpeedRun}
+                        className="px-2.5 py-1 rounded-full bg-skin-danger/20 border border-skin-danger/30 text-[10px] font-mono font-bold text-skin-danger hover:bg-skin-danger/30 transition-all"
+                      >
+                        Speed Run
+                      </button>
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono text-skin-dim/60">Days:</span>
                       <button
@@ -583,9 +633,9 @@ export default function LobbyRoot() {
                     </div>
                   </div>
 
-                  {/* Start Date (Day 0 — pre-game, Day 1 begins next day) */}
+                  {/* Day 1 date picker (Day 0 is always today) */}
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-skin-dim/60">Day 0 (Pre-Game)</span>
+                    <span className="text-xs font-mono text-skin-dim/60">Day 1 Start</span>
                     <input
                       type="date"
                       value={configurableConfig.startDate}
@@ -597,7 +647,7 @@ export default function LobbyRoot() {
                   <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                     {configurableConfig.days.slice(0, configurableConfig.dayCount).map((day, idx) => {
                       const dayDate = new Date(configurableConfig.startDate + 'T00:00'); // parse as local time
-                      dayDate.setDate(dayDate.getDate() + idx + 1); // startDate is Day 0, Day 1 is next day
+                      if (!configurableConfig.speedRun) dayDate.setDate(dayDate.getDate() + idx);
                       const dateLabel = dayDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
                       return (
                       <div key={idx} className="border border-skin-base rounded-lg bg-skin-input/40 p-4 space-y-3">
