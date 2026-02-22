@@ -52,6 +52,7 @@ export interface ConfigurableManifestConfig {
   dayCount: number;
   days: ConfigurableDayConfig[];
   pushConfig: Record<string, boolean>;
+  speedRun?: boolean; // All days use startDate (no day offset) — for same-day testing
 }
 
 export interface Persona {
@@ -956,6 +957,7 @@ function buildManifestDays(
 
   if ((mode === 'CONFIGURABLE_CYCLE') && config) {
     const cfgConfig = config as ConfigurableManifestConfig;
+    console.log('[buildManifestDays] CC config:', JSON.stringify({ dayCount: cfgConfig.dayCount, speedRun: cfgConfig.speedRun, day0events: Object.entries(cfgConfig.days[0]?.events || {}).map(([k, v]: [string, any]) => `${k}:${v.enabled}:${v.time}`) }));
     return cfgConfig.days.slice(0, cfgConfig.dayCount).map((day, i) => {
       const timeline: { time: string; action: string; payload: any }[] = [];
 

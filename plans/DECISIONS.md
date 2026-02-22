@@ -913,3 +913,21 @@ This document tracks significant architectural decisions, their context, and con
     *   The L2 roster grows incrementally — each `PLAYER_JOINED` triggers L1's subscription → snapshot save → `SYSTEM.SYNC` broadcast. Connected players see new arrivals in real time.
     *   `startGame` is bypassed entirely for CONFIGURABLE_CYCLE. The DO lifecycle is: `createGame` → init (empty roster) → player joins (one by one) → Day 1 alarm fires → `dayLoop`.
     *   The alarm race fix (buffered wakeup) also protects Standard Cycle games from edge-case DO restarts near alarm boundaries.
+
+## [ADR-068] Speed Run Mode for Same-Day Multi-Day Testing
+
+*   **Date:** 2026-02-21
+*   **Status:** Accepted
+*   **Context:** Testing multi-day CONFIGURABLE_CYCLE games requires waiting for real calendar days to pass, since each day's events are scheduled on consecutive dates. For development and QA, we need to run a full multi-day game within a single sitting. The game engine only cares about event timestamps — it doesn't validate that "days" occur on different calendar dates.
+*   **Decision:**
+    *   **Speed Run button** in the Configurable Cycle UI panel. One click pre-fills a compressed same-day schedule for all configured days.
+    *   **`speedRun` flag** on `ConfigurableManifestConfig` (optional boolean). When `true`, `toISOConfigurableConfig` skips the `+ idx` day offset — all days use `startDate` (today). Day labels also reflect the same date.
+    *   **Schedule design** models a realistic game flow: DMs and group chat stay open throughout activities, games, and voting. Complementary event pairs (START/END, OPEN/CLOSE) get 5-minute durations. 2-minute gaps between phases.
+    *   **Timing**: 5-minute grace period before Day 1 (time to create characters and join), 31 minutes per day, 3-minute gap between days. A 3-day speed run completes in ~104 minutes.
+    *   **Event order per day**: INJECT_PROMPT (+0) → OPEN_GROUP_CHAT (+2) → OPEN_DMS (+4) → START_ACTIVITY (+6) → END_ACTIVITY (+11) → START_GAME (+13) → END_GAME (+18) → OPEN_VOTING (+20) → CLOSE_VOTING (+25) → CLOSE_DMS (+27) → CLOSE_GROUP_CHAT (+29) → END_DAY (+31).
+    *   **Flag reset**: Manually changing the start date clears `speedRun` and restores normal day offset logic.
+    *   **No engine changes**: The game engine, manifest builder, and L2 timeline processing are unchanged. Speed Run is purely a UI convenience that sets `startDate` to today, enables all events, and fills in compressed HH:MM times.
+*   **Consequences:**
+    *   Full multi-day games can be tested in a single sitting without waiting for real days to pass.
+    *   The manifest structure is identical to production — only timestamps differ. No special server-side handling needed.
+    *   Event times are HH:MM with minute resolution, so speed runs crossing midnight (starting after ~23:00) could produce out-of-order timestamps. Acceptable for testing use.
