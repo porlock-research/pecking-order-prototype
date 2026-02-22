@@ -100,8 +100,8 @@ export function Header({ token }: HeaderProps) {
                   )}
                 </div>
               )}
-              {/* Admin link — dev only */}
-              {import.meta.env.DEV && gameId && (
+              {/* Admin link */}
+              {gameId && (
                 <a
                   href={`${import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000'}/admin/game/${gameId}`}
                   target="_blank"
