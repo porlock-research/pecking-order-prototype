@@ -96,15 +96,15 @@ const CONFIGURABLE_EVENT_LABELS: { key: string; label: string }[] = [
 const DEFAULT_EVENT_TIMES: Record<string, string> = {
   INJECT_PROMPT: '09:00',
   OPEN_GROUP_CHAT: '09:00',
-  START_ACTIVITY: '12:00',
-  END_ACTIVITY: '19:30',
+  CLOSE_GROUP_CHAT: '10:00',
   OPEN_DMS: '10:00',
   START_GAME: '10:00',
   END_GAME: '12:00',
+  START_ACTIVITY: '14:00',
+  END_ACTIVITY: '16:00',
   OPEN_VOTING: '20:00',
   CLOSE_VOTING: '23:00',
   CLOSE_DMS: '23:00',
-  CLOSE_GROUP_CHAT: '23:30',
   END_DAY: '23:59',
 };
 
@@ -118,7 +118,7 @@ function toLocalDateString(date: Date): string {
 function createConfigurableDay(): ConfigurableDayConfig {
   const events: Record<string, ConfigurableEventConfig> = {};
   for (const { key } of CONFIGURABLE_EVENT_LABELS) {
-    events[key] = { enabled: false, time: DEFAULT_EVENT_TIMES[key] };
+    events[key] = { enabled: true, time: DEFAULT_EVENT_TIMES[key] };
   }
 
   return {
@@ -129,11 +129,13 @@ function createConfigurableDay(): ConfigurableDayConfig {
   };
 }
 
+const DEFAULT_DAY_COUNT = 7;
+
 function createDefaultConfigurableConfig(): ConfigurableManifestConfig {
   return {
     startDate: toLocalDateString(new Date(Date.now() + 86400000)), // Day 1 date (Day 0 is always today)
-    dayCount: 3,
-    days: [createConfigurableDay(), createConfigurableDay(), createConfigurableDay()],
+    dayCount: DEFAULT_DAY_COUNT,
+    days: Array.from({ length: DEFAULT_DAY_COUNT }, () => createConfigurableDay()),
     pushConfig: {
       DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
       DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
@@ -309,38 +311,39 @@ export default function LobbyRoot() {
   }
 
   function handleSpeedRun() {
-    // Realistic game flow: DMs/group chat stay open throughout activities/games/voting.
-    // Complementary events (start/end, open/close) get 5-min durations.
-    // 2-min gaps between phases, 3-min gap between days, 5-min grace period before Day 1.
-    const SPEED_RUN_SCHEDULE: { key: string; offsetMin: number }[] = [
-      { key: 'INJECT_PROMPT', offsetMin: 0 },
-      { key: 'OPEN_GROUP_CHAT', offsetMin: 2 },
-      { key: 'OPEN_DMS', offsetMin: 4 },
-      { key: 'START_ACTIVITY', offsetMin: 6 },
-      { key: 'END_ACTIVITY', offsetMin: 11 },   // +5 from START_ACTIVITY
-      { key: 'START_GAME', offsetMin: 13 },
-      { key: 'END_GAME', offsetMin: 18 },        // +5 from START_GAME
-      { key: 'OPEN_VOTING', offsetMin: 20 },
-      { key: 'CLOSE_VOTING', offsetMin: 25 },    // +5 from OPEN_VOTING
-      { key: 'CLOSE_DMS', offsetMin: 27 },
-      { key: 'CLOSE_GROUP_CHAT', offsetMin: 29 },
-      { key: 'END_DAY', offsetMin: 31 },
+    // Compressed game flow with 30s gaps between events, 1-min durations for
+    // complementary pairs (activity, game, voting). 2-min initial grace period.
+    // 90s inter-day gap for nightSummary processing.
+    const SPEED_RUN_SCHEDULE: { key: string; offsetSec: number }[] = [
+      { key: 'INJECT_PROMPT', offsetSec: 0 },
+      { key: 'OPEN_GROUP_CHAT', offsetSec: 30 },
+      { key: 'OPEN_DMS', offsetSec: 60 },
+      { key: 'START_ACTIVITY', offsetSec: 90 },
+      { key: 'END_ACTIVITY', offsetSec: 150 },    // +60s from START_ACTIVITY
+      { key: 'START_GAME', offsetSec: 180 },
+      { key: 'END_GAME', offsetSec: 240 },         // +60s from START_GAME
+      { key: 'OPEN_VOTING', offsetSec: 270 },
+      { key: 'CLOSE_VOTING', offsetSec: 330 },     // +60s from OPEN_VOTING
+      { key: 'CLOSE_DMS', offsetSec: 360 },
+      { key: 'CLOSE_GROUP_CHAT', offsetSec: 390 },
+      { key: 'END_DAY', offsetSec: 420 },
     ];
-    const DAY_DURATION = 31; // last event offset within a day
-    const INTER_DAY_GAP = 3;
-    const GRACE_PERIOD = 5;
+    const DAY_DURATION_SEC = 420; // last event offset within a day (7 min)
+    const INTER_DAY_GAP_SEC = 90;
+    const GRACE_PERIOD_SEC = 120; // 2 min
 
     setConfigurableConfig(prev => {
       const now = new Date();
       const startDate = toLocalDateString(now);
       const days = prev.days.slice(0, prev.dayCount).map((day, dayIdx) => {
-        const dayBaseMin = GRACE_PERIOD + dayIdx * (DAY_DURATION + INTER_DAY_GAP);
+        const dayBaseSec = GRACE_PERIOD_SEC + dayIdx * (DAY_DURATION_SEC + INTER_DAY_GAP_SEC);
         const events: Record<string, ConfigurableEventConfig> = {};
-        for (const { key, offsetMin } of SPEED_RUN_SCHEDULE) {
-          const t = new Date(now.getTime() + (dayBaseMin + offsetMin) * 60000);
+        for (const { key, offsetSec } of SPEED_RUN_SCHEDULE) {
+          const t = new Date(now.getTime() + (dayBaseSec + offsetSec) * 1000);
           const hh = String(t.getHours()).padStart(2, '0');
           const mm = String(t.getMinutes()).padStart(2, '0');
-          events[key] = { enabled: true, time: `${hh}:${mm}` };
+          const ss = String(t.getSeconds()).padStart(2, '0');
+          events[key] = { enabled: true, time: `${hh}:${mm}:${ss}` };
         }
         return { ...day, events };
       });

@@ -907,16 +907,19 @@ const TIMELINE_EVENT_KEYS = [
   'START_GAME', 'END_GAME', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'CLOSE_GROUP_CHAT', 'END_DAY',
 ] as const;
 
-function buildEventPayload(eventKey: string, activityType: string) {
+function buildEventPayload(eventKey: string, activityType: string, dayIndex: number) {
+  const msg = eventKey === 'INJECT_PROMPT'
+    ? `Welcome to Day ${dayIndex} of Pecking Order`
+    : EVENT_MESSAGES[eventKey];
   if (eventKey === 'START_ACTIVITY') {
     return {
-      msg: EVENT_MESSAGES[eventKey],
+      msg,
       promptType: activityType,
       promptText: ACTIVITY_PROMPTS[activityType] || 'Pick a player',
       ...(ACTIVITY_OPTIONS[activityType] || {}),
     };
   }
-  return { msg: EVENT_MESSAGES[eventKey] };
+  return { msg };
 }
 
 function buildManifestDays(
@@ -938,7 +941,7 @@ function buildManifestDays(
           timeline.push({
             time: t(baseOffset + eventOffset),
             action: eventKey,
-            payload: buildEventPayload(eventKey, day.activityType),
+            payload: buildEventPayload(eventKey, day.activityType, i + 1),
           });
           eventOffset += 5000;
         }
@@ -968,7 +971,7 @@ function buildManifestDays(
           timeline.push({
             time: eventCfg.time,
             action: eventKey,
-            payload: buildEventPayload(eventKey, day.activityType),
+            payload: buildEventPayload(eventKey, day.activityType, i + 1),
           });
         }
       }
@@ -1036,6 +1039,24 @@ export async function sendAdminCommand(gameId: string, command: any) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${AUTH_SECRET}`,
       },
+    });
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function flushScheduledTasks(gameId: string) {
+  const env = await getEnv();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+  const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/flush-tasks`;
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${AUTH_SECRET}` },
     });
     if (!res.ok) throw new Error(`Status ${res.status}`);
     return { success: true };

@@ -44,7 +44,10 @@ export const l2TimelineActions = {
 
       const now = Date.now();
       const effectiveNow = Math.max(now, context.lastProcessedTime);
-      const nextEvent = currentDay.timeline.find((e: any) => new Date(e.time).getTime() > effectiveNow + 100);
+      const sorted = [...currentDay.timeline].sort(
+        (a: any, b: any) => new Date(a.time).getTime() - new Date(b.time).getTime()
+      );
+      const nextEvent = sorted.find((e: any) => new Date(e.time).getTime() > effectiveNow + 100);
 
       if (nextEvent) {
         console.log(`[L2] Scheduling next event: ${nextEvent.action} at ${nextEvent.time}`);
@@ -76,10 +79,12 @@ export const l2TimelineActions = {
     const now = Date.now();
     let newProcessedTime = context.lastProcessedTime;
 
-    const recentEvents = currentDay.timeline.filter((e: any) => {
-      const t = new Date(e.time).getTime();
-      return t > context.lastProcessedTime && t <= now + 2000 && t > now - 10000;
-    });
+    const recentEvents = [...currentDay.timeline]
+      .sort((a: any, b: any) => new Date(a.time).getTime() - new Date(b.time).getTime())
+      .filter((e: any) => {
+        const t = new Date(e.time).getTime();
+        return t > context.lastProcessedTime && t <= now + 2000 && t > now - 10000;
+      });
 
     if (recentEvents.length === 0) return;
 

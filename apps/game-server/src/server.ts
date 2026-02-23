@@ -70,29 +70,30 @@ export class GameServer extends Server<Env> {
     }
 
     if (manifest.gameMode === 'CONFIGURABLE_CYCLE' && manifest.days) {
-      // Batch-insert all events directly into PartyWhen's SQLite table,
-      // then call scheduleNextAlarm() once to set the DO alarm to the earliest.
-      let count = 0;
+      // Deduplicate by timestamp — one PartyWhen task per unique wakeup time.
+      // processTimelineEvent handles finding all events due at that time.
+      const uniqueTimestamps = new Map<number, string>(); // timestamp(s) → label
       const now = Date.now();
       for (const day of manifest.days) {
         for (const event of day.timeline || []) {
           const timeMs = new Date(event.time).getTime();
           if (timeMs > now) {
-            const id = `wakeup-d${day.dayIndex}-${event.action}`;
-            const timestamp = Math.floor(timeMs / 1000);
-            const callback = JSON.stringify({ type: "self", function: "wakeUpL2" });
-            (this.scheduler as any).querySql([{
-              sql: `INSERT OR REPLACE INTO tasks (id, description, payload, callback, type, time)
-                    VALUES (?, ?, ?, ?, 'scheduled', ?)`,
-              params: [id, null, null, callback, timestamp]
-            }]);
-            count++;
+            const ts = Math.floor(timeMs / 1000);
+            uniqueTimestamps.set(ts, `d${day.dayIndex}-${event.action}`);
           }
         }
       }
+      const callback = JSON.stringify({ type: "self", function: "wakeUpL2" });
+      for (const [timestamp, label] of uniqueTimestamps) {
+        (this.scheduler as any).querySql([{
+          sql: `INSERT OR REPLACE INTO tasks (id, description, payload, callback, type, time)
+                VALUES (?, ?, ?, ?, 'scheduled', ?)`,
+          params: [`wakeup-${label}`, null, null, callback, timestamp]
+        }]);
+      }
       // Arm the DO alarm for the earliest task
       await (this.scheduler as any).scheduleNextAlarm();
-      console.log(`[L1] Scheduled ${count} manifest alarms across ${manifest.days.length} days`);
+      console.log(`[L1] Scheduled ${uniqueTimestamps.size} unique alarms (from ${manifest.days.reduce((n: number, d: any) => n + (d.timeline?.length || 0), 0)} events) across ${manifest.days.length} days`);
       return;
     }
 
@@ -369,6 +370,9 @@ export class GameServer extends Server<Env> {
     if (req.method === "POST" && path.endsWith("/admin")) {
       return this.handleAdmin(req);
     }
+    if (req.method === "POST" && path.endsWith("/flush-tasks")) {
+      return this.handleFlushTasks(req);
+    }
     if (req.method === "GET" && path.endsWith("/vapid-key")) {
       return new Response(JSON.stringify({ publicKey: this.env.VAPID_PUBLIC_KEY }), {
         status: 200,
@@ -490,6 +494,25 @@ export class GameServer extends Server<Env> {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  private async handleFlushTasks(req: Request): Promise<Response> {
+    const authHeader = req.headers.get('Authorization');
+    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    try {
+      (this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
+      await (this.scheduler as any).scheduleNextAlarm();
+      console.log('[L1] All scheduled tasks flushed');
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (err: any) {
+      console.error('[L1] Flush tasks error:', err);
+      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    }
   }
 
   private async handleAdmin(req: Request): Promise<Response> {

@@ -81,7 +81,7 @@ export function stateToPush(
   }
   if (stateStr.includes("morningBriefing") || stateStr.includes("groupChat")) {
     if (!isPushEnabled(manifest, 'DAY_START')) return null;
-    return { title: "Pecking Order", body: `Day ${dayIndex} has begun!`, tag: "phase" };
+    return { title: "Pecking Order", body: `Welcome to Day ${dayIndex} of Pecking Order`, tag: "phase" };
   }
   if (stateStr.includes("voting")) {
     if (!isPushEnabled(manifest, 'VOTING')) return null;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getGameState, sendAdminCommand } from '../../../actions';
+import { getGameState, sendAdminCommand, flushScheduledTasks } from '../../../actions';
 import { useParams } from 'next/navigation';
 
 export default function AdminGamePage() {
@@ -71,6 +71,18 @@ export default function AdminGamePage() {
             className="bg-red-600 text-white px-6 py-3 rounded hover:bg-red-700 shadow-lg font-bold transition-transform transform active:scale-95"
           >
             {state.day === 0 ? "Start Day 1" : "Force Next Phase"}
+          </button>
+
+          <button
+            onClick={async () => {
+              if (confirm('Flush all scheduled alarms for this game?')) {
+                await flushScheduledTasks(gameId);
+                refresh();
+              }
+            }}
+            className="bg-gray-600 text-white px-4 py-3 rounded hover:bg-gray-700 shadow font-semibold transition-transform transform active:scale-95"
+          >
+            Flush Alarms
           </button>
 
           {state.day === 0 && (

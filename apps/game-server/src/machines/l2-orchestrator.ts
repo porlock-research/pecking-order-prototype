@@ -228,6 +228,10 @@ export const orchestratorMachine = setup({
         },
         nightSummary: {
           entry: ['recordCompletedVoting', 'processNightSummary', 'scheduleNextTimelineEvent'],
+          always: [
+            { guard: ({ context }: any) => context.winner !== null, target: '#pecking-order-l2.gameSummary' },
+            { guard: ({ context }: any) => context.dayIndex >= (context.manifest?.days.length ?? Infinity), target: '#pecking-order-l2.gameSummary' },
+          ],
           on: {
             'ADMIN.NEXT_STAGE': [
               { guard: ({ context }: any) => context.winner !== null, target: '#pecking-order-l2.gameSummary' },
