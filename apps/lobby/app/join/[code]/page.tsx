@@ -621,6 +621,9 @@ export default function InvitePage() {
                     <button
                       onClick={() => {
                         setError(null);
+                        if (!customBio && selectedPersona?.description) {
+                          setCustomBio(selectedPersona.description);
+                        }
                         setStep(2);
                       }}
                       disabled={!selectedPersona}
