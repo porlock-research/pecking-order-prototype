@@ -98,3 +98,411 @@ The L1 actor subscription fires on every L2 context mutation (votes, facts, chat
 The timeline cards for completed phases (voting results, game results, prompt results) use plain/minimal styling that doesn't match the premium aesthetic of the live cartridge panels. They should carry the same visual language — accent-colored borders, glass backgrounds, subtle glow — so the timeline reads as a rich history of dramatic events, not a flat log.
 
 **Status**: Not yet investigated
+
+---
+
+# Production Hardening
+
+Issues discovered during the first live CONFIGURABLE_CYCLE game (Feb 2026). These are infrastructure/architecture concerns, not feature bugs.
+
+## [PROD-001] Lobby worker CPU time limit exceeded (~14% error rate)
+
+**Observed**: 123 "Worker exceeded CPU time limit" errors out of ~878 total requests over 24 hours. All lobby routes affected: `/game/.../waiting`, `/join/...`, `/admin/game/...`.
+
+**Likely cause**: OpenNext/Next.js SSR cold start cost. The lobby worker goes cold between requests (especially during active gameplay when the client talks directly to the game server DO). When a request arrives (e.g. persona image fetch, waiting room poll), the worker must re-initialize the full Next.js runtime before it can serve a response. This cold start occasionally exceeds the Cloudflare Workers CPU time limit.
+
+**Contributing factor — persona images**: During active gameplay, the client fetches persona avatar images from the lobby's `/api/persona-image/[id]/[file]` route (R2 read). These are the most frequent lobby requests during a game and the most likely to hit a cold worker. The route itself is trivial (validate → R2 get → stream) but bears the full Next.js cold start cost.
+
+**Potential fixes**:
+- **R2 public access**: Enable public access on the R2 bucket and set `PERSONA_ASSETS_URL` in wrangler.json. The image route already has redirect logic (line 24-26 of `route.ts`). This removes persona images from the lobby worker entirely — zero code changes, just config.
+- **Service bindings**: Cloudflare best practice for worker-to-worker communication. The lobby currently uses `fetch()` over the public internet to call the game server DO (init, player-joined, admin commands, game state). Service bindings would make these zero-cost internal calls with no network overhead. See: https://developers.cloudflare.com/workers/best-practices/workers-best-practices/#use-service-bindings-for-worker-to-worker-communication
+- **Edge caching**: The image route sets `Cache-Control: public, max-age=86400, s-maxage=604800` but it's unclear if Cloudflare's CDN edge cache is being used effectively through OpenNext. Persona images are immutable — once generated they never change. Should be cached aggressively.
+- **Reduce cold start cost**: Audit Next.js bundle for unnecessary SSR dependencies. Consider whether some routes could be static or use edge runtime.
+
+**Status**: Investigating
+
+## [PROD-002] Game server DO — high "client disconnected" error rate (~56%)
+
+**Observed**: 101 errors out of 180 requests, nearly all "Client disconnected" (100 of 101). Zero "Exceeded CPU limits".
+
+**Likely cause**: WebSocket lifecycle. Each time a player backgrounds the app, loses mobile connectivity, or the browser suspends the tab, the WebSocket drops. Cloudflare counts this as a "client disconnected" error on the DO. This is largely expected behavior for a WebSocket-based game with mobile players, but the ratio (56%) suggests either:
+- Aggressive client reconnection logic (rapid connect/disconnect cycles)
+- Players on flaky mobile connections
+- Browser tab suspension on mobile (iOS Safari aggressively suspends background tabs)
+
+**Investigation needed**:
+- Check if `useGameEngine` reconnection logic has backoff or if it reconnects immediately on close
+- Check server logs for repeated connect/disconnect from the same player in short intervals
+- Consider whether the client should use exponential backoff for reconnection
+- Consider heartbeat/ping to detect stale connections early
+
+**Status**: Investigating
+
+## [PROD-003] Storage operations volume (6k in 24h)
+
+**Observed**: 6,000 storage operations in 24 hours for a single game DO. Each L2 context mutation triggers the L1 subscription which calls `ctx.storage.put()` to save the snapshot.
+
+**Contributing factors**:
+- Duplicate SYNC issue (documented as tech debt): a single user action can produce two L1 subscription fires (context change + FACT.RECORD), doubling storage writes
+- Every chat message, vote, silver transfer, timer tick, etc. triggers a snapshot save
+- Snapshot is the full L2 context (roster + manifest + all state) — no delta/incremental persistence
+
+**Potential improvements**:
+- Debounce snapshot writes (e.g. at most once per 500ms)
+- Separate volatile state (chat, typing) from durable state (roster, economy) to reduce write frequency
+- Investigate if the duplicate subscription fire can be eliminated
+
+**Status**: Monitoring — not a cost concern yet but scales linearly with player activity
+
+## [PROD-004] Lobby → Game Server communication uses public fetch
+
+The lobby server actions (`startGame`, `acceptInvite`, `getGameState`, `sendAdminCommand`, `flushScheduledTasks`) all use `fetch()` to the game server's public URL. This means:
+- Each call traverses the public internet (lobby worker → Cloudflare edge → game server DO)
+- Adds latency to player-facing operations (invite acceptance, game start)
+- Counts as a subrequest against the lobby worker's limits
+- Requires `AUTH_SECRET` bearer token authentication
+
+Cloudflare's best practice recommends **service bindings** for worker-to-worker communication: zero network cost, no auth overhead, type-safe RPC support. Both the lobby and game server are Workers in the same Cloudflare account, making this a direct fit.
+
+**Migration path**: Define the game server as a service binding in the lobby's `wrangler.json`, expose RPC methods via `WorkerEntrypoint`, replace `fetch()` calls with direct method invocations.
+
+**Status**: Planned improvement
+
+## [PROD-005] AUTH_SECRET compared with `===` (timing attack vulnerable)
+
+All auth checks in the game server DO use standard string comparison:
+```typescript
+if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+```
+
+This appears in 5+ locations in `server.ts` (handleInit, handlePlayerJoined, handleAdmin, handleFlushTasks, and the module-level push subscribe/unsubscribe handler). String `===` comparison short-circuits on the first mismatched character, leaking timing information. Cloudflare best practices recommend `crypto.subtle.timingSafeEqual()`.
+
+**Practical risk**: Low for now — AUTH_SECRET is only used for server-to-server calls (lobby→game server), not exposed to end users. But should be fixed before any public-facing auth checks are added.
+
+**Status**: Planned fix
+
+## [PROD-006] Game server compatibility_date is 2024-02-07
+
+The game server's `wrangler.toml` has `compatibility_date = "2024-02-07"` — over two years old. The lobby is at `2024-12-30`. Cloudflare ships runtime improvements, bug fixes, and performance optimizations with each compatibility date. Being this far behind may mean we're missing perf improvements that could help with the CPU time and cold start issues.
+
+**Status**: Planned fix — update both to current date
+
+## [PROD-007] WebSocket connections don't use Hibernation API
+
+Hibernation is **disabled** because `GameServer extends Server<Env>` inherits PartyServer's default `static options = { hibernate: false }`. PartyServer **fully supports** the Hibernation API — it's a single config flag:
+
+```typescript
+// Enable hibernation — PartyServer switches to HibernatingConnectionManager
+// which uses this.ctx.acceptWebSocket() + class-level webSocketMessage/webSocketClose
+static options = { hibernate: true };
+```
+
+When `hibernate: false` (our current default), PartyServer uses `InMemoryConnectionManager` with `connection.accept()` + `addEventListener`. When `hibernate: true`, it uses `HibernatingConnectionManager` with `this.ctx.acceptWebSocket(server)` and routes messages through the class-level `webSocketMessage`/`webSocketClose`/`webSocketError` handlers that PartyServer's `Server` class already defines.
+
+Without hibernation, the DO stays alive in memory for the entire duration of any open WebSocket connection. With 8 players connected, the DO never hibernates — consuming billable duration continuously even when idle (no messages being exchanged). The Hibernation API allows the DO to be evicted from memory while WebSocket connections stay open at the Cloudflare edge, only waking the DO when a message arrives. **"Billable Duration (GB-s) charges do not accrue during hibernation."**
+
+**Impact**: Explains the 10k GB-sec billable duration. For a single game this is negligible, but scaling to many concurrent games would make this the dominant cost. CF docs estimate: 100 DOs × 100 WebSockets × 1 msg/min = $138/month without hibernation → $10/month with hibernation. For a single 8-player game the savings are small, but it scales linearly.
+
+**PartyWhen confirmed hibernation-safe**: Verified that PartyWhen/Scheduler uses ONLY `ctx.storage.setAlarm()` for timing. No `setTimeout`/`setInterval` in the default scheduling path. The `experimental_waitUntil()` code path uses timers but our code doesn't call it.
+
+**In-memory state consequences** (if enabling hibernation):
+
+| Field | Lost on hibernation? | Recovery |
+|-------|---------------------|----------|
+| `actor` | Yes | `onStart()` restores from snapshot via `blockConcurrencyWhile()` — already works |
+| `scheduler` | Yes | Constructor recreates — already works |
+| `connectedPlayers` | Yes | **Must rebuild** from `this.ctx.getWebSockets()` + tags/attachments (PROD-010) |
+| `lastBroadcastState` | Yes | Used for dedup — stale value just means one extra broadcast on wake. Acceptable. |
+| `sentPushKeys` | Yes | Push dedup lost — may re-send notifications. Low impact. |
+| `lastKnownChatLog` | Yes | Restored from snapshot in `onStart()` — already works |
+| `tickerHistory` | Yes | Restored from snapshot in `onStart()` — already works |
+| `goldCredited` | Yes | **DANGEROUS** — could double-credit gold if DO hibernates after flag set but before D1 write completes. Must persist to storage or check D1 on wake. |
+| `lastDebugSummary` | Yes | Debug only — no impact |
+| `pendingWakeup` | Yes | Only relevant during constructor/onStart race — alarm would re-fire on retry |
+
+**Migration requirements**:
+1. Add `static options = { hibernate: true }` to `GameServer` class
+2. `connectedPlayers` map (PROD-010) must be rebuilt on wake — use `serializeAttachment()` to persist `{ playerId, senderId }` per connection (max 2KB per attachment). On wake, rebuild from `this.ctx.getWebSockets()` + `deserializeAttachment()`
+3. `goldCredited` flag must be persisted to `ctx.storage` or D1 must be checked on wake to prevent double-credit
+4. Code deploys disconnect ALL WebSockets — client reconnection must be robust (already needed regardless)
+
+**Status**: Investigating — enablement is trivial (one config line), but in-memory state recovery (especially PROD-010 and `goldCredited`) must be addressed first
+
+## [PROD-008] Hand-written Env interface (not generated by wrangler types)
+
+The `Env` interface in `apps/game-server/src/server.ts` is manually defined. If bindings or vars are added/removed in `wrangler.toml` without updating the interface, TypeScript won't catch the mismatch. Cloudflare recommends running `wrangler types` to auto-generate type definitions.
+
+**Status**: Low priority — works correctly today, quality-of-life improvement
+
+## [PROD-009] Snapshot persistence is unawaited (fire-and-forget storage.put)
+
+In the L1 subscription callback (`server.ts:263`), the snapshot save is:
+```typescript
+this.ctx.storage.put(STORAGE_KEY, JSON.stringify({ l2: persistedSnapshot, ... }));
+```
+
+This is **not awaited**. Per Cloudflare's DO best practices, unawaited `storage.put()` calls still benefit from write coalescing (multiple puts without intervening awaits batch into one atomic transaction), and the **output gate** holds outgoing messages (WebSocket broadcasts) until pending storage writes complete. So in practice this is safe — clients won't receive SYNC before the snapshot is persisted.
+
+However, if the DO crashes between the put being enqueued and actually flushed, the write could be lost. The DO best practices say "design applications writing state incrementally rather than relying on shutdown callbacks" and "persist progress frequently during processing" — which we do (every L2 mutation triggers a save). The risk of losing a single trailing write is acceptable given the frequency of writes.
+
+**Status**: Acceptable — understood tradeoff, no action needed. Verified against CF docs: unawaited `storage.put()` benefits from write coalescing AND the output gate holds outgoing messages until pending writes complete. Analysis confirmed correct.
+
+## [PROD-010] connectedPlayers map lost on DO eviction/hibernation
+
+`connectedPlayers: Map<string, Set<string>>` is in-memory only (not persisted to storage or WebSocket attachments). If the DO is evicted and restarted (e.g. during a deploy, or if hibernation were enabled), all presence data is lost. Players would appear offline until they send a new WebSocket message.
+
+Per the DO best practices, per-connection state should use `serializeAttachment()` / `deserializeAttachment()` to survive hibernation. Currently moot since we don't use the Hibernation API (PROD-007), but would become critical if we enable it.
+
+**Status**: Blocking issue for enabling hibernation — must be resolved first. Hibernation is a config change, not an architecture change (PROD-007), so this is immediately relevant when hibernation is pursued
+
+## [PROD-011] D1 writes in subscription are unawaited (race condition window)
+
+Several D1 operations in the L1 subscription callback are fire-and-forget:
+- `updateGameEnd()` (line 300) — not awaited
+- `creditGold()` (line 308) — not awaited
+- `persistFactToD1` (in .provide() action overrides) — not awaited
+
+Per DO best practices, non-storage I/O like `fetch()` (which D1 uses internally) opens the input gate, allowing request interleaving. If two rapid L2 mutations trigger overlapping subscription fires, the D1 writes could interleave unpredictably.
+
+The `goldCredited` boolean guard (line 303) prevents duplicate gold writes, but it's an in-memory flag — if the DO restarts between the flag being set and the D1 write completing, the guard is lost and gold could be double-credited on the next snapshot restore.
+
+**Potential fix**: Use `ctx.waitUntil()` for D1 writes, or await them with an optimistic locking pattern (check D1 state before writing).
+
+**Status**: Low risk — gold payout only happens once at game end, but architecturally fragile
+
+## [PROD-012] Alarm handler (wakeUpL2) should be idempotent
+
+Per DO best practices: "Alarms may fire multiple times in rare cases. Alarm handlers must safely run multiple times without issues."
+
+Our `wakeUpL2` sends `SYSTEM.WAKEUP` to the XState actor, which triggers `processTimelineEvent`. The `lastProcessedTime` guard in `processTimelineEvent` prevents re-processing events that were already handled (`t > context.lastProcessedTime`). So duplicate alarm fires are safe — the second WAKEUP would find no new events and be a no-op.
+
+**Status**: OK — idempotent by design via `lastProcessedTime` guard. Verified against CF docs: "Alarms may fire multiple times in rare cases. Alarm handlers must safely run multiple times without issues." Our guard satisfies this requirement.
+
+## [PROD-013] RPC methods available but unused (compatibility_date too old)
+
+Per DO best practices: "Projects with compatibility date 2024-04-03 or later should use RPC methods." Our game server is at `2024-02-07`, which predates RPC support. After updating the compatibility date (PROD-006), we could expose DO methods as typed RPC endpoints instead of routing through the `onRequest()` fetch handler. This would simplify the lobby→game-server communication and enable service bindings with type-safe calls.
+
+**Status**: Blocked by PROD-006 — update compatibility_date first
+
+## [PROD-014] No WebSocket message batching
+
+Per Cloudflare's DO WebSocket best practices: "WebSocket reads require context switches between the kernel and JavaScript runtime. Each individual message triggers this overhead." They recommend batching 10-100 logical messages into single WebSocket frames, using time-based (50-100ms) or count-based (50-100 messages) batching.
+
+Our client sends individual WebSocket messages for each action (chat, vote, silver transfer, typing indicator, etc.). This is fine at 8 players, but the per-message kernel context switch overhead could matter if message volume increases (e.g. rapid typing indicators, real-time game events during TOUCH_SCREEN).
+
+On the server→client side, each L2 context mutation triggers a separate `SYSTEM.SYNC` broadcast to all connected clients. Rapid mutations (e.g. multiple votes arriving in quick succession) produce multiple full-state SYNC messages in rapid succession when a single debounced SYNC would suffice.
+
+**Status**: Not urgent — 8-player games don't generate enough message volume to hit this. Worth revisiting if scaling to larger games or higher-frequency interactions.
+
+## [PROD-015] Code deploys disconnect all WebSocket clients
+
+Per Cloudflare DO docs: "Code updates disconnect all WebSockets. Deploying a new version restarts every Durable Object, which disconnects any existing connections."
+
+This means every `wrangler deploy` of the game server during an active game disconnects all players simultaneously. The client's `useGameEngine` hook has reconnection logic, but we should verify:
+- Reconnection uses backoff (not immediate retry flooding)
+- The client recovers gracefully (re-receives SYNC, rebuilds state)
+- The DO correctly restores from its persisted snapshot on restart
+- Players see a clear "reconnecting..." indicator, not a broken UI
+
+This is especially critical during live CONFIGURABLE_CYCLE games where the game runs for days.
+
+**Status**: Needs verification — test deploy during an active game session
+
+## [PROD-016] L3 session state fragile on snapshot restore
+
+The persistence model has a fundamental gap in the L3 layer. Here's what happens on DO restart:
+
+**What's persisted** (saved to `ctx.storage.put` on every L2 mutation):
+- `l2`: L2's `getPersistedSnapshot()` — includes L2 context (roster, manifest, dayIndex, etc.) AND serialized child references
+- `l3Context.chatLog`: extracted separately since L3's chatLog is the largest piece of state
+- `tickerHistory`: in-memory ticker buffer
+
+**What `getPersistedSnapshot()` captures for L3**:
+XState v5's `getPersistedSnapshot()` serializes invoked children. For the L3 session, this includes its state value (e.g. `{ dayLayer: 'groupChat', activityLayer: 'idle' }`) and its context. However, L3's context contains `AnyActorRef` fields for spawned cartridge children:
+- `activeVotingCartridgeRef` — live reference to a spawned voting machine
+- `activeGameCartridgeRef` — live reference to a spawned game machine
+- `activePromptCartridgeRef` — live reference to a spawned prompt machine
+
+**What's lost on restore**:
+1. **Spawned cartridge actors** — `AnyActorRef` objects don't survive JSON serialization. After restore, these context fields are `null` or stale objects. If the DO restarts mid-voting or mid-game, the active cartridge is gone. The L3 state machine thinks it's in `voting` or `dailyGame` state, but the child actor doesn't exist. Events forwarded to the cartridge (e.g. `VOTE.MAJORITY.CAST`) are silently dropped.
+
+2. **L3 context fields added after snapshot creation** — If we deploy code that adds new L3 context fields (e.g. `channels`, `groupChatOpen`), old snapshots don't have them. The restored L3 runs with `undefined` for those fields. Guards and actions that read them fail silently or produce wrong behavior. (Also documented in AUDIT_GAPS tech debt.)
+
+3. **DM/channel state** — `dmPartnersByPlayer`, `dmCharsByPlayer`, `dmGroupsByPlayer`, `perkOverrides` are all L3 context that IS serialized via `getPersistedSnapshot()`, but only as a side effect of XState's child serialization. If the L3 child fails to restore (line 229-233 check), all DM state for the current day is lost.
+
+**Current mitigations**:
+- Line 229: If L2 is in `activeSession` but L3 child is missing after restore, the snapshot is cleared and the game starts fresh (losing all progress)
+- `restoredChatLog`: chatLog is extracted separately and injected into the fresh L3 via `input.initialChatLog`
+- The subscription saves on every mutation, so the snapshot is usually very recent
+
+**What a mid-game restart actually looks like**:
+1. DO restarts (deploy, eviction, crash)
+2. `onStart()` reads snapshot, restores L2 with `createActor(machine, { snapshot })`
+3. L2 is in `dayLoop.activeSession` — XState tries to restore the invoked L3 child
+4. If L3 restores successfully: L3 state and context are correct, but spawned cartridge children (voting/game/prompt) are lost. If a cartridge was active, L3 is stuck in `voting`/`dailyGame`/`playing` state with no child to forward events to.
+5. If L3 fails to restore: snapshot is cleared, game resets to `uninitialized`
+
+**Impact**: During a live CONFIGURABLE_CYCLE game, a deploy or DO restart mid-voting/mid-game leaves the game stuck. The only recovery is the timeline's next scheduled event (e.g. `CLOSE_VOTING` / `END_GAME`) which force-terminates the cartridge — but the cartridge doesn't exist to receive the termination event, so the `xstate.done.actor.*` event never fires.
+
+**Potential fixes**:
+- Persist cartridge state separately (like chatLog) and re-spawn on restore
+- On restore, if L3 is in a cartridge state but the child is missing, force-transition past it (skip to completion)
+- Use XState v5's `systemId` + persistence for spawned actors
+- Separate volatile game state (cartridges, typing) from durable state (roster, economy, chat) and only persist the durable parts, with recovery logic for volatile state
+
+**Status**: Known architectural limitation — acceptable for games where deploys can be coordinated, problematic for always-on production games
+
+## [PROD-017] PartyWhen alarm scheduling is opaque and fires unexpectedly
+
+**Observed**: During live CONFIGURABLE_CYCLE games, alarms fire when they shouldn't — triggering `wakeUpL2` at unexpected times, advancing game state prematurely, or repeatedly firing after a game has been abandoned. Debugging is difficult because PartyWhen's internal state is not easily inspectable.
+
+**Root causes**:
+1. **No visibility into the task table**: PartyWhen stores scheduled tasks in an internal SQLite table (`tasks`), but there's no API to list pending tasks, their scheduled times, or their IDs. The only way to see what's scheduled is to add logging around `querySql` calls or inspect the DO's SQLite storage directly (not available in production).
+2. **Stale tasks survive game state changes**: If a game is abandoned, misconfigured, or manually advanced via admin commands, the pre-scheduled manifest tasks remain in the table and continue firing. The `flushScheduledTasks` endpoint was added as a workaround but requires manual admin intervention.
+3. **Task ID collisions/overwrites**: `INSERT OR REPLACE` means a new task with the same ID silently replaces an existing one. If the ID scheme changes (e.g. from `wakeup-${Date.now()}` to `wakeup-d${day}-${action}`), old-scheme tasks may still exist in the table alongside new-scheme tasks.
+4. **Alarm chaining is invisible**: PartyWhen processes due tasks, then calls `scheduleNextAlarm()` internally to arm the next alarm. If the chain breaks (e.g. no more tasks, or the next task's time is in the past), it's not obvious why alarms stopped or why they're firing continuously.
+5. **No logging of alarm lifecycle**: When an alarm fires, PartyWhen calls the registered callback but doesn't log what task triggered it, what its scheduled time was, or what tasks remain. Adding this logging requires modifying PartyWhen's internals or wrapping every callback.
+6. **Time window filtering is fragile**: `processTimelineEvent` uses `t > context.lastProcessedTime && t <= now + 2000 && t > now - 10000` — a 10-second lookback window. If the DO was asleep for longer than 10 seconds (e.g. during hibernation or slow restore), events in the gap are silently skipped. Conversely, the 2-second lookahead means events that are "almost due" get processed early.
+
+**Potential improvements**:
+- Add a `GET /scheduled-tasks` debug endpoint that reads the PartyWhen task table and returns all pending tasks with their IDs, times, and payloads
+- Add structured logging around alarm fires: `[ALARM] Fired at ${now}, task=${taskId}, scheduled=${taskTime}, remaining=${count}`
+- Consider replacing PartyWhen with direct `ctx.storage.setAlarm()` + a hand-managed task list in `ctx.storage` — simpler, fully inspectable, no hidden SQLite table
+- Auto-flush stale tasks when the game transitions to `gameSummary` or `gameOver`
+- Add a "scheduled tasks" section to the admin panel state view
+
+**Status**: Investigating — workaround exists (flush-tasks endpoint) but root cause debugging remains difficult
+
+## [PROD-018] Unconsumed response bodies in lobby (connection leak risk)
+
+Workers have a **6 simultaneous outgoing connection limit**. Three locations in `apps/lobby/app/actions.ts` leak connections by not consuming fetch response bodies:
+
+1. `createGame()` (~line 178) — auto-init DO fetch, response never read
+2. `acceptInvite()` (~line 508) — player-joined POST, only `res.status` checked
+3. `startGame()` (~line 709) — auto-advance, `.catch()` but no body consumption
+
+Per CF docs: "If unused response body: call `response.body.cancel()` to free the connection." Under normal traffic this is unlikely to hit the 6-connection limit, but during burst scenarios (multiple players accepting invites simultaneously, admin rapidly creating games), stale connections could queue.
+
+**Fix**: Add `await res.text()` or `res.body?.cancel()` after each fetch where the body is unused.
+
+**Status**: Planned fix — low risk but easy to address
+
+## [PROD-019] Cookie `secure` flag uses `process.env.NODE_ENV`
+
+`apps/lobby/app/login/verify/route.ts:18` sets the session cookie with:
+```typescript
+secure: process.env.NODE_ENV === 'production'
+```
+
+Per CF docs: "`process.env` does NOT work on Cloudflare Workers by default." This likely works because the bundler (esbuild via OpenNext) inlines `NODE_ENV` at build time, but it's fragile and non-standard for the Workers runtime. Should be `secure: true` unconditionally (HTTPS is always available on Cloudflare).
+
+**Status**: Planned fix — trivial change, prevents breakage if bundler behavior changes
+
+## [PROD-020] Missing `Access-Control-Max-Age` CORS header
+
+`apps/game-server/src/server.ts` (~line 726) sets CORS response headers but omits `Access-Control-Max-Age`. Without it, browsers default to a **5-second preflight cache**, causing repeated OPTIONS requests for every cross-origin call.
+
+**Fix**: Add `'Access-Control-Max-Age': '86400'` (24 hours) to the CORS headers. Preflight requests are identical every time (same origin, same methods, same headers), so aggressive caching is safe.
+
+**Status**: Planned fix — minor optimization, reduces unnecessary preflight traffic
+
+## [PROD-021] No environment separation — all branches deploy to the same infrastructure
+
+**Priority**: HIGH — should be addressed before all other PROD issues. Every other fix risks breaking a live game because there's no safe place to test changes.
+
+**Current state**: There is effectively **one environment**. Every push to `main`, `feat/*`, or `fix/*` deploys the same worker names, same D1 databases, and same R2 bucket:
+
+| Resource | Name/ID | Shared across |
+|----------|---------|---------------|
+| Game Server Worker | `game-server` | All branches |
+| Lobby Worker | `pecking-order-lobby` | All branches |
+| Client Pages | `pecking-order-client` | All branches |
+| Game Server D1 | `pecking-order-journal-db` (`c5941589...`) | All branches |
+| Lobby D1 | `pecking-order-lobby-db` (`f90367aa...`) | All branches |
+| R2 Bucket | `pecking-order-assets` | All branches |
+
+Cross-service URLs are hardcoded in wrangler configs and `.env.production`:
+- Lobby `wrangler.json`: `GAME_SERVER_HOST = "https://game-server.porlock.workers.dev"`
+- Lobby `wrangler.json`: `GAME_CLIENT_HOST = "https://pecking-order-client.pages.dev"`
+- Game Server `wrangler.toml`: `GAME_CLIENT_HOST = "https://pecking-order-client.pages.dev"`
+- Client `.env.production`: `VITE_GAME_SERVER_HOST`, `VITE_LOBBY_HOST` → same staging URLs
+
+A feature branch deploy overwrites the live game server mid-game. D1 migrations run against the production database. There is no way to test changes in isolation.
+
+**Target state**: Two environments — **staging** (for testing) and **production** (for live games).
+
+**What needs to change**:
+
+### 1. Cloudflare Resources (create once)
+- **D1 databases**: Create `pecking-order-journal-db-staging` and `pecking-order-lobby-db-staging` (new database IDs)
+- **R2 bucket**: Create `pecking-order-assets-staging`
+- **Workers**: Staging workers get `-staging` suffix (e.g. `game-server-staging`)
+- **Pages**: Staging client project (e.g. `pecking-order-client-staging`), or use Pages preview deployments (auto per-branch)
+
+### 2. Wrangler Configs — add `[env.staging]` / `[env.production]` sections
+
+**Game Server `wrangler.toml`** — needs environment overrides:
+```toml
+# Default (staging)
+name = "game-server-staging"
+
+[env.production]
+name = "game-server"
+
+[env.production.vars]
+GAME_CLIENT_HOST = "https://pecking-order-client.pages.dev"
+# ... production URLs
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "pecking-order-journal-db"
+database_id = "c5941589-2d69-4ae1-9b5d-0554f2ad9721"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "pecking-order-journal-db-staging"
+database_id = "<new-staging-id>"
+```
+
+**Lobby `wrangler.json`** — same pattern. Note: `wrangler.json` supports `env` overrides the same as TOML.
+
+### 3. Client `.env` files
+- `.env.production` → production URLs (used by `npm run build` in production CI)
+- `.env.staging` → staging URLs (Vite supports `--mode staging`)
+
+### 4. GitHub Actions — split deploy workflows
+- `deploy-staging.yml`: Triggers on push to `main`, `feat/*`, `fix/*`. Deploys with `wrangler deploy --env staging`. Runs D1 migrations against staging databases.
+- `deploy-production.yml`: Triggers on GitHub Release or manual `workflow_dispatch`. Deploys with `wrangler deploy --env production`. Runs D1 migrations against production databases.
+- Both need separate GitHub environment secrets (or use `CLOUDFLARE_API_TOKEN` with environment-scoped variables for URLs/database IDs).
+
+### 5. GitHub Secrets / Environment Variables
+- Create GitHub Environments: `staging` and `production`
+- Per-environment secrets: `AUTH_SECRET` (can share or separate), `VAPID_PRIVATE_JWK`
+- `wrangler secret put` must be run per-environment: `wrangler secret put AUTH_SECRET --env staging`
+
+### 6. Code changes
+- `process.env.NODE_ENV === 'production'` check in `apps/lobby/app/login/verify/route.ts` — should be `secure: true` always (PROD-019, but also relevant here since staging is also HTTPS)
+- Any code that branches on environment name needs to handle `staging` as a valid value
+- `AUTH_SECRET` fallback `'dev-secret-change-me'` in route handlers should NOT be present in production builds
+
+### 7. D1 Migrations
+- `deploy-staging.yml` runs: `wrangler d1 migrations apply pecking-order-journal-db-staging --remote --env staging`
+- `deploy-production.yml` runs: `wrangler d1 migrations apply pecking-order-journal-db --remote --env production`
+- Same migration files, different target databases
+
+### 8. R2 Bucket
+- Lobby `wrangler.json` needs per-environment R2 binding (different bucket names)
+- Persona images uploaded during game creation go to the environment-specific bucket
+
+**Migration plan** (additive — does NOT touch production resources):
+1. Create **new** staging Cloudflare resources via `wrangler` CLI: `pecking-order-journal-db-staging`, `pecking-order-lobby-db-staging`, `pecking-order-assets-staging`
+2. Add `[env.staging]` and `[env.production]` sections to wrangler configs. **`[env.production]` uses the existing resource names/IDs** (e.g. `game-server`, `pecking-order-journal-db`, `c5941589...`) — nothing is renamed or moved. `[env.staging]` uses the new `-staging` resources.
+3. Set secrets for both environments: `wrangler secret put AUTH_SECRET --env production` (re-sets existing value), `wrangler secret put AUTH_SECRET --env staging` (new)
+4. Update `deploy-staging.yml` to use `wrangler deploy --env staging` (deploys to new staging workers, not the existing ones). Create `deploy-production.yml` with `wrangler deploy --env production` (deploys to existing workers, same as today).
+5. Add `.env.staging` for client with staging URLs, update CI to build with `--mode staging` or `--mode production`
+6. Test staging deploy end-to-end — this touches only new resources
+7. First production deploy via new workflow — should be identical to what CI was doing before, just explicitly targeting `--env production`
+
+**Safety**: Steps 1-6 create new resources and modify config files only. The existing production workers/databases/bucket are untouched until step 7, which deploys to the same resource names CI was already deploying to — just via an explicit `--env production` flag instead of the implicit default.
+
+**Status**: Not started — foundational issue that blocks safe testing of all other PROD fixes
