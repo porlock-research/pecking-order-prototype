@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const response = NextResponse.redirect(new URL(next, req.url));
     response.cookies.set('po_session', result.sessionId, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       sameSite: 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
