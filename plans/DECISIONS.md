@@ -931,3 +931,21 @@ This document tracks significant architectural decisions, their context, and con
     *   Full multi-day games can be tested in a single sitting without waiting for real days to pass.
     *   The manifest structure is identical to production — only timestamps differ. No special server-side handling needed.
     *   Event times are HH:MM with minute resolution, so speed runs crossing midnight (starting after ~23:00) could produce out-of-order timestamps. Acceptable for testing use.
+
+## [ADR-069] Separate Staging and Production Cloudflare Environments (PROD-021)
+
+*   **Date:** 2026-02-25
+*   **Status:** Accepted
+*   **Context:** All branches deployed to the same Cloudflare resources — workers, D1 databases, R2 bucket, Pages project. A feature branch push could overwrite the live game server mid-game. No safe place to test changes. Per CF docs, bindings (vars, D1, DO, R2) are non-inheritable and must be explicitly defined per `[env.*]` section.
+*   **Decision:**
+    *   **Top-level worker names set to `-dev`** (e.g. `game-server-dev`, `pecking-order-lobby-dev`). Bare `wrangler deploy` targets a harmless no-binding worker.
+    *   **`[env.staging]` and `[env.production]`** sections in both `wrangler.toml` (game-server) and `wrangler.json` (lobby) with full binding definitions. Each env targets dedicated resources (D1, R2, Pages).
+    *   **CI staging workflow** (`deploy-staging.yml`) triggers on push to `main`, `feat/*`, `fix/*`. All wrangler commands use `--env staging`. Client builds with staging VITE env overrides and deploys to `pecking-order-client-staging` Pages project with `--branch=main`.
+    *   **CI production workflow** (`deploy-production.yml`) is `workflow_dispatch` only with text confirmation gate ("deploy-production"). All wrangler commands use `--env production`.
+    *   **Dependency builds**: Each deploy job runs `npx turbo run build --filter=<package>` before the deploy step, so workspace packages are built before wrangler/OpenNext bundles code.
+    *   **Staging VAPID keys**: Staging has its own VAPID key pair, separate from production.
+*   **Consequences:**
+    *   Feature branches deploy to staging only — production is never accidentally overwritten.
+    *   Production deploys require explicit manual trigger with confirmation.
+    *   Local dev (`wrangler dev`) is unaffected — uses top-level config + `.dev.vars`.
+    *   Secrets must be set per-environment (`wrangler secret put --env staging/production`).
