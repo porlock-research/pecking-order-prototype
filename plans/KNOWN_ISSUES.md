@@ -506,3 +506,267 @@ database_id = "<new-staging-id>"
 **Safety**: Steps 1-6 create new resources and modify config files only. The existing production workers/databases/bucket are untouched until step 7, which deploys to the same resource names CI was already deploying to — just via an explicit `--env production` flag instead of the implicit default.
 
 **Status**: Not started — foundational issue that blocks safe testing of all other PROD fixes
+
+## [PROD-022] Push notification architecture has multiple reliability and UX gaps
+
+**Priority**: Medium — push works for the happy path but has structural issues that cause stale/duplicate notifications in real-world usage.
+
+Audited the push notification implementation (`push-send.ts`, `push-triggers.ts`, `d1-persistence.ts`, `usePushNotifications.ts`, `sw.ts`) against Web Push best practices and traced the end-to-end lifecycle from alarm → state transition → push send → push service queue → device delivery. The architecture is clean (D1 global storage, HTTP API, fire-and-forget dispatch, configurable triggers), but has issues ranging from a fundamental schema flaw to the root cause of stale notifications players have observed.
+
+### Critical: Single device per user
+
+`PushSubscriptions` table uses `user_id TEXT PRIMARY KEY`. The `INSERT ... ON CONFLICT(user_id) DO UPDATE` upsert means **subscribing on device B silently kills device A's subscription**. A player who subscribes on their phone, then opens on desktop, loses phone notifications with no warning.
+
+```sql
+-- Current schema (migration 0003)
+CREATE TABLE PushSubscriptions (
+  user_id TEXT PRIMARY KEY,  -- ← only one row per user
+  endpoint TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+```
+
+**Fix**: Change PK to auto-increment, add unique constraint on `(user_id, endpoint)`. `pushToPlayer()` becomes a loop over all subscriptions for that user. Cleanup targets specific endpoints on 410/404.
+
+```sql
+-- Proposed schema
+CREATE TABLE PushSubscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  endpoint TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  UNIQUE(user_id, endpoint)
+);
+CREATE INDEX idx_push_user ON PushSubscriptions(user_id);
+```
+
+**Impact on code**:
+- `savePushSubscriptionD1` → upsert on `(user_id, endpoint)` instead of `user_id`
+- `getPushSubscriptionD1` → `getSubscriptionsForUser` returning array
+- `deletePushSubscriptionD1` → delete by `(user_id, endpoint)`, not just `user_id`
+- `pushToPlayer` → loop over subscriptions, cleanup expired per-endpoint
+- `pushBroadcast` → ideally batch query: `getSubscriptionsForUsers(db, userIds[])`
+
+### High: iOS standalone PWA can't subscribe
+
+iOS 16.4+ supports Web Push for Home Screen PWAs, but BUG-012 documents that the standalone PWA can't access the session JWT (isolated localStorage). If `findCachedToken()` returns null in standalone mode, the subscribe POST fails silently — browser permission is granted but no server-side subscription is created. The user thinks notifications are enabled but they aren't. No error is surfaced.
+
+**Tied to**: BUG-012 (iOS standalone session persistence). Fixing BUG-012 fixes this.
+
+### Medium: DM notifications replace each other
+
+All DM notifications share `tag: "dm"` with `renotify: true`. A player who receives 3 DMs from different people while away only sees the last one — the previous two are silently replaced. Should use per-conversation tags.
+
+**Fix**: In `handleFactPush`, change DM tag from `"dm"` to `"dm-${fact.actorId}"` (or `"dm-${channelId}"`). Same pattern should apply to other fact types where multiple instances are meaningful.
+
+### Low-priority issues
+
+**PushPrompt re-subscribes on every click**: Button is always visible when `permission === 'granted'`, even if already subscribed. Each click runs the full unsubscribe-old → fetch-VAPID → create-new → POST flow. Should show subscribed state and only re-subscribe if needed.
+
+**N+1 D1 queries per broadcast**: `pushBroadcast()` calls `pushToPlayer()` per player, each doing a separate `getPushSubscriptionD1()`. 8 queries for 8 players. Fine today, worse with multi-device. Fix with batch query `WHERE user_id IN (...)`.
+
+**No urgency differentiation**: All notifications use `urgency: "high"` and `TTL: 86400`. DMs (time-sensitive) get same treatment as phase transitions (can wait). Web Push spec supports `very-low`/`low`/`normal`/`high` — using appropriate levels helps mobile battery.
+
+**Stale subscriptions persist indefinitely**: Only cleaned up on 410/404 push failure. User uninstalls PWA without explicit unsubscribe → D1 row stays forever, wasting a push attempt + D1 read per broadcast. Add `updated_at` TTL check (e.g. 90 days) or periodic sweep.
+
+**VAPID key endpoint wakes DO unnecessarily**: `GET /parties/game-server/vapid-key` routes through the DO fetch handler. It only reads an env var — could be a module-level handler instead, avoiding a DO wake for a static value.
+
+**`sentPushKeys` dedup lost on DO restart**: In-memory `Set<string>` resets on eviction/restart. Phase transition notifications may be sent twice. Low impact (WebSocket keeps DO alive) but same class of problem as PROD-010.
+
+**No retry on transient push failures**: `sendPushNotification()` makes one attempt. Transient errors (network, push service overloaded) lose the notification. Web Push services may retry delivery to the device, but the initial POST to the push service is our responsibility.
+
+---
+
+### Root cause investigation: stale notifications
+
+Players have observed notifications arriving for events that already happened, and notifications for games that are no longer active. Traced three potential sources:
+
+#### Source 1: TTL = 86400 (24 hours) — most likely culprit
+
+`push-send.ts:22` hardcodes `ttl: 86400` for ALL notification types. When a push notification is sent, the push service (FCM for Chrome, APNs for Safari) queues it. If the player's device is offline (phone locked, tab closed, poor connectivity), the push service holds the notification for up to **24 hours** before discarding it.
+
+A player who doesn't open their phone for 8 hours sees "Voting has begun!" long after voting ended. The notification was correctly sent at the right time — the delivery is stale, not the send.
+
+Phase transition notifications use `tag: "phase"`, so successive phases (day-start → voting → night-summary) *should* replace each other at the push service level. But this only works if the device is awake to receive the replacement. If the device wakes after all phases have passed, it receives whichever was last queued — which may still be stale relative to current game state.
+
+For **game-over scenarios**: the last phase-transition push (e.g. "Night has fallen...") is queued with a 24-hour TTL. If the player's device was offline when the game ended, they get that stale notification when they come online — even though the game is done and has moved to `gameSummary`.
+
+**Fix**: Per-trigger TTL instead of a global 86400. Proposed values:
+
+| Trigger | Current TTL | Proposed TTL | Rationale |
+|---------|------------|-------------|-----------|
+| Phase transitions (DAY_START, VOTING, etc.) | 86400 | 300 (5 min) | Phase is time-bounded; stale delivery is confusing |
+| ACTIVITY | 86400 | 300 (5 min) | Activities have defined end times |
+| DAILY_GAME | 86400 | 600 (10 min) | Games run slightly longer |
+| DM_SENT | 86400 | 3600 (1 hour) | Personal message, worth delivering within an hour |
+| ELIMINATION | 86400 | 3600 (1 hour) | Dramatic event, worth seeing — but not a day later |
+| WINNER_DECLARED | 86400 | 86400 (24 hours) | Game-ending event, always worth seeing |
+
+Requires `sendPushNotification` to accept a TTL parameter instead of hardcoding.
+
+#### Source 2: `actor.start()` fires subscription on restore — duplicate push on every DO wake
+
+This is the most likely cause of the observed "same phase, same game, multiple notifications at different times" behavior.
+
+`this.actor.start()` (server.ts:340) fires the XState subscription callback immediately with the current snapshot. On a DO that restores from a persisted snapshot (cold start, deploy, alarm wake after eviction):
+
+1. `sentPushKeys` is empty (in-memory, lost on restart)
+2. `lastBroadcastState` is `''` (in-memory, lost on restart)
+3. `.start()` fires subscription with restored state (e.g., state includes "voting")
+4. `currentStateStr !== ''` → TRUE (empty string vs restored state)
+5. `stateToPush()` matches the current phase → returns payload
+6. `sentPushKeys.has("phase:Voting has begun!")` → FALSE (empty set)
+7. **Push is broadcast** — a duplicate of what was already sent when the phase started
+
+This happens on **every** DO restart while a phase is active. During a live game with WebSocket connections, the DO stays alive (no restarts). But:
+
+- If all players close their tabs overnight and an alarm fires the next morning → cold start → subscription fires → push sent
+- After a deploy (PROD-015) → all DOs restart → subscription fires → push sent
+- If DO is evicted due to inactivity and then wakes for any reason → subscription fires → push sent
+
+Each of these sends a fresh notification with the same body as the original phase notification. With `TTL: 86400` and `renotify: true`, the push service queues it for 24 hours and re-alerts the user on delivery.
+
+**This is the root cause.** The push dedup state (`sentPushKeys`, `lastBroadcastState`) is ephemeral while the game state (which drives `stateToPush()`) is persisted. Every restart re-sends the current phase notification.
+
+#### Source 2b: `sentPushKeys` not unique per day — blocks legitimate sends, doesn't prevent duplicates
+
+`stateToPush()` returns static bodies for most triggers:
+- VOTING: `"Voting has begun!"` (same Day 1, Day 2, Day 3)
+- NIGHT_SUMMARY: `"Night has fallen..."` (same every day)
+- DAILY_GAME: `"Game time!"` (same every day)
+- ACTIVITY: `"Activity time!"` (same every day)
+- DAY_START: `"Welcome to Day ${dayIndex}..."` (unique per day — only one that works correctly)
+
+The dedup key `${tag}:${body}` is `"phase:Voting has begun!"` every day. Day 1 voting push adds it to `sentPushKeys`. Day 2 voting push checks — key already present — **silently blocked**. Day 2+ voting/game/activity/nightSummary notifications are never sent (unless the DO restarted between days, which clears the set by accident).
+
+This is a bug in both directions:
+- **Blocks legitimate multi-day notifications** (Day 2+ phases silently dropped)
+- **Doesn't prevent restart duplicates** (set is empty after restart, so the same-day phase re-sends)
+
+**Fix**: Include day index in the dedup key: `"phase:d${dayIndex}:Voting has begun!"`. This makes keys unique per day while still deduplicating within a day.
+
+#### Source 2c: `renotify: true` makes push service retries feel like new notifications
+
+The service worker (sw.ts:72) sets `renotify: true` on all notifications. This tells the browser to re-alert (sound, vibration, banner) even when replacing an existing notification with the same `tag`. Combined with the 24-hour TTL, if a device goes offline and comes back, the push service may redeliver. Each redelivery triggers a fresh alert — the user perceives this as "getting the notification again" even though only one notification sits in the notification shade.
+
+This amplifies both the TTL problem (source 1) and the restart-duplicate problem (source 2). Even if the notification content is identical, `renotify: true` ensures the user is alerted every time.
+
+**Fix**: Use `renotify: false` for phase transitions (user doesn't need to be re-alerted for the same phase). Keep `renotify: true` only for DM_SENT (where each delivery is a distinct message from a different person).
+
+#### Source 3: stale alarms firing after game ends — NOT a push problem
+
+Verified that `gameSummary` and `gameOver` states do NOT handle `SYSTEM.WAKEUP` — XState drops the event. So stale PartyWhen tasks that fire after a game ends are no-ops for push purposes. They're wasteful (unnecessary DO wakes) but don't produce notifications. See PROD-017 for the operational noise issue.
+
+### Flush endpoint doesn't clear push state
+
+`handleFlushTasks()` (server.ts:499-516) clears PartyWhen's SQLite `tasks` table but does **not** clear `sentPushKeys`. After flushing and manually re-triggering phases (via ADMIN.NEXT_STAGE), push notifications for those phases are silently deduplicated out because the keys are still in the Set.
+
+```typescript
+// handleFlushTasks clears ONLY the scheduler tasks:
+(this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
+await (this.scheduler as any).scheduleNextAlarm();
+// sentPushKeys is NOT cleared — push dedup survives flush
+```
+
+This means the "Flush Alarms" admin button is incomplete — it resets scheduling but not notification state. If an admin needs to re-test phase notifications, they'd need a DO restart (which clears all in-memory state). Should add `this.sentPushKeys.clear()` to `handleFlushTasks()`.
+
+Separately, there is **no auto-flush on game end**. When a game transitions to `gameSummary` or `gameOver`, stale PartyWhen tasks for future days remain in the SQLite table. They fire when their scheduled time arrives, waking the DO unnecessarily. Not harmful (WAKEUP is dropped) but wasteful.
+
+### Client re-subscription behavior — mostly safe
+
+Traced every code path that calls `POST /api/push/subscribe`:
+
+1. **Mount-time re-sync** (usePushNotifications.ts:43-91): Fires once per page load. Gets the **existing** browser subscription via `pushManager.getSubscription()` and re-syncs it to D1. Uses the same endpoint — the D1 upsert is idempotent. Safe.
+
+2. **Explicit subscribe** (user clicks "Alerts" button): Calls `unsubscribe()` on old browser subscription → `subscribe()` creates **new endpoint** → POSTs new endpoint to D1. The old endpoint is overwritten in D1 (keyed by user_id). The browser-side `unsubscribe()` tells the push service to invalidate the old endpoint. Safe in normal flow.
+
+3. **Shell switching** (Classic ↔ Immersive): Triggers `window.location.reload()` → full page remount → mount-time re-sync with same cached token and same browser endpoint. Idempotent. Safe.
+
+The client does NOT re-subscribe during gameplay — `activeToken` is set once on mount and never changes. Tab switching, route navigation, and WebSocket reconnection do NOT trigger re-subscription.
+
+**One edge case**: Rapid double-click on "Alerts" button. Click 1 creates endpoint-A, click 2 creates endpoint-B. D1 has endpoint-B. endpoint-A is orphaned at the push service (browser unsubscribed it, but push service cleanup is async). In the brief window before the push service processes the unsubscribe, a notification could be delivered to both endpoints. Extremely unlikely in practice, but a debounce on the button would eliminate it.
+
+**Verdict**: Client re-subscription is not a meaningful source of duplicate notifications. The TTL issue (source 1) is the primary cause.
+
+### OneSignal evaluation — does not fit
+
+Evaluated [OneSignal](https://onesignal.com/) as a potential third-party replacement. **Ruled out due to service worker conflict.**
+
+OneSignal's web SDK requires its own service worker at the top-level scope. Per their docs and [GitHub issues](https://github.com/OneSignal/OneSignal-Website-SDK/issues/310), "OneSignal's service worker files overwrite other service workers registered with the topmost scope." We rely on our custom SW (`sw.ts`) for:
+- Workbox precaching (vite-plugin-pwa injectManifest strategy)
+- Session cache bridge (iOS standalone PWA workaround for BUG-012)
+- Custom notification display + click-to-focus handling
+
+[Workarounds exist](https://github.com/OneSignal/OneSignal-Website-SDK/issues/306) for coexisting service workers, but they're fragile — OneSignal's SW only registers when push permission is granted, which would break our precaching for non-subscribed users.
+
+Other concerns:
+- Extra latency: DO → OneSignal API → push service (additional hop)
+- Their [client SDK](https://github.com/OneSignal/OneSignal-Website-SDK) wants to own subscription management, conflicting with our JWT identity model
+- Privacy: player push endpoints stored on third-party servers
+- [Pricing](https://onesignal.com/pricing): $0.004/web push subscriber/month — small but unnecessary
+
+What OneSignal solves (multi-device, delivery analytics, auto-cleanup, smart TTL) is all fixable in our current implementation. The self-hosted approach is correct for this architecture — the issues are configuration/schema problems, not fundamental design problems.
+
+### What's done well
+
+- JWT auth on subscribe/unsubscribe (not cookie-based)
+- Always-fresh VAPID key fetch (prevents key mismatch across envs)
+- Stale subscription cleanup before new subscribe (ADR-050)
+- `Promise.allSettled` for broadcast (one failure doesn't block others)
+- Configurable per-game trigger enable/disable via manifest
+- Clean separation from game logic (fire-and-forget)
+- Proper `waitUntil` in service worker handlers
+- Click handler focuses existing tab before opening new one
+- Expired subscription auto-cleanup on 410/404
+
+### Architectural fix: Move phase push from subscription callback to XState entry actions
+
+The root cause is architectural: phase-based push fires from the L1 subscription callback, which runs on every snapshot emission — including `actor.start()` on restore. The dedup state (`sentPushKeys`, `lastBroadcastState`) is ephemeral, so every DO restart re-sends the current phase notification.
+
+**The fix**: XState does NOT re-run entry actions when restoring from a persisted snapshot. `actor.start()` resumes in the current state without transitioning into it, so entry actions don't fire. Moving push from the subscription callback into state entry actions eliminates the dedup problem entirely — no `sentPushKeys` needed, no day-scoping bug, no persistence concern.
+
+**Two push paths exist today**:
+
+| Path | Trigger | Mechanism | Status |
+|------|---------|-----------|--------|
+| **Fact-based** (user-originated) | DM_SENT, ELIMINATION, WINNER_DECLARED | `persistFactToD1` XState action (L1 `.provide()`) → `handleFactPush()` | Already correct — fires on actual events, never on restore |
+| **Phase-based** (system-originated) | DAY_START, VOTING, NIGHT_SUMMARY, DAILY_GAME, ACTIVITY | L1 subscription callback → `stateToPush()` → `pushBroadcast()` | Broken — fires on restore, causing duplicates |
+
+**Implementation plan for phase-based push**:
+
+1. **L2 states** (morningBriefing, nightSummary): Add push entry actions directly. L1 `.provide()` overrides with DO-context-aware push logic (same pattern as `persistFactToD1`).
+
+2. **L3 states** (voting, dailyGame, activityLayer.playing): L3 can't access DO resources directly. Follow existing event-routing pattern: L3 entry action calls `sendParent({ type: 'PUSH.PHASE', phase: 'VOTING' })`, L2 handles with a `deliverPushNotification` action, L1 `.provide()` overrides with actual push logic.
+
+3. **Remove from subscription callback**: Delete push logic from subscription (lines 284-293 in server.ts). Remove `sentPushKeys` field, `lastBroadcastState` (push portion), and `stateToPush()` function.
+
+**After this change**: Both push paths are XState actions — they fire on actual events/transitions, never on restore. The subscription callback is left with only its legitimate responsibilities: snapshot persistence, SYNC broadcast, and ticker generation.
+
+### Long-term: Unified push via FACT.RECORD pipeline
+
+The fact-based push path is already correct and durable. Phase transitions are conceptually "facts" too — they're system-originated events that should flow through the same pipeline. Long-term, all push notifications should route through `FACT.RECORD`:
+
+- Phase transitions emit facts like `{ type: 'PHASE_TRANSITION', phase: 'VOTING', dayIndex: 2 }`
+- `persistFactToD1` handles push for ALL fact types uniformly
+- Single pipeline for D1 persistence, ticker generation, and push notifications
+- Push trigger configuration (`manifest.pushConfig`) still gates which facts produce notifications
+
+This unification isn't required for the immediate fix (entry actions solve the duplication problem now), but it's the correct end state — one event pipeline, one push mechanism, one place to reason about notification behavior.
+
+### Other fixes (still needed alongside the architectural change)
+
+| Fix | Impact | Effort |
+|-----|--------|--------|
+| Per-trigger TTL (5 min for phases, 1 hour for DMs, 24h for winner) | Eliminates stale late-delivery notifications | Low |
+| `renotify: false` for phase transitions | Prevents push service retries from feeling like new notifications | Trivial |
+| Auto-flush PartyWhen tasks on game end | Stops stale alarm wakes after game over | Low |
+| Multi-device schema (`UNIQUE(user_id, endpoint)`) | Fixes single-device-per-user limitation | Medium |
+| Batch D1 queries for broadcast | Performance improvement for multi-device | Low |
+
+**Status**: Root cause identified and architectural fix designed. Phase push will move from L1 subscription callback to XState entry actions (eliminating restart duplicates by design). Long-term, all push unifies through the FACT.RECORD pipeline.
