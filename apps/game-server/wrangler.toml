@@ -1,30 +1,48 @@
-name = "game-server"
+name = "game-server-dev"
 main = "src/server.ts"
 compatibility_date = "2024-02-07"
 compatibility_flags = ["nodejs_compat"]
-
-# PartyServer requires a Durable Object binding
-[[durable_objects.bindings]]
-name = "GameServer"
-class_name = "GameServer"
 
 # Migrations for DO state (required for new DO classes)
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["GameServer"]
 
-# D1 Database Binding (for Journal)
-[[d1_databases]]
+[observability]
+enabled = true
+
+# ── Staging ──────────────────────────────────────────────
+[env.staging]
+name = "game-server-staging"
+
+[[env.staging.durable_objects.bindings]]
+name = "GameServer"
+class_name = "GameServer"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "pecking-order-journal-db-staging"
+database_id = "660e4807-b2ea-4d1c-b412-91877fbcbf81"
+
+[env.staging.vars]
+AXIOM_DATASET = "pecking-order-staging"
+VAPID_PUBLIC_KEY = "BCGjVUVQUKz31CzbSrBGfJgAl98xXfS9sY4XfVK7MiIvCWBA5oUmwe_dBWMf_MXCOrs6WW9PPL59pHYG8vYV5ac"
+GAME_CLIENT_HOST = "https://pecking-order-client-staging.pages.dev"
+
+# ── Production ───────────────────────────────────────────
+[env.production]
+name = "game-server"
+
+[[env.production.durable_objects.bindings]]
+name = "GameServer"
+class_name = "GameServer"
+
+[[env.production.d1_databases]]
 binding = "DB"
 database_name = "pecking-order-journal-db"
 database_id = "c5941589-2d69-4ae1-9b5d-0554f2ad9721"
 
-[observability]
-enabled = true
-
-# Axiom Secrets (Logging)
-[vars]
+[env.production.vars]
 AXIOM_DATASET = "pecking-order"
 VAPID_PUBLIC_KEY = "BDCbn388daKAMq3g1PyJ5nqfi3btLvsjIFllFkwN4S_hgoXwLBWI0JYY9XMTXhXyX-fEqPDfZKoP0EJ9hNM1OzQ"
 GAME_CLIENT_HOST = "https://pecking-order-client.pages.dev"
-# AXIOM_TOKEN, AXIOM_ORG_ID, AUTH_SECRET, and VAPID_PRIVATE_JWK must be set via `wrangler secret put`

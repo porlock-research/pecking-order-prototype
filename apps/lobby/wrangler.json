@@ -1,35 +1,50 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
-  "name": "pecking-order-lobby",
+  "name": "pecking-order-lobby-dev",
   "compatibility_date": "2024-12-30",
-  "compatibility_flags": [
-    "nodejs_compat",
-    "global_fetch_strictly_public"
-  ],
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-  "observability": {
-    "enabled": true
-  },
-  "vars": {
-    "GAME_SERVER_HOST": "https://game-server.porlock.workers.dev",
-    "GAME_CLIENT_HOST": "https://pecking-order-client.pages.dev",
-    "PERSONA_ASSETS_URL": ""
-  },
-  "r2_buckets": [
-    {
-      "binding": "PERSONA_BUCKET",
-      "bucket_name": "pecking-order-assets"
+  "observability": { "enabled": true },
+  "env": {
+    "staging": {
+      "name": "pecking-order-lobby-staging",
+      "vars": {
+        "GAME_SERVER_HOST": "https://game-server-staging.porlock.workers.dev",
+        "GAME_CLIENT_HOST": "https://pecking-order-client-staging.pages.dev",
+        "PERSONA_ASSETS_URL": ""
+      },
+      "r2_buckets": [
+        { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets-staging" }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "pecking-order-lobby-db-staging",
+          "database_id": "9324e864-a4dc-4719-8853-3e57d41e8d1f"
+        }
+      ]
+    },
+    "production": {
+      "name": "pecking-order-lobby",
+      "vars": {
+        "GAME_SERVER_HOST": "https://game-server.porlock.workers.dev",
+        "GAME_CLIENT_HOST": "https://pecking-order-client.pages.dev",
+        "PERSONA_ASSETS_URL": ""
+      },
+      "r2_buckets": [
+        { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets" }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "pecking-order-lobby-db",
+          "database_id": "f90367aa-0f60-436d-81c3-c65c342d0d4b"
+        }
+      ]
     }
-  ],
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "pecking-order-lobby-db",
-      "database_id": "f90367aa-0f60-436d-81c3-c65c342d0d4b"
-    }
-  ]
+  }
 }
