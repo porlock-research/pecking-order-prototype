@@ -31,6 +31,8 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      - name: Build workspace dependencies
+        run: npx turbo run build --filter='./packages/*'
       - name: Apply Lobby D1 Migrations (Production)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -75,6 +77,8 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      - name: Build workspace dependencies
+        run: npx turbo run build --filter='./packages/*'
       - name: Apply Game Server D1 Migrations (Production)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -19,6 +19,8 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      - name: Build workspace dependencies
+        run: npx turbo run build --filter='./packages/*'
       - name: Apply Lobby D1 Migrations (Staging)
         if: env.CF_API_TOKEN != ''
         env:
@@ -71,6 +73,8 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      - name: Build workspace dependencies
+        run: npx turbo run build --filter='./packages/*'
       - name: Apply Game Server D1 Migrations (Staging)
         if: env.CF_API_TOKEN != ''
         env:
