@@ -73,8 +73,10 @@ function getGameCodeFromPath(): string | null {
  * When the user taps "Add to Home Screen" on iOS, the manifest is read at that instant —
  * so the standalone PWA will launch pre-authenticated at /game/CODE?_t=JWT.
  * Uses a data: URL (not blob:) because iOS reliably reads data URLs during install.
+ * All URLs must be absolute — data: URLs have no origin to resolve relative paths against.
  */
 function updatePwaManifest(gameCode: string, jwt: string) {
+  const origin = window.location.origin;
   const manifest = {
     name: 'Pecking Order',
     short_name: 'Pecking Order',
@@ -82,12 +84,12 @@ function updatePwaManifest(gameCode: string, jwt: string) {
     theme_color: '#0f0a1a',
     background_color: '#0f0a1a',
     display: 'standalone',
-    scope: '/',
-    start_url: `/game/${gameCode}?_t=${jwt}`,
+    scope: `${origin}/`,
+    start_url: `${origin}/game/${gameCode}?_t=${jwt}`,
     icons: [
-      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-      { src: '/icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: `${origin}/icons/icon-192.png`, sizes: '192x192', type: 'image/png' },
+      { src: `${origin}/icons/icon-512.png`, sizes: '512x512', type: 'image/png' },
+      { src: `${origin}/icons/icon-512-maskable.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   };
   const encoded = encodeURIComponent(JSON.stringify(manifest));
@@ -123,6 +125,23 @@ function recoverFromCookie(gameCode: string): string | null {
     const decoded = decodeGameToken(jwt);
     if (decoded.exp && decoded.exp > Date.now() / 1000) return jwt;
   } catch {}
+  return null;
+}
+
+/** Scan all po_pwa_* cookies for a valid game token. Used at `/` (no game code in URL)
+ *  to auto-navigate into a game when the cookie bridge carried a token from Safari. */
+function recoverGameFromCookies(): { gameCode: string; jwt: string } | null {
+  const matches = document.cookie.matchAll(/po_pwa_([^=]+)=([^;]+)/g);
+  const now = Date.now() / 1000;
+  for (const m of matches) {
+    try {
+      const jwt = m[2];
+      const decoded = decodeGameToken(jwt);
+      if (decoded.exp && decoded.exp > now) {
+        return { gameCode: m[1], jwt };
+      }
+    } catch {}
+  }
   return null;
 }
 
@@ -265,6 +284,14 @@ export default function App() {
         }
         setRecovering(false);
       } else {
+        // No game code in URL — check cookies for a token carried from Safari (PWA install)
+        const fromCookie = recoverGameFromCookies();
+        if (fromCookie) {
+          applyToken(fromCookie.jwt, fromCookie.gameCode, setGameId, setPlayerId, setToken);
+          setRecovering(false);
+          return;
+        }
+
         // Legacy: plain query param entry (backward compat for debug)
         const gid = params.get('gameId');
         const pid = params.get('playerId') || 'p1';
