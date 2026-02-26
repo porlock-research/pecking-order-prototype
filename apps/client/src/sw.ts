@@ -11,52 +11,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// ── Cache API bridge for token persistence ──────────────────────────────
-// Shared between Safari and standalone PWA on iOS (unlike localStorage).
-// Virtual endpoint: /api/session-cache
-const TOKEN_CACHE = 'po-tokens-v1';
-
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  if (url.pathname !== '/api/session-cache') return;
-
-  if (event.request.method === 'POST') {
-    event.respondWith(
-      event.request.json().then(async (data: { key: string; value: string }) => {
-        const cache = await caches.open(TOKEN_CACHE);
-        await cache.put(
-          new Request(`/api/session-cache/${data.key}`),
-          new Response(data.value),
-        );
-        return new Response('ok');
-      }),
-    );
-  } else if (event.request.method === 'GET') {
-    event.respondWith(
-      (async () => {
-        const cache = await caches.open(TOKEN_CACHE);
-        const keys = await cache.keys();
-        const tokens: Record<string, string> = {};
-        for (const req of keys) {
-          const key = new URL(req.url).pathname.replace('/api/session-cache/', '');
-          const res = await cache.match(req);
-          if (res) tokens[key] = await res.text();
-        }
-        return new Response(JSON.stringify(tokens), {
-          headers: { 'Content-Type': 'application/json' },
-        });
-      })(),
-    );
-  } else if (event.request.method === 'DELETE') {
-    event.respondWith(
-      event.request.json().then(async (data: { key: string }) => {
-        const cache = await caches.open(TOKEN_CACHE);
-        await cache.delete(new Request(`/api/session-cache/${data.key}`));
-        return new Response('ok');
-      }),
-    );
-  }
-});
+// ── Token persistence ────────────────────────────────────────────────────
+// Token read/write now uses caches.open() directly from the page context
+// (App.tsx), bypassing the SW entirely. This avoids the race condition where
+// navigator.serviceWorker.controller is null on first visit, preventing the
+// Cache API write. The SW no longer needs a fetch handler for token storage.
 
 // Push notification handler
 self.addEventListener('push', (event) => {
@@ -75,6 +34,10 @@ self.addEventListener('push', (event) => {
       badge: '/icons/badge-72.png',
       tag,
       renotify,
+      // Keep notification visible until user interacts (no auto-dismiss on desktop).
+      // Important notifications (DMs, eliminations, winner) always persist;
+      // phase notifications persist too since they're time-sensitive game events.
+      requireInteraction: true,
       data: { url: data.url || self.location.origin },
     };
 

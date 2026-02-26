@@ -25,6 +25,40 @@ function pruneExpiredTokens() {
   keysToRemove.forEach(k => localStorage.removeItem(k));
 }
 
+/** Sync tokens from Cache API into localStorage (for iOS standalone PWA).
+ *  Cache API is shared between Safari and standalone; localStorage is not.
+ *  Running this on mount ensures LauncherScreen and findCachedToken see all tokens. */
+async function syncCacheToLocalStorage(): Promise<void> {
+  if (!('caches' in window)) return;
+  try {
+    const cache = await caches.open('po-tokens-v1');
+    const keys = await cache.keys();
+    const now = Math.floor(Date.now() / 1000);
+    for (const req of keys) {
+      const path = new URL(req.url).pathname;
+      // Support both old prefix (/api/session-cache/) and new (/po-token-cache/)
+      const tokenKey = path.replace('/po-token-cache/', '').replace('/api/session-cache/', '');
+      if (!tokenKey.startsWith('po_token_')) continue;
+      // Skip if already in localStorage
+      if (localStorage.getItem(tokenKey)) continue;
+      const res = await cache.match(req);
+      if (!res) continue;
+      const jwt = await res.text();
+      try {
+        const decoded = decodeGameToken(jwt);
+        if (decoded.exp && decoded.exp > now) {
+          localStorage.setItem(tokenKey, jwt);
+        } else {
+          // Expired — clean up from cache too
+          cache.delete(req);
+        }
+      } catch {
+        cache.delete(req);
+      }
+    }
+  } catch {}
+}
+
 /**
  * Extracts a game code from the URL path (e.g. /game/X7K2MP → X7K2MP)
  */
@@ -33,24 +67,27 @@ function getGameCodeFromPath(): string | null {
   return match ? match[1].toUpperCase() : null;
 }
 
-/** Persist a token to Cache API (shared between Safari and standalone PWA on iOS). */
+/** Persist a token to Cache API (shared between Safari and standalone PWA on iOS).
+ *  Uses caches.open() directly — no dependency on SW being registered or controlling. */
 function persistToCache(gameCode: string, jwt: string) {
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    fetch('/api/session-cache', {
-      method: 'POST',
-      body: JSON.stringify({ key: `po_token_${gameCode}`, value: jwt }),
-    }).catch(() => {}); // fire-and-forget
-  }
+  if (!('caches' in window)) return;
+  caches.open('po-tokens-v1').then(cache =>
+    cache.put(
+      new Request(`/po-token-cache/po_token_${gameCode}`),
+      new Response(jwt),
+    )
+  ).catch(() => {}); // fire-and-forget
 }
 
-/** Try to recover a token from the Cache API (iOS standalone PWA fallback). */
+/** Try to recover a token from the Cache API (iOS standalone PWA fallback).
+ *  Uses caches.open() directly — no dependency on SW being registered or controlling. */
 async function recoverFromCacheApi(gameCode: string): Promise<string | null> {
-  if (!('serviceWorker' in navigator)) return null;
+  if (!('caches' in window)) return null;
   try {
-    const res = await fetch('/api/session-cache');
-    if (!res.ok) return null;
-    const tokens: Record<string, string> = await res.json();
-    const jwt = tokens[`po_token_${gameCode}`];
+    const cache = await caches.open('po-tokens-v1');
+    const res = await cache.match(new Request(`/po-token-cache/po_token_${gameCode}`));
+    if (!res) return null;
+    const jwt = await res.text();
     if (jwt) {
       const decoded = decodeGameToken(jwt);
       if (decoded.exp && decoded.exp > Date.now() / 1000) {
@@ -109,68 +146,77 @@ export default function App() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [recovering, setRecovering] = useState(false);
+  const [recovering, setRecovering] = useState(true); // true until init completes
 
   useEffect(() => {
-    pruneExpiredTokens();
-    const params = new URLSearchParams(window.location.search);
-    const gameCode = getGameCodeFromPath();
-    const transientToken = params.get('_t');
-    const rawToken = params.get('token');
+    init();
 
-    if (gameCode && transientToken) {
-      // Arrived via lobby redirect: /game/CODE?_t=JWT
-      try {
-        applyToken(transientToken, gameCode, setGameId, setPlayerId, setToken);
-      } catch {
-        console.error('Invalid token from redirect');
-      }
-    } else if (gameCode) {
-      // Clean URL visit: /game/CODE — walk the recovery chain
-      const cached = localStorage.getItem(`po_token_${gameCode}`);
-      if (cached) {
-        // Step 1: localStorage hit
+    async function init() {
+      // Sync Cache API → localStorage first (iOS standalone PWA needs this)
+      await syncCacheToLocalStorage();
+      pruneExpiredTokens();
+
+      const params = new URLSearchParams(window.location.search);
+      const gameCode = getGameCodeFromPath();
+      const transientToken = params.get('_t');
+      const rawToken = params.get('token');
+
+      if (gameCode && transientToken) {
+        // Arrived via lobby redirect: /game/CODE?_t=JWT
         try {
-          applyToken(cached, gameCode, setGameId, setPlayerId, setToken);
+          applyToken(transientToken, gameCode, setGameId, setPlayerId, setToken);
         } catch {
-          localStorage.removeItem(`po_token_${gameCode}`);
-          console.error('Cached token invalid');
-          // Fall through to async recovery
-          runAsyncRecovery(gameCode);
+          console.error('Invalid token from redirect');
         }
+        setRecovering(false);
+      } else if (gameCode) {
+        // Clean URL visit: /game/CODE — walk the recovery chain
+        const cached = localStorage.getItem(`po_token_${gameCode}`);
+        if (cached) {
+          // Step 1: localStorage hit (may include tokens synced from Cache API above)
+          try {
+            applyToken(cached, gameCode, setGameId, setPlayerId, setToken);
+            setRecovering(false);
+          } catch {
+            localStorage.removeItem(`po_token_${gameCode}`);
+            console.error('Cached token invalid');
+            await runAsyncRecovery(gameCode);
+          }
+        } else {
+          // Steps 2-4: async recovery chain
+          await runAsyncRecovery(gameCode);
+        }
+      } else if (rawToken) {
+        // Direct JWT entry: ?token=JWT (debug links from lobby)
+        try {
+          applyToken(rawToken, null, setGameId, setPlayerId, setToken);
+        } catch {
+          console.error('Invalid token');
+        }
+        setRecovering(false);
       } else {
-        // Steps 2-4: async recovery chain
-        runAsyncRecovery(gameCode);
-      }
-    } else if (rawToken) {
-      // Direct JWT entry: ?token=JWT (debug links from lobby)
-      try {
-        applyToken(rawToken, null, setGameId, setPlayerId, setToken);
-      } catch {
-        console.error('Invalid token');
-      }
-    } else {
-      // Legacy: plain query param entry (backward compat for debug)
-      const gid = params.get('gameId');
-      const pid = params.get('playerId') || 'p1';
-      setGameId(gid);
-      setPlayerId(pid);
-      if (pid) {
-        useGameStore.getState().setPlayerId(pid);
+        // Legacy: plain query param entry (backward compat for debug)
+        const gid = params.get('gameId');
+        const pid = params.get('playerId') || 'p1';
+        setGameId(gid);
+        setPlayerId(pid);
+        if (pid) {
+          useGameStore.getState().setPlayerId(pid);
+        }
+        setRecovering(false);
       }
     }
 
     async function runAsyncRecovery(code: string) {
-      setRecovering(true);
       try {
-        // Step 2: Cache API (iOS standalone PWA cross-boundary)
+        // Step 2: Cache API (already synced to localStorage above, but try direct read as fallback)
         const fromCache = await recoverFromCacheApi(code);
         if (fromCache) {
           applyToken(fromCache, code, setGameId, setPlayerId, setToken);
           return;
         }
 
-        // Step 3: Lobby API (mint fresh JWT via po_session cookie)
+        // Step 3: Lobby API (mint fresh JWT via po_session cookie — browser only, not standalone)
         const fromLobby = await refreshFromLobby(code);
         if (fromLobby) {
           applyToken(fromLobby, code, setGameId, setPlayerId, setToken);

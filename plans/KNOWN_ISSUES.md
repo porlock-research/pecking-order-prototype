@@ -62,11 +62,17 @@ The expanded header view feels disorganized — no clear visual hierarchy or gov
 
 ## [BUG-012] iOS standalone PWA does not preserve session
 
-When a player saves the client app to their iOS home screen, the standalone PWA launches without an active session. iOS gives standalone PWAs completely isolated storage (localStorage, cookies, IndexedDB) from Safari. A 4-step recovery chain was implemented (localStorage → Cache API → lobby API → redirect) but does not resolve the issue in practice. The Cache API bridge in the Service Worker may also be sandboxed, and the lobby's `po_session` cookie is unreachable from the standalone context. Needs further research into iOS PWA storage boundaries.
+When a player saves the client app to their iOS home screen, the standalone PWA launches without an active session. iOS gives standalone PWAs isolated localStorage, cookies, and IndexedDB from Safari. However, since iOS 14, **Service Worker registrations and CacheStorage ARE shared** between Safari and standalone PWA.
 
-**Relevant files**: `plans/PWA_SESSION_PERSISTENCE.md`, `apps/client/src/sw.ts`, `apps/client/src/App.tsx`, `apps/lobby/app/api/refresh-token/[code]/route.ts`
+A 4-step recovery chain was previously implemented (localStorage → Cache API via SW → lobby API → redirect) but the Cache API write was broken: `persistToCache()` gated on `navigator.serviceWorker.controller` being truthy, which is `null` on the first page load (before the SW calls `clients.claim()`). Since the token arrives on the first visit (via lobby redirect), the Cache API write was silently skipped, and the token only went to localStorage. When the standalone PWA later launched with isolated localStorage, Cache API had nothing to recover.
 
-**Status**: Not resolved — recovery chain implemented but ineffective on iOS standalone PWA. Needs alternative approach.
+**Fix**: Replaced SW fetch handler approach with direct `caches.open()` from the page context. This has no dependency on SW registration or controller state. Added `syncCacheToLocalStorage()` on app mount to copy Cache API tokens into localStorage before rendering, ensuring `LauncherScreen` and `findCachedToken` see all tokens in standalone mode.
+
+**Relevant files**: `apps/client/src/App.tsx`, `apps/client/src/sw.ts`, `apps/lobby/app/api/refresh-token/[code]/route.ts`
+
+**Status**: Fixed — direct Cache API access bypasses SW controller race condition. Tokens written to Cache API on every `applyToken()` call, recovered on mount via `syncCacheToLocalStorage()`. Push subscription in standalone mode should now also work (tokens available in localStorage after sync).
+
+**Remaining risk**: iOS may clear CacheStorage after ~7 days of PWA inactivity. If this happens, the lobby API fallback (step 3) handles browser contexts, and the redirect fallback (step 4) handles standalone. The 7-day window is sufficient for active games.
 
 ## [BUG-013] Scheduler alarms lost on DO restart (ADR-012 race)
 
@@ -559,11 +565,11 @@ CREATE INDEX idx_push_user ON PushSubscriptions(user_id);
 - `pushToPlayer` → loop over subscriptions, cleanup expired per-endpoint
 - `pushBroadcast` → ideally batch query: `getSubscriptionsForUsers(db, userIds[])`
 
-### High: iOS standalone PWA can't subscribe
+### ~~High: iOS standalone PWA can't subscribe~~
 
-iOS 16.4+ supports Web Push for Home Screen PWAs, but BUG-012 documents that the standalone PWA can't access the session JWT (isolated localStorage). If `findCachedToken()` returns null in standalone mode, the subscribe POST fails silently — browser permission is granted but no server-side subscription is created. The user thinks notifications are enabled but they aren't. No error is surfaced.
+~~iOS 16.4+ supports Web Push for Home Screen PWAs, but BUG-012 documents that the standalone PWA can't access the session JWT (isolated localStorage). If `findCachedToken()` returns null in standalone mode, the subscribe POST fails silently.~~
 
-**Tied to**: BUG-012 (iOS standalone session persistence). Fixing BUG-012 fixes this.
+**Status**: Fixed via BUG-012 fix — `syncCacheToLocalStorage()` on mount ensures tokens are in localStorage before push subscription runs.
 
 ### Medium: DM notifications replace each other
 

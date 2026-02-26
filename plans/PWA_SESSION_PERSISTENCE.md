@@ -47,9 +47,11 @@ Already implemented on branch `fix/pwa-session-persistence`:
 
 ### Step 2: Cache API Bridge
 
-Persist JWTs in the Service Worker's Cache API, which is shared between Safari and standalone PWA on iOS.
+Persist JWTs in the Cache API, which is shared between Safari and standalone PWA on iOS (since iOS 14).
 
-**`apps/client/src/sw.ts`** — Add virtual endpoint handler:
+**UPDATE**: The original SW fetch handler approach was broken — `persistToCache()` gated on `navigator.serviceWorker.controller`, which is null on first page load. Replaced with direct `caches.open()` from the page context. The SW fetch handler has been removed. Added `syncCacheToLocalStorage()` on app mount to copy cached tokens into localStorage before rendering.
+
+~~**`apps/client/src/sw.ts`** — Add virtual endpoint handler:~~
 
 ```typescript
 const TOKEN_CACHE = 'po-tokens-v1';
