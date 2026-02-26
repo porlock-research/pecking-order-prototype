@@ -62,17 +62,21 @@ The expanded header view feels disorganized — no clear visual hierarchy or gov
 
 ## [BUG-012] iOS standalone PWA does not preserve session
 
-When a player saves the client app to their iOS home screen, the standalone PWA launches without an active session. iOS gives standalone PWAs isolated localStorage, cookies, and IndexedDB from Safari. However, since iOS 14, **Service Worker registrations and CacheStorage ARE shared** between Safari and standalone PWA.
+When a player saves the client app to their iOS home screen, the standalone PWA launches without an active session. iOS gives standalone PWAs completely isolated storage (localStorage, cookies, IndexedDB, **and CacheStorage**) from Safari.
 
-A 4-step recovery chain was previously implemented (localStorage → Cache API via SW → lobby API → redirect) but the Cache API write was broken: `persistToCache()` gated on `navigator.serviceWorker.controller` being truthy, which is `null` on the first page load (before the SW calls `clients.claim()`). Since the token arrives on the first visit (via lobby redirect), the Cache API write was silently skipped, and the token only went to localStorage. When the standalone PWA later launched with isolated localStorage, Cache API had nothing to recover.
+**Previous assumption was wrong**: older blog posts claimed CacheStorage was shared between Safari and standalone PWA since iOS 14. Testing on iPadOS 18.6.2 confirms this is NOT the case — CacheStorage is fully partitioned. The `syncCacheToLocalStorage()` bridge finds nothing because tokens written in Safari live in a different storage partition.
 
-**Fix**: Replaced SW fetch handler approach with direct `caches.open()` from the page context. This has no dependency on SW registration or controller state. Added `syncCacheToLocalStorage()` on app mount to copy Cache API tokens into localStorage before rendering, ensuring `LauncherScreen` and `findCachedToken` see all tokens in standalone mode.
+**Current mitigations**:
+1. **Game code entry on LauncherScreen** — standalone users can type their game code, which navigates to `/game/CODE` and triggers the recovery chain. The lobby redirect (step 4) handles re-authentication.
+2. **Cache API bridge** — still useful within the same context (e.g., Safari-to-Safari after clearing localStorage, or standalone-to-standalone across launches). Not useful for Safari→standalone transfer.
+3. **Lobby API refresh** (step 3) — works in Safari (has `po_session` cookie), fails in standalone (cookie sandboxed).
+4. **Lobby redirect** (step 4) — last resort, always works but requires re-authentication via magic link. On standalone, the lobby opens within the PWA context; however magic link emails open in Safari, not the standalone PWA, creating a UX gap.
+
+**Remaining limitation**: First launch of standalone PWA always requires re-authentication. Once authenticated within the standalone context, subsequent launches find the token in standalone-localStorage. The only seamless fix would be in-app code-based verification (enter a 6-digit code from email without leaving the PWA), which would require changes to the lobby auth system.
 
 **Relevant files**: `apps/client/src/App.tsx`, `apps/client/src/sw.ts`, `apps/lobby/app/api/refresh-token/[code]/route.ts`
 
-**Status**: Fixed — direct Cache API access bypasses SW controller race condition. Tokens written to Cache API on every `applyToken()` call, recovered on mount via `syncCacheToLocalStorage()`. Push subscription in standalone mode should now also work (tokens available in localStorage after sync).
-
-**Remaining risk**: iOS may clear CacheStorage after ~7 days of PWA inactivity. If this happens, the lobby API fallback (step 3) handles browser contexts, and the redirect fallback (step 4) handles standalone. The 7-day window is sufficient for active games.
+**Status**: Partially mitigated — game code entry prevents dead-end LauncherScreen; recovery chain handles re-auth. Full seamlessness blocked by iOS storage partitioning.
 
 ## [BUG-013] Scheduler alarms lost on DO restart (ADR-012 race)
 
@@ -569,7 +573,7 @@ CREATE INDEX idx_push_user ON PushSubscriptions(user_id);
 
 ~~iOS 16.4+ supports Web Push for Home Screen PWAs, but BUG-012 documents that the standalone PWA can't access the session JWT (isolated localStorage). If `findCachedToken()` returns null in standalone mode, the subscribe POST fails silently.~~
 
-**Status**: Fixed via BUG-012 fix — `syncCacheToLocalStorage()` on mount ensures tokens are in localStorage before push subscription runs.
+**Status**: Partially mitigated — `syncCacheToLocalStorage()` on mount copies Cache API tokens to localStorage, but since Cache API is also partitioned on iOS 18 (see BUG-012 update), push subscription in standalone only works after the user re-authenticates within the standalone context (via game code entry → recovery chain).
 
 ### Medium: DM notifications replace each other
 

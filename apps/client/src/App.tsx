@@ -274,6 +274,7 @@ export default function App() {
  * Scans localStorage for cached game tokens and lists them.
  */
 function LauncherScreen() {
+  const [codeInput, setCodeInput] = React.useState('');
   const cachedGames: Array<{ code: string; personaName: string; gameId: string }> = [];
 
   for (let i = 0; i < localStorage.length; i++) {
@@ -289,6 +290,14 @@ function LauncherScreen() {
           // Invalid token — skip
         }
       }
+    }
+  }
+
+  function handleJoinByCode(e: React.FormEvent) {
+    e.preventDefault();
+    const code = codeInput.trim().toUpperCase();
+    if (code) {
+      window.location.href = `/game/${code}`;
     }
   }
 
@@ -314,8 +323,8 @@ function LauncherScreen() {
       {/* Push prompt — subscribes early using any cached JWT */}
       <PushPrompt />
 
-      {/* Game list or empty state */}
-      {cachedGames.length > 0 ? (
+      {/* Game list */}
+      {cachedGames.length > 0 && (
         <div className="w-full max-w-sm space-y-3">
           <p className="text-xs font-mono text-skin-dim/60 uppercase tracking-widest">
             Your Games
@@ -340,26 +349,44 @@ function LauncherScreen() {
             </a>
           ))}
         </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="relative w-24 h-24 mx-auto">
-            <div className="absolute inset-0 rounded-full border border-skin-gold/20 glow-breathe" />
-            <div className="absolute inset-3 rounded-full border border-skin-gold/10" style={{ animation: 'pulse-live 3s ease-in-out infinite 0.5s' }} />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="font-mono text-3xl text-skin-gold/60">//</span>
-            </div>
-          </div>
+      )}
+
+      {/* Game code entry — primary recovery path for iOS standalone PWA where
+          localStorage and Cache API are sandboxed from Safari */}
+      <form onSubmit={handleJoinByCode} className="w-full max-w-sm space-y-3">
+        {cachedGames.length === 0 && (
           <p className="text-sm font-mono text-skin-dim/50 uppercase tracking-widest">
             No active games
           </p>
-          <a
-            href={LOBBY_HOST}
-            className="inline-block text-xs font-mono text-skin-gold/70 hover:text-skin-gold underline underline-offset-4 uppercase tracking-widest transition-colors"
+        )}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={codeInput}
+            onChange={(e) => setCodeInput(e.target.value)}
+            placeholder="Game code"
+            className="flex-1 px-4 py-3 rounded-xl border border-white/[0.06] bg-glass text-skin-base font-mono text-sm uppercase tracking-wider placeholder:text-skin-dim/30 focus:outline-none focus:border-skin-gold/40 transition-colors"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          <button
+            type="submit"
+            disabled={!codeInput.trim()}
+            className="px-5 py-3 rounded-xl border border-skin-gold/30 bg-glass text-xs font-mono font-bold text-skin-gold uppercase tracking-widest hover:border-skin-gold/60 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
-            Join from the lobby
-          </a>
+            Join
+          </button>
         </div>
-      )}
+      </form>
+
+      {/* Lobby link */}
+      <a
+        href={LOBBY_HOST}
+        className="inline-block text-xs font-mono text-skin-gold/70 hover:text-skin-gold underline underline-offset-4 uppercase tracking-widest transition-colors"
+      >
+        Join from the lobby
+      </a>
     </div>
   );
 }
