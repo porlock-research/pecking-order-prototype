@@ -3,8 +3,8 @@
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getGameSessionStatus, startGame } from '../../../actions';
-import type { GameSlot } from '../../../actions';
+import { getGameSessionStatus, startGame, sendEmailInvite, getGameInvites } from '../../../actions';
+import type { GameSlot, SentInvite } from '../../../actions';
 
 function personaFullUrl(id: string): string {
   return `/api/persona-image/${id}/full.png`;
@@ -27,6 +27,15 @@ export default function WaitingRoom() {
   const [myPersonaId, setMyPersonaId] = useState<string | null>(null);
   const [mode, setMode] = useState<string | null>(null);
 
+  // Invite by email state
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [sentInvites, setSentInvites] = useState<SentInvite[]>([]);
+  const [showInviteSection, setShowInviteSection] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     async function load() {
       try {
@@ -36,8 +45,11 @@ export default function WaitingRoom() {
         if (result.tokens) setTokens(result.tokens);
         if (result.clientHost) setClientHost(result.clientHost);
         if (result.mode) setMode(result.mode);
-        // Find the current user's persona for background
         if (result.myPersonaId) setMyPersonaId(result.myPersonaId);
+
+        // Load sent invites
+        const invitesResult = await getGameInvites(code);
+        setSentInvites(invitesResult.invites);
       } catch {
         setError('Failed to fetch game status');
       }
@@ -57,6 +69,52 @@ export default function WaitingRoom() {
       setStatus('STARTED');
     } else {
       setError(result.error || 'Failed to start game');
+    }
+  }
+
+  async function handleSendInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+
+    setIsSendingInvite(true);
+    setInviteError(null);
+    setInviteStatus(null);
+
+    const result = await sendEmailInvite(code, inviteEmail.trim());
+    setIsSendingInvite(false);
+
+    if (result.error) {
+      setInviteError(result.error);
+    } else if (result.sent) {
+      setInviteStatus(`Invite sent to ${inviteEmail}`);
+      setInviteEmail('');
+      // Refresh sent invites list
+      const invitesResult = await getGameInvites(code);
+      setSentInvites(invitesResult.invites);
+    } else if (result.link) {
+      setInviteStatus('Invite created (email not configured)');
+      setInviteEmail('');
+      const invitesResult = await getGameInvites(code);
+      setSentInvites(invitesResult.invites);
+    }
+  }
+
+  async function handleCopyLink() {
+    const link = `${window.location.origin}/join/${code.toUpperCase()}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = link;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   }
 
@@ -104,9 +162,17 @@ export default function WaitingRoom() {
           <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow">
             PECKING ORDER
           </h1>
-          <p className="text-sm text-skin-dim font-mono">
-            Game: <span className="text-skin-gold font-bold tracking-wider">{code.toUpperCase()}</span>
-          </p>
+          <div className="flex items-center justify-center gap-2">
+            <p className="text-sm text-skin-dim font-mono">
+              Game: <span className="text-skin-gold font-bold tracking-wider">{code.toUpperCase()}</span>
+            </p>
+            <button
+              onClick={handleCopyLink}
+              className="text-xs font-mono px-2 py-1 rounded-md border border-skin-base/50 text-skin-dim hover:text-skin-base hover:border-skin-gold/50 transition-all"
+            >
+              {copied ? 'Copied!' : 'Copy Link'}
+            </button>
+          </div>
         </header>
 
         {/* Status badge */}
@@ -215,6 +281,96 @@ export default function WaitingRoom() {
                 </motion.div>
               ))}
             </motion.div>
+          )}
+
+          {/* Invite Players Section */}
+          {!isStarted && !isLoading && emptySlots.length > 0 && (
+            <div className="mt-4">
+              <button
+                onClick={() => setShowInviteSection(!showInviteSection)}
+                className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-skin-base/50 backdrop-blur-sm text-sm font-display font-bold text-skin-dim hover:text-skin-base hover:border-skin-gold/30 transition-all"
+                style={{ backgroundColor: 'rgba(44, 0, 62, 0.5)' }}
+              >
+                <span>Invite by Email</span>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className={`transition-transform duration-200 ${showInviteSection ? 'rotate-180' : ''}`}
+                >
+                  <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+
+              <AnimatePresence>
+                {showInviteSection && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-3 space-y-3">
+                      <form onSubmit={handleSendInvite} className="flex gap-2">
+                        <input
+                          type="email"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          placeholder="player@example.com"
+                          required
+                          className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 placeholder:text-skin-dim/30"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSendingInvite || !inviteEmail.trim()}
+                          className={`px-4 py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-all whitespace-nowrap
+                            ${isSendingInvite || !inviteEmail.trim()
+                              ? 'bg-skin-input text-skin-dim/40 cursor-wait'
+                              : 'bg-skin-gold text-skin-deep hover:brightness-110 active:scale-[0.98]'
+                            }`}
+                        >
+                          {isSendingInvite ? '...' : 'Send'}
+                        </button>
+                      </form>
+
+                      {inviteStatus && (
+                        <div className="p-2.5 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs font-mono text-center">
+                          {inviteStatus}
+                        </div>
+                      )}
+
+                      {inviteError && (
+                        <div className="p-2.5 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-xs font-mono text-center">
+                          {inviteError}
+                        </div>
+                      )}
+
+                      {sentInvites.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest px-1">
+                            Sent Invites
+                          </div>
+                          {sentInvites.map((inv) => (
+                            <div
+                              key={inv.email + inv.createdAt}
+                              className="flex items-center justify-between py-1.5 px-3 rounded-lg text-xs font-mono"
+                              style={{ backgroundColor: 'rgba(44, 0, 62, 0.4)' }}
+                            >
+                              <span className="text-skin-dim truncate">{inv.email}</span>
+                              <span className={`text-[10px] uppercase tracking-wider ${inv.used ? 'text-skin-green' : 'text-skin-dim/40'}`}>
+                                {inv.used ? 'Joined' : 'Pending'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
         </div>
       </div>

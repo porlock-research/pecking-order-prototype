@@ -9,6 +9,7 @@ function LoginForm() {
   const next = searchParams.get('next') || '/';
   const [email, setEmail] = useState('');
   const [magicLink, setMagicLink] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -16,6 +17,7 @@ function LoginForm() {
     e.preventDefault();
     setError(null);
     setMagicLink(null);
+    setEmailSent(false);
     setIsLoading(true);
 
     const result = await requestMagicLink(email, next);
@@ -23,16 +25,25 @@ function LoginForm() {
 
     if (result.error) {
       setError(result.error);
+    } else if (result.sent) {
+      setEmailSent(true);
     } else if (result.link) {
       setMagicLink(result.link);
     }
+  }
+
+  function handleReset() {
+    setMagicLink(null);
+    setEmailSent(false);
+    setEmail('');
+    setError(null);
   }
 
   return (
     <div className="bg-skin-panel/30 backdrop-blur-md border border-skin-base p-1 rounded-3xl shadow-card overflow-hidden">
       <div className="bg-skin-deep/60 rounded-[20px] p-8 border border-skin-base space-y-6">
 
-        {!magicLink ? (
+        {!magicLink && !emailSent ? (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-3">
               <label htmlFor="email" className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
@@ -75,6 +86,35 @@ function LoginForm() {
               )}
             </button>
           </form>
+        ) : emailSent ? (
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              <div className="text-skin-green font-display font-bold text-sm uppercase tracking-widest">
+                Check Your Email
+              </div>
+              <p className="text-skin-dim text-sm">
+                We sent a login link to <span className="text-skin-base font-bold">{email}</span>
+              </p>
+              <p className="text-skin-dim/60 text-xs">
+                Check your inbox (and spam folder). The link expires in 5 minutes.
+              </p>
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={isLoading}
+              className="block w-full py-3 text-center text-skin-dim text-xs font-mono hover:text-skin-base transition-colors disabled:opacity-40"
+            >
+              {isLoading ? 'Sending...' : "Didn't receive it? Resend"}
+            </button>
+
+            <button
+              onClick={handleReset}
+              className="w-full py-3 text-center text-skin-dim text-xs font-mono hover:text-skin-base transition-colors"
+            >
+              Try different email
+            </button>
+          </div>
         ) : (
           <div className="space-y-4">
             <div className="text-center space-y-2">
@@ -87,14 +127,14 @@ function LoginForm() {
             </div>
 
             <a
-              href={magicLink}
+              href={magicLink!}
               className="block w-full py-4 text-center bg-skin-green/10 text-skin-green border border-skin-green/30 rounded-xl font-mono text-sm hover:bg-skin-green/20 transition-all"
             >
               Click to Sign In
             </a>
 
             <button
-              onClick={() => { setMagicLink(null); setEmail(''); }}
+              onClick={handleReset}
               className="w-full py-3 text-center text-skin-dim text-xs font-mono hover:text-skin-base transition-colors"
             >
               Try different email

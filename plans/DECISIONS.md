@@ -998,3 +998,24 @@ This document tracks significant architectural decisions, their context, and con
     *   Multiple DM senders produce separate notifications (not silently replaced).
     *   Two distinct push paths remain: fact-based (in `persistFactToD1` action) and phase-based (in XState entry actions). Long-term unification through FACT.RECORD pipeline is possible but not required.
     *   **Deferred**: multi-device schema (`UNIQUE(user_id, endpoint)`), batch D1 queries, PushPrompt UX polish.
+
+## [ADR-073] Email Delivery & Invite System (Resend)
+*   **Date:** 2026-02-25
+*   **Status:** Accepted
+*   **Context:** The lobby's magic link auth works but shows links inline in the UI — no actual emails are sent. This makes standalone PWA auth impractical (user can't receive a magic link without being on the lobby page) and forces manual code sharing for game invites. Players need to share invite codes via external channels (SMS, social media, word of mouth) with no in-app invite mechanism.
+*   **Decision:**
+    *   **Email provider**: Resend (`npm install resend`). CF Workers compatible, simple API, 100 emails/day free tier. API key passed per-call from env (not module-global, since Workers env isn't available at module scope).
+    *   **Magic link email delivery**: `sendMagicLink()` accepts optional `{ resendApiKey, lobbyHost }`. When configured, sends a styled HTML email with sign-in link. Falls back to inline link display (existing dev behavior) when API key is absent or email send fails.
+    *   **Login page**: Three states — email form, "Check your email" (with resend button), inline link (dev fallback). Graceful degradation.
+    *   **Invite token system**: New `InviteTokens` D1 table (migration 0006). Tokens are long-lived (`(dayCount * 2 + 7) days`), single-use. Store email, game_id, invite_code, sent_by. Reuses existing token for same email+game to prevent spam.
+    *   **One-click invite route**: `GET /invite/[token]` — validates token, upserts user, creates session, sets cookie, redirects to `/join/{code}`. Combines authentication + game routing in one click. Not protected by middleware (creates its own session).
+    *   **sendEmailInvite action**: Any authenticated player can invite others (not just host). Validates game status (RECRUITING, or STARTED for CC late-join), checks for duplicate players, sends personalized email via Resend with sender name.
+    *   **Multi-modal invites**: Email, code, and shareable link all coexist. Copy Link button in waiting room header. Invite by Email collapsible section in waiting room. Optional email fields in game creation form (sent after game is created).
+    *   **Dev mode**: Without `RESEND_API_KEY`/`LOBBY_HOST`, all flows fall back gracefully — magic links show inline, email invites return shareable links. Zero behavior change from before.
+*   **Consequences:**
+    *   Standalone PWA users can receive magic link emails on their device, solving half of BUG-012's auth UX gap (the other half — magic link opening in Safari instead of PWA — remains).
+    *   Game hosts can invite players without leaving the app. Any player can invite others.
+    *   Invite tokens survive longer than magic links (days vs 5 minutes), appropriate for async game setup.
+    *   Requires Resend account setup, API key secrets (`wrangler secret put RESEND_API_KEY`), and `LOBBY_HOST` var in wrangler.json per environment.
+    *   Sending domain verification needed for production (use `onboarding@resend.dev` for testing).
+    *   **Files**: `lib/email.ts` (new), `lib/auth.ts` (updated), `login/actions.ts` (updated), `login/page.tsx` (updated), `migrations/0006_invite_tokens.sql` (new), `invite/[token]/route.ts` (new), `actions.ts` (sendEmailInvite + getGameInvites), `waiting/page.tsx` (updated), `page.tsx` (updated).

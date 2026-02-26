@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getDB } from './db';
+import { sendEmail } from './email';
 
 const SESSION_COOKIE = 'po_session';
 const MAGIC_LINK_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
@@ -79,7 +80,11 @@ export async function requireAuth(redirectTo?: string): Promise<SessionUser> {
 
 // ── Magic Link ───────────────────────────────────────────────────────────
 
-export async function sendMagicLink(email: string, next?: string): Promise<{ link: string }> {
+export async function sendMagicLink(
+  email: string,
+  next?: string,
+  options?: { resendApiKey?: string; lobbyHost?: string },
+): Promise<{ link?: string; sent?: boolean; error?: string }> {
   const db = await getDB();
   const now = Date.now();
   const normalizedEmail = email.toLowerCase().trim();
@@ -105,11 +110,29 @@ export async function sendMagicLink(email: string, next?: string): Promise<{ lin
     .bind(token, normalizedEmail, now + MAGIC_LINK_EXPIRY_MS, now)
     .run();
 
-  // For now: return the link directly (no email sending yet)
-  // In dev, the lobby itself runs on localhost:3000
-  const link = `/login/verify?token=${token}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
+  const verifyPath = `/login/verify?token=${token}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
 
-  return { link };
+  // Send email when Resend API key is available
+  if (options?.resendApiKey && options?.lobbyHost) {
+    const fullLink = `${options.lobbyHost}${verifyPath}`;
+    const result = await sendEmail(
+      normalizedEmail,
+      'Your Pecking Order Login Link',
+      `<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <h2 style="color: #d4af37; margin-bottom: 16px;">Pecking Order</h2>
+        <p style="color: #333; margin-bottom: 24px;">Click below to sign in:</p>
+        <a href="${fullLink}" style="display: inline-block; background: #d4af37; color: #1a0025; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold;">Sign In</a>
+        <p style="color: #888; font-size: 13px; margin-top: 24px;">This link expires in 5 minutes.</p>
+      </div>`,
+      options.resendApiKey,
+    );
+    if (result.success) return { sent: true };
+    // Fall through to inline display if email fails
+    console.error('[Auth] Email send failed, falling back to inline link:', result.error);
+  }
+
+  // Fallback: return link for inline display (dev mode / email failure)
+  return { link: verifyPath };
 }
 
 export async function verifyMagicLink(

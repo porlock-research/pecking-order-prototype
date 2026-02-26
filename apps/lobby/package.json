@@ -17,7 +17,8 @@
     "next": "^15.5.12",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-swipeable": "^7.0.2"
+    "react-swipeable": "^7.0.2",
+    "resend": "^6.9.2"
   },
   "devDependencies": {
     "@types/node": "^20",

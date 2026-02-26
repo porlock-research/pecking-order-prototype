@@ -15,7 +15,8 @@
       "vars": {
         "GAME_SERVER_HOST": "https://game-server-staging.porlock.workers.dev",
         "GAME_CLIENT_HOST": "https://pecking-order-client-staging.pages.dev",
-        "PERSONA_ASSETS_URL": ""
+        "PERSONA_ASSETS_URL": "",
+        "LOBBY_HOST": "https://pecking-order-lobby-staging.porlock.workers.dev"
       },
       "r2_buckets": [
         { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets-staging" }
@@ -33,7 +34,8 @@
       "vars": {
         "GAME_SERVER_HOST": "https://game-server.porlock.workers.dev",
         "GAME_CLIENT_HOST": "https://pecking-order-client.pages.dev",
-        "PERSONA_ASSETS_URL": ""
+        "PERSONA_ASSETS_URL": "",
+        "LOBBY_HOST": "https://pecking-order-lobby.porlock.workers.dev"
       },
       "r2_buckets": [
         { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets" }

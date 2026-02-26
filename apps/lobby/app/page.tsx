@@ -1,6 +1,6 @@
 'use client';
 
-import { createGame, startDebugGame, getAuthStatus, getActiveGames } from './actions';
+import { createGame, startDebugGame, getAuthStatus, getActiveGames, sendEmailInvite } from './actions';
 import type { DebugManifestConfig, DebugDayConfig, ConfigurableManifestConfig, ConfigurableDayConfig, ConfigurableEventConfig, ActiveGame } from './actions';
 import { useState, useEffect } from 'react';
 
@@ -184,6 +184,9 @@ export default function LobbyRoot() {
   const [skipInvites, setSkipInvites] = useState(false);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [activeGames, setActiveGames] = useState<ActiveGame[]>([]);
+  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
+  const [showEmailInvites, setShowEmailInvites] = useState(false);
+  const [emailInviteStatuses, setEmailInviteStatuses] = useState<Record<number, string>>({});
 
   useEffect(() => {
     getAuthStatus().then(s => { if (s.authed && s.email) setAuthEmail(s.email); });
@@ -380,6 +383,17 @@ export default function LobbyRoot() {
       setStatus(`GAME_CREATED: ${result.gameId}`);
       setGameId(result.gameId ?? null);
       setInviteCode(result.inviteCode ?? null);
+
+      // Send email invites if any were entered
+      const validEmails = inviteEmails.filter(e => e.trim() && e.includes('@'));
+      if (validEmails.length > 0 && result.inviteCode) {
+        for (const email of validEmails) {
+          sendEmailInvite(result.inviteCode, email.trim()).catch(() => {});
+        }
+        setEmailInviteStatuses(
+          Object.fromEntries(validEmails.map((_, i) => [i, 'sent']))
+        );
+      }
     } else {
       setStatus(`ERROR: ${result.error}`);
     }
@@ -804,6 +818,63 @@ export default function LobbyRoot() {
                 </label>
               )}
 
+              {/* Invite Players by Email (optional, before game creation) */}
+              {!gameId && !(isDebugMode && skipInvites) && (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setShowEmailInvites(!showEmailInvites);
+                      if (!showEmailInvites && inviteEmails.length === 0) {
+                        setInviteEmails(['']);
+                      }
+                    }}
+                    className="flex items-center gap-2 text-xs font-display font-bold text-skin-dim hover:text-skin-base uppercase tracking-widest transition-colors"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={`transition-transform duration-200 ${showEmailInvites ? 'rotate-180' : ''}`}>
+                      <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Invite Players by Email
+                  </button>
+
+                  {showEmailInvites && (
+                    <div className="space-y-2 pl-1">
+                      {inviteEmails.map((email, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => {
+                              const updated = [...inviteEmails];
+                              updated[idx] = e.target.value;
+                              setInviteEmails(updated);
+                            }}
+                            placeholder="player@example.com"
+                            className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 placeholder:text-skin-dim/30"
+                          />
+                          {inviteEmails.length > 1 && (
+                            <button
+                              onClick={() => setInviteEmails(inviteEmails.filter((_, i) => i !== idx))}
+                              className="px-2 text-skin-dim/40 hover:text-skin-pink transition-colors text-lg"
+                            >
+                              &times;
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => setInviteEmails([...inviteEmails, ''])}
+                        className="text-xs font-mono text-skin-dim/60 hover:text-skin-gold transition-colors"
+                      >
+                        + Add another
+                      </button>
+                      <p className="text-[10px] text-skin-dim/40 font-mono">
+                        Invites are sent after the game is created. Players will get a one-click link.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Action Buttons */}
               {!gameId && (
                 <div className="space-y-3">
@@ -876,6 +947,13 @@ export default function LobbyRoot() {
                     </div>
                     <p className="text-xs text-skin-dim/60">Share this code with your players</p>
                   </div>
+
+                  {/* Email invites sent confirmation */}
+                  {Object.keys(emailInviteStatuses).length > 0 && (
+                    <div className="p-3 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs font-mono text-center">
+                      Email invites sent to {inviteEmails.filter(e => e.trim() && e.includes('@')).length} player(s)
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 gap-3">
                     <a

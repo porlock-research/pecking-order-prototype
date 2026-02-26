@@ -81,7 +81,7 @@ When a player saves the client app to their iOS home screen, the standalone PWA 
 
 **Relevant files**: `apps/client/src/App.tsx`, `apps/client/src/sw.ts`, `apps/lobby/app/api/refresh-token/[code]/route.ts`
 
-**Status**: Partially mitigated — game code entry prevents dead-end LauncherScreen; recovery chain handles re-auth. Full seamlessness blocked by iOS storage partitioning + magic link UX gap in standalone context.
+**Status**: Partially mitigated — game code entry prevents dead-end LauncherScreen; recovery chain handles re-auth. Full seamlessness blocked by iOS storage partitioning + magic link UX gap in standalone context. **ADR-073** adds Resend email delivery for magic links and one-click invite tokens — standalone PWA users can now receive magic link emails, but the link still opens in Safari (not the PWA). In-app OTP verification remains the ideal fix for full standalone seamlessness.
 
 ## [BUG-013] Scheduler alarms lost on DO restart (ADR-012 race)
 

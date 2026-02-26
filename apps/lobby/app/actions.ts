@@ -3,7 +3,8 @@
 import { InitPayloadSchema, Roster } from '@pecking-order/shared-types';
 import { signGameToken } from '@pecking-order/auth';
 import { getDB, getEnv } from '@/lib/db';
-import { requireAuth, getSession, generateId, generateInviteCode } from '@/lib/auth';
+import { requireAuth, getSession, generateId, generateInviteCode, generateToken } from '@/lib/auth';
+import { sendEmail } from '@/lib/email';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -1282,4 +1283,134 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
 
   const clientHost = (env.GAME_CLIENT_HOST as string) || 'http://localhost:5173';
   return { status: game.status, slots, tokens, inviteCode: game.invite_code, clientHost, myPersonaId, mode: game.mode };
+}
+
+// ── Email Invites ─────────────────────────────────────────────────────────
+
+export interface SentInvite {
+  email: string;
+  used: boolean;
+  createdAt: number;
+}
+
+export async function sendEmailInvite(
+  inviteCode: string,
+  email: string,
+): Promise<{ success?: boolean; sent?: boolean; link?: string; error?: string }> {
+  const session = await requireAuth();
+  const db = await getDB();
+  const env = await getEnv();
+  const now = Date.now();
+
+  const normalizedEmail = email.toLowerCase().trim();
+  if (!normalizedEmail || !normalizedEmail.includes('@')) {
+    return { error: 'Please enter a valid email address' };
+  }
+
+  // Find game by invite code
+  const game = await db
+    .prepare('SELECT id, invite_code, status, day_count, mode FROM GameSessions WHERE invite_code = ?')
+    .bind(inviteCode.toUpperCase())
+    .first<{ id: string; invite_code: string; status: string; day_count: number; mode: string }>();
+
+  if (!game) return { error: 'Game not found' };
+
+  // Allow invites for RECRUITING games, and STARTED configurable-cycle games (late join)
+  if (game.status !== 'RECRUITING' && game.status !== 'READY') {
+    if (!(game.status === 'STARTED' && game.mode === 'CONFIGURABLE_CYCLE')) {
+      return { error: 'This game is no longer accepting players' };
+    }
+  }
+
+  // Check if email is already a player in this game
+  const existingPlayer = await db
+    .prepare(
+      `SELECT i.id FROM Invites i
+       JOIN Users u ON u.id = i.accepted_by
+       WHERE i.game_id = ? AND u.email = ?`
+    )
+    .bind(game.id, normalizedEmail)
+    .first<{ id: number }>();
+
+  if (existingPlayer) return { error: 'This player has already joined the game' };
+
+  // Check for existing unused invite token for this email + game (don't spam)
+  const existingToken = await db
+    .prepare(
+      'SELECT token FROM InviteTokens WHERE email = ? AND game_id = ? AND used = 0 AND expires_at > ?'
+    )
+    .bind(normalizedEmail, game.id, now)
+    .first<{ token: string }>();
+
+  let token: string;
+  if (existingToken) {
+    token = existingToken.token;
+  } else {
+    token = generateToken();
+    const expiryMs = ((game.day_count || 7) * 2 + 7) * 24 * 60 * 60 * 1000;
+    await db
+      .prepare(
+        `INSERT INTO InviteTokens (token, email, game_id, invite_code, expires_at, used, sent_by, created_at)
+         VALUES (?, ?, ?, ?, ?, 0, ?, ?)`
+      )
+      .bind(token, normalizedEmail, game.id, game.invite_code, now + expiryMs, session.userId, now)
+      .run();
+  }
+
+  const RESEND_API_KEY = env.RESEND_API_KEY as string | undefined;
+  const LOBBY_HOST = env.LOBBY_HOST as string | undefined;
+
+  if (RESEND_API_KEY && LOBBY_HOST) {
+    const inviteLink = `${LOBBY_HOST}/invite/${token}`;
+    const senderName = session.displayName || session.email.split('@')[0];
+
+    const result = await sendEmail(
+      normalizedEmail,
+      "You've been invited to Pecking Order!",
+      `<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <h2 style="color: #d4af37; margin-bottom: 16px;">Pecking Order</h2>
+        <p style="color: #333; margin-bottom: 8px;"><strong>${senderName}</strong> invited you to play!</p>
+        <p style="color: #666; margin-bottom: 24px;">Click below to join the game:</p>
+        <a href="${inviteLink}" style="display: inline-block; background: #d4af37; color: #1a0025; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold;">Join Game</a>
+        <p style="color: #888; font-size: 13px; margin-top: 24px;">Or use invite code: <strong>${game.invite_code}</strong></p>
+      </div>`,
+      RESEND_API_KEY,
+    );
+
+    if (result.success) return { success: true, sent: true };
+    console.error('[Invite] Email send failed:', result.error);
+  }
+
+  // Dev fallback: return the invite link for manual sharing
+  const link = `/invite/${token}`;
+  return { success: true, link };
+}
+
+export async function getGameInvites(
+  inviteCode: string,
+): Promise<{ invites: SentInvite[] }> {
+  await requireAuth();
+  const db = await getDB();
+
+  const game = await db
+    .prepare('SELECT id FROM GameSessions WHERE invite_code = ?')
+    .bind(inviteCode.toUpperCase())
+    .first<{ id: string }>();
+
+  if (!game) return { invites: [] };
+
+  const { results } = await db
+    .prepare(
+      'SELECT email, used, created_at FROM InviteTokens WHERE game_id = ? ORDER BY created_at DESC'
+    )
+    .bind(game.id)
+    .all<{ email: string; used: number; created_at: number }>();
+
+  return {
+    invites: results.map((r) => ({
+      email: r.email,
+      used: r.used === 1,
+      createdAt: r.created_at,
+    })),
+  };
 }
