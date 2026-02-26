@@ -262,6 +262,9 @@ export class GameServer extends Server<Env> {
     }
 
     // Subscribe: auto-save, broadcast, ticker, push
+    // The first subscription fire happens synchronously during actor.start()
+    // with the restored snapshot — suppress ticker emissions to avoid duplicates.
+    let isRestoreFire = true;
     this.actor.subscribe(async (snapshot) => {
       const { l3Context, l3Snapshot, chatLog } = extractL3Context(snapshot, this.lastKnownChatLog);
       if (l3Context.chatLog) this.lastKnownChatLog = l3Context.chatLog;
@@ -296,11 +299,12 @@ export class GameServer extends Server<Env> {
       const l3StateJson = l3Snapshot ? JSON.stringify(l3Snapshot.value) : '';
       const currentStateStr = JSON.stringify(snapshot.value) + l3StateJson;
       if (currentStateStr !== this.lastBroadcastState) {
-        const tickerMsg = stateToTicker(currentStateStr, snapshot.context);
-        if (tickerMsg) {
-          this.tickerHistory = broadcastTicker(tickerMsg, this.tickerHistory, () => this.getConnections());
+        if (!isRestoreFire) {
+          const tickerMsg = stateToTicker(currentStateStr, snapshot.context);
+          if (tickerMsg) {
+            this.tickerHistory = broadcastTicker(tickerMsg, this.tickerHistory, () => this.getConnections());
+          }
         }
-
         this.lastBroadcastState = currentStateStr;
       }
 
@@ -334,47 +338,37 @@ export class GameServer extends Server<Env> {
       // F. Ticker: detect DM open/close changes
       const currentDmsOpen = l3Context.dmsOpen ?? false;
       if (currentDmsOpen !== this.lastKnownDmsOpen) {
+        if (!isRestoreFire) {
+          this.tickerHistory = broadcastTicker({
+            id: crypto.randomUUID(),
+            text: currentDmsOpen ? 'DMs are now open!' : 'DMs are now closed.',
+            category: currentDmsOpen ? 'GATE.DMS_OPEN' : 'GATE.DMS_CLOSE',
+            timestamp: Date.now(),
+          }, this.tickerHistory, () => this.getConnections());
+        }
         this.lastKnownDmsOpen = currentDmsOpen;
-        this.tickerHistory = broadcastTicker({
-          id: crypto.randomUUID(),
-          text: currentDmsOpen ? 'DMs are now open!' : 'DMs are now closed.',
-          category: currentDmsOpen ? 'GATE.DMS_OPEN' : 'GATE.DMS_CLOSE',
-          timestamp: Date.now(),
-        }, this.tickerHistory, () => this.getConnections());
       }
 
       // G. Ticker: detect group chat open/close changes
       const currentGroupChatOpen = l3Context.groupChatOpen ?? false;
       if (currentGroupChatOpen !== this.lastKnownGroupChatOpen) {
+        if (!isRestoreFire) {
+          this.tickerHistory = broadcastTicker({
+            id: crypto.randomUUID(),
+            text: currentGroupChatOpen ? 'Group chat is now open!' : 'Group chat is now closed.',
+            category: currentGroupChatOpen ? 'GATE.CHAT_OPEN' : 'GATE.CHAT_CLOSE',
+            timestamp: Date.now(),
+          }, this.tickerHistory, () => this.getConnections());
+        }
         this.lastKnownGroupChatOpen = currentGroupChatOpen;
-        this.tickerHistory = broadcastTicker({
-          id: crypto.randomUUID(),
-          text: currentGroupChatOpen ? 'Group chat is now open!' : 'Group chat is now closed.',
-          category: currentGroupChatOpen ? 'GATE.CHAT_OPEN' : 'GATE.CHAT_CLOSE',
-          timestamp: Date.now(),
-        }, this.tickerHistory, () => this.getConnections());
       }
+
+      isRestoreFire = false;
     });
 
     this.actor.start();
-
-    // Initialize state tracking from restored snapshot to prevent
-    // spurious ticker/SYNC diffs on first subscription fire after wake.
-    const restoredSnapshot = this.actor.getSnapshot();
-    const l3Child = restoredSnapshot.children['l3-session'];
-    const l3Snap = l3Child?.getSnapshot?.();
-    const l3StateJson = l3Snap ? JSON.stringify(l3Snap.value) : '';
-    this.lastBroadcastState = JSON.stringify(restoredSnapshot.value) + l3StateJson;
-
-    // Restore DM/group-chat gate state from L3 context to prevent
-    // spurious "DMs are now open!" ticker messages on wake.
-    if (l3Snap) {
-      const l3Ctx = l3Snap.context as any;
-      if (l3Ctx) {
-        this.lastKnownDmsOpen = l3Ctx.dmsOpen ?? false;
-        this.lastKnownGroupChatOpen = l3Ctx.groupChatOpen ?? false;
-      }
-    }
+    // Note: isRestoreFire flag in subscription handles first-fire ticker
+    // suppression — no post-start initialization needed for tracking vars.
 
     // Rebuild connected players map from surviving WebSocket attachments
     // (required for hibernation — ws.state is lost but attachments survive).

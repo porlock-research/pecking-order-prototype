@@ -777,3 +777,25 @@ This unification isn't required for the immediate fix (entry actions solve the d
 | Batch D1 queries for broadcast | Performance improvement for multi-device | Low | Deferred |
 
 **Status**: Core architectural fix implemented (ADR-072). Phase pushes moved from L1 subscription callback to XState entry actions — fires only on actual state transitions, never on snapshot restore. `sentPushKeys` eliminated entirely. Per-trigger TTL, conditional `renotify`, per-sender DM tags all shipped. Remaining: multi-device schema, batch D1 queries, PushPrompt UX polish.
+
+## [PROD-023] L1 subscription callback is a monolithic observer with fragile state tracking
+
+**Priority**: Medium — causes duplicate ticker messages on DO wake; current fix (`isRestoreFire` flag) is a band-aid.
+
+The L1 `actor.subscribe()` callback in `server.ts` handles too many concerns: snapshot persistence, SYNC broadcast, state-transition tickers, gate-change tickers (DMs/group chat open/close), game-end D1 writes, gold payouts, and task cleanup. Each concern that depends on "what changed" requires its own tracking variable (`lastBroadcastState`, `lastKnownDmsOpen`, `lastKnownGroupChatOpen`, `lastDebugSummary`) plus a shared `isRestoreFire` flag to suppress spurious emissions when `actor.start()` fires the subscription synchronously with the restored snapshot.
+
+This is fundamentally a state management problem being solved with ad-hoc flags. The tracking variables are a manual reimplementation of what XState does natively — tracking current state and reacting only to transitions.
+
+**Symptoms observed**: Duplicate "DMs are now open!" and "Group chat is now open!" ticker messages (6-8x per game session). Root cause: on each DO wake from hibernation, `actor.start()` fires the subscription before tracking variables are initialized, so every open gate appears as a "change" from the default `false`.
+
+**Proposed fix**: Extract ticker generation into a dedicated L1-level actor (not invoked by L2 — it's an L1 concern). The ticker actor would:
+
+- Own its state: current phase, gate booleans (`dmsOpen`, `groupChatOpen`), ticker history buffer
+- Receive structured events from the subscription callback: `PHASE_CHANGED`, `GATE_CHANGED`, `FACT_RECORDED`
+- Naturally ignore restore: XState doesn't re-enter states on `actor.start()`, so no `isRestoreFire` flag needed
+- Broadcast `TICKER.UPDATE` WebSocket messages from its own transitions
+- Reduce the subscription callback to: persistence + SYNC broadcast + forwarding events to ticker actor
+
+This also opens the door to ticker deduplication, rate-limiting, and per-player filtering being handled as actor logic rather than scattered across the monolithic callback.
+
+**Status**: Band-aid fix shipped (`isRestoreFire` flag suppresses duplicate tickers on restore). Architectural refactor deferred.
