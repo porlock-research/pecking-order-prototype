@@ -14,7 +14,7 @@
       "name": "pecking-order-lobby-staging",
       "workers_dev": true,
       "routes": [
-        { "pattern": "staging-lobby.peckingorder.ca/*", "zone_name": "peckingorder.ca" }
+        { "pattern": "staging-lobby.peckingorder.ca", "custom_domain": true }
       ],
       "vars": {
         "GAME_SERVER_HOST": "https://staging-api.peckingorder.ca",
@@ -38,7 +38,7 @@
       "name": "pecking-order-lobby",
       "workers_dev": true,
       "routes": [
-        { "pattern": "lobby.peckingorder.ca/*", "zone_name": "peckingorder.ca" }
+        { "pattern": "lobby.peckingorder.ca", "custom_domain": true }
       ],
       "vars": {
         "GAME_SERVER_HOST": "https://api.peckingorder.ca",

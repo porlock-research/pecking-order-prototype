@@ -17,8 +17,8 @@ name = "game-server-staging"
 workers_dev = true
 
 [[env.staging.routes]]
-pattern = "staging-api.peckingorder.ca/*"
-zone_name = "peckingorder.ca"
+pattern = "staging-api.peckingorder.ca"
+custom_domain = true
 
 [[env.staging.durable_objects.bindings]]
 name = "GameServer"
@@ -40,8 +40,8 @@ name = "game-server"
 workers_dev = true
 
 [[env.production.routes]]
-pattern = "api.peckingorder.ca/*"
-zone_name = "peckingorder.ca"
+pattern = "api.peckingorder.ca"
+custom_domain = true
 
 [[env.production.durable_objects.bindings]]
 name = "GameServer"
