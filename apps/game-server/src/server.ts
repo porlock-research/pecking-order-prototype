@@ -11,6 +11,19 @@ import { isPushEnabled, phasePushPayload, handleFactPush, pushBroadcast, type Pu
 
 const STORAGE_KEY = "game_state_snapshot";
 
+/** Constant-time comparison to prevent timing attacks on secret values. */
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const bufA = enc.encode(a);
+  const bufB = enc.encode(b);
+  if (bufA.byteLength !== bufB.byteLength) {
+    // Compare against self to avoid leaking length via early return timing
+    crypto.subtle.timingSafeEqual(bufA, bufA);
+    return false;
+  }
+  return crypto.subtle.timingSafeEqual(bufA, bufB);
+}
+
 export interface Env {
   GameServer: DurableObjectNamespace;
   DB: D1Database;
@@ -439,7 +452,7 @@ export class GameServer extends Server<Env> {
 
   private async handleInit(req: Request, url: URL): Promise<Response> {
     const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
       return new Response('Unauthorized', { status: 401 });
     }
 
@@ -482,7 +495,7 @@ export class GameServer extends Server<Env> {
 
   private async handlePlayerJoined(req: Request, url: URL): Promise<Response> {
     const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
       return new Response('Unauthorized', { status: 401 });
     }
 
@@ -552,7 +565,7 @@ export class GameServer extends Server<Env> {
 
   private async handleFlushTasks(req: Request): Promise<Response> {
     const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
       return new Response('Unauthorized', { status: 401 });
     }
     try {
@@ -571,7 +584,7 @@ export class GameServer extends Server<Env> {
 
   private async handleScheduledTasks(req: Request): Promise<Response> {
     const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
       return new Response('Unauthorized', { status: 401 });
     }
     try {
@@ -601,7 +614,7 @@ export class GameServer extends Server<Env> {
 
   private async handleCleanup(req: Request): Promise<Response> {
     const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
       return new Response('Unauthorized', { status: 401 });
     }
     try {
@@ -640,7 +653,7 @@ export class GameServer extends Server<Env> {
   private async handleAdmin(req: Request): Promise<Response> {
     // Auth check — require Bearer token matching AUTH_SECRET
     const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
       return new Response('Unauthorized', { status: 401 });
     }
 
@@ -860,6 +873,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
 };
 
 export default {
@@ -934,7 +948,7 @@ export default {
       }
 
       const authHeader = request.headers.get('Authorization');
-      if (!authHeader || authHeader !== `Bearer ${env.AUTH_SECRET}`) {
+      if (!authHeader || !timingSafeEqual(authHeader, `Bearer ${env.AUTH_SECRET}`)) {
         return new Response('Unauthorized', { status: 401, headers: CORS_HEADERS });
       }
 

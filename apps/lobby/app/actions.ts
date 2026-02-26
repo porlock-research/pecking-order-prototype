@@ -175,7 +175,7 @@ export async function createGame(
       const validated = InitPayloadSchema.parse(payload);
       const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/init`;
 
-      await fetch(targetUrl, {
+      const res = await fetch(targetUrl, {
         method: 'POST',
         body: JSON.stringify(validated),
         headers: {
@@ -183,6 +183,7 @@ export async function createGame(
           Authorization: `Bearer ${AUTH_SECRET}`,
         },
       });
+      res.body?.cancel();
 
       console.log(`[Lobby] Auto-initialized DO for CONFIGURABLE_CYCLE game ${gameId}`);
     } catch (err: any) {
@@ -520,6 +521,7 @@ export async function acceptInvite(
           Authorization: `Bearer ${AUTH_SECRET}`,
         },
       });
+      res.body?.cancel();
 
       // Game has progressed past pre-game — mark as STARTED so no more joins are accepted
       if (res.status === 409) {
@@ -713,7 +715,7 @@ export async function startGame(
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${AUTH_SECRET}`,
         },
-      }).catch((err: any) => console.error('[Lobby] Auto-advance failed:', err));
+      }).then((r) => r.body?.cancel()).catch((err: any) => console.error('[Lobby] Auto-advance failed:', err));
     }
 
     return { success: true, tokens };

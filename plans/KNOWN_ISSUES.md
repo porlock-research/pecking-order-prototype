@@ -179,13 +179,13 @@ This appears in 5+ locations in `server.ts` (handleInit, handlePlayerJoined, han
 
 **Practical risk**: Low for now — AUTH_SECRET is only used for server-to-server calls (lobby→game server), not exposed to end users. But should be fixed before any public-facing auth checks are added.
 
-**Status**: Planned fix
+**Status**: Fixed — all 5 auth checks use `timingSafeEqual()` helper with constant-time length comparison
 
 ## [PROD-006] Game server compatibility_date is 2024-02-07
 
 The game server's `wrangler.toml` has `compatibility_date = "2024-02-07"` — over two years old. The lobby is at `2024-12-30`. Cloudflare ships runtime improvements, bug fixes, and performance optimizations with each compatibility date. Being this far behind may mean we're missing perf improvements that could help with the CPU time and cold start issues.
 
-**Status**: Planned fix — update both to current date
+**Status**: Fixed — updated to `2026-02-25` (enables RPC support, unblocks PROD-013)
 
 ## [PROD-007] WebSocket connections don't use Hibernation API
 
@@ -272,7 +272,7 @@ Per DO best practices, non-storage I/O like `fetch()` (which D1 uses internally)
 
 The `goldCredited` boolean guard prevents duplicate gold writes. Previously an in-memory flag that was lost on DO restart — if the DO restarted between the flag being set and the D1 write completing, gold could be double-credited.
 
-**Partial fix (ADR-070)**: `goldCredited` is now persisted to `ctx.storage.put('goldCredited', true)` alongside the in-memory flag, and restored from storage in `onStart()`. This prevents double-credit across DO restarts/hibernation. The D1 writes themselves are still unawaited (fire-and-forget), so the theoretical race between storage.put and D1 fetch remains, but the window is now extremely narrow.
+**Partial fix (ADR-070)**: `goldCredited` is now persisted to `ctx.storage.put('goldCredited', true)` alongside the in-memory flag, and restored from storage in `onStart()`. This prevents double-credit across DO restarts/hibernation. The D1 writes themselves are still unawaited (fire-and-forget), so the theoretical race between storage.put and D1 fetch remains, but the window is now extremely narrow. Note: `ctx.waitUntil()` is a no-op in Durable Objects (exists only for API compatibility) and cannot be used here.
 
 **Status**: Partially mitigated — goldCredited survives restarts via ctx.storage; D1 write race window remains but is acceptably small
 
@@ -391,7 +391,7 @@ Per CF docs: "If unused response body: call `response.body.cancel()` to free the
 
 **Fix**: Add `await res.text()` or `res.body?.cancel()` after each fetch where the body is unused.
 
-**Status**: Planned fix — low risk but easy to address
+**Status**: Fixed — added `res.body?.cancel()` to all 3 unconsumed fetch calls in lobby actions
 
 ## [PROD-019] Cookie `secure` flag uses `process.env.NODE_ENV`
 
@@ -402,7 +402,7 @@ secure: process.env.NODE_ENV === 'production'
 
 Per CF docs: "`process.env` does NOT work on Cloudflare Workers by default." This likely works because the bundler (esbuild via OpenNext) inlines `NODE_ENV` at build time, but it's fragile and non-standard for the Workers runtime. Should be `secure: true` unconditionally (HTTPS is always available on Cloudflare).
 
-**Status**: Planned fix — trivial change, prevents breakage if bundler behavior changes
+**Status**: Fixed — `secure: true` unconditionally (Cloudflare always serves HTTPS)
 
 ## [PROD-020] Missing `Access-Control-Max-Age` CORS header
 
@@ -410,7 +410,7 @@ Per CF docs: "`process.env` does NOT work on Cloudflare Workers by default." Thi
 
 **Fix**: Add `'Access-Control-Max-Age': '86400'` (24 hours) to the CORS headers. Preflight requests are identical every time (same origin, same methods, same headers), so aggressive caching is safe.
 
-**Status**: Planned fix — minor optimization, reduces unnecessary preflight traffic
+**Status**: Fixed — added `Access-Control-Max-Age: 86400` to CORS_HEADERS
 
 ## [PROD-021] No environment separation — all branches deploy to the same infrastructure
 
