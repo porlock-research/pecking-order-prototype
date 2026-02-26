@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(req: NextRequest) {
-  const session = req.cookies.get('po_session');
+  // Check both cookie names so staging (po_session_stg) and production (po_session) both work.
+  // Actual session validation happens in getSession() against the correct D1 database.
+  const session = req.cookies.get('po_session') || req.cookies.get('po_session_stg');
   if (session) return NextResponse.next();
 
   const loginUrl = new URL('/login', req.url);

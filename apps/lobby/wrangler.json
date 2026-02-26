@@ -12,11 +12,15 @@
   "env": {
     "staging": {
       "name": "pecking-order-lobby-staging",
+      "routes": [
+        { "pattern": "staging-lobby.peckingorder.ca/*", "zone_name": "peckingorder.ca" }
+      ],
       "vars": {
-        "GAME_SERVER_HOST": "https://game-server-staging.porlock.workers.dev",
-        "GAME_CLIENT_HOST": "https://pecking-order-client-staging.pages.dev",
-        "PERSONA_ASSETS_URL": "",
-        "LOBBY_HOST": "https://pecking-order-lobby-staging.porlock.workers.dev"
+        "GAME_SERVER_HOST": "https://staging-api.peckingorder.ca",
+        "GAME_CLIENT_HOST": "https://staging-play.peckingorder.ca",
+        "PERSONA_ASSETS_URL": "https://staging-assets.peckingorder.ca",
+        "LOBBY_HOST": "https://staging-lobby.peckingorder.ca",
+        "SESSION_COOKIE_NAME": "po_session_stg"
       },
       "r2_buckets": [
         { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets-staging" }
@@ -31,11 +35,15 @@
     },
     "production": {
       "name": "pecking-order-lobby",
+      "routes": [
+        { "pattern": "lobby.peckingorder.ca/*", "zone_name": "peckingorder.ca" }
+      ],
       "vars": {
-        "GAME_SERVER_HOST": "https://game-server.porlock.workers.dev",
-        "GAME_CLIENT_HOST": "https://pecking-order-client.pages.dev",
-        "PERSONA_ASSETS_URL": "",
-        "LOBBY_HOST": "https://pecking-order-lobby.porlock.workers.dev"
+        "GAME_SERVER_HOST": "https://api.peckingorder.ca",
+        "GAME_CLIENT_HOST": "https://play.peckingorder.ca",
+        "PERSONA_ASSETS_URL": "https://assets.peckingorder.ca",
+        "LOBBY_HOST": "https://lobby.peckingorder.ca",
+        "SESSION_COOKIE_NAME": "po_session"
       },
       "r2_buckets": [
         { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets" }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/db';
-import { generateToken } from '@/lib/auth';
+import { generateToken, getSessionCookieName } from '@/lib/auth';
 
 const SESSION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -70,13 +70,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     .run();
 
   // Redirect to join page with session cookie
+  const cookieName = await getSessionCookieName();
   const response = NextResponse.redirect(new URL(`/join/${invite.invite_code}`, req.url));
-  response.cookies.set('po_session', sessionId, {
+  response.cookies.set(cookieName, sessionId, {
     httpOnly: true,
     secure: true,
     sameSite: 'lax',
     path: '/',
     maxAge: 7 * 24 * 60 * 60,
+    domain: '.peckingorder.ca',
   });
   return response;
 }

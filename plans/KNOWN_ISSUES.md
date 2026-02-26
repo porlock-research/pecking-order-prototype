@@ -136,7 +136,7 @@ Issues discovered during the first live CONFIGURABLE_CYCLE game (Feb 2026). Thes
 - **Edge caching**: The image route sets `Cache-Control: public, max-age=86400, s-maxage=604800` but it's unclear if Cloudflare's CDN edge cache is being used effectively through OpenNext. Persona images are immutable — once generated they never change. Should be cached aggressively.
 - **Reduce cold start cost**: Audit Next.js bundle for unnecessary SSR dependencies. Consider whether some routes could be static or use edge runtime.
 
-**Status**: Investigating
+**Status**: Partially fixed (ADR-074) — R2 public access via `assets.peckingorder.ca` custom domain + `PERSONA_ASSETS_URL` var removes persona image requests from the lobby worker entirely. Remaining cold start cost is for actual SSR routes only. Service bindings (PROD-004) and edge caching are further improvements.
 
 ## [PROD-002] Game server DO — high "client disconnected" error rate (~56%)
 
@@ -829,4 +829,4 @@ The PWA's `start_url` embeds a game-specific JWT (`/game/CODE?_t=JWT`). If a pla
 
 **Requirements**: DNS configuration, Cloudflare custom domain setup for both Pages (client) and Workers (lobby), update CORS / cookie settings.
 
-**Status**: Not started — deferred until custom domain setup is prioritized.
+**Status**: Fixed (ADR-074) — All services migrated to `peckingorder.ca` subdomains. Session cookie set with `domain: '.peckingorder.ca'` enables cross-subdomain auth. Per-environment cookie names (`po_session` / `po_session_stg`) prevent staging/production collision. `refreshFromLobby()` now sends the session cookie cross-subdomain, making PWA auth game-agnostic.

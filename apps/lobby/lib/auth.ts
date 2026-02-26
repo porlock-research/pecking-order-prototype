@@ -2,10 +2,19 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { getDB } from './db';
+import { getDB, getEnv } from './db';
 import { sendEmail } from './email';
 
-const SESSION_COOKIE = 'po_session';
+const DEFAULT_SESSION_COOKIE = 'po_session';
+
+async function getSessionCookieName(): Promise<string> {
+  try {
+    const env = await getEnv();
+    return (env.SESSION_COOKIE_NAME as string) || DEFAULT_SESSION_COOKIE;
+  } catch {
+    return DEFAULT_SESSION_COOKIE;
+  }
+}
 const MAGIC_LINK_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 const SESSION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -32,7 +41,7 @@ function generateInviteCode(): string {
   return code;
 }
 
-export { generateId, generateToken, generateInviteCode };
+export { generateId, generateToken, generateInviteCode, getSessionCookieName };
 
 // ── Session Management ───────────────────────────────────────────────────
 
@@ -44,7 +53,8 @@ export interface SessionUser {
 
 export async function getSession(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
+  const cookieName = await getSessionCookieName();
+  const sessionId = cookieStore.get(cookieName)?.value;
   if (!sessionId) return null;
 
   const db = await getDB();
@@ -188,13 +198,14 @@ export async function verifyMagicLink(
 
 export async function logout(): Promise<void> {
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
+  const cookieName = await getSessionCookieName();
+  const sessionId = cookieStore.get(cookieName)?.value;
 
   if (sessionId) {
     const db = await getDB();
     await db.prepare('DELETE FROM Sessions WHERE id = ?').bind(sessionId).run();
   }
 
-  cookieStore.delete(SESSION_COOKIE);
+  cookieStore.delete(cookieName);
   redirect('/login');
 }

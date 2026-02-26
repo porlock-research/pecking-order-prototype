@@ -1019,3 +1019,23 @@ This document tracks significant architectural decisions, their context, and con
     *   Requires Resend account setup, API key secrets (`wrangler secret put RESEND_API_KEY`), and `LOBBY_HOST` var in wrangler.json per environment.
     *   Sending domain verification needed for production (use `onboarding@resend.dev` for testing).
     *   **Files**: `lib/email.ts` (new), `lib/auth.ts` (updated), `login/actions.ts` (updated), `login/page.tsx` (updated), `migrations/0006_invite_tokens.sql` (new), `invite/[token]/route.ts` (new), `actions.ts` (sendEmailInvite + getGameInvites), `waiting/page.tsx` (updated), `page.tsx` (updated).
+
+## [ADR-074] Custom Domain Migration — peckingorder.ca (PROD-024, PROD-001)
+*   **Date:** 2026-02-26
+*   **Status:** Accepted
+*   **Context:** All services ran on Cloudflare default domains (`*.porlock.workers.dev`, `*.pages.dev`). This caused three problems: (1) no cross-subdomain cookies — the PWA at `pages.dev` couldn't share auth with the lobby at `workers.dev` (PROD-024); (2) persona images hit Next.js cold start on every request (PROD-001); (3) ugly, non-brandable URLs for player-facing links and push notifications.
+*   **Decision:**
+    *   **Domain scheme**: `play.peckingorder.ca` (client), `lobby.peckingorder.ca` (lobby), `api.peckingorder.ca` (game server), `assets.peckingorder.ca` (R2). Staging uses `staging-` prefix on each subdomain.
+    *   **Worker routes**: `wrangler.toml` / `wrangler.json` get `routes` entries per environment mapping custom domains to existing workers. Workers keep their internal names — routes are a routing layer in front.
+    *   **R2 public access**: Custom domains on R2 buckets (`assets.peckingorder.ca` / `staging-assets.peckingorder.ca`). `PERSONA_ASSETS_URL` var set in lobby config — existing redirect logic in the image route handles the rest. Persona images bypass the lobby worker entirely.
+    *   **Shared auth cookie**: `po_session` cookie set with `domain: '.peckingorder.ca'`. All subdomains share the cookie — `refreshFromLobby()` from the client PWA now sends the session cookie cross-subdomain.
+    *   **Per-environment cookie names**: `SESSION_COOKIE_NAME` wrangler var — `po_session` (production), `po_session_stg` (staging). Prevents staging/production sessions from colliding since both share `domain=.peckingorder.ca`. `getSessionCookieName()` helper reads the var; middleware checks both names (existence only — actual validation in `getSession()` against per-env D1).
+    *   **Old URLs continue working**: `*.workers.dev` / `*.pages.dev` still resolve. Existing installed PWAs with old `start_url` work via expired-token guard → LauncherScreen.
+    *   **CI**: Staging workflow overrides `VITE_GAME_SERVER_HOST` / `VITE_LOBBY_HOST` to staging custom domains. Production workflow reads `.env.production` (already updated).
+*   **Consequences:**
+    *   PROD-024 resolved — PWA auth is now game-agnostic via shared `.peckingorder.ca` cookie.
+    *   PROD-001 partially addressed — persona images served directly from R2 via custom domain, bypassing lobby worker cold start.
+    *   Existing users must re-login once (old cookies on `*.workers.dev` don't transfer). Sessions expire in 7 days anyway.
+    *   Push subscriptions tied to old SW origin require re-subscribe on new domain. PushPrompt handles automatically.
+    *   **Dashboard prerequisites**: R2 public access custom domains and Pages custom domains must be configured in Cloudflare dashboard before code deploy.
+    *   **Files**: `apps/game-server/wrangler.toml`, `apps/game-server/src/server.ts`, `apps/lobby/wrangler.json`, `apps/lobby/lib/auth.ts`, `apps/lobby/app/login/verify/route.ts`, `apps/lobby/app/invite/[token]/route.ts`, `apps/lobby/middleware.ts`, `apps/client/.env.staging`, `apps/client/.env.production`, `.github/workflows/deploy-staging.yml`.

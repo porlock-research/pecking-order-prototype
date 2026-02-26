@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyMagicLink } from '@/lib/auth';
+import { verifyMagicLink, getSessionCookieName } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');
@@ -12,13 +12,15 @@ export async function GET(req: NextRequest) {
   const result = await verifyMagicLink(token);
 
   if (result.success && result.sessionId) {
+    const cookieName = await getSessionCookieName();
     const response = NextResponse.redirect(new URL(next, req.url));
-    response.cookies.set('po_session', result.sessionId, {
+    response.cookies.set(cookieName, result.sessionId, {
       httpOnly: true,
       secure: true,
       sameSite: 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+      domain: '.peckingorder.ca',
     });
     return response;
   }

@@ -15,6 +15,10 @@ enabled = true
 [env.staging]
 name = "game-server-staging"
 
+[[env.staging.routes]]
+pattern = "staging-api.peckingorder.ca/*"
+zone_name = "peckingorder.ca"
+
 [[env.staging.durable_objects.bindings]]
 name = "GameServer"
 class_name = "GameServer"
@@ -27,11 +31,15 @@ database_id = "660e4807-b2ea-4d1c-b412-91877fbcbf81"
 [env.staging.vars]
 AXIOM_DATASET = "pecking-order-staging"
 VAPID_PUBLIC_KEY = "BCGjVUVQUKz31CzbSrBGfJgAl98xXfS9sY4XfVK7MiIvCWBA5oUmwe_dBWMf_MXCOrs6WW9PPL59pHYG8vYV5ac"
-GAME_CLIENT_HOST = "https://pecking-order-client-staging.pages.dev"
+GAME_CLIENT_HOST = "https://staging-play.peckingorder.ca"
 
 # ── Production ───────────────────────────────────────────
 [env.production]
 name = "game-server"
+
+[[env.production.routes]]
+pattern = "api.peckingorder.ca/*"
+zone_name = "peckingorder.ca"
 
 [[env.production.durable_objects.bindings]]
 name = "GameServer"
@@ -45,4 +53,4 @@ database_id = "c5941589-2d69-4ae1-9b5d-0554f2ad9721"
 [env.production.vars]
 AXIOM_DATASET = "pecking-order"
 VAPID_PUBLIC_KEY = "BDCbn388daKAMq3g1PyJ5nqfi3btLvsjIFllFkwN4S_hgoXwLBWI0JYY9XMTXhXyX-fEqPDfZKoP0EJ9hNM1OzQ"
-GAME_CLIENT_HOST = "https://pecking-order-client.pages.dev"
+GAME_CLIENT_HOST = "https://play.peckingorder.ca"

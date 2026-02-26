@@ -135,7 +135,7 @@ export class GameServer extends Server<Env> {
       roster: snapshot?.context.roster || {},
       db: this.env.DB,
       vapidPrivateJwk: this.env.VAPID_PRIVATE_JWK,
-      clientHost: this.env.GAME_CLIENT_HOST || 'https://pecking-order-client.pages.dev',
+      clientHost: this.env.GAME_CLIENT_HOST || 'https://play.peckingorder.ca',
       inviteCode: snapshot?.context.inviteCode || '',
     };
   }

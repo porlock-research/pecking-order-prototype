@@ -53,8 +53,8 @@ jobs:
       - name: Build Client (Staging)
         run: npx turbo run build --filter=client
         env:
-          VITE_GAME_SERVER_HOST: https://game-server-staging.porlock.workers.dev
-          VITE_LOBBY_HOST: https://pecking-order-lobby-staging.porlock.workers.dev
+          VITE_GAME_SERVER_HOST: https://staging-api.peckingorder.ca
+          VITE_LOBBY_HOST: https://staging-lobby.peckingorder.ca
       - name: Deploy Client (Staging)
         if: env.CF_API_TOKEN != ''
         env:
