@@ -25,9 +25,10 @@ function pruneExpiredTokens() {
   keysToRemove.forEach(k => localStorage.removeItem(k));
 }
 
-/** Sync tokens from Cache API into localStorage (for iOS standalone PWA).
- *  Cache API is shared between Safari and standalone; localStorage is not.
- *  Running this on mount ensures LauncherScreen and findCachedToken see all tokens. */
+/** Sync tokens from Cache API into localStorage.
+ *  On older iOS, Cache API may be shared between Safari and standalone PWA.
+ *  On modern iOS (17+), storage is fully partitioned — this only helps within
+ *  the same browsing context (e.g. recovering from a cleared localStorage). */
 async function syncCacheToLocalStorage(): Promise<void> {
   if (!('caches' in window)) return;
   try {
@@ -65,6 +66,64 @@ async function syncCacheToLocalStorage(): Promise<void> {
 function getGameCodeFromPath(): string | null {
   const match = window.location.pathname.match(/^\/game\/([A-Za-z0-9]+)\/?$/);
   return match ? match[1].toUpperCase() : null;
+}
+
+/**
+ * Dynamically update the <link rel="manifest"> with a start_url that embeds the JWT.
+ * When the user taps "Add to Home Screen" on iOS, the manifest is read at that instant —
+ * so the standalone PWA will launch pre-authenticated at /game/CODE?_t=JWT.
+ * Uses a data: URL (not blob:) because iOS reliably reads data URLs during install.
+ */
+function updatePwaManifest(gameCode: string, jwt: string) {
+  const manifest = {
+    name: 'Pecking Order',
+    short_name: 'Pecking Order',
+    description: 'Keep your friends close...',
+    theme_color: '#0f0a1a',
+    background_color: '#0f0a1a',
+    display: 'standalone',
+    scope: '/',
+    start_url: `/game/${gameCode}?_t=${jwt}`,
+    icons: [
+      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: '/icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  };
+  const encoded = encodeURIComponent(JSON.stringify(manifest));
+  const href = `data:application/json;charset=utf-8,${encoded}`;
+  let link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
+  if (link) {
+    link.setAttribute('href', href);
+  } else {
+    link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = href;
+    document.head.appendChild(link);
+  }
+}
+
+/**
+ * Set a game-specific auth cookie. iOS 17.2+ copies cookies from Safari to standalone
+ * PWA at install time (one-time copy), providing a secondary auth recovery path.
+ */
+function setPwaAuthCookie(gameCode: string, jwt: string) {
+  const decoded = decodeGameToken(jwt);
+  const maxAge = decoded.exp ? decoded.exp - Math.floor(Date.now() / 1000) : 30 * 24 * 60 * 60;
+  const secure = location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `po_pwa_${gameCode}=${jwt}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
+}
+
+/** Try to recover a token from a game-specific cookie (iOS 17.2+ Safari→PWA cookie copy). */
+function recoverFromCookie(gameCode: string): string | null {
+  const match = document.cookie.match(new RegExp(`po_pwa_${gameCode}=([^;]+)`));
+  if (!match) return null;
+  try {
+    const jwt = match[1];
+    const decoded = decodeGameToken(jwt);
+    if (decoded.exp && decoded.exp > Date.now() / 1000) return jwt;
+  } catch {}
+  return null;
 }
 
 /** Persist a token to Cache API (shared between Safari and standalone PWA on iOS).
@@ -136,6 +195,12 @@ function applyToken(
   // Also persist to Cache API for iOS standalone PWA cross-boundary sharing
   persistToCache(key, jwt);
 
+  // Update manifest start_url so "Add to Home Screen" installs a pre-authenticated PWA
+  updatePwaManifest(key, jwt);
+
+  // Set game-specific cookie (iOS 17.2+ copies cookies from Safari to standalone PWA)
+  setPwaAuthCookie(key, jwt);
+
   // Clean transient params from URL
   if (gameCode) {
     window.history.replaceState({}, '', `/game/${gameCode}`);
@@ -162,9 +227,14 @@ export default function App() {
       const rawToken = params.get('token');
 
       if (gameCode && transientToken) {
-        // Arrived via lobby redirect: /game/CODE?_t=JWT
+        // Arrived via lobby redirect or PWA start_url: /game/CODE?_t=JWT
         try {
-          applyToken(transientToken, gameCode, setGameId, setPlayerId, setToken);
+          const decoded = decodeGameToken(transientToken);
+          if (decoded.exp && decoded.exp < Date.now() / 1000) {
+            // Expired start_url token (PWA installed for an old game) — show launcher
+          } else {
+            applyToken(transientToken, gameCode, setGameId, setPlayerId, setToken);
+          }
         } catch {
           console.error('Invalid token from redirect');
         }
@@ -209,21 +279,28 @@ export default function App() {
 
     async function runAsyncRecovery(code: string) {
       try {
-        // Step 2: Cache API (already synced to localStorage above, but try direct read as fallback)
+        // Step 2: Cookie (iOS 17.2+ copies cookies from Safari to standalone PWA at install)
+        const fromCookie = recoverFromCookie(code);
+        if (fromCookie) {
+          applyToken(fromCookie, code, setGameId, setPlayerId, setToken);
+          return;
+        }
+
+        // Step 3: Cache API (already synced to localStorage above, but try direct read as fallback)
         const fromCache = await recoverFromCacheApi(code);
         if (fromCache) {
           applyToken(fromCache, code, setGameId, setPlayerId, setToken);
           return;
         }
 
-        // Step 3: Lobby API (mint fresh JWT via po_session cookie — browser only, not standalone)
+        // Step 4: Lobby API (mint fresh JWT via po_session cookie — browser only, not standalone)
         const fromLobby = await refreshFromLobby(code);
         if (fromLobby) {
           applyToken(fromLobby, code, setGameId, setPlayerId, setToken);
           return;
         }
 
-        // Step 4: Redirect to lobby (last resort — user may need to log in)
+        // Step 5: Redirect to lobby (last resort — user may need to log in)
         window.location.href = `${LOBBY_HOST}/play/${code}`;
       } catch {
         window.location.href = `${LOBBY_HOST}/play/${code}`;

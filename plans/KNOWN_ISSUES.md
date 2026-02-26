@@ -81,7 +81,9 @@ When a player saves the client app to their iOS home screen, the standalone PWA 
 
 **Relevant files**: `apps/client/src/App.tsx`, `apps/client/src/sw.ts`, `apps/lobby/app/api/refresh-token/[code]/route.ts`
 
-**Status**: Partially mitigated — game code entry prevents dead-end LauncherScreen; recovery chain handles re-auth. Full seamlessness blocked by iOS storage partitioning + magic link UX gap in standalone context. **ADR-073** adds Resend email delivery for magic links and one-click invite tokens — standalone PWA users can now receive magic link emails, but the link still opens in Safari (not the PWA). In-app OTP verification remains the ideal fix for full standalone seamlessness.
+**Status**: Largely mitigated — **Dynamic manifest injection** now embeds the JWT in `start_url` (`/game/CODE?_t=JWT`) via a data URL manifest. When a player taps "Add to Home Screen" in Safari, the PWA installs pre-authenticated. **Cookie bridge** (`po_pwa_CODE`) provides belt-and-suspenders recovery on iOS 17.2+ (one-time Safari→PWA cookie copy at install). **Expired token guard** gracefully handles old PWA installs (shows LauncherScreen instead of stale auth). Recovery chain order: URL params → localStorage → cookie → Cache API → lobby API → redirect.
+
+**Remaining limitation**: If the game token expires before the player installs the PWA, or if the PWA was installed for a previous game, the embedded `start_url` token will be stale. The expired-token guard catches this and shows LauncherScreen with cached games + code entry. Long-term fix: custom domain with shared auth cookie (see PROD-024).
 
 ## [BUG-013] Scheduler alarms lost on DO restart (ADR-012 race)
 
@@ -814,3 +816,17 @@ This is fundamentally a state management problem being solved with ad-hoc flags.
 This also opens the door to ticker deduplication, rate-limiting, and per-player filtering being handled as actor logic rather than scattered across the monolithic callback.
 
 **Status**: Band-aid fix shipped (`isRestoreFire` flag suppresses duplicate tickers on restore). Architectural refactor deferred.
+
+## [PROD-024] PWA auth is game-scoped — no cross-game session persistence
+
+**Priority**: Low — current dynamic manifest + cookie bridge handles single-game PWA installs well; this is about the multi-game / long-term UX.
+
+The PWA's `start_url` embeds a game-specific JWT (`/game/CODE?_t=JWT`). If a player installs the PWA for Game A and later joins Game B, the installed PWA still launches with Game A's (likely expired) token. The expired-token guard catches this gracefully (shows LauncherScreen), but the player must manually enter the new game code or re-install the PWA.
+
+**Root cause**: Client (`*-staging.pages.dev`) and lobby (`*-staging.porlock.workers.dev`) are on different domains, so cookies can't be shared. The lobby's `po_session` cookie is invisible to the client PWA.
+
+**Fix**: Set up custom domains under `peckingorder.ca` — `play.peckingorder.ca` (client) and `lobby.peckingorder.ca` (lobby). A shared `.peckingorder.ca` domain cookie would let the PWA call the lobby's refresh-token API for any game, making auth game-agnostic. The dynamic manifest `start_url` could then be just `/` (no embedded JWT), and the PWA would authenticate via the shared cookie on every launch.
+
+**Requirements**: DNS configuration, Cloudflare custom domain setup for both Pages (client) and Workers (lobby), update CORS / cookie settings.
+
+**Status**: Not started — deferred until custom domain setup is prioritized.
