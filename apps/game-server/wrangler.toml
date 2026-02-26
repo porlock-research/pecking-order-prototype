@@ -14,6 +14,7 @@ enabled = true
 # ── Staging ──────────────────────────────────────────────
 [env.staging]
 name = "game-server-staging"
+workers_dev = true
 
 [[env.staging.routes]]
 pattern = "staging-api.peckingorder.ca/*"
@@ -36,6 +37,7 @@ GAME_CLIENT_HOST = "https://staging-play.peckingorder.ca"
 # ── Production ───────────────────────────────────────────
 [env.production]
 name = "game-server"
+workers_dev = true
 
 [[env.production.routes]]
 pattern = "api.peckingorder.ca/*"
