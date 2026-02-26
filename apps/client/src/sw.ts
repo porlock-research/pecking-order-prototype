@@ -65,12 +65,16 @@ self.addEventListener('push', (event) => {
   try {
     const data = event.data.json();
     const title = data.title || 'Pecking Order';
+    const tag = data.tag || 'default';
+    // DMs, eliminations, and winner notifications deserve their own alert sound;
+    // phase/activity notifications silently replace the existing one.
+    const renotify = tag.startsWith('dm-') || tag === 'elimination' || tag === 'winner';
     const options: NotificationOptions & { renotify?: boolean } = {
       body: data.body || '',
       icon: '/icons/icon-192.png',
       badge: '/icons/badge-72.png',
-      tag: data.tag || 'default',
-      renotify: true,
+      tag,
+      renotify,
       data: { url: data.url || self.location.origin },
     };
 

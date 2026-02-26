@@ -1051,7 +1051,7 @@ export async function flushScheduledTasks(gameId: string) {
   const env = await getEnv();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
   const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
-  const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/flush-tasks`;
+  const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/scheduled-tasks`;
 
   try {
     const res = await fetch(targetUrl, {
@@ -1063,6 +1063,73 @@ export async function flushScheduledTasks(gameId: string) {
   } catch (err: any) {
     return { success: false, error: err.message };
   }
+}
+
+export async function getScheduledTasks(gameId: string) {
+  const env = await getEnv();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+  const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/scheduled-tasks`;
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${AUTH_SECRET}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    return await res.json() as { count: number; tasks: Array<{ id: string; time: number }> };
+  } catch (err: any) {
+    return { count: 0, tasks: [], error: err.message };
+  }
+}
+
+// ── Admin: Game Manager ──────────────────────────────────────────────────
+
+export async function getAllGames() {
+  const db = await getDB();
+  const { results } = await db
+    .prepare('SELECT id, invite_code, mode, status, player_count, day_count, created_at FROM GameSessions ORDER BY created_at DESC')
+    .all<{
+      id: string;
+      invite_code: string;
+      mode: string;
+      status: string;
+      player_count: number;
+      day_count: number;
+      created_at: number;
+    }>();
+  return results;
+}
+
+export async function cleanupGame(gameId: string) {
+  const env = await getEnv();
+  const db = await getDB();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+
+  // 1. Call game server cleanup endpoint
+  try {
+    const res = await fetch(`${GAME_SERVER_HOST}/parties/game-server/${gameId}/cleanup`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${AUTH_SECRET}` },
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`[Lobby] Game server cleanup failed: ${res.status} ${text}`);
+    }
+  } catch (err: any) {
+    console.error('[Lobby] Game server cleanup error:', err);
+  }
+
+  // 2. Clean up lobby D1
+  await db.batch([
+    db.prepare('DELETE FROM PersonaDraws WHERE game_id = ?').bind(gameId),
+    db.prepare('DELETE FROM Invites WHERE game_id = ?').bind(gameId),
+    db.prepare("UPDATE GameSessions SET status = 'ARCHIVED' WHERE id = ?").bind(gameId),
+  ]);
+
+  return { success: true };
 }
 
 // ── Admin: Database Reset ────────────────────────────────────────────────

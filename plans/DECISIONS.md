@@ -949,3 +949,52 @@ This document tracks significant architectural decisions, their context, and con
     *   Production deploys require explicit manual trigger with confirmation.
     *   Local dev (`wrangler dev`) is unaffected — uses top-level config + `.dev.vars`.
     *   Secrets must be set per-environment (`wrangler secret put --env staging/production`).
+
+## [ADR-070] Enable WebSocket Hibernation (PROD-007 + PROD-010)
+*   **Date:** 2026-02-25
+*   **Status:** Accepted
+*   **Context:** The game server DO stayed alive in memory for the entire duration of any open WebSocket connection (`static options = { hibernate: false }`). With 8 players connected, the DO never hibernated — billable duration accrued continuously even when idle. Enabling hibernation required addressing in-memory state recovery: `connectedPlayers` map, `goldCredited` flag, `lastBroadcastState`, and DM/group-chat gate state were all lost on hibernation eviction.
+*   **Decision:**
+    *   Enable `static options = { hibernate: true }` on `GameServer` class. PartyServer switches to `HibernatingConnectionManager` which uses `ctx.acceptWebSocket()` and class-level handlers.
+    *   **WebSocket identity**: `ws.serializeAttachment({ playerId })` on connect persists identity across hibernation. All identity reads (`onClose`, `onMessage`, `sendToPlayer`, `broadcastSync`) use `ws.state?.playerId || ws.deserializeAttachment()?.playerId` fallback pattern.
+    *   **Presence rebuild**: `rebuildConnectedPlayers()` runs in `onStart()` after actor restore, iterating `this.getConnections()` and reading attachments.
+    *   **Gold safety**: `goldCredited` persisted to `ctx.storage.put('goldCredited', true)` and restored from storage in `onStart()`.
+    *   **State tracking init**: `lastBroadcastState` initialized from restored snapshot state to prevent extra SYNC on wake. `lastKnownDmsOpen`/`lastKnownGroupChatOpen` restored from L3 context to prevent spurious ticker messages.
+*   **Consequences:**
+    *   DO can hibernate when all players are idle — billable duration charges stop during hibernation.
+    *   Code deploys still disconnect all WebSockets (CF limitation) — partysocket's auto-reconnect handles this on the client side.
+    *   `ws.state` is ephemeral (lost on hibernation); `ws.serializeAttachment()` is the durable identity store (max 2,048 bytes per connection).
+    *   PartyWhen/Scheduler is hibernation-safe — uses only `ctx.storage.setAlarm()`, no timers.
+
+## [ADR-071] PartyWhen Observability (PROD-017)
+*   **Date:** 2026-02-25
+*   **Status:** Accepted
+*   **Context:** PartyWhen's internal SQLite task table was opaque — no API to list pending tasks, no lifecycle logging, stale tasks survived game end. Debugging alarm scheduling required ad-hoc SQL queries against the DO's storage.
+*   **Decision:**
+    *   **`/scheduled-tasks` endpoint** on game server DO: GET returns all pending tasks (id, time) sorted by time; POST flushes all tasks (same as existing `/flush-tasks` but combined).
+    *   **Structured alarm logging**: `wakeUpL2()` queries remaining task count and logs `[L1] [Alarm] wakeUpL2 fired — N tasks remaining`.
+    *   **Auto-flush on game end**: Subscription callback deletes all tasks from the PartyWhen SQLite table when `gameOver` is detected.
+    *   **Admin UI**: Per-game admin page (`/admin/game/[id]`) has a Scheduled Tasks section with task table + flush button. New server actions `getScheduledTasks()` and updated `flushScheduledTasks()` route through the combined endpoint.
+    *   **Game cleanup**: `/cleanup` endpoint wipes game's D1 rows + DO storage + scheduled tasks. `/admin/games` page lists all games with per-game cleanup button. `cleanupGame()` orchestrates cross-database cleanup, sets lobby status to `ARCHIVED`.
+*   **Consequences:**
+    *   Alarm scheduling state is fully inspectable via HTTP endpoint and admin UI.
+    *   Stale tasks are automatically cleaned up when a game ends.
+    *   Admin can view, flush, and clean up games without needing direct DO/D1 access.
+
+## [ADR-072] Fix Push Notification Architecture (PROD-022)
+*   **Date:** 2026-02-25
+*   **Status:** Accepted
+*   **Context:** Phase-driven push notifications fired from the L1 subscription callback (`stateToPush()`), which runs on every snapshot emission — including `actor.start()` on restore. The in-memory dedup state (`sentPushKeys`) was lost on DO restart, causing duplicate push on every cold start. The dedup keys were also not day-scoped, silently blocking Day 2+ notifications for phases with identical message bodies. All notifications used a hardcoded 24-hour TTL, causing stale late-delivery. DM notifications shared a single `tag: "dm"`, so multiple DMs from different players replaced each other.
+*   **Decision:**
+    *   **Move phase pushes to XState entry actions**: L3 sends `sendParent({ type: 'PUSH.PHASE', trigger: '...' })` from `voting`, `dailyGame`, and `playing` entry actions. L2 raises `PUSH.PHASE` from `morningBriefing` and `nightSummary` entry actions. L2 handles `PUSH.PHASE` with `broadcastPhasePush` action, overridden in L1's `.provide()` with DO-context-aware push logic. XState does NOT re-run entry actions on snapshot restore — eliminates duplicate push by design.
+    *   **Remove subscription-based push**: Deleted `stateToPush()`, removed push block from subscription callback, removed `sentPushKeys` field entirely. No dedup state needed.
+    *   **Per-trigger TTL**: `sendPushNotification()` accepts a `ttl` parameter (default 3600s). Phase/activity: 300s, daily game: 600s, DM/elimination: 3600s, winner: 86400s. Passed through `pushToPlayer()`/`pushBroadcast()`.
+    *   **Per-sender DM tags**: DM notification tag changed from `"dm"` to `"dm-${fact.actorId}"` — each sender gets their own notification slot.
+    *   **Conditional `renotify`**: Service worker sets `renotify: true` only for DMs (`dm-*`), elimination, and winner tags. Phase/activity tags use `renotify: false` — silent replacement, no re-alert.
+*   **Consequences:**
+    *   Push notifications fire only on actual state transitions, never on DO restart/restore.
+    *   Multi-day games correctly send per-day notifications (no cross-day dedup collision).
+    *   Phase notifications expire quickly (5 min) — stale late-delivery eliminated.
+    *   Multiple DM senders produce separate notifications (not silently replaced).
+    *   Two distinct push paths remain: fact-based (in `persistFactToD1` action) and phase-based (in XState entry actions). Long-term unification through FACT.RECORD pipeline is possible but not required.
+    *   **Deferred**: multi-device schema (`UNIQUE(user_id, endpoint)`), batch D1 queries, PushPrompt UX polish.

@@ -58,6 +58,7 @@ export type GameEvent =
   | { type: 'PERK.REJECTED'; senderId: string; reason: string }
   | { type: 'SILVER_TRANSFER.REJECTED'; senderId: string; reason: string }
   | { type: 'CHANNEL.REJECTED'; reason: string; senderId: string }
+  | { type: 'PUSH.PHASE'; trigger: string }
   | DmRejectedEvent
   | (SocialEvent & { senderId: string });
 
@@ -135,7 +136,7 @@ export const orchestratorMachine = setup({
       initial: 'morningBriefing',
       states: {
         morningBriefing: {
-          entry: ['incrementDay', 'clearRestoredChatLog'],
+          entry: ['incrementDay', 'clearRestoredChatLog', raise({ type: 'PUSH.PHASE', trigger: 'DAY_START' } as any)],
           always: 'activeSession'
         },
         activeSession: {
@@ -192,6 +193,7 @@ export const orchestratorMachine = setup({
             'CHANNEL.REJECTED': { actions: 'sendChannelRejection' },
             'PERK.RESULT': { actions: 'deliverPerkResult' },
             'PERK.REJECTED': { actions: 'deliverPerkResult' },
+            'PUSH.PHASE': { actions: 'broadcastPhasePush' },
             '*': [
               {
                 guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Vote.PREFIX),
@@ -227,7 +229,7 @@ export const orchestratorMachine = setup({
           }
         },
         nightSummary: {
-          entry: ['recordCompletedVoting', 'processNightSummary', 'scheduleNextTimelineEvent'],
+          entry: ['recordCompletedVoting', 'processNightSummary', 'scheduleNextTimelineEvent', raise({ type: 'PUSH.PHASE', trigger: 'NIGHT_SUMMARY' } as any)],
           always: [
             { guard: ({ context }: any) => context.winner !== null, target: '#pecking-order-l2.gameSummary' },
             { guard: ({ context }: any) => context.dayIndex >= (context.manifest?.days.length ?? Infinity), target: '#pecking-order-l2.gameSummary' },
@@ -246,6 +248,7 @@ export const orchestratorMachine = setup({
             },
             'ECONOMY.CREDIT_SILVER': { actions: 'applySilverCredit' },
             'ECONOMY.CONTRIBUTE_GOLD': { actions: 'applyGoldContribution' },
+            'PUSH.PHASE': { actions: 'broadcastPhasePush' },
           }
         }
       },

@@ -10,6 +10,13 @@ import { DEFAULT_PUSH_CONFIG, FactTypes } from "@pecking-order/shared-types";
 import { getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { sendPushNotification } from "./push-send";
 
+// --- TTL Constants (seconds) ---
+const PHASE_TTL = 300;      // 5 min — phases are time-sensitive
+const GAME_TTL = 600;       // 10 min — daily game
+const DM_TTL = 3600;        // 1 hour
+const ELIMINATION_TTL = 3600; // 1 hour
+const WINNER_TTL = 86400;   // 24 hours
+
 export interface PushContext {
   roster: Record<string, any>;
   db: D1Database;
@@ -35,6 +42,7 @@ export async function pushToPlayer(
   ctx: PushContext,
   playerId: string,
   payload: Record<string, string>,
+  ttl?: number,
 ): Promise<void> {
   const pushKey = pushKeyForPlayer(playerId, ctx.roster);
   const sub = await getPushSubscriptionD1(ctx.db, pushKey);
@@ -48,7 +56,7 @@ export async function pushToPlayer(
   const enriched = { ...payload, url };
 
   console.log(`[L1] [Push] Sending to ${playerId}: ${payload.body}`);
-  const result = await sendPushNotification(sub, enriched, ctx.vapidPrivateJwk);
+  const result = await sendPushNotification(sub, enriched, ctx.vapidPrivateJwk, undefined, ttl);
   console.log(`[L1] [Push] Result for ${playerId}: ${result}`);
   if (result === "expired") {
     await deletePushSubscriptionD1(ctx.db, pushKey);
@@ -59,43 +67,34 @@ export async function pushToPlayer(
 export async function pushBroadcast(
   ctx: PushContext,
   payload: Record<string, string>,
+  ttl?: number,
 ): Promise<void> {
   const playerIds = Object.keys(ctx.roster);
   console.log(`[L1] [Push] Broadcasting to ${playerIds.length} players: ${payload.body}`);
   await Promise.allSettled(
-    playerIds.map((pid) => pushToPlayer(ctx, pid, payload)),
+    playerIds.map((pid) => pushToPlayer(ctx, pid, payload, ttl)),
   );
 }
 
-/** Convert a combined L2+L3 state string into a push payload for phase transitions. Returns null if no push needed. */
-export function stateToPush(
-  stateStr: string,
-  context: any,
-  manifest: GameManifest | null | undefined,
-): Record<string, string> | null {
-  const dayIndex = context?.dayIndex || 0;
-
-  if (stateStr.includes('"activityLayer":"playing"')) {
-    if (!isPushEnabled(manifest, 'ACTIVITY')) return null;
-    return { title: "Pecking Order", body: "Activity time!", tag: "activity" };
+/** Convert a PUSH.PHASE trigger into a push payload. Returns null if unknown trigger. */
+export function phasePushPayload(
+  trigger: string,
+  dayIndex: number,
+): { payload: Record<string, string>; ttl: number } | null {
+  switch (trigger) {
+    case 'DAY_START':
+      return { payload: { title: "Pecking Order", body: `Welcome to Day ${dayIndex} of Pecking Order`, tag: "phase" }, ttl: PHASE_TTL };
+    case 'VOTING':
+      return { payload: { title: "Pecking Order", body: "Voting has begun!", tag: "phase" }, ttl: PHASE_TTL };
+    case 'NIGHT_SUMMARY':
+      return { payload: { title: "Pecking Order", body: "Night has fallen...", tag: "phase" }, ttl: PHASE_TTL };
+    case 'DAILY_GAME':
+      return { payload: { title: "Pecking Order", body: "Game time!", tag: "phase" }, ttl: GAME_TTL };
+    case 'ACTIVITY':
+      return { payload: { title: "Pecking Order", body: "Activity time!", tag: "activity" }, ttl: PHASE_TTL };
+    default:
+      return null;
   }
-  if (stateStr.includes("morningBriefing") || stateStr.includes("groupChat")) {
-    if (!isPushEnabled(manifest, 'DAY_START')) return null;
-    return { title: "Pecking Order", body: `Welcome to Day ${dayIndex} of Pecking Order`, tag: "phase" };
-  }
-  if (stateStr.includes("voting")) {
-    if (!isPushEnabled(manifest, 'VOTING')) return null;
-    return { title: "Pecking Order", body: "Voting has begun!", tag: "phase" };
-  }
-  if (stateStr.includes("nightSummary")) {
-    if (!isPushEnabled(manifest, 'NIGHT_SUMMARY')) return null;
-    return { title: "Pecking Order", body: "Night has fallen...", tag: "phase" };
-  }
-  if (stateStr.includes("dailyGame")) {
-    if (!isPushEnabled(manifest, 'DAILY_GAME')) return null;
-    return { title: "Pecking Order", body: "Game time!", tag: "phase" };
-  }
-  return null;
 }
 
 /** Handle push notifications for significant facts (DM_SENT, ELIMINATION, WINNER_DECLARED). Fire-and-forget. */
@@ -111,21 +110,21 @@ export function handleFactPush(
     pushToPlayer(ctx, fact.targetId, {
       title: 'Pecking Order',
       body: `${name(fact.actorId)} sent you a DM`,
-      tag: 'dm',
-    }).catch(err => console.error('[L1] [Push] Error:', err));
+      tag: `dm-${fact.actorId}`,
+    }, DM_TTL).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.ELIMINATION) {
     if (!isPushEnabled(manifest, 'ELIMINATION')) return;
     pushBroadcast(ctx, {
       title: 'Pecking Order',
       body: `${name(fact.targetId || fact.actorId)} has been eliminated!`,
       tag: 'elimination',
-    }).catch(err => console.error('[L1] [Push] Error:', err));
+    }, ELIMINATION_TTL).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.WINNER_DECLARED) {
     if (!isPushEnabled(manifest, 'WINNER_DECLARED')) return;
     pushBroadcast(ctx, {
       title: 'Pecking Order',
       body: `${name(fact.targetId || fact.actorId)} wins!`,
       tag: 'winner',
-    }).catch(err => console.error('[L1] [Push] Error:', err));
+    }, WINNER_TTL).catch(err => console.error('[L1] [Push] Error:', err));
   }
 }

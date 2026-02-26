@@ -11,6 +11,7 @@ export async function sendPushNotification(
   payload: Record<string, string>,
   vapidPrivateJWK: string,
   adminContact: string = "mailto:admin@peckingorder.app",
+  ttl: number = 3600,
 ): Promise<PushResult> {
   try {
     const { endpoint, headers, body } = await buildPushHTTPRequest({
@@ -19,7 +20,7 @@ export async function sendPushNotification(
       message: {
         payload: payload as any,
         adminContact,
-        options: { ttl: 86400, urgency: "high" },
+        options: { ttl, urgency: "high" },
       },
     });
 

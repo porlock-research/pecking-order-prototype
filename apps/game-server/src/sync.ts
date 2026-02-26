@@ -140,8 +140,9 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
 /** Broadcast per-player SYNC to all connected clients. */
 export function broadcastSync(deps: SyncDeps, getConnections: () => Iterable<Connection>, onlinePlayers?: string[]): void {
   for (const ws of getConnections()) {
+    // ws.state may be lost after hibernation — fall back to attachment
     const state = ws.state as { playerId: string } | null;
-    const pid = state?.playerId;
+    const pid = state?.playerId || ws.deserializeAttachment()?.playerId;
     if (!pid) continue;
     ws.send(JSON.stringify(buildSyncPayload(deps, pid, onlinePlayers)));
   }

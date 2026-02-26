@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getGameState, sendAdminCommand, flushScheduledTasks } from '../../../actions';
+import { getGameState, sendAdminCommand, flushScheduledTasks, getScheduledTasks } from '../../../actions';
 import { useParams } from 'next/navigation';
 
 export default function AdminGamePage() {
@@ -12,12 +12,22 @@ export default function AdminGamePage() {
   const [gmMessage, setGmMessage] = useState('');
   const [gmTarget, setGmTarget] = useState('');
   const [gmSending, setGmSending] = useState(false);
+  const [scheduledTasks, setScheduledTasks] = useState<{ count: number; tasks: Array<{ id: string; time: number }> } | null>(null);
+  const [tasksLoading, setTasksLoading] = useState(false);
+
+  async function refreshTasks() {
+    setTasksLoading(true);
+    const data = await getScheduledTasks(gameId);
+    setScheduledTasks(data);
+    setTasksLoading(false);
+  }
 
   async function refresh() {
     setLoading(true);
     const data = await getGameState(gameId);
     setState(data);
     setLoading(false);
+    refreshTasks();
   }
 
   useEffect(() => {
@@ -89,6 +99,61 @@ export default function AdminGamePage() {
             <span className="text-gray-500 text-sm animate-pulse">
               Game is in Pre-Lobby (Day 0). Click to start the first day.
             </span>
+          )}
+        </div>
+      </section>
+
+      {/* SCHEDULED TASKS */}
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-4 border-b pb-2">Scheduled Tasks</h2>
+        <div className="bg-white rounded shadow p-4 space-y-3">
+          <div className="flex gap-3 items-center">
+            <button
+              onClick={refreshTasks}
+              disabled={tasksLoading}
+              className="text-blue-600 hover:underline text-sm"
+            >
+              {tasksLoading ? 'Loading...' : 'Refresh'}
+            </button>
+            <button
+              onClick={async () => {
+                if (confirm('Flush all scheduled tasks for this game?')) {
+                  await flushScheduledTasks(gameId);
+                  refreshTasks();
+                }
+              }}
+              className="bg-gray-600 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 font-semibold"
+            >
+              Flush All
+            </button>
+            {scheduledTasks && (
+              <span className="text-sm text-gray-500">{scheduledTasks.count} task{scheduledTasks.count !== 1 ? 's' : ''}</span>
+            )}
+          </div>
+          {scheduledTasks && scheduledTasks.tasks.length > 0 && (
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-gray-100 text-gray-600">
+                  <th className="p-2">Task ID</th>
+                  <th className="p-2">Scheduled Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scheduledTasks.tasks.map((t: any) => (
+                  <tr key={t.id} className="border-t hover:bg-gray-50">
+                    <td className="p-2 font-mono text-xs text-gray-500">{t.id}</td>
+                    <td className="p-2 font-mono text-xs text-gray-500">
+                      {typeof t.time === 'number'
+                        ? new Date(t.time * 1000).toLocaleString()
+                        : t.time}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {scheduledTasks && scheduledTasks.tasks.length === 0 && (
+            <p className="text-sm text-gray-400">No scheduled tasks.</p>
           )}
         </div>
       </section>

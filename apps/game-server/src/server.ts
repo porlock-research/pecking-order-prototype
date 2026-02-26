@@ -7,7 +7,7 @@ import { Events, FactTypes, ALLOWED_CLIENT_EVENTS as CLIENT_EVENTS } from "@peck
 import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, readGoldBalances, creditGold, savePushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { flattenState, factToTicker, stateToTicker, buildDebugSummary, broadcastTicker, broadcastDebugTicker } from "./ticker";
 import { extractCartridges, extractL3Context, buildSyncPayload, broadcastSync } from "./sync";
-import { stateToPush, handleFactPush, pushBroadcast, type PushContext } from "./push-triggers";
+import { isPushEnabled, phasePushPayload, handleFactPush, pushBroadcast, type PushContext } from "./push-triggers";
 
 const STORAGE_KEY = "game_state_snapshot";
 
@@ -24,10 +24,11 @@ export interface Env {
 }
 
 export class GameServer extends Server<Env> {
+  static options = { hibernate: true };
+
   private actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
   private lastKnownChatLog: any[] = [];
   private lastBroadcastState: string = '';
-  private sentPushKeys = new Set<string>();
   private lastKnownDmsOpen: boolean = false;
   private lastKnownGroupChatOpen: boolean = false;
   private tickerHistory: TickerMessage[] = [];
@@ -44,7 +45,14 @@ export class GameServer extends Server<Env> {
   }
 
   async wakeUpL2() {
-    console.log("[L1] PartyWhen Task Triggered: wakeUpL2");
+    let remaining = '?';
+    try {
+      const rows = (this.scheduler as any).querySql([
+        { sql: "SELECT COUNT(*) as count FROM tasks", params: [] }
+      ]);
+      remaining = rows[0]?.results?.[0]?.count ?? '?';
+    } catch { /* non-critical */ }
+    console.log(`[L1] [Alarm] wakeUpL2 fired — ${remaining} tasks remaining`);
     if (this.actor) {
       this.actor.send({ type: Events.System.WAKEUP });
     } else {
@@ -149,6 +157,7 @@ export class GameServer extends Server<Env> {
     }
 
     const snapshotStr = await this.ctx.storage.get<string>(STORAGE_KEY);
+    this.goldCredited = (await this.ctx.storage.get<boolean>('goldCredited')) === true;
 
     // L1 .provide() — override actions that need DO context (D1, WebSocket, push)
     const machineWithPersistence = orchestratorMachine.provide({
@@ -200,6 +209,17 @@ export class GameServer extends Server<Env> {
         deliverPerkResult: ({ event }: any) => {
           if (event.type !== Events.Perk.RESULT && event.type !== Events.Rejection.PERK) return;
           this.sendToPlayer(event.senderId, event);
+        },
+        broadcastPhasePush: ({ context, event }: any) => {
+          const { trigger } = event;
+          const manifest = context.manifest;
+          if (!isPushEnabled(manifest, trigger)) return;
+          const result = phasePushPayload(trigger, context.dayIndex);
+          if (result) {
+            pushBroadcast(this.getPushContext(), result.payload, result.ttl).catch(err =>
+              console.error('[L1] [Push] Phase broadcast error:', err)
+            );
+          }
         },
       }
     });
@@ -272,7 +292,7 @@ export class GameServer extends Server<Env> {
       const cartridges = extractCartridges(snapshot);
       broadcastSync({ snapshot, l3Context, chatLog, cartridges }, () => this.getConnections(), this.getOnlinePlayerIds());
 
-      // D. Ticker: detect state transitions + push notifications
+      // D. Ticker: detect state transitions
       const l3StateJson = l3Snapshot ? JSON.stringify(l3Snapshot.value) : '';
       const currentStateStr = JSON.stringify(snapshot.value) + l3StateJson;
       if (currentStateStr !== this.lastBroadcastState) {
@@ -281,21 +301,10 @@ export class GameServer extends Server<Env> {
           this.tickerHistory = broadcastTicker(tickerMsg, this.tickerHistory, () => this.getConnections());
         }
 
-        // Push notifications for phase transitions (deduplicated via Set)
-        const manifest = snapshot.context.manifest;
-        const pushPayload = stateToPush(currentStateStr, snapshot.context, manifest);
-        if (pushPayload) {
-          const pushKey = `${pushPayload.tag}:${pushPayload.body}`;
-          if (!this.sentPushKeys.has(pushKey)) {
-            this.sentPushKeys.add(pushKey);
-            pushBroadcast(this.getPushContext(), pushPayload).catch(err => console.error('[L1] [Push] Error:', err));
-          }
-        }
-
         this.lastBroadcastState = currentStateStr;
       }
 
-      // E. Update D1 when game ends + persist gold payouts
+      // E. Update D1 when game ends + persist gold payouts + flush scheduled tasks
       if (currentStateStr.includes('gameOver') && snapshot.context.gameId) {
         updateGameEnd(this.env.DB, snapshot.context.gameId, snapshot.context.roster);
 
@@ -308,7 +317,17 @@ export class GameServer extends Server<Env> {
               creditGold(this.env.DB, realUserId, payout.amount);
             }
           }
-          if (payouts.length > 0) this.goldCredited = true;
+          if (payouts.length > 0) {
+            this.goldCredited = true;
+            this.ctx.storage.put('goldCredited', true);
+          }
+        }
+
+        // Flush remaining PartyWhen tasks — game is done
+        try {
+          (this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
+        } catch (e) {
+          console.error('[L1] Failed to flush tasks on game end:', e);
         }
       }
 
@@ -339,6 +358,28 @@ export class GameServer extends Server<Env> {
 
     this.actor.start();
 
+    // Initialize state tracking from restored snapshot to prevent
+    // spurious ticker/SYNC diffs on first subscription fire after wake.
+    const restoredSnapshot = this.actor.getSnapshot();
+    const l3Child = restoredSnapshot.children['l3-session'];
+    const l3Snap = l3Child?.getSnapshot?.();
+    const l3StateJson = l3Snap ? JSON.stringify(l3Snap.value) : '';
+    this.lastBroadcastState = JSON.stringify(restoredSnapshot.value) + l3StateJson;
+
+    // Restore DM/group-chat gate state from L3 context to prevent
+    // spurious "DMs are now open!" ticker messages on wake.
+    if (l3Snap) {
+      const l3Ctx = l3Snap.context as any;
+      if (l3Ctx) {
+        this.lastKnownDmsOpen = l3Ctx.dmsOpen ?? false;
+        this.lastKnownGroupChatOpen = l3Ctx.groupChatOpen ?? false;
+      }
+    }
+
+    // Rebuild connected players map from surviving WebSocket attachments
+    // (required for hibernation — ws.state is lost but attachments survive).
+    this.rebuildConnectedPlayers();
+
     // Replay any wakeup that fired during Scheduler construction (before actor
     // existed). See ADR-012: Scheduler.alarm() runs in blockConcurrencyWhile,
     // which can consume+delete tasks before onStart sets up the actor.
@@ -350,6 +391,19 @@ export class GameServer extends Server<Env> {
 
     // Re-arm alarm for any future tasks still in the table
     await (this.scheduler as any).scheduleNextAlarm();
+  }
+
+  /** Rebuild connectedPlayers map from WebSocket attachments (survives hibernation). */
+  private rebuildConnectedPlayers() {
+    this.connectedPlayers.clear();
+    for (const ws of this.getConnections()) {
+      const attachment = ws.deserializeAttachment();
+      if (attachment?.playerId) {
+        const existing = this.connectedPlayers.get(attachment.playerId) || new Set();
+        existing.add(ws.id);
+        this.connectedPlayers.set(attachment.playerId, existing);
+      }
+    }
   }
 
   // --- 2. HTTP HANDLERS ---
@@ -372,6 +426,12 @@ export class GameServer extends Server<Env> {
     }
     if (req.method === "POST" && path.endsWith("/flush-tasks")) {
       return this.handleFlushTasks(req);
+    }
+    if ((req.method === "GET" || req.method === "POST") && path.endsWith("/scheduled-tasks")) {
+      return this.handleScheduledTasks(req);
+    }
+    if (req.method === "POST" && path.endsWith("/cleanup")) {
+      return this.handleCleanup(req);
     }
     if (req.method === "GET" && path.endsWith("/vapid-key")) {
       return new Response(JSON.stringify({ publicKey: this.env.VAPID_PUBLIC_KEY }), {
@@ -515,6 +575,74 @@ export class GameServer extends Server<Env> {
     }
   }
 
+  private async handleScheduledTasks(req: Request): Promise<Response> {
+    const authHeader = req.headers.get('Authorization');
+    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    try {
+      if (req.method === 'POST') {
+        (this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
+        await (this.scheduler as any).scheduleNextAlarm();
+        console.log('[L1] All scheduled tasks flushed via /scheduled-tasks');
+        return new Response(JSON.stringify({ ok: true, flushed: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        });
+      }
+      // GET: list tasks
+      const rows = (this.scheduler as any).querySql([
+        { sql: "SELECT id, time FROM tasks ORDER BY time ASC", params: [] }
+      ]);
+      const tasks = rows[0]?.results || [];
+      return new Response(JSON.stringify({ count: tasks.length, tasks }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+      });
+    } catch (err: any) {
+      console.error('[L1] Scheduled tasks error:', err);
+      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    }
+  }
+
+  private async handleCleanup(req: Request): Promise<Response> {
+    const authHeader = req.headers.get('Authorization');
+    if (this.env.AUTH_SECRET && authHeader !== `Bearer ${this.env.AUTH_SECRET}`) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+    try {
+      const gameId = this.actor?.getSnapshot()?.context.gameId || 'unknown';
+      const cleaned: string[] = [];
+
+      // 1. Delete D1 rows for this game
+      if (gameId !== 'unknown') {
+        await this.env.DB.batch([
+          this.env.DB.prepare('DELETE FROM GameJournal WHERE game_id = ?').bind(gameId),
+          this.env.DB.prepare('DELETE FROM Players WHERE game_id = ?').bind(gameId),
+          this.env.DB.prepare('DELETE FROM Games WHERE id = ?').bind(gameId),
+        ]);
+        cleaned.push('GameJournal', 'Players', 'Games');
+      }
+
+      // 2. Flush scheduled tasks
+      (this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
+      cleaned.push('scheduled tasks');
+
+      // 3. Clear DO storage (snapshot, goldCredited, etc.)
+      await this.ctx.storage.deleteAll();
+      cleaned.push('DO storage');
+
+      console.log(`[L1] Cleanup complete for game ${gameId}: ${cleaned.join(', ')}`);
+      return new Response(JSON.stringify({ ok: true, cleaned }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+      });
+    } catch (err: any) {
+      console.error('[L1] Cleanup error:', err);
+      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    }
+  }
+
   private async handleAdmin(req: Request): Promise<Response> {
     // Auth check — require Bearer token matching AUTH_SECRET
     const authHeader = req.headers.get('Authorization');
@@ -581,6 +709,7 @@ export class GameServer extends Server<Env> {
     }
 
     ws.setState({ playerId });
+    ws.serializeAttachment({ playerId });
     console.log(`[L1] Player Connected: ${playerId}${token ? ' (JWT)' : ' (legacy)'}`);
 
     // Track connection for presence
@@ -608,14 +737,16 @@ export class GameServer extends Server<Env> {
   }
 
   onClose(ws: Connection) {
+    // ws.state may be lost after hibernation — fall back to attachment
     const state = ws.state as { playerId: string } | null;
-    if (!state?.playerId) return;
+    const playerId = state?.playerId || ws.deserializeAttachment()?.playerId;
+    if (!playerId) return;
 
-    const conns = this.connectedPlayers.get(state.playerId);
+    const conns = this.connectedPlayers.get(playerId);
     if (conns) {
       conns.delete(ws.id);
       if (conns.size === 0) {
-        this.connectedPlayers.delete(state.playerId);
+        this.connectedPlayers.delete(playerId);
       }
     }
     this.broadcastPresence();
@@ -626,21 +757,28 @@ export class GameServer extends Server<Env> {
   onMessage(ws: Connection, message: string) {
     try {
       const event = JSON.parse(message);
+      // ws.state may be lost after hibernation — fall back to attachment
       const state = ws.state as { playerId: string } | null;
+      const playerId = state?.playerId || ws.deserializeAttachment()?.playerId;
 
-      console.log(`[L1] Received message from ${state?.playerId}:`, JSON.stringify(event));
+      console.log(`[L1] Received message from ${playerId}:`, JSON.stringify(event));
 
-      if (!state?.playerId) {
+      if (!playerId) {
         console.warn("[L1] Message received from connection without playerId");
         ws.close(4001, "Missing Identity");
         return;
+      }
+
+      // Re-set ws.state if it was lost (so subsequent reads in this session work)
+      if (!state?.playerId && playerId) {
+        ws.setState({ playerId });
       }
 
       // Presence: relay typing indicators without touching XState
       if (event.type === Events.Presence.TYPING) {
         const msg = JSON.stringify({
           type: Events.Presence.TYPING,
-          playerId: state.playerId,
+          playerId,
           channel: event.channel || 'MAIN',
         });
         for (const other of this.getConnections()) {
@@ -651,7 +789,7 @@ export class GameServer extends Server<Env> {
       if (event.type === Events.Presence.STOP_TYPING) {
         const msg = JSON.stringify({
           type: Events.Presence.STOP_TYPING,
-          playerId: state.playerId,
+          playerId,
           channel: event.channel || 'MAIN',
         });
         for (const other of this.getConnections()) {
@@ -669,7 +807,7 @@ export class GameServer extends Server<Env> {
         return;
       }
 
-      this.actor?.send({ ...event, senderId: state.playerId });
+      this.actor?.send({ ...event, senderId: playerId });
     } catch (err) {
       console.error("[L1] Error processing message:", err);
     }
@@ -687,7 +825,8 @@ export class GameServer extends Server<Env> {
   private sendToPlayer(playerId: string, message: any): void {
     for (const ws of this.getConnections()) {
       const state = ws.state as { playerId: string } | null;
-      if (state?.playerId === playerId) {
+      const wsPlayerId = state?.playerId || ws.deserializeAttachment()?.playerId;
+      if (wsPlayerId === playerId) {
         ws.send(JSON.stringify(message));
         break;
       }

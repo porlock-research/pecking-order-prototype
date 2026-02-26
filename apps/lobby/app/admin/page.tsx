@@ -71,9 +71,14 @@ export default function AdminPage() {
 
       <section className="border rounded-lg p-4 space-y-2 bg-gray-50">
         <h2 className="text-lg font-semibold">Manage</h2>
-        <a href="/admin/personas" className="inline-block px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">
-          Persona Pool
-        </a>
+        <div className="flex gap-3">
+          <a href="/admin/personas" className="inline-block px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">
+            Persona Pool
+          </a>
+          <a href="/admin/games" className="inline-block px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">
+            Game Manager
+          </a>
+        </div>
       </section>
 
       <section className="border border-red-300 rounded-lg p-4 space-y-4 bg-red-50">

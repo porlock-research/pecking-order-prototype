@@ -203,7 +203,7 @@ export const dailySessionMachine = setup({
               }
             },
             dailyGame: {
-              entry: 'spawnGameCartridge',
+              entry: ['spawnGameCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'DAILY_GAME' } as any)],
               exit: 'cleanupGameCartridge',
               on: {
                 'xstate.done.actor.activeGameCartridge': {
@@ -223,7 +223,7 @@ export const dailySessionMachine = setup({
               }
             },
             voting: {
-              entry: 'spawnVotingCartridge',
+              entry: ['spawnVotingCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'VOTING' } as any)],
               exit: 'cleanupVotingCartridge',
               on: {
                 'xstate.done.actor.activeVotingCartridge': {
@@ -251,7 +251,7 @@ export const dailySessionMachine = setup({
               }
             },
             playing: {
-              entry: 'spawnPromptCartridge',
+              entry: ['spawnPromptCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'ACTIVITY' } as any)],
               on: {
                 // Natural completion: all players responded → child reaches final state
                 'xstate.done.actor.activePromptCartridge': {
