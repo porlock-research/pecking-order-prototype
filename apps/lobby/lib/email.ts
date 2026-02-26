@@ -2,7 +2,7 @@
 
 import { Resend } from 'resend';
 
-const FROM_ADDRESS = 'Pecking Order <noreply@peckingorder.game>';
+const FROM_ADDRESS = 'Pecking Order <noreply@peckingorder.ca>';
 
 export async function sendEmail(
   to: string,
