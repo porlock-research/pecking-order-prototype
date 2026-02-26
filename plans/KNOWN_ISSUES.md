@@ -74,9 +74,14 @@ When a player saves the client app to their iOS home screen, the standalone PWA 
 
 **Remaining limitation**: First launch of standalone PWA always requires re-authentication. Once authenticated within the standalone context, subsequent launches find the token in standalone-localStorage. The only seamless fix would be in-app code-based verification (enter a 6-digit code from email without leaving the PWA), which would require changes to the lobby auth system.
 
+**UX debt — needs addressing**: The current re-auth flow is broken in practice. The recovery chain's step 4 redirects to the lobby (cross-origin), which opens in an iOS in-app browser overlay. The lobby shows the magic link login form. The user enters their email and receives a magic link — but tapping that link in their email opens **Safari**, not the standalone PWA's in-app browser. The user ends up authenticated in Safari while the standalone PWA is still stuck. Possible solutions:
+- **In-app OTP verification**: Add a 6-digit code flow to the lobby (enter email → receive code → type code). Keeps the user entirely within the standalone context. Requires lobby auth changes.
+- **Lobby "copy link" flow**: After magic link login in Safari, show a "Open in app" button that copies a `/game/CODE?_t=JWT` URL to clipboard. User pastes in standalone PWA. Hacky but no auth changes needed.
+- **Universal Links**: Configure `apple-app-site-association` so that client-domain URLs open the standalone PWA. Magic link redirect from lobby → client would then land in the PWA. Requires AASA hosting + Apple entitlements — may not work for PWAs (native apps only).
+
 **Relevant files**: `apps/client/src/App.tsx`, `apps/client/src/sw.ts`, `apps/lobby/app/api/refresh-token/[code]/route.ts`
 
-**Status**: Partially mitigated — game code entry prevents dead-end LauncherScreen; recovery chain handles re-auth. Full seamlessness blocked by iOS storage partitioning.
+**Status**: Partially mitigated — game code entry prevents dead-end LauncherScreen; recovery chain handles re-auth. Full seamlessness blocked by iOS storage partitioning + magic link UX gap in standalone context.
 
 ## [BUG-013] Scheduler alarms lost on DO restart (ADR-012 race)
 
