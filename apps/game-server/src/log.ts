@@ -7,13 +7,18 @@ const METHODS: Record<LogLevel, 'debug' | 'log' | 'warn' | 'error'> = {
   error: 'error',
 };
 
+/**
+ * Structured logger for game-server.
+ *
+ * Outputs a single JSON object per call so that Cloudflare Workers Logs
+ * can auto-extract and index every field. Axiom then receives each field
+ * as a queryable column (e.g. `| where component == "L2"`).
+ */
 export function log(
   level: LogLevel,
   component: string,
   event: string,
   data?: Record<string, unknown>,
 ) {
-  const entry = { level, component, event, ...data };
-  const prefix = `[${component}] ${event}`;
-  console[METHODS[level]](prefix, JSON.stringify(entry));
+  console[METHODS[level]](JSON.stringify({ level, component, event, ...data }));
 }

@@ -151,7 +151,7 @@ export const orchestratorMachine = setup({
             }),
             onDone: {
               target: 'nightSummary',
-              actions: () => console.log('[L2] L3 finished naturally')
+              actions: () => console.log(JSON.stringify({ level: 'info', component: 'L2', event: 'l3.done' }))
             }
           },
           initial: 'waitingForChild',
@@ -245,9 +245,9 @@ export const orchestratorMachine = setup({
             ],
             'ADMIN.INJECT_TIMELINE_EVENT': {
               actions: ({ event }: any) =>
-                console.warn('[L2] admin.inject.dropped', JSON.stringify({
-                  reason: 'nightSummary has no L3',
-                  action: event.payload?.action,
+                console.warn(JSON.stringify({
+                  level: 'warn', component: 'L2', event: 'admin.inject.dropped',
+                  reason: 'nightSummary has no L3', action: event.payload?.action,
                 })),
             },
             'FACT.RECORD': {

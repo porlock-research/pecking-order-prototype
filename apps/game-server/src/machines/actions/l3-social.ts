@@ -121,7 +121,7 @@ export const l3SocialActions = {
       }
     }
 
-    console.warn('[L3] Message rejected', JSON.stringify({ senderId, channelId, reason }));
+    console.warn(JSON.stringify({ level: 'warn', component: 'L3', event: 'social.reject.message', senderId, channelId, reason }));
     return { type: Events.Rejection.DM, reason, senderId };
   }),
 
@@ -157,7 +157,7 @@ export const l3SocialActions = {
     else if ((context.roster[senderId]?.silver ?? 0) < amount) reason = 'INSUFFICIENT_SILVER';
     else if (context.roster[targetId]?.status === PlayerStatuses.ELIMINATED) reason = 'TARGET_ELIMINATED';
     else if (!context.roster[targetId]) reason = 'TARGET_NOT_FOUND';
-    console.warn('[L3] Silver transfer rejected', JSON.stringify({ senderId, targetId, amount, reason }));
+    console.warn(JSON.stringify({ level: 'warn', component: 'L3', event: 'social.reject.silver', senderId, targetId, amount, reason }));
     return { type: Events.Rejection.SILVER_TRANSFER, senderId, reason };
   }),
 
