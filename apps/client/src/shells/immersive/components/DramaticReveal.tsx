@@ -22,7 +22,9 @@ function getSeenIds(gameId: string): { eliminations: string[]; winner: string | 
   try {
     const raw = localStorage.getItem(getStorageKey(gameId));
     if (raw) return JSON.parse(raw);
-  } catch { /* ignore */ }
+  } catch (err) {
+    console.warn('[DramaticReveal] Failed to parse seen reveals from localStorage:', err);
+  }
   return { eliminations: [], winner: null };
 }
 

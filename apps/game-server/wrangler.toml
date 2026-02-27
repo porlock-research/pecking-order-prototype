@@ -11,10 +11,22 @@ new_sqlite_classes = ["GameServer"]
 [observability]
 enabled = true
 
+[observability.logs]
+invocation_logs = true
+head_sampling_rate = 1
+
 # ── Staging ──────────────────────────────────────────────
 [env.staging]
 name = "game-server-staging"
 workers_dev = true
+
+[env.staging.observability]
+enabled = true
+
+[env.staging.observability.logs]
+invocation_logs = true
+head_sampling_rate = 1
+destinations = ["axiom-logs-staging"]
 
 [[env.staging.routes]]
 pattern = "staging-api.peckingorder.ca"
@@ -38,6 +50,14 @@ GAME_CLIENT_HOST = "https://staging-play.peckingorder.ca"
 [env.production]
 name = "game-server"
 workers_dev = true
+
+[env.production.observability]
+enabled = true
+
+[env.production.observability.logs]
+invocation_logs = true
+head_sampling_rate = 1
+destinations = ["axiom-logs-production"]
 
 [[env.production.routes]]
 pattern = "api.peckingorder.ca"

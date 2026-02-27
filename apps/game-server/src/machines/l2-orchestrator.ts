@@ -151,7 +151,7 @@ export const orchestratorMachine = setup({
             }),
             onDone: {
               target: 'nightSummary',
-              actions: ({ event }: any) => console.log(`[L2] L3 Finished naturally.`)
+              actions: () => console.log('[L2] L3 finished naturally')
             }
           },
           initial: 'waitingForChild',
@@ -243,6 +243,13 @@ export const orchestratorMachine = setup({
               { guard: ({ context }: any) => context.winner !== null, target: '#pecking-order-l2.gameSummary' },
               { target: 'morningBriefing' },
             ],
+            'ADMIN.INJECT_TIMELINE_EVENT': {
+              actions: ({ event }: any) =>
+                console.warn('[L2] admin.inject.dropped', JSON.stringify({
+                  reason: 'nightSummary has no L3',
+                  action: event.payload?.action,
+                })),
+            },
             'FACT.RECORD': {
               actions: ['updateJournalTimestamp', 'applyFactToRoster', 'persistFactToD1'],
             },

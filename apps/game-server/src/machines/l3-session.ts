@@ -162,44 +162,6 @@ export const dailySessionMachine = setup({
                 'INTERNAL.START_CARTRIDGE': 'dailyGame',
                 'INTERNAL.START_GAME': 'dailyGame',
                 'INTERNAL.OPEN_VOTING': 'voting',
-                'INTERNAL.INJECT_PROMPT': {
-                  actions: enqueueActions(({ context, event, enqueue }: any) => {
-                    const text = event.payload?.text || event.payload?.msg || 'The Game Master speaks...';
-                    const targetId = event.payload?.targetId;
-                    const channelId = targetId
-                      ? dmChannelId(GAME_MASTER_ID, targetId)
-                      : 'MAIN';
-                    const msg = buildChatMessage(GAME_MASTER_ID, text, channelId);
-
-                    // Lazy-create DM channel for GM→player messages so SYNC includes them
-                    if (targetId && !context.channels[channelId]) {
-                      const newChannel: Channel = {
-                        id: channelId,
-                        type: 'DM',
-                        memberIds: [GAME_MASTER_ID, targetId],
-                        createdBy: GAME_MASTER_ID,
-                        createdAt: Date.now(),
-                        capabilities: ['CHAT'],
-                      };
-                      enqueue.assign({ channels: { ...context.channels, [channelId]: newChannel } });
-                    }
-
-                    enqueue.assign({ chatLog: appendToChatLog(context.chatLog, msg) });
-                    // Emit DM_SENT fact for targeted messages so push notifications fire
-                    if (targetId) {
-                      enqueue.raise({
-                        type: Events.Fact.RECORD,
-                        fact: {
-                          type: FactTypes.DM_SENT,
-                          actorId: GAME_MASTER_ID,
-                          targetId,
-                          payload: { content: text, channelId },
-                          timestamp: Date.now(),
-                        },
-                      });
-                    }
-                  })
-                }
               }
             },
             dailyGame: {
@@ -290,7 +252,45 @@ export const dailySessionMachine = setup({
       },
       on: {
         'INTERNAL.END_DAY': { target: 'finishing' },
-        'FACT.RECORD': { actions: 'forwardToL2' }
+        'FACT.RECORD': { actions: 'forwardToL2' },
+        'INTERNAL.INJECT_PROMPT': {
+          actions: enqueueActions(({ context, event, enqueue }: any) => {
+            const text = event.payload?.text || event.payload?.msg || 'The Game Master speaks...';
+            const targetId = event.payload?.targetId;
+            const channelId = targetId
+              ? dmChannelId(GAME_MASTER_ID, targetId)
+              : 'MAIN';
+            const msg = buildChatMessage(GAME_MASTER_ID, text, channelId);
+
+            // Lazy-create DM channel for GM→player messages so SYNC includes them
+            if (targetId && !context.channels[channelId]) {
+              const newChannel: Channel = {
+                id: channelId,
+                type: 'DM',
+                memberIds: [GAME_MASTER_ID, targetId],
+                createdBy: GAME_MASTER_ID,
+                createdAt: Date.now(),
+                capabilities: ['CHAT'],
+              };
+              enqueue.assign({ channels: { ...context.channels, [channelId]: newChannel } });
+            }
+
+            enqueue.assign({ chatLog: appendToChatLog(context.chatLog, msg) });
+            // Emit DM_SENT fact for targeted messages so push notifications fire
+            if (targetId) {
+              enqueue.raise({
+                type: Events.Fact.RECORD,
+                fact: {
+                  type: FactTypes.DM_SENT,
+                  actorId: GAME_MASTER_ID,
+                  targetId,
+                  payload: { content: text, channelId },
+                  timestamp: Date.now(),
+                },
+              });
+            }
+          })
+        }
       }
     },
     finishing: {

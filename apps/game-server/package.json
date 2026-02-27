@@ -5,11 +5,11 @@
     "clean": "rm -rf .wrangler/tmp",
     "dev": "wrangler dev",
     "build": "tsc --noEmit",
+    "test": "vitest run",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
     "@pecking-order/auth": "*",
-    "@pecking-order/logger": "*",
     "@pecking-order/game-cartridges": "*",
     "@pecking-order/shared-types": "*",
     "@pushforge/builder": "^2.0.1",
@@ -20,7 +20,9 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260207.0",
+    "@xstate/graph": "^3.0.4",
     "typescript": "^5.0.0",
+    "vitest": "^4.0.18",
     "wrangler": "^4.63.0"
   }
 }

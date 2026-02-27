@@ -6,6 +6,8 @@ import type { TickerMessage } from "@pecking-order/shared-types";
 import { Events, FactTypes, ALLOWED_CLIENT_EVENTS as CLIENT_EVENTS } from "@pecking-order/shared-types";
 import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, readGoldBalances, creditGold, savePushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { flattenState, factToTicker, stateToTicker, buildDebugSummary, broadcastTicker, broadcastDebugTicker } from "./ticker";
+import { createInspector } from "./inspect";
+import { log } from "./log";
 import { extractCartridges, extractL3Context, buildSyncPayload, broadcastSync } from "./sync";
 import { isPushEnabled, phasePushPayload, handleFactPush, pushBroadcast, type PushContext } from "./push-triggers";
 
@@ -65,11 +67,11 @@ export class GameServer extends Server<Env> {
       ]);
       remaining = rows[0]?.results?.[0]?.count ?? '?';
     } catch { /* non-critical */ }
-    console.log(`[L1] [Alarm] wakeUpL2 fired — ${remaining} tasks remaining`);
+    log('info', 'L1', 'Alarm: wakeUpL2 fired', { remaining });
     if (this.actor) {
       this.actor.send({ type: Events.System.WAKEUP });
     } else {
-      console.log("[L1] Actor not ready — buffering wakeup for replay after onStart");
+      log('info', 'L1', 'Actor not ready — buffering wakeup for replay after onStart');
       this.pendingWakeup = true;
     }
   }
@@ -86,7 +88,7 @@ export class GameServer extends Server<Env> {
     if (!manifest) return;
 
     if (manifest.gameMode === 'DEBUG_PECKING_ORDER') {
-      console.log('[L1] Debug mode — no alarms scheduled (admin-triggered)');
+      log('info', 'L1', 'Debug mode — no alarms scheduled (admin-triggered)');
       return;
     }
 
@@ -114,7 +116,11 @@ export class GameServer extends Server<Env> {
       }
       // Arm the DO alarm for the earliest task
       await (this.scheduler as any).scheduleNextAlarm();
-      console.log(`[L1] Scheduled ${uniqueTimestamps.size} unique alarms (from ${manifest.days.reduce((n: number, d: any) => n + (d.timeline?.length || 0), 0)} events) across ${manifest.days.length} days`);
+      log('info', 'L1', 'Scheduled alarms', {
+        uniqueAlarms: uniqueTimestamps.size,
+        totalEvents: manifest.days.reduce((n: number, d: any) => n + (d.timeline?.length || 0), 0),
+        days: manifest.days.length,
+      });
       return;
     }
 
@@ -125,7 +131,7 @@ export class GameServer extends Server<Env> {
       time: new Date(Date.now() + 1000),
       callback: { type: "self", function: "wakeUpL2" }
     });
-    console.log('[L1] Scheduled immediate game start (1s)');
+    log('info', 'L1', 'Scheduled immediate game start (1s)');
   }
 
   /** Build a PushContext for the push-triggers module. */
@@ -162,11 +168,11 @@ export class GameServer extends Server<Env> {
     // Debug: PartyWhen persistence check
     try {
       const tables = this.ctx.storage.sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'");
-      console.log("[L1] Debug: Tasks table exists?", [...tables]);
+      log('debug', 'L1', 'Tasks table exists?', { tables: [...tables] });
       const currentAlarm = await this.ctx.storage.getAlarm();
-      console.log("[L1] Debug: Current Alarm:", currentAlarm ? new Date(currentAlarm).toISOString() : "None");
+      log('debug', 'L1', 'Current alarm', { alarm: currentAlarm ? new Date(currentAlarm).toISOString() : 'None' });
     } catch (e) {
-      console.error("[L1] Debug: SQL/Alarm Check Failed", e);
+      log('error', 'L1', 'SQL/Alarm check failed', { error: String(e) });
     }
 
     const snapshotStr = await this.ctx.storage.get<string>(STORAGE_KEY);
@@ -180,11 +186,11 @@ export class GameServer extends Server<Env> {
           const fact = event.fact;
 
           if (!isJournalable(fact.type)) {
-            console.log(`[L1] Fact received (sync-only, not journaled): ${fact.type}`);
+            log('debug', 'L1', 'Fact received (sync-only, not journaled)', { factType: fact.type });
             return;
           }
 
-          console.log(`[L1] Persisting Fact to D1: ${fact.type}`);
+          log('info', 'L1', 'Persisting fact to D1', { factType: fact.type });
           const snapshot = this.actor?.getSnapshot();
           const gameId = snapshot?.context.gameId || 'unknown';
           const dayIndex = snapshot?.context.dayIndex || 0;
@@ -230,16 +236,23 @@ export class GameServer extends Server<Env> {
           const result = phasePushPayload(trigger, context.dayIndex);
           if (result) {
             pushBroadcast(this.getPushContext(), result.payload, result.ttl).catch(err =>
-              console.error('[L1] [Push] Phase broadcast error:', err)
+              log('error', 'L1', 'Push phase broadcast error', { error: String(err) })
             );
           }
         },
       }
     });
 
+    // Build inspector for XState event tracing
+    let parsedGameId = 'unknown';
+    if (snapshotStr) {
+      try { parsedGameId = JSON.parse(snapshotStr)?.l2?.context?.gameId || 'unknown'; } catch { /* ignore */ }
+    }
+    const inspect = createInspector(parsedGameId);
+
     // Restore or fresh boot
     if (snapshotStr) {
-      console.log(`[L1] Resuming Game`);
+      log('info', 'L1', 'Resuming Game');
       const storedData = JSON.parse(snapshotStr);
       let l2Snapshot = storedData;
       let restoredChatLog = undefined;
@@ -257,21 +270,21 @@ export class GameServer extends Server<Env> {
       }
 
       try {
-        this.actor = createActor(machineWithPersistence, { snapshot: l2Snapshot });
+        this.actor = createActor(machineWithPersistence, { snapshot: l2Snapshot, inspect });
         const restoredState = JSON.stringify(this.actor.getSnapshot().value);
         if (restoredState.includes('activeSession') && !this.actor.getSnapshot().children['l3-session']) {
-          console.warn('[L1] L3 missing after restore — snapshot was corrupted. Clearing state for fresh start.');
+          log('warn', 'L1', 'L3 missing after restore — snapshot was corrupted. Clearing state for fresh start.');
           await this.ctx.storage.delete(STORAGE_KEY);
-          this.actor = createActor(machineWithPersistence);
+          this.actor = createActor(machineWithPersistence, { inspect });
         }
       } catch (err) {
-        console.error('[L1] Snapshot restore failed — starting fresh:', err);
+        log('error', 'L1', 'Snapshot restore failed — starting fresh', { error: String(err) });
         await this.ctx.storage.delete(STORAGE_KEY);
-        this.actor = createActor(machineWithPersistence);
+        this.actor = createActor(machineWithPersistence, { inspect });
       }
     } else {
-      console.log(`[L1] Fresh Boot`);
-      this.actor = createActor(machineWithPersistence);
+      log('info', 'L1', 'Fresh Boot');
+      this.actor = createActor(machineWithPersistence, { inspect });
     }
 
     // Subscribe: auto-save, broadcast, ticker, push
@@ -285,12 +298,12 @@ export class GameServer extends Server<Env> {
       // Debug logging
       const l2StateStr = flattenState(snapshot.value);
       const l3StateStr = l3Snapshot ? flattenState(l3Snapshot.value) : 'ABSENT';
-      console.log(`[L1] L2=${l2StateStr} | L3=${l3StateStr} | Day=${snapshot.context.dayIndex}`);
+      log('debug', 'L1', 'State update', { l2: l2StateStr, l3: l3StateStr, day: snapshot.context.dayIndex });
 
       const debugSummary = buildDebugSummary(snapshot, l3Snapshot);
       if (debugSummary !== this.lastDebugSummary) {
         this.lastDebugSummary = debugSummary;
-        console.log(`[L1] Debug: ${debugSummary}`);
+        log('debug', 'L1', debugSummary);
         broadcastDebugTicker(debugSummary, () => this.getConnections());
       }
 
@@ -344,7 +357,7 @@ export class GameServer extends Server<Env> {
         try {
           (this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
         } catch (e) {
-          console.error('[L1] Failed to flush tasks on game end:', e);
+          log('error', 'L1', 'Failed to flush tasks on game end', { error: String(e) });
         }
       }
 
@@ -391,7 +404,7 @@ export class GameServer extends Server<Env> {
     // existed). See ADR-012: Scheduler.alarm() runs in blockConcurrencyWhile,
     // which can consume+delete tasks before onStart sets up the actor.
     if (this.pendingWakeup) {
-      console.log('[L1] Replaying buffered wakeup (fired during Scheduler init)');
+      log('info', 'L1', 'Replaying buffered wakeup (fired during Scheduler init)');
       this.actor.send({ type: Events.System.WAKEUP });
       this.pendingWakeup = false;
     }
@@ -488,7 +501,7 @@ export class GameServer extends Server<Env> {
 
       return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
     } catch (err) {
-      console.error("[L1] POST /init failed:", err);
+      log('error', 'L1', 'POST /init failed', { error: String(err) });
       return new Response("Invalid Payload", { status: 400 });
     }
   }
@@ -510,7 +523,7 @@ export class GameServer extends Server<Env> {
       // Reject if the game has progressed past preGame
       const snapshot = this.actor?.getSnapshot();
       if (snapshot && snapshot.value !== 'preGame') {
-        console.log(`[L1] Rejecting player-joined: game is in ${JSON.stringify(snapshot.value)}, not preGame`);
+        log('info', 'L1', 'Rejecting player-joined', { state: JSON.stringify(snapshot.value) });
         return new Response(JSON.stringify({ error: 'GAME_STARTED' }), {
           status: 409,
           headers: { 'Content-Type': 'application/json' },
@@ -536,11 +549,11 @@ export class GameServer extends Server<Env> {
       );
       playerStmt.bind(gameId, playerId, realUserId, personaName, avatarUrl || '', silver || 50, gold, null)
         .run()
-        .catch((err: any) => console.error('[L1] Failed to insert player:', err));
+        .catch((err: any) => log('error', 'L1', 'Failed to insert player', { error: String(err) }));
 
       return new Response(JSON.stringify({ status: 'OK' }), { status: 200 });
     } catch (err) {
-      console.error('[L1] POST /player-joined failed:', err);
+      log('error', 'L1', 'POST /player-joined failed', { error: String(err) });
       return new Response('Invalid Payload', { status: 400 });
     }
   }
@@ -571,13 +584,13 @@ export class GameServer extends Server<Env> {
     try {
       (this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
       await (this.scheduler as any).scheduleNextAlarm();
-      console.log('[L1] All scheduled tasks flushed');
+      log('info', 'L1', 'All scheduled tasks flushed');
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     } catch (err: any) {
-      console.error('[L1] Flush tasks error:', err);
+      log('error', 'L1', 'Flush tasks error', { error: String(err) });
       return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
   }
@@ -591,7 +604,7 @@ export class GameServer extends Server<Env> {
       if (req.method === 'POST') {
         (this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
         await (this.scheduler as any).scheduleNextAlarm();
-        console.log('[L1] All scheduled tasks flushed via /scheduled-tasks');
+        log('info', 'L1', 'All scheduled tasks flushed via /scheduled-tasks');
         return new Response(JSON.stringify({ ok: true, flushed: true }), {
           status: 200,
           headers: { "Content-Type": "application/json", ...CORS_HEADERS },
@@ -607,7 +620,7 @@ export class GameServer extends Server<Env> {
         headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     } catch (err: any) {
-      console.error('[L1] Scheduled tasks error:', err);
+      log('error', 'L1', 'Scheduled tasks error', { error: String(err) });
       return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
   }
@@ -639,13 +652,13 @@ export class GameServer extends Server<Env> {
       await this.ctx.storage.deleteAll();
       cleaned.push('DO storage');
 
-      console.log(`[L1] Cleanup complete for game ${gameId}: ${cleaned.join(', ')}`);
+      log('info', 'L1', 'Cleanup complete', { gameId, cleaned });
       return new Response(JSON.stringify({ ok: true, cleaned }), {
         status: 200,
         headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       });
     } catch (err: any) {
-      console.error('[L1] Cleanup error:', err);
+      log('error', 'L1', 'Cleanup error', { error: String(err) });
       return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
   }
@@ -659,17 +672,26 @@ export class GameServer extends Server<Env> {
 
     try {
       const body = await req.json() as any;
-      console.log(`[L1] Admin Command: ${body.type}`);
+
+      if (!this.actor) {
+        log('warn', 'L1', 'Admin command received but actor is null', { command: body.type });
+        return new Response(JSON.stringify({ error: 'Actor not initialized' }), { status: 503 });
+      }
+
+      const snapshot = this.actor.getSnapshot();
+      const l2State = JSON.stringify(snapshot.value);
+      log('info', 'L1', 'Admin command', { command: body.type, l2State, dayIndex: snapshot.context.dayIndex });
 
       if (body.type === "NEXT_STAGE") {
-        this.actor?.send({ type: Events.Admin.NEXT_STAGE });
+        this.actor.send({ type: Events.Admin.NEXT_STAGE });
       } else if (body.type === "INJECT_TIMELINE_EVENT") {
-        this.actor?.send({
+        this.actor.send({
           type: Events.Admin.INJECT_TIMELINE_EVENT,
           payload: { action: body.action, payload: body.payload },
         });
       } else if (body.type === "SEND_GAME_MASTER_MSG") {
-        this.actor?.send({
+        log('info', 'L1', 'GM message', { targetId: body.targetId || 'broadcast', l2State });
+        this.actor.send({
           type: Events.Admin.INJECT_TIMELINE_EVENT,
           payload: {
             action: "INJECT_PROMPT",
@@ -682,7 +704,7 @@ export class GameServer extends Server<Env> {
 
       return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
     } catch (err) {
-      console.error("[L1] Admin request failed:", err);
+      log('error', 'L1', 'Admin request failed', { error: String(err) });
       return new Response("Internal Error", { status: 500 });
     }
   }
@@ -701,7 +723,7 @@ export class GameServer extends Server<Env> {
         const payload = await verifyGameToken(token, this.env.AUTH_SECRET);
         playerId = payload.playerId;
       } catch (err) {
-        console.log(`[L1] JWT verification failed:`, err);
+        log('warn', 'L1', 'JWT verification failed', { error: String(err) });
         ws.close(4003, "Invalid token");
         return;
       }
@@ -710,14 +732,14 @@ export class GameServer extends Server<Env> {
     }
 
     if (!playerId || !roster[playerId]) {
-      console.log(`[L1] Rejecting connection: Invalid Player ID ${playerId}`);
+      log('warn', 'L1', 'Rejecting connection: invalid player ID', { playerId });
       ws.close(4001, "Invalid Player ID");
       return;
     }
 
     ws.setState({ playerId });
     ws.serializeAttachment({ playerId });
-    console.log(`[L1] Player Connected: ${playerId}${token ? ' (JWT)' : ' (legacy)'}`);
+    log('info', 'L1', 'Player connected', { playerId, auth: token ? 'JWT' : 'legacy' });
 
     // Track connection for presence
     const connId = ws.id;
@@ -768,10 +790,10 @@ export class GameServer extends Server<Env> {
       const state = ws.state as { playerId: string } | null;
       const playerId = state?.playerId || ws.deserializeAttachment()?.playerId;
 
-      console.log(`[L1] Received message from ${playerId}:`, JSON.stringify(event));
+      log('debug', 'L1', 'WS message received', { playerId, eventType: event.type });
 
       if (!playerId) {
-        console.warn("[L1] Message received from connection without playerId");
+        log('warn', 'L1', 'Message received from connection without playerId');
         ws.close(4001, "Missing Identity");
         return;
       }
@@ -810,13 +832,13 @@ export class GameServer extends Server<Env> {
         || (typeof event.type === 'string' && event.type.startsWith(Events.Game.PREFIX))
         || (typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX));
       if (!isAllowed) {
-        console.warn(`[L1] Rejected event type from client: ${event.type}`);
+        log('warn', 'L1', 'Rejected event type from client', { eventType: event.type });
         return;
       }
 
       this.actor?.send({ ...event, senderId: playerId });
     } catch (err) {
-      console.error("[L1] Error processing message:", err);
+      log('error', 'L1', 'Error processing message', { error: String(err) });
     }
   }
 
@@ -851,7 +873,7 @@ export class GameServer extends Server<Env> {
           result: { perkType: 'SPY_DMS', success: true, data: { messages } },
         } as any);
       }).catch((err: any) => {
-        console.error('[L1] SPY_DMS D1 query failed:', err);
+        log('error', 'L1', 'SPY_DMS D1 query failed', { error: String(err) });
         this.actor?.send({
           type: Events.Perk.RESULT,
           senderId: fact.actorId,
@@ -913,7 +935,7 @@ export default {
             headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
           });
         } catch (err) {
-          console.error('[Push API] Save failed:', err);
+          log('error', 'Push API', 'Save failed', { error: String(err) });
           return new Response('Server error', { status: 500, headers: CORS_HEADERS });
         }
       }
@@ -926,7 +948,7 @@ export default {
             headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
           });
         } catch (err) {
-          console.error('[Push API] Delete failed:', err);
+          log('error', 'Push API', 'Delete failed', { error: String(err) });
           return new Response('Server error', { status: 500, headers: CORS_HEADERS });
         }
       }
@@ -978,13 +1000,13 @@ export default {
         for (const table of requested) {
           await env.DB.prepare(`DELETE FROM ${table}`).run();
         }
-        console.log('[Admin] D1 tables wiped:', requested);
+        log('info', 'Admin', 'D1 tables wiped', { tables: requested });
         return new Response(JSON.stringify({ ok: true, tablesCleared: requested }), {
           status: 200,
           headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
         });
       } catch (err) {
-        console.error('[Admin] DB reset failed:', err);
+        log('error', 'Admin', 'DB reset failed', { error: String(err) });
         return new Response(JSON.stringify({ error: String(err) }), {
           status: 500,
           headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },

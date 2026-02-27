@@ -1,10 +1,11 @@
 import { assign } from 'xstate';
 import { Events } from '@pecking-order/shared-types';
+import { log } from '../../log';
 
 export const l2FactsActions = {
   updateJournalTimestamp: assign(({ event }: any) => {
     if (event.type !== Events.Fact.RECORD) return {};
-    console.log(`[L2 Journal] Fact received: ${event.fact.type} by ${event.fact.actorId}`);
+    log('debug', 'L2', 'Fact received', { factType: event.fact.type, actorId: event.fact.actorId });
     return { lastJournalEntry: Date.now() };
   }),
   persistFactToD1: () => {

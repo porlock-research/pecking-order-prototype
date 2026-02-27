@@ -1039,3 +1039,24 @@ This document tracks significant architectural decisions, their context, and con
     *   Push subscriptions tied to old SW origin require re-subscribe on new domain. PushPrompt handles automatically.
     *   **Dashboard prerequisites**: R2 public access custom domains and Pages custom domains must be configured in Cloudflare dashboard before code deploy.
     *   **Files**: `apps/game-server/wrangler.toml`, `apps/game-server/src/server.ts`, `apps/lobby/wrangler.json`, `apps/lobby/lib/auth.ts`, `apps/lobby/app/login/verify/route.ts`, `apps/lobby/app/invite/[token]/route.ts`, `apps/lobby/middleware.ts`, `apps/client/.env.staging`, `apps/client/.env.production`, `.github/workflows/deploy-staging.yml`.
+
+## [ADR-075] Observability Overhaul — XState Tracing + Axiom OTLP
+*   **Date:** 2026-02-26
+*   **Status:** Accepted
+*   **Context:** GM group chat and DM messages were silently failing — `INTERNAL.INJECT_PROMPT` was only handled in L3's `groupChat` state, so XState dropped it during `voting` or `dailyGame`. No logs surfaced the failure. The app had ~84 unstructured `console.*` calls and no XState-level observability. CF Workers have built-in OTLP export but it wasn't connected to any destination.
+*   **Decision:**
+    *   **Bug fix**: Move `INTERNAL.INJECT_PROMPT` from `mainStage.states.groupChat.on` to `running.on` in L3, making it reachable from all mainStage substates.
+    *   **XState inspect**: `createInspector(gameId)` callback wired to all `createActor()` calls. Traces admin events at info, detects unhandled events (snapshot.changed === false) at warn, logs actor lifecycle.
+    *   **@xstate/graph tests**: 10 static coverage tests verify critical events (INJECT_PROMPT, FACT.RECORD, END_DAY, SEND_MSG, ADMIN.INJECT_TIMELINE_EVENT) are handled in all required states. Runs in CI via vitest.
+    *   **Structured logging**: `log(level, component, event, data?)` helper in game-server. All ~45 console calls migrated. JSON output compatible with CF OTLP export.
+    *   **Pipeline hardening**: Explicit `ADMIN.INJECT_TIMELINE_EVENT` handler in L2 nightSummary (logs warning instead of silent drop). Guard rejection logging in L3 social actions.
+    *   **Client ErrorBoundary**: React error boundary at app root. Silent catches in App.tsx and DramaticReveal.tsx now log warnings.
+    *   **OTLP config**: `head_sampling_rate = 1` on both game-server and lobby. CF Dashboard OTLP destinations route to Axiom.
+    *   **Axiom datasets**: 4 datasets — `po-logs-{staging,production}` + `po-traces-{staging,production}`. All use "Events (Logs / Trace spans)" kind. Combined across services, filtered by `service.name`.
+    *   **Deleted `packages/logger`**: Unused Axiom SDK wrapper that was never imported.
+*   **Consequences:**
+    *   GM messages now work in all game phases.
+    *   Unhandled XState events produce warn-level logs automatically — no more silent failures.
+    *   Graph tests prevent event handler regressions at build time.
+    *   Full observability documentation at `plans/OBSERVABILITY.md`.
+    *   **Files**: `apps/game-server/src/inspect.ts` (new), `apps/game-server/src/log.ts` (new), `apps/game-server/src/machines/__tests__/event-coverage.test.ts` (new), `apps/client/src/components/ErrorBoundary.tsx` (new), `apps/game-server/src/machines/l3-session.ts`, `apps/game-server/src/server.ts`, `apps/game-server/src/machines/l2-orchestrator.ts`, `apps/game-server/src/machines/actions/l3-social.ts`, plus 6 action files migrated to `log()`.

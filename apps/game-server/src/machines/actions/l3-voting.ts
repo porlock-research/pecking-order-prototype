@@ -2,6 +2,7 @@ import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
 import type { VoteResult } from '@pecking-order/shared-types';
 import { Events } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from '../cartridges/voting/_registry';
+import { log } from '../../log';
 
 export const l3VotingActions = {
   forwardToVotingChild: sendTo('activeVotingCartridge', ({ event }: any) => event),
@@ -10,8 +11,8 @@ export const l3VotingActions = {
       const voteType = context.manifest?.voteType || 'MAJORITY';
       const hasKey = voteType in VOTE_REGISTRY;
       const key = hasKey ? voteType : 'MAJORITY';
-      if (!hasKey) console.error(`[L3] Unknown voteType: ${voteType}, falling back to MAJORITY`);
-      console.log(`[L3] Spawning voting cartridge: ${key}`);
+      if (!hasKey) log('error', 'L3', 'Unknown voteType, falling back to MAJORITY', { voteType });
+      log('info', 'L3', 'Spawning voting cartridge', { key });
       return (spawn as any)(key, {
         id: 'activeVotingCartridge',
         input: { voteType: key, roster: context.roster, dayIndex: context.dayIndex },

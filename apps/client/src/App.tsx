@@ -57,7 +57,9 @@ async function syncCacheToLocalStorage(): Promise<void> {
         cache.delete(req);
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[App] Cache-to-localStorage sync failed:', err);
+  }
 }
 
 /**
@@ -124,7 +126,9 @@ function recoverFromCookie(gameCode: string): string | null {
     const jwt = match[1];
     const decoded = decodeGameToken(jwt);
     if (decoded.exp && decoded.exp > Date.now() / 1000) return jwt;
-  } catch {}
+  } catch (err) {
+    console.warn('[App] Cookie token decode failed:', err);
+  }
   return null;
 }
 
@@ -140,7 +144,9 @@ function recoverGameFromCookies(): { gameCode: string; jwt: string } | null {
       if (decoded.exp && decoded.exp > now) {
         return { gameCode: m[1], jwt };
       }
-    } catch {}
+    } catch (err) {
+      console.warn('[App] Cookie scan token decode failed:', err);
+    }
   }
   return null;
 }
@@ -173,7 +179,9 @@ async function recoverFromCacheApi(gameCode: string): Promise<string | null> {
         return jwt;
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[App] Cache API token recovery failed:', err);
+  }
   return null;
 }
 
@@ -186,7 +194,9 @@ async function refreshFromLobby(gameCode: string): Promise<string | null> {
     if (!res.ok) return null;
     const { token } = await res.json();
     if (token) return token;
-  } catch {}
+  } catch (err) {
+    console.warn('[App] Lobby token refresh failed:', err);
+  }
   return null;
 }
 

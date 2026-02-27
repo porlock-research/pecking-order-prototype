@@ -2,19 +2,20 @@ import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 import { Events } from '@pecking-order/shared-types';
+import { log } from '../../log';
 
 export const l3GameActions = {
   spawnGameCartridge: assign({
     activeGameCartridgeRef: ({ context, spawn }: any) => {
       const gameType = context.manifest?.gameType || 'NONE';
       if (gameType === 'NONE') {
-        console.log('[L3] No game type for this day, skipping game cartridge');
+        log('info', 'L3', 'No game type for this day, skipping game cartridge');
         return null;
       }
       const hasKey = gameType in GAME_REGISTRY;
       const key = hasKey ? gameType : 'REALTIME_TRIVIA';
-      if (!hasKey) console.error(`[L3] Unknown gameType: ${gameType}, falling back to REALTIME_TRIVIA`);
-      console.log(`[L3] Spawning game cartridge: ${key}`);
+      if (!hasKey) log('error', 'L3', 'Unknown gameType, falling back to REALTIME_TRIVIA', { gameType });
+      log('info', 'L3', 'Spawning game cartridge', { key });
       return (spawn as any)(key, {
         id: 'activeGameCartridge',
         input: { gameType: key, roster: context.roster, dayIndex: context.dayIndex, mode: context.manifest?.gameMode },

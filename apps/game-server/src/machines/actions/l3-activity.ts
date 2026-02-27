@@ -2,6 +2,7 @@ import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
 import type { PromptOutput } from '../cartridges/prompts/_contract';
 import { PROMPT_REGISTRY } from '../cartridges/prompts/_registry';
 import { Events } from '@pecking-order/shared-types';
+import { log } from '../../log';
 
 export const l3ActivityActions = {
   spawnPromptCartridge: assign({
@@ -9,10 +10,10 @@ export const l3ActivityActions = {
       const payload = event.payload;
       const promptType = payload?.promptType || 'PLAYER_PICK';
       if (!(promptType in PROMPT_REGISTRY)) {
-        console.error(`[L3] Unknown promptType: ${promptType}, ignoring`);
+        log('error', 'L3', 'Unknown promptType, ignoring', { promptType });
         return null;
       }
-      console.log(`[L3] Spawning prompt cartridge: ${promptType}`);
+      log('info', 'L3', 'Spawning prompt cartridge', { promptType });
       return (spawn as any)(promptType, {
         id: 'activePromptCartridge',
         input: {

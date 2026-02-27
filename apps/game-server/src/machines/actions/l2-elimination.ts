@@ -1,5 +1,6 @@
 import { assign, enqueueActions } from 'xstate';
 import { Events, FactTypes, PlayerStatuses } from '@pecking-order/shared-types';
+import { log } from '../../log';
 
 export const l2EliminationActions = {
   storeVoteResult: assign({
@@ -8,7 +9,7 @@ export const l2EliminationActions = {
   }),
   processNightSummary: enqueueActions(({ enqueue, context }: any) => {
     const pending = context.pendingElimination;
-    console.log(`[L2] processNightSummary: pending=${JSON.stringify(pending)}, goldPool=${context.goldPool}`);
+    log('info', 'L2', 'processNightSummary', { pending: JSON.stringify(pending), goldPool: context.goldPool });
     // Build one unified roster update to avoid XState v5 stale-context pitfall
     const rosterUpdate = { ...context.roster };
     let rosterChanged = false;
@@ -16,7 +17,7 @@ export const l2EliminationActions = {
     // Elimination (normal vote or FINALS loser)
     if (pending?.eliminatedId && rosterUpdate[pending.eliminatedId]) {
       const id = pending.eliminatedId;
-      console.log(`[L2] Eliminating player: ${id}`);
+      log('info', 'L2', 'Eliminating player', { playerId: id });
       rosterUpdate[id] = { ...rosterUpdate[id], status: PlayerStatuses.ELIMINATED };
       rosterChanged = true;
       enqueue.raise({
@@ -36,7 +37,7 @@ export const l2EliminationActions = {
     if (pending?.winnerId) {
       const winnerId = pending.winnerId;
       const goldPool = context.goldPool || 0;
-      console.log(`[L2] Winner declared: ${winnerId} (gold pool: ${goldPool})`);
+      log('info', 'L2', 'Winner declared', { winnerId, goldPool });
       if (goldPool > 0) {
         goldPayouts.push({ playerId: winnerId, amount: goldPool, reason: 'WINNER' });
       }
