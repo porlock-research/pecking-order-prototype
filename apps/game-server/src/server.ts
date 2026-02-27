@@ -65,7 +65,7 @@ export class GameServer extends Server<Env> {
       const rows = (this.scheduler as any).querySql([
         { sql: "SELECT COUNT(*) as count FROM tasks", params: [] }
       ]);
-      remaining = rows[0]?.results?.[0]?.count ?? '?';
+      remaining = rows?.result?.[0]?.count ?? '?';
     } catch { /* non-critical */ }
     log('info', 'L1', 'Alarm: wakeUpL2 fired', { remaining });
     if (this.actor) {
@@ -604,7 +604,7 @@ export class GameServer extends Server<Env> {
       const rows = (this.scheduler as any).querySql([
         { sql: "SELECT id, time FROM tasks ORDER BY time ASC", params: [] }
       ]);
-      const tasks = rows[0]?.results || [];
+      const tasks = rows?.result || [];
       return new Response(JSON.stringify({ count: tasks.length, tasks }), {
         status: 200,
         headers: { "Content-Type": "application/json", ...CORS_HEADERS },

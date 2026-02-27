@@ -145,10 +145,10 @@ export const dailySessionMachine = setup({
                   { guard: 'isGroupDmCreationAllowed', actions: ['createGroupDmChannel'] },
                   { actions: ['rejectGroupDmCreation'] }
                 ],
-                'INTERNAL.OPEN_DMS': { actions: assign({ dmsOpen: true }) },
-                'INTERNAL.CLOSE_DMS': { actions: assign({ dmsOpen: false }) },
-                'INTERNAL.OPEN_GROUP_CHAT': { actions: assign({ groupChatOpen: true }) },
-                'INTERNAL.CLOSE_GROUP_CHAT': { actions: assign({ groupChatOpen: false }) },
+                'INTERNAL.OPEN_DMS': { actions: [assign({ dmsOpen: true }), sendParent({ type: 'PUSH.PHASE', trigger: 'OPEN_DMS' } as any)] },
+                'INTERNAL.CLOSE_DMS': { actions: [assign({ dmsOpen: false }), sendParent({ type: 'PUSH.PHASE', trigger: 'CLOSE_DMS' } as any)] },
+                'INTERNAL.OPEN_GROUP_CHAT': { actions: [assign({ groupChatOpen: true }), sendParent({ type: 'PUSH.PHASE', trigger: 'OPEN_GROUP_CHAT' } as any)] },
+                'INTERNAL.CLOSE_GROUP_CHAT': { actions: [assign({ groupChatOpen: false }), sendParent({ type: 'PUSH.PHASE', trigger: 'CLOSE_GROUP_CHAT' } as any)] },
               }
             }
           }
@@ -177,7 +177,7 @@ export const dailySessionMachine = setup({
                 },
                 'GAME.CHANNEL.CREATE': { actions: 'createGameChannel' },
                 'GAME.CHANNEL.DESTROY': { actions: 'destroyGameChannels' },
-                'INTERNAL.END_GAME': { actions: 'forwardToGameChild' },
+                'INTERNAL.END_GAME': { actions: ['forwardToGameChild', sendParent({ type: 'PUSH.PHASE', trigger: 'END_GAME' } as any)] },
                 '*': {
                   guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Game.PREFIX) && !event.type.startsWith(Events.Game.CHANNEL_PREFIX),
                   actions: 'forwardToGameChild',
@@ -225,7 +225,7 @@ export const dailySessionMachine = setup({
                 // handled by completed's xstate.done.actor handler.
                 'INTERNAL.END_ACTIVITY': {
                   target: 'completed',
-                  actions: 'forwardToPromptChild',
+                  actions: ['forwardToPromptChild', sendParent({ type: 'PUSH.PHASE', trigger: 'END_ACTIVITY' } as any)],
                 },
                 '*': {
                   guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX),

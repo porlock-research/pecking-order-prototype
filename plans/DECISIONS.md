@@ -1077,3 +1077,20 @@ This document tracks significant architectural decisions, their context, and con
     *   Admin can quickly identify games by invite code and jump to the client.
     *   Email templates match brand identity established in `LOBBY_DESIGN_BRIEF.md` and `CLIENT_DESIGN_BRIEF.md`.
     *   **Files**: `apps/client/src/shells/{ShellLoader,registry}.tsx`, `apps/client/src/shells/immersive/{ImmersiveShell,components/ContextMenu}.tsx`, `apps/client/src/shells/classic/ClassicShell.tsx`, `apps/lobby/app/{page,actions,login/actions}.tsx`, `apps/lobby/app/admin/game/[id]/page.tsx`, `apps/lobby/lib/{auth,email-templates}.ts`.
+
+## [ADR-077] Fix Scheduled Tasks + Expand Push Notifications
+*   **Date:** 2026-02-26
+*   **Status:** Accepted
+*   **Context:** Two bugs found during local testing before live session: (1) Admin scheduled tasks panel always shows empty because `querySql()` return shape was accessed incorrectly — `rows[0]?.results` instead of `rows?.result`; (2) Push notifications only fired for 8 triggers (DAY_START, VOTING, etc.) but not for gate events (DM open/close, group chat open/close), cartridge lifecycle (END_GAME, END_ACTIVITY), or group chat messages.
+*   **Decision:**
+    *   **Fix querySql() bug**: PartyWhen's `querySql()` returns `SqlResult<T>` = `{ result: T[], error, status }`, not `{ results: T[] }`. Fixed two access sites in `server.ts` (`wakeUpL2` task count and `handleScheduledTasks` GET).
+    *   **Expand PushTrigger enum**: Added 9 new triggers — `OPEN_DMS`, `CLOSE_DMS`, `OPEN_GROUP_CHAT`, `CLOSE_GROUP_CHAT`, `GROUP_CHAT_MSG`, `START_GAME`, `END_GAME`, `START_ACTIVITY`, `END_ACTIVITY`. All default `true`.
+    *   **Gate event push**: L3 `INTERNAL.OPEN_DMS`/`CLOSE_DMS`/`OPEN_GROUP_CHAT`/`CLOSE_GROUP_CHAT` handlers now send `PUSH.PHASE` alongside their `assign()` actions.
+    *   **Cartridge lifecycle push**: `INTERNAL.END_GAME` and `INTERNAL.END_ACTIVITY` send `PUSH.PHASE` alongside their forward-to-child actions. START_GAME/START_ACTIVITY already covered by existing DAILY_GAME/ACTIVITY triggers.
+    *   **Group chat message push**: `handleFactPush()` handles `CHAT_MSG` facts on MAIN channel — broadcasts with `tag: 'group-chat'` to collapse rapid messages into a single device notification.
+*   **Consequences:**
+    *   Admin scheduled tasks panel now correctly displays upcoming tasks.
+    *   All configurable cycle timeline events produce push notifications.
+    *   Group chat messages trigger push, keeping offline players engaged.
+    *   `tag: 'group-chat'` prevents notification spam from rapid messages.
+    *   **Files**: `apps/game-server/src/server.ts`, `packages/shared-types/src/index.ts`, `apps/game-server/src/push-triggers.ts`, `apps/game-server/src/machines/l3-session.ts`.

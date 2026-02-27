@@ -92,6 +92,18 @@ export function phasePushPayload(
       return { payload: { title: "Pecking Order", body: "Game time!", tag: "phase" }, ttl: GAME_TTL };
     case 'ACTIVITY':
       return { payload: { title: "Pecking Order", body: "Activity time!", tag: "activity" }, ttl: PHASE_TTL };
+    case 'OPEN_DMS':
+      return { payload: { title: "Pecking Order", body: "DMs are now open", tag: "phase" }, ttl: PHASE_TTL };
+    case 'CLOSE_DMS':
+      return { payload: { title: "Pecking Order", body: "DMs are now closed", tag: "phase" }, ttl: PHASE_TTL };
+    case 'OPEN_GROUP_CHAT':
+      return { payload: { title: "Pecking Order", body: "Group chat is open", tag: "phase" }, ttl: PHASE_TTL };
+    case 'CLOSE_GROUP_CHAT':
+      return { payload: { title: "Pecking Order", body: "Group chat is closed", tag: "phase" }, ttl: PHASE_TTL };
+    case 'END_GAME':
+      return { payload: { title: "Pecking Order", body: "Game over!", tag: "phase" }, ttl: PHASE_TTL };
+    case 'END_ACTIVITY':
+      return { payload: { title: "Pecking Order", body: "Activity complete!", tag: "activity" }, ttl: PHASE_TTL };
     default:
       return null;
   }
@@ -105,7 +117,14 @@ export function handleFactPush(
 ): void {
   const name = (id: string) => ctx.roster[id]?.personaName || id;
 
-  if (fact.type === FactTypes.DM_SENT && fact.targetId) {
+  if (fact.type === FactTypes.CHAT_MSG && fact.payload?.channelId === 'MAIN') {
+    if (!isPushEnabled(manifest, 'GROUP_CHAT_MSG')) return;
+    pushBroadcast(ctx, {
+      title: 'Pecking Order',
+      body: `${name(fact.actorId)}: ${(fact.payload?.content || '').slice(0, 60)}`,
+      tag: 'group-chat',
+    }, PHASE_TTL).catch(err => console.error('[L1] [Push] Error:', err));
+  } else if (fact.type === FactTypes.DM_SENT && fact.targetId) {
     if (!isPushEnabled(manifest, 'DM_SENT')) return;
     pushToPlayer(ctx, fact.targetId, {
       title: 'Pecking Order',

@@ -112,12 +112,23 @@ export const PushTriggerSchema = z.enum([
   'DM_SENT',           // targeted -> DM recipient
   'ELIMINATION',       // broadcast
   'WINNER_DECLARED',   // broadcast
+  'GROUP_CHAT_MSG',    // broadcast (main channel messages)
   // Phase-transition
   'DAY_START',         // broadcast (morningBriefing/groupChat)
   'ACTIVITY',          // broadcast
   'VOTING',            // broadcast
   'NIGHT_SUMMARY',     // broadcast
   'DAILY_GAME',        // broadcast
+  // Gate events
+  'OPEN_DMS',          // broadcast
+  'CLOSE_DMS',         // broadcast
+  'OPEN_GROUP_CHAT',   // broadcast
+  'CLOSE_GROUP_CHAT',  // broadcast
+  // Cartridge lifecycle
+  'START_GAME',        // broadcast
+  'END_GAME',          // broadcast
+  'START_ACTIVITY',    // broadcast
+  'END_ACTIVITY',      // broadcast
 ]);
 export type PushTrigger = z.infer<typeof PushTriggerSchema>;
 
@@ -125,8 +136,10 @@ export const PushConfigSchema = z.record(PushTriggerSchema, z.boolean()).default
 export type PushConfig = z.infer<typeof PushConfigSchema>;
 
 export const DEFAULT_PUSH_CONFIG: Record<PushTrigger, boolean> = {
-  DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
+  DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true, GROUP_CHAT_MSG: true,
   DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
+  OPEN_DMS: true, CLOSE_DMS: true, OPEN_GROUP_CHAT: true, CLOSE_GROUP_CHAT: true,
+  START_GAME: true, END_GAME: true, START_ACTIVITY: true, END_ACTIVITY: true,
 };
 
 export const GameManifestSchema = z.object({
