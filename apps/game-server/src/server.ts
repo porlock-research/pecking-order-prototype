@@ -165,12 +165,10 @@ export class GameServer extends Server<Env> {
   // --- 1. LIFECYCLE ---
 
   async onStart() {
-    // Debug: PartyWhen persistence check
+    // PartyWhen persistence check — only log on error
     try {
-      const tables = this.ctx.storage.sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'");
-      log('debug', 'L1', 'Tasks table exists?', { tables: [...tables] });
-      const currentAlarm = await this.ctx.storage.getAlarm();
-      log('debug', 'L1', 'Current alarm', { alarm: currentAlarm ? new Date(currentAlarm).toISOString() : 'None' });
+      this.ctx.storage.sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'");
+      await this.ctx.storage.getAlarm();
     } catch (e) {
       log('error', 'L1', 'SQL/Alarm check failed', { error: String(e) });
     }
@@ -185,10 +183,7 @@ export class GameServer extends Server<Env> {
           if (event.type !== Events.Fact.RECORD) return;
           const fact = event.fact;
 
-          if (!isJournalable(fact.type)) {
-            log('debug', 'L1', 'Fact received (sync-only, not journaled)', { factType: fact.type });
-            return;
-          }
+          if (!isJournalable(fact.type)) return;
 
           log('info', 'L1', 'Persisting fact to D1', { factType: fact.type });
           const snapshot = this.actor?.getSnapshot();
@@ -295,15 +290,10 @@ export class GameServer extends Server<Env> {
       const { l3Context, l3Snapshot, chatLog } = extractL3Context(snapshot, this.lastKnownChatLog);
       if (l3Context.chatLog) this.lastKnownChatLog = l3Context.chatLog;
 
-      // Debug logging
-      const l2StateStr = flattenState(snapshot.value);
-      const l3StateStr = l3Snapshot ? flattenState(l3Snapshot.value) : 'ABSENT';
-      log('debug', 'L1', 'State update', { l2: l2StateStr, l3: l3StateStr, day: snapshot.context.dayIndex });
-
+      // Debug ticker for connected dev clients (not logged to Axiom)
       const debugSummary = buildDebugSummary(snapshot, l3Snapshot);
       if (debugSummary !== this.lastDebugSummary) {
         this.lastDebugSummary = debugSummary;
-        log('debug', 'L1', debugSummary);
         broadcastDebugTicker(debugSummary, () => this.getConnections());
       }
 
@@ -790,7 +780,7 @@ export class GameServer extends Server<Env> {
       const state = ws.state as { playerId: string } | null;
       const playerId = state?.playerId || ws.deserializeAttachment()?.playerId;
 
-      log('debug', 'L1', 'WS message received', { playerId, eventType: event.type });
+      // WS messages are high-frequency — don't log individually
 
       if (!playerId) {
         log('warn', 'L1', 'Message received from connection without playerId');

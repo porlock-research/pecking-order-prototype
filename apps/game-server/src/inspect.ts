@@ -1,14 +1,5 @@
 import { log } from './log';
 
-/** High-frequency events logged at debug level to avoid noise. */
-const DEBUG_EVENTS = new Set([
-  'xstate.init',
-  'xstate.stop',
-  'SOCIAL.SEND_MSG',
-  'PRESENCE.TYPING',
-  'PRESENCE.STOP_TYPING',
-]);
-
 /** Events that should always be logged at info level. */
 const INFO_EVENTS_PREFIX = ['ADMIN.', 'INTERNAL.INJECT_PROMPT'];
 
@@ -20,14 +11,14 @@ function isInfoEvent(eventType: string): boolean {
  * Creates an XState inspect callback for runtime event tracing.
  * Attach to `createActor(machine, { inspect })`.
  *
- * Traces:
- * - Admin/GM events at info level (always visible)
- * - L2→L3 forwarding at debug level
- * - Actor lifecycle (spawn/done) at info level
- * - Potential event drops at warn level
+ * ONLY logs things that aren't visible through normal application logs:
+ * - warn: events that arrived at an actor but were silently ignored (the bug detector)
+ * - info: admin/GM events that flow through the actor hierarchy (confirms delivery)
+ *
+ * Everything else (actor lifecycle, forwarding, state changes) is already
+ * covered by application-level log() calls in server.ts and action files.
  */
 export function createInspector(gameId: string) {
-  // Track last event per actor to detect potential drops
   const lastEventByActor = new Map<string, { type: string; ts: number }>();
 
   return (inspEvent: any) => {
@@ -38,23 +29,11 @@ export function createInspector(gameId: string) {
       const actorId: string = inspEvent.actorRef?.id || inspEvent.actorRef?.sessionId || '?';
       const sourceId: string = inspEvent.sourceRef?.id || inspEvent.sourceRef?.sessionId || 'external';
 
-      if (DEBUG_EVENTS.has(eventType)) {
-        log('debug', 'Inspector', 'event', { gameId, eventType, actorId, sourceId });
-        return;
-      }
-
+      // Only track admin events — these are the ones we need to verify delivery for
       if (isInfoEvent(eventType)) {
         log('info', 'Inspector', 'event.admin', { gameId, eventType, actorId, sourceId });
-      } else if (sourceId !== 'external' && actorId === 'l3-session') {
-        log('debug', 'Inspector', 'event.forward', { gameId, eventType, from: sourceId, to: actorId });
+        lastEventByActor.set(actorId, { type: eventType, ts: Date.now() });
       }
-
-      // Actor lifecycle: done events
-      if (eventType.startsWith('xstate.done.actor.')) {
-        log('info', 'Inspector', 'actor.done', { gameId, eventType, actorId });
-      }
-
-      lastEventByActor.set(actorId, { type: eventType, ts: Date.now() });
       return;
     }
 
@@ -63,26 +42,23 @@ export function createInspector(gameId: string) {
       const last = lastEventByActor.get(actorId);
       if (!last) return;
 
-      // Detect potential drops: event arrived but state value unchanged
-      // Only warn for events we expect to cause transitions (admin, internal)
+      // THE KEY VALUE: detect silently dropped events.
+      // If an admin event arrived but the state didn't change, it was ignored.
       const snapshot = inspEvent.snapshot;
-      if (last.type && isInfoEvent(last.type) && snapshot) {
-        const changed = snapshot.changed;
-        if (changed === false) {
-          log('warn', 'Inspector', 'event.unhandled', {
-            gameId,
-            eventType: last.type,
-            actorId,
-            stateValue: JSON.stringify(snapshot.value),
-          });
-        }
+      if (snapshot && snapshot.changed === false) {
+        log('warn', 'Inspector', 'event.unhandled', {
+          gameId,
+          eventType: last.type,
+          actorId,
+          stateValue: JSON.stringify(snapshot.value),
+        });
       }
+
+      // Clear after checking — one check per event
+      lastEventByActor.delete(actorId);
       return;
     }
 
-    if (type === '@xstate.actor') {
-      const actorId: string = inspEvent.actorRef?.id || inspEvent.actorRef?.sessionId || '?';
-      log('info', 'Inspector', 'actor.create', { gameId, actorId });
-    }
+    // Skip @xstate.actor — actor lifecycle is already logged by L1
   };
 }
