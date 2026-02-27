@@ -1,0 +1,83 @@
+{
+  "id": "game-the-split",
+  "group": "Games",
+  "filePath": "packages/game-cartridges/src/machines/the-split.ts",
+  "stats": {
+    "stateCount": 3,
+    "transitionCount": 7,
+    "eventTypes": [
+      "*",
+      "ALL_SUBMITTED",
+      "INTERNAL.END_GAME",
+      "xstate.after.ROUND_REVEAL_DELAY.the-split-game.roundReveal"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "active",
+      "path": "active",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "*",
+        "ALL_SUBMITTED",
+        "INTERNAL.END_GAME"
+      ]
+    },
+    {
+      "name": "roundReveal",
+      "path": "roundReveal",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "INTERNAL.END_GAME"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "active",
+      "target": "active",
+      "event": "*"
+    },
+    {
+      "source": "active",
+      "target": "roundReveal",
+      "event": "ALL_SUBMITTED"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "ALL_SUBMITTED"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "INTERNAL.END_GAME"
+    },
+    {
+      "source": "roundReveal",
+      "target": "completed",
+      "event": "INTERNAL.END_GAME"
+    },
+    {
+      "source": "roundReveal",
+      "target": "active",
+      "event": "xstate.after.ROUND_REVEAL_DELAY.the-split-game.roundReveal"
+    },
+    {
+      "source": "roundReveal",
+      "target": "completed",
+      "event": "xstate.after.ROUND_REVEAL_DELAY.the-split-game.roundReveal"
+    }
+  ]
+}

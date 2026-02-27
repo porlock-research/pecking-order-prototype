@@ -1,0 +1,53 @@
+{
+  "id": "game-blind-auction",
+  "group": "Games",
+  "filePath": "packages/game-cartridges/src/machines/blind-auction.ts",
+  "stats": {
+    "stateCount": 2,
+    "transitionCount": 3,
+    "eventTypes": [
+      "*",
+      "ALL_SUBMITTED",
+      "INTERNAL.END_GAME"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "active",
+      "path": "active",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "*",
+        "ALL_SUBMITTED",
+        "INTERNAL.END_GAME"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "active",
+      "target": "active",
+      "event": "*"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "ALL_SUBMITTED"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "INTERNAL.END_GAME"
+    }
+  ]
+}

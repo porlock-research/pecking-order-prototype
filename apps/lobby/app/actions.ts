@@ -1108,6 +1108,20 @@ export async function getGameDetails(gameId: string) {
   };
 }
 
+// ── Admin: Inspector Connection ──────────────────────────────────────────
+
+export async function getInspectorConnection(gameId: string) {
+  const env = await getEnv();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+
+  // Convert HTTP URL to WebSocket URL
+  const wsHost = GAME_SERVER_HOST.replace(/^http/, 'ws');
+  const wsUrl = `${wsHost}/parties/game-server/${gameId}?adminSecret=${encodeURIComponent(AUTH_SECRET)}`;
+
+  return { wsUrl };
+}
+
 // ── Admin: Game Manager ──────────────────────────────────────────────────
 
 export async function getAllGames() {

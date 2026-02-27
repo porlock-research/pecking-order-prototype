@@ -1,0 +1,77 @@
+{
+  "id": "prompt-guess-who",
+  "group": "Prompts",
+  "filePath": "src/machines/cartridges/prompts/guess-who-machine.ts",
+  "stats": {
+    "stateCount": 3,
+    "transitionCount": 6,
+    "eventTypes": [
+      "ACTIVITY.GUESSWHO.ANSWER",
+      "ACTIVITY.GUESSWHO.GUESS",
+      "INTERNAL.END_ACTIVITY"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "answering",
+      "path": "answering",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "ACTIVITY.GUESSWHO.ANSWER",
+        "INTERNAL.END_ACTIVITY"
+      ]
+    },
+    {
+      "name": "guessing",
+      "path": "guessing",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "ACTIVITY.GUESSWHO.GUESS",
+        "INTERNAL.END_ACTIVITY"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "answering",
+      "target": "guessing",
+      "event": "ACTIVITY.GUESSWHO.ANSWER"
+    },
+    {
+      "source": "answering",
+      "target": "answering",
+      "event": "ACTIVITY.GUESSWHO.ANSWER"
+    },
+    {
+      "source": "answering",
+      "target": "completed",
+      "event": "INTERNAL.END_ACTIVITY"
+    },
+    {
+      "source": "guessing",
+      "target": "completed",
+      "event": "ACTIVITY.GUESSWHO.GUESS"
+    },
+    {
+      "source": "guessing",
+      "target": "guessing",
+      "event": "ACTIVITY.GUESSWHO.GUESS"
+    },
+    {
+      "source": "guessing",
+      "target": "completed",
+      "event": "INTERNAL.END_ACTIVITY"
+    }
+  ]
+}

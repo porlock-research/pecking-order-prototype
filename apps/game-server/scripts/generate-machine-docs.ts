@@ -1,0 +1,283 @@
+/**
+ * Build-time machine catalog generator.
+ *
+ * Imports all XState machines and produces:
+ * 1. JSON snapshots (docs/machines/*.json) — structured graph data per machine
+ * 2. Markdown catalog (docs/machines/README.md) — human-readable reference
+ *
+ * Usage: npx tsx scripts/generate-machine-docs.ts
+ */
+
+import { writeFileSync, mkdirSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { toDirectedGraph, getStateNodes } from 'xstate/graph';
+
+// --- Machine Imports ---
+
+// Orchestration
+import { orchestratorMachine } from '../src/machines/l2-orchestrator';
+import { dailySessionMachine } from '../src/machines/l3-session';
+import { postGameMachine } from '../src/machines/l4-post-game';
+
+// Voting cartridges
+import { VOTE_REGISTRY } from '../src/machines/cartridges/voting/_registry';
+
+// Prompt cartridges
+import { PROMPT_REGISTRY } from '../src/machines/cartridges/prompts/_registry';
+
+// Game cartridges
+import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
+
+// --- Types ---
+
+interface MachineInfo {
+  id: string;
+  group: string;
+  filePath: string;
+  machine: any;
+}
+
+interface StateInfo {
+  name: string;
+  path: string;
+  type: string;
+  parent: string | null;
+  events: string[];
+}
+
+interface TransitionInfo {
+  source: string;
+  target: string;
+  event: string;
+}
+
+interface MachineDoc {
+  id: string;
+  group: string;
+  filePath: string;
+  stats: {
+    stateCount: number;
+    transitionCount: number;
+    eventTypes: string[];
+    hasParallelRegions: boolean;
+    hasFinalState: boolean;
+  };
+  states: StateInfo[];
+  transitions: TransitionInfo[];
+}
+
+// --- Machine Registry ---
+
+const MACHINES: MachineInfo[] = [
+  // Orchestration
+  { id: 'pecking-order-l2', group: 'Orchestration', filePath: 'src/machines/l2-orchestrator.ts', machine: orchestratorMachine },
+  { id: 'l3-daily-session', group: 'Orchestration', filePath: 'src/machines/l3-session.ts', machine: dailySessionMachine },
+  { id: 'post-game', group: 'Orchestration', filePath: 'src/machines/l4-post-game.ts', machine: postGameMachine },
+
+  // Voting
+  ...Object.entries(VOTE_REGISTRY).map(([type, machine]) => ({
+    id: `vote-${type.toLowerCase().replace(/_/g, '-')}`,
+    group: 'Voting',
+    filePath: `src/machines/cartridges/voting/${type.toLowerCase().replace(/_/g, '-')}-machine.ts`,
+    machine,
+  })),
+
+  // Prompts
+  ...Object.entries(PROMPT_REGISTRY).map(([type, machine]) => ({
+    id: `prompt-${type.toLowerCase().replace(/_/g, '-')}`,
+    group: 'Prompts',
+    filePath: `src/machines/cartridges/prompts/${type.toLowerCase().replace(/_/g, '-')}-machine.ts`,
+    machine,
+  })),
+
+  // Games
+  ...Object.entries(GAME_REGISTRY).map(([type, machine]) => ({
+    id: `game-${type.toLowerCase().replace(/_/g, '-')}`,
+    group: 'Games',
+    filePath: `packages/game-cartridges/src/machines/${type.toLowerCase().replace(/_/g, '-')}.ts`,
+    machine,
+  })),
+];
+
+// --- Extraction ---
+
+function extractMachineDoc(info: MachineInfo): MachineDoc {
+  const graph = toDirectedGraph(info.machine);
+  const allNodes = getStateNodes(info.machine);
+
+  // Extract states
+  const states: StateInfo[] = allNodes.map((node: any) => {
+    const events: string[] = [];
+    const transitions = node.config?.on;
+    if (transitions) {
+      events.push(...Object.keys(transitions));
+    }
+
+    return {
+      name: node.key,
+      path: node.path.join('.'),
+      type: node.type,
+      parent: node.parent ? node.parent.path.join('.') || '(root)' : null,
+      events,
+    };
+  });
+
+  // Extract transitions from directed graph edges (recursive)
+  const transitions: TransitionInfo[] = [];
+  function collectEdges(graphNode: any) {
+    for (const edge of graphNode.edges || []) {
+      transitions.push({
+        source: edge.source?.path?.join('.') || edge.source?.key || '?',
+        target: edge.target?.path?.join('.') || edge.target?.key || '?',
+        event: edge.transition?.eventType || '(always)',
+      });
+    }
+    for (const child of graphNode.children || []) {
+      collectEdges(child);
+    }
+  }
+  collectEdges(graph);
+
+  // Compute stats
+  const allEventTypes = new Set<string>();
+  for (const s of states) {
+    for (const e of s.events) {
+      allEventTypes.add(e);
+    }
+  }
+  for (const t of transitions) {
+    if (t.event !== '(always)') {
+      allEventTypes.add(t.event);
+    }
+  }
+
+  const hasParallel = states.some(s => s.type === 'parallel');
+  const hasFinal = states.some(s => s.type === 'final');
+
+  return {
+    id: info.id,
+    group: info.group,
+    filePath: info.filePath,
+    stats: {
+      stateCount: states.length,
+      transitionCount: transitions.length,
+      eventTypes: Array.from(allEventTypes).sort(),
+      hasParallelRegions: hasParallel,
+      hasFinalState: hasFinal,
+    },
+    states,
+    transitions,
+  };
+}
+
+// --- Output ---
+
+function generateMarkdown(docs: MachineDoc[]): string {
+  const lines: string[] = [];
+
+  lines.push('# State Machine Catalog');
+  lines.push('');
+  lines.push(`> Auto-generated by \`generate-machine-docs.ts\` — ${new Date().toISOString().slice(0, 10)}`);
+  lines.push(`> ${docs.length} machines across ${new Set(docs.map(d => d.group)).size} groups`);
+  lines.push('');
+
+  // Summary table
+  lines.push('## Summary');
+  lines.push('');
+  lines.push('| Machine | Group | States | Transitions | Events | Parallel | Final |');
+  lines.push('|---------|-------|--------|-------------|--------|----------|-------|');
+  for (const doc of docs) {
+    lines.push(`| ${doc.id} | ${doc.group} | ${doc.stats.stateCount} | ${doc.stats.transitionCount} | ${doc.stats.eventTypes.length} | ${doc.stats.hasParallelRegions ? 'Yes' : '-'} | ${doc.stats.hasFinalState ? 'Yes' : '-'} |`);
+  }
+  lines.push('');
+
+  // Group sections
+  const groups = new Map<string, MachineDoc[]>();
+  for (const doc of docs) {
+    const list = groups.get(doc.group) || [];
+    list.push(doc);
+    groups.set(doc.group, list);
+  }
+
+  for (const [groupName, groupDocs] of groups) {
+    lines.push(`## ${groupName}`);
+    lines.push('');
+
+    for (const doc of groupDocs) {
+      lines.push(`### ${doc.id}`);
+      lines.push('');
+      lines.push(`**File**: \`${doc.filePath}\``);
+      lines.push(`**States**: ${doc.stats.stateCount} | **Transitions**: ${doc.stats.transitionCount} | **Events**: ${doc.stats.eventTypes.length}`);
+      lines.push('');
+
+      // State table
+      lines.push('**States:**');
+      lines.push('');
+      lines.push('| State | Type | Events Handled |');
+      lines.push('|-------|------|----------------|');
+      for (const state of doc.states) {
+        const eventsStr = state.events.length > 0 ? state.events.join(', ') : '-';
+        lines.push(`| ${state.path || state.name} | ${state.type} | ${eventsStr} |`);
+      }
+      lines.push('');
+
+      // Event list
+      if (doc.stats.eventTypes.length > 0) {
+        lines.push('**Events**: ' + doc.stats.eventTypes.map(e => `\`${e}\``).join(', '));
+        lines.push('');
+      }
+
+      // Transition table (only for non-trivial machines)
+      if (doc.transitions.length > 0 && doc.transitions.length <= 50) {
+        lines.push('**Transitions:**');
+        lines.push('');
+        lines.push('| Source | Event | Target |');
+        lines.push('|--------|-------|--------|');
+        for (const t of doc.transitions) {
+          lines.push(`| ${t.source} | ${t.event} | ${t.target} |`);
+        }
+        lines.push('');
+      } else if (doc.transitions.length > 50) {
+        lines.push(`**Transitions**: ${doc.transitions.length} (see JSON for details)`);
+        lines.push('');
+      }
+    }
+  }
+
+  return lines.join('\n');
+}
+
+// --- Main ---
+
+const docsDir = resolve(__dirname, '../../../docs/machines');
+mkdirSync(docsDir, { recursive: true });
+
+console.log(`Generating machine catalog for ${MACHINES.length} machines...`);
+
+const allDocs: MachineDoc[] = [];
+
+for (const info of MACHINES) {
+  try {
+    const doc = extractMachineDoc(info);
+    allDocs.push(doc);
+
+    // Write individual JSON
+    const jsonPath = resolve(docsDir, `${doc.id}.json`);
+    writeFileSync(jsonPath, JSON.stringify(doc, null, 2));
+    console.log(`  ✓ ${doc.id} (${doc.stats.stateCount} states, ${doc.stats.transitionCount} transitions)`);
+  } catch (err) {
+    console.error(`  ✗ ${info.id}: ${err}`);
+  }
+}
+
+// Write catalog JSON (all machines)
+const catalogPath = resolve(docsDir, 'catalog.json');
+writeFileSync(catalogPath, JSON.stringify(allDocs, null, 2));
+
+// Write Markdown
+const mdPath = resolve(docsDir, 'README.md');
+writeFileSync(mdPath, generateMarkdown(allDocs));
+
+console.log(`\nDone! ${allDocs.length}/${MACHINES.length} machines documented.`);
+console.log(`  JSON: ${docsDir}/*.json`);
+console.log(`  Markdown: ${mdPath}`);

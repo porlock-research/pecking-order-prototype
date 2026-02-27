@@ -1,0 +1,65 @@
+{
+  "id": "game-grid-push",
+  "group": "Games",
+  "filePath": "packages/game-cartridges/src/machines/grid-push.ts",
+  "stats": {
+    "stateCount": 2,
+    "transitionCount": 5,
+    "eventTypes": [
+      "*",
+      "ALL_COMPLETE",
+      "INTERNAL.END_GAME",
+      "PLAYER_COMPLETED"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "active",
+      "path": "active",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "*",
+        "PLAYER_COMPLETED",
+        "ALL_COMPLETE",
+        "INTERNAL.END_GAME"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "active",
+      "target": "active",
+      "event": "*"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "*"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "PLAYER_COMPLETED"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "ALL_COMPLETE"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "INTERNAL.END_GAME"
+    }
+  ]
+}

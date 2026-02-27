@@ -1,0 +1,51 @@
+{
+  "id": "prompt-prediction",
+  "group": "Prompts",
+  "filePath": "src/machines/cartridges/prompts/prediction-machine.ts",
+  "stats": {
+    "stateCount": 2,
+    "transitionCount": 3,
+    "eventTypes": [
+      "ACTIVITY.PROMPT.SUBMIT",
+      "INTERNAL.END_ACTIVITY"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "active",
+      "path": "active",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "ACTIVITY.PROMPT.SUBMIT",
+        "INTERNAL.END_ACTIVITY"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "ACTIVITY.PROMPT.SUBMIT"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "ACTIVITY.PROMPT.SUBMIT"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "INTERNAL.END_ACTIVITY"
+    }
+  ]
+}

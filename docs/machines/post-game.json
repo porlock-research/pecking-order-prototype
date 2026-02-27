@@ -1,0 +1,32 @@
+{
+  "id": "post-game",
+  "group": "Orchestration",
+  "filePath": "src/machines/l4-post-game.ts",
+  "stats": {
+    "stateCount": 1,
+    "transitionCount": 1,
+    "eventTypes": [
+      "SOCIAL.SEND_MSG"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": false
+  },
+  "states": [
+    {
+      "name": "active",
+      "path": "active",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "SOCIAL.SEND_MSG"
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "source": "active",
+      "target": "active",
+      "event": "SOCIAL.SEND_MSG"
+    }
+  ]
+}

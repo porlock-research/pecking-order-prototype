@@ -1,0 +1,77 @@
+{
+  "id": "prompt-confession",
+  "group": "Prompts",
+  "filePath": "src/machines/cartridges/prompts/confession-machine.ts",
+  "stats": {
+    "stateCount": 3,
+    "transitionCount": 6,
+    "eventTypes": [
+      "ACTIVITY.CONFESSION.SUBMIT",
+      "ACTIVITY.CONFESSION.VOTE",
+      "INTERNAL.END_ACTIVITY"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "collecting",
+      "path": "collecting",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "ACTIVITY.CONFESSION.SUBMIT",
+        "INTERNAL.END_ACTIVITY"
+      ]
+    },
+    {
+      "name": "voting",
+      "path": "voting",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "ACTIVITY.CONFESSION.VOTE",
+        "INTERNAL.END_ACTIVITY"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "collecting",
+      "target": "voting",
+      "event": "ACTIVITY.CONFESSION.SUBMIT"
+    },
+    {
+      "source": "collecting",
+      "target": "collecting",
+      "event": "ACTIVITY.CONFESSION.SUBMIT"
+    },
+    {
+      "source": "collecting",
+      "target": "completed",
+      "event": "INTERNAL.END_ACTIVITY"
+    },
+    {
+      "source": "voting",
+      "target": "completed",
+      "event": "ACTIVITY.CONFESSION.VOTE"
+    },
+    {
+      "source": "voting",
+      "target": "voting",
+      "event": "ACTIVITY.CONFESSION.VOTE"
+    },
+    {
+      "source": "voting",
+      "target": "completed",
+      "event": "INTERNAL.END_ACTIVITY"
+    }
+  ]
+}

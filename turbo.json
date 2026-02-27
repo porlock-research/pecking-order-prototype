@@ -39,6 +39,11 @@
     "deploy": {
       "dependsOn": ["build", "^build"],
       "cache": false
+    },
+    "generate:docs": {
+      "dependsOn": ["^build"],
+      "outputs": ["../../docs/machines/**"],
+      "cache": false
     }
   }
 }

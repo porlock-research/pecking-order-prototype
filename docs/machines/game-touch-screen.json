@@ -1,0 +1,149 @@
+{
+  "id": "game-touch-screen",
+  "group": "Games",
+  "filePath": "packages/game-cartridges/src/machines/touch-screen.ts",
+  "stats": {
+    "stateCount": 6,
+    "transitionCount": 14,
+    "eventTypes": [
+      "*",
+      "ALL_READY",
+      "GAME_OVER",
+      "INTERNAL.END_GAME",
+      "xstate.after.COUNTDOWN_DURATION.touch-screen-game.countdown",
+      "xstate.after.MAX_HOLD_TIME.touch-screen-game.active",
+      "xstate.after.READY_TIMEOUT.touch-screen-game.ready"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "init",
+      "path": "init",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": []
+    },
+    {
+      "name": "waitingForStart",
+      "path": "waitingForStart",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "*",
+        "INTERNAL.END_GAME"
+      ]
+    },
+    {
+      "name": "ready",
+      "path": "ready",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "*",
+        "ALL_READY",
+        "INTERNAL.END_GAME"
+      ]
+    },
+    {
+      "name": "countdown",
+      "path": "countdown",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "INTERNAL.END_GAME"
+      ]
+    },
+    {
+      "name": "active",
+      "path": "active",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "*",
+        "GAME_OVER",
+        "INTERNAL.END_GAME"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "waitingForStart",
+      "target": "countdown",
+      "event": "*"
+    },
+    {
+      "source": "waitingForStart",
+      "target": "completed",
+      "event": "INTERNAL.END_GAME"
+    },
+    {
+      "source": "ready",
+      "target": "ready",
+      "event": "*"
+    },
+    {
+      "source": "ready",
+      "target": "countdown",
+      "event": "ALL_READY"
+    },
+    {
+      "source": "ready",
+      "target": "completed",
+      "event": "INTERNAL.END_GAME"
+    },
+    {
+      "source": "ready",
+      "target": "countdown",
+      "event": "xstate.after.READY_TIMEOUT.touch-screen-game.ready"
+    },
+    {
+      "source": "ready",
+      "target": "completed",
+      "event": "xstate.after.READY_TIMEOUT.touch-screen-game.ready"
+    },
+    {
+      "source": "countdown",
+      "target": "completed",
+      "event": "INTERNAL.END_GAME"
+    },
+    {
+      "source": "countdown",
+      "target": "active",
+      "event": "xstate.after.COUNTDOWN_DURATION.touch-screen-game.countdown"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "*"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "*"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "GAME_OVER"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "INTERNAL.END_GAME"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "xstate.after.MAX_HOLD_TIME.touch-screen-game.active"
+    }
+  ]
+}

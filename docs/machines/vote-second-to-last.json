@@ -1,0 +1,29 @@
+{
+  "id": "vote-second-to-last",
+  "group": "Voting",
+  "filePath": "src/machines/cartridges/voting/second-to-last-machine.ts",
+  "stats": {
+    "stateCount": 2,
+    "transitionCount": 0,
+    "eventTypes": [],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "calculating",
+      "path": "calculating",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": []
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": []
+}

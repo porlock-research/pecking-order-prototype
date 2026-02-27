@@ -6,6 +6,7 @@
     "dev": "wrangler dev",
     "build": "tsc --noEmit",
     "test": "vitest run",
+    "generate:docs": "npx tsx scripts/generate-machine-docs.ts",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
@@ -20,7 +21,6 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260207.0",
-    "@xstate/graph": "^3.0.4",
     "typescript": "^5.0.0",
     "vitest": "^4.0.18",
     "wrangler": "^4.63.0"

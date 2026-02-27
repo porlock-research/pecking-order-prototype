@@ -78,6 +78,9 @@ export default function AdminPage() {
           <a href="/admin/games" className="inline-block px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">
             Game Manager
           </a>
+          <a href="/admin/inspector" className="inline-block px-4 py-2 bg-purple-600 text-white rounded text-sm font-medium hover:bg-purple-700">
+            State Inspector
+          </a>
         </div>
       </section>
 

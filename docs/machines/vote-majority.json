@@ -1,0 +1,46 @@
+{
+  "id": "vote-majority",
+  "group": "Voting",
+  "filePath": "src/machines/cartridges/voting/majority-machine.ts",
+  "stats": {
+    "stateCount": 2,
+    "transitionCount": 2,
+    "eventTypes": [
+      "INTERNAL.CLOSE_VOTING",
+      "VOTE.MAJORITY.CAST"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "active",
+      "path": "active",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "VOTE.MAJORITY.CAST",
+        "INTERNAL.CLOSE_VOTING"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "active",
+      "target": "active",
+      "event": "VOTE.MAJORITY.CAST"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "INTERNAL.CLOSE_VOTING"
+    }
+  ]
+}
