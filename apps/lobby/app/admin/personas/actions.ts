@@ -83,7 +83,10 @@ export async function createPersona(formData: FormData): Promise<{ success: bool
   for (const [key, file] of uploads) {
     const arrayBuffer = await file.arrayBuffer();
     await bucket.put(key, arrayBuffer, {
-      httpMetadata: { contentType: file.type || 'image/png' },
+      httpMetadata: {
+        contentType: file.type || 'image/png',
+        cacheControl: 'public, max-age=31536000, immutable',
+      },
     });
   }
 

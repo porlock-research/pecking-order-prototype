@@ -65,8 +65,12 @@ export interface Persona {
   theme: string;
 }
 
-function personaImageUrl(id: string, variant: 'headshot' | 'medium' | 'full'): string {
-  // PERSONA_ASSETS_URL is resolved at runtime from env — empty string for local dev (R2 binding serves via miniflare)
+function personaImageUrl(id: string, variant: 'headshot' | 'medium' | 'full', assetsBaseUrl?: string): string {
+  // When PERSONA_ASSETS_URL is available, return absolute R2 CDN URL (bypasses lobby worker entirely).
+  // Falls back to relative lobby API route for local dev (R2 binding serves via miniflare).
+  if (assetsBaseUrl) {
+    return `${assetsBaseUrl}/personas/${id}/${variant}.png`;
+  }
   return `/api/persona-image/${id}/${variant}.png`;
 }
 
@@ -514,7 +518,7 @@ export async function acceptInvite(
           playerId: pid,
           realUserId: session.userId,
           personaName: persona?.name || 'Unknown',
-          avatarUrl: personaImageUrl(personaId, 'headshot'),
+          avatarUrl: personaImageUrl(personaId, 'headshot', env.PERSONA_ASSETS_URL as string),
           bio: bio || persona?.description || '',
           silver: 50,
         }),
@@ -636,7 +640,7 @@ export async function startGame(
     roster[pid] = {
       realUserId: inv.accepted_by,
       personaName: inv.persona_name,
-      avatarUrl: personaImageUrl(inv.persona_id, 'headshot'),
+      avatarUrl: personaImageUrl(inv.persona_id, 'headshot', env.PERSONA_ASSETS_URL as string),
       bio: inv.custom_bio || inv.persona_description,
       isAlive: true,
       isSpectator: false,
@@ -763,7 +767,7 @@ export async function startDebugGame(
     roster[pid] = {
       realUserId: `debug-user-${i + 1}`,
       personaName: p.name,
-      avatarUrl: personaImageUrl(p.id, 'headshot'),
+      avatarUrl: personaImageUrl(p.id, 'headshot', env.PERSONA_ASSETS_URL as string),
       bio: p.description,
       isAlive: true,
       isSpectator: false,
@@ -1264,7 +1268,7 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     personaId: inv.persona_id,
     personaName: inv.persona_name,
     personaStereotype: inv.persona_stereotype,
-    personaImageUrl: inv.persona_id ? personaImageUrl(inv.persona_id, 'headshot') : null,
+    personaImageUrl: inv.persona_id ? personaImageUrl(inv.persona_id, 'headshot', env.PERSONA_ASSETS_URL as string) : null,
     displayName: inv.display_name || inv.email?.split('@')[0] || null,
   }));
 

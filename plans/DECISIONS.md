@@ -1094,3 +1094,19 @@ This document tracks significant architectural decisions, their context, and con
     *   Group chat messages trigger push, keeping offline players engaged.
     *   `tag: 'group-chat'` prevents notification spam from rapid messages.
     *   **Files**: `apps/game-server/src/server.ts`, `packages/shared-types/src/index.ts`, `apps/game-server/src/push-triggers.ts`, `apps/game-server/src/machines/l3-session.ts`.
+
+## [ADR-078] Live Session Fixes — Scheduled Task Labels, R2 Asset Performance, Lobby Bypass
+*   **Date:** 2026-02-27
+*   **Status:** Accepted
+*   **Context:** Three issues identified during first live game session: (1) Scheduled tasks admin panel shows misleading labels when multiple timeline events share the same timestamp — the `Map` dedup overwrites the label instead of combining; (2) Persona avatar images still routed through the lobby worker (`lobby.peckingorder.ca/api/persona-image/...`), causing unnecessary cold starts and compute; (3) R2 objects uploaded without `Cache-Control` metadata — custom domain serves objects with stored metadata, so CDN had no caching directive.
+*   **Decision:**
+    *   **Co-timed task labels**: `scheduleManifestAlarms` now concatenates labels with `+` for events sharing a timestamp (e.g., `wakeup-d2-CLOSE_GROUP_CHAT+START_GAME`). `processTimelineEvent` already handles all events at a given time — only the label was misleading.
+    *   **Direct R2 URLs in roster**: `personaImageUrl()` accepts optional `assetsBaseUrl` parameter. Roster-building call sites (`acceptInvite`, `startGame`, `createDebugGame`, `getGameSessionStatus`) pass `env.PERSONA_ASSETS_URL`, producing absolute URLs like `https://assets.peckingorder.ca/personas/persona-01/headshot.png`. Client loads images directly from R2 CDN — zero lobby involvement. Lobby-only UI call sites (invite page, persona draw) keep relative paths since they're same-origin.
+    *   **R2 cache metadata**: All `bucket.put()` calls (admin persona upload) now include `httpMetadata.cacheControl: 'public, max-age=31536000, immutable'`. Import script updated to pass `--cache-control` flag. Both staging and production R2 buckets re-imported (72 persona images + email logo each) with correct cache headers.
+    *   **Import script safety**: Now requires explicit `--remote staging` or `--remote production` (previously `--remote` with hardcoded production bucket name).
+*   **Consequences:**
+    *   Admin sees all co-timed events in the scheduled tasks panel.
+    *   Persona images served at CDN speed with 1-year cache. Lobby worker no longer woken for image requests.
+    *   Future persona uploads automatically get correct cache headers.
+    *   Import script cannot accidentally target the wrong environment.
+    *   **Files**: `apps/game-server/src/server.ts`, `apps/lobby/app/actions.ts`, `apps/lobby/app/admin/personas/actions.ts`, `apps/lobby/scripts/import-personas.ts`.

@@ -102,7 +102,8 @@ export class GameServer extends Server<Env> {
           const timeMs = new Date(event.time).getTime();
           if (timeMs > now) {
             const ts = Math.floor(timeMs / 1000);
-            uniqueTimestamps.set(ts, `d${day.dayIndex}-${event.action}`);
+            const existing = uniqueTimestamps.get(ts);
+            uniqueTimestamps.set(ts, existing ? `${existing}+${event.action}` : `d${day.dayIndex}-${event.action}`);
           }
         }
       }
