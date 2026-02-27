@@ -16,6 +16,7 @@ export async function requestMagicLink(
     const result = await sendMagicLink(email, next, {
       resendApiKey: env.RESEND_API_KEY as string | undefined,
       lobbyHost: env.LOBBY_HOST as string | undefined,
+      assetsUrl: env.PERSONA_ASSETS_URL as string | undefined,
     });
     return result;
   } catch (err: any) {

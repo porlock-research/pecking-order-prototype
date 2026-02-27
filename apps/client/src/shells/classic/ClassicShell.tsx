@@ -7,7 +7,7 @@ import { GroupThreadView } from './components/GroupThreadView';
 import { RosterRow } from './components/RosterRow';
 import { NewDmPicker } from './components/NewDmPicker';
 import { NewGroupPicker } from './components/NewGroupPicker';
-import PerkPanel from '../../components/panels/PerkPanel';
+
 import { PushPrompt } from '../../components/PushPrompt';
 import { Coins, Trophy, MessageCircle, Users } from 'lucide-react';
 import { PlayerStatuses, ChannelTypes } from '@pecking-order/shared-types';
@@ -104,7 +104,6 @@ function ClassicShell({ playerId, engine, token }: ShellProps) {
         onNewDm={() => setShowNewDm(true)}
         onNewGroup={() => setShowNewGroup(true)}
         engine={engine}
-        footer={<PerkPanel engine={engine} />}
       />
     );
   };
@@ -160,7 +159,6 @@ function ClassicShell({ playerId, engine, token }: ShellProps) {
                 <RosterRow key={p.id} player={p} playerId={playerId} onClick={() => handleSelectPlayer(p.id)} />
               ))}
             </ul>
-            <PerkPanel engine={engine} />
           </aside>
 
           {/* Main content column */}

@@ -16,13 +16,6 @@ export const SHELL_REGISTRY: ShellManifest[] = [
 const STORAGE_KEY = 'po_shell';
 
 export function getActiveShellId(): string {
-  const params = new URLSearchParams(window.location.search);
-  const fromUrl = params.get('shell');
-  if (fromUrl && SHELL_REGISTRY.some(s => s.id === fromUrl)) return fromUrl;
-
-  const fromStorage = localStorage.getItem(STORAGE_KEY);
-  if (fromStorage && SHELL_REGISTRY.some(s => s.id === fromStorage)) return fromStorage;
-
   return 'immersive';
 }
 

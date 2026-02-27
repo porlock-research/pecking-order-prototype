@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getDB, getEnv } from './db';
 import { sendEmail } from './email';
+import { buildLoginEmailHtml } from './email-templates';
 
 const DEFAULT_SESSION_COOKIE = 'po_session';
 
@@ -93,7 +94,7 @@ export async function requireAuth(redirectTo?: string): Promise<SessionUser> {
 export async function sendMagicLink(
   email: string,
   next?: string,
-  options?: { resendApiKey?: string; lobbyHost?: string },
+  options?: { resendApiKey?: string; lobbyHost?: string; assetsUrl?: string },
 ): Promise<{ link?: string; sent?: boolean; error?: string }> {
   const db = await getDB();
   const now = Date.now();
@@ -128,12 +129,7 @@ export async function sendMagicLink(
     const result = await sendEmail(
       normalizedEmail,
       'Your Pecking Order Login Link',
-      `<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-        <h2 style="color: #d4af37; margin-bottom: 16px;">Pecking Order</h2>
-        <p style="color: #333; margin-bottom: 24px;">Click below to sign in:</p>
-        <a href="${fullLink}" style="display: inline-block; background: #d4af37; color: #1a0025; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold;">Sign In</a>
-        <p style="color: #888; font-size: 13px; margin-top: 24px;">This link expires in 5 minutes.</p>
-      </div>`,
+      buildLoginEmailHtml({ loginLink: fullLink, assetsUrl: options.assetsUrl || '', lobbyUrl: options.lobbyHost }),
       options.resendApiKey,
     );
     if (result.success) return { sent: true };

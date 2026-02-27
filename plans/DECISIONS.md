@@ -1060,3 +1060,20 @@ This document tracks significant architectural decisions, their context, and con
     *   Graph tests prevent event handler regressions at build time.
     *   Full observability documentation at `plans/OBSERVABILITY.md`.
     *   **Files**: `apps/game-server/src/inspect.ts` (new), `apps/game-server/src/log.ts` (new), `apps/game-server/src/machines/__tests__/event-coverage.test.ts` (new), `apps/client/src/components/ErrorBoundary.tsx` (new), `apps/game-server/src/machines/l3-session.ts`, `apps/game-server/src/server.ts`, `apps/game-server/src/machines/l2-orchestrator.ts`, `apps/game-server/src/machines/actions/l3-social.ts`, plus 6 action files migrated to `log()`.
+
+## [ADR-076] Pre-Live-Session Hardening
+*   **Date:** 2026-02-26
+*   **Status:** Accepted
+*   **Context:** Preparing for the first live game session. Several dev-mode affordances needed removal, the speed run schedule needed longer DO eviction windows, admin UX was missing quick-access info, and email templates lacked brand identity.
+*   **Decision:**
+    *   **Force immersive shell**: Hardcode `getActiveShellId()` to return `'immersive'`, remove `<ShellPicker>` from ShellLoader. Registry array kept for future use.
+    *   **Hide perks UI**: Remove `<PerkFAB>` and `onSpyDms` from ImmersiveShell/ContextMenu. Remove `<PerkPanel>` (both usages) from ClassicShell. Perks not ready for live play.
+    *   **Speed run eviction windows**: 120s gaps between major phases (activity→game, game→voting, voting→end) so DOs evict and we test snapshot persistence + cold-start rehydration. 12 min/day, 120s inter-day gap, ~44 min total for 3 days.
+    *   **Admin invite code + game link**: `getGameDetails()` server action (D1 lookup). Header shows invite code prominently with game ID in small text. "Open Game" link button opens client in new tab.
+    *   **Brand-consistent email templates**: `email-templates.ts` with inline-CSS table layout. Colors from `theme.css` (deep=#2c003e, panel=#4c1d95, gold=#fbbf24, pink=#ec4899, dim=#d8b4fe). Logo image served from R2 at `branding/email-logo.png` via assets CDN (`PERSONA_ASSETS_URL`). Pink CTA button, gold sender/invite-code accents, mono metadata. Both invite and login emails restyled.
+*   **Consequences:**
+    *   Shell toggle and perks no longer visible to players.
+    *   Speed run tests DO eviction/rehydration at the cost of longer test cycles (~44 min vs ~28 min).
+    *   Admin can quickly identify games by invite code and jump to the client.
+    *   Email templates match brand identity established in `LOBBY_DESIGN_BRIEF.md` and `CLIENT_DESIGN_BRIEF.md`.
+    *   **Files**: `apps/client/src/shells/{ShellLoader,registry}.tsx`, `apps/client/src/shells/immersive/{ImmersiveShell,components/ContextMenu}.tsx`, `apps/client/src/shells/classic/ClassicShell.tsx`, `apps/lobby/app/{page,actions,login/actions}.tsx`, `apps/lobby/app/admin/game/[id]/page.tsx`, `apps/lobby/lib/{auth,email-templates}.ts`.

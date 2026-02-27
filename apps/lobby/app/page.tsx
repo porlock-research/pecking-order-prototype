@@ -314,25 +314,24 @@ export default function LobbyRoot() {
   }
 
   function handleSpeedRun() {
-    // Compressed game flow with 30s gaps between events, 1-min durations for
-    // complementary pairs (activity, game, voting). 2-min initial grace period.
-    // 90s inter-day gap for nightSummary processing.
+    // Longer gaps (120s) between major phases so the DO evicts and we can
+    // test snapshot persistence + cold-start rehydration.
     const SPEED_RUN_SCHEDULE: { key: string; offsetSec: number }[] = [
       { key: 'INJECT_PROMPT', offsetSec: 0 },
       { key: 'OPEN_GROUP_CHAT', offsetSec: 30 },
       { key: 'OPEN_DMS', offsetSec: 60 },
-      { key: 'START_ACTIVITY', offsetSec: 90 },
-      { key: 'END_ACTIVITY', offsetSec: 150 },    // +60s from START_ACTIVITY
-      { key: 'START_GAME', offsetSec: 180 },
-      { key: 'END_GAME', offsetSec: 240 },         // +60s from START_GAME
-      { key: 'OPEN_VOTING', offsetSec: 270 },
-      { key: 'CLOSE_VOTING', offsetSec: 330 },     // +60s from OPEN_VOTING
-      { key: 'CLOSE_DMS', offsetSec: 360 },
-      { key: 'CLOSE_GROUP_CHAT', offsetSec: 390 },
-      { key: 'END_DAY', offsetSec: 420 },
+      { key: 'START_ACTIVITY', offsetSec: 120 },
+      { key: 'END_ACTIVITY', offsetSec: 180 },     // activity: 60s
+      { key: 'START_GAME', offsetSec: 300 },        // 120s eviction window
+      { key: 'END_GAME', offsetSec: 360 },          // game: 60s
+      { key: 'OPEN_VOTING', offsetSec: 480 },       // 120s eviction window
+      { key: 'CLOSE_VOTING', offsetSec: 540 },      // voting: 60s
+      { key: 'CLOSE_DMS', offsetSec: 660 },         // 120s eviction window
+      { key: 'CLOSE_GROUP_CHAT', offsetSec: 690 },
+      { key: 'END_DAY', offsetSec: 720 },
     ];
-    const DAY_DURATION_SEC = 420; // last event offset within a day (7 min)
-    const INTER_DAY_GAP_SEC = 90;
+    const DAY_DURATION_SEC = 720; // 12 min/day
+    const INTER_DAY_GAP_SEC = 120; // 2 min eviction window between days
     const GRACE_PERIOD_SEC = 120; // 2 min
 
     setConfigurableConfig(prev => {

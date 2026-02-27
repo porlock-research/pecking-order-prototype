@@ -5,6 +5,7 @@ import { signGameToken } from '@pecking-order/auth';
 import { getDB, getEnv } from '@/lib/db';
 import { requireAuth, getSession, generateId, generateInviteCode, generateToken } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
+import { buildInviteEmailHtml } from '@/lib/email-templates';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -1087,6 +1088,22 @@ export async function getScheduledTasks(gameId: string) {
   }
 }
 
+// ── Admin: Game Details ──────────────────────────────────────────────────
+
+export async function getGameDetails(gameId: string) {
+  const db = await getDB();
+  const env = await getEnv();
+  const game = await db
+    .prepare('SELECT invite_code FROM GameSessions WHERE id = ?')
+    .bind(gameId)
+    .first<{ invite_code: string }>();
+  const clientHost = (env.GAME_CLIENT_HOST as string) || 'http://localhost:5173';
+  return {
+    inviteCode: game?.invite_code ?? null,
+    clientHost,
+  };
+}
+
 // ── Admin: Game Manager ──────────────────────────────────────────────────
 
 export async function getAllGames() {
@@ -1360,6 +1377,8 @@ export async function sendEmailInvite(
   const RESEND_API_KEY = env.RESEND_API_KEY as string | undefined;
   const LOBBY_HOST = env.LOBBY_HOST as string | undefined;
 
+  const PERSONA_ASSETS_URL = (env.PERSONA_ASSETS_URL as string) || '';
+
   if (RESEND_API_KEY && LOBBY_HOST) {
     const inviteLink = `${LOBBY_HOST}/invite/${token}`;
     const senderName = session.displayName || session.email.split('@')[0];
@@ -1367,13 +1386,7 @@ export async function sendEmailInvite(
     const result = await sendEmail(
       normalizedEmail,
       "You've been invited to Pecking Order!",
-      `<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-        <h2 style="color: #d4af37; margin-bottom: 16px;">Pecking Order</h2>
-        <p style="color: #333; margin-bottom: 8px;"><strong>${senderName}</strong> invited you to play!</p>
-        <p style="color: #666; margin-bottom: 24px;">Click below to join the game:</p>
-        <a href="${inviteLink}" style="display: inline-block; background: #d4af37; color: #1a0025; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold;">Join Game</a>
-        <p style="color: #888; font-size: 13px; margin-top: 24px;">Or use invite code: <strong>${game.invite_code}</strong></p>
-      </div>`,
+      buildInviteEmailHtml({ senderName, inviteLink, inviteCode: game.invite_code, assetsUrl: PERSONA_ASSETS_URL, lobbyUrl: LOBBY_HOST }),
       RESEND_API_KEY,
     );
 

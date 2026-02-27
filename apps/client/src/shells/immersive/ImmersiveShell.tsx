@@ -9,7 +9,7 @@ import { Timeline } from './components/Timeline';
 import { PeopleList } from './components/PeopleList';
 import { PlayerDrawer } from './components/PlayerDrawer';
 import { ContextMenu } from './components/ContextMenu';
-import { PerkFAB } from './components/PerkFAB';
+
 import { DramaticReveal } from './components/DramaticReveal';
 import type { ShellProps } from '../types';
 
@@ -135,11 +135,7 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
           onClose={handleCloseContext}
           onMessage={(id) => { (document.activeElement as HTMLElement)?.blur(); setDrawerPlayerId(id); }}
           onSendSilver={(id) => { (document.activeElement as HTMLElement)?.blur(); setDrawerPlayerId(id); }}
-          onSpyDms={(id) => engine.sendPerk('SPY_DMS', id)}
         />
-
-        {/* Perk FAB — only on People tab to avoid overlapping the send button */}
-        <PerkFAB engine={engine} visible={activeTab === 'people'} />
 
         {/* Dramatic reveal overlays */}
         <DramaticReveal />

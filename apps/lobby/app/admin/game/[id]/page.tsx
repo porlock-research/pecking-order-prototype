@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getGameState, sendAdminCommand, flushScheduledTasks, getScheduledTasks } from '../../../actions';
+import { getGameState, getGameDetails, sendAdminCommand, flushScheduledTasks, getScheduledTasks } from '../../../actions';
 import { useParams } from 'next/navigation';
 
 export default function AdminGamePage() {
@@ -14,6 +14,8 @@ export default function AdminGamePage() {
   const [gmSending, setGmSending] = useState(false);
   const [scheduledTasks, setScheduledTasks] = useState<{ count: number; tasks: Array<{ id: string; time: number }> } | null>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [clientHost, setClientHost] = useState<string | null>(null);
 
   async function refreshTasks() {
     setTasksLoading(true);
@@ -24,8 +26,13 @@ export default function AdminGamePage() {
 
   async function refresh() {
     setLoading(true);
-    const data = await getGameState(gameId);
+    const [data, details] = await Promise.all([
+      getGameState(gameId),
+      getGameDetails(gameId),
+    ]);
     setState(data);
+    setInviteCode(details.inviteCode);
+    setClientHost(details.clientHost);
     setLoading(false);
     refreshTasks();
   }
@@ -62,14 +69,34 @@ export default function AdminGamePage() {
     <div className="p-8 max-w-4xl mx-auto font-sans bg-gray-50 min-h-screen text-gray-900">
       <header className="flex justify-between items-center mb-8 bg-white p-6 rounded shadow">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Game Admin: {gameId}</h1>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Game: {inviteCode ?? gameId}
+          </h1>
+          {inviteCode && (
+            <p className="text-xs text-gray-400 font-mono mt-0.5">{gameId}</p>
+          )}
           <div className="flex gap-4 mt-2 text-sm text-gray-600">
             <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Day {state.day}</span>
             <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded">{typeof state.state === 'string' ? state.state : JSON.stringify(state.state)}</span>
             <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">{state.manifest?.gameMode}</span>
+            {inviteCode && (
+              <span className="bg-green-100 text-green-800 px-2 py-1 rounded font-mono">{inviteCode}</span>
+            )}
           </div>
         </div>
-        <button onClick={refresh} className="text-blue-600 hover:underline">Refresh</button>
+        <div className="flex items-center gap-4">
+          {inviteCode && clientHost && (
+            <a
+              href={`${clientHost}/game/${inviteCode}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm font-semibold"
+            >
+              Open Game
+            </a>
+          )}
+          <button onClick={refresh} className="text-blue-600 hover:underline">Refresh</button>
+        </div>
       </header>
 
       {/* GLOBAL CONTROLS */}

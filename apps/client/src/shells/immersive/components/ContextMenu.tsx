@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Coins, Eye } from 'lucide-react';
+import { MessageCircle, Coins } from 'lucide-react';
 import { useGameStore } from '../../../store/useGameStore';
 import { SPRING, TAP } from '../springs';
 
@@ -10,21 +10,19 @@ interface ContextMenuProps {
   onClose: () => void;
   onMessage: (playerId: string) => void;
   onSendSilver: (playerId: string) => void;
-  onSpyDms: (playerId: string) => void;
 }
 
 const MENU_ITEMS = [
   { key: 'message', label: 'Message', Icon: MessageCircle, action: 'onMessage' as const },
   { key: 'silver', label: 'Send Silver', Icon: Coins, action: 'onSendSilver' as const },
-  { key: 'spy', label: 'Spy DMs', Icon: Eye, action: 'onSpyDms' as const },
 ] as const;
 
-export function ContextMenu({ targetPlayerId, position, onClose, onMessage, onSendSilver, onSpyDms }: ContextMenuProps) {
+export function ContextMenu({ targetPlayerId, position, onClose, onMessage, onSendSilver }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const roster = useGameStore(s => s.roster);
   const target = targetPlayerId ? roster[targetPlayerId] : null;
 
-  const actions = { onMessage, onSendSilver, onSpyDms };
+  const actions = { onMessage, onSendSilver };
 
   useEffect(() => {
     if (!targetPlayerId) return;
