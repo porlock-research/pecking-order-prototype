@@ -830,3 +830,24 @@ The PWA's `start_url` embeds a game-specific JWT (`/game/CODE?_t=JWT`). If a pla
 **Requirements**: DNS configuration, Cloudflare custom domain setup for both Pages (client) and Workers (lobby), update CORS / cookie settings.
 
 **Status**: Fixed (ADR-074) — All services migrated to `peckingorder.ca` subdomains. Session cookie set with `domain: '.peckingorder.ca'` enables cross-subdomain auth. Per-environment cookie names (`po_session` / `po_session_stg`) prevent staging/production collision. `refreshFromLobby()` now sends the session cookie cross-subdomain, making PWA auth game-agnostic.
+
+## [PROD-025] Axiom observability logs are flat and hard to trace
+
+**Priority**: Medium — observability pipeline works (logs reach Axiom via CF OTLP export) but the presentation is not actionable.
+
+**What's there**: Structured JSON logs from `log()` helper, XState inspect callback logging state transitions (`component == "XState"`), CF OTLP auto-exports to Axiom per-environment datasets (`po-logs-staging`, `po-logs-production`). Fields are indexed and filterable in Axiom sidebar. `@xstate/graph` static tests catch missing handlers at build time (10 tests).
+
+**What's wrong**:
+1. **Flat log stream is unusable** — all logs are individual entries. Tracing an event flow (e.g., admin GM message through L1→L2→L3→action→state change) requires manually correlating entries by timestamp. No connected visualization.
+2. **XState transitions lack context** — inspector logs `from`/`to` state and `eventType`, but doesn't show which guards were evaluated, which actions fired, or why a transition was chosen over alternatives.
+3. **No dashboard or saved queries** — raw stream view in Axiom shows the same wall-of-text as `wrangler tail` but with more metadata noise. Need curated Axiom dashboards (error rate, transition flow, guard rejections) and saved APL queries.
+4. **Remaining raw `console.*` calls** (~15 in d1-persistence.ts, push-triggers.ts, push-send.ts, sync.ts) aren't structured JSON — CF can't auto-index their fields.
+
+**Possible approaches**:
+- **Axiom dashboards**: Create saved APL queries and dashboard panels for common debugging scenarios (GM message flow, error rate by component, transition timeline per game)
+- **Correlation IDs**: Generate a `correlationId` at L1 for each admin action / WebSocket message, pass through events, include in all log entries. Filter by correlationId in Axiom to see the full causal chain.
+- **Richer transitions**: Log guard evaluations and action names alongside state transitions in the inspector. XState v5 inspect API exposes limited info here — may need custom action wrappers.
+- **Stately Studio / xstate-viz**: XState's visual tools can replay event sequences. Consider exporting event logs in a format Stately Studio can import for visual debugging.
+- **Migrate remaining console calls**: Convert d1-persistence.ts, push-triggers.ts, push-send.ts, sync.ts to structured `log()` helper.
+
+**Files**: `apps/game-server/src/inspect.ts`, `apps/game-server/src/log.ts`, `plans/OBSERVABILITY.md`
