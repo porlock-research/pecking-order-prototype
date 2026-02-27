@@ -136,7 +136,7 @@ Issues discovered during the first live CONFIGURABLE_CYCLE game (Feb 2026). Thes
 - **Edge caching**: The image route sets `Cache-Control: public, max-age=86400, s-maxage=604800` but it's unclear if Cloudflare's CDN edge cache is being used effectively through OpenNext. Persona images are immutable — once generated they never change. Should be cached aggressively.
 - **Reduce cold start cost**: Audit Next.js bundle for unnecessary SSR dependencies. Consider whether some routes could be static or use edge runtime.
 
-**Status**: Partially fixed (ADR-074) — R2 public access via `assets.peckingorder.ca` custom domain + `PERSONA_ASSETS_URL` var removes persona image requests from the lobby worker entirely. Remaining cold start cost is for actual SSR routes only. Service bindings (PROD-004) and edge caching are further improvements.
+**Status**: Fixed (ADR-074, ADR-078) — R2 public access via `assets.peckingorder.ca` custom domain. Roster avatar URLs now point directly to R2 CDN (absolute URLs generated at roster-build time), bypassing the lobby worker entirely. R2 objects uploaded with `Cache-Control: public, max-age=31536000, immutable` metadata so CDN edge caches aggressively. Lobby image route retained only as fallback for local dev. Remaining cold start cost is for actual SSR routes only. Service bindings (PROD-004) are a further improvement.
 
 ## [PROD-002] Game server DO — high "client disconnected" error rate (~56%)
 
@@ -196,13 +196,13 @@ This appears in 5+ locations in `server.ts` (handleInit, handlePlayerJoined, han
 
 **Practical risk**: Low for now — AUTH_SECRET is only used for server-to-server calls (lobby→game server), not exposed to end users. But should be fixed before any public-facing auth checks are added.
 
-**Status**: Fixed — all 5 auth checks use `timingSafeEqual()` helper with constant-time length comparison
+**Status**: Fixed (ADR-076) — all 5 auth checks use `timingSafeEqual()` helper with constant-time length comparison
 
 ## [PROD-006] Game server compatibility_date is 2024-02-07
 
 The game server's `wrangler.toml` has `compatibility_date = "2024-02-07"` — over two years old. The lobby is at `2024-12-30`. Cloudflare ships runtime improvements, bug fixes, and performance optimizations with each compatibility date. Being this far behind may mean we're missing perf improvements that could help with the CPU time and cold start issues.
 
-**Status**: Fixed — updated to `2026-02-25` (enables RPC support, unblocks PROD-013)
+**Status**: Fixed (ADR-070) — updated to `2026-02-25` (enables RPC support, unblocks PROD-013)
 
 ## [PROD-007] WebSocket connections don't use Hibernation API
 
@@ -291,7 +291,7 @@ The `goldCredited` boolean guard prevents duplicate gold writes. Previously an i
 
 **Partial fix (ADR-070)**: `goldCredited` is now persisted to `ctx.storage.put('goldCredited', true)` alongside the in-memory flag, and restored from storage in `onStart()`. This prevents double-credit across DO restarts/hibernation. The D1 writes themselves are still unawaited (fire-and-forget), so the theoretical race between storage.put and D1 fetch remains, but the window is now extremely narrow. Note: `ctx.waitUntil()` is a no-op in Durable Objects (exists only for API compatibility) and cannot be used here.
 
-**Status**: Partially mitigated — goldCredited survives restarts via ctx.storage; D1 write race window remains but is acceptably small
+**Status**: Partially mitigated (ADR-070) — goldCredited survives restarts via ctx.storage; D1 write race window remains but is acceptably small
 
 ## [PROD-012] Alarm handler (wakeUpL2) should be idempotent
 
@@ -305,7 +305,7 @@ Our `wakeUpL2` sends `SYSTEM.WAKEUP` to the XState actor, which triggers `proces
 
 Per DO best practices: "Projects with compatibility date 2024-04-03 or later should use RPC methods." Our game server is at `2024-02-07`, which predates RPC support. After updating the compatibility date (PROD-006), we could expose DO methods as typed RPC endpoints instead of routing through the `onRequest()` fetch handler. This would simplify the lobby→game-server communication and enable service bindings with type-safe calls.
 
-**Status**: Blocked by PROD-006 — update compatibility_date first
+**Status**: Unblocked — PROD-006 fixed (ADR-070). RPC methods available but not yet implemented. Next step: expose DO methods as typed RPC endpoints, replace lobby fetch() calls with service binding RPC (see PROD-004).
 
 ## [PROD-014] No WebSocket message batching
 
@@ -394,7 +394,7 @@ XState v5's `getPersistedSnapshot()` serializes invoked children. For the L3 ses
 - ~~Auto-flush stale tasks when the game transitions to `gameSummary` or `gameOver`~~ — Done: subscription callback flushes tasks when `gameOver` detected
 - ~~Add a "scheduled tasks" section to the admin panel state view~~ — Done: per-game admin page has Scheduled Tasks section with view + flush
 
-**Status**: Partially fixed (ADR-071) — `/scheduled-tasks` endpoint (GET list + POST flush), structured alarm logging, auto-flush on game end, admin UI panel. Root causes 1-2 addressed. Remaining: PartyWhen replacement, alarm chaining visibility, time window filtering fragility
+**Status**: Partially fixed (ADR-071, ADR-077, ADR-078) — `/scheduled-tasks` endpoint (GET list + POST flush), structured alarm logging, auto-flush on game end, admin UI panel. Fixed `querySql()` return shape bug that caused empty task list (ADR-077). Co-timed events now show combined labels (ADR-078). Root causes 1-2 addressed. Remaining: PartyWhen replacement, alarm chaining visibility, time window filtering fragility.
 
 ## [PROD-018] Unconsumed response bodies in lobby (connection leak risk)
 
@@ -408,7 +408,7 @@ Per CF docs: "If unused response body: call `response.body.cancel()` to free the
 
 **Fix**: Add `await res.text()` or `res.body?.cancel()` after each fetch where the body is unused.
 
-**Status**: Fixed — added `res.body?.cancel()` to all 3 unconsumed fetch calls in lobby actions
+**Status**: Fixed (ADR-076) — added `res.body?.cancel()` to all 3 unconsumed fetch calls in lobby actions
 
 ## [PROD-019] Cookie `secure` flag uses `process.env.NODE_ENV`
 
@@ -419,7 +419,7 @@ secure: process.env.NODE_ENV === 'production'
 
 Per CF docs: "`process.env` does NOT work on Cloudflare Workers by default." This likely works because the bundler (esbuild via OpenNext) inlines `NODE_ENV` at build time, but it's fragile and non-standard for the Workers runtime. Should be `secure: true` unconditionally (HTTPS is always available on Cloudflare).
 
-**Status**: Fixed — `secure: true` unconditionally (Cloudflare always serves HTTPS)
+**Status**: Fixed (ADR-069) — `secure: true` unconditionally (Cloudflare always serves HTTPS)
 
 ## [PROD-020] Missing `Access-Control-Max-Age` CORS header
 
@@ -427,7 +427,7 @@ Per CF docs: "`process.env` does NOT work on Cloudflare Workers by default." Thi
 
 **Fix**: Add `'Access-Control-Max-Age': '86400'` (24 hours) to the CORS headers. Preflight requests are identical every time (same origin, same methods, same headers), so aggressive caching is safe.
 
-**Status**: Fixed — added `Access-Control-Max-Age: 86400` to CORS_HEADERS
+**Status**: Fixed (ADR-076) — added `Access-Control-Max-Age: 86400` to CORS_HEADERS
 
 ## [PROD-021] No environment separation — all branches deploy to the same infrastructure
 
@@ -528,7 +528,7 @@ database_id = "<new-staging-id>"
 
 **Safety**: Steps 1-6 create new resources and modify config files only. The existing production workers/databases/bucket are untouched until step 7, which deploys to the same resource names CI was already deploying to — just via an explicit `--env production` flag instead of the implicit default.
 
-**Status**: Not started — foundational issue that blocks safe testing of all other PROD fixes
+**Status**: Fixed (ADR-069) — Staging and production environments fully separated. Per-environment wrangler configs, D1 databases, R2 buckets, secrets, and CI workflows. Staging deploys on push to `main`/`feat/*`/`fix/*`. Production deploys via manual `workflow_dispatch` only.
 
 ## [PROD-022] Push notification architecture has multiple reliability and UX gaps
 
