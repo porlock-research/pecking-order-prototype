@@ -3,6 +3,10 @@ import { useGameStore } from './store/useGameStore';
 import { ShellLoader } from './shells/ShellLoader';
 import { decodeGameToken } from '@pecking-order/auth';
 import { PushPrompt } from './components/PushPrompt';
+import { InstallBanner } from './components/InstallBanner';
+import { initSentry, setSentryUser, setSentryContext } from './lib/sentry';
+
+initSentry();
 
 const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
 
@@ -216,6 +220,7 @@ function applyToken(
   setPlayerId(decoded.playerId);
   setToken(jwt);
   useGameStore.getState().setPlayerId(decoded.playerId);
+  setSentryUser(decoded.playerId, decoded.gameId);
 
   // Persist in localStorage keyed by game code (survives PWA standalone launches)
   const key = gameCode || decoded.gameId;
@@ -246,6 +251,14 @@ export default function App() {
     init();
 
     async function init() {
+      // Set PWA context for Sentry diagnostics
+      const isStandalone = matchMedia('(display-mode: standalone)').matches || !!(navigator as any).standalone;
+      setSentryContext('pwa', {
+        isStandalone,
+        hasPushManager: 'PushManager' in window,
+        platform: navigator.userAgent,
+      });
+
       // Sync Cache API → localStorage first (iOS standalone PWA needs this)
       await syncCacheToLocalStorage();
       pruneExpiredTokens();
@@ -379,7 +392,10 @@ export default function App() {
   );
 
   return (
-    <ShellLoader gameId={gameId} playerId={playerId} token={token} />
+    <>
+      <InstallBanner />
+      <ShellLoader gameId={gameId} playerId={playerId} token={token} />
+    </>
   );
 }
 

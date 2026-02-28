@@ -1094,3 +1094,22 @@ This document tracks significant architectural decisions, their context, and con
     *   Group chat messages trigger push, keeping offline players engaged.
     *   `tag: 'group-chat'` prevents notification spam from rapid messages.
     *   **Files**: `apps/game-server/src/server.ts`, `packages/shared-types/src/index.ts`, `apps/game-server/src/push-triggers.ts`, `apps/game-server/src/machines/l3-session.ts`.
+
+## [ADR-078] Push Notification UX + A2HS Install Banner + Sentry Client Observability
+*   **Date:** 2026-02-27
+*   **Status:** Accepted
+*   **Context:** A player in a live production game on Chrome iOS (`CriOS/126`) in a browser tab could not see the "Alerts" (push notification) button. `PushManager` is unavailable outside standalone PWA mode on iOS, and the button was silently hidden (`return null`) when `permission === 'unsupported'`, giving zero guidance. Additionally, debugging client-side issues in production required guesswork — no structured error tracking or performance monitoring existed.
+*   **Decision:**
+    *   **A2HS Install Banner** (`InstallBanner.tsx`): Persistent top banner for mobile browser users (not standalone PWA) with platform-specific install instructions. iOS Safari: "Tap Share → Add to Home Screen". iOS Chrome (CriOS): "Open in Safari to install" (Chrome iOS cannot install PWAs). Android/other: "Use browser menu → Install app". Dismissable per session via `sessionStorage` — reappears between sessions since the game is unusable without PWA install. No `beforeinstallprompt` API (zero Safari/iOS/Firefox support).
+    *   **PushPrompt UX improvements**: Show guidance instead of hiding. `unsupported` → disabled bell with "Install app" label. `denied` → amber warning bell with "Blocked" label + sonner toast with platform-specific reset instructions on tap. `granted` + subscribed → green dot indicator on bell icon. Existing `default` state unchanged.
+    *   **`usePushNotifications` hook extensions**: Expose `isStandalone` (PWA display mode) and `hasPushManager` (PushManager exists) flags. Add Sentry breadcrumbs at key decision points (init, denied, success, failed) — breadcrumbs are lightweight (attached to next error, not sent independently).
+    *   **Sentry integration** (`@sentry/react` v10): Client-side error tracking + browser tracing. `initSentry()` at module load (before React). `setSentryUser(playerId, gameId)` on token decode. PWA context tags (`isStandalone`, `hasPushManager`, `platform`) for diagnostics. `ErrorBoundary` calls `Sentry.captureException()`. DSN per environment via `VITE_SENTRY_DSN`. `tracePropagationTargets` scoped to `localhost` + `*.peckingorder.ca/api`. Source map upload via `@sentry/vite-plugin` (disabled without `SENTRY_AUTH_TOKEN`).
+    *   **Why Sentry over custom Axiom client logger**: Battle-tested on mobile browsers (iOS Safari stack traces, breadcrumbs), free tier (5K errors/month, 10M transactions/month), ~25-30 KB gzipped with tree-shaking, auto error capture (global errors, unhandled rejections, React error boundaries), Web Vitals out of the box, no server proxy needed, no Axiom lock-in.
+*   **Consequences:**
+    *   Mobile browser users get actionable install guidance instead of a silently missing button.
+    *   CriOS users are directed to Safari (the only iOS browser that can install PWAs).
+    *   All push notification states are visible and actionable.
+    *   Client errors, performance, and push flow diagnostics are captured in Sentry.
+    *   Separate Sentry projects for staging and production (different DSNs).
+    *   Source maps in CI require `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` env vars (optional — plugin disables itself without them).
+    *   **Files**: `apps/client/src/components/InstallBanner.tsx` (new), `apps/client/src/lib/sentry.ts` (new), `apps/client/src/components/PushPrompt.tsx`, `apps/client/src/hooks/usePushNotifications.ts`, `apps/client/src/components/ErrorBoundary.tsx`, `apps/client/src/App.tsx`, `apps/client/vite.config.ts`, `apps/client/.env.staging`, `apps/client/.env.production`, `apps/client/package.json`.

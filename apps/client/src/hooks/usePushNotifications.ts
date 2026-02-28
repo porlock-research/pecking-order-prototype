@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import * as Sentry from '@sentry/react';
 
 type PushPermission = 'default' | 'granted' | 'denied' | 'unsupported';
 
@@ -30,6 +31,12 @@ function findCachedToken(): string | null {
  * to the correct user identity. Falls back to any cached JWT.
  */
 export function usePushNotifications(activeToken?: string | null) {
+  const isStandalone = useMemo(
+    () => matchMedia('(display-mode: standalone)').matches || !!(navigator as any).standalone,
+    [],
+  );
+  const hasPushManager = useMemo(() => typeof window !== 'undefined' && 'PushManager' in window, []);
+
   const [permission, setPermission] = useState<PushPermission>(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
       return 'unsupported';
@@ -42,6 +49,7 @@ export function usePushNotifications(activeToken?: string | null) {
 
   // Sync existing browser subscription to D1 on mount
   useEffect(() => {
+    Sentry.addBreadcrumb({ category: 'push', message: 'init', data: { permission, isStandalone, hasPushManager } });
     if (permission === 'unsupported') return;
 
     // No SW registered yet — button should show (isSubscribed stays false)
@@ -95,7 +103,10 @@ export function usePushNotifications(activeToken?: string | null) {
 
     const result = await Notification.requestPermission();
     setPermission(result as PushPermission);
-    if (result !== 'granted') return;
+    if (result !== 'granted') {
+      Sentry.addBreadcrumb({ category: 'push', message: 'subscribe.denied', data: { result } });
+      return;
+    }
 
     try {
       const reg = await navigator.serviceWorker.ready;
@@ -140,8 +151,10 @@ export function usePushNotifications(activeToken?: string | null) {
       });
 
       setIsSubscribed(true);
+      Sentry.addBreadcrumb({ category: 'push', message: 'subscribe.success' });
     } catch (err) {
       console.error('[Push] Subscribe failed:', err);
+      Sentry.addBreadcrumb({ category: 'push', message: 'subscribe.failed', data: { error: String(err) } });
     }
   }, [permission, serverHost, activeToken]);
 
@@ -169,5 +182,5 @@ export function usePushNotifications(activeToken?: string | null) {
     }
   }, [permission, serverHost, activeToken]);
 
-  return { permission, isSubscribed, subscribe, unsubscribe };
+  return { permission, isSubscribed, isStandalone, hasPushManager, subscribe, unsubscribe };
 }
