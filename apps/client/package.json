@@ -9,6 +9,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@khmyznikov/pwa-install": "^0.6.2",
     "@pecking-order/auth": "*",
     "@pecking-order/game-cartridges": "*",
     "@pecking-order/shared-types": "*",

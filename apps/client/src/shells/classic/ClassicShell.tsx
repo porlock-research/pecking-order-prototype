@@ -8,7 +8,7 @@ import { RosterRow } from './components/RosterRow';
 import { NewDmPicker } from './components/NewDmPicker';
 import { NewGroupPicker } from './components/NewGroupPicker';
 
-import { PushPrompt } from '../../components/PushPrompt';
+import { PwaGate } from '../../components/PwaGate';
 import { Coins, Trophy, MessageCircle, Users } from 'lucide-react';
 import { PlayerStatuses, ChannelTypes } from '@pecking-order/shared-types';
 import type { ShellProps } from '../types';
@@ -122,7 +122,6 @@ function ClassicShell({ playerId, engine, token }: ShellProps) {
 
         {/* Right: Push + Online pill + Silver */}
         <div className="flex items-center gap-3">
-          <PushPrompt token={token} />
           <div className="flex items-center gap-1.5 px-2 py-1 rounded-pill bg-skin-green/10 border border-skin-green/20">
             <span className="w-1.5 h-1.5 rounded-full bg-skin-green animate-pulse-live" />
             <span className="text-[9px] font-mono text-skin-green uppercase tracking-widest font-bold">{onlineCount} Online</span>
@@ -227,6 +226,8 @@ function ClassicShell({ playerId, engine, token }: ShellProps) {
         </nav>
       </footer>
 
+      {/* PWA install + push subscribe gate */}
+      <PwaGate token={token} />
     </div>
   );
 }

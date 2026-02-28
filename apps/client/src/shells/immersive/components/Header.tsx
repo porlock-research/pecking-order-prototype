@@ -1,18 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../store/useGameStore';
-import { PushPrompt } from '../../../components/PushPrompt';
 import { formatPhase } from '../../../utils/formatState';
 import { Coins, Trophy, ChevronDown, Settings } from 'lucide-react';
 import { PlayerStatuses } from '@pecking-order/shared-types';
 import { SPRING, TAP } from '../springs';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
-interface HeaderProps {
-  token: string | null;
-}
-
-export function Header({ token }: HeaderProps) {
+export function Header() {
   const { roster, goldPool, playerId, dayIndex, serverState, gameId } = useGameStore();
   const onlineCount = useGameStore(s => s.onlinePlayers.length);
   const me = playerId ? roster[playerId] : null;
@@ -50,7 +45,6 @@ export function Header({ token }: HeaderProps) {
           </motion.div>
         </div>
         <div className="flex items-center gap-2.5">
-          <PushPrompt token={token} />
           <div className="flex items-center gap-1 px-2.5 py-1 min-h-[32px] rounded-pill bg-skin-green/10 border border-skin-green/20">
             <span className="w-2 h-2 rounded-full bg-skin-green animate-pulse-live" />
             <span className="text-[11px] font-mono text-skin-green font-bold">{onlineCount}</span>

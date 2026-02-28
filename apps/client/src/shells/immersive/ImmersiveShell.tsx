@@ -11,6 +11,7 @@ import { PlayerDrawer } from './components/PlayerDrawer';
 import { ContextMenu } from './components/ContextMenu';
 
 import { DramaticReveal } from './components/DramaticReveal';
+import { PwaGate } from '../../components/PwaGate';
 import type { ShellProps } from '../types';
 
 // Re-use classic pickers for now (opt-in reuse — exactly as the plan describes)
@@ -101,7 +102,7 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
     <LayoutGroup>
       <div className="fixed inset-0 flex flex-col bg-skin-fill text-skin-base font-body overflow-hidden bg-radial-vignette selection:bg-skin-gold selection:text-skin-inverted">
 
-        <Header token={token} />
+        <Header />
 
         <main className="flex-1 overflow-hidden relative flex flex-col">
           <SwipeableTabs activeTab={activeTab} onTabChange={setActiveTab}>
@@ -139,6 +140,9 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
 
         {/* Dramatic reveal overlays */}
         <DramaticReveal />
+
+        {/* PWA install + push subscribe gate */}
+        <PwaGate token={token} />
 
         {/* Sonner toast container */}
         <Toaster

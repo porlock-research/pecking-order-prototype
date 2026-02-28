@@ -3,7 +3,6 @@ import { useGameStore } from './store/useGameStore';
 import { ShellLoader } from './shells/ShellLoader';
 import { decodeGameToken } from '@pecking-order/auth';
 import { PushPrompt } from './components/PushPrompt';
-import { InstallBanner } from './components/InstallBanner';
 import { initSentry, setSentryUser, setSentryContext } from './lib/sentry';
 
 initSentry();
@@ -391,12 +390,7 @@ export default function App() {
     </div>
   );
 
-  return (
-    <>
-      <InstallBanner />
-      <ShellLoader gameId={gameId} playerId={playerId} token={token} />
-    </>
-  );
+  return <ShellLoader gameId={gameId} playerId={playerId} token={token} />;
 }
 
 /**
