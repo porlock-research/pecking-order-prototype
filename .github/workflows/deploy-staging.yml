@@ -2,7 +2,7 @@ name: Deploy Staging
 
 on:
   push:
-    branches: [main, feat/*, feature/*, fix/*]
+    branches: [main, feat/*, feature/*, fix/*, hotfix/*]
 
 jobs:
   deploy-lobby:
