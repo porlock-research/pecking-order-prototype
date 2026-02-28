@@ -9,7 +9,7 @@ export function initSentry() {
     sendDefaultPii: true,
     integrations: [Sentry.browserTracingIntegration()],
     tracesSampleRate: 1.0,
-    tracePropagationTargets: ['localhost', /^https:\/\/.*\.peckingorder\.ca\/api/],
+    tracePropagationTargets: ['localhost', /^\//],
     enableLogs: true,
   });
 }
