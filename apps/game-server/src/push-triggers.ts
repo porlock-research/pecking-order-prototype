@@ -109,38 +109,39 @@ export function phasePushPayload(
   }
 }
 
-/** Handle push notifications for significant facts (DM_SENT, ELIMINATION, WINNER_DECLARED). Fire-and-forget. */
+/** Handle push notifications for significant facts (DM_SENT, ELIMINATION, WINNER_DECLARED).
+ *  Returns a promise so the caller can use ctx.waitUntil() to keep the DO alive. */
 export function handleFactPush(
   ctx: PushContext,
   fact: any,
   manifest: GameManifest | null | undefined,
-): void {
+): Promise<void> | undefined {
   const name = (id: string) => ctx.roster[id]?.personaName || id;
 
   if (fact.type === FactTypes.CHAT_MSG && fact.payload?.channelId === 'MAIN') {
     if (!isPushEnabled(manifest, 'GROUP_CHAT_MSG')) return;
-    pushBroadcast(ctx, {
+    return pushBroadcast(ctx, {
       title: 'Pecking Order',
       body: `${name(fact.actorId)}: ${(fact.payload?.content || '').slice(0, 60)}`,
       tag: 'group-chat',
     }, PHASE_TTL).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.DM_SENT && fact.targetId) {
     if (!isPushEnabled(manifest, 'DM_SENT')) return;
-    pushToPlayer(ctx, fact.targetId, {
+    return pushToPlayer(ctx, fact.targetId, {
       title: 'Pecking Order',
       body: `${name(fact.actorId)} sent you a DM`,
       tag: `dm-${fact.actorId}`,
     }, DM_TTL).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.ELIMINATION) {
     if (!isPushEnabled(manifest, 'ELIMINATION')) return;
-    pushBroadcast(ctx, {
+    return pushBroadcast(ctx, {
       title: 'Pecking Order',
       body: `${name(fact.targetId || fact.actorId)} has been eliminated!`,
       tag: 'elimination',
     }, ELIMINATION_TTL).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.WINNER_DECLARED) {
     if (!isPushEnabled(manifest, 'WINNER_DECLARED')) return;
-    pushBroadcast(ctx, {
+    return pushBroadcast(ctx, {
       title: 'Pecking Order',
       body: `${name(fact.targetId || fact.actorId)} wins!`,
       tag: 'winner',

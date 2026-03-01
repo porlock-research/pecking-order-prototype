@@ -1147,3 +1147,16 @@ This document tracks significant architectural decisions, their context, and con
     *   Old precache entries are cleaned up automatically, preventing storage bloat.
     *   Risk: `skipWaiting()` can interrupt in-flight fetches. Acceptable for our app since all dynamic data is via WebSocket (not cached by SW).
     *   **Files**: `apps/client/src/sw.ts`, `apps/client/src/main.tsx`, `apps/client/vite.config.ts`.
+
+## [ADR-081] Push Notification Delivery — waitUntil for DO Hibernation
+*   **Date:** 2026-02-28
+*   **Status:** Accepted
+*   **Context:** Push notifications triggered by admin DM messages from the lobby were silently dropped — the first push always failed, but subsequent ones worked. Phase-triggered pushes (alarm-based) worked reliably. Root cause: the DO uses `hibernate: true`. When an HTTP request (admin DM) wakes a hibernated DO, the actor processes the event synchronously and the push notification is dispatched as a fire-and-forget async chain (D1 query → push service fetch). The HTTP response (`200 OK`) returns immediately, and the DO can evict itself before the in-flight push `fetch()` completes. Alarm-triggered events work because the DO stays warm processing timeline events and active WebSocket connections. The same bug could affect player-to-player DMs if the DO hibernates between WebSocket messages.
+*   **Decision:**
+    *   **`push-triggers.ts`**: Change `handleFactPush` return type from `void` to `Promise<void> | undefined`. Each branch now `return`s the push promise instead of fire-and-forget `.catch()`.
+    *   **`server.ts`**: Both push call sites — the `persistFactToD1` actor subscription (fact-driven: DMs, eliminations, winner, group chat) and the `broadcastPhasePush` action (phase-driven: day start, voting, etc.) — wrap the returned promise with `this.ctx.waitUntil(promise)`. This tells the DO runtime to stay alive until the push delivery completes, even after the HTTP response is sent or WebSocket message is processed.
+*   **Consequences:**
+    *   All push notifications are guaranteed to complete before the DO evicts — admin DMs, player DMs, group chat, eliminations, winner declarations, and phase broadcasts.
+    *   No behavioral change for the caller — `waitUntil` is non-blocking and doesn't delay HTTP responses or WebSocket processing.
+    *   Minimal code change: 2 files, ~15 lines. The push logic itself is unchanged.
+    *   **Files**: `apps/game-server/src/push-triggers.ts`, `apps/game-server/src/server.ts`.

@@ -204,9 +204,12 @@ export class GameServer extends Server<Env> {
             this.tickerHistory = broadcastTicker(tickerMsg, this.tickerHistory, () => this.getConnections());
           }
 
-          // Push notifications for significant facts
+          // Push notifications for significant facts.
+          // waitUntil keeps the DO alive until delivery completes — without it,
+          // hibernation can evict the DO before the async push fetch finishes.
           const manifest = snapshot?.context.manifest;
-          handleFactPush(this.getPushContext(), fact, manifest);
+          const pushPromise = handleFactPush(this.getPushContext(), fact, manifest);
+          if (pushPromise) this.ctx.waitUntil(pushPromise);
         },
         sendDmRejection: ({ event }: any) => {
           if (event.type !== Events.Rejection.DM) return;
@@ -230,9 +233,10 @@ export class GameServer extends Server<Env> {
           if (!isPushEnabled(manifest, trigger)) return;
           const result = phasePushPayload(trigger, context.dayIndex);
           if (result) {
-            pushBroadcast(this.getPushContext(), result.payload, result.ttl).catch(err =>
+            const p = pushBroadcast(this.getPushContext(), result.payload, result.ttl).catch(err =>
               log('error', 'L1', 'Push phase broadcast error', { error: String(err) })
             );
+            this.ctx.waitUntil(p);
           }
         },
       }
