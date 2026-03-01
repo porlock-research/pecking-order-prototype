@@ -1131,3 +1131,19 @@ This document tracks significant architectural decisions, their context, and con
     *   Minimal attack surface: project ID allowlist prevents abuse as an open proxy.
     *   Local dev unchanged (no tunnel configured, direct ingest).
     *   **Files**: `apps/sentry-tunnel/package.json` (new), `apps/sentry-tunnel/tsconfig.json` (new), `apps/sentry-tunnel/wrangler.toml` (new), `apps/sentry-tunnel/src/worker.ts` (new), `apps/client/src/lib/sentry.ts`, `apps/client/.env.staging`, `apps/client/.env.production`, `.github/workflows/deploy-staging.yml`, `.github/workflows/deploy-production.yml`.
+
+## [ADR-080] Service Worker Auto-Update Lifecycle
+*   **Date:** 2026-02-28
+*   **Status:** Accepted
+*   **Context:** The service worker was not configured for seamless auto-updates. `skipWaiting()` was missing from `sw.ts` (only had a manual `activate` event listener with `clients.claim()`). `registerSW()` in `main.tsx` was called with no options — no `immediate: true`, no periodic update checks. `vite.config.ts` was missing `registerType: 'autoUpdate'`. This meant deploys required players to fully close and reopen the PWA (or all browser tabs) for the new service worker to activate. During active playtesting with real players, this caused stale code to persist indefinitely on devices.
+*   **Decision:**
+    *   **`sw.ts`**: Replace manual `activate` event listener with `self.skipWaiting()` + `clientsClaim()` (from `workbox-core`) + `cleanupOutdatedCaches()` (from `workbox-precaching`). `skipWaiting()` activates the new SW immediately during its install phase — even if the old SW didn't have it. `clientsClaim()` takes control of all open tabs/PWA instances. `cleanupOutdatedCaches()` removes precached assets from previous SW versions (MD5 hash-based revision tracking — only changed files are re-downloaded).
+    *   **`vite.config.ts`**: Add `registerType: 'autoUpdate'` to `VitePWA()` config. This tells the plugin to generate registration code that forces immediate activation.
+    *   **`main.tsx`**: Call `registerSW({ immediate: true })` with `onRegisteredSW` callback that sets up an hourly periodic update check via `setInterval` + `registration.update()`. Standalone PWAs don't get navigation-triggered SW checks like browser tabs, so this catches deploys while the app is open. Guards: skip if already installing, skip if offline.
+    *   **Precaching**: Default `globPatterns` of `**/*.{js,css,html}` plus `includeManifestIcons: true` already covers all static assets (~35 entries, ~1.2 MB). After install, the only network traffic is WebSocket messages and API calls. Cache invalidation is automatic via workbox MD5 content hashes.
+*   **Consequences:**
+    *   Deploys are seamless — no reinstall, no force-quit required. Next page load or hourly check picks up new code.
+    *   All open tabs and standalone PWA instances get the new SW immediately via `clientsClaim()`.
+    *   Old precache entries are cleaned up automatically, preventing storage bloat.
+    *   Risk: `skipWaiting()` can interrupt in-flight fetches. Acceptable for our app since all dynamic data is via WebSocket (not cached by SW).
+    *   **Files**: `apps/client/src/sw.ts`, `apps/client/src/main.tsx`, `apps/client/vite.config.ts`.
