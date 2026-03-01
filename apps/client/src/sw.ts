@@ -1,15 +1,20 @@
 /// <reference lib="webworker" />
-import { precacheAndRoute } from 'workbox-precaching';
+import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+import { clientsClaim } from 'workbox-core';
 
 declare const self: ServiceWorkerGlobalScope;
 
+// Auto-update: activate new SW immediately without waiting for tabs to close.
+// Combined with registerSW({ immediate: true }) in main.tsx, deploys are
+// picked up automatically — critical during active playtesting.
+self.skipWaiting();
+clientsClaim();
+
+// Remove precached assets from previous SW versions
+cleanupOutdatedCaches();
+
 // Precache static assets injected by vite-plugin-pwa
 precacheAndRoute(self.__WB_MANIFEST);
-
-// Claim clients immediately so the Cache API bridge is available on first visit
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
 
 // ── Token persistence ────────────────────────────────────────────────────
 // Token read/write now uses caches.open() directly from the page context

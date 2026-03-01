@@ -851,3 +851,59 @@ The PWA's `start_url` embeds a game-specific JWT (`/game/CODE?_t=JWT`). If a pla
 - **Migrate remaining console calls**: Convert d1-persistence.ts, push-triggers.ts, push-send.ts, sync.ts to structured `log()` helper.
 
 **Files**: `apps/game-server/src/inspect.ts`, `apps/game-server/src/log.ts`, `plans/OBSERVABILITY.md`
+
+## [PROD-026] Returning players see PWA install prompt and stale game shell
+
+**Priority**: Medium — affects playtest UX for returning players across multiple games.
+
+**Two related issues:**
+
+### Issue A: Install gate fires for returning players in Safari
+
+When a player who already has the PWA installed taps an invite link (email, shared URL), it opens in **Safari** — not the installed PWA. iOS has no Universal Links support for PWAs. `PwaGate` checks `isStandalone` (line 56), which is `false` in Safari, so the install gate fires — asking the player to install the PWA they already have.
+
+**Current guard**: `const showInstallGate = isMobile && !isStandalone && !deferred`
+
+**Possible short-term fix**: Skip install gate for returning users (check for existing `po_token_*` in localStorage). A user with cached game tokens has clearly been through the flow before.
+
+### Issue B: PWA launches into deleted/stale game
+
+The dynamic `start_url` in `updatePwaManifest()` embeds a game-specific JWT (`/game/CODE?_t=JWT`). If the game is deleted from the lobby, the PWA still opens with that URL. The JWT is valid (30-day expiry), so `applyToken()` succeeds, the shell renders, and the WebSocket connects to an empty/non-existent Durable Object. The player sees an empty game shell with no players, no silver, no gold.
+
+**Root cause**: No game validity check between token decode and shell render. The client trusts the JWT blindly. `refreshFromLobby()` (which would return 404 for a deleted game) is never called because the transient `_t` token is still valid.
+
+### Architectural direction: Push-based invites for returning players
+
+The ideal long-term fix is to use push notifications as the invite delivery channel for returning players. Push notifications already solve the "open the PWA, not Safari" problem — `notificationclick` in the service worker opens/focuses the standalone PWA.
+
+**Proposed flow:**
+1. Host creates game, invites player by email (existing Resend flow unchanged)
+2. **New player** (no PWA): clicks email link → Safari → lobby → join → install PWA (existing flow, unchanged)
+3. **Returning player** (has PWA + push subscription): lobby detects push subscription → sends push notification ("You've been invited!") → player taps → PWA opens → join/character select happens inside the PWA
+
+**Requirements for push-based invites:**
+- Lobby needs to detect whether an invited player has a push subscription (query game-server D1 `PushSubscriptions` table by `real_user_id`)
+- New push trigger type: `GAME_INVITE` with notification payload containing invite code
+- Client PWA needs a minimal join flow (character select + accept invite via lobby API fetch calls). Currently character select and waiting room are Next.js pages in the lobby app.
+- `po_session` cookie is available in the PWA (shared `.peckingorder.ca` domain, ADR-074), so lobby API calls are authenticated
+
+**Scope**: Significant — building an in-PWA join flow is the main effort. Deferred to post-playtest phase. For now, returning players use the email link → Safari path and dismiss the install gate manually.
+
+**Status**: Documented — short-term fix (skip install gate for returning users) planned; push-based invite flow deferred
+
+## [PROD-027] Service worker updates not applied until app force-quit
+
+**Priority**: HIGH — blocks seamless deploys during active playtesting.
+
+**Current state**: The service worker has `clients.claim()` on activate but NO `skipWaiting()`. `registerSW()` is called with no options (no `immediate: true`). `registerType` is not set (defaults to `'prompt'`). This means:
+
+1. New SW downloads silently on deploy
+2. Sits in "waiting" state — old SW continues serving stale cached assets
+3. In standalone PWA, user must **force-quit the app** to activate the new version
+4. No `cleanupOutdatedCaches()` — old precached assets accumulate across deploys
+
+**Fix applied**: Added `registerType: 'autoUpdate'` to vite config. Added `self.skipWaiting()` and `cleanupOutdatedCaches()` to SW. Changed `registerSW({ immediate: true })` for immediate activation. Now deploys are picked up automatically — new SW activates immediately, old caches are cleaned up, and all open tabs/PWA instances reload with the new version.
+
+**Trade-off**: Auto-update may reload the app while a user is mid-action (typing a message, mid-vote). Acceptable during playtesting — production may want a "new version available" prompt instead.
+
+**Status**: Fixed

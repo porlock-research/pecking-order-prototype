@@ -1,4 +1,4 @@
-# PWA Session Persistence
+# PWA Session Persistence & Service Worker Strategy
 
 ## Problem
 
@@ -16,6 +16,8 @@ Two related issues with session persistence:
 
 The lobby session is the **authoritative, durable** auth. The game JWT is a **derived, ephemeral** credential that should be recoverable from the lobby session at any time.
 
+**Post ADR-074**: The `po_session` cookie is set with `domain: '.peckingorder.ca'`, making it accessible from both Safari and standalone PWA contexts on the same domain. This means step 3 (lobby API refresh) works universally — not just in browser contexts. The Cache API bridge (step 2) and cookie bridge (`po_pwa_*`) are belt-and-suspenders for edge cases but are no longer strictly required for auth recovery.
+
 ## Token Recovery Chain
 
 When the client loads `/game/CODE`, it walks this chain. Steps 1-3 are seamless (no page navigation). Only step 4 requires user interaction.
@@ -31,211 +33,120 @@ When the client loads `/game/CODE`, it walks this chain. Steps 1-3 are seamless 
 
 | Step | Solves | Context |
 |------|--------|---------|
-| 1. localStorage | Page refresh, new tab, browser restart | All browsers |
-| 2. Cache API | iOS standalone PWA launch (localStorage is sandboxed) | iOS only |
-| 3. Lobby API | JWT expired or cleared, but user still logged into lobby | Browser only (cookie sandboxed in standalone PWA) |
+| 1. localStorage | Page refresh, new tab, browser restart, PWA relaunch | All browsers |
+| 2. Cache API | Fallback within same context (e.g., cleared localStorage) | All browsers |
+| 3. Lobby API | JWT expired or cleared, but user still logged in via `po_session` | All contexts on `.peckingorder.ca` (ADR-074) |
 | 4. Lobby redirect | No session anywhere — user must log in | All contexts, last resort |
 
-## Implementation Plan
+## Service Worker Strategy
 
-### Step 1: localStorage (DONE)
+### Plugin: `vite-plugin-pwa` with `injectManifest`
 
-Already implemented on branch `fix/pwa-session-persistence`:
-- `sessionStorage` → `localStorage` migration
-- Game-duration JWT expiry (`dayCount × 2 + 7` days)
-- Auto-cleanup of expired `po_token_*` on app launch
+We use `injectManifest` (not `generateSW`) because we have custom service worker logic for push notifications. The plugin compiles our `src/sw.ts` and injects the workbox precache manifest.
 
-### Step 2: Cache API Bridge
+### Auto-Update Lifecycle
 
-Persist JWTs in the Cache API, which is shared between Safari and standalone PWA on iOS (since iOS 14).
+Configured for seamless deploys during active playtesting — no user action required.
 
-**UPDATE**: The original SW fetch handler approach was broken — `persistToCache()` gated on `navigator.serviceWorker.controller`, which is null on first page load. Replaced with direct `caches.open()` from the page context. The SW fetch handler has been removed. Added `syncCacheToLocalStorage()` on app mount to copy cached tokens into localStorage before rendering.
-
-~~**`apps/client/src/sw.ts`** — Add virtual endpoint handler:~~
-
+**vite.config.ts:**
 ```typescript
-const TOKEN_CACHE = 'po-tokens-v1';
+VitePWA({
+  strategies: 'injectManifest',
+  registerType: 'autoUpdate',
+  srcDir: 'src',
+  filename: 'sw.ts',
+  injectRegister: false,
+  // ...
+})
+```
 
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  if (url.pathname !== '/api/session-cache') return;
+**sw.ts:**
+```typescript
+import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+import { clientsClaim } from 'workbox-core';
 
-  if (event.request.method === 'POST') {
-    // Store: client sends { key: "po_token_CODE", value: "eyJ..." }
-    event.respondWith(
-      event.request.json().then(async (data) => {
-        const cache = await caches.open(TOKEN_CACHE);
-        await cache.put(
-          new Request(`/api/session-cache/${data.key}`),
-          new Response(data.value)
-        );
-        return new Response('ok');
-      })
-    );
-  } else if (event.request.method === 'GET') {
-    // Retrieve: return all cached tokens as { key: value, ... }
-    event.respondWith(
-      (async () => {
-        const cache = await caches.open(TOKEN_CACHE);
-        const keys = await cache.keys();
-        const tokens: Record<string, string> = {};
-        for (const req of keys) {
-          const key = new URL(req.url).pathname.replace('/api/session-cache/', '');
-          const res = await cache.match(req);
-          if (res) tokens[key] = await res.text();
-        }
-        return new Response(JSON.stringify(tokens), {
-          headers: { 'Content-Type': 'application/json' },
-        });
-      })()
-    );
-  } else if (event.request.method === 'DELETE') {
-    // Cleanup: remove a specific token
-    event.respondWith(
-      event.request.json().then(async (data) => {
-        const cache = await caches.open(TOKEN_CACHE);
-        await cache.delete(new Request(`/api/session-cache/${data.key}`));
-        return new Response('ok');
-      })
-    );
-  }
+self.skipWaiting();       // Activate immediately, don't wait for old SW to release
+clientsClaim();           // Take control of all open tabs/PWA instances
+cleanupOutdatedCaches();  // Remove precached assets from previous SW versions
+precacheAndRoute(self.__WB_MANIFEST);
+```
+
+**main.tsx:**
+```typescript
+import { registerSW } from 'virtual:pwa-register';
+registerSW({
+  immediate: true,
+  onRegisteredSW(swUrl, registration) {
+    // Standalone PWAs don't get navigation-triggered SW checks,
+    // so poll hourly to catch deploys while the app is open
+    if (!registration) return;
+    setInterval(async () => {
+      if (registration.installing || !navigator) return;
+      if ('connection' in navigator && !navigator.onLine) return;
+      const resp = await fetch(swUrl, {
+        cache: 'no-store',
+        headers: { 'cache-control': 'no-cache' },
+      });
+      if (resp?.status === 200) await registration.update();
+    }, 60 * 60 * 1000);
+  },
 });
 ```
 
-**`apps/client/src/App.tsx`** — Dual-write on token arrival:
+### Update Flow
 
-```typescript
-function applyToken(jwt, gameCode, ...) {
-  // ... existing decode + state set ...
-  const key = gameCode || decoded.gameId;
-  localStorage.setItem(`po_token_${key}`, jwt);
+1. **Deploy**: New build uploads to Cloudflare Pages with new `sw.js` (content hash changes)
+2. **App open**: `registerSW({ immediate: true })` checks for SW updates on load
+3. **App backgrounded**: Hourly periodic check catches deploys while the PWA is open
+4. **New SW found**: Browser downloads and installs new SW
+5. **`skipWaiting()`**: New SW activates immediately (doesn't wait for old SW to release)
+6. **`clientsClaim()`**: New SW takes control of all open tabs/PWA instances
+7. **`cleanupOutdatedCaches()`**: Old precached assets removed (MD5 hash-based revision tracking — only changed files are re-downloaded)
+8. **Page reload**: Triggered by `registerSW`, app loads with new assets
 
-  // Also persist to Cache API for iOS standalone PWA
-  if ('serviceWorker' in navigator) {
-    fetch('/api/session-cache', {
-      method: 'POST',
-      body: JSON.stringify({ key: `po_token_${key}`, value: jwt }),
-    }).catch(() => {}); // fire-and-forget
-  }
-}
-```
+**No reinstall needed.** `skipWaiting()` runs in the new SW's install phase. Even if the old SW didn't have auto-update, the new SW activates itself immediately.
 
-**`apps/client/src/App.tsx`** — Fallback read in init:
+### Precaching
 
-```typescript
-// After localStorage check fails:
-async function recoverFromCacheApi(gameCode: string): Promise<string | null> {
-  try {
-    const res = await fetch('/api/session-cache');
-    const tokens = await res.json();
-    const jwt = tokens[`po_token_${gameCode}`];
-    if (jwt) {
-      // Validate not expired
-      const decoded = decodeGameToken(jwt);
-      if (decoded.exp && decoded.exp > Date.now() / 1000) {
-        localStorage.setItem(`po_token_${gameCode}`, jwt); // restore
-        return jwt;
-      }
-    }
-  } catch {}
-  return null;
-}
-```
+Default `globPatterns` of `**/*.{js,css,html}` plus `includeManifestIcons: true` (default). This precaches:
+- All JS chunks (including lazy-loaded game components, shells, cartridges)
+- CSS bundle
+- `index.html`
+- All manifest icons (192, 512, 512-maskable)
+- Badge icon (72px, for push notifications)
+- `manifest.webmanifest`
 
-**Limitations:**
-- Cache may be cleared by iOS after extended periods of inactivity
-- Requires SW to be registered (first-ever visit must come through Safari)
-- `clients.claim()` needed for immediate SW activation
+**~35 entries, ~1.2 MB total.** After install, the only network traffic is WebSocket messages and API calls (push subscribe, lobby refresh). All static assets are served from cache.
 
-### Step 3: Lobby API Refresh
+Cache invalidation is automatic — workbox assigns MD5 content hashes to each entry. On deploy, only changed files are re-downloaded. `cleanupOutdatedCaches()` removes old revisions.
 
-New lobby endpoint that accepts the `po_session` cookie and returns a fresh game JWT. Called via `fetch` from the client (no redirect).
+### Dynamic Manifest Override
 
-**`apps/lobby/app/api/refresh-token/[code]/route.ts`** — New API route:
+`updatePwaManifest()` in App.tsx creates a `data:` URL manifest with `start_url: /game/CODE?_t=JWT` when a token is applied. This overrides the static manifest's `start_url: /` so that iOS "Add to Home Screen" installs a pre-authenticated PWA.
 
-```typescript
-// GET /api/refresh-token/CODE
-// Requires: po_session cookie (sent automatically by browser with credentials: 'include')
-// Returns: { token: "eyJ..." } or 401
-export async function GET(req, { params }) {
-  const { code } = await params;
-  const session = await getSession(); // reads po_session cookie
-  if (!session) return Response.json({ error: 'unauthorized' }, { status: 401 });
-
-  // Same logic as /play/[code]/route.ts but returns JSON instead of redirect
-  const game = await db.prepare('SELECT id, status, day_count FROM GameSessions WHERE invite_code = ?')...
-  const invite = await db.prepare('SELECT ... WHERE game_id = ? AND accepted_by = ?')...
-  const token = await signGameToken(...);
-
-  return Response.json({ token }, {
-    headers: {
-      'Access-Control-Allow-Origin': CLIENT_HOST,
-      'Access-Control-Allow-Credentials': 'true',
-    },
-  });
-}
-```
-
-**CORS requirements** (lobby side):
-- `Access-Control-Allow-Origin`: must be the specific client origin (not `*`, since credentials are involved)
-- `Access-Control-Allow-Credentials: true`
-- Preflight handler for OPTIONS
-
-**`apps/client/src/App.tsx`** — Fetch before redirect:
-
-```typescript
-async function refreshFromLobby(gameCode: string): Promise<string | null> {
-  try {
-    const res = await fetch(`${LOBBY_HOST}/api/refresh-token/${gameCode}`, {
-      credentials: 'include', // sends po_session cookie
-    });
-    if (!res.ok) return null;
-    const { token } = await res.json();
-    applyToken(token, gameCode, ...);
-    return token;
-  } catch {
-    return null;
-  }
-}
-```
-
-**Note:** This step only works in browser contexts where the `po_session` cookie is accessible. In iOS standalone PWA, the cookie is sandboxed — step 2 (Cache API) handles that case.
-
-### Step 4: Lobby Redirect (Last Resort)
-
-If steps 1-3 all fail, redirect to `LOBBY_HOST/play/CODE`. This triggers the standard auth flow:
-- If `po_session` exists → mint JWT → redirect back to client
-- If no session → login page → magic link → `/play/CODE` → redirect back
-
-```typescript
-// In App.tsx, after all recovery attempts fail:
-window.location.href = `${LOBBY_HOST}/play/${gameCode}`;
-```
-
-This is the only step that requires user interaction (if they need to log in).
-
-## File Changes Summary
-
-| File | Change |
-|------|--------|
-| `apps/client/src/sw.ts` | Add `/api/session-cache` virtual endpoint (Cache API CRUD) |
-| `apps/client/src/App.tsx` | Dual-write to Cache API, async recovery chain (Cache API → Lobby API → redirect) |
-| `apps/lobby/app/api/refresh-token/[code]/route.ts` | New endpoint: mint JWT from `po_session` cookie |
-| `apps/lobby/middleware.ts` | Allow `/api/refresh-token/*` through CORS (or handle in route) |
-| `packages/auth/src/index.ts` | No changes (already done) |
+**Known issue (PROD-026):** If the game is later deleted, the baked `start_url` leads to a stale game. The expired-token guard catches truly expired JWTs, but valid-but-stale tokens (game deleted before JWT expiry) pass through and render an empty shell. See KNOWN_ISSUES.md PROD-026 for the long-term fix (push-based invites + launcher-first `start_url`).
 
 ## Status
 
 - [x] `sessionStorage` → `localStorage` migration
 - [x] Game-duration JWT expiry (`dayCount × 2 + 7` days)
 - [x] Auto-cleanup of expired tokens
-- [x] Cache API bridge in Service Worker (step 2)
-- [x] Lobby refresh-token API endpoint (step 3)
-- [x] Client recovery chain with async fallbacks (steps 2-4)
-- [x] CORS setup for lobby ↔ client credential sharing (headers in refresh-token route)
+- [x] Cache API bridge (direct `caches.open()` from page context, not SW fetch handler)
+- [x] Cookie bridge (`po_pwa_*` for iOS 17.2+ Safari→PWA one-time copy)
+- [x] Lobby refresh-token API endpoint (`GET /api/refresh-token/CODE`)
+- [x] Client recovery chain with async fallbacks (localStorage → cookie → Cache API → lobby API → redirect)
+- [x] CORS setup for lobby ↔ client credential sharing
+- [x] Cross-subdomain `po_session` cookie (ADR-074, `.peckingorder.ca`)
+- [x] SW auto-update: `skipWaiting` + `clientsClaim` + `cleanupOutdatedCaches` (PROD-027)
+- [x] Periodic SW update check (hourly, for standalone PWAs)
+- [x] Full static asset precaching (~35 entries, ~1.2 MB)
+- [ ] Game validity check before shell render (PROD-026)
+- [ ] Push-based invites for returning players (PROD-026, deferred)
+- [ ] Launcher-first `start_url` (blocked on in-PWA join flow)
 
 ## References
 
+- [vite-plugin-pwa documentation](https://vite-pwa-org.netlify.app/guide/)
 - [Sharing State Between PWA and Safari on iOS (Netguru)](https://www.netguru.com/blog/how-to-share-session-cookie-or-state-between-pwa-in-standalone-mode-and-safari-on-ios)
 - [PWA iOS Limitations Guide (MagicBell)](https://www.magicbell.com/blog/pwa-ios-limitations-safari-support-complete-guide)
 - [PWAs on iOS 2026 (MobiLoud)](https://www.mobiloud.com/blog/progressive-web-apps-ios)
