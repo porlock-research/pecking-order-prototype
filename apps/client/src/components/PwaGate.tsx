@@ -43,7 +43,7 @@ interface PwaGateProps {
 }
 
 export function PwaGate({ token }: PwaGateProps) {
-  const { permission, isSubscribed, isStandalone, subscribe } =
+  const { permission, isSubscribed, isStandalone, ready, subscribe } =
     usePushNotifications(token);
   const [deferred, setDeferred] = useState(
     () => sessionStorage.getItem(DEFER_KEY) === '1',
@@ -55,10 +55,12 @@ export function PwaGate({ token }: PwaGateProps) {
   // Step 1: Install gate — mobile, not standalone, not deferred
   const showInstallGate = isMobile && !isStandalone && !deferred;
 
-  // Step 2: Push gate — standalone, permission not granted, not already subscribed, not deferred
+  // Step 2: Push gate — anyone who hasn't subscribed yet (standalone, desktop, or mobile-deferred)
+  // Skips the install gate scenario (mobile non-standalone with gate active)
+  // Waits for the hook to finish its initial check (ready) to avoid flash
   const showPushDrawer =
-    isStandalone &&
-    permission !== 'granted' &&
+    ready &&
+    !showInstallGate &&
     permission !== 'unsupported' &&
     !isSubscribed &&
     !deferred &&

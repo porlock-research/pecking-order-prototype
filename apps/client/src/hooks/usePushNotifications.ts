@@ -44,19 +44,24 @@ export function usePushNotifications(activeToken?: string | null) {
     return Notification.permission as PushPermission;
   });
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [ready, setReady] = useState(false);
 
   const serverHost = import.meta.env.VITE_GAME_SERVER_HOST || 'http://localhost:8787';
 
   // Sync existing browser subscription to D1 on mount
   useEffect(() => {
     Sentry.addBreadcrumb({ category: 'push', message: 'init', data: { permission, isStandalone, hasPushManager } });
-    if (permission === 'unsupported') return;
+    if (permission === 'unsupported') {
+      setReady(true);
+      return;
+    }
 
     // No SW registered yet — button should show (isSubscribed stays false)
     if (!navigator.serviceWorker.controller && navigator.serviceWorker.getRegistrations) {
       navigator.serviceWorker.getRegistrations().then(regs => {
         if (regs.length === 0) {
           setIsSubscribed(false);
+          setReady(true);
           return;
         }
         checkExistingSubscription();
@@ -70,7 +75,15 @@ export function usePushNotifications(activeToken?: string | null) {
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
         if (!sub) {
-          setIsSubscribed(false);
+          // Permission granted but no subscription on this origin (e.g. after
+          // domain migration from pages.dev → custom domain). Auto-resubscribe
+          // since the user already granted permission — no browser prompt needed.
+          if (Notification.permission === 'granted') {
+            console.log('[Push] Permission granted but no subscription — auto-resubscribing');
+            await autoResubscribe(reg);
+          } else {
+            setIsSubscribed(false);
+          }
           return;
         }
         setIsSubscribed(true);
@@ -94,6 +107,55 @@ export function usePushNotifications(activeToken?: string | null) {
       } catch (err) {
         console.error('[Push] Re-sync failed:', err);
         setIsSubscribed(false);
+      } finally {
+        setReady(true);
+      }
+    }
+
+    async function autoResubscribe(reg: ServiceWorkerRegistration) {
+      try {
+        const resp = await fetch(`${serverHost}/parties/game-server/vapid-key`);
+        const data = await resp.json();
+        const vapidKey = data.publicKey;
+        if (!vapidKey) {
+          console.error('[Push] Auto-resubscribe: no VAPID key');
+          setIsSubscribed(false);
+          return;
+        }
+
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
+        });
+
+        const token = activeToken || findCachedToken();
+        if (!token) {
+          console.error('[Push] Auto-resubscribe: no cached JWT');
+          setIsSubscribed(false);
+          return;
+        }
+
+        const subJSON = sub.toJSON();
+        await fetch(`${serverHost}/api/push/subscribe`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            endpoint: subJSON.endpoint,
+            keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
+          }),
+        });
+
+        setIsSubscribed(true);
+        setPermission('granted');
+        console.log('[Push] Auto-resubscribe successful');
+        Sentry.addBreadcrumb({ category: 'push', message: 'auto-resubscribe.success' });
+      } catch (err) {
+        console.error('[Push] Auto-resubscribe failed:', err);
+        setIsSubscribed(false);
+        Sentry.addBreadcrumb({ category: 'push', message: 'auto-resubscribe.failed', data: { error: String(err) } });
       }
     }
   }, [permission, serverHost, activeToken]);
@@ -182,5 +244,5 @@ export function usePushNotifications(activeToken?: string | null) {
     }
   }, [permission, serverHost, activeToken]);
 
-  return { permission, isSubscribed, isStandalone, hasPushManager, subscribe, unsubscribe };
+  return { permission, isSubscribed, isStandalone, hasPushManager, ready, subscribe, unsubscribe };
 }
