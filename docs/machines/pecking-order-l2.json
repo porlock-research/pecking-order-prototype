@@ -1,0 +1,365 @@
+{
+  "id": "pecking-order-l2",
+  "group": "Orchestration",
+  "filePath": "src/machines/l2-orchestrator.ts",
+  "stats": {
+    "stateCount": 10,
+    "transitionCount": 42,
+    "eventTypes": [
+      "*",
+      "ADMIN.INJECT_TIMELINE_EVENT",
+      "ADMIN.NEXT_STAGE",
+      "CARTRIDGE.GAME_RESULT",
+      "CARTRIDGE.PLAYER_GAME_RESULT",
+      "CARTRIDGE.PROMPT_RESULT",
+      "CARTRIDGE.VOTE_RESULT",
+      "CHANNEL.REJECTED",
+      "DM.REJECTED",
+      "ECONOMY.CONTRIBUTE_GOLD",
+      "ECONOMY.CREDIT_SILVER",
+      "FACT.RECORD",
+      "INTERNAL.READY",
+      "PERK.REJECTED",
+      "PERK.RESULT",
+      "PUSH.PHASE",
+      "SILVER_TRANSFER.REJECTED",
+      "SOCIAL.CREATE_CHANNEL",
+      "SOCIAL.SEND_MSG",
+      "SOCIAL.SEND_SILVER",
+      "SOCIAL.USE_PERK",
+      "SYSTEM.INIT",
+      "SYSTEM.PLAYER_JOINED",
+      "SYSTEM.WAKEUP",
+      "xstate.done.actor.l3-session"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "uninitialized",
+      "path": "uninitialized",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "SYSTEM.INIT"
+      ]
+    },
+    {
+      "name": "preGame",
+      "path": "preGame",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "SYSTEM.WAKEUP",
+        "ADMIN.NEXT_STAGE",
+        "SYSTEM.PLAYER_JOINED"
+      ]
+    },
+    {
+      "name": "dayLoop",
+      "path": "dayLoop",
+      "type": "compound",
+      "parent": "(root)",
+      "events": []
+    },
+    {
+      "name": "morningBriefing",
+      "path": "dayLoop.morningBriefing",
+      "type": "atomic",
+      "parent": "dayLoop",
+      "events": []
+    },
+    {
+      "name": "activeSession",
+      "path": "dayLoop.activeSession",
+      "type": "compound",
+      "parent": "dayLoop",
+      "events": [
+        "ADMIN.NEXT_STAGE",
+        "FACT.RECORD",
+        "SOCIAL.SEND_MSG",
+        "SOCIAL.SEND_SILVER",
+        "CARTRIDGE.VOTE_RESULT",
+        "CARTRIDGE.GAME_RESULT",
+        "CARTRIDGE.PLAYER_GAME_RESULT",
+        "CARTRIDGE.PROMPT_RESULT",
+        "ECONOMY.CREDIT_SILVER",
+        "ECONOMY.CONTRIBUTE_GOLD",
+        "DM.REJECTED",
+        "SILVER_TRANSFER.REJECTED",
+        "SOCIAL.USE_PERK",
+        "SOCIAL.CREATE_CHANNEL",
+        "CHANNEL.REJECTED",
+        "PERK.RESULT",
+        "PERK.REJECTED",
+        "PUSH.PHASE",
+        "*",
+        "ADMIN.INJECT_TIMELINE_EVENT"
+      ]
+    },
+    {
+      "name": "waitingForChild",
+      "path": "dayLoop.activeSession.waitingForChild",
+      "type": "atomic",
+      "parent": "dayLoop.activeSession",
+      "events": [
+        "INTERNAL.READY"
+      ]
+    },
+    {
+      "name": "running",
+      "path": "dayLoop.activeSession.running",
+      "type": "atomic",
+      "parent": "dayLoop.activeSession",
+      "events": [
+        "SYSTEM.WAKEUP"
+      ]
+    },
+    {
+      "name": "nightSummary",
+      "path": "dayLoop.nightSummary",
+      "type": "atomic",
+      "parent": "dayLoop",
+      "events": [
+        "ADMIN.NEXT_STAGE",
+        "SYSTEM.WAKEUP",
+        "ADMIN.INJECT_TIMELINE_EVENT",
+        "FACT.RECORD",
+        "ECONOMY.CREDIT_SILVER",
+        "ECONOMY.CONTRIBUTE_GOLD",
+        "PUSH.PHASE"
+      ]
+    },
+    {
+      "name": "gameSummary",
+      "path": "gameSummary",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "FACT.RECORD",
+        "SOCIAL.SEND_MSG",
+        "ADMIN.NEXT_STAGE"
+      ]
+    },
+    {
+      "name": "gameOver",
+      "path": "gameOver",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "uninitialized",
+      "target": "preGame",
+      "event": "SYSTEM.INIT"
+    },
+    {
+      "source": "preGame",
+      "target": "dayLoop",
+      "event": "SYSTEM.WAKEUP"
+    },
+    {
+      "source": "preGame",
+      "target": "dayLoop",
+      "event": "ADMIN.NEXT_STAGE"
+    },
+    {
+      "source": "preGame",
+      "target": "preGame",
+      "event": "SYSTEM.PLAYER_JOINED"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.nightSummary",
+      "event": "ADMIN.NEXT_STAGE"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "FACT.RECORD"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "SOCIAL.SEND_MSG"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "SOCIAL.SEND_SILVER"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "CARTRIDGE.VOTE_RESULT"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "CARTRIDGE.GAME_RESULT"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "CARTRIDGE.PLAYER_GAME_RESULT"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "CARTRIDGE.PROMPT_RESULT"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "ECONOMY.CREDIT_SILVER"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "ECONOMY.CONTRIBUTE_GOLD"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "DM.REJECTED"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "SILVER_TRANSFER.REJECTED"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "SOCIAL.USE_PERK"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "SOCIAL.CREATE_CHANNEL"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "CHANNEL.REJECTED"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "PERK.RESULT"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "PERK.REJECTED"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "PUSH.PHASE"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "*"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "*"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "*"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "ADMIN.INJECT_TIMELINE_EVENT"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "ADMIN.INJECT_TIMELINE_EVENT"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.nightSummary",
+      "event": "xstate.done.actor.l3-session"
+    },
+    {
+      "source": "dayLoop.activeSession.waitingForChild",
+      "target": "dayLoop.activeSession.running",
+      "event": "INTERNAL.READY"
+    },
+    {
+      "source": "dayLoop.activeSession.running",
+      "target": "dayLoop.activeSession.running",
+      "event": "SYSTEM.WAKEUP"
+    },
+    {
+      "source": "dayLoop.nightSummary",
+      "target": "gameSummary",
+      "event": "ADMIN.NEXT_STAGE"
+    },
+    {
+      "source": "dayLoop.nightSummary",
+      "target": "dayLoop.morningBriefing",
+      "event": "ADMIN.NEXT_STAGE"
+    },
+    {
+      "source": "dayLoop.nightSummary",
+      "target": "gameSummary",
+      "event": "SYSTEM.WAKEUP"
+    },
+    {
+      "source": "dayLoop.nightSummary",
+      "target": "dayLoop.morningBriefing",
+      "event": "SYSTEM.WAKEUP"
+    },
+    {
+      "source": "dayLoop.nightSummary",
+      "target": "dayLoop.nightSummary",
+      "event": "ADMIN.INJECT_TIMELINE_EVENT"
+    },
+    {
+      "source": "dayLoop.nightSummary",
+      "target": "dayLoop.nightSummary",
+      "event": "FACT.RECORD"
+    },
+    {
+      "source": "dayLoop.nightSummary",
+      "target": "dayLoop.nightSummary",
+      "event": "ECONOMY.CREDIT_SILVER"
+    },
+    {
+      "source": "dayLoop.nightSummary",
+      "target": "dayLoop.nightSummary",
+      "event": "ECONOMY.CONTRIBUTE_GOLD"
+    },
+    {
+      "source": "dayLoop.nightSummary",
+      "target": "dayLoop.nightSummary",
+      "event": "PUSH.PHASE"
+    },
+    {
+      "source": "gameSummary",
+      "target": "gameSummary",
+      "event": "FACT.RECORD"
+    },
+    {
+      "source": "gameSummary",
+      "target": "gameSummary",
+      "event": "SOCIAL.SEND_MSG"
+    },
+    {
+      "source": "gameSummary",
+      "target": "gameOver",
+      "event": "ADMIN.NEXT_STAGE"
+    }
+  ]
+}

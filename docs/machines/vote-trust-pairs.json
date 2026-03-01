@@ -1,0 +1,53 @@
+{
+  "id": "vote-trust-pairs",
+  "group": "Voting",
+  "filePath": "src/machines/cartridges/voting/trust-pairs-machine.ts",
+  "stats": {
+    "stateCount": 2,
+    "transitionCount": 3,
+    "eventTypes": [
+      "INTERNAL.CLOSE_VOTING",
+      "VOTE.TRUST_PAIRS.ELIMINATE",
+      "VOTE.TRUST_PAIRS.TRUST"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "active",
+      "path": "active",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "VOTE.TRUST_PAIRS.TRUST",
+        "VOTE.TRUST_PAIRS.ELIMINATE",
+        "INTERNAL.CLOSE_VOTING"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "active",
+      "target": "active",
+      "event": "VOTE.TRUST_PAIRS.TRUST"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "VOTE.TRUST_PAIRS.ELIMINATE"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "INTERNAL.CLOSE_VOTING"
+    }
+  ]
+}

@@ -1177,3 +1177,38 @@ This document tracks significant architectural decisions, their context, and con
     *   No new client code needed — existing `notificationclick` handler + `registerSW({ immediate: true })` handles the update.
     *   Expired subscriptions are cleaned up automatically on each broadcast.
     *   **Files**: `apps/game-server/src/d1-persistence.ts`, `apps/game-server/src/server.ts`, `apps/lobby/app/actions.ts`, `apps/lobby/app/admin/page.tsx`.
+
+## [ADR-083] Live Session Fixes — Scheduled Task Labels, R2 Asset Performance, Lobby Bypass
+*   **Date:** 2026-02-27
+*   **Status:** Accepted
+*   **Context:** Three issues identified during first live game session: (1) Scheduled tasks admin panel shows misleading labels when multiple timeline events share the same timestamp — the `Map` dedup overwrites the label instead of combining; (2) Persona avatar images still routed through the lobby worker (`lobby.peckingorder.ca/api/persona-image/...`), causing unnecessary cold starts and compute; (3) R2 objects uploaded without `Cache-Control` metadata — custom domain serves objects with stored metadata, so CDN had no caching directive.
+*   **Decision:**
+    *   **Co-timed task labels**: `scheduleManifestAlarms` now concatenates labels with `+` for events sharing a timestamp (e.g., `wakeup-d2-CLOSE_GROUP_CHAT+START_GAME`). `processTimelineEvent` already handles all events at a given time — only the label was misleading.
+    *   **Direct R2 URLs in roster**: `personaImageUrl()` accepts optional `assetsBaseUrl` parameter. Roster-building call sites (`acceptInvite`, `startGame`, `createDebugGame`, `getGameSessionStatus`) pass `env.PERSONA_ASSETS_URL`, producing absolute URLs like `https://assets.peckingorder.ca/personas/persona-01/headshot.png`. Client loads images directly from R2 CDN — zero lobby involvement. Lobby-only UI call sites (invite page, persona draw) keep relative paths since they're same-origin.
+    *   **R2 cache metadata**: All `bucket.put()` calls (admin persona upload) now include `httpMetadata.cacheControl: 'public, max-age=31536000, immutable'`. Import script updated to pass `--cache-control` flag. Both staging and production R2 buckets re-imported (72 persona images + email logo each) with correct cache headers.
+    *   **Import script safety**: Now requires explicit `--remote staging` or `--remote production` (previously `--remote` with hardcoded production bucket name).
+*   **Consequences:**
+    *   Admin sees all co-timed events in the scheduled tasks panel.
+    *   Persona images served at CDN speed with 1-year cache. Lobby worker no longer woken for image requests.
+    *   Future persona uploads automatically get correct cache headers.
+    *   Import script cannot accidentally target the wrong environment.
+    *   **Files**: `apps/game-server/src/server.ts`, `apps/lobby/app/actions.ts`, `apps/lobby/app/admin/personas/actions.ts`, `apps/lobby/scripts/import-personas.ts`.
+
+## [ADR-084] State Machine Documentation & Visualization
+*   **Date:** 2026-02-27
+*   **Status:** Accepted
+*   **Context:** 33 XState v5 machines across 3 packages with no auto-generated documentation, no interactive visualization, and limited runtime debugging (Axiom logs only). Static tests used deprecated `@xstate/graph` package (should be `xstate/graph` subpath export). Only 10 structural tests covering L2/L3 — no coverage for the 30 cartridge machines.
+*   **Decision:** Four-phase strategy:
+    *   **Phase 1 — Migrate + expand tests**: Changed import from `@xstate/graph` to `xstate/graph` (built-in subpath in xstate v5.26.0). Removed `@xstate/graph` from devDependencies. Added 63 new tests (73 total): registry completeness (all 30 cartridge machines produce valid directed graphs), forced-termination contracts (voting→`INTERNAL.CLOSE_VOTING`, prompts→`INTERNAL.END_ACTIVITY`, games→`INTERNAL.END_GAME`), critical path reachability (L2 `gameSummary`, L3 `finishing` final state, L2 `gameOver` final state). Discovered `SECOND_TO_LAST` voting machine is instant (no interactive states) — exempted from termination test with explicit annotation.
+    *   **Phase 2 — Build-time machine catalog**: `scripts/generate-machine-docs.ts` imports all 33 machines, extracts states/transitions/events via `toDirectedGraph()` + `getStateNodes()`. Outputs 34 JSON files (`docs/machines/*.json`: 33 per-machine + 1 catalog) and a `README.md` with summary table and per-machine sections. JSON snapshots can be transformed into simplified `createMachine()` code for Stately Studio import. npm script: `generate:docs`.
+    *   **Phase 3a — Inspector bridge (server)**: Enhanced `createInspector()` with optional `broadcast` callback. Serializes `@xstate.actor`, `@xstate.event`, `@xstate.snapshot` inspection events as `INSPECT.ACTOR/EVENT/SNAPSHOT` messages with depth-limited snapshot data (value + status + contextKeys only). Sent only to WebSocket clients that have opted in via `INSPECT.SUBSCRIBE`. Zero overhead when no subscribers.
+    *   **Phase 3b — Inspector relay (L1)**: `server.ts` maintains `inspectSubscribers: Set<Connection>`. Admin WebSocket connections supported via `?adminSecret=` query parameter (timing-safe comparison, no roster check). `onMessage` handles `INSPECT.SUBSCRIBE`/`INSPECT.UNSUBSCRIBE`. Admin connections restricted to inspector events only. Cleanup on `onClose`.
+    *   **Phase 3c — Admin inspector page**: `apps/lobby/app/admin/inspector/page.tsx` — full-screen inspector with game selector, WebSocket connection via `getInspectorConnection()` server action, live actor state cards, scrollable event timeline with color-coded types, event filtering, and embedded Stately Inspector iframe via `@statelyai/inspect` `createBrowserInspector({ iframe })`. Proxies `INSPECT.*` events to iframe using manual `inspector.actor/event/snapshot` API. Available in all environments (staging + production).
+    *   **Phase 4 (future)**: Stately Studio integration via `POST /code` parsing validation, simplified machine generation for Studio import, GitHub repo auto-import (Pro plan), API exports.
+*   **Consequences:**
+    *   73 structural tests catch regressions in any of 33 machines on every push.
+    *   Machine catalog stays in sync via `npm run generate:docs` (root, via turbo with automatic dependency builds) — JSON diffs in PRs reveal structural changes.
+    *   Real-time state machine visualization available for any game in any environment via `/admin/inspector`.
+    *   No Stately account required for Phase 1-3 functionality.
+    *   `@xstate/graph` dependency eliminated (one fewer package to maintain).
+    *   **Files**: `event-coverage.test.ts`, `inspect.ts`, `server.ts`, `scripts/generate-machine-docs.ts`, `docs/machines/`, `apps/lobby/app/admin/inspector/page.tsx`, `apps/lobby/app/actions.ts`.

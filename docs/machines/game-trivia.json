@@ -1,0 +1,86 @@
+{
+  "id": "game-trivia",
+  "group": "Games",
+  "filePath": "packages/game-cartridges/src/machines/trivia.ts",
+  "stats": {
+    "stateCount": 3,
+    "transitionCount": 7,
+    "eventTypes": [
+      "ALL_COMPLETE",
+      "GAME.TRIVIA.ANSWER",
+      "GAME.TRIVIA.START",
+      "INTERNAL.END_GAME",
+      "PLAYER_COMPLETED",
+      "xstate.done.actor.0.trivia-game.loading",
+      "xstate.error.actor.0.trivia-game.loading"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "loading",
+      "path": "loading",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": []
+    },
+    {
+      "name": "active",
+      "path": "active",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "GAME.TRIVIA.START",
+        "GAME.TRIVIA.ANSWER",
+        "PLAYER_COMPLETED",
+        "ALL_COMPLETE",
+        "INTERNAL.END_GAME"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "loading",
+      "target": "active",
+      "event": "xstate.done.actor.0.trivia-game.loading"
+    },
+    {
+      "source": "loading",
+      "target": "active",
+      "event": "xstate.error.actor.0.trivia-game.loading"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "GAME.TRIVIA.START"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "GAME.TRIVIA.ANSWER"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "PLAYER_COMPLETED"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "ALL_COMPLETE"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "INTERNAL.END_GAME"
+    }
+  ]
+}

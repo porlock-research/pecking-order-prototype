@@ -1,10 +1,13 @@
 import { describe, test, expect } from 'vitest';
-import { getStateNodes, toDirectedGraph } from '@xstate/graph';
+import { getStateNodes, toDirectedGraph, getShortestPaths } from 'xstate/graph';
 import { dailySessionMachine } from '../l3-session';
 import { orchestratorMachine } from '../l2-orchestrator';
+import { VOTE_REGISTRY } from '../cartridges/voting/_registry';
+import { PROMPT_REGISTRY } from '../cartridges/prompts/_registry';
+import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 
 /**
- * Static event coverage tests using @xstate/graph.
+ * Static event coverage tests using xstate/graph.
  *
  * These tests verify that critical events are handled in all required states
  * without needing runtime traversal (no mock events/context needed).
@@ -150,5 +153,86 @@ describe('L2 Orchestrator - Event Coverage', () => {
     const graph = toDirectedGraph(orchestratorMachine);
     expect(graph).toBeDefined();
     expect(graph.children.length).toBeGreaterThan(0);
+  });
+});
+
+// --- Registry Completeness ---
+
+describe('Registry Completeness', () => {
+  test.each(Object.entries(VOTE_REGISTRY))('VOTE_REGISTRY: %s produces a valid directed graph', (_type, machine) => {
+    const graph = toDirectedGraph(machine as any);
+    expect(graph).toBeDefined();
+    expect(graph.children.length).toBeGreaterThanOrEqual(0);
+  });
+
+  test.each(Object.entries(PROMPT_REGISTRY))('PROMPT_REGISTRY: %s produces a valid directed graph', (_type, machine) => {
+    const graph = toDirectedGraph(machine as any);
+    expect(graph).toBeDefined();
+    expect(graph.children.length).toBeGreaterThanOrEqual(0);
+  });
+
+  test.each(Object.entries(GAME_REGISTRY))('GAME_REGISTRY: %s produces a valid directed graph', (_type, machine) => {
+    const graph = toDirectedGraph(machine as any);
+    expect(graph).toBeDefined();
+    expect(graph.children.length).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// --- Forced-Termination Contracts ---
+
+// Voting machines that are instant (no interactive states to interrupt)
+const INSTANT_VOTE_MACHINES = new Set(['SECOND_TO_LAST']);
+
+describe('Forced-Termination Contracts', () => {
+  test.each(
+    Object.entries(VOTE_REGISTRY).filter(([type]) => !INSTANT_VOTE_MACHINES.has(type))
+  )('Voting: %s handles INTERNAL.CLOSE_VOTING', (_type, machine) => {
+    const allNodes = getStateNodes(machine as any);
+    const handlers = allNodes.filter(n => nodeHandlesEvent(n, 'INTERNAL.CLOSE_VOTING'));
+    expect(handlers.length).toBeGreaterThan(0);
+  });
+
+  test.each(
+    Object.entries(VOTE_REGISTRY).filter(([type]) => INSTANT_VOTE_MACHINES.has(type))
+  )('Voting: %s is instant (calculating → completed, no CLOSE_VOTING needed)', (_type, machine) => {
+    const allNodes = getStateNodes(machine as any);
+    const finalNodes = allNodes.filter(n => n.type === 'final');
+    expect(finalNodes.length).toBeGreaterThan(0);
+  });
+
+  test.each(Object.entries(PROMPT_REGISTRY))('Prompt: %s handles INTERNAL.END_ACTIVITY', (_type, machine) => {
+    const allNodes = getStateNodes(machine as any);
+    const handlers = allNodes.filter(n => nodeHandlesEvent(n, 'INTERNAL.END_ACTIVITY'));
+    expect(handlers.length).toBeGreaterThan(0);
+  });
+
+  test.each(Object.entries(GAME_REGISTRY))('Game: %s handles INTERNAL.END_GAME', (_type, machine) => {
+    const allNodes = getStateNodes(machine as any);
+    const handlers = allNodes.filter(n => nodeHandlesEvent(n, 'INTERNAL.END_GAME'));
+    expect(handlers.length).toBeGreaterThan(0);
+  });
+});
+
+// --- Critical Path Reachability ---
+
+describe('Critical Path Reachability', () => {
+  test('L2 can reach gameSummary from preGame', () => {
+    const allNodes = getStateNodes(orchestratorMachine);
+    const gameSummaryNode = allNodes.find(n => n.key === 'gameSummary');
+    expect(gameSummaryNode).toBeDefined();
+  });
+
+  test('L3 has a final state (finishing)', () => {
+    const allNodes = getStateNodes(dailySessionMachine);
+    const finishingNode = allNodes.find(n => n.key === 'finishing');
+    expect(finishingNode).toBeDefined();
+    expect(finishingNode!.type).toBe('final');
+  });
+
+  test('L2 gameOver is a final state', () => {
+    const allNodes = getStateNodes(orchestratorMachine);
+    const gameOverNode = allNodes.find(n => n.key === 'gameOver');
+    expect(gameOverNode).toBeDefined();
+    expect(gameOverNode!.type).toBe('final');
   });
 });

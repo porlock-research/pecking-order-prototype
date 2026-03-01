@@ -1,0 +1,103 @@
+{
+  "id": "game-realtime-trivia",
+  "group": "Games",
+  "filePath": "packages/game-cartridges/src/machines/realtime-trivia.ts",
+  "stats": {
+    "stateCount": 5,
+    "transitionCount": 8,
+    "eventTypes": [
+      "GAME.REALTIME_TRIVIA.ANSWER",
+      "INTERNAL.END_GAME",
+      "xstate.after.QUESTION_TIMER.realtime-trivia-game.question",
+      "xstate.after.RESULT_TIMER.realtime-trivia-game.roundResult",
+      "xstate.done.actor.0.realtime-trivia-game.loading",
+      "xstate.error.actor.0.realtime-trivia-game.loading"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "loading",
+      "path": "loading",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": []
+    },
+    {
+      "name": "waiting",
+      "path": "waiting",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": []
+    },
+    {
+      "name": "question",
+      "path": "question",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "GAME.REALTIME_TRIVIA.ANSWER",
+        "INTERNAL.END_GAME"
+      ]
+    },
+    {
+      "name": "roundResult",
+      "path": "roundResult",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "INTERNAL.END_GAME"
+      ]
+    },
+    {
+      "name": "scoreboard",
+      "path": "scoreboard",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "loading",
+      "target": "waiting",
+      "event": "xstate.done.actor.0.realtime-trivia-game.loading"
+    },
+    {
+      "source": "loading",
+      "target": "waiting",
+      "event": "xstate.error.actor.0.realtime-trivia-game.loading"
+    },
+    {
+      "source": "question",
+      "target": "roundResult",
+      "event": "GAME.REALTIME_TRIVIA.ANSWER"
+    },
+    {
+      "source": "question",
+      "target": "scoreboard",
+      "event": "INTERNAL.END_GAME"
+    },
+    {
+      "source": "question",
+      "target": "roundResult",
+      "event": "xstate.after.QUESTION_TIMER.realtime-trivia-game.question"
+    },
+    {
+      "source": "roundResult",
+      "target": "scoreboard",
+      "event": "INTERNAL.END_GAME"
+    },
+    {
+      "source": "roundResult",
+      "target": "question",
+      "event": "xstate.after.RESULT_TIMER.realtime-trivia-game.roundResult"
+    },
+    {
+      "source": "roundResult",
+      "target": "scoreboard",
+      "event": "xstate.after.RESULT_TIMER.realtime-trivia-game.roundResult"
+    }
+  ]
+}

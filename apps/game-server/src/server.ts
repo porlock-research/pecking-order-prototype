@@ -6,7 +6,7 @@ import type { TickerMessage } from "@pecking-order/shared-types";
 import { Events, FactTypes, ALLOWED_CLIENT_EVENTS as CLIENT_EVENTS } from "@pecking-order/shared-types";
 import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, readGoldBalances, creditGold, savePushSubscriptionD1, deletePushSubscriptionD1, getAllPushSubscriptionsD1 } from "./d1-persistence";
 import { flattenState, factToTicker, stateToTicker, buildDebugSummary, broadcastTicker, broadcastDebugTicker } from "./ticker";
-import { createInspector } from "./inspect";
+import { createInspector, type InspectBroadcast } from "./inspect";
 import { log } from "./log";
 import { extractCartridges, extractL3Context, buildSyncPayload, broadcastSync } from "./sync";
 import { isPushEnabled, phasePushPayload, handleFactPush, pushBroadcast, type PushContext } from "./push-triggers";
@@ -53,6 +53,7 @@ export class GameServer extends Server<Env> {
   private goldCredited = false;
   private pendingWakeup = false;  // Buffered wakeup from Scheduler init (ADR-012)
   private connectedPlayers = new Map<string, Set<string>>();  // playerId → Set<connectionId>
+  private inspectSubscribers = new Set<Connection>();  // Admin connections subscribed to inspection events
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -103,7 +104,8 @@ export class GameServer extends Server<Env> {
           const timeMs = new Date(event.time).getTime();
           if (timeMs > now) {
             const ts = Math.floor(timeMs / 1000);
-            uniqueTimestamps.set(ts, `d${day.dayIndex}-${event.action}`);
+            const existing = uniqueTimestamps.get(ts);
+            uniqueTimestamps.set(ts, existing ? `${existing}+${event.action}` : `d${day.dayIndex}-${event.action}`);
           }
         }
       }
@@ -243,12 +245,19 @@ export class GameServer extends Server<Env> {
       }
     });
 
-    // Build inspector for XState event tracing
+    // Build inspector for XState event tracing + admin WebSocket broadcast
     let parsedGameId = 'unknown';
     if (snapshotStr) {
       try { parsedGameId = JSON.parse(snapshotStr)?.l2?.context?.gameId || 'unknown'; } catch { /* ignore */ }
     }
-    const inspect = createInspector(parsedGameId);
+    const broadcastInspect: InspectBroadcast = (message) => {
+      if (this.inspectSubscribers.size === 0) return;
+      const json = JSON.stringify(message);
+      for (const ws of this.inspectSubscribers) {
+        try { ws.send(json); } catch { /* connection may have closed */ }
+      }
+    };
+    const inspect = createInspector(parsedGameId, broadcastInspect);
 
     // Restore or fresh boot
     if (snapshotStr) {
@@ -710,6 +719,19 @@ export class GameServer extends Server<Env> {
     const url = new URL(ctx.request.url);
     const roster = this.actor?.getSnapshot().context.roster || {};
 
+    // Admin connections: Bearer token auth for inspector/admin tools
+    const adminSecret = url.searchParams.get("adminSecret");
+    if (adminSecret) {
+      if (!this.env.AUTH_SECRET || !timingSafeEqual(adminSecret, this.env.AUTH_SECRET)) {
+        ws.close(4003, "Invalid admin secret");
+        return;
+      }
+      ws.setState({ playerId: '__admin__', isAdmin: true });
+      ws.serializeAttachment({ playerId: '__admin__', isAdmin: true });
+      log('info', 'L1', 'Admin connection established');
+      return;
+    }
+
     let playerId: string | null = null;
     const token = url.searchParams.get("token");
     if (token) {
@@ -773,6 +795,7 @@ export class GameServer extends Server<Env> {
         this.connectedPlayers.delete(playerId);
       }
     }
+    this.inspectSubscribers.delete(ws);
     this.broadcastPresence();
   }
 
@@ -782,8 +805,10 @@ export class GameServer extends Server<Env> {
     try {
       const event = JSON.parse(message);
       // ws.state may be lost after hibernation — fall back to attachment
-      const state = ws.state as { playerId: string } | null;
-      const playerId = state?.playerId || ws.deserializeAttachment()?.playerId;
+      const state = ws.state as { playerId: string; isAdmin?: boolean } | null;
+      const attachment = ws.deserializeAttachment();
+      const playerId = state?.playerId || attachment?.playerId;
+      const isAdmin = state?.isAdmin || attachment?.isAdmin;
 
       // WS messages are high-frequency — don't log individually
 
@@ -795,8 +820,22 @@ export class GameServer extends Server<Env> {
 
       // Re-set ws.state if it was lost (so subsequent reads in this session work)
       if (!state?.playerId && playerId) {
-        ws.setState({ playerId });
+        ws.setState({ playerId, isAdmin });
       }
+
+      // Inspector: admin clients can subscribe to inspection events
+      if (event.type === 'INSPECT.SUBSCRIBE') {
+        this.inspectSubscribers.add(ws);
+        log('info', 'L1', 'Inspector subscriber added', { playerId });
+        return;
+      }
+      if (event.type === 'INSPECT.UNSUBSCRIBE') {
+        this.inspectSubscribers.delete(ws);
+        return;
+      }
+
+      // Admin connections can only use inspector events
+      if (isAdmin) return;
 
       // Presence: relay typing indicators without touching XState
       if (event.type === Events.Presence.TYPING) {

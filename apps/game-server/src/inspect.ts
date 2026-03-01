@@ -4,7 +4,7 @@ import { log } from './log';
  * Flatten XState v5 state value to a readable dot-path.
  * e.g. { dayLoop: { activeSession: { running: {} } } } → "dayLoop.activeSession.running"
  */
-function flattenValue(value: unknown): string {
+export function flattenValue(value: unknown): string {
   if (typeof value === 'string') return value;
   if (typeof value === 'object' && value !== null) {
     const entries = Object.entries(value);
@@ -35,30 +35,81 @@ const SKIP_EVENTS = new Set([
   'PRESENCE.STOP_TYPING',
 ]);
 
+/** Broadcast callback type for sending inspection events to admin clients */
+export type InspectBroadcast = (message: object) => void;
+
+/**
+ * Depth-limited serialization of snapshot context.
+ * Prevents bloating WebSocket with deeply nested state (roster, chatLog, etc.).
+ */
+function safeSerializeSnapshot(snapshot: any): object {
+  if (!snapshot) return {};
+  return {
+    value: snapshot.value,
+    status: snapshot.status,
+    changed: snapshot.changed,
+    // Context keys only (no deep values) to keep payload small
+    contextKeys: snapshot.context ? Object.keys(snapshot.context) : [],
+  };
+}
+
 /**
  * Creates an XState inspect callback for runtime state transition tracing.
  *
- * Logs ONE entry per meaningful state transition:
- * {
- *   actor: "l3-session",
- *   eventType: "INTERNAL.INJECT_PROMPT",
- *   from: "running.mainStage.voting | running.social.active",
- *   to: "running.mainStage.voting | running.social.active",
- *   changed: true
- * }
+ * Two responsibilities:
+ * 1. Axiom logging (existing) — structured logs for each meaningful transition
+ * 2. WebSocket broadcast (new) — streams INSPECT.* events to admin clients
+ *    for real-time visualization in Stately Inspector
  *
- * This lets you trace the full event→state flow in Axiom by filtering
- * on component == "XState" and sorting by time.
- *
- * Also emits warn-level entries when events are silently dropped.
+ * The broadcast callback is optional; if no admin clients are subscribed,
+ * the callback is a no-op and adds zero overhead.
  */
-export function createInspector(gameId: string) {
+export function createInspector(gameId: string, broadcast?: InspectBroadcast) {
   // Track: actorId → { eventType, sourceId, previousState }
   const actorState = new Map<string, { previousState: string }>();
   const pendingEvent = new Map<string, { eventType: string; sourceId: string }>();
 
   return (inspEvent: any) => {
     const type: string = inspEvent.type;
+
+    // --- Broadcast to admin clients (all actor events, not just tracked) ---
+    if (broadcast) {
+      if (type === '@xstate.actor') {
+        const actorId: string = inspEvent.actorRef?.id || inspEvent.actorRef?.sessionId || '?';
+        broadcast({
+          type: 'INSPECT.ACTOR',
+          actorId,
+          snapshot: safeSerializeSnapshot(inspEvent.snapshot),
+          timestamp: Date.now(),
+        });
+      }
+
+      if (type === '@xstate.event') {
+        const actorId: string = inspEvent.actorRef?.id || inspEvent.actorRef?.sessionId || '?';
+        const sourceId: string = inspEvent.sourceRef?.id || inspEvent.sourceRef?.sessionId || 'external';
+        const eventType: string = inspEvent.event?.type || '';
+        broadcast({
+          type: 'INSPECT.EVENT',
+          actorId,
+          sourceId,
+          eventType,
+          event: { type: eventType },
+          timestamp: Date.now(),
+        });
+      }
+
+      if (type === '@xstate.snapshot') {
+        const actorId: string = inspEvent.actorRef?.id || inspEvent.actorRef?.sessionId || '?';
+        broadcast({
+          type: 'INSPECT.SNAPSHOT',
+          actorId,
+          snapshot: safeSerializeSnapshot(inspEvent.snapshot),
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    // --- Axiom logging (existing behavior, unchanged) ---
 
     if (type === '@xstate.event') {
       const eventType: string = inspEvent.event?.type || '';

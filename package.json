@@ -8,8 +8,10 @@
   "scripts": {
     "clean": "turbo run clean && rm -rf node_modules/.cache .turbo",
     "build": "turbo run build",
+    "test": "turbo run test",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
+    "generate:docs": "turbo run generate:docs",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {

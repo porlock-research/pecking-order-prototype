@@ -42,39 +42,57 @@ Pecking Order uses a layered observability approach designed around its XState a
 
 ---
 
-## Layer 1: Build-Time Static Analysis (`@xstate/graph`)
+## Layer 1: Build-Time Static Analysis (`xstate/graph`)
 
 ### What it does
-Uses `getStateNodes()` and `toDirectedGraph()` to statically traverse XState machine definitions and verify that critical events have handlers in every reachable state.
+Uses `getStateNodes()`, `toDirectedGraph()`, and `getShortestPaths()` from xstate's built-in `xstate/graph` subpath to statically traverse all 33 XState machine definitions. Verifies event handlers, structural integrity, and cartridge contracts.
 
 ### What it catches
 - **Missing event handlers** in specific states (e.g., INJECT_PROMPT only handled in groupChat but not voting/dailyGame)
 - **Unreachable states** that can never be entered
 - **Dead-end states** with no outgoing transitions
 - **Structural regressions** when machine configs are refactored
+- **Broken cartridge contracts** — missing termination event handlers (CLOSE_VOTING, END_ACTIVITY, END_GAME)
+- **Registry staleness** — machines that fail to produce valid directed graphs
 
 ### When it runs
-- `npm test` locally
+- `npm test` (root — runs via turbo, builds dependencies first)
 - CI pipeline on every push
 
 ### Location
 `apps/game-server/src/machines/__tests__/event-coverage.test.ts`
 
-### Tests (10 total)
+### Tests (73 total)
 
-**L3 Daily Session Machine:**
+**L3 Daily Session Machine (5 tests):**
 1. `INTERNAL.INJECT_PROMPT` handled in all mainStage substates (groupChat, dailyGame, voting)
 2. `FACT.RECORD` handled in running state
 3. `INTERNAL.END_DAY` handled in running state
 4. `SOCIAL.SEND_MSG` handled in social.active state
 5. L3 graph is constructable (no circular/invalid references)
 
-**L2 Orchestrator Machine:**
+**L2 Orchestrator Machine (5 tests):**
 6. `ADMIN.INJECT_TIMELINE_EVENT` handled in activeSession state
 7. `ADMIN.INJECT_TIMELINE_EVENT` handled in nightSummary state (logged as dropped)
 8. `SOCIAL.SEND_MSG` forwarded in activeSession state
 9. `FACT.RECORD` handled in both activeSession and nightSummary
 10. L2 graph is constructable
+
+**Registry Completeness (30 tests):**
+11-18. Every VOTE_REGISTRY machine (8) produces a valid directed graph
+19-24. Every PROMPT_REGISTRY machine (6) produces a valid directed graph
+25-40. Every GAME_REGISTRY machine (16) produces a valid directed graph
+
+**Forced-Termination Contracts (31 tests):**
+41-47. Interactive voting machines handle `INTERNAL.CLOSE_VOTING` (7 — `SECOND_TO_LAST` exempted as instant)
+48. `SECOND_TO_LAST` is instant (calculating → completed, has final state)
+49-54. All prompt machines handle `INTERNAL.END_ACTIVITY` (6)
+55-70. All game machines handle `INTERNAL.END_GAME` (16)
+
+**Critical Path Reachability (3 tests):**
+71. L2 has reachable `gameSummary` state
+72. L3 `finishing` is a final state
+73. L2 `gameOver` is a final state
 
 ### How to add new coverage tests
 When adding a new event type or handler to a machine:
@@ -82,17 +100,45 @@ When adding a new event type or handler to a machine:
 2. Add a test that uses `findStateNodes()` to locate those states
 3. Assert `nodeHandlesEvent(node, 'EVENT.TYPE')` returns true for each
 
+When adding a new cartridge machine:
+1. Add it to the appropriate registry (VOTE/PROMPT/GAME_REGISTRY)
+2. It will automatically get registry completeness + forced-termination tests
+
 ### Limitations
 - Static analysis only — cannot verify runtime behavior, guard conditions, or action side-effects
 - Cannot verify that `sendTo('l3-session', ...)` actually delivers events to the child (that's an XState runtime concern)
-- Does not test cartridge machines (voting/game/prompt) — those are simpler single-actor machines with fewer routing concerns
+- Instant machines (like `SECOND_TO_LAST`) need explicit exemption from termination tests
+
+### Build-Time Machine Catalog
+
+In addition to tests, a `generate:docs` script extracts structural documentation from all 33 machines:
+
+```bash
+npm run generate:docs  # root — runs via turbo, builds dependencies first
+```
+
+**Output** (`docs/machines/`):
+- `*.json` — per-machine structured data (states, transitions, events, stats)
+- `catalog.json` — all machines in one file
+- `README.md` — human-readable catalog with summary table and per-machine sections
+
+**Use cases:**
+- Diff JSON in PRs to catch unintended structural changes
+- Transform JSON into simplified `createMachine()` code for Stately Studio import
+- Quick reference for state counts, event types, and transition tables
+
+**Location:** `apps/game-server/scripts/generate-machine-docs.ts`
 
 ---
 
-## Layer 2: Runtime Event Tracing (XState `inspect`)
+## Layer 2: Runtime Event Tracing (XState `inspect`) + Stately Inspector Bridge
 
 ### What it does
 Hooks into XState's native inspection API via `createActor(machine, { inspect })`. Fires a callback for every event received, state snapshot produced, and child actor created/completed across the entire actor hierarchy.
+
+Two responsibilities:
+1. **Axiom logging** — structured logs for each meaningful state transition (existing)
+2. **WebSocket broadcast** — streams `INSPECT.ACTOR/EVENT/SNAPSHOT` events to admin clients for real-time visualization in Stately Inspector (new, ADR-079)
 
 ### What it catches
 - **Silently dropped events** — event arrives at an actor but produces no state change (snapshot.changed === false). Logged as `event.unhandled` at warn level.
@@ -102,12 +148,13 @@ Hooks into XState's native inspection API via `createActor(machine, { inspect })
 
 ### When it runs
 - Production and staging, always on
-- Zero overhead when nothing interesting happens (high-frequency events like SEND_MSG are at debug level)
+- WebSocket broadcast only active when admin clients are subscribed (zero overhead otherwise)
 
 ### Location
-`apps/game-server/src/inspect.ts`
+- `apps/game-server/src/inspect.ts` — `createInspector(gameId, broadcast?)` factory
+- `apps/game-server/src/server.ts` — `inspectSubscribers` set, admin WebSocket connections, `INSPECT.SUBSCRIBE/UNSUBSCRIBE`
 
-### Event classification
+### Event classification (Axiom)
 
 | Event pattern | Log level | Rationale |
 |---------------|-----------|-----------|
@@ -119,19 +166,49 @@ Hooks into XState's native inspection API via `createActor(machine, { inspect })
 | `xstate.init`, `xstate.stop` | debug | Internal XState lifecycle |
 | Unhandled admin events (changed === false) | warn | Potential bug — event arrived but was ignored |
 
+### Inspector bridge messages (WebSocket)
+
+| Message type | Payload | Sent when |
+|-------------|---------|-----------|
+| `INSPECT.ACTOR` | `actorId`, `snapshot` (depth-limited) | Actor created (`@xstate.actor`) |
+| `INSPECT.EVENT` | `actorId`, `sourceId`, `eventType` | Event sent to actor (`@xstate.event`) |
+| `INSPECT.SNAPSHOT` | `actorId`, `snapshot` (value + status + contextKeys) | Snapshot updated (`@xstate.snapshot`) |
+
+Snapshot data is depth-limited: includes `value`, `status`, `changed`, and `contextKeys` (array of context property names) — not full context, to keep payloads small.
+
+### Admin WebSocket connections
+
+Admin clients connect via `?adminSecret=<AUTH_SECRET>` query parameter. These connections:
+- Bypass roster validation (no playerId required)
+- Can send `INSPECT.SUBSCRIBE`/`INSPECT.UNSUBSCRIBE` to opt into the inspection stream
+- Are restricted to inspector events only (no game events)
+- Are cleaned up on disconnect
+
+### Admin inspector page
+
+`/admin/inspector` — full-screen UI at `apps/lobby/app/admin/inspector/page.tsx`:
+- Game selector (dropdown + paste game ID)
+- WebSocket connection via `getInspectorConnection()` server action
+- Live actor state cards (current state value per actor)
+- Scrollable event timeline (color-coded: EVENT=blue, SNAPSHOT=green, ACTOR=amber)
+- Event filtering and auto-scroll
+- Embedded Stately Inspector iframe via `@statelyai/inspect` `createBrowserInspector({ iframe })`
+- Proxies `INSPECT.*` events to the iframe using `inspector.actor/event/snapshot` manual API
+- Stately Inspector renders: state machine diagram, event timeline, sequence diagram, actor hierarchy
+
 ### How to read inspector logs in Axiom
 
 ```apl
 ['po-logs-staging']
-| where component == "Inspector"
+| where component == "XState"
 | where event == "event.unhandled"
-| project _time, eventType, actorId, stateValue, gameId
+| project _time, eventType, actor, state, gameId
 ```
 
 ```apl
 ['po-logs-staging']
-| where component == "Inspector" and event == "event.admin"
-| project _time, eventType, actorId, sourceId, gameId
+| where component == "XState" and event == "transition"
+| project _time, eventType, actor, source, from, to, gameId
 | order by _time asc
 ```
 
@@ -289,17 +366,20 @@ Previously silent `catch {}` blocks now log `console.warn` with context:
 
 How each layer would catch common bug categories:
 
-| Bug type | Example | Graph tests | Inspect | Logs | Axiom Monitor |
-|----------|---------|:-----------:|:-------:|:----:|:-------------:|
-| Missing event handler | INJECT_PROMPT in voting | **YES** | YES | — | YES |
-| Event forwarding failure | L2 not sendTo L3 | partial | **YES** | — | YES |
-| Guard always rejecting | DM guard too strict | — | — | **YES** | YES |
-| Actor not spawning | Cartridge spawn crash | — | **YES** | YES | YES |
-| Silent exception in action | assign() throws | — | — | **YES** | YES |
-| State stuck (no transition) | Day never advances | — | YES | — | YES |
-| Client rendering crash | Bad state projection | — | — | — | — (client-side) |
+| Bug type | Example | Graph tests | Machine catalog | Inspect (Axiom) | Inspect (live) | Logs | Axiom Monitor |
+|----------|---------|:-----------:|:---------------:|:---------------:|:--------------:|:----:|:-------------:|
+| Missing event handler | INJECT_PROMPT in voting | **YES** | — | YES | YES | — | YES |
+| Missing termination handler | Voting machine lacks CLOSE_VOTING | **YES** | — | — | — | — | — |
+| Event forwarding failure | L2 not sendTo L3 | partial | — | **YES** | **YES** | — | YES |
+| Guard always rejecting | DM guard too strict | — | — | — | — | **YES** | YES |
+| Actor not spawning | Cartridge spawn crash | — | — | **YES** | **YES** | YES | YES |
+| Silent exception in action | assign() throws | — | — | — | — | **YES** | YES |
+| State stuck (no transition) | Day never advances | — | — | YES | **YES** | — | YES |
+| Structural regression | Refactor removes state | — | **YES** (diff) | — | — | — | — |
+| Registry staleness | Machine not in registry | **YES** | **YES** | — | — | — | — |
+| Client rendering crash | Bad state projection | — | — | — | — | — | — (client-side) |
 
-**Key insight**: No single layer catches everything. The graph tests catch structural issues before deploy. The inspector catches runtime anomalies. Structured logs catch business logic failures. Axiom monitors alert on production patterns. Together they cover the space.
+**Key insight**: No single layer catches everything. The graph tests (73 tests) catch structural issues before deploy. The machine catalog diffs catch regressions in PRs. The inspector bridge enables real-time visualization during development and live debugging in production. Structured logs catch business logic failures. Axiom monitors alert on production patterns. Together they cover the space.
 
 ---
 
@@ -308,9 +388,11 @@ How each layer would catch common bug categories:
 When adding a new event type, cartridge, or state:
 
 1. **Add graph test** — verify the event is handled in all states where it should be
-2. **Use `log()` helper** — at warn/error for rejections/failures, info for lifecycle events, debug for high-frequency
-3. **Inspector auto-covers** — new events automatically traced; admin-prefixed events automatically elevated to info
-4. **Consider a monitor** — if the event represents a failure mode, add an Axiom threshold monitor
+2. **Add to registry** — new cartridges added to VOTE/PROMPT/GAME_REGISTRY automatically get completeness + termination tests
+3. **Regenerate catalog** — `npm run generate:docs` (root, via turbo) to update machine documentation; diff JSON in PR
+4. **Use `log()` helper** — at warn/error for rejections/failures, info for lifecycle events, debug for high-frequency
+5. **Inspector auto-covers** — new events automatically traced via inspect callback; automatically broadcast to admin inspector
+6. **Consider a monitor** — if the event represents a failure mode, add an Axiom threshold monitor
 
 When adding a new service:
 
@@ -326,8 +408,13 @@ When adding a new service:
 | File | Purpose |
 |------|---------|
 | `apps/game-server/src/log.ts` | Structured log helper |
-| `apps/game-server/src/inspect.ts` | XState inspect callback factory |
-| `apps/game-server/src/machines/__tests__/event-coverage.test.ts` | Static event coverage tests |
+| `apps/game-server/src/inspect.ts` | XState inspect callback + inspector bridge broadcast |
+| `apps/game-server/src/server.ts` | L1 — admin WebSocket, `inspectSubscribers`, `INSPECT.SUBSCRIBE` |
+| `apps/game-server/src/machines/__tests__/event-coverage.test.ts` | Static event coverage tests (73 tests, 33 machines) |
+| `apps/game-server/scripts/generate-machine-docs.ts` | Build-time machine catalog generator |
+| `docs/machines/` | Generated JSON snapshots + README catalog |
+| `apps/lobby/app/admin/inspector/page.tsx` | Admin inspector page (Stately Inspector embed) |
+| `apps/lobby/app/actions.ts` | `getInspectorConnection()` server action |
 | `apps/client/src/components/ErrorBoundary.tsx` | React error boundary |
 | `apps/game-server/wrangler.toml` | OTLP export config (game-server) |
 | `apps/lobby/wrangler.json` | OTLP export config (lobby) |

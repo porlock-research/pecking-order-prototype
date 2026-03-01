@@ -1,0 +1,61 @@
+{
+  "id": "vote-executioner",
+  "group": "Voting",
+  "filePath": "src/machines/cartridges/voting/executioner-machine.ts",
+  "stats": {
+    "stateCount": 3,
+    "transitionCount": 3,
+    "eventTypes": [
+      "INTERNAL.CLOSE_VOTING",
+      "VOTE.EXECUTIONER.ELECT",
+      "VOTE.EXECUTIONER.PICK"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "electing",
+      "path": "electing",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "VOTE.EXECUTIONER.ELECT",
+        "INTERNAL.CLOSE_VOTING"
+      ]
+    },
+    {
+      "name": "executionerPicking",
+      "path": "executionerPicking",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "VOTE.EXECUTIONER.PICK"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "electing",
+      "target": "electing",
+      "event": "VOTE.EXECUTIONER.ELECT"
+    },
+    {
+      "source": "electing",
+      "target": "executionerPicking",
+      "event": "INTERNAL.CLOSE_VOTING"
+    },
+    {
+      "source": "executionerPicking",
+      "target": "completed",
+      "event": "VOTE.EXECUTIONER.PICK"
+    }
+  ]
+}

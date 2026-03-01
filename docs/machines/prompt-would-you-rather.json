@@ -1,0 +1,51 @@
+{
+  "id": "prompt-would-you-rather",
+  "group": "Prompts",
+  "filePath": "src/machines/cartridges/prompts/would-you-rather-machine.ts",
+  "stats": {
+    "stateCount": 2,
+    "transitionCount": 3,
+    "eventTypes": [
+      "ACTIVITY.WYR.CHOOSE",
+      "INTERNAL.END_ACTIVITY"
+    ],
+    "hasParallelRegions": false,
+    "hasFinalState": true
+  },
+  "states": [
+    {
+      "name": "active",
+      "path": "active",
+      "type": "atomic",
+      "parent": "(root)",
+      "events": [
+        "ACTIVITY.WYR.CHOOSE",
+        "INTERNAL.END_ACTIVITY"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "completed",
+      "type": "final",
+      "parent": "(root)",
+      "events": []
+    }
+  ],
+  "transitions": [
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "ACTIVITY.WYR.CHOOSE"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "ACTIVITY.WYR.CHOOSE"
+    },
+    {
+      "source": "active",
+      "target": "completed",
+      "event": "INTERNAL.END_ACTIVITY"
+    }
+  ]
+}
