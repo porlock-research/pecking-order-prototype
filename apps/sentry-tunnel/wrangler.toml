@@ -1,0 +1,51 @@
+name = "sentry-tunnel-dev"
+main = "src/worker.ts"
+compatibility_date = "2026-02-25"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[observability.logs]
+invocation_logs = true
+head_sampling_rate = 1
+
+# ── Staging ──────────────────────────────────────────────
+[env.staging]
+name = "sentry-tunnel-staging"
+workers_dev = true
+
+[env.staging.observability]
+enabled = true
+
+[env.staging.observability.logs]
+invocation_logs = true
+head_sampling_rate = 1
+
+[[env.staging.routes]]
+pattern = "staging-t.peckingorder.ca"
+custom_domain = true
+
+[env.staging.vars]
+SENTRY_HOST = "o4510960755343360.ingest.us.sentry.io"
+ALLOWED_PROJECT_IDS = "4510960788701184,4510960803905536"
+
+# ── Production ───────────────────────────────────────────
+[env.production]
+name = "sentry-tunnel"
+workers_dev = true
+
+[env.production.observability]
+enabled = true
+
+[env.production.observability.logs]
+invocation_logs = true
+head_sampling_rate = 1
+
+[[env.production.routes]]
+pattern = "t.peckingorder.ca"
+custom_domain = true
+
+[env.production.vars]
+SENTRY_HOST = "o4510960755343360.ingest.us.sentry.io"
+ALLOWED_PROJECT_IDS = "4510960788701184,4510960803905536"

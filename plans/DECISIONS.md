@@ -1113,3 +1113,21 @@ This document tracks significant architectural decisions, their context, and con
     *   Separate Sentry projects for staging and production (different DSNs).
     *   Source maps in CI require `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` env vars (optional — plugin disables itself without them).
     *   **Files**: `apps/client/src/components/InstallBanner.tsx` (new), `apps/client/src/lib/sentry.ts` (new), `apps/client/src/components/PushPrompt.tsx`, `apps/client/src/hooks/usePushNotifications.ts`, `apps/client/src/components/ErrorBoundary.tsx`, `apps/client/src/App.tsx`, `apps/client/vite.config.ts`, `apps/client/.env.staging`, `apps/client/.env.production`, `apps/client/package.json`.
+
+## [ADR-079] Sentry Tunnel — Standalone Cloudflare Worker
+*   **Date:** 2026-02-28
+*   **Status:** Accepted
+*   **Context:** Sentry events from the client are blocked by adblockers because requests go directly to `ingest.us.sentry.io`. This silently drops error reports and performance data from a significant portion of users, undermining the observability added in ADR-078.
+*   **Decision:**
+    *   **Standalone tunnel worker** (`apps/sentry-tunnel/`): Minimal Cloudflare Worker that proxies Sentry envelope requests through our own domain. Isolated from the game server — no shared bindings, no D1/DO/R2.
+    *   **Short subdomains**: `t.peckingorder.ca` (production), `staging-t.peckingorder.ca` (staging). URL appears in every Sentry request so brevity matters.
+    *   **Tunnel logic** (~55 lines): CORS preflight (204), POST-only (405 otherwise), parse envelope header JSON to extract DSN, validate project ID against `ALLOWED_PROJECT_IDS` env var (403 on mismatch), forward raw body to `https://${SENTRY_HOST}/api/${projectId}/envelope/` with `Content-Type: application/x-sentry-envelope`, return upstream status.
+    *   **Both project IDs allowed in both envs**: The tunnel is a stateless proxy — the DSN in the envelope determines which Sentry project receives the event. `ALLOWED_PROJECT_IDS = "4510960788701184,4510960803905536"`.
+    *   **Client integration**: `tunnel` property in `Sentry.init()` via `VITE_SENTRY_TUNNEL` env var. When undefined (local dev), Sentry falls back to direct ingest — no breakage.
+    *   **CI**: New `deploy-sentry-tunnel` job in both staging and production workflows. Runs in parallel with other deploy jobs.
+*   **Consequences:**
+    *   Sentry events bypass adblockers by routing through first-party domain.
+    *   No changes to game server — tunnel is a fully independent worker.
+    *   Minimal attack surface: project ID allowlist prevents abuse as an open proxy.
+    *   Local dev unchanged (no tunnel configured, direct ingest).
+    *   **Files**: `apps/sentry-tunnel/package.json` (new), `apps/sentry-tunnel/tsconfig.json` (new), `apps/sentry-tunnel/wrangler.toml` (new), `apps/sentry-tunnel/src/worker.ts` (new), `apps/client/src/lib/sentry.ts`, `apps/client/.env.staging`, `apps/client/.env.production`, `.github/workflows/deploy-staging.yml`, `.github/workflows/deploy-production.yml`.

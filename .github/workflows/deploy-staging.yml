@@ -56,6 +56,7 @@ jobs:
           VITE_GAME_SERVER_HOST: https://staging-api.peckingorder.ca
           VITE_LOBBY_HOST: https://staging-lobby.peckingorder.ca
           VITE_SENTRY_DSN: https://96074c1a8fb4e2d42064acfafb167eb3@o4510960755343360.ingest.us.sentry.io/4510960788701184
+          VITE_SENTRY_TUNNEL: https://staging-t.peckingorder.ca/tunnel
           VITE_SENTRY_ENVIRONMENT: staging
       - name: Deploy Client (Staging)
         if: env.CF_API_TOKEN != ''
@@ -63,6 +64,27 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler pages deploy apps/client/dist --project-name=pecking-order-client-staging --branch=main
+
+  deploy-sentry-tunnel:
+    name: Deploy Sentry Tunnel (Staging)
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Build Sentry Tunnel
+        run: npx turbo run build --filter=sentry-tunnel
+      - name: Deploy Sentry Tunnel (Staging)
+        if: env.CF_API_TOKEN != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: apps/sentry-tunnel
+        run: npx wrangler deploy --env staging
 
   deploy-server:
     name: Deploy Game Server (Staging)

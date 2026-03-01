@@ -1,0 +1,14 @@
+{
+  "name": "sentry-tunnel",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "tsc --noEmit",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260207.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^4.63.0"
+  }
+}
