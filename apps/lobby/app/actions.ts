@@ -1088,6 +1088,33 @@ export async function getScheduledTasks(gameId: string) {
   }
 }
 
+// ── Admin: Push Broadcast ────────────────────────────────────────────────
+
+export async function broadcastPushUpdate(message?: string) {
+  const env = await getEnv();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+
+  try {
+    const res = await fetch(`${GAME_SERVER_HOST}/api/push/broadcast`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${AUTH_SECRET}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: 'Pecking Order',
+        body: message || 'A new update is available! Tap to refresh.',
+        tag: 'update',
+      }),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    return await res.json() as { ok: boolean; total: number; sent: number; expired: number; errors: number };
+  } catch (err: any) {
+    return { ok: false, error: err.message };
+  }
+}
+
 // ── Admin: Game Details ──────────────────────────────────────────────────
 
 export async function getGameDetails(gameId: string) {

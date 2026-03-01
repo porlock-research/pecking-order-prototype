@@ -119,6 +119,20 @@ export async function getPushSubscriptionD1(
   return { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } };
 }
 
+/** Fetch all push subscriptions from D1. Used for broadcast notifications. */
+export async function getAllPushSubscriptionsD1(
+  db: D1Database,
+): Promise<Array<{ userId: string; endpoint: string; keys: { p256dh: string; auth: string } }>> {
+  const rows = await db.prepare(
+    'SELECT user_id, endpoint, p256dh, auth FROM PushSubscriptions'
+  ).all<{ user_id: string; endpoint: string; p256dh: string; auth: string }>();
+  return (rows.results || []).map(r => ({
+    userId: r.user_id,
+    endpoint: r.endpoint,
+    keys: { p256dh: r.p256dh, auth: r.auth },
+  }));
+}
+
 /** Read gold balances for a set of real user IDs. Returns Map<realUserId, gold>. */
 export async function readGoldBalances(
   db: D1Database,

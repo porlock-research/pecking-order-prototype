@@ -4,12 +4,13 @@ import { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Scheduler } from "partywhen";
 import type { TickerMessage } from "@pecking-order/shared-types";
 import { Events, FactTypes, ALLOWED_CLIENT_EVENTS as CLIENT_EVENTS } from "@pecking-order/shared-types";
-import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, readGoldBalances, creditGold, savePushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
+import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, readGoldBalances, creditGold, savePushSubscriptionD1, deletePushSubscriptionD1, getAllPushSubscriptionsD1 } from "./d1-persistence";
 import { flattenState, factToTicker, stateToTicker, buildDebugSummary, broadcastTicker, broadcastDebugTicker } from "./ticker";
 import { createInspector } from "./inspect";
 import { log } from "./log";
 import { extractCartridges, extractL3Context, buildSyncPayload, broadcastSync } from "./sync";
 import { isPushEnabled, phasePushPayload, handleFactPush, pushBroadcast, type PushContext } from "./push-triggers";
+import { sendPushNotification } from "./push-send";
 
 const STORAGE_KEY = "game_state_snapshot";
 
@@ -1005,6 +1006,57 @@ export default {
           status: 500,
           headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
         });
+      }
+    }
+
+    // Admin: broadcast push notification to all subscribers (e.g. "new update available")
+    if (url.pathname === '/api/push/broadcast') {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { status: 204, headers: CORS_HEADERS });
+      }
+      if (request.method !== 'POST') {
+        return new Response('Method not allowed', { status: 405, headers: CORS_HEADERS });
+      }
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !timingSafeEqual(authHeader, `Bearer ${env.AUTH_SECRET}`)) {
+        return new Response('Unauthorized', { status: 401, headers: CORS_HEADERS });
+      }
+
+      try {
+        let payload = { title: 'Pecking Order', body: 'A new update is available! Tap to refresh.', tag: 'update' };
+        try {
+          const body = await request.json() as any;
+          if (body?.title) payload.title = body.title;
+          if (body?.body) payload.body = body.body;
+          if (body?.tag) payload.tag = body.tag;
+        } catch { /* use defaults */ }
+
+        const subs = await getAllPushSubscriptionsD1(env.DB);
+        log('info', 'Push API', 'Broadcasting to all subscribers', { count: subs.length });
+
+        let sent = 0;
+        let expired = 0;
+        let errors = 0;
+        await Promise.allSettled(subs.map(async (sub) => {
+          const result = await sendPushNotification(
+            { endpoint: sub.endpoint, keys: sub.keys },
+            payload,
+            env.VAPID_PRIVATE_JWK,
+          );
+          if (result === 'sent') sent++;
+          else if (result === 'expired') {
+            expired++;
+            await deletePushSubscriptionD1(env.DB, sub.userId);
+          } else errors++;
+        }));
+
+        return new Response(JSON.stringify({ ok: true, total: subs.length, sent, expired, errors }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+        });
+      } catch (err) {
+        log('error', 'Push API', 'Broadcast failed', { error: String(err) });
+        return new Response('Server error', { status: 500, headers: CORS_HEADERS });
       }
     }
 

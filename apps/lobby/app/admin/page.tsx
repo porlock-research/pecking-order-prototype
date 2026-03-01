@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { resetSelectedTables } from '../actions';
+import { resetSelectedTables, broadcastPushUpdate } from '../actions';
 
 const LOBBY_TABLES = ['Invites', 'GameSessions', 'Sessions', 'MagicLinks', 'Users'] as const;
 const GAME_SERVER_TABLES = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'] as const;
@@ -81,6 +81,8 @@ export default function AdminPage() {
         </div>
       </section>
 
+      <PushBroadcastSection />
+
       <section className="border border-red-300 rounded-lg p-4 space-y-4 bg-red-50">
         <h2 className="text-lg font-semibold text-red-800">Database Reset</h2>
         <p className="text-xs text-red-600">
@@ -146,5 +148,53 @@ export default function AdminPage() {
         )}
       </section>
     </div>
+  );
+}
+
+function PushBroadcastSection() {
+  const [message, setMessage] = useState('A new update is available! Tap to refresh.');
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  async function handleBroadcast() {
+    if (!message.trim()) return;
+    setSending(true);
+    setResult(null);
+    const res = await broadcastPushUpdate(message.trim());
+    if (res.ok && 'sent' in res) {
+      setResult({ ok: true, message: `Sent: ${res.sent} | Expired: ${res.expired} | Errors: ${res.errors} | Total: ${res.total}` });
+    } else {
+      setResult({ ok: false, message: ('error' in res ? res.error : 'Unknown error') || 'Unknown error' });
+    }
+    setSending(false);
+  }
+
+  return (
+    <section className="border border-blue-300 rounded-lg p-4 space-y-3 bg-blue-50">
+      <h2 className="text-lg font-semibold text-blue-800">Push Broadcast</h2>
+      <p className="text-xs text-blue-600">
+        Send a push notification to all subscribed players. Useful after deploys to prompt PWA refresh.
+      </p>
+      <textarea
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        rows={2}
+        className="w-full border border-blue-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+      />
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleBroadcast}
+          disabled={sending || !message.trim()}
+          className="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {sending ? 'Sending...' : 'Broadcast to All'}
+        </button>
+        {result && (
+          <span className={`text-sm font-mono ${result.ok ? 'text-green-700' : 'text-red-700'}`}>
+            {result.message}
+          </span>
+        )}
+      </div>
+    </section>
   );
 }

@@ -1160,3 +1160,20 @@ This document tracks significant architectural decisions, their context, and con
     *   No behavioral change for the caller — `waitUntil` is non-blocking and doesn't delay HTTP responses or WebSocket processing.
     *   Minimal code change: 2 files, ~15 lines. The push logic itself is unchanged.
     *   **Files**: `apps/game-server/src/push-triggers.ts`, `apps/game-server/src/server.ts`.
+
+## [ADR-082] Push Broadcast — Manual Update Notification for Playtesters
+*   **Date:** 2026-02-28
+*   **Status:** Accepted
+*   **Context:** PWA updates are seamless when the app is open (auto-update + hourly checks), but if the PWA is closed, new code isn't picked up until the player relaunches. During active playtesting with frequent deploys, players can be stuck on old versions without knowing. Since push notifications are received by the service worker even when the app is closed, and the `notificationclick` handler opens the app (triggering the SW update check), push is the ideal channel to prompt players to refresh.
+*   **Decision:**
+    *   **Game server endpoint**: `POST /api/push/broadcast` on the Worker (not the DO). Authenticates via `AUTH_SECRET`. Queries all rows from `PushSubscriptions` D1 table, sends a push to each. Returns `{ sent, expired, errors, total }`. Cleans up expired subscriptions (410/404 from push service).
+    *   **D1 helper**: `getAllPushSubscriptionsD1()` — simple `SELECT *` from PushSubscriptions.
+    *   **Lobby admin UI**: "Push Broadcast" section on `/admin` page with editable message textarea and "Broadcast to All" button. Shows delivery stats on completion.
+    *   **Lobby server action**: `broadcastPushUpdate(message?)` — calls game-server endpoint with `AUTH_SECRET`.
+    *   **Default message**: "A new update is available! Tap to refresh." — customizable per broadcast.
+    *   **Scoping**: Broadcasts to ALL subscribers (no per-game filtering). Acceptable for playtesting with a handful of users. Long-term, per-game or per-cohort scoping may be needed.
+*   **Consequences:**
+    *   After a deploy, admin can send one push to prompt all playtesters to open the PWA, which triggers the auto-update flow.
+    *   No new client code needed — existing `notificationclick` handler + `registerSW({ immediate: true })` handles the update.
+    *   Expired subscriptions are cleaned up automatically on each broadcast.
+    *   **Files**: `apps/game-server/src/d1-persistence.ts`, `apps/game-server/src/server.ts`, `apps/lobby/app/actions.ts`, `apps/lobby/app/admin/page.tsx`.
