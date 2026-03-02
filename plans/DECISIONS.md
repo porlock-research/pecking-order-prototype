@@ -1212,3 +1212,18 @@ This document tracks significant architectural decisions, their context, and con
     *   No Stately account required for Phase 1-3 functionality.
     *   `@xstate/graph` dependency eliminated (one fewer package to maintain).
     *   **Files**: `event-coverage.test.ts`, `inspect.ts`, `server.ts`, `scripts/generate-machine-docs.ts`, `docs/machines/`, `apps/lobby/app/admin/inspector/page.tsx`, `apps/lobby/app/actions.ts`.
+
+## [ADR-085] Inspector State Replay on Subscribe
+*   **Date:** 2026-03-01
+*   **Status:** Accepted
+*   **Context:** The admin inspector page (`/admin/inspector`) connects to game DOs via WebSocket and subscribes to inspect events, but shows "no actors tracked yet". Root cause: XState's inspect callback emits `@xstate.actor` only when the actor starts (during `onStart()`). By the time an admin subscribes, the initial events have already fired. New subscribers only see events that occur **after** subscribing — missing the entire existing actor tree.
+*   **Decision:** Three changes:
+    *   **Replay on subscribe**: When `INSPECT.SUBSCRIBE` arrives in L1, immediately read `this.actor.getSnapshot()` (read-only, zero interference with running game) and send `INSPECT.ACTOR` + `INSPECT.SNAPSHOT` for the root L2 actor. Iterate `snapshot.children` to also replay L3 session and any spawned cartridge children. Export `safeSerializeSnapshot` from `inspect.ts` to reuse the same depth-limited serialization.
+    *   **Auto-connect**: Inspector page auto-selects the first non-COMPLETED game on load and connects immediately, removing the manual select + click friction.
+    *   **Stately init race fix**: `ws.onopen` now `await`s `initStately()` before sending `INSPECT.SUBSCRIBE`, ensuring the Stately Inspector iframe is initialized before replay events arrive.
+*   **Consequences:**
+    *   Inspector immediately shows current L2 + L3 + cartridge states on connect — no need to wait for the next transition.
+    *   Auto-connect reduces admin workflow to zero clicks for the common case (one active game).
+    *   Replay is purely read-only (`getSnapshot()` + `ws.send`). No events sent to the actor, no transitions triggered.
+    *   **Note**: Stately Inspector iframe loads `https://stately.ai/inspect` which makes network calls to `stripe.com` (Stately's billing integration). This is expected third-party iframe behavior, not from our codebase.
+    *   **Files**: `inspect.ts`, `server.ts`, `apps/lobby/app/admin/inspector/page.tsx`.

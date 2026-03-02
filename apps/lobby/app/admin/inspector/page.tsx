@@ -33,11 +33,20 @@ export default function InspectorPage() {
   const inspectorRef = useRef<any>(null);
   const eventLogRef = useRef<HTMLDivElement | null>(null);
 
-  // Load games on mount
+  // Load games on mount + auto-connect to first active game
   useEffect(() => {
     getAllGames().then((result: any) => {
-      if (Array.isArray(result)) setGames(result);
+      if (Array.isArray(result)) {
+        setGames(result);
+        const active = result.find((g: any) => g.status !== 'COMPLETED');
+        if (active) {
+          setGameId(active.id);
+          // Defer connect to next tick so gameId state is set for UI
+          setTimeout(() => connectTo(active.id), 0);
+        }
+      }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-scroll event log
@@ -62,14 +71,15 @@ export default function InspectorPage() {
     }
   }, []);
 
-  async function connect() {
-    if (!gameId) return;
+  const connectTo = useCallback(async (targetGameId?: string) => {
+    const id = targetGameId || gameId;
+    if (!id) return;
     setError(null);
     setEvents([]);
     setActorStates(new Map());
 
     try {
-      const { wsUrl } = await getInspectorConnection(gameId);
+      const { wsUrl } = await getInspectorConnection(id);
 
       // Close existing connection
       if (wsRef.current) {
@@ -79,12 +89,12 @@ export default function InspectorPage() {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
-      ws.onopen = () => {
+      ws.onopen = async () => {
         setConnected(true);
-        // Subscribe to inspection events
+        // Initialize Stately Inspector iframe before sending subscribe
+        await initStately();
+        // Subscribe to inspection events (server replays current state)
         ws.send(JSON.stringify({ type: 'INSPECT.SUBSCRIBE' }));
-        // Initialize Stately Inspector iframe
-        initStately();
       };
 
       ws.onmessage = (msg) => {
@@ -132,7 +142,7 @@ export default function InspectorPage() {
     } catch (err: any) {
       setError(err.message || 'Connection failed');
     }
-  }
+  }, [gameId, initStately]);
 
   function disconnect() {
     if (wsRef.current) {
@@ -222,7 +232,7 @@ export default function InspectorPage() {
           </button>
         ) : (
           <button
-            onClick={connect}
+            onClick={() => connectTo()}
             disabled={!gameId}
             className="bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white px-4 py-1.5 rounded text-sm font-semibold"
           >

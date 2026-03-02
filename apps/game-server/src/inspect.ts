@@ -42,7 +42,7 @@ export type InspectBroadcast = (message: object) => void;
  * Depth-limited serialization of snapshot context.
  * Prevents bloating WebSocket with deeply nested state (roster, chatLog, etc.).
  */
-function safeSerializeSnapshot(snapshot: any): object {
+export function safeSerializeSnapshot(snapshot: any): object {
   if (!snapshot) return {};
   return {
     value: snapshot.value,

@@ -6,7 +6,7 @@ import type { TickerMessage } from "@pecking-order/shared-types";
 import { Events, FactTypes, ALLOWED_CLIENT_EVENTS as CLIENT_EVENTS } from "@pecking-order/shared-types";
 import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, readGoldBalances, creditGold, savePushSubscriptionD1, deletePushSubscriptionD1, getAllPushSubscriptionsD1 } from "./d1-persistence";
 import { flattenState, factToTicker, stateToTicker, buildDebugSummary, broadcastTicker, broadcastDebugTicker } from "./ticker";
-import { createInspector, type InspectBroadcast } from "./inspect";
+import { createInspector, safeSerializeSnapshot, type InspectBroadcast } from "./inspect";
 import { log } from "./log";
 import { extractCartridges, extractL3Context, buildSyncPayload, broadcastSync } from "./sync";
 import { isPushEnabled, phasePushPayload, handleFactPush, pushBroadcast, type PushContext } from "./push-triggers";
@@ -827,6 +827,50 @@ export class GameServer extends Server<Env> {
       if (event.type === 'INSPECT.SUBSCRIBE') {
         this.inspectSubscribers.add(ws);
         log('info', 'L1', 'Inspector subscriber added', { playerId });
+
+        // Replay current actor state so late-connecting inspectors see existing actors
+        if (this.actor) {
+          const snapshot = this.actor.getSnapshot();
+          const now = Date.now();
+          const rootId = this.actor.id || 'pecking-order-l2';
+
+          // Replay root (L2) actor
+          ws.send(JSON.stringify({
+            type: 'INSPECT.ACTOR',
+            actorId: rootId,
+            snapshot: safeSerializeSnapshot(snapshot),
+            timestamp: now,
+          }));
+          ws.send(JSON.stringify({
+            type: 'INSPECT.SNAPSHOT',
+            actorId: rootId,
+            snapshot: safeSerializeSnapshot(snapshot),
+            timestamp: now,
+          }));
+
+          // Replay child actors (L3 session, cartridges, etc.)
+          if (snapshot.children) {
+            for (const [childId, childRef] of Object.entries(snapshot.children)) {
+              try {
+                const childSnapshot = (childRef as any).getSnapshot?.();
+                if (childSnapshot) {
+                  ws.send(JSON.stringify({
+                    type: 'INSPECT.ACTOR',
+                    actorId: childId,
+                    snapshot: safeSerializeSnapshot(childSnapshot),
+                    timestamp: now,
+                  }));
+                  ws.send(JSON.stringify({
+                    type: 'INSPECT.SNAPSHOT',
+                    actorId: childId,
+                    snapshot: safeSerializeSnapshot(childSnapshot),
+                    timestamp: now,
+                  }));
+                }
+              } catch { /* child may not have a snapshot */ }
+            }
+          }
+        }
         return;
       }
       if (event.type === 'INSPECT.UNSUBSCRIBE') {
