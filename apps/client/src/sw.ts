@@ -23,25 +23,18 @@ precacheAndRoute(self.__WB_MANIFEST);
 // Cache API write. The SW no longer needs a fetch handler for token storage.
 
 // Push notification handler
+// No tags, no renotify — every notification is unique because XState state
+// transitions fire exactly once. Every push should alert the user.
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
   try {
     const data = event.data.json();
     const title = data.title || 'Pecking Order';
-    const tag = data.tag || 'default';
-    // DMs, eliminations, and winner notifications deserve their own alert sound;
-    // phase/activity notifications silently replace the existing one.
-    const renotify = tag.startsWith('dm-') || tag === 'elimination' || tag === 'winner';
-    const options: NotificationOptions & { renotify?: boolean } = {
+    const options: NotificationOptions = {
       body: data.body || '',
       icon: '/icons/icon-192.png',
       badge: '/icons/badge-72.png',
-      tag,
-      renotify,
-      // Keep notification visible until user interacts (no auto-dismiss on desktop).
-      // Important notifications (DMs, eliminations, winner) always persist;
-      // phase notifications persist too since they're time-sensitive game events.
       requireInteraction: true,
       data: { url: data.url || self.location.origin },
     };

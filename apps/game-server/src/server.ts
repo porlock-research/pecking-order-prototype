@@ -590,7 +590,6 @@ export class GameServer extends Server<Env> {
       const result = await sendPushNotification(sub, {
         title: 'Pecking Order',
         body: 'Your game is ready! Tap to play.',
-        tag: 'game-entry',
         url,
         token,
       }, this.env.VAPID_PRIVATE_JWK);
@@ -1154,12 +1153,11 @@ export default {
       }
 
       try {
-        let payload = { title: 'Pecking Order', body: 'A new update is available! Tap to refresh.', tag: 'update' };
+        let payload: Record<string, string> = { title: 'Pecking Order', body: 'A new update is available! Tap to refresh.' };
         try {
           const body = await request.json() as any;
           if (body?.title) payload.title = body.title;
           if (body?.body) payload.body = body.body;
-          if (body?.tag) payload.tag = body.tag;
         } catch { /* use defaults */ }
 
         const subs = await getAllPushSubscriptionsD1(env.DB);

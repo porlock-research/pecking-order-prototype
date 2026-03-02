@@ -4,6 +4,9 @@
  *
  * Subscriptions are stored in D1 (global, not per-DO).
  * Notification URLs are constructed from clientHost + inviteCode.
+ *
+ * Dedup is handled by XState — each state transition fires exactly once,
+ * so each push fires exactly once. No client-side tag dedup needed.
  */
 import type { PushTrigger, GameManifest } from "@pecking-order/shared-types";
 import { DEFAULT_PUSH_CONFIG, FactTypes } from "@pecking-order/shared-types";
@@ -11,11 +14,11 @@ import { getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistenc
 import { sendPushNotification } from "./push-send";
 
 // --- TTL Constants (seconds) ---
-const PHASE_TTL = 300;      // 5 min — phases are time-sensitive
-const GAME_TTL = 600;       // 10 min — daily game
-const DM_TTL = 3600;        // 1 hour
+// Game runs across days — notifications must survive device sleep/connectivity gaps.
+const EVENT_TTL = 3600;       // 1 hour — phase events, activities, games
+const DM_TTL = 3600;          // 1 hour — direct messages
 const ELIMINATION_TTL = 3600; // 1 hour
-const WINNER_TTL = 86400;   // 24 hours
+const WINNER_TTL = 86400;     // 24 hours — game conclusion
 
 export interface PushContext {
   roster: Record<string, any>;
@@ -76,34 +79,35 @@ export async function pushBroadcast(
   );
 }
 
-/** Convert a PUSH.PHASE trigger into a push payload. Returns null if unknown trigger. */
+/** Convert a PUSH.PHASE trigger into a push payload. Returns null if unknown trigger.
+ *  No tags — each state transition fires exactly once (XState is the dedup). */
 export function phasePushPayload(
   trigger: string,
   dayIndex: number,
 ): { payload: Record<string, string>; ttl: number } | null {
   switch (trigger) {
     case 'DAY_START':
-      return { payload: { title: "Pecking Order", body: `Welcome to Day ${dayIndex} of Pecking Order`, tag: "phase" }, ttl: PHASE_TTL };
+      return { payload: { title: "Pecking Order", body: `Welcome to Day ${dayIndex} of Pecking Order` }, ttl: EVENT_TTL };
     case 'VOTING':
-      return { payload: { title: "Pecking Order", body: "Voting has begun!", tag: "phase" }, ttl: PHASE_TTL };
+      return { payload: { title: "Pecking Order", body: "Voting has begun!" }, ttl: EVENT_TTL };
     case 'NIGHT_SUMMARY':
-      return { payload: { title: "Pecking Order", body: "Night has fallen...", tag: "phase" }, ttl: PHASE_TTL };
+      return { payload: { title: "Pecking Order", body: "Night has fallen..." }, ttl: EVENT_TTL };
     case 'DAILY_GAME':
-      return { payload: { title: "Pecking Order", body: "Game time!", tag: "phase" }, ttl: GAME_TTL };
+      return { payload: { title: "Pecking Order", body: "Game time!" }, ttl: EVENT_TTL };
     case 'ACTIVITY':
-      return { payload: { title: "Pecking Order", body: "Activity time!", tag: "activity" }, ttl: PHASE_TTL };
+      return { payload: { title: "Pecking Order", body: "Activity time!" }, ttl: EVENT_TTL };
     case 'OPEN_DMS':
-      return { payload: { title: "Pecking Order", body: "DMs are now open", tag: "phase" }, ttl: PHASE_TTL };
+      return { payload: { title: "Pecking Order", body: "DMs are now open" }, ttl: EVENT_TTL };
     case 'CLOSE_DMS':
-      return { payload: { title: "Pecking Order", body: "DMs are now closed", tag: "phase" }, ttl: PHASE_TTL };
+      return { payload: { title: "Pecking Order", body: "DMs are now closed" }, ttl: EVENT_TTL };
     case 'OPEN_GROUP_CHAT':
-      return { payload: { title: "Pecking Order", body: "Group chat is open", tag: "phase" }, ttl: PHASE_TTL };
+      return { payload: { title: "Pecking Order", body: "Group chat is open" }, ttl: EVENT_TTL };
     case 'CLOSE_GROUP_CHAT':
-      return { payload: { title: "Pecking Order", body: "Group chat is closed", tag: "phase" }, ttl: PHASE_TTL };
+      return { payload: { title: "Pecking Order", body: "Group chat is closed" }, ttl: EVENT_TTL };
     case 'END_GAME':
-      return { payload: { title: "Pecking Order", body: "Game over!", tag: "phase" }, ttl: PHASE_TTL };
+      return { payload: { title: "Pecking Order", body: "Game over!" }, ttl: EVENT_TTL };
     case 'END_ACTIVITY':
-      return { payload: { title: "Pecking Order", body: "Activity complete!", tag: "activity" }, ttl: PHASE_TTL };
+      return { payload: { title: "Pecking Order", body: "Activity complete!" }, ttl: EVENT_TTL };
     default:
       return null;
   }
@@ -123,28 +127,24 @@ export function handleFactPush(
     return pushBroadcast(ctx, {
       title: 'Pecking Order',
       body: `${name(fact.actorId)}: ${(fact.payload?.content || '').slice(0, 60)}`,
-      tag: 'group-chat',
-    }, PHASE_TTL).catch(err => console.error('[L1] [Push] Error:', err));
+    }, EVENT_TTL).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.DM_SENT && fact.targetId) {
     if (!isPushEnabled(manifest, 'DM_SENT')) return;
     return pushToPlayer(ctx, fact.targetId, {
       title: 'Pecking Order',
       body: `${name(fact.actorId)} sent you a DM`,
-      tag: `dm-${fact.actorId}`,
     }, DM_TTL).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.ELIMINATION) {
     if (!isPushEnabled(manifest, 'ELIMINATION')) return;
     return pushBroadcast(ctx, {
       title: 'Pecking Order',
       body: `${name(fact.targetId || fact.actorId)} has been eliminated!`,
-      tag: 'elimination',
     }, ELIMINATION_TTL).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.WINNER_DECLARED) {
     if (!isPushEnabled(manifest, 'WINNER_DECLARED')) return;
     return pushBroadcast(ctx, {
       title: 'Pecking Order',
       body: `${name(fact.targetId || fact.actorId)} wins!`,
-      tag: 'winner',
     }, WINNER_TTL).catch(err => console.error('[L1] [Push] Error:', err));
   }
 }

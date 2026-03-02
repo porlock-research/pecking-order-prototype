@@ -1244,3 +1244,25 @@ This document tracks significant architectural decisions, their context, and con
     *   Push bridge is fire-and-forget — no new XState actors, no state changes. Just D1 lookup + VAPID push.
     *   SW notification click now navigates existing same-origin windows instead of requiring exact URL prefix match, improving PWA window reuse.
     *   **Files**: `server.ts`, `d1-persistence.ts` (import), `sw.ts`, `actions.ts`, `waiting/page.tsx`, `play/[code]/route.ts`, `api/refresh-token/[code]/route.ts`.
+
+## [ADR-087] Remove Notification Tags — Let XState Be the Dedup
+*   **Date:** 2026-03-02
+*   **Status:** Accepted
+*   **Context:** Phase push notifications were not arriving on staging despite server logs showing "sent" (201 from push service). Investigation revealed three compounding issues:
+    1.  **Shared `tag` field**: All phase notifications used `tag: "phase"` and activities used `tag: "activity"`. The browser's notification tag dedup silently *replaces* a notification with the same tag. Combined with `renotify: false`, replacements produced no sound, no banner — the OS swapped the text in the tray without alerting the user. Only the very first phase notification was visible.
+    2.  **Aggressive TTL**: `PHASE_TTL = 300s` (5 minutes) told the push service to drop the message if the device didn't pick it up in time. For phones in low-power mode or with flaky connectivity, 5 minutes is too short. The push service acknowledged the message (201 → "sent" in logs) but then expired it before delivery.
+    3.  **Brittle string matching**: The SW decided `renotify` behavior by string-matching tag prefixes (`tag.startsWith('dm-')`, `tag === 'elimination'`, etc.), ignoring the fully-typed `PushTriggerSchema` (17 enum values). Every new notification type required editing this chain. Adding tags that encoded day+trigger (e.g. `phase-d1-activity`) would still break for multiple activities per day.
+    DM notifications worked because they used unique tags (`dm-${senderId}`) with `renotify: true` and a 1-hour TTL.
+*   **Decision:** Remove the tag/renotify system entirely. Let XState be the dedup.
+    *   **Remove all `tag` fields** from every push payload (phase, fact-driven, game-entry, admin broadcast). No notification replaces another — every push is a new notification.
+    *   **Remove `renotify` logic** from the service worker. The SW simply calls `showNotification()` with `body`, `icon`, `badge`, `requireInteraction`, and `data.url`. No tag, no renotify, no string matching.
+    *   **Bump TTLs**: Unified phase/game/activity TTL from 300s/600s → `EVENT_TTL = 3600s` (1 hour). DM/elimination already at 1 hour. Winner stays at 24 hours. The game runs across days — notifications must survive device sleep and connectivity gaps.
+    *   **Why no dedup needed**: Push notifications are triggered by XState state transitions (`PUSH.PHASE` events) and facts (`FACT.RECORD`). Each state transition fires exactly once. Each fact is recorded exactly once. The state machine IS the dedup — there is no scenario where the same logical notification fires twice.
+*   **Consequences:**
+    *   Every push notification is guaranteed to alert the user (sound, banner, vibration).
+    *   No more silent replacements — if two events fire in quick succession, the user sees both.
+    *   Push payload is simpler: just `title`, `body`, `url`, and optionally `token`. No `tag` field.
+    *   SW push handler is ~15 lines instead of ~30 — no branching on tag strings.
+    *   1-hour TTL gives the push service adequate time to deliver to sleeping devices.
+    *   The typed `PushTriggerSchema` remains the source of truth for which triggers exist and whether they're enabled — no parallel string-based system.
+    *   **Files**: `push-triggers.ts`, `sw.ts`, `server.ts`.

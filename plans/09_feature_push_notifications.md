@@ -119,46 +119,39 @@ pushToPlayer() or pushBroadcast()
 
 All other fact types (VOTE_CAST, SILVER_TRANSFER, PERK_USED, etc.) do **not** trigger push — they're either too frequent or not urgent enough to warrant a notification.
 
-### Trigger Path 2: State-Transition-Driven Push
+### Trigger Path 2: XState PUSH.PHASE Events
 
-State transitions are detected inside the L2 `.subscribe()` callback by comparing a combined state string:
+Phase push is triggered by explicit `PUSH.PHASE` events in the state machine — not by string-matching state values. L3 emits `sendParent({ type: 'PUSH.PHASE', trigger: 'VOTING' })` on entry to each phase state. L2 emits its own `raise({ type: 'PUSH.PHASE', trigger: 'DAY_START' })` for orchestrator-level transitions. Both are handled by the `broadcastPhasePush` action in L1's `.provide()` override.
 
 ```
-L2 .subscribe(snapshot => {
-  │
-  │  // Combine L2 + L3 state values to catch L3 phase changes
-  │  const l3StateJson = l3Snapshot ? JSON.stringify(l3Snapshot.value) : '';
-  │  const currentStateStr = JSON.stringify(snapshot.value) + l3StateJson;
-  │
-  │  if (currentStateStr !== this.lastBroadcastState) {
-  │    const pushPayload = stateToPush(currentStateStr, snapshot.context, manifest);
-  │    if (pushPayload) {
-  │      const pushKey = `${pushPayload.tag}:${pushPayload.body}`;
-  │      if (!this.sentPushKeys.has(pushKey)) {
-  │        this.sentPushKeys.add(pushKey);
-  │        pushBroadcast(ctx, pushPayload);
-  │      }
-  │    }
-  │  }
+L3 (session machine)
+  │  entry: [sendParent({ type: 'PUSH.PHASE', trigger: 'VOTING' })]
   ▼
-})
+L2 (orchestrator)
+  │  on: { 'PUSH.PHASE': { actions: 'broadcastPhasePush' } }
+  ▼
+L1 (server.ts — .provide() override)
+  │  isPushEnabled(manifest, trigger)
+  │  phasePushPayload(trigger, dayIndex) → { title, body }
+  │  pushBroadcast(ctx, payload, EVENT_TTL)
+  │  this.ctx.waitUntil(pushPromise)
 ```
 
-**State mappings (`stateToPush`):**
+**Phase triggers and sources:**
 
-| State String Contains | Trigger | Notification | Tag |
-|-----------------------|---------|-------------|-----|
-| `"activityLayer":"playing"` | `ACTIVITY` | "Activity time!" | `activity` |
-| `morningBriefing` or `groupChat` | `DAY_START` | "Day {N} has begun!" | `phase` |
-| `voting` | `VOTING` | "Voting has begun!" | `phase` |
-| `nightSummary` | `NIGHT_SUMMARY` | "Night has fallen..." | `phase` |
-| `dailyGame` | `DAILY_GAME` | "Game time!" | `phase` |
+| Trigger | Source | Body |
+|---------|--------|------|
+| `DAY_START` | L2 `morningBriefing` entry | "Welcome to Day {N} of Pecking Order" |
+| `VOTING` | L3 `voting` entry | "Voting has begun!" |
+| `NIGHT_SUMMARY` | L2 `nightSummary` entry | "Night has fallen..." |
+| `DAILY_GAME` | L3 `dailyGame` entry | "Game time!" |
+| `ACTIVITY` | L3 `playing` entry | "Activity time!" |
+| `OPEN_DMS` / `CLOSE_DMS` | L3 `INTERNAL.OPEN/CLOSE_DMS` | "DMs are now open/closed" |
+| `OPEN_GROUP_CHAT` / `CLOSE_GROUP_CHAT` | L3 `INTERNAL.OPEN/CLOSE_GROUP_CHAT` | "Group chat is open/closed" |
+| `END_GAME` | L3 `INTERNAL.END_GAME` | "Game over!" |
+| `END_ACTIVITY` | L3 `INTERNAL.END_ACTIVITY` | "Activity complete!" |
 
-**Order matters:** `ACTIVITY` is checked before `DAY_START` because activities run inside `groupChat` — without this ordering, the `groupChat` match would shadow the activity detection.
-
-Phase-transition pushes sharing the `phase` tag means the browser replaces the previous phase notification rather than stacking them.
-
-**Deduplication:** The L2 subscription can fire multiple times for a single logical state change (e.g., context change + FACT.RECORD, or L3 parallel state completing). Each fire produces a different state string but may map to the same push payload. A `Set<string>` of sent push keys (`tag:body` composites) permanently prevents re-sending the same notification within a game session.
+**Deduplication:** XState state transitions fire exactly once — the state machine IS the dedup. No client-side tag dedup or server-side `sentPushKeys` set needed. (ADR-087)
 
 ### Push Delivery Methods
 
@@ -172,12 +165,12 @@ async function pushBroadcast(ctx: PushContext, payload: Record<string, string>)
 
 Both methods:
 1. **Resolve push key** — `pushKeyForPlayer()` maps `playerId` → `realUserId` from the L2 roster, falling back to `playerId` for debug games.
-2. **Retrieve subscription** — `getPushSubscription()` reads from DO storage (`push_sub:{pushKey}`).
-3. **Inject returnUrl** — reads `push_url:{pushKey}` from storage. If present, adds `url` field to the payload so notification clicks open the game with the player's token.
+2. **Retrieve subscription** — `getPushSubscriptionD1()` reads from the global D1 `PushSubscriptions` table.
+3. **Inject game URL** — constructs `${clientHost}/game/${inviteCode}` and adds as `url` field.
 4. **Encrypt & send** — `sendPushNotification()` uses `@pushforge/builder` to encrypt the payload and POST to the push service endpoint.
-5. **Handle expiry** — If the push service returns 410/404, the subscription is deleted from storage.
+5. **Handle expiry** — If the push service returns 410/404, the subscription is deleted from D1.
 
-Pushes are always sent regardless of whether the player has a tab open. The user should see the notification in their OS notification tray even if the game is in the foreground.
+Both push call sites use `this.ctx.waitUntil(pushPromise)` to keep the DO alive until delivery completes (ADR-081).
 
 ### Payload Format
 
@@ -185,12 +178,11 @@ Pushes are always sent regardless of whether the player has a tab open. The user
 {
   title: "Pecking Order",     // Always the app name
   body: "Voting has begun!",  // Human-readable phase/event description
-  tag: "phase" | "activity" | "dm" | "elimination" | "winner",
-  url: "https://client.example.com/?token=eyJ..."  // Optional: injected from stored returnUrl
+  url: "https://play.peckingorder.ca/game/ABCDEF"  // Game URL for notification click
 }
 ```
 
-The `tag` field controls browser notification behavior — notifications with the same tag replace each other rather than stacking. The `renotify: true` option in the SW ensures the replacement still alerts the user.
+No `tag` field — every notification is unique because XState state transitions fire exactly once. No browser-level dedup needed. (ADR-087)
 
 ---
 
@@ -204,29 +196,30 @@ Registered via `vite-plugin-pwa` with `injectManifest` strategy. The SW handles 
 2. **Push events** — Listens for `push` and `notificationclick`.
 
 ```typescript
-// Push: decrypt payload, show notification with returnUrl
+// Push: show notification — no tags, no renotify. XState is the dedup. (ADR-087)
 self.addEventListener('push', (event) => {
-  const data = event.data.json();  // { title, body, tag, url? }
+  const data = event.data.json();  // { title, body, url? }
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: '/icons/icon-192.png',
       badge: '/icons/badge-72.png',
-      tag: data.tag,
-      renotify: true,
+      requireInteraction: true,
       data: { url: data.url || self.location.origin },
     })
   );
 });
 
-// Click: focus existing game tab or open returnUrl
+// Click: navigate existing PWA window or open new tab
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = event.notification.data?.url || self.location.origin;
   event.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then(clients => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
       for (const client of clients) {
-        if (client.url.startsWith(targetUrl) && 'focus' in client) return client.focus();
+        if (new URL(client.url).origin === self.location.origin && 'navigate' in client) {
+          return (client as WindowClient).navigate(targetUrl).then(c => c?.focus());
+        }
       }
       return self.clients.openWindow(targetUrl);
     })
@@ -304,18 +297,24 @@ A small "Alerts" button in the header bar (Bell icon + text). Visibility rules:
 
 ## Subscription Storage
 
-### Server-Side (DO Storage)
+### Server-Side (D1 — Global)
 
-Subscriptions and return URLs are stored in Durable Object storage:
+Subscriptions are stored in the global D1 `PushSubscriptions` table (ADR-049), not per-DO:
 
+```sql
+CREATE TABLE PushSubscriptions (
+  user_id TEXT PRIMARY KEY,  -- JWT sub claim (real user ID)
+  endpoint TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 ```
-push_sub:{pushKey}  → JSON string of PushSubscription { endpoint, keys: { p256dh, auth } }
-push_url:{pushKey}  → Full client URL with game token (for notification click)
-```
 
-**Key resolution (`pushKeyForPlayer`):** Maps `playerId` → `roster[playerId].realUserId`, falling back to `playerId` for debug games (which have no real user IDs).
+**Key resolution (`pushKeyForPlayer`):** Maps `playerId` → `roster[playerId].realUserId`, falling back to `playerId` for debug games.
 
-**Per-game isolation:** Each game is a separate Durable Object with its own storage. A player's subscription exists independently in each game they're part of. The client auto-re-registers on every game join (mount effect).
+**Global scope:** One subscription per user, shared across all games. No per-game isolation needed — the client re-registers via HTTP API on each game join.
 
 ### Client-Side (Browser)
 
@@ -373,29 +372,18 @@ Triggers default to ON. The admin can disable specific triggers per game for tes
 
 ---
 
-## WebSocket Event Handling
+## Push Subscription API
 
-Push events are handled in L1's `onMessage()` **before** XState routing — they never touch the state machines:
+Push subscriptions are managed via HTTP API endpoints on the game server worker (ADR-049), not via WebSocket:
 
-```typescript
-// server.ts onMessage()
-if (event.type === 'PUSH.SUBSCRIBE') {
-  const pushKey = pushKeyForPlayer(state.playerId, roster);
-  savePushSubscription(this.ctx.storage, pushKey, event.subscription);
-  if (event.returnUrl) {
-    this.ctx.storage.put(`push_url:${pushKey}`, event.returnUrl);
-  }
-  return;  // ← Short-circuit, no XState involvement
-}
-
-if (event.type === 'PUSH.UNSUBSCRIBE') {
-  const pushKey = pushKeyForPlayer(state.playerId, roster);
-  deletePushSubscription(this.ctx.storage, pushKey);
-  return;
-}
+```
+POST   /api/push/subscribe     — Create/update subscription (JWT auth)
+DELETE /api/push/subscribe     — Remove subscription (JWT auth)
+GET    /parties/game-server/vapid-key — Fetch VAPID public key (no auth)
+POST   /api/push/broadcast     — Admin broadcast to all subscribers (AUTH_SECRET)
 ```
 
-This is intentional — push subscription management is an L1 infrastructure concern, not game logic.
+The client's `usePushNotifications` hook calls these endpoints directly. Subscriptions are stored in D1 (global), decoupled from game lifecycle.
 
 ---
 
@@ -437,9 +425,10 @@ Placeholder icons in `apps/client/public/icons/`:
 
 | File | Purpose |
 |------|---------|
-| `apps/game-server/src/push.ts` | Storage utilities + encryption + send |
-| `apps/game-server/src/push-triggers.ts` | Trigger decisions, `stateToPush`, `handleFactPush`, `PushContext`, broadcast/targeted delivery |
-| `apps/game-server/src/server.ts` | L1: PUSH.* event handling, subscription handler, dedup Set, getPushContext() |
+| `apps/game-server/src/push-send.ts` | Low-level `@pushforge/builder` encryption + HTTP send |
+| `apps/game-server/src/push-triggers.ts` | Trigger decisions, `phasePushPayload`, `handleFactPush`, `PushContext`, broadcast/targeted delivery |
+| `apps/game-server/src/d1-persistence.ts` | D1 push subscription CRUD (`save/get/delete/getAllPushSubscriptionD1`) |
+| `apps/game-server/src/server.ts` | L1: `broadcastPhasePush` action, `persistFactToD1` fact-push, `handlePushGameEntry`, `getPushContext()`, HTTP push API |
 | `apps/game-server/wrangler.toml` | VAPID_PUBLIC_KEY in `[vars]` |
 | `apps/game-server/.dev.vars` | VAPID_PRIVATE_JWK for local dev |
 | `apps/client/src/sw.ts` | Service worker: push + notificationclick handlers |
@@ -465,17 +454,17 @@ Placeholder icons in `apps/client/public/icons/`:
 
 ## Known Issues & Limitations
 
-### Intermittent Delivery
-Push notifications are sometimes not received despite the server reporting "sent" (201 from push service). May be related to `aesgcm` content encoding (the older draft format). The `aes128gcm` encoding (RFC 8291 standard) is preferred by modern browsers.
-
 ### No Retry
-Push sends are fire-and-forget. If `sendPushNotification()` fails (network error, push service down), the notification is lost. The TTL (24h) on the push message means the push service will retry delivery to the browser, but if the initial POST to the push service fails, there's no server-side retry.
+Push sends are fire-and-forget. If `sendPushNotification()` fails (network error, push service down), the notification is lost. The TTL on the push message means the push service will retry delivery to the browser, but if the initial POST to the push service fails, there's no server-side retry. Acceptable for an async game where minute-level delays are fine.
 
-### Per-Game Storage
-Subscriptions are stored per Durable Object (per game). A player in multiple games has their subscription stored independently in each game's DO. The client automatically re-registers on each game join, so this is transparent.
+### One Subscription Per User
+D1 stores one subscription per `user_id` (primary key). A player on multiple devices only receives push on whichever device subscribed last. Long-term: key by `(userId, endpoint)` composite.
 
 ### iOS Requires PWA Install
 On iOS Safari, push notifications only work when the app is installed to the home screen (Add to Home Screen). The `PushManager` API is not available in regular Safari tabs. The "Alerts" button hides when `PushManager` is unavailable.
+
+### Stale Endpoint Cleanup
+Only 410/404 from the push service triggers subscription cleanup. 5xx errors log and move on — dead endpoints may accumulate. The admin broadcast endpoint cleans expired subs on each broadcast.
 
 ### Cloudflare Pages Preview URLs
 Feature branches deploy the client to preview URLs (`https://{branch}.pecking-order-client.pages.dev/`) but the lobby's `GAME_CLIENT_HOST` points to the production Pages URL. Manual `wrangler pages deploy --branch=main` is needed to test feature branches at the production URL. See AUDIT_GAPS.md for options.
