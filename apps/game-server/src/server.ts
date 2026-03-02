@@ -457,7 +457,13 @@ export class GameServer extends Server<Env> {
     if (req.method === "POST" && path.endsWith("/cleanup")) {
       return this.handleCleanup(req);
     }
-    if (req.method === "GET" && path.endsWith("/vapid-key")) {
+    if (path.endsWith("/vapid-key")) {
+      if (req.method === "OPTIONS") {
+        return new Response(null, {
+          status: 204,
+          headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, OPTIONS", "Access-Control-Max-Age": "86400" },
+        });
+      }
       return new Response(JSON.stringify({ publicKey: this.env.VAPID_PUBLIC_KEY }), {
         status: 200,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
