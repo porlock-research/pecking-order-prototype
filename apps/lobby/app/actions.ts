@@ -1347,6 +1347,41 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
   return { status: game.status, slots, tokens, inviteCode: game.invite_code, clientHost, myPersonaId, mode: game.mode };
 }
 
+// ── Push Game Entry ──────────────────────────────────────────────────────
+
+export async function sendGameEntryPush(inviteCode: string, token: string): Promise<{ sent: boolean }> {
+  const session = await requireAuth();
+  const db = await getDB();
+  const env = await getEnv();
+
+  const game = await db
+    .prepare('SELECT id, status, invite_code FROM GameSessions WHERE invite_code = ?')
+    .bind(inviteCode.toUpperCase())
+    .first<{ id: string; status: string; invite_code: string }>();
+
+  if (!game || game.status !== 'STARTED') {
+    return { sent: false };
+  }
+
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+
+  try {
+    const res = await fetch(`${GAME_SERVER_HOST}/parties/game-server/${game.id}/push-game-entry`, {
+      method: 'POST',
+      body: JSON.stringify({ userId: session.userId, inviteCode: game.invite_code, token }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${AUTH_SECRET}`,
+      },
+    });
+    const data = await res.json() as { sent: boolean };
+    return { sent: data.sent === true };
+  } catch {
+    return { sent: false };
+  }
+}
+
 // ── Email Invites ─────────────────────────────────────────────────────────
 
 export interface SentInvite {

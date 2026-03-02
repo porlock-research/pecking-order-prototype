@@ -46,6 +46,20 @@ self.addEventListener('push', (event) => {
       data: { url: data.url || self.location.origin },
     };
 
+    // If push includes a game token, store in Cache API for token recovery
+    if (data.token && data.url) {
+      const match = data.url.match(/\/game\/([A-Za-z0-9]+)/);
+      if (match) {
+        const code = match[1];
+        caches.open('po-tokens-v1').then(cache =>
+          cache.put(
+            new Request(`/po-token-cache/po_token_${code}`),
+            new Response(data.token),
+          )
+        ).catch(() => {}); // fire-and-forget
+      }
+    }
+
     event.waitUntil(self.registration.showNotification(title, options));
   } catch {
     // Fallback for non-JSON payloads
@@ -64,13 +78,13 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      // Focus existing tab if found
+      // Navigate an existing same-origin window (reuses PWA window)
       for (const client of clients) {
-        if (client.url.startsWith(targetUrl) && 'focus' in client) {
-          return client.focus();
+        if (new URL(client.url).origin === self.location.origin && 'navigate' in client) {
+          return (client as WindowClient).navigate(targetUrl).then(c => c?.focus());
         }
       }
-      // Otherwise open a new tab
+      // Otherwise open a new tab/window
       return self.clients.openWindow(targetUrl);
     }),
   );

@@ -4,7 +4,7 @@ import { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Scheduler } from "partywhen";
 import type { TickerMessage } from "@pecking-order/shared-types";
 import { Events, FactTypes, ALLOWED_CLIENT_EVENTS as CLIENT_EVENTS } from "@pecking-order/shared-types";
-import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, readGoldBalances, creditGold, savePushSubscriptionD1, deletePushSubscriptionD1, getAllPushSubscriptionsD1 } from "./d1-persistence";
+import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, readGoldBalances, creditGold, savePushSubscriptionD1, getPushSubscriptionD1, deletePushSubscriptionD1, getAllPushSubscriptionsD1 } from "./d1-persistence";
 import { flattenState, factToTicker, stateToTicker, buildDebugSummary, broadcastTicker, broadcastDebugTicker } from "./ticker";
 import { createInspector, safeSerializeSnapshot, type InspectBroadcast } from "./inspect";
 import { log } from "./log";
@@ -463,6 +463,9 @@ export class GameServer extends Server<Env> {
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }
+    if (req.method === "POST" && path.endsWith("/push-game-entry")) {
+      return this.handlePushGameEntry(req);
+    }
 
     return new Response("Not Found", { status: 404 });
   }
@@ -559,6 +562,51 @@ export class GameServer extends Server<Env> {
     } catch (err) {
       log('error', 'L1', 'POST /player-joined failed', { error: String(err) });
       return new Response('Invalid Payload', { status: 400 });
+    }
+  }
+
+  private async handlePushGameEntry(req: Request): Promise<Response> {
+    const authHeader = req.headers.get('Authorization');
+    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
+    try {
+      const { userId, inviteCode, token } = await req.json() as any;
+      if (!userId || !inviteCode || !token) {
+        return new Response(JSON.stringify({ sent: false }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      const sub = await getPushSubscriptionD1(this.env.DB, userId);
+      if (!sub) {
+        return new Response(JSON.stringify({ sent: false }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      const url = `${this.env.GAME_CLIENT_HOST}/game/${inviteCode}`;
+      const result = await sendPushNotification(sub, {
+        title: 'Pecking Order',
+        body: 'Your game is ready! Tap to play.',
+        tag: 'game-entry',
+        url,
+        token,
+      }, this.env.VAPID_PRIVATE_JWK);
+
+      if (result === 'expired') {
+        await deletePushSubscriptionD1(this.env.DB, userId);
+      }
+
+      return new Response(JSON.stringify({ sent: result === 'sent' }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      log('error', 'L1', 'POST /push-game-entry failed', { error: String(err) });
+      return new Response(JSON.stringify({ sent: false }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
     }
   }
 

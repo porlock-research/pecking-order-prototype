@@ -1227,3 +1227,20 @@ This document tracks significant architectural decisions, their context, and con
     *   Replay is purely read-only (`getSnapshot()` + `ws.send`). No events sent to the actor, no transitions triggered.
     *   **Note**: Stately Inspector iframe loads `https://stately.ai/inspect` which makes network calls to `stripe.com` (Stately's billing integration). This is expected third-party iframe behavior, not from our codebase.
     *   **Files**: `inspect.ts`, `server.ts`, `apps/lobby/app/admin/inspector/page.tsx`.
+
+## [ADR-086] Push-Bridge Game Entry & PID Consistency Fix
+*   **Date:** 2026-03-01
+*   **Status:** Accepted
+*   **Context:** Two problems:
+    1.  **PWA game entry friction**: Returning players (PWA installed, push enabled) had to go through email → Safari → lobby → character select → waiting room → "Enter Game" button → browser. The "Enter Game" button opens in Safari, not the PWA (iOS has no Universal Links for web apps). Players needed a way to get from the lobby back into their installed PWA.
+    2.  **PID clash in CONFIGURABLE_CYCLE games**: CONFIGURABLE_CYCLE uses `p${slot_index}` as the player ID (e.g. slots 1, 3 → p1, p3), assigned at invite-accept time via `/player-joined`. But two token-minting routes (`/play/[code]` and `/api/refresh-token/[code]`) used a dense-index formula `p${indexOf+1}` over accepted invites (slots 1, 3 → p1, p2). When a CC player with slot 3 refreshed their token, they'd get pid `p2` — mismatching the `p3` the game server knew them as, causing auth failures or connecting as the wrong player.
+*   **Decision:** Two changes:
+    *   **Push bridge**: After a player accepts an invite and the game is STARTED, the waiting room fires a `sendGameEntryPush` server action that POSTs the already-minted JWT to a new `POST /push-game-entry` endpoint on the game server DO. The DO looks up the player's push subscription in D1 and sends a push notification with the JWT embedded in the payload. The client service worker stores the JWT in Cache API (`po-tokens-v1`) on push receipt. When the player taps the notification, the SW navigates the existing PWA window to `/game/{CODE}`. App.tsx's existing `recoverFromCacheApi()` finds the token and connects. The "Enter Game" button remains as a fallback. First-time players still go through the browser flow once (push subscriptions are per-origin).
+    *   **PID consistency**: `/play/[code]` and `/api/refresh-token/[code]` now read `game.mode` from the DB. For `CONFIGURABLE_CYCLE`, they use `p${invite.slot_index}` directly (matching `acceptInvite` and `getGameSessionStatus`). Other modes keep the existing dense-index formula (matching `startGame`).
+*   **Consequences:**
+    *   Returning players with PWA + push can enter new games with a single tap on the notification — no browser intermediary.
+    *   CC game players can reliably refresh tokens and use `/play/[code]` without pid mismatches.
+    *   All pid computation paths are now consistent per game mode: CC always uses slot_index, non-CC always uses dense accepted-invite index.
+    *   Push bridge is fire-and-forget — no new XState actors, no state changes. Just D1 lookup + VAPID push.
+    *   SW notification click now navigates existing same-origin windows instead of requiring exact URL prefix match, improving PWA window reuse.
+    *   **Files**: `server.ts`, `d1-persistence.ts` (import), `sw.ts`, `actions.ts`, `waiting/page.tsx`, `play/[code]/route.ts`, `api/refresh-token/[code]/route.ts`.

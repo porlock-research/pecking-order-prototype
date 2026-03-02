@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getGameSessionStatus, startGame, sendEmailInvite, getGameInvites } from '../../../actions';
+import { getGameSessionStatus, startGame, sendEmailInvite, getGameInvites, sendGameEntryPush } from '../../../actions';
 import type { GameSlot, SentInvite } from '../../../actions';
 
 function personaFullUrl(id: string): string {
@@ -35,6 +35,7 @@ export default function WaitingRoom() {
   const [sentInvites, setSentInvites] = useState<SentInvite[]>([]);
   const [showInviteSection, setShowInviteSection] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [pushSent, setPushSent] = useState<boolean | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -56,6 +57,14 @@ export default function WaitingRoom() {
     }
     load();
   }, [code]);
+
+  // Send push notification when game is STARTED and we have a token
+  useEffect(() => {
+    if (status !== 'STARTED' || !tokens) return;
+    const token = Object.values(tokens)[0];
+    if (!token) return;
+    sendGameEntryPush(code, token).then(({ sent }) => setPushSent(sent)).catch(() => {});
+  }, [status, tokens, code]);
 
   async function handleStart() {
     setIsStarting(true);
@@ -423,7 +432,13 @@ export default function WaitingRoom() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
+                className="space-y-3"
               >
+                {pushSent && (
+                  <div className="p-3 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs font-mono text-center">
+                    We sent a notification to your app. Tap it to enter!
+                  </div>
+                )}
                 <a
                   href={clientEntryUrl}
                   target="_blank"

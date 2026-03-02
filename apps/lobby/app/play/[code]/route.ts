@@ -32,9 +32,9 @@ export async function GET(
 
   // Find game by invite code
   const game = await db
-    .prepare('SELECT id, status, invite_code, day_count FROM GameSessions WHERE invite_code = ?')
+    .prepare('SELECT id, status, invite_code, day_count, mode FROM GameSessions WHERE invite_code = ?')
     .bind(code.toUpperCase())
-    .first<{ id: string; status: string; invite_code: string; day_count: number }>();
+    .first<{ id: string; status: string; invite_code: string; day_count: number; mode: string }>();
 
   if (!game) {
     return new Response('Game not found', { status: 404 });
@@ -61,15 +61,22 @@ export async function GET(
   }
 
   // Determine player ID from slot ordering
-  const { results: allAccepted } = await db
-    .prepare(
-      'SELECT slot_index, accepted_by FROM Invites WHERE game_id = ? AND accepted_by IS NOT NULL ORDER BY slot_index'
-    )
-    .bind(game.id)
-    .all<{ slot_index: number; accepted_by: string }>();
+  // CONFIGURABLE_CYCLE uses slot_index directly (players join mid-game);
+  // other modes use dense 1-based index over accepted invites (assigned at game start).
+  let playerId: string;
+  if (game.mode === 'CONFIGURABLE_CYCLE') {
+    playerId = `p${invite.slot_index}`;
+  } else {
+    const { results: allAccepted } = await db
+      .prepare(
+        'SELECT slot_index, accepted_by FROM Invites WHERE game_id = ? AND accepted_by IS NOT NULL ORDER BY slot_index'
+      )
+      .bind(game.id)
+      .all<{ slot_index: number; accepted_by: string }>();
 
-  const idx = allAccepted.findIndex((i) => i.accepted_by === session.userId);
-  const playerId = `p${idx + 1}`;
+    const idx = allAccepted.findIndex((i) => i.accepted_by === session.userId);
+    playerId = `p${idx + 1}`;
+  }
 
   // Mint JWT (expiry = 2× game length + 7 day buffer)
   const tokenExpiry = `${(game.day_count || 7) * 2 + 7}d`;
