@@ -415,7 +415,7 @@ export default function App() {
         </div>
       );
     }
-    return <LauncherScreen lobbyGames={lobbyGames} />;
+    return <div data-testid="launcher-screen"><LauncherScreen lobbyGames={lobbyGames} /></div>;
   }
 
   if (!playerId) return (
@@ -534,6 +534,7 @@ function LauncherScreen({ lobbyGames }: { lobbyGames: Array<{ gameCode: string; 
         )}
         <div className="flex gap-2">
           <input
+            data-testid="game-code-input"
             type="text"
             value={codeInput}
             onChange={(e) => setCodeInput(e.target.value)}
@@ -544,6 +545,7 @@ function LauncherScreen({ lobbyGames }: { lobbyGames: Array<{ gameCode: string; 
             spellCheck={false}
           />
           <button
+            data-testid="game-code-join"
             type="submit"
             disabled={!codeInput.trim()}
             className="px-5 py-3 rounded-xl border border-skin-gold/30 bg-glass text-xs font-mono font-bold text-skin-gold uppercase tracking-widest hover:border-skin-gold/60 disabled:opacity-30 disabled:cursor-not-allowed transition-all"

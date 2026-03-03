@@ -8,6 +8,22 @@ compatibility_flags = ["nodejs_compat"]
 tag = "v1"
 new_sqlite_classes = ["GameServer"]
 
+# ── Local Dev Bindings ────────────────────────────────────
+# Required for partyserver's routePartykitRequest to route
+# /parties/game-server/{id}/* to the GameServer DO.
+[[durable_objects.bindings]]
+name = "GameServer"
+class_name = "GameServer"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pecking-order-journal-db-local"
+database_id = "00000000-0000-0000-0000-000000000001"
+
+[vars]
+GAME_CLIENT_HOST = "http://localhost:5173"
+ALLOW_DB_RESET = "true"
+
 [observability]
 enabled = true
 

@@ -25,25 +25,26 @@ export default function VotingPanel({ engine }: VotingPanelProps) {
 
   const common = { cartridge: activeVotingCartridge, playerId: playerId!, roster, engine };
 
+  let panel: React.ReactNode;
   switch (activeVotingCartridge.voteType) {
     case VoteTypes.MAJORITY:
-      return <MajorityVoting {...common} />;
+      panel = <MajorityVoting {...common} />; break;
     case VoteTypes.EXECUTIONER:
-      return <ExecutionerVoting {...common} />;
+      panel = <ExecutionerVoting {...common} />; break;
     case VoteTypes.BUBBLE:
-      return <BubbleVoting {...common} />;
+      panel = <BubbleVoting {...common} />; break;
     case VoteTypes.PODIUM_SACRIFICE:
-      return <PodiumSacrificeVoting {...common} />;
+      panel = <PodiumSacrificeVoting {...common} />; break;
     case VoteTypes.SECOND_TO_LAST:
-      return <SecondToLastVoting {...common} />;
+      panel = <SecondToLastVoting {...common} />; break;
     case VoteTypes.SHIELD:
-      return <ShieldVoting {...common} />;
+      panel = <ShieldVoting {...common} />; break;
     case VoteTypes.TRUST_PAIRS:
-      return <TrustPairsVoting {...common} />;
+      panel = <TrustPairsVoting {...common} />; break;
     case VoteTypes.FINALS:
-      return <FinalsVoting {...common} />;
+      panel = <FinalsVoting {...common} />; break;
     default:
-      return (
+      panel = (
         <div className="mx-4 my-2 p-4 rounded-xl bg-skin-surface border border-skin-base text-center">
           <span className="text-sm font-mono text-skin-muted">
             UNKNOWN_VOTE_TYPE: {activeVotingCartridge.voteType}
@@ -51,4 +52,6 @@ export default function VotingPanel({ engine }: VotingPanelProps) {
         </div>
       );
   }
+
+  return <div data-testid="voting-panel">{panel}</div>;
 }

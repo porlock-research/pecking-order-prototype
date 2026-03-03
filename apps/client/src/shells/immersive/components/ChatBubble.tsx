@@ -134,6 +134,7 @@ export function ChatBubble({
           </span>
         )}
         <motion.div
+          data-testid="chat-message"
           className={`px-4 py-2.5 text-base leading-relaxed break-words [overflow-wrap:anywhere] max-w-full relative
             ${isMe
               ? 'bg-skin-pink text-white rounded-2xl rounded-br-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]'

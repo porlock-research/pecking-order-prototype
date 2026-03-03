@@ -244,6 +244,7 @@ export function PeopleList({ onSelectPlayer, onSelectGroup, onNewDm, onNewGroup 
           return (
             <motion.button
               key={player.id}
+              data-testid={`player-${player.id}`}
               onClick={() => onSelectPlayer(player.id)}
               className="w-full flex items-center gap-3.5 p-3.5 rounded-xl glass-card text-left"
               whileTap={TAP.card}

@@ -121,6 +121,7 @@ export function FloatingInput({ engine, replyTarget, onClearReply }: FloatingInp
 
         <form className="flex gap-2 items-center" onSubmit={handleSend}>
           <input
+            data-testid="chat-input"
             type="text"
             value={inputValue}
             onChange={(e) => {
@@ -133,6 +134,7 @@ export function FloatingInput({ engine, replyTarget, onClearReply }: FloatingInp
             className="flex-1 bg-skin-deep border border-white/[0.06] rounded-full px-5 py-3 text-base text-skin-base focus:outline-none focus:ring-2 focus:ring-skin-pink focus:shadow-[0_0_0_4px_rgba(236,72,153,0.15)] focus:border-transparent placeholder:text-skin-dim transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           />
           <motion.button
+            data-testid="chat-send"
             type="submit"
             disabled={!inputValue.trim() || !groupChatOpen}
             className="shrink-0 w-12 h-12 rounded-full bg-skin-pink text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed shadow-btn"

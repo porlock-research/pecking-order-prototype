@@ -67,8 +67,8 @@ export function Header() {
             <div className="px-4 pb-3 pt-2 border-t border-white/[0.04]">
               {/* Status row: Day · Phase · Alive */}
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-mono font-bold text-skin-gold">DAY {dayIndex} <span className="text-skin-pink font-display uppercase tracking-wider">{phase}</span></span>
-                <span className="text-[11px] font-mono text-skin-dim">
+                <span data-testid="phase-label" className="text-xs font-mono font-bold text-skin-gold">DAY {dayIndex} <span className="text-skin-pink font-display uppercase tracking-wider">{phase}</span></span>
+                <span data-testid="alive-count" className="text-[11px] font-mono text-skin-dim">
                   {aliveCount}/{totalCount} alive
                 </span>
               </div>

@@ -44,6 +44,16 @@
       "dependsOn": ["^build"],
       "outputs": ["../../docs/machines/**"],
       "cache": false
+    },
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "outputs": ["playwright-report/**", "test-results/**"]
+    },
+    "test:e2e:ui": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true
     }
   }
 }

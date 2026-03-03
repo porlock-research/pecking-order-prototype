@@ -100,7 +100,7 @@ function ImmersiveShell({ playerId, engine, token }: ShellProps) {
 
   return (
     <LayoutGroup>
-      <div className="fixed inset-0 flex flex-col bg-skin-fill text-skin-base font-body overflow-hidden bg-radial-vignette selection:bg-skin-gold selection:text-skin-inverted">
+      <div data-testid="game-shell" className="fixed inset-0 flex flex-col bg-skin-fill text-skin-base font-body overflow-hidden bg-radial-vignette selection:bg-skin-gold selection:text-skin-inverted">
 
         <Header />
 

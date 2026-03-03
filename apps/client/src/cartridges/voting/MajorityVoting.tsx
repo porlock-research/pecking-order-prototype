@@ -85,7 +85,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
         <p className="text-[10px] font-mono text-skin-dim text-center uppercase">Most votes = eliminated</p>
 
         {myVote ? (
-          <p className="text-xs font-mono text-skin-pink text-center uppercase tracking-wider">
+          <p data-testid="vote-confirmed" className="text-xs font-mono text-skin-pink text-center uppercase tracking-wider">
             Vote cast!
           </p>
         ) : !canVote ? (
@@ -107,6 +107,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
             return (
               <button
                 key={targetId}
+                data-testid={`vote-btn-${targetId}`}
                 disabled={!!myVote || !canVote}
                 onClick={() => engine.sendVoteAction(VoteEvents.MAJORITY.CAST, targetId)}
                 className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left
