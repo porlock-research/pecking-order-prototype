@@ -1288,3 +1288,37 @@ This document tracks significant architectural decisions, their context, and con
     *   `po_session` cookie (7-day, cross-subdomain) is the authority for game discovery and token minting. Local storage (localStorage, Cache API, cookies) serves as a fast path, not a reliability dependency.
     *   Invite flow (`/invite/TOKEN` → `/join/CODE` → `/play/CODE` → `/game/CODE?_t=JWT`) is completely unaffected.
     *   **Files**: `useGameEngine.ts`, `App.tsx`, `lobby/app/api/my-active-game/route.ts`.
+
+## [ADR-089] Server-Authoritative Token Lifecycle
+*   **Date:** 2026-03-03
+*   **Status:** Accepted (extends ADR-088)
+*   **Context:** ADR-088's `onClose` redirect fixed the immediate infinite loop, but was reactive — it cleaned up *after* a failed WebSocket connection. This had two problems: (1) `partysocket`'s `_handleClose` calls `_connect()` *before* the `onclose` callback, so the redirect raced against auto-reconnection; (2) tokens for games the player never revisits accumulated forever in localStorage, cookies, and Cache API. The fundamental issue: the client treated cached token presence as proof of an active game. The server is the authority.
+*   **Decision:** Move validation upstream — never attempt a WebSocket connection for a game the server says is inactive.
+    1.  **`fetchActiveGames()`**: On every app load (except the fast-path transient token redirect), call `GET /api/my-active-game` with `credentials: 'include'`. Returns `{ games, codes: Set<string> }` or `null` if the lobby is unreachable (no session, offline, standalone PWA without cookie).
+    2.  **`purgeInactiveTokens(activeCodes)`**: When the lobby is reachable, purge all `po_token_*` from localStorage, `po_pwa_*` cookies, and `po-tokens-v1` Cache API entries for game codes NOT in the active set.
+    3.  **Gate the recovery chain**: If the lobby confirms a game code is NOT active, show the launcher with an archived-game notice — no WebSocket, no `ShellLoader`, no `useGameEngine`. Cookie auto-recovery at `/` is also gated by the active set.
+    4.  **Fallback for unreachable lobby** (`null`): Skip pruning, try the cached token, rely on the 4001 handler in `useGameEngine` as a safety net. This covers offline mode, standalone PWA without `po_session`, and E2E tests.
+    5.  **Transient token fast path**: `?_t=JWT` from lobby redirect is authoritative (just issued). Apply immediately, purge stale tokens fire-and-forget in background.
+*   **Archived game UX**: Instead of a silent redirect, the launcher shows a notice: *"The game you were looking for has ended."* with the game code. Active games (if any) are listed below.
+*   **Consequences:**
+    *   No WebSocket connection is ever attempted for a game the lobby says is inactive — eliminates the infinite loop at the source.
+    *   Stale tokens are cleaned up proactively on every load, not just when the player revisits a dead game.
+    *   `partysocket` reconnection behavior is preserved for legitimate disconnects (network blips, DO restarts).
+    *   Adds one API call on non-transient app loads (~100-300ms). Acceptable tradeoff for correctness.
+    *   **Files**: `App.tsx` (`fetchActiveGames`, `purgeInactiveTokens`, restructured `init()`), `useGameEngine.ts` (`location.replace` instead of `location.href`).
+
+## [ADR-090] E2E Playwright Test Suite
+*   **Date:** 2026-03-03
+*   **Status:** Accepted
+*   **Context:** Manual playtesting was insufficient for the game server + client pipeline (L1→L2→L3→cartridges→WebSocket→React). Too many changes between playtests meant regressions went unnoticed. No automated E2E tests existed.
+*   **Decision:** Add Playwright E2E tests as a turbo workspace (`e2e/`), using API-driven game setup (bypass lobby, POST directly to game server `/init`).
+    1.  **Turbo workspace**: `@pecking-order/e2e` with `test:e2e` task (`dependsOn: ["^build"]`, `cache: false`). Playwright `webServer` config starts game server and client via `npx turbo run dev`.
+    2.  **Test fixtures** (`e2e/fixtures/game-setup.ts`): `createTestGame(playerCount, dayCount)` builds roster + manifest, POSTs to `/parties/game-server/{id}/init`, mints JWTs via `@pecking-order/auth`. Helper functions: `advanceGameState` (NEXT_STAGE), `injectTimelineEvent`, `getGameState`, `suppressPwaGate`, `gotoGame`, `waitForGameShell`, `dismissReveal`.
+    3.  **`data-testid` attributes**: Added to ~10 client components (game-shell, voting-panel, vote-btn-{id}, vote-confirmed, chat-input, chat-send, chat-message, phase-label, alive-count, player-{id}, launcher-screen, game-code-input, game-code-join).
+    4.  **Test specs**: smoke (connect + sync), chat (send/receive), voting (majority vote + elimination), game-lifecycle (full 2-day game), stale-game (archived game redirect).
+    5.  **Local dev bindings**: Added explicit `[[durable_objects.bindings]]` and `[[d1_databases]]` to `wrangler.toml` default section (required for `partyserver` routing in local dev).
+*   **Consequences:**
+    *   Critical game paths are automatically tested before deployment.
+    *   `data-testid` attributes add no runtime cost and provide stable selectors.
+    *   Tests require both game server and client dev servers running (handled by Playwright `webServer` config).
+    *   **Files**: `e2e/` workspace, `turbo.json`, root `package.json`, `wrangler.toml`, client components with `data-testid`.
