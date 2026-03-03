@@ -457,18 +457,6 @@ export class GameServer extends Server<Env> {
     if (req.method === "POST" && path.endsWith("/cleanup")) {
       return this.handleCleanup(req);
     }
-    if (path.endsWith("/vapid-key")) {
-      if (req.method === "OPTIONS") {
-        return new Response(null, {
-          status: 204,
-          headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, OPTIONS", "Access-Control-Max-Age": "86400" },
-        });
-      }
-      return new Response(JSON.stringify({ publicKey: this.env.VAPID_PUBLIC_KEY }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-      });
-    }
     if (req.method === "POST" && path.endsWith("/push-game-entry")) {
       return this.handlePushGameEntry(req);
     }
@@ -1193,6 +1181,14 @@ export default {
         log('error', 'Push API', 'Broadcast failed', { error: String(err) });
         return new Response('Server error', { status: 500, headers: CORS_HEADERS });
       }
+    }
+
+    // VAPID public key — static env var, no DO needed
+    if (url.pathname.endsWith('/vapid-key')) {
+      return new Response(JSON.stringify({ publicKey: env.VAPID_PUBLIC_KEY }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+      });
     }
 
     return (await routePartykitRequest(request, env)) || new Response("Not Found", { status: 404 });
