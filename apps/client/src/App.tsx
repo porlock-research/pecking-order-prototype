@@ -288,12 +288,17 @@ export default function App() {
         try {
           const decoded = decodeGameToken(transientToken);
           if (decoded.exp && decoded.exp < Date.now() / 1000) {
-            // Expired start_url token (PWA installed for an old game) — show launcher
+            // Expired start_url token (PWA installed for an old game)
+            // Clean URL and redirect to launcher — triggers full discovery chain
+            window.location.href = '/';
+            return;
           } else {
             applyToken(transientToken, gameCode, setGameId, setPlayerId, setToken);
           }
         } catch {
-          console.error('Invalid token from redirect');
+          // Corrupt token — redirect to launcher for discovery
+          window.location.href = '/';
+          return;
         }
         setRecovering(false);
       } else if (gameCode) {
