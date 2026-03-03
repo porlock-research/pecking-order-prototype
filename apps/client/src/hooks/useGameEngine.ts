@@ -19,13 +19,20 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
 
   // Use token-based auth when available, fall back to plain playerId for debug
   const query = token ? { token } : { playerId };
+  if (!token) {
+    console.warn('[WS] Connecting without token — using playerId fallback (debug mode)');
+  }
 
   const socket = usePartySocket({
     host: new URL(import.meta.env.VITE_GAME_SERVER_HOST || "http://localhost:8787").host,
     room: gameId,
     party: 'game-server',
     query,
+    onOpen() {
+      console.log('[WS] Connected to game', gameId, 'as', playerId);
+    },
     onClose(event) {
+      console.warn('[WS] Connection closed', { code: event.code, reason: event.reason, gameId });
       if (event.code === 4001 || event.code === 4003) {
         Sentry.addBreadcrumb({
           category: 'websocket',
@@ -37,7 +44,8 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
         window.location.replace('/');
       }
     },
-    onError() {
+    onError(event) {
+      console.error('[WS] Connection error', { gameId });
       Sentry.addBreadcrumb({
         category: 'websocket',
         message: 'Connection error',
@@ -73,9 +81,11 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
           setTyping(data.playerId, data.channel);
         } else if (data.type === Events.Presence.STOP_TYPING) {
           clearTyping(data.playerId);
+        } else {
+          console.warn('[WS] Unhandled message type:', data.type, data);
         }
       } catch (err) {
-        console.error("Failed to parse message", err);
+        console.error('[WS] Failed to parse message:', err, event.data?.substring?.(0, 200));
       }
     },
   });

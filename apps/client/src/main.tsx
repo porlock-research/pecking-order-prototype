@@ -28,15 +28,23 @@ import { registerSW } from 'virtual:pwa-register';
 registerSW({
   immediate: true,
   onRegisteredSW(swUrl, registration) {
+    console.log('[SW] Registered at', swUrl);
     if (!registration) return;
     setInterval(async () => {
       if (registration.installing || !navigator) return;
       if ('connection' in navigator && !navigator.onLine) return;
-      const resp = await fetch(swUrl, {
-        cache: 'no-store',
-        headers: { 'cache-control': 'no-cache' },
-      });
-      if (resp?.status === 200) await registration.update();
+      try {
+        const resp = await fetch(swUrl, {
+          cache: 'no-store',
+          headers: { 'cache-control': 'no-cache' },
+        });
+        if (resp?.status === 200) await registration.update();
+      } catch (err) {
+        console.warn('[SW] Hourly update check failed:', err);
+      }
     }, 60 * 60 * 1000); // check hourly
+  },
+  onRegisterError(error) {
+    console.error('[SW] Registration failed:', error);
   },
 });

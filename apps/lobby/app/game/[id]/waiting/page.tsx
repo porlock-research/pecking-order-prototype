@@ -441,8 +441,6 @@ export default function WaitingRoom() {
                 )}
                 <a
                   href={clientEntryUrl}
-                  target="_blank"
-                  rel="noreferrer"
                   className="block w-full py-4 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all hover:brightness-110 active:scale-[0.99]"
                   style={{ backgroundColor: 'rgba(34, 197, 94, 0.2)', border: '1px solid rgba(34, 197, 94, 0.4)', color: 'var(--po-green)' }}
                 >

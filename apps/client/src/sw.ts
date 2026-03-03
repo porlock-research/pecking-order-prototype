@@ -26,7 +26,14 @@ precacheAndRoute(self.__WB_MANIFEST);
 // No tags, no renotify — every notification is unique because XState state
 // transitions fire exactly once. Every push should alert the user.
 self.addEventListener('push', (event) => {
-  if (!event.data) return;
+  if (!event.data) {
+    console.warn('[SW] Received push event with no data');
+    // Show fallback to avoid browser revoking push permission
+    event.waitUntil(
+      self.registration.showNotification('Pecking Order', { body: 'New update available' }),
+    );
+    return;
+  }
 
   try {
     const data = event.data.json();
@@ -49,13 +56,13 @@ self.addEventListener('push', (event) => {
             new Request(`/po-token-cache/po_token_${code}`),
             new Response(data.token),
           )
-        ).catch(() => {}); // fire-and-forget
+        ).catch((err) => console.warn('[SW] Push token cache write failed:', err));
       }
     }
 
     event.waitUntil(self.registration.showNotification(title, options));
-  } catch {
-    // Fallback for non-JSON payloads
+  } catch (err) {
+    console.warn('[SW] Push payload parse failed, falling back to text:', err);
     const text = event.data.text();
     event.waitUntil(
       self.registration.showNotification('Pecking Order', { body: text }),
@@ -68,9 +75,11 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const targetUrl = (event.notification.data?.url as string) || self.location.origin;
+  console.log('[SW] Notification clicked, target:', targetUrl);
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      console.log('[SW] Found', clients.length, 'client window(s)');
       // Navigate an existing same-origin window (reuses PWA window)
       for (const client of clients) {
         if (new URL(client.url).origin === self.location.origin && 'navigate' in client) {
@@ -78,7 +87,8 @@ self.addEventListener('notificationclick', (event) => {
         }
       }
       // Otherwise open a new tab/window
+      console.log('[SW] No existing window, opening new');
       return self.clients.openWindow(targetUrl);
-    }),
+    }).catch((err) => console.error('[SW] Notification click navigation failed:', err)),
   );
 });

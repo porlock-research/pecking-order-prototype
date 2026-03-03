@@ -907,3 +907,47 @@ The ideal long-term fix is to use push notifications as the invite delivery chan
 **Trade-off**: Auto-update may reload the app while a user is mid-action (typing a message, mid-vote). Acceptable during playtesting — production may want a "new version available" prompt instead.
 
 **Status**: Fixed
+
+## [PROD-028] Game code entry flow lacks validation — stale/invalid codes lead to broken states
+
+**Priority**: Medium — not blocking playtest but causes confusing UX for returning players and edge cases.
+
+**Observed problems:**
+
+### 1. Expired game code → empty character selection screen
+
+Entering an expired game code in the client launcher (without a session cookie) redirects to the lobby for the sign-in flow. After completing email auth, the magic link lands on an empty character selection screen — no personas, no game data. The lobby minted a valid session and redirected to the character select page without first verifying the game still exists and is joinable.
+
+**Root cause**: No game validity check before allowing the auth flow to proceed. The lobby happily issues a session cookie and redirects to `/game/[id]/character` even when the game is completed, deleted, or non-existent. The validation should happen *before* the user is allowed to enter their email — not after.
+
+### 2. Non-existent game codes show "Game has ended"
+
+The client launcher shows "Game has ended" for any unrecognized game code, whether the game existed and ended, or never existed at all. The error message is misleading — it should distinguish between "this game doesn't exist" and "this game has ended."
+
+### 3. No centralized game validation — checks are scattered across actions
+
+Game code validation is spread across multiple server actions and route handlers with inconsistent behavior. There's no middleware or shared validation layer that every game-code-bearing route passes through. This leads to some paths checking game status, others checking player membership, and some checking nothing at all.
+
+**Proposed architectural fix**: A middleware pattern (or shared validation function) that every route containing `/[code]` or `/[id]` passes through, performing:
+1. Does the game exist?
+2. What is its status? (lobby, active, completed, deleted)
+3. Is the current user a member? (if auth is present)
+4. Is the game still joinable? (not started, not full)
+
+Each route then receives a validated game context rather than doing ad-hoc checks.
+
+### 4. Broader design tension: public vs private games and the launcher code entry
+
+Two distinct join flows exist today with different security models:
+
+- **Email invite flow** (lobby): Host explicitly invites players by email. Only invited players can join. Character selection happens in the lobby. This is a "private game" model.
+- **Game code flow** (client launcher): Anyone with the 4-letter code can join, as long as the game hasn't started. No prior invitation required. This is a "public game" model.
+
+The launcher's "Enter game code" button exists primarily for PWA re-entry (standalone PWA can't share cookies with Safari, so returning players type their code). But it also serves as an unauthenticated backdoor — any code gets you into the join flow.
+
+**Open questions:**
+- Should the launcher code entry be removed entirely? If so, how does a player re-enter the game after leaving the lobby waiting room? Push notifications (PROD-026) solve this for players who have the PWA installed, but not for first-time or non-PWA players.
+- Should there be an `/api/active-games` endpoint that the client can check? This would let the launcher show only games the player is actually part of (via session cookie), rather than accepting arbitrary codes.
+- Should the lobby refuse to send a magic link email if the target game is invalid/ended? This would prevent the empty character selection screen at the source.
+
+**Status**: Documented — needs design decision on public vs private game model before implementation

@@ -3,7 +3,7 @@ import { useGameStore } from './store/useGameStore';
 import { ShellLoader } from './shells/ShellLoader';
 import { decodeGameToken } from '@pecking-order/auth';
 import { PushPrompt } from './components/PushPrompt';
-import { initSentry, setSentryUser, setSentryContext } from './lib/sentry';
+import { initSentry, setSentryUser, setSentryPwaContext, setSentryAuthMethod } from './lib/sentry';
 
 initSentry();
 
@@ -21,7 +21,8 @@ function pruneExpiredTokens() {
     try {
       const decoded = decodeGameToken(localStorage.getItem(key)!);
       if (decoded.exp && decoded.exp < now) keysToRemove.push(key);
-    } catch {
+    } catch (err) {
+      console.warn('[App] pruneExpiredTokens: invalid token, removing:', key, err);
       keysToRemove.push(key);
     }
   }
@@ -33,7 +34,10 @@ function pruneExpiredTokens() {
  *  On modern iOS (17+), storage is fully partitioned — this only helps within
  *  the same browsing context (e.g. recovering from a cleared localStorage). */
 async function syncCacheToLocalStorage(): Promise<void> {
-  if (!('caches' in window)) return;
+  if (!('caches' in window)) {
+    console.log('[App] syncCacheToLocalStorage: Cache API not available');
+    return;
+  }
   try {
     const cache = await caches.open('po-tokens-v1');
     const keys = await cache.keys();
@@ -56,7 +60,8 @@ async function syncCacheToLocalStorage(): Promise<void> {
           // Expired — clean up from cache too
           cache.delete(req);
         }
-      } catch {
+      } catch (err) {
+        console.warn('[App] syncCacheToLocalStorage: invalid cached token, removing:', tokenKey, err);
         cache.delete(req);
       }
     }
@@ -157,19 +162,25 @@ function recoverGameFromCookies(): { gameCode: string; jwt: string } | null {
 /** Persist a token to Cache API (shared between Safari and standalone PWA on iOS).
  *  Uses caches.open() directly — no dependency on SW being registered or controlling. */
 function persistToCache(gameCode: string, jwt: string) {
-  if (!('caches' in window)) return;
+  if (!('caches' in window)) {
+    console.log('[App] persistToCache: Cache API not available');
+    return;
+  }
   caches.open('po-tokens-v1').then(cache =>
     cache.put(
       new Request(`/po-token-cache/po_token_${gameCode}`),
       new Response(jwt),
     )
-  ).catch(() => {}); // fire-and-forget
+  ).catch((err) => console.warn('[App] persistToCache: Cache API write failed:', err));
 }
 
 /** Try to recover a token from the Cache API (iOS standalone PWA fallback).
  *  Uses caches.open() directly — no dependency on SW being registered or controlling. */
 async function recoverFromCacheApi(gameCode: string): Promise<string | null> {
-  if (!('caches' in window)) return null;
+  if (!('caches' in window)) {
+    console.log('[App] recoverFromCacheApi: Cache API not available');
+    return null;
+  }
   try {
     const cache = await caches.open('po-tokens-v1');
     const res = await cache.match(new Request(`/po-token-cache/po_token_${gameCode}`));
@@ -194,9 +205,13 @@ async function refreshFromLobby(gameCode: string): Promise<string | null> {
     const res = await fetch(`${LOBBY_HOST}/api/refresh-token/${gameCode}`, {
       credentials: 'include', // sends po_session cookie
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn('[App] refreshFromLobby: lobby returned', res.status, 'for', gameCode);
+      return null;
+    }
     const { token } = await res.json();
     if (token) return token;
+    console.warn('[App] refreshFromLobby: lobby returned 200 but no token for', gameCode);
   } catch (err) {
     console.warn('[App] Lobby token refresh failed:', err);
   }
@@ -214,12 +229,16 @@ async function fetchActiveGames(): Promise<{
     const res = await fetch(`${LOBBY_HOST}/api/my-active-game`, {
       credentials: 'include',
     });
-    if (!res.ok) return null; // 401 (no session) or server error
+    if (!res.ok) {
+      console.log('[App] fetchActiveGames: lobby returned', res.status);
+      return null;
+    }
     const data = await res.json();
     const games: Array<{ gameCode: string; personaName: string }> = data.games || [];
     return { games, codes: new Set(games.map(g => g.gameCode.toUpperCase())) };
-  } catch {
-    return null; // Lobby unreachable (offline, standalone PWA without cookie, etc.)
+  } catch (err) {
+    console.warn('[App] fetchActiveGames: lobby unreachable:', err);
+    return null;
   }
 }
 
@@ -258,7 +277,7 @@ function purgeInactiveTokens(activeCodes: Set<string>) {
         const code = tokenKey.replace('po_token_', '').toUpperCase();
         if (!activeCodes.has(code)) cache.delete(req);
       }
-    }).catch(() => {});
+    }).catch((err) => console.warn('[App] purgeInactiveTokens: Cache API cleanup failed:', err));
   }
 }
 
@@ -313,7 +332,8 @@ export default function App() {
 
       // Set PWA context for Sentry diagnostics
       const isStandalone = matchMedia('(display-mode: standalone)').matches || !!(navigator as any).standalone;
-      setSentryContext('pwa', {
+      console.log('[App] init: standalone=' + isStandalone + ', pushManager=' + ('PushManager' in window));
+      setSentryPwaContext({
         isStandalone,
         hasPushManager: 'PushManager' in window,
         platform: navigator.userAgent,
@@ -331,14 +351,18 @@ export default function App() {
       // ── Fast path: transient token from lobby redirect ──
       // This is authoritative (just issued by the lobby), skip server validation.
       if (gameCode && transientToken) {
+        console.log('[App] init: transient token for', gameCode);
         try {
           const decoded = decodeGameToken(transientToken);
           if (decoded.exp && decoded.exp < Date.now() / 1000) {
+            console.warn('[App] init: transient token expired, redirecting to /');
             window.location.href = '/';
             return;
           }
           applyToken(transientToken, gameCode, setGameId, setPlayerId, setToken);
-        } catch {
+          setSentryAuthMethod('transient');
+        } catch (err) {
+          console.error('[App] init: transient token decode failed:', err);
           window.location.href = '/';
           return;
         }
@@ -361,7 +385,7 @@ export default function App() {
         // Visiting /game/CODE without a transient token
         if (active && !active.codes.has(gameCode)) {
           // Server says this game is not active — don't attempt a WebSocket connection.
-          // Tokens for this code were already purged above. Show launcher with message.
+          console.log('[App] init: game', gameCode, 'not in active games list, showing archived');
           setArchivedGameCode(gameCode);
           if (active.games.length > 0) setLobbyGames(active.games);
           window.history.replaceState({}, '', '/');
@@ -372,22 +396,27 @@ export default function App() {
         // Game is active (or lobby was unreachable — give the cached token a chance)
         const cached = localStorage.getItem(`po_token_${gameCode}`);
         if (cached) {
+          console.log('[App] init: found cached token for', gameCode);
           try {
             applyToken(cached, gameCode, setGameId, setPlayerId, setToken);
+            setSentryAuthMethod('cached');
             setRecovering(false);
-          } catch {
+          } catch (err) {
+            console.warn('[App] init: cached token invalid for', gameCode, '— starting recovery:', err);
             localStorage.removeItem(`po_token_${gameCode}`);
             await runAsyncRecovery(gameCode);
           }
         } else {
+          console.log('[App] init: no cached token for', gameCode, '— starting recovery');
           await runAsyncRecovery(gameCode);
         }
       } else if (rawToken) {
         // Direct JWT entry: ?token=JWT (debug links from lobby)
         try {
           applyToken(rawToken, null, setGameId, setPlayerId, setToken);
-        } catch {
-          console.error('Invalid token');
+          setSentryAuthMethod('raw-token');
+        } catch (err) {
+          console.error('[App] init: raw token decode failed:', err);
         }
         setRecovering(false);
       } else {
@@ -397,11 +426,18 @@ export default function App() {
         if (fromCookie) {
           const cookieCode = fromCookie.gameCode.toUpperCase();
           if (!active || active.codes.has(cookieCode)) {
-            applyToken(fromCookie.jwt, fromCookie.gameCode, setGameId, setPlayerId, setToken);
-            setRecovering(false);
-            return;
+            console.log('[App] init: recovering from cookie for', cookieCode);
+            try {
+              applyToken(fromCookie.jwt, fromCookie.gameCode, setGameId, setPlayerId, setToken);
+              setSentryAuthMethod('cookie');
+              setRecovering(false);
+              return;
+            } catch (err) {
+              console.error('[App] init: cookie token apply failed for', cookieCode, ':', err);
+            }
+          } else {
+            console.log('[App] init: cookie token for', cookieCode, 'is for an inactive game');
           }
-          // Cookie is for an inactive game — purge already handled above, show message
           setArchivedGameCode(cookieCode);
         }
 
@@ -427,31 +463,44 @@ export default function App() {
     }
 
     async function runAsyncRecovery(code: string) {
+      console.log('[App] runAsyncRecovery: starting for', code);
       try {
         // Step 1: Cookie (iOS 17.2+ copies cookies from Safari to standalone PWA at install)
         const fromCookie = recoverFromCookie(code);
         if (fromCookie) {
+          console.log('[App] recovery step 1: recovered from cookie for', code);
           applyToken(fromCookie, code, setGameId, setPlayerId, setToken);
+          setSentryAuthMethod('cookie');
           return;
         }
+        console.log('[App] recovery step 1: no cookie token for', code);
 
         // Step 2: Cache API (already synced to localStorage above, but try direct read as fallback)
         const fromCache = await recoverFromCacheApi(code);
         if (fromCache) {
+          console.log('[App] recovery step 2: recovered from Cache API for', code);
           applyToken(fromCache, code, setGameId, setPlayerId, setToken);
+          setSentryAuthMethod('cache-api');
           return;
         }
+        console.log('[App] recovery step 2: no Cache API token for', code);
 
         // Step 3: Lobby API (mint fresh JWT via po_session cookie)
         const fromLobby = await refreshFromLobby(code);
         if (fromLobby) {
+          console.log('[App] recovery step 3: refreshed from lobby for', code);
           applyToken(fromLobby, code, setGameId, setPlayerId, setToken);
+          setSentryAuthMethod('lobby-refresh');
           return;
         }
+        console.log('[App] recovery step 3: lobby refresh failed for', code);
 
         // Step 4: Redirect to lobby (last resort — user may need to log in)
+        console.log('[App] recovery step 4: redirecting to lobby for', code);
+        setSentryAuthMethod('lobby-redirect');
         window.location.href = `${LOBBY_HOST}/play/${code}`;
-      } catch {
+      } catch (err) {
+        console.error('[App] runAsyncRecovery: unexpected error for', code, ':', err);
         window.location.href = `${LOBBY_HOST}/play/${code}`;
       } finally {
         setRecovering(false);
@@ -525,8 +574,8 @@ function LauncherScreen({ lobbyGames, archivedGameCode }: {
           if (!gameMap.has(code)) {
             gameMap.set(code, { code, personaName: decoded.personaName });
           }
-        } catch {
-          // Invalid token — skip
+        } catch (err) {
+          console.warn('[App] LauncherScreen: skipping unreadable token:', key, err);
         }
       }
     }

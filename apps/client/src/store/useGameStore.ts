@@ -153,6 +153,13 @@ export const useGameStore = create<GameState>((set) => ({
   debugTicker: null,
 
   sync: (data) => set((state) => {
+    console.log('[SYNC] Received', {
+      state: data.state,
+      dayIndex: data.context?.dayIndex,
+      rosterSize: Object.keys(data.context?.roster || {}).length,
+      chatLogSize: data.context?.chatLog?.length ?? 0,
+      channels: Object.keys(data.context?.channels || {}).length,
+    });
     // Map server completedPhases to client CompletedCartridge format
     const serverPhases: any[] = data.context?.completedPhases ?? [];
     const completedCartridges: CompletedCartridge[] = serverPhases.map((p: any) => {

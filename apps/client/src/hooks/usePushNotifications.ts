@@ -53,6 +53,7 @@ export function usePushNotifications(activeToken?: string | null) {
   useEffect(() => {
     Sentry.addBreadcrumb({ category: 'push', message: 'init', data: { permission, isStandalone, hasPushManager } });
     if (permission === 'unsupported') {
+      console.log('[Push] Push unsupported (no SW or no PushManager)');
       setReady(true);
       return;
     }
@@ -61,13 +62,19 @@ export function usePushNotifications(activeToken?: string | null) {
     if (!navigator.serviceWorker.controller && navigator.serviceWorker.getRegistrations) {
       navigator.serviceWorker.getRegistrations().then(regs => {
         if (regs.length === 0) {
+          console.log('[Push] No SW controller, no registrations — showing subscribe button');
           setIsSubscribed(false);
           setReady(true);
           return;
         }
+        console.log('[Push] No SW controller but', regs.length, 'registration(s) found — checking subscription');
         checkExistingSubscription();
+      }).catch(err => {
+        console.error('[Push] getRegistrations failed:', err);
+        setReady(true);
       });
     } else {
+      console.log('[Push] SW controller active — checking subscription');
       checkExistingSubscription();
     }
 
@@ -83,6 +90,7 @@ export function usePushNotifications(activeToken?: string | null) {
             console.log('[Push] Permission granted but no subscription — auto-resubscribing');
             await autoResubscribe(reg);
           } else {
+            console.log('[Push] No subscription, permission is:', Notification.permission);
             setIsSubscribed(false);
           }
           return;
@@ -91,10 +99,13 @@ export function usePushNotifications(activeToken?: string | null) {
 
         // Re-register with server (idempotent upsert)
         const token = activeToken || findCachedToken();
-        if (!token) return;
+        if (!token) {
+          console.warn('[Push] Existing subscription found but no JWT — skipping server re-sync');
+          return;
+        }
 
         const subJSON = sub.toJSON();
-        await fetch(`${serverHost}/api/push/subscribe`, {
+        const res = await fetch(`${serverHost}/api/push/subscribe`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -105,6 +116,11 @@ export function usePushNotifications(activeToken?: string | null) {
             keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
           }),
         });
+        if (!res.ok) {
+          console.warn('[Push] Server re-sync returned', res.status);
+        } else {
+          console.log('[Push] Server re-sync successful');
+        }
       } catch (err) {
         console.error('[Push] Re-sync failed:', err);
         setIsSubscribed(false);
@@ -134,7 +150,7 @@ export function usePushNotifications(activeToken?: string | null) {
         }
 
         const subJSON = sub.toJSON();
-        await fetch(`${serverHost}/api/push/subscribe`, {
+        const res = await fetch(`${serverHost}/api/push/subscribe`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -145,6 +161,11 @@ export function usePushNotifications(activeToken?: string | null) {
             keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
           }),
         });
+        if (!res.ok) {
+          console.error('[Push] Auto-resubscribe server registration failed:', res.status);
+          setIsSubscribed(false);
+          return;
+        }
 
         setIsSubscribed(true);
         setPermission('granted');
@@ -159,7 +180,10 @@ export function usePushNotifications(activeToken?: string | null) {
   }, [permission, serverHost, vapidPublicKey, activeToken]);
 
   const subscribe = useCallback(async () => {
-    if (permission === 'unsupported') return;
+    if (permission === 'unsupported') {
+      console.warn('[Push] Subscribe called but push is unsupported');
+      return;
+    }
 
     const result = await Notification.requestPermission();
     setPermission(result as PushPermission);
@@ -173,7 +197,10 @@ export function usePushNotifications(activeToken?: string | null) {
 
       // Clear any stale subscription (e.g. from a different VAPID key)
       const existing = await reg.pushManager.getSubscription();
-      if (existing) await existing.unsubscribe();
+      if (existing) {
+        console.log('[Push] Clearing stale subscription before re-subscribing');
+        await existing.unsubscribe();
+      }
 
       if (!vapidPublicKey) {
         console.error('[Push] No VAPID key configured');
@@ -193,7 +220,7 @@ export function usePushNotifications(activeToken?: string | null) {
       }
 
       const subJSON = sub.toJSON();
-      await fetch(`${serverHost}/api/push/subscribe`, {
+      const res = await fetch(`${serverHost}/api/push/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -204,8 +231,13 @@ export function usePushNotifications(activeToken?: string | null) {
           keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
         }),
       });
+      if (!res.ok) {
+        console.error('[Push] Subscribe server registration failed:', res.status);
+        return;
+      }
 
       setIsSubscribed(true);
+      console.log('[Push] Subscribe successful');
       Sentry.addBreadcrumb({ category: 'push', message: 'subscribe.success' });
     } catch (err) {
       console.error('[Push] Subscribe failed:', err);
@@ -214,21 +246,30 @@ export function usePushNotifications(activeToken?: string | null) {
   }, [permission, serverHost, vapidPublicKey, activeToken]);
 
   const unsubscribe = useCallback(async () => {
-    if (permission === 'unsupported') return;
+    if (permission === 'unsupported') {
+      console.warn('[Push] Unsubscribe called but push is unsupported');
+      return;
+    }
 
     try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
         await sub.unsubscribe();
+        console.log('[Push] Browser subscription removed');
+      } else {
+        console.warn('[Push] No browser subscription to unsubscribe');
       }
 
       const token = activeToken || findCachedToken();
       if (token) {
-        await fetch(`${serverHost}/api/push/subscribe`, {
+        const res = await fetch(`${serverHost}/api/push/subscribe`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` },
         });
+        if (!res.ok) console.warn('[Push] Server unsubscribe returned', res.status);
+      } else {
+        console.warn('[Push] No JWT — server subscription record not cleaned up');
       }
 
       setIsSubscribed(false);
