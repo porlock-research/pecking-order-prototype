@@ -203,21 +203,62 @@ async function refreshFromLobby(gameCode: string): Promise<string | null> {
   return null;
 }
 
-/** Discover the user's active games via lobby API (requires po_session cookie).
- *  Used at `/` when no game code is in the URL — the lobby resolves active games
- *  from the po_session. If exactly one game, auto-redirect. If multiple, merge
- *  into the launcher display. Token minting deferred to /api/refresh-token/[code]. */
-async function discoverActiveGames(): Promise<Array<{ gameCode: string; personaName: string }>> {
+/** Ask the lobby which games the user is actively in.
+ *  Returns the full game list + a Set of uppercased codes for fast lookup.
+ *  Returns null if the lobby is unreachable or unauthenticated (no po_session). */
+async function fetchActiveGames(): Promise<{
+  games: Array<{ gameCode: string; personaName: string }>;
+  codes: Set<string>;
+} | null> {
   try {
     const res = await fetch(`${LOBBY_HOST}/api/my-active-game`, {
       credentials: 'include',
     });
-    if (!res.ok) return [];
+    if (!res.ok) return null; // 401 (no session) or server error
     const data = await res.json();
-    return data.games || [];
+    const games: Array<{ gameCode: string; personaName: string }> = data.games || [];
+    return { games, codes: new Set(games.map(g => g.gameCode.toUpperCase())) };
   } catch {
-    // Lobby unreachable — fall through to launcher
-    return [];
+    return null; // Lobby unreachable (offline, standalone PWA without cookie, etc.)
+  }
+}
+
+/**
+ * Purge all cached auth artifacts (localStorage, cookies, Cache API) for games
+ * that are NOT in the active set. Called on every app load when the lobby is reachable.
+ */
+function purgeInactiveTokens(activeCodes: Set<string>) {
+  // localStorage: po_token_*
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith('po_token_')) continue;
+    const code = key.replace('po_token_', '').toUpperCase();
+    if (!activeCodes.has(code)) keysToRemove.push(key);
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+
+  // Cookies: po_pwa_*
+  const cookieMatches = document.cookie.matchAll(/po_pwa_([^=]+)=/g);
+  for (const m of cookieMatches) {
+    const code = m[1].toUpperCase();
+    if (!activeCodes.has(code)) {
+      document.cookie = `po_pwa_${m[1]}=; path=/; max-age=0`;
+    }
+  }
+
+  // Cache API: po-tokens-v1
+  if ('caches' in window) {
+    caches.open('po-tokens-v1').then(async cache => {
+      const keys = await cache.keys();
+      for (const req of keys) {
+        const path = new URL(req.url).pathname;
+        const tokenKey = path.replace('/po-token-cache/', '').replace('/api/session-cache/', '');
+        if (!tokenKey.startsWith('po_token_')) continue;
+        const code = tokenKey.replace('po_token_', '').toUpperCase();
+        if (!activeCodes.has(code)) cache.delete(req);
+      }
+    }).catch(() => {});
   }
 }
 
@@ -261,6 +302,7 @@ export default function App() {
   const [token, setToken] = useState<string | null>(null);
   const [recovering, setRecovering] = useState(true); // true until init completes
   const [lobbyGames, setLobbyGames] = useState<Array<{ gameCode: string; personaName: string }>>([]);
+  const [archivedGameCode, setArchivedGameCode] = useState<string | null>(null);
 
   useEffect(() => {
     init();
@@ -286,39 +328,58 @@ export default function App() {
       const transientToken = params.get('_t');
       const rawToken = params.get('token');
 
+      // ── Fast path: transient token from lobby redirect ──
+      // This is authoritative (just issued by the lobby), skip server validation.
       if (gameCode && transientToken) {
-        // Arrived via lobby redirect or PWA start_url: /game/CODE?_t=JWT
         try {
           const decoded = decodeGameToken(transientToken);
           if (decoded.exp && decoded.exp < Date.now() / 1000) {
-            // Expired start_url token (PWA installed for an old game)
-            // Clean URL and redirect to launcher — triggers full discovery chain
             window.location.href = '/';
             return;
-          } else {
-            applyToken(transientToken, gameCode, setGameId, setPlayerId, setToken);
           }
+          applyToken(transientToken, gameCode, setGameId, setPlayerId, setToken);
         } catch {
-          // Corrupt token — redirect to launcher for discovery
           window.location.href = '/';
           return;
         }
         setRecovering(false);
-      } else if (gameCode) {
-        // Clean URL visit: /game/CODE — walk the recovery chain
+        // Fire-and-forget: purge stale tokens for other games in background
+        fetchActiveGames().then(result => {
+          if (result) purgeInactiveTokens(result.codes);
+        });
+        return;
+      }
+
+      // ── All other paths: ask the lobby which games are active first ──
+      // The server is the authority. null = lobby unreachable (offline, no session).
+      const active = await fetchActiveGames();
+      if (active) {
+        purgeInactiveTokens(active.codes);
+      }
+
+      if (gameCode) {
+        // Visiting /game/CODE without a transient token
+        if (active && !active.codes.has(gameCode)) {
+          // Server says this game is not active — don't attempt a WebSocket connection.
+          // Tokens for this code were already purged above. Show launcher with message.
+          setArchivedGameCode(gameCode);
+          if (active.games.length > 0) setLobbyGames(active.games);
+          window.history.replaceState({}, '', '/');
+          setRecovering(false);
+          return;
+        }
+
+        // Game is active (or lobby was unreachable — give the cached token a chance)
         const cached = localStorage.getItem(`po_token_${gameCode}`);
         if (cached) {
-          // Step 1: localStorage hit (may include tokens synced from Cache API above)
           try {
             applyToken(cached, gameCode, setGameId, setPlayerId, setToken);
             setRecovering(false);
           } catch {
             localStorage.removeItem(`po_token_${gameCode}`);
-            console.error('Cached token invalid');
             await runAsyncRecovery(gameCode);
           }
         } else {
-          // Steps 2-4: async recovery chain
           await runAsyncRecovery(gameCode);
         }
       } else if (rawToken) {
@@ -330,28 +391,30 @@ export default function App() {
         }
         setRecovering(false);
       } else {
-        // No game code in URL — walk the recovery chain:
-        // 1. Cookies (iOS 17.2+ copies from Safari to standalone PWA at install)
+        // No game code in URL — launcher flow
+        // Cookie auto-recovery: only navigate if the lobby confirms the game is active
         const fromCookie = recoverGameFromCookies();
         if (fromCookie) {
-          applyToken(fromCookie.jwt, fromCookie.gameCode, setGameId, setPlayerId, setToken);
-          setRecovering(false);
-          return;
+          const cookieCode = fromCookie.gameCode.toUpperCase();
+          if (!active || active.codes.has(cookieCode)) {
+            applyToken(fromCookie.jwt, fromCookie.gameCode, setGameId, setPlayerId, setToken);
+            setRecovering(false);
+            return;
+          }
+          // Cookie is for an inactive game — purge already handled above, show message
+          setArchivedGameCode(cookieCode);
         }
 
-        // 2. Lobby API (po_session cookie → discover active games)
-        const games = await discoverActiveGames();
-        if (games.length === 1) {
-          // Single active game — auto-redirect (token minted via refresh-token on arrival)
-          window.location.href = `/game/${games[0].gameCode}`;
+        // Show launcher with active games from lobby
+        if (active && active.games.length === 1) {
+          window.location.href = `/game/${active.games[0].gameCode}`;
           return;
         }
-        if (games.length > 1) {
-          // Multiple active games — show in launcher for user to pick
-          setLobbyGames(games);
+        if (active && active.games.length > 1) {
+          setLobbyGames(active.games);
         }
 
-        // 3. Legacy: plain query param entry (backward compat for debug)
+        // Legacy: plain query param entry (backward compat for debug)
         const gid = params.get('gameId');
         const pid = params.get('playerId') || 'p1';
         setGameId(gid);
@@ -365,28 +428,28 @@ export default function App() {
 
     async function runAsyncRecovery(code: string) {
       try {
-        // Step 2: Cookie (iOS 17.2+ copies cookies from Safari to standalone PWA at install)
+        // Step 1: Cookie (iOS 17.2+ copies cookies from Safari to standalone PWA at install)
         const fromCookie = recoverFromCookie(code);
         if (fromCookie) {
           applyToken(fromCookie, code, setGameId, setPlayerId, setToken);
           return;
         }
 
-        // Step 3: Cache API (already synced to localStorage above, but try direct read as fallback)
+        // Step 2: Cache API (already synced to localStorage above, but try direct read as fallback)
         const fromCache = await recoverFromCacheApi(code);
         if (fromCache) {
           applyToken(fromCache, code, setGameId, setPlayerId, setToken);
           return;
         }
 
-        // Step 4: Lobby API (mint fresh JWT via po_session cookie — browser only, not standalone)
+        // Step 3: Lobby API (mint fresh JWT via po_session cookie)
         const fromLobby = await refreshFromLobby(code);
         if (fromLobby) {
           applyToken(fromLobby, code, setGameId, setPlayerId, setToken);
           return;
         }
 
-        // Step 5: Redirect to lobby (last resort — user may need to log in)
+        // Step 4: Redirect to lobby (last resort — user may need to log in)
         window.location.href = `${LOBBY_HOST}/play/${code}`;
       } catch {
         window.location.href = `${LOBBY_HOST}/play/${code}`;
@@ -415,7 +478,7 @@ export default function App() {
         </div>
       );
     }
-    return <div data-testid="launcher-screen"><LauncherScreen lobbyGames={lobbyGames} /></div>;
+    return <div data-testid="launcher-screen"><LauncherScreen lobbyGames={lobbyGames} archivedGameCode={archivedGameCode} /></div>;
   }
 
   if (!playerId) return (
@@ -434,10 +497,15 @@ export default function App() {
  * Launcher screen at `/` — shown when no gameId in URL.
  * Merges locally-cached tokens with lobby-discovered active games.
  */
-function LauncherScreen({ lobbyGames }: { lobbyGames: Array<{ gameCode: string; personaName: string }> }) {
+function LauncherScreen({ lobbyGames, archivedGameCode }: {
+  lobbyGames: Array<{ gameCode: string; personaName: string }>;
+  archivedGameCode?: string | null;
+}) {
   const [codeInput, setCodeInput] = React.useState('');
 
-  // Build game list: start with localStorage tokens, merge in lobby-discovered games
+  // Build game list: lobby-discovered games are authoritative.
+  // After purgeInactiveTokens, localStorage only contains active game tokens,
+  // so they're safe to display as a fallback when lobby was unreachable.
   const gameMap = new Map<string, { code: string; personaName: string }>();
 
   // Lobby-discovered games (authoritative — these are confirmed STARTED)
@@ -445,7 +513,7 @@ function LauncherScreen({ lobbyGames }: { lobbyGames: Array<{ gameCode: string; 
     gameMap.set(g.gameCode.toUpperCase(), { code: g.gameCode, personaName: g.personaName });
   }
 
-  // Locally-cached tokens (may include stale games, but useful when lobby is unreachable)
+  // Locally-cached tokens (only un-purged tokens remain — safe to show)
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key?.startsWith('po_token_')) {
@@ -492,6 +560,18 @@ function LauncherScreen({ lobbyGames }: { lobbyGames: Array<{ gameCode: string; 
           keep your friends close...
         </p>
       </div>
+
+      {/* Archived game notice */}
+      {archivedGameCode && (
+        <div className="w-full max-w-sm px-4 py-3 rounded-xl border border-skin-gold/20 bg-skin-gold/5 text-center space-y-1">
+          <p className="text-sm text-skin-base font-body">
+            The game you were looking for has ended.
+          </p>
+          <p className="text-[10px] font-mono text-skin-dim/60 uppercase tracking-wider">
+            {archivedGameCode}
+          </p>
+        </div>
+      )}
 
       {/* Push prompt — subscribes early using any cached JWT */}
       <PushPrompt />

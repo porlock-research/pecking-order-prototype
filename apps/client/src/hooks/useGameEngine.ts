@@ -33,8 +33,8 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
           level: 'warning',
           data: { code: event.code, reason: event.reason, gameId },
         });
-        // Game archived or token invalid — stop reconnecting, redirect to launcher
-        window.location.href = '/';
+        // Game archived or token invalid — redirect to launcher
+        window.location.replace('/');
       }
     },
     onError() {
