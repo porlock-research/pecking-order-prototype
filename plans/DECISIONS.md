@@ -1266,3 +1266,25 @@ This document tracks significant architectural decisions, their context, and con
     *   1-hour TTL gives the push service adequate time to deliver to sleeping devices.
     *   The typed `PushTriggerSchema` remains the source of truth for which triggers exist and whether they're enabled — no parallel string-based system.
     *   **Files**: `push-triggers.ts`, `sw.ts`, `server.ts`.
+
+## [ADR-088] PWA Stale Game Redirect & Session-Based Game Discovery
+*   **Date:** 2026-03-02
+*   **Status:** Accepted
+*   **Context:** When a PWA was installed for a game that later archived, the baked-in `start_url` (`/game/CODE?_t=JWT`) pointed at a dead game. The DO rejected the WebSocket with code 4001, but `partysocket` reconnected infinitely — the user saw an empty shell forever. Additionally, the dynamic manifest override embedded a game-specific `start_url` at install time, which became permanently stale once that game ended. Players invited to new games had no way back in from the PWA without manually entering a code.
+*   **Decision:** Three changes:
+    1.  **WebSocket close handler**: `useGameEngine.ts` `onClose` redirects to `/` on codes 4001 (invalid player) and 4003 (invalid token). The full-page navigation tears down partysocket's reconnect loop.
+    2.  **Static `start_url: '/'`**: Removed `updatePwaManifest()` call from `applyToken()`. PWAs always open to the launcher, which discovers the right game. The static manifest already had `start_url: '/'`; the dynamic override was the problem.
+    3.  **Lobby game discovery API**: New `GET /api/my-active-game` endpoint uses `po_session` cookie to find ALL of the user's active (STARTED) games. Returns `{ games: [{ gameCode, personaName }] }` — metadata only, no token minting. The client auto-redirects if exactly one game; shows a picker if multiple. Token minting is deferred to the existing `/api/refresh-token/[code]` endpoint when the user navigates to a specific game.
+*   **Recovery chain at `/` (no game code in URL):**
+    1.  `po_pwa_*` cookies (iOS 17.2+ Safari→PWA copy)
+    2.  Lobby API via `po_session` → discover active games → auto-redirect (1 game) or show picker (multiple)
+    3.  localStorage tokens (same browsing context only — partitioned on iOS 17+)
+    4.  Manual code entry → navigates to `/game/CODE` → full recovery chain including `refreshFromLobby()`
+*   **Push notification flow (unchanged):** Each push already carries `url: /game/{inviteCode}` from the sending DO. SW `notificationclick` navigates to that URL. The client's existing recovery chain at `/game/CODE` handles token minting via `refreshFromLobby(CODE)` using `po_session`. No changes needed.
+*   **Existing PWA update path:** `skipWaiting()` + `clientsClaim()` + `autoUpdate` means the new JS bundles are picked up automatically. The stale `start_url` in already-installed PWAs hits the expired-token path → redirects to `/` → lobby discovery kicks in. Fresh installs get `start_url: '/'` natively.
+*   **Consequences:**
+    *   No more empty shell on archived games — users are always redirected to the launcher.
+    *   Multi-game players see all active games at the launcher and can pick which to enter.
+    *   `po_session` cookie (7-day, cross-subdomain) is the authority for game discovery and token minting. Local storage (localStorage, Cache API, cookies) serves as a fast path, not a reliability dependency.
+    *   Invite flow (`/invite/TOKEN` → `/join/CODE` → `/play/CODE` → `/game/CODE?_t=JWT`) is completely unaffected.
+    *   **Files**: `useGameEngine.ts`, `App.tsx`, `lobby/app/api/my-active-game/route.ts`.

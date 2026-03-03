@@ -203,6 +203,24 @@ async function refreshFromLobby(gameCode: string): Promise<string | null> {
   return null;
 }
 
+/** Discover the user's active games via lobby API (requires po_session cookie).
+ *  Used at `/` when no game code is in the URL — the lobby resolves active games
+ *  from the po_session. If exactly one game, auto-redirect. If multiple, merge
+ *  into the launcher display. Token minting deferred to /api/refresh-token/[code]. */
+async function discoverActiveGames(): Promise<Array<{ gameCode: string; personaName: string }>> {
+  try {
+    const res = await fetch(`${LOBBY_HOST}/api/my-active-game`, {
+      credentials: 'include',
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.games || [];
+  } catch {
+    // Lobby unreachable — fall through to launcher
+    return [];
+  }
+}
+
 /**
  * Applies a JWT token: decodes it, sets state, stores in localStorage + Cache API.
  * If a gameCode is provided, keys the storage by that code and cleans the URL.
@@ -228,9 +246,6 @@ function applyToken(
   // Also persist to Cache API for iOS standalone PWA cross-boundary sharing
   persistToCache(key, jwt);
 
-  // Update manifest start_url so "Add to Home Screen" installs a pre-authenticated PWA
-  updatePwaManifest(key, jwt);
-
   // Set game-specific cookie (iOS 17.2+ copies cookies from Safari to standalone PWA)
   setPwaAuthCookie(key, jwt);
 
@@ -245,6 +260,7 @@ export default function App() {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [recovering, setRecovering] = useState(true); // true until init completes
+  const [lobbyGames, setLobbyGames] = useState<Array<{ gameCode: string; personaName: string }>>([]);
 
   useEffect(() => {
     init();
@@ -306,7 +322,8 @@ export default function App() {
         }
         setRecovering(false);
       } else {
-        // No game code in URL — check cookies for a token carried from Safari (PWA install)
+        // No game code in URL — walk the recovery chain:
+        // 1. Cookies (iOS 17.2+ copies from Safari to standalone PWA at install)
         const fromCookie = recoverGameFromCookies();
         if (fromCookie) {
           applyToken(fromCookie.jwt, fromCookie.gameCode, setGameId, setPlayerId, setToken);
@@ -314,7 +331,19 @@ export default function App() {
           return;
         }
 
-        // Legacy: plain query param entry (backward compat for debug)
+        // 2. Lobby API (po_session cookie → discover active games)
+        const games = await discoverActiveGames();
+        if (games.length === 1) {
+          // Single active game — auto-redirect (token minted via refresh-token on arrival)
+          window.location.href = `/game/${games[0].gameCode}`;
+          return;
+        }
+        if (games.length > 1) {
+          // Multiple active games — show in launcher for user to pick
+          setLobbyGames(games);
+        }
+
+        // 3. Legacy: plain query param entry (backward compat for debug)
         const gid = params.get('gameId');
         const pid = params.get('playerId') || 'p1';
         setGameId(gid);
@@ -378,7 +407,7 @@ export default function App() {
         </div>
       );
     }
-    return <LauncherScreen />;
+    return <LauncherScreen lobbyGames={lobbyGames} />;
   }
 
   if (!playerId) return (
@@ -395,12 +424,20 @@ export default function App() {
 
 /**
  * Launcher screen at `/` — shown when no gameId in URL.
- * Scans localStorage for cached game tokens and lists them.
+ * Merges locally-cached tokens with lobby-discovered active games.
  */
-function LauncherScreen() {
+function LauncherScreen({ lobbyGames }: { lobbyGames: Array<{ gameCode: string; personaName: string }> }) {
   const [codeInput, setCodeInput] = React.useState('');
-  const cachedGames: Array<{ code: string; personaName: string; gameId: string }> = [];
 
+  // Build game list: start with localStorage tokens, merge in lobby-discovered games
+  const gameMap = new Map<string, { code: string; personaName: string }>();
+
+  // Lobby-discovered games (authoritative — these are confirmed STARTED)
+  for (const g of lobbyGames) {
+    gameMap.set(g.gameCode.toUpperCase(), { code: g.gameCode, personaName: g.personaName });
+  }
+
+  // Locally-cached tokens (may include stale games, but useful when lobby is unreachable)
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key?.startsWith('po_token_')) {
@@ -408,14 +445,18 @@ function LauncherScreen() {
       if (token) {
         try {
           const decoded = decodeGameToken(token);
-          const code = key.replace('po_token_', '');
-          cachedGames.push({ code, personaName: decoded.personaName, gameId: decoded.gameId });
+          const code = key.replace('po_token_', '').toUpperCase();
+          if (!gameMap.has(code)) {
+            gameMap.set(code, { code, personaName: decoded.personaName });
+          }
         } catch {
           // Invalid token — skip
         }
       }
     }
   }
+
+  const cachedGames = Array.from(gameMap.values());
 
   function handleJoinByCode(e: React.FormEvent) {
     e.preventDefault();

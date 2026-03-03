@@ -24,6 +24,12 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     room: gameId,
     party: 'game-server',
     query,
+    onClose(event) {
+      if (event.code === 4001 || event.code === 4003) {
+        // Game archived or token invalid — stop reconnecting, redirect to launcher
+        window.location.href = '/';
+      }
+    },
     onMessage(event) {
       try {
         const data = JSON.parse(event.data);
