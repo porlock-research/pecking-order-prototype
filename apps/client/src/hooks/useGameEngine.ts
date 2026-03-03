@@ -1,5 +1,6 @@
 import { useRef, useCallback } from "react";
 import usePartySocket from "partysocket/react";
+import * as Sentry from "@sentry/react";
 import { useGameStore } from "../store/useGameStore";
 import { dmChannelId, Events } from "@pecking-order/shared-types";
 
@@ -26,9 +27,23 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     query,
     onClose(event) {
       if (event.code === 4001 || event.code === 4003) {
+        Sentry.addBreadcrumb({
+          category: 'websocket',
+          message: `Connection rejected (code ${event.code})`,
+          level: 'warning',
+          data: { code: event.code, reason: event.reason, gameId },
+        });
         // Game archived or token invalid — stop reconnecting, redirect to launcher
         window.location.href = '/';
       }
+    },
+    onError() {
+      Sentry.addBreadcrumb({
+        category: 'websocket',
+        message: 'Connection error',
+        level: 'error',
+        data: { gameId },
+      });
     },
     onMessage(event) {
       try {

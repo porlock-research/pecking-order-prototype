@@ -58,6 +58,7 @@ jobs:
           VITE_SENTRY_DSN: https://96074c1a8fb4e2d42064acfafb167eb3@o4510960755343360.ingest.us.sentry.io/4510960788701184
           VITE_SENTRY_TUNNEL: https://staging-t.peckingorder.ca/tunnel
           VITE_SENTRY_ENVIRONMENT: staging
+          VITE_SENTRY_RELEASE: ${{ github.sha }}
       - name: Deploy Client (Staging)
         if: env.CF_API_TOKEN != ''
         env:

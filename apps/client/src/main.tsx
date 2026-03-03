@@ -1,10 +1,17 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import * as Sentry from '@sentry/react';
 import './index.css';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+// React 19 error handlers — global safety net that captures all React errors
+// to Sentry, including errors not caught by ErrorBoundary components.
+ReactDOM.createRoot(document.getElementById('root')!, {
+  onUncaughtError: Sentry.reactErrorHandler(),
+  onCaughtError: Sentry.reactErrorHandler(),
+  onRecoverableError: Sentry.reactErrorHandler(),
+}).render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />

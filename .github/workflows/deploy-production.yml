@@ -61,6 +61,8 @@ jobs:
       - run: npm ci
       - name: Build Client (Production)
         run: npx turbo run build --filter=client
+        env:
+          VITE_SENTRY_RELEASE: ${{ github.sha }}
       - name: Deploy Client (Production)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
