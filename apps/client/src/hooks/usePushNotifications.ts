@@ -47,6 +47,7 @@ export function usePushNotifications(activeToken?: string | null) {
   const [ready, setReady] = useState(false);
 
   const serverHost = import.meta.env.VITE_GAME_SERVER_HOST || 'http://localhost:8787';
+  const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
 
   // Sync existing browser subscription to D1 on mount
   useEffect(() => {
@@ -114,18 +115,15 @@ export function usePushNotifications(activeToken?: string | null) {
 
     async function autoResubscribe(reg: ServiceWorkerRegistration) {
       try {
-        const resp = await fetch(`${serverHost}/parties/game-server/vapid-key`);
-        const data = await resp.json();
-        const vapidKey = data.publicKey;
-        if (!vapidKey) {
-          console.error('[Push] Auto-resubscribe: no VAPID key');
+        if (!vapidPublicKey) {
+          console.error('[Push] Auto-resubscribe: no VAPID key configured');
           setIsSubscribed(false);
           return;
         }
 
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey).buffer as ArrayBuffer,
         });
 
         const token = activeToken || findCachedToken();
@@ -158,7 +156,7 @@ export function usePushNotifications(activeToken?: string | null) {
         Sentry.addBreadcrumb({ category: 'push', message: 'auto-resubscribe.failed', data: { error: String(err) } });
       }
     }
-  }, [permission, serverHost, activeToken]);
+  }, [permission, serverHost, vapidPublicKey, activeToken]);
 
   const subscribe = useCallback(async () => {
     if (permission === 'unsupported') return;
@@ -177,19 +175,14 @@ export function usePushNotifications(activeToken?: string | null) {
       const existing = await reg.pushManager.getSubscription();
       if (existing) await existing.unsubscribe();
 
-      // Fetch VAPID public key from server (always fresh — key differs per environment)
-      const resp = await fetch(`${serverHost}/parties/game-server/vapid-key`);
-      const data = await resp.json();
-      const vapidKey = data.publicKey;
-
-      if (!vapidKey) {
-        console.error('[Push] No VAPID key available');
+      if (!vapidPublicKey) {
+        console.error('[Push] No VAPID key configured');
         return;
       }
 
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey).buffer as ArrayBuffer,
       });
 
       // Send subscription to server via HTTP
@@ -218,7 +211,7 @@ export function usePushNotifications(activeToken?: string | null) {
       console.error('[Push] Subscribe failed:', err);
       Sentry.addBreadcrumb({ category: 'push', message: 'subscribe.failed', data: { error: String(err) } });
     }
-  }, [permission, serverHost, activeToken]);
+  }, [permission, serverHost, vapidPublicKey, activeToken]);
 
   const unsubscribe = useCallback(async () => {
     if (permission === 'unsupported') return;
