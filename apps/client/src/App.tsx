@@ -74,13 +74,13 @@ function getGameCodeFromPath(): string | null {
 }
 
 /**
- * Dynamically update the <link rel="manifest"> with a start_url that embeds the JWT.
- * When the user taps "Add to Home Screen" on iOS, the manifest is read at that instant —
- * so the standalone PWA will launch pre-authenticated at /game/CODE?_t=JWT.
- * Uses a data: URL (not blob:) because iOS reliably reads data URLs during install.
+ * Replace the static <link rel="manifest"> with a data: URL manifest.
+ * This avoids the browser fetching manifest.webmanifest from the server (which
+ * intermittently returns 403 on Cloudflare Pages). Uses `start_url: '/'` so the
+ * PWA always launches into the discovery/launcher flow.
  * All URLs must be absolute — data: URLs have no origin to resolve relative paths against.
  */
-function updatePwaManifest(gameCode: string, jwt: string) {
+function updatePwaManifest() {
   const origin = window.location.origin;
   const manifest = {
     name: 'Pecking Order',
@@ -90,7 +90,7 @@ function updatePwaManifest(gameCode: string, jwt: string) {
     background_color: '#0f0a1a',
     display: 'standalone',
     scope: `${origin}/`,
-    start_url: `${origin}/game/${gameCode}?_t=${jwt}`,
+    start_url: `${origin}/`,
     icons: [
       { src: `${origin}/icons/icon-192.png`, sizes: '192x192', type: 'image/png' },
       { src: `${origin}/icons/icon-512.png`, sizes: '512x512', type: 'image/png' },
@@ -266,6 +266,9 @@ export default function App() {
     init();
 
     async function init() {
+      // Replace <link rel="manifest"> with data: URL to avoid CF Pages 403
+      updatePwaManifest();
+
       // Set PWA context for Sentry diagnostics
       const isStandalone = matchMedia('(display-mode: standalone)').matches || !!(navigator as any).standalone;
       setSentryContext('pwa', {
