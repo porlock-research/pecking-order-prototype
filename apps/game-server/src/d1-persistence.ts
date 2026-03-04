@@ -8,7 +8,7 @@ import { FactTypes } from '@pecking-order/shared-types';
 const JOURNALABLE_TYPES = [
   FactTypes.SILVER_TRANSFER, FactTypes.VOTE_CAST, FactTypes.ELIMINATION, FactTypes.DM_SENT,
   FactTypes.POWER_USED, FactTypes.PERK_USED, FactTypes.GAME_RESULT, FactTypes.PLAYER_GAME_RESULT,
-  FactTypes.WINNER_DECLARED, FactTypes.PROMPT_RESULT,
+  FactTypes.WINNER_DECLARED, FactTypes.PROMPT_RESULT, FactTypes.CHAT_MSG,
 ];
 
 /** Returns true if the fact type should be persisted to the D1 journal. */
