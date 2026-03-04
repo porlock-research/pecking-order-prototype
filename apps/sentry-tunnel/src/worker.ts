@@ -17,8 +17,18 @@ export default {
       return new Response('Method not allowed', { status: 405 });
     }
 
-    const body = await request.text();
-    const firstLine = body.split('\n')[0];
+    // Read body as ArrayBuffer to preserve binary payloads (replay recordings
+    // are gzipped). Using request.text() would corrupt binary data via UTF-8
+    // decode/re-encode, causing Sentry to reject envelopes with "missing
+    // newline after payload or header".
+    const body = await request.arrayBuffer();
+    const bytes = new Uint8Array(body);
+
+    // Find first newline to extract the JSON header without decoding the
+    // entire (potentially binary) body
+    let newlineIdx = bytes.indexOf(10); // 0x0A = \n
+    if (newlineIdx === -1) newlineIdx = Math.min(bytes.length, 1024);
+    const firstLine = new TextDecoder().decode(bytes.subarray(0, newlineIdx));
 
     let envelope: { dsn?: string };
     try {
