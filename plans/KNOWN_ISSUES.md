@@ -973,3 +973,21 @@ The warning should ideally only be sent to players who haven't participated yet 
 - Warning interval should be configurable or at least sensible defaults per event type
 
 **Status**: Documented — future improvement
+
+## [PROD-030] Speed run mode creates false positives in local testing
+
+**Priority**: High — directly caused a critical token purge bug (88571ff) going undetected until real-world playtest.
+
+**Problem**: Speed run mode compresses multi-day games into minutes with all days on the same date. This bypasses real-world flows that only surface in non-speed-run games:
+
+- **Game lifecycle states**: Speed run games start immediately, so the RECRUITING → READY → STARTED progression is never exercised. The token purge bug (active games endpoint only returning STARTED games) went undetected because speed run games were always STARTED by the time tokens were checked.
+- **Token persistence**: In speed run, the gap between token issuance and game start is negligible. In real games, players hold tokens for hours/days before the game starts — any purge race condition has ample time to manifest.
+- **Timeline event overlap**: Speed run's compressed timeline doesn't surface timing issues that occur with real-world event spacing (push notifications arriving late, DM windows, etc.).
+- **Multi-device/PWA flows**: Speed run is typically tested on a single device in the browser. Real playtests involve multiple players on different devices, PWA installs, and cross-origin cookie behavior.
+
+**Proposed fix**: Establish a local testing protocol that covers real-world flows:
+- Add a "slow test" mode or checklist that exercises the full invite → accept → wait → start lifecycle
+- E2E Playwright tests (ADR-090) should include a test for the recruiting/waiting state token persistence
+- Consider a pre-playtest checklist that runs through critical paths on staging with real game states (not speed run)
+
+**Status**: Documented — needs testing strategy improvement

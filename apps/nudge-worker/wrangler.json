@@ -1,0 +1,61 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pecking-order-nudge-worker-dev",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-12-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "logs": { "invocation_logs": true, "head_sampling_rate": 1 }
+  },
+  "env": {
+    "staging": {
+      "name": "pecking-order-nudge-worker-staging",
+      "vars": {
+        "LOBBY_HOST": "https://staging-lobby.peckingorder.ca",
+        "CLIENT_HOST": "https://staging-play.peckingorder.ca",
+        "ASSETS_HOST": "https://staging-assets.peckingorder.ca",
+        "ENVIRONMENT": "staging"
+      },
+      "d1_databases": [
+        {
+          "binding": "LOBBY_DB",
+          "database_name": "pecking-order-lobby-db-staging",
+          "database_id": "9324e864-a4dc-4719-8853-3e57d41e8d1f"
+        },
+        {
+          "binding": "GAME_DB",
+          "database_name": "pecking-order-journal-db-staging",
+          "database_id": "660e4807-b2ea-4d1c-b412-91877fbcbf81"
+        }
+      ],
+      "triggers": {
+        "crons": ["*/15 * * * *"]
+      }
+    },
+    "production": {
+      "name": "pecking-order-nudge-worker",
+      "vars": {
+        "LOBBY_HOST": "https://lobby.peckingorder.ca",
+        "CLIENT_HOST": "https://play.peckingorder.ca",
+        "ASSETS_HOST": "https://assets.peckingorder.ca",
+        "ENVIRONMENT": "production"
+      },
+      "d1_databases": [
+        {
+          "binding": "LOBBY_DB",
+          "database_name": "pecking-order-lobby-db",
+          "database_id": "f90367aa-0f60-436d-81c3-c65c342d0d4b"
+        },
+        {
+          "binding": "GAME_DB",
+          "database_name": "pecking-order-journal-db",
+          "database_id": "c5941589-2d69-4ae1-9b5d-0554f2ad9721"
+        }
+      ],
+      "triggers": {
+        "crons": ["*/15 * * * *"]
+      }
+    }
+  }
+}
