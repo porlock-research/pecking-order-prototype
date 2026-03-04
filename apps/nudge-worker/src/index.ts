@@ -377,7 +377,7 @@ export default {
         SELECT id, invite_code, player_count, day_count, mode, config_json, status
         FROM GameSessions
         WHERE mode = 'CONFIGURABLE_CYCLE'
-          AND status IN ('RECRUITING', 'READY', 'STARTED')
+          AND status IN ('RECRUITING', 'READY')
           AND config_json IS NOT NULL
       `)
       .all<ActiveGame>();
@@ -417,7 +417,7 @@ export default {
           SELECT id, invite_code, player_count, day_count, mode, config_json, status
           FROM GameSessions
           WHERE mode = 'CONFIGURABLE_CYCLE'
-            AND status IN ('RECRUITING', 'READY', 'STARTED')
+            AND status IN ('RECRUITING', 'READY')
             AND config_json IS NOT NULL
         `)
         .all<ActiveGame>();
@@ -443,7 +443,7 @@ export default {
           SELECT invite_code, status, config_json
           FROM GameSessions
           WHERE mode = 'CONFIGURABLE_CYCLE'
-            AND status IN ('RECRUITING', 'READY', 'STARTED')
+            AND status IN ('RECRUITING', 'READY')
         `)
         .all<{ invite_code: string; status: string; config_json: string }>();
 
