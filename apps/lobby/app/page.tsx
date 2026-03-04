@@ -2,6 +2,7 @@
 
 import { createGame, startDebugGame, getAuthStatus, getActiveGames, sendEmailInvite } from './actions';
 import type { DebugManifestConfig, DebugDayConfig, ConfigurableManifestConfig, ConfigurableDayConfig, ConfigurableEventConfig, ActiveGame } from './actions';
+import { generateCycleDefaults, isLiveGame } from '@pecking-order/shared-types';
 import { useState, useEffect } from 'react';
 
 const AVAILABLE_VOTE_TYPES = [
@@ -115,18 +116,25 @@ function toLocalDateString(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function createConfigurableDay(): ConfigurableDayConfig {
-  const events: Record<string, ConfigurableEventConfig> = {};
-  for (const { key } of CONFIGURABLE_EVENT_LABELS) {
-    events[key] = { enabled: true, time: DEFAULT_EVENT_TIMES[key] };
-  }
-
-  return {
-    voteType: 'MAJORITY',
-    gameType: 'TRIVIA',
-    activityType: 'PLAYER_PICK',
-    events,
-  };
+/** Apply intelligent cycle defaults and add event scheduling. */
+function buildConfigurableDays(dayCount: number): ConfigurableDayConfig[] {
+  return generateCycleDefaults(dayCount).map(defaults => {
+    const events: Record<string, ConfigurableEventConfig> = {};
+    for (const { key } of CONFIGURABLE_EVENT_LABELS) {
+      events[key] = { enabled: true, time: DEFAULT_EVENT_TIMES[key] };
+    }
+    if (defaults.activityType === 'NONE') {
+      events['START_ACTIVITY'] = { enabled: false, time: DEFAULT_EVENT_TIMES['START_ACTIVITY'] };
+      events['END_ACTIVITY'] = { enabled: false, time: DEFAULT_EVENT_TIMES['END_ACTIVITY'] };
+    }
+    return {
+      voteType: defaults.voteType,
+      gameType: defaults.gameType,
+      ...(defaults.gameMode && { gameMode: defaults.gameMode }),
+      activityType: defaults.activityType,
+      events,
+    };
+  });
 }
 
 const DEFAULT_DAY_COUNT = 7;
@@ -135,7 +143,7 @@ function createDefaultConfigurableConfig(): ConfigurableManifestConfig {
   return {
     startDate: toLocalDateString(new Date(Date.now() + 86400000)), // Day 1 date (Day 0 is always today)
     dayCount: DEFAULT_DAY_COUNT,
-    days: Array.from({ length: DEFAULT_DAY_COUNT }, () => createConfigurableDay()),
+    days: buildConfigurableDays(DEFAULT_DAY_COUNT),
     pushConfig: {
       DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
       DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
@@ -242,9 +250,9 @@ export default function LobbyRoot() {
   function handleCfgDayCountChange(delta: number) {
     setConfigurableConfig(prev => {
       const newCount = Math.max(1, Math.min(7, prev.dayCount + delta));
-      const days = [...prev.days];
-      while (days.length < newCount) days.push(createConfigurableDay());
-      return { ...prev, dayCount: newCount, days: days.slice(0, newCount) };
+      // Regenerate all days — player counts per day shift when dayCount changes,
+      // so mechanic assignments need to adapt (e.g. social games filter out earlier).
+      return { ...prev, dayCount: newCount, days: buildConfigurableDays(newCount) };
     });
   }
 
@@ -261,7 +269,9 @@ export default function LobbyRoot() {
 
   function handleCfgGameTypeChange(dayIdx: number, gameType: string) {
     setConfigurableConfig(prev => {
-      const days = prev.days.map((d, i) => i === dayIdx ? { ...d, gameType } : d);
+      const days = prev.days.map((d, i) => i === dayIdx
+        ? { ...d, gameType, gameMode: isLiveGame(gameType as any) ? 'LIVE' : undefined }
+        : d);
       return { ...prev, days };
     });
   }
@@ -314,30 +324,45 @@ export default function LobbyRoot() {
   }
 
   function handleSpeedRun() {
-    // Longer gaps (120s) between major phases so the DO evicts and we can
-    // test snapshot persistence + cold-start rehydration.
+    // Mirrors the real game's event overlap structure (simultaneous events fire
+    // at the same second) with 120s eviction windows between major phases for
+    // DO snapshot persistence + cold-start rehydration testing.
+    //
+    // Real game phases → speed run mapping:
+    //   09:00  INJECT_PROMPT + OPEN_GROUP_CHAT       → +0s   (simultaneous)
+    //   10:00  CLOSE_GROUP_CHAT + OPEN_DMS + START_GAME → +60s  (simultaneous)
+    //   12:00  END_GAME                              → +120s
+    //          [eviction window]
+    //   14:00  START_ACTIVITY                        → +240s
+    //   16:00  END_ACTIVITY                          → +300s
+    //          [eviction window]
+    //   20:00  OPEN_VOTING                           → +420s
+    //   23:00  CLOSE_VOTING + CLOSE_DMS              → +480s (simultaneous)
+    //   23:59  END_DAY                               → +540s
     const SPEED_RUN_SCHEDULE: { key: string; offsetSec: number }[] = [
       { key: 'INJECT_PROMPT', offsetSec: 0 },
-      { key: 'OPEN_GROUP_CHAT', offsetSec: 30 },
+      { key: 'OPEN_GROUP_CHAT', offsetSec: 0 },
+      { key: 'CLOSE_GROUP_CHAT', offsetSec: 60 },
       { key: 'OPEN_DMS', offsetSec: 60 },
-      { key: 'START_ACTIVITY', offsetSec: 120 },
-      { key: 'END_ACTIVITY', offsetSec: 180 },     // activity: 60s
-      { key: 'START_GAME', offsetSec: 300 },        // 120s eviction window
-      { key: 'END_GAME', offsetSec: 360 },          // game: 60s
-      { key: 'OPEN_VOTING', offsetSec: 480 },       // 120s eviction window
-      { key: 'CLOSE_VOTING', offsetSec: 540 },      // voting: 60s
-      { key: 'CLOSE_DMS', offsetSec: 660 },         // 120s eviction window
-      { key: 'CLOSE_GROUP_CHAT', offsetSec: 690 },
-      { key: 'END_DAY', offsetSec: 720 },
+      { key: 'START_GAME', offsetSec: 60 },
+      { key: 'END_GAME', offsetSec: 120 },          // game: 60s
+      { key: 'START_ACTIVITY', offsetSec: 240 },     // 120s eviction window
+      { key: 'END_ACTIVITY', offsetSec: 300 },       // activity: 60s
+      { key: 'OPEN_VOTING', offsetSec: 420 },        // 120s eviction window
+      { key: 'CLOSE_VOTING', offsetSec: 480 },       // voting: 60s
+      { key: 'CLOSE_DMS', offsetSec: 480 },          // simultaneous with CLOSE_VOTING
+      { key: 'END_DAY', offsetSec: 540 },
     ];
-    const DAY_DURATION_SEC = 720; // 12 min/day
+    const DAY_DURATION_SEC = 540; // 9 min/day
     const INTER_DAY_GAP_SEC = 120; // 2 min eviction window between days
     const GRACE_PERIOD_SEC = 120; // 2 min
 
     setConfigurableConfig(prev => {
       const now = new Date();
       const startDate = toLocalDateString(now);
-      const days = prev.days.slice(0, prev.dayCount).map((day, dayIdx) => {
+      const newCount = 1; // Speed run defaults to 1 day for quick testing
+      const baseDays = buildConfigurableDays(newCount);
+      const days = baseDays.map((day, dayIdx) => {
         const dayBaseSec = GRACE_PERIOD_SEC + dayIdx * (DAY_DURATION_SEC + INTER_DAY_GAP_SEC);
         const events: Record<string, ConfigurableEventConfig> = {};
         for (const { key, offsetSec } of SPEED_RUN_SCHEDULE) {
@@ -349,8 +374,7 @@ export default function LobbyRoot() {
         }
         return { ...day, events };
       });
-      while (days.length < prev.days.length) days.push(prev.days[days.length]);
-      return { ...prev, startDate, days, speedRun: true };
+      return { ...prev, startDate, dayCount: newCount, days, speedRun: true };
     });
   }
 

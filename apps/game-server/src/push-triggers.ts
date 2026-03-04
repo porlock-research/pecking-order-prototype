@@ -8,7 +8,7 @@
  * Dedup is handled by XState — each state transition fires exactly once,
  * so each push fires exactly once. No client-side tag dedup needed.
  */
-import type { PushTrigger, GameManifest } from "@pecking-order/shared-types";
+import type { PushTrigger, GameManifest, DailyManifest } from "@pecking-order/shared-types";
 import { DEFAULT_PUSH_CONFIG, FactTypes } from "@pecking-order/shared-types";
 import { getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { sendPushNotification } from "./push-send";
@@ -19,6 +19,39 @@ const EVENT_TTL = 3600;       // 1 hour — phase events, activities, games
 const DM_TTL = 3600;          // 1 hour — direct messages
 const ELIMINATION_TTL = 3600; // 1 hour
 const WINNER_TTL = 86400;     // 24 hours — game conclusion
+
+// --- Human-friendly mechanic labels for push notifications ---
+
+const GAME_LABELS: Record<string, string> = {
+  TRIVIA: 'Trivia',
+  REALTIME_TRIVIA: 'Live Trivia',
+  GAP_RUN: 'Gap Run',
+  GRID_PUSH: 'Grid Push',
+  SEQUENCE: 'Sequence',
+  REACTION_TIME: 'Reaction Time',
+  COLOR_MATCH: 'Color Match',
+  STACKER: 'Stacker',
+  QUICK_MATH: 'Quick Math',
+  SIMON_SAYS: 'Simon Says',
+  AIM_TRAINER: 'Aim Trainer',
+  BET_BET_BET: 'Bet Bet Bet',
+  BLIND_AUCTION: 'Blind Auction',
+  KINGS_RANSOM: "King's Ransom",
+  THE_SPLIT: 'The Split',
+  TOUCH_SCREEN: 'Touch Screen',
+};
+
+const VOTE_LABELS: Record<string, string> = {
+  MAJORITY: 'Majority Vote',
+  EXECUTIONER: 'The Executioner',
+  BUBBLE: 'The Bubble',
+  SECOND_TO_LAST: 'Second to Last',
+  PODIUM_SACRIFICE: 'Podium Sacrifice',
+  SHIELD: 'The Shield',
+  TRUST_PAIRS: 'Trust Pairs',
+  FINALS: 'The Finals',
+  DUELS: 'Duels',
+};
 
 export interface PushContext {
   roster: Record<string, any>;
@@ -80,34 +113,39 @@ export async function pushBroadcast(
 }
 
 /** Convert a PUSH.PHASE trigger into a push payload. Returns null if unknown trigger.
+ *  Uses the day manifest to generate contextual messages (game type, vote type, etc.).
  *  No tags — each state transition fires exactly once (XState is the dedup). */
 export function phasePushPayload(
   trigger: string,
   dayIndex: number,
+  dayManifest?: DailyManifest | null,
 ): { payload: Record<string, string>; ttl: number } | null {
+  const gameLabel = GAME_LABELS[dayManifest?.gameType || ''] || 'Game';
+  const voteLabel = VOTE_LABELS[dayManifest?.voteType || ''] || 'Voting';
+
   switch (trigger) {
     case 'DAY_START':
-      return { payload: { title: "Pecking Order", body: `Welcome to Day ${dayIndex} of Pecking Order` }, ttl: EVENT_TTL };
+      return { payload: { title: `Day ${dayIndex}`, body: `A new day dawns at Pecking Order. Today's vote: ${voteLabel}` }, ttl: EVENT_TTL };
     case 'VOTING':
-      return { payload: { title: "Pecking Order", body: "Voting has begun!" }, ttl: EVENT_TTL };
+      return { payload: { title: voteLabel, body: `Day ${dayIndex} voting is open — cast your vote now` }, ttl: EVENT_TTL };
     case 'NIGHT_SUMMARY':
-      return { payload: { title: "Pecking Order", body: "Night has fallen..." }, ttl: EVENT_TTL };
+      return { payload: { title: "Night has fallen", body: `Day ${dayIndex} results are in...` }, ttl: EVENT_TTL };
     case 'DAILY_GAME':
-      return { payload: { title: "Pecking Order", body: "Game time!" }, ttl: EVENT_TTL };
+      return { payload: { title: `${gameLabel} Time`, body: `Today's game is ${gameLabel} — jump in and play` }, ttl: EVENT_TTL };
     case 'ACTIVITY':
-      return { payload: { title: "Pecking Order", body: "Activity time!" }, ttl: EVENT_TTL };
+      return { payload: { title: "Activity Time", body: `A new activity is live — earn some silver` }, ttl: EVENT_TTL };
     case 'OPEN_DMS':
-      return { payload: { title: "Pecking Order", body: "DMs are now open" }, ttl: EVENT_TTL };
+      return { payload: { title: "DMs Open", body: "Send private messages, form alliances, make deals" }, ttl: EVENT_TTL };
     case 'CLOSE_DMS':
-      return { payload: { title: "Pecking Order", body: "DMs are now closed" }, ttl: EVENT_TTL };
+      return { payload: { title: "DMs Closed", body: "Private messages are closed for the day" }, ttl: EVENT_TTL };
     case 'OPEN_GROUP_CHAT':
-      return { payload: { title: "Pecking Order", body: "Group chat is open" }, ttl: EVENT_TTL };
+      return { payload: { title: "Group Chat Open", body: "The floor is open — make your case" }, ttl: EVENT_TTL };
     case 'CLOSE_GROUP_CHAT':
-      return { payload: { title: "Pecking Order", body: "Group chat is closed" }, ttl: EVENT_TTL };
+      return { payload: { title: "Group Chat Closed", body: "The group chat has closed for the day" }, ttl: EVENT_TTL };
     case 'END_GAME':
-      return { payload: { title: "Pecking Order", body: "Game over!" }, ttl: EVENT_TTL };
+      return { payload: { title: `${gameLabel} Complete`, body: "Results are in — check how you did" }, ttl: EVENT_TTL };
     case 'END_ACTIVITY':
-      return { payload: { title: "Pecking Order", body: "Activity complete!" }, ttl: EVENT_TTL };
+      return { payload: { title: "Activity Complete", body: "Results are in — see who earned silver" }, ttl: EVENT_TTL };
     default:
       return null;
   }

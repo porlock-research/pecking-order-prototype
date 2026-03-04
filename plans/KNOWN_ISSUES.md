@@ -951,3 +951,25 @@ The launcher's "Enter game code" button exists primarily for PWA re-entry (stand
 - Should the lobby refuse to send a magic link email if the target game is invalid/ended? This would prevent the empty character selection screen at the source.
 
 **Status**: Documented — needs design decision on public vs private game model before implementation
+
+## [PROD-029] Push notifications for close/end events arrive too late to be actionable
+
+**Priority**: Medium — UX improvement, not blocking.
+
+**Problem**: Push notifications for CLOSE_DMS, CLOSE_GROUP_CHAT, END_GAME, and END_ACTIVITY fire at the moment the window closes. By the time the player receives and opens the notification, the action is no longer available. These notifications are informational at best, noise at worst.
+
+**Proposed fix**: Advance warning notifications — derived from the manifest timeline but fired N minutes before the actual close/end event. For example:
+
+- "DMs close in 10 minutes — send your messages now"
+- "Voting closes in 15 minutes — cast your vote"
+- "Group chat closes in 5 minutes — make your case"
+
+The warning should ideally only be sent to players who haven't participated yet (haven't sent a DM, haven't voted, haven't played the game), making the notification genuinely useful.
+
+**Implementation considerations**:
+- These are not manifest-driven events — they're derived from manifest timelines (e.g. CLOSE_DMS time minus 10 minutes)
+- Could be scheduled as additional PartyWhen tasks at init time alongside the actual events
+- Needs a way to check participation state at push time (has the player voted? sent DMs? played the game?)
+- Warning interval should be configurable or at least sensible defaults per event type
+
+**Status**: Documented — future improvement

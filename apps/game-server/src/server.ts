@@ -234,7 +234,8 @@ export class GameServer extends Server<Env> {
           const { trigger } = event;
           const manifest = context.manifest;
           if (!isPushEnabled(manifest, trigger)) return;
-          const result = phasePushPayload(trigger, context.dayIndex);
+          const dayManifest = manifest?.days?.find((d: any) => d.dayIndex === context.dayIndex);
+          const result = phasePushPayload(trigger, context.dayIndex, dayManifest);
           if (result) {
             const p = pushBroadcast(this.getPushContext(), result.payload, result.ttl).catch(err =>
               log('error', 'L1', 'Push phase broadcast error', { error: String(err) })
