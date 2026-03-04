@@ -99,13 +99,15 @@ export async function pushToPlayer(
   }
 }
 
-/** Broadcast a push notification to all players in the roster. */
+/** Broadcast a push notification to all players in the roster (optionally excluding some). */
 export async function pushBroadcast(
   ctx: PushContext,
   payload: Record<string, string>,
   ttl?: number,
+  excludePlayerIds?: string[],
 ): Promise<void> {
-  const playerIds = Object.keys(ctx.roster);
+  const exclude = new Set(excludePlayerIds);
+  const playerIds = Object.keys(ctx.roster).filter(pid => !exclude.has(pid));
   console.log(`[L1] [Push] Broadcasting to ${playerIds.length} players: ${payload.body}`);
   await Promise.allSettled(
     playerIds.map((pid) => pushToPlayer(ctx, pid, payload, ttl)),
@@ -163,14 +165,15 @@ export function handleFactPush(
   if (fact.type === FactTypes.CHAT_MSG && fact.payload?.channelId === 'MAIN') {
     if (!isPushEnabled(manifest, 'GROUP_CHAT_MSG')) return;
     return pushBroadcast(ctx, {
-      title: 'Pecking Order',
-      body: `${name(fact.actorId)}: ${(fact.payload?.content || '').slice(0, 60)}`,
-    }, EVENT_TTL).catch(err => console.error('[L1] [Push] Error:', err));
+      title: name(fact.actorId),
+      body: (fact.payload?.content || '').slice(0, 100),
+    }, EVENT_TTL, [fact.actorId]).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.DM_SENT && fact.targetId) {
     if (!isPushEnabled(manifest, 'DM_SENT')) return;
+    const snippet = (fact.payload?.content || '').slice(0, 100);
     return pushToPlayer(ctx, fact.targetId, {
-      title: 'Pecking Order',
-      body: `${name(fact.actorId)} sent you a DM`,
+      title: name(fact.actorId),
+      body: snippet || 'Sent you a message',
     }, DM_TTL).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.ELIMINATION) {
     if (!isPushEnabled(manifest, 'ELIMINATION')) return;

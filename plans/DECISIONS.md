@@ -1322,3 +1322,18 @@ This document tracks significant architectural decisions, their context, and con
     *   `data-testid` attributes add no runtime cost and provide stable selectors.
     *   Tests require both game server and client dev servers running (handled by Playwright `webServer` config).
     *   **Files**: `e2e/` workspace, `turbo.json`, root `package.json`, `wrangler.toml`, client components with `data-testid`.
+
+## [ADR-091] Contextual Push Notifications
+*   **Date:** 2026-03-03
+*   **Status:** Accepted
+*   **Context:** Push notifications used generic titles ("Pecking Order") and bodies ("Game time!", "Game Over!", "X sent you a DM") that lacked context about what was happening in the game. On multi-day games, identical notifications became stale. DM notifications didn't show message content. Group chat push notifications were sent to the sender as well.
+*   **Decision:** Make push notifications contextual by leveraging the day manifest and fact payloads.
+    1.  **Phase notifications**: `phasePushPayload` now accepts `DailyManifest` and uses game/vote type labels (e.g., "Trivia Time" instead of "Game time!", "The Bubble" instead of "Voting"). Labels defined in `GAME_LABELS` and `VOTE_LABELS` lookup maps.
+    2.  **DM notifications**: Title is the sender's persona name. Body includes a message snippet (up to 100 chars) instead of the generic "sent you a DM".
+    3.  **Group chat notifications**: Title is the sender's persona name. Body is the message content (up to 100 chars). Sender is excluded from the broadcast via new `excludePlayerIds` parameter on `pushBroadcast`.
+    4.  **`pushBroadcast` enhancement**: Added optional `excludePlayerIds?: string[]` parameter to filter players from broadcast targets.
+*   **Consequences:**
+    *   Players receive more engaging, informative notifications that convey what's happening without opening the app.
+    *   DM/group chat notifications feel like native messaging app notifications (sender name as title, message as body).
+    *   No new push triggers or manifest changes required — purely server-side rendering improvement.
+    *   **Files**: `apps/game-server/src/push-triggers.ts`, `apps/game-server/src/server.ts`.
