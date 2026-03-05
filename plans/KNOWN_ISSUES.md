@@ -991,3 +991,186 @@ The warning should ideally only be sent to players who haven't participated yet 
 - Consider a pre-playtest checklist that runs through critical paths on staging with real game states (not speed run)
 
 **Status**: Documented — needs testing strategy improvement
+
+---
+
+# Admin / Lobby Tooling
+
+Issues related to game observability, admin dashboards, and operational tooling for investigating live game state.
+
+## [ADMIN-001] DO snapshot storage uses legacy KV API — not queryable in Data Studio
+
+**Priority**: HIGH — blocks all runtime state inspection for live games.
+
+**Problem**: `GameServer` is declared as a SQLite-backed DO (`new_sqlite_classes = ["GameServer"]` in wrangler.toml), but the snapshot is persisted using the legacy async KV API (`ctx.storage.put("game_state_snapshot", ...)` / `ctx.storage.get(...)`). On SQLite-backed DOs, KV API data is stored in a hidden `__cf_kv` table that **cannot be queried via the SQL API or Data Studio**. This means:
+
+- The game state snapshot (L2 context, roster, silver balances, manifest, day index) is completely opaque at rest
+- Data Studio shows only the `tasks` table (PartyWhen scheduler) — no game state visible
+- No way to inspect past state, debug silver discrepancies, or verify snapshot integrity without deploying new code
+- The `/state` endpoint only shows current live state, not historical snapshots
+
+**Root cause**: The code predates the SQLite storage recommendation. `ctx.storage.put()`/`get()` was the only DO storage API before SQLite-backed DOs existed. When the DO was migrated to `new_sqlite_classes`, the persistence code was not updated to use `ctx.storage.sql.exec()`.
+
+**Fix**: Migrate snapshot persistence from KV API to SQL API:
+
+1. Create a `snapshots` table: `CREATE TABLE IF NOT EXISTS snapshots (key TEXT PRIMARY KEY, value TEXT, updated_at INTEGER)`
+2. Replace `ctx.storage.put(STORAGE_KEY, JSON.stringify(...))` with `ctx.storage.sql.exec("INSERT OR REPLACE INTO snapshots ...")`
+3. Replace `ctx.storage.get<string>(STORAGE_KEY)` with `ctx.storage.sql.exec("SELECT value FROM snapshots WHERE key = ?")`
+4. Migrate `goldCredited` boolean from KV to the same table
+5. On restore (`onStart`), check SQL table first, fall back to KV for backward compat with existing DOs, then delete the KV entry after successful migration
+
+**Impact**: After migration, full game state is queryable in Data Studio by entering the DO ID (game ID). Enables ad-hoc debugging, silver audits, and state inspection without deploying code.
+
+**Status**: Documented — urgent, needs implementation before next playtest
+
+## [ADMIN-002] No admin dashboard for game journal replay / silver ledger
+
+**Priority**: Medium — critical for playtest investigation, currently requires manual D1 SQL queries.
+
+**Problem**: Investigating player silver balances, transfer history, game rewards, and DM costs requires hand-crafted SQL queries against the D1 journal database via `wrangler d1 execute`. There is no UI for game operators to replay the economic history of a game.
+
+**Discovered during**: Playtest 1 (March 2026) — needed to reconstruct p5's silver balance across Day 1 → Day 2 to verify persistence. Required joining data from SILVER_TRANSFER, PLAYER_GAME_RESULT, GAME_RESULT, PROMPT_RESULT, DM_SENT, and ELIMINATION events, with manual running-total calculation.
+
+**What's needed**: A lobby admin view (per-game) that provides:
+
+1. **Silver ledger per player**: Running balance from game start, showing every silver-affecting event (transfers in/out, game rewards, prompt rewards, DM costs, perk costs) with timestamps and day boundaries
+2. **Event timeline**: Chronological view of all journal events for a game, filterable by event type, player, and day
+3. **Player summary**: Current silver/gold, status (alive/eliminated), total DMs sent, total silver transferred, game participation
+4. **Day boundaries**: Clear visual separation showing what state each player entered each day with
+
+**Data source**: All data exists in D1 `GameJournal` table. The journal records: DM_SENT, SILVER_TRANSFER, VOTE_CAST, ELIMINATION, PLAYER_GAME_RESULT, GAME_RESULT, PROMPT_RESULT, CHAT_MSG, PERK_USED. Silver-affecting events: SILVER_TRANSFER (explicit), DM_SENT (-1 per message), PLAYER_GAME_RESULT (silverReward in payload), PROMPT_RESULT (silverRewards in payload).
+
+**Note**: The D1 `Players` table currently only stores the initial silver value (50) from game creation — it is NOT updated during gameplay. Live silver is only in the DO snapshot (see ADMIN-001). The journal is the only reliable source for reconstructing historical balances.
+
+**Status**: Documented — needs design and implementation
+
+## [ADMIN-003] D1 Players table not updated during gameplay
+
+**Priority**: Low — the DO snapshot is authoritative for live state; D1 Players is only used for post-game queries.
+
+**Problem**: The `Players` table in D1 is populated at game init time with starting silver (50) and never updated until `updateGameEnd()` runs at `gameOver`. During a multi-day game, the Players table shows stale data. This is confusing when querying D1 directly (e.g., all players show silver=50 mid-game).
+
+**Current behavior**:
+- `insertGameAndPlayers()` at init: inserts with starting silver
+- `updateGameEnd()` at gameOver: updates final silver/status
+- No mid-game updates
+
+**Potential fix**: Periodically sync roster state to D1 Players (e.g., at end-of-day transitions). This would make D1 queryable for mid-game state without needing DO access. Trade-off: more D1 writes, but end-of-day is infrequent (once per 24h per game).
+
+**Status**: Documented — low priority, ADMIN-001 + ADMIN-002 are more impactful
+
+---
+
+# Playtest 1 Feedback (March 2026)
+
+Raw feedback from playtesters, categorized into bugs, UX issues, and feature requests. Collected during the first live 5-day CONFIGURABLE_CYCLE game (HQEEHE, 5 players).
+
+## Bugs (reported by playtesters)
+
+### [PT1-BUG-001] Opening a conversation jumps back instead of showing latest message
+
+**Reporter**: Pierre (p2)
+**Description**: When opening a DM or group DM conversation, the scroll position lands a few messages back instead of at the most recent message. Expected: conversation opens scrolled to the bottom (latest message visible).
+**Severity**: Medium — affects core messaging UX, every conversation open
+**Status**: Needs investigation — likely a scroll-to-bottom timing issue in the chat component
+
+### [PT1-BUG-002] Message input field disappears intermittently
+
+**Reporter**: Pierre (p2)
+**Description**: The typing/message input UI sometimes breaks completely — the input field disappears. No reproducible steps yet but has happened "a handful of times" already. Player must presumably navigate away and back to recover.
+**Severity**: High — blocks core messaging functionality when it occurs
+**Status**: Needs investigation — may be related to FloatingInput state, keyboard events, or channel switching. Check Sentry session replays for occurrences.
+
+### [PT1-BUG-003] Admin panel accessible to non-admin players
+
+**Reporter**: Pierre (p2)
+**Description**: The lobby admin panel (game management, scheduled tasks, etc.) is not locked down — non-admin players can access it.
+**Severity**: Medium — information leak (players can see game config, scheduled events) and potential for unintended actions
+**Status**: Needs fix — add auth check on admin routes, gate by host_user_id
+
+## UX Issues
+
+### [PT1-UX-001] Gold not earned alongside silver in mini games
+
+**Reporter**: Playtester notes
+**Description**: Players expect to earn both silver (personal) and gold (group pool) from mini games. Currently only silver rewards are visible/meaningful. The gold contribution exists in the data (PLAYER_GAME_RESULT has `goldContribution`) but players don't perceive they're advancing the group cause.
+**Discussion**: Gold pool accumulation IS implemented (ADR-058) — games emit `ECONOMY.CONTRIBUTE_GOLD` and the pool grows. But the gold pool display and the per-game gold contribution may not be prominent enough. Players may not understand the dual-currency system. Need better in-game explanation of silver (personal) vs gold (group pool) and how games contribute to both.
+**Status**: Needs UX review — gold system works mechanically but isn't communicated clearly
+
+### [PT1-UX-002] Alive players list should be sorted by silver
+
+**Reporter**: Playtester notes
+**Description**: The people list (alive section) should default to sorting by silver amount, highest first. This makes the economic meta-game more visible and gives players strategic information at a glance.
+**Status**: Needs implementation — PeopleList sort order change
+
+### [PT1-UX-003] Character bios not visible in game — only headshots shown
+
+**Reporter**: Playtester notes
+**Description**: Players create character bios during persona selection in the lobby, but these bios are never surfaced in the game client. Only avatar headshots are shown. Bios could add depth to social interactions and help players get into character.
+**Discussion**: Bios could be shown in the PlayerDrawer (tap on a player) or in the PeopleList cards. Need to check if bio data is included in the roster SYNC payload.
+**Status**: Needs investigation — check if bios are in roster data, then add to PlayerDrawer
+
+### [PT1-UX-004] Voting interface is confusing / no clear instructions
+
+**Reporter**: Pierre (p2)
+**Description**: The voting UI lacks explanation of what the current vote type means, how it works, and what the consequences are. Players are confused about what they're voting for and how the mechanism works (e.g., BUBBLE: top 3 silver holders are immune, remaining players vote to eliminate).
+**Discussion**: Each vote type has different rules. The voting panel should include a brief explanation of the current mechanism before the player casts their vote. Could be a collapsible "How this works" section or an intro screen before the vote opens.
+**Status**: Needs design — voting explainer per mechanism type
+
+### [PT1-UX-005] Vote results should be visible (or purchasable with silver)
+
+**Reporter**: Pierre (p2), playtester notes
+**Description**: After voting concludes, players don't see the full vote breakdown — just the elimination result. Players want to know who voted for whom. Two proposals:
+1. Show vote results openly after each round (transparency)
+2. Sell vote results for silver (strategic economy mechanic — "pay to see who betrayed you")
+
+Option 2 is interesting as a perk — fits the existing SPY_DMS pattern.
+**Discussion**: Vote results should possibly be secret by default for additional tension, with a reveal mechanic. The night summary could show partial results (who was eliminated + vote count) but not the full voter breakdown.
+**Status**: Needs design decision — open vs secret vs purchasable results
+
+### [PT1-UX-006] Mini game results are confusing
+
+**Reporter**: Pierre (p2)
+**Description**: After a mini game ends, the results presentation is unclear. Players don't understand what they earned, how they ranked, or what the rewards mean.
+**Discussion**: The CelebrationSequence / game result screen needs clearer breakdown: your score, your rank, silver earned, gold contributed to pool. May need per-game-type result explanations.
+**Status**: Needs UX review — game result presentation
+
+### [PT1-UX-007] No rules / onboarding screen — players discovering mechanics by trial
+
+**Reporter**: Pierre (p2)
+**Description**: "Did I miss a screen about the rules or are we discovering them as we go?" — there's no tutorial, rules screen, or onboarding flow. Players are dropped into the game with no context about the core loop (survive elimination, earn silver, DM to scheme, vote to eliminate).
+**Discussion**: Need at minimum a "How to Play" section accessible from the header/settings. Ideally a brief onboarding sequence on first game join explaining: the daily cycle, silver economy, DMs, voting, and how to win.
+**Status**: Needs design — onboarding / rules screen
+
+### [PT1-UX-008] Silver economy is opaque — players don't understand earning/spending
+
+**Reporter**: Pierre (p2)
+**Description**: Multiple related complaints:
+- "Earning / losing / spending silver unclear"
+- "I have less silver than last night and I don't know why"
+- "What is a pool?"
+- "What is a partner? Why do I have 3 now but zero yesterday"
+
+Players don't understand: DMs cost 1 silver each, how game rewards are calculated, what prompt rewards give, how transfers work. The silver balance changes with no visible transaction log.
+**Discussion**: Need a silver transaction history / activity log per player. Could be a tap on the silver balance in the header that shows recent transactions: "+5 Trivia reward", "-1 DM to Chet", "+10 from Skyler", "-1 DM to Daisy", etc. This is the client-side equivalent of ADMIN-002's silver ledger.
+**Status**: Needs design + implementation — silver activity log / transaction history
+
+### [PT1-UX-009] Player activity / engagement visibility wanted
+
+**Reporter**: Pierre (p2)
+**Description**: "Could be interesting to see how many characters are left for other players. Are they engaging with others but not with me or are they just afk. Interesting for strategy."
+**Discussion**: Could show remaining DM budget (chars left), online status (already implemented), last active time, or a heat indicator. Privacy trade-off — showing exact DM counts could be too revealing. A simple "active today" / "inactive" indicator might be enough.
+**Status**: Needs design — player engagement indicators
+
+### [PT1-UX-010] Timeline unclear — when do events end?
+
+**Reporter**: Pierre (p2)
+**Description**: "Clearer timeline. When does a mini game / vote end?" — players don't know the schedule for the current day's events. They can't plan when to play the game or when voting closes.
+**Discussion**: The manifest has all event times. Could show a daily schedule view: "Group Chat: 10am-11am, DMs: 11am-midnight, Game: 11am-1pm, Activity: 3pm-5pm, Voting: 9pm-midnight". The expandable header already shows day/phase/alive count — could add a "Today's Schedule" section.
+**Status**: Needs design — daily schedule / timeline view
+
+## Positive Feedback
+
+- "Tap in group chat to DM / send silver is niiiiice" — the contextual action on player names in chat is well-received
+- General engagement high — players actively scheming, forming alliances, double-crossing (see journal data)
+- Game name feedback: "the name sucks" — consider alternatives for branding
