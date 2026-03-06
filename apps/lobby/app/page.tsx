@@ -328,34 +328,27 @@ export default function LobbyRoot() {
     // at the same second) with 120s eviction windows between major phases for
     // DO snapshot persistence + cold-start rehydration testing.
     //
-    // Real game phases → speed run mapping:
-    //   09:00  INJECT_PROMPT + OPEN_GROUP_CHAT       → +0s   (simultaneous)
-    //   10:00  CLOSE_GROUP_CHAT + OPEN_DMS + START_GAME → +60s  (simultaneous)
-    //   12:00  END_GAME                              → +120s
-    //          [eviction window]
-    //   14:00  START_ACTIVITY                        → +240s
-    //   16:00  END_ACTIVITY                          → +300s
-    //          [eviction window]
-    //   20:00  OPEN_VOTING                           → +420s
-    //   23:00  CLOSE_VOTING + CLOSE_DMS              → +480s (simultaneous)
-    //   23:59  END_DAY                               → +540s
-    const SPEED_RUN_SCHEDULE: { key: string; offsetSec: number }[] = [
-      { key: 'INJECT_PROMPT', offsetSec: 0 },
-      { key: 'OPEN_GROUP_CHAT', offsetSec: 0 },
-      { key: 'CLOSE_GROUP_CHAT', offsetSec: 60 },
-      { key: 'OPEN_DMS', offsetSec: 60 },
-      { key: 'START_GAME', offsetSec: 60 },
-      { key: 'END_GAME', offsetSec: 120 },          // game: 60s
-      { key: 'START_ACTIVITY', offsetSec: 240 },     // 120s eviction window
-      { key: 'END_ACTIVITY', offsetSec: 300 },       // activity: 60s
-      { key: 'OPEN_VOTING', offsetSec: 420 },        // 120s eviction window
-      { key: 'CLOSE_VOTING', offsetSec: 480 },       // voting: 60s
-      { key: 'CLOSE_DMS', offsetSec: 480 },          // simultaneous with CLOSE_VOTING
-      { key: 'END_DAY', offsetSec: 540 },
+    // Real game phases → speed run mapping (5-min phases, 2-min gaps):
+    // Each alarm must be >10s apart to stay within processTimelineEvent's lookback window.
+    // Simultaneous events share the same offset (processed in one wakeup).
+    //
+    const SPEED_RUN_SCHEDULE: { key: string; offsetMin: number }[] = [
+      { key: 'INJECT_PROMPT', offsetMin: 0 },
+      { key: 'OPEN_GROUP_CHAT', offsetMin: 0 },
+      { key: 'CLOSE_GROUP_CHAT', offsetMin: 2 },
+      { key: 'OPEN_DMS', offsetMin: 2 },
+      { key: 'START_GAME', offsetMin: 2 },
+      { key: 'END_GAME', offsetMin: 7 },             // game: 5 min
+      { key: 'START_ACTIVITY', offsetMin: 9 },        // 2 min gap
+      { key: 'END_ACTIVITY', offsetMin: 14 },         // activity: 5 min
+      { key: 'OPEN_VOTING', offsetMin: 16 },          // 2 min gap
+      { key: 'CLOSE_VOTING', offsetMin: 21 },         // voting: 5 min
+      { key: 'CLOSE_DMS', offsetMin: 21 },            // simultaneous with CLOSE_VOTING
+      { key: 'END_DAY', offsetMin: 23 },
     ];
-    const DAY_DURATION_SEC = 540; // 9 min/day
-    const INTER_DAY_GAP_SEC = 120; // 2 min eviction window between days
-    const GRACE_PERIOD_SEC = 120; // 2 min
+    const DAY_DURATION_MIN = 23;
+    const INTER_DAY_GAP_MIN = 3;  // gap between days
+    const GRACE_PERIOD_MIN = 2;   // before Day 1 starts
 
     setConfigurableConfig(prev => {
       const now = new Date();
@@ -363,14 +356,13 @@ export default function LobbyRoot() {
       const newCount = 1; // Speed run defaults to 1 day for quick testing
       const baseDays = buildConfigurableDays(newCount);
       const days = baseDays.map((day, dayIdx) => {
-        const dayBaseSec = GRACE_PERIOD_SEC + dayIdx * (DAY_DURATION_SEC + INTER_DAY_GAP_SEC);
+        const dayBaseMin = GRACE_PERIOD_MIN + dayIdx * (DAY_DURATION_MIN + INTER_DAY_GAP_MIN);
         const events: Record<string, ConfigurableEventConfig> = {};
-        for (const { key, offsetSec } of SPEED_RUN_SCHEDULE) {
-          const t = new Date(now.getTime() + (dayBaseSec + offsetSec) * 1000);
+        for (const { key, offsetMin } of SPEED_RUN_SCHEDULE) {
+          const t = new Date(now.getTime() + (dayBaseMin + offsetMin) * 60000);
           const hh = String(t.getHours()).padStart(2, '0');
           const mm = String(t.getMinutes()).padStart(2, '0');
-          const ss = String(t.getSeconds()).padStart(2, '0');
-          events[key] = { enabled: true, time: `${hh}:${mm}:${ss}` };
+          events[key] = { enabled: true, time: `${hh}:${mm}` };
         }
         return { ...day, events };
       });
