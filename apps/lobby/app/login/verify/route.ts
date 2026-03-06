@@ -14,13 +14,15 @@ export async function GET(req: NextRequest) {
   if (result.success && result.sessionId) {
     const cookieName = await getSessionCookieName();
     const response = NextResponse.redirect(new URL(next, req.url));
+    const host = req.nextUrl.hostname;
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
     response.cookies.set(cookieName, result.sessionId, {
       httpOnly: true,
-      secure: true,
+      secure: !isLocal,
       sameSite: 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
-      domain: '.peckingorder.ca',
+      ...(isLocal ? {} : { domain: '.peckingorder.ca' }),
     });
     return response;
   }

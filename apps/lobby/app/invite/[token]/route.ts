@@ -72,13 +72,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
   // Redirect to join page with session cookie
   const cookieName = await getSessionCookieName();
   const response = NextResponse.redirect(new URL(`/join/${invite.invite_code}`, req.url));
+  const host = req.nextUrl.hostname;
+  const isLocal = host === 'localhost' || host === '127.0.0.1';
   response.cookies.set(cookieName, sessionId, {
     httpOnly: true,
-    secure: true,
+    secure: !isLocal,
     sameSite: 'lax',
     path: '/',
     maxAge: 7 * 24 * 60 * 60,
-    domain: '.peckingorder.ca',
+    ...(isLocal ? {} : { domain: '.peckingorder.ca' }),
   });
   return response;
 }
