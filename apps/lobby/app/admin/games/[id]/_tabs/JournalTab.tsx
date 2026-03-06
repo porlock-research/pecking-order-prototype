@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { queryJournal } from '../../../../actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -295,9 +295,8 @@ export function JournalTab({ gameId, state }: JournalTabProps) {
               </TableHeader>
               <TableBody>
                 {paginatedEntries.map(entry => (
-                  <>
+                  <React.Fragment key={entry.id}>
                     <TableRow
-                      key={entry.id}
                       className="cursor-pointer"
                       onClick={() => toggleRow(entry.id)}
                     >
@@ -321,7 +320,7 @@ export function JournalTab({ gameId, state }: JournalTabProps) {
                       </TableCell>
                     </TableRow>
                     {expandedRows.has(entry.id) && (
-                      <TableRow key={`${entry.id}-detail`}>
+                      <TableRow>
                         <TableCell colSpan={6} className="bg-muted/30">
                           <pre className="text-xs font-mono whitespace-pre-wrap max-h-[200px] overflow-auto p-2">
                             {JSON.stringify(parsePayload(entry.payload), null, 2)}
@@ -329,7 +328,7 @@ export function JournalTab({ gameId, state }: JournalTabProps) {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </React.Fragment>
                 ))}
                 {entries.length === 0 && !loading && (
                   <TableRow>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { getGameState, getGameDetails, sendAdminCommand, flushScheduledTasks, getScheduledTasks } from '../../../actions';
+import { useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -36,6 +37,7 @@ export default function GameDetailPage() {
   const [scheduledTasks, setScheduledTasks] = useState<any>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);
+  const detailsFetched = useRef(false);
 
   async function refreshTasks() {
     setTasksLoading(true);
@@ -46,18 +48,29 @@ export default function GameDetailPage() {
 
   async function refresh() {
     setLoading(true);
-    const [data, details] = await Promise.all([
-      getGameState(gameId),
-      getGameDetails(gameId),
-    ]);
-    setState(data);
-    setInviteCode(details.inviteCode);
-    setClientHost(details.clientHost);
+    // Game details (invite code, client host) are static — only fetch once
+    if (!detailsFetched.current) {
+      const [data, details] = await Promise.all([
+        getGameState(gameId),
+        getGameDetails(gameId),
+      ]);
+      setState(data);
+      setInviteCode(details.inviteCode);
+      setClientHost(details.clientHost);
+      detailsFetched.current = true;
+    } else {
+      const data = await getGameState(gameId);
+      setState(data);
+    }
     setLoading(false);
-    refreshTasks();
   }
 
-  useEffect(() => { refresh(); }, [gameId]);
+  useEffect(() => {
+    detailsFetched.current = false;
+    refresh().then(() => {
+      if (initialTab === 'timeline') refreshTasks();
+    });
+  }, [gameId]);
 
   async function handleCommand(cmd: any) {
     await sendAdminCommand(gameId, cmd);
@@ -79,6 +92,7 @@ export default function GameDetailPage() {
 
   function handleTabChange(tab: string) {
     setActiveTab(tab);
+    if (tab === 'timeline' && !scheduledTasks) refreshTasks();
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tab);
     router.replace(url.pathname + url.search, { scroll: false });

@@ -12,7 +12,6 @@ const NAV_ITEMS = [
   { href: '/admin', label: 'Games', icon: '🎮' },
   { href: '/admin/personas', label: 'Personas', icon: '🎭' },
   { href: '/admin/tools', label: 'Tools', icon: '🔧' },
-  { href: '/admin/inspector', label: 'Inspector', icon: '🔍' },
 ];
 
 function Breadcrumbs() {
