@@ -83,7 +83,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Mobile header */}
       <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background px-4 lg:hidden">
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
