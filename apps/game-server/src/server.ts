@@ -1091,6 +1091,73 @@ export default {
       return new Response('Method not allowed', { status: 405, headers: DYNAMIC_CORS });
     }
 
+    // Admin: query GameJournal for admin dashboard
+    if (url.pathname === '/api/admin/journal') {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { status: 204, headers: DYNAMIC_CORS });
+      }
+      if (request.method !== 'GET') {
+        return new Response('Method not allowed', { status: 405, headers: DYNAMIC_CORS });
+      }
+
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !timingSafeEqual(authHeader, `Bearer ${env.AUTH_SECRET}`)) {
+        return new Response('Unauthorized', { status: 401, headers: DYNAMIC_CORS });
+      }
+
+      try {
+        const gameId = url.searchParams.get('game_id');
+        if (!gameId) {
+          return new Response(JSON.stringify({ error: 'game_id required' }), {
+            status: 400, headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
+          });
+        }
+
+        const day = url.searchParams.get('day');
+        const type = url.searchParams.get('type');
+        const player = url.searchParams.get('player');
+        const limit = Math.min(parseInt(url.searchParams.get('limit') || '500'), 1000);
+        const offset = parseInt(url.searchParams.get('offset') || '0');
+
+        let sql = 'SELECT * FROM GameJournal WHERE game_id = ?';
+        const bindings: any[] = [gameId];
+
+        if (day !== null && day !== '' && day !== 'all') {
+          sql += ' AND day_index = ?';
+          bindings.push(parseInt(day));
+        }
+
+        if (type && type !== 'all') {
+          sql += ' AND event_type = ?';
+          bindings.push(type);
+        }
+
+        if (player) {
+          sql += ' AND (actor_id = ? OR target_id = ?)';
+          bindings.push(player, player);
+        }
+
+        sql += ' ORDER BY timestamp ASC LIMIT ? OFFSET ?';
+        bindings.push(limit, offset);
+
+        const result = await env.DB.prepare(sql).bind(...bindings).all();
+
+        return new Response(JSON.stringify({
+          entries: result.results || [],
+          total: result.results?.length || 0,
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
+        });
+      } catch (err) {
+        log('error', 'Admin', 'Journal query failed', { error: String(err) });
+        return new Response(JSON.stringify({ error: String(err) }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
+        });
+      }
+    }
+
     // Admin: wipe all D1 tables (dev reset — requires ALLOW_DB_RESET=true in env)
     if (url.pathname === '/api/admin/reset-db') {
       if (request.method === 'OPTIONS') {

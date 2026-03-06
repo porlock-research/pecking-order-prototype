@@ -1507,3 +1507,39 @@ export async function getGameInvites(
     })),
   };
 }
+
+// ── Journal Query Actions ────────────────────────────────────────────────
+
+export async function queryJournal(params: {
+  gameId: string;
+  day?: number;
+  type?: string;
+  player?: string;
+  limit?: number;
+  offset?: number;
+  view?: string;
+}): Promise<{ entries: any[]; total: number }> {
+  const env = await getEnv();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+
+  const url = new URL(`${GAME_SERVER_HOST}/api/admin/journal`);
+  url.searchParams.set('game_id', params.gameId);
+  if (params.day !== undefined) url.searchParams.set('day', String(params.day));
+  if (params.type) url.searchParams.set('type', params.type);
+  if (params.player) url.searchParams.set('player', params.player);
+  if (params.limit) url.searchParams.set('limit', String(params.limit));
+  if (params.offset) url.searchParams.set('offset', String(params.offset));
+  if (params.view) url.searchParams.set('view', params.view);
+
+  try {
+    const res = await fetch(url.toString(), {
+      cache: 'no-store',
+      headers: { 'Authorization': `Bearer ${AUTH_SECRET}` },
+    });
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    return await res.json();
+  } catch (err: any) {
+    return { entries: [], total: 0 };
+  }
+}

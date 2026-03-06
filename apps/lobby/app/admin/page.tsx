@@ -1,203 +1,168 @@
 'use client';
 
-import { useState } from 'react';
-import { resetSelectedTables, broadcastPushUpdate } from '../actions';
+import { useState, useEffect } from 'react';
+import { getAllGames, cleanupGame } from '../actions';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 
-const LOBBY_TABLES = ['Invites', 'GameSessions', 'Sessions', 'MagicLinks', 'Users'] as const;
-const GAME_SERVER_TABLES = ['GameJournal', 'Players', 'Games', 'PushSubscriptions'] as const;
-
-const LOBBY_LABELS: Record<string, string> = {
-  Invites: 'Invites (slot assignments)',
-  GameSessions: 'GameSessions (lobby games)',
-  Sessions: 'Sessions (login cookies)',
-  MagicLinks: 'MagicLinks (email tokens)',
-  Users: 'Users (accounts)',
+const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  STARTED: 'default',
+  RECRUITING: 'secondary',
+  READY: 'outline',
+  ARCHIVED: 'secondary',
+  COMPLETED: 'secondary',
 };
 
-const GS_LABELS: Record<string, string> = {
-  GameJournal: 'GameJournal (event log)',
-  Players: 'Players (per-game snapshots)',
-  Games: 'Games (lifecycle records)',
-  PushSubscriptions: 'PushSubscriptions (web push)',
+const STATUS_CLASSES: Record<string, string> = {
+  STARTED: 'bg-green-100 text-green-800 border-green-200',
+  RECRUITING: 'bg-blue-100 text-blue-800 border-blue-200',
+  READY: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  ARCHIVED: 'bg-gray-100 text-gray-500 border-gray-200',
+  COMPLETED: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 
 export default function AdminPage() {
-  const [lobbyChecked, setLobbyChecked] = useState<Record<string, boolean>>(
-    Object.fromEntries(LOBBY_TABLES.map(t => [t, true]))
-  );
-  const [gsChecked, setGsChecked] = useState<Record<string, boolean>>(
-    Object.fromEntries(GAME_SERVER_TABLES.map(t => [t, true]))
-  );
-  const [resetting, setResetting] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [games, setGames] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [cleaningUp, setCleaningUp] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [search, setSearch] = useState('');
 
-  const selectedLobby = LOBBY_TABLES.filter(t => lobbyChecked[t]);
-  const selectedGs = GAME_SERVER_TABLES.filter(t => gsChecked[t]);
-  const totalSelected = selectedLobby.length + selectedGs.length;
-
-  function toggleAll(db: 'lobby' | 'gs', value: boolean) {
-    if (db === 'lobby') {
-      setLobbyChecked(Object.fromEntries(LOBBY_TABLES.map(t => [t, value])));
-    } else {
-      setGsChecked(Object.fromEntries(GAME_SERVER_TABLES.map(t => [t, value])));
-    }
+  async function refresh() {
+    setLoading(true);
+    const results = await getAllGames();
+    setGames(results);
+    setLoading(false);
   }
 
-  async function handleReset() {
-    if (totalSelected === 0) return;
-    const names = [...selectedLobby, ...selectedGs].join(', ');
-    if (!confirm(`Delete all rows from: ${names}?`)) return;
+  useEffect(() => { refresh(); }, []);
 
-    setResetting(true);
-    setResult(null);
-    const res = await resetSelectedTables({
-      lobbyTables: [...selectedLobby],
-      gameServerTables: [...selectedGs],
-    });
-    if (res.success) {
-      const parts: string[] = [];
-      if (res.details?.lobby?.length) parts.push(`Lobby: ${res.details.lobby.join(', ')}`);
-      if (res.details?.gameServer?.length) parts.push(`Game Server: ${res.details.gameServer.join(', ')}`);
-      setResult({ ok: true, message: parts.join(' | ') });
-    } else {
-      setResult({ ok: false, message: res.error || 'Unknown error' });
-    }
-    setResetting(false);
+  async function handleCleanup(gameId: string) {
+    if (!confirm(`Clean up game ${gameId}? This will delete D1 rows and DO storage.`)) return;
+    setCleaningUp(gameId);
+    await cleanupGame(gameId);
+    setGames(prev => prev.map(g => g.id === gameId ? { ...g, status: 'ARCHIVED' } : g));
+    setCleaningUp(null);
   }
+
+  const filtered = games.filter(g => {
+    if (statusFilter === 'active') return g.status !== 'ARCHIVED';
+    if (statusFilter !== 'all') return g.status === statusFilter;
+    return true;
+  }).filter(g => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return g.invite_code?.toLowerCase().includes(s)
+      || g.id?.toLowerCase().includes(s)
+      || g.mode?.toLowerCase().includes(s);
+  });
 
   return (
-    <div className="max-w-xl mx-auto py-12 px-6 space-y-8">
-      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-
-      <section className="border rounded-lg p-4 space-y-2 bg-gray-50">
-        <h2 className="text-lg font-semibold">Manage</h2>
-        <div className="flex gap-3">
-          <a href="/admin/personas" className="inline-block px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">
-            Persona Pool
-          </a>
-          <a href="/admin/games" className="inline-block px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">
-            Game Manager
-          </a>
-          <a href="/admin/inspector" className="inline-block px-4 py-2 bg-purple-600 text-white rounded text-sm font-medium hover:bg-purple-700">
-            State Inspector
-          </a>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Games</h1>
+          <p className="text-sm text-muted-foreground">{filtered.length} game{filtered.length !== 1 ? 's' : ''}</p>
         </div>
-      </section>
-
-      <PushBroadcastSection />
-
-      <section className="border border-red-300 rounded-lg p-4 space-y-4 bg-red-50">
-        <h2 className="text-lg font-semibold text-red-800">Database Reset</h2>
-        <p className="text-xs text-red-600">
-          Game server tables require <code className="bg-red-100 px-1 rounded">ALLOW_DB_RESET=true</code> in its env (local dev only).
-        </p>
-
-        {/* Lobby tables */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-red-800">Lobby DB</h3>
-            <div className="flex gap-2 text-xs">
-              <button onClick={() => toggleAll('lobby', true)} className="text-red-600 underline">all</button>
-              <button onClick={() => toggleAll('lobby', false)} className="text-red-600 underline">none</button>
-            </div>
-          </div>
-          {LOBBY_TABLES.map(t => (
-            <label key={t} className="flex items-center gap-2 text-sm text-red-900 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={lobbyChecked[t]}
-                onChange={e => setLobbyChecked(prev => ({ ...prev, [t]: e.target.checked }))}
-                className="accent-red-600"
-              />
-              {LOBBY_LABELS[t] || t}
-            </label>
-          ))}
-        </div>
-
-        {/* Game server tables */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-red-800">Game Server DB</h3>
-            <div className="flex gap-2 text-xs">
-              <button onClick={() => toggleAll('gs', true)} className="text-red-600 underline">all</button>
-              <button onClick={() => toggleAll('gs', false)} className="text-red-600 underline">none</button>
-            </div>
-          </div>
-          {GAME_SERVER_TABLES.map(t => (
-            <label key={t} className="flex items-center gap-2 text-sm text-red-900 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={gsChecked[t]}
-                onChange={e => setGsChecked(prev => ({ ...prev, [t]: e.target.checked }))}
-                className="accent-red-600"
-              />
-              {GS_LABELS[t] || t}
-            </label>
-          ))}
-        </div>
-
-        <button
-          onClick={handleReset}
-          disabled={resetting || totalSelected === 0}
-          className="px-4 py-2 bg-red-600 text-white rounded font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {resetting ? 'Resetting...' : `Reset ${totalSelected} table${totalSelected !== 1 ? 's' : ''}`}
-        </button>
-
-        {result && (
-          <p className={`text-sm font-mono ${result.ok ? 'text-green-700' : 'text-red-700'}`}>
-            {result.ok ? 'OK' : 'FAILED'}: {result.message}
-          </p>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function PushBroadcastSection() {
-  const [message, setMessage] = useState('A new update is available! Tap to refresh.');
-  const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
-
-  async function handleBroadcast() {
-    if (!message.trim()) return;
-    setSending(true);
-    setResult(null);
-    const res = await broadcastPushUpdate(message.trim());
-    if (res.ok && 'sent' in res) {
-      setResult({ ok: true, message: `Sent: ${res.sent} | Expired: ${res.expired} | Errors: ${res.errors} | Total: ${res.total}` });
-    } else {
-      setResult({ ok: false, message: ('error' in res ? res.error : 'Unknown error') || 'Unknown error' });
-    }
-    setSending(false);
-  }
-
-  return (
-    <section className="border border-blue-300 rounded-lg p-4 space-y-3 bg-blue-50">
-      <h2 className="text-lg font-semibold text-blue-800">Push Broadcast</h2>
-      <p className="text-xs text-blue-600">
-        Send a push notification to all subscribed players. Useful after deploys to prompt PWA refresh.
-      </p>
-      <textarea
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        rows={2}
-        className="w-full border border-blue-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-      />
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleBroadcast}
-          disabled={sending || !message.trim()}
-          className="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {sending ? 'Sending...' : 'Broadcast to All'}
-        </button>
-        {result && (
-          <span className={`text-sm font-mono ${result.ok ? 'text-green-700' : 'text-red-700'}`}>
-            {result.message}
-          </span>
-        )}
+        <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
+          {loading ? 'Loading...' : 'Refresh'}
+        </Button>
       </div>
-    </section>
+
+      <div className="flex gap-3">
+        <Input
+          placeholder="Search by invite code, ID, or mode..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-sm"
+        />
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="STARTED">Started</SelectItem>
+            <SelectItem value="RECRUITING">Recruiting</SelectItem>
+            <SelectItem value="READY">Ready</SelectItem>
+            <SelectItem value="ARCHIVED">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Invite Code</TableHead>
+              <TableHead>Mode</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-center">Players</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map(game => (
+              <TableRow key={game.id}>
+                <TableCell className="font-mono text-sm">
+                  <a href={`/admin/games/${game.id}`} className="text-primary hover:underline font-medium">
+                    {game.invite_code}
+                  </a>
+                </TableCell>
+                <TableCell className="text-sm">{game.mode}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={STATUS_CLASSES[game.status] || ''}>
+                    {game.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-center text-sm">{game.player_count}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {new Date(game.created_at).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {game.status !== 'ARCHIVED' ? (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleCleanup(game.id)}
+                      disabled={cleaningUp === game.id}
+                    >
+                      {cleaningUp === game.id ? 'Cleaning...' : 'Cleanup'}
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Archived</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {filtered.length === 0 && !loading && (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  No games found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }
