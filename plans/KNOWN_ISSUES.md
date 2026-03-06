@@ -1002,12 +1002,19 @@ Issues related to game observability, admin dashboards, and operational tooling 
 
 **Priority**: HIGH — blocks all runtime state inspection for live games.
 
-**Problem**: `GameServer` is declared as a SQLite-backed DO (`new_sqlite_classes = ["GameServer"]` in wrangler.toml), but the snapshot is persisted using the legacy async KV API (`ctx.storage.put("game_state_snapshot", ...)` / `ctx.storage.get(...)`). On SQLite-backed DOs, KV API data is stored in a hidden `__cf_kv` table that **cannot be queried via the SQL API or Data Studio**. This means:
+**Problem**: `GameServer` is declared as a SQLite-backed DO (`new_sqlite_classes = ["GameServer"]` in wrangler.toml), but the snapshot is persisted using the legacy async KV API (`ctx.storage.put("game_state_snapshot", ...)` / `ctx.storage.get(...)`). On SQLite-backed DOs, KV API data is stored in a hidden `_cf_KV` table that **cannot be queried via the SQL API or Data Studio**. This means:
 
 - The game state snapshot (L2 context, roster, silver balances, manifest, day index) is completely opaque at rest
-- Data Studio shows only the `tasks` table (PartyWhen scheduler) — no game state visible
+- Data Studio sidebar shows only `_cf_METADATA` and `tasks` (PartyWhen scheduler) — `_cf_KV` is hidden
 - No way to inspect past state, debug silver discrepancies, or verify snapshot integrity without deploying new code
 - The `/state` endpoint only shows current live state, not historical snapshots
+
+**Data Studio investigation (2026-03-05)**:
+- GameServer DOs ARE visible in CF dashboard: Compute > Durable Objects > `game-server-staging_GameServer` (5 instances, 557 kB total)
+- `SELECT name FROM sqlite_master WHERE type='table'` reveals 3 tables: `tasks`, `_cf_KV`, `_cf_METADATA`
+- `_cf_KV` exists in sqlite_master metadata BUT all SQL operations are blocked: `SELECT * FROM _cf_KV` → "Error: SQL statement execution failed". Same for PRAGMA table_info. CF enforces a runtime-level block on the legacy KV backing table.
+- The `tasks` table (PartyWhen scheduler) is queryable and empty for completed games
+- Only way to read snapshot data: `ctx.storage.get()` inside the DO code itself
 
 **Root cause**: The code predates the SQLite storage recommendation. `ctx.storage.put()`/`get()` was the only DO storage API before SQLite-backed DOs existed. When the DO was migrated to `new_sqlite_classes`, the persistence code was not updated to use `ctx.storage.sql.exec()`.
 
@@ -1058,6 +1065,48 @@ Issues related to game observability, admin dashboards, and operational tooling 
 **Potential fix**: Periodically sync roster state to D1 Players (e.g., at end-of-day transitions). This would make D1 queryable for mid-game state without needing DO access. Trade-off: more D1 writes, but end-of-day is infrequent (once per 24h per game).
 
 **Status**: Documented — low priority, ADMIN-001 + ADMIN-002 are more impactful
+
+## [ADMIN-004] Game status not synchronized between lobby and game server
+
+**Priority**: HIGH — causes stale games to appear as active, blocks auto-archive and cleanup.
+
+**Problem**: Two separate status systems exist with no synchronization:
+
+| System | Statuses | Set by |
+|--------|----------|--------|
+| Lobby DB (`GameSessions.status`) | `RECRUITING` → `READY` → `STARTED` → `ARCHIVED` | Lobby server actions |
+| Game Server D1 (`Games.status`) | `IN_PROGRESS` → `COMPLETED` | Game server D1 persistence |
+| `shared-types GameStatus` enum | `OPEN`, `FULL`, `IN_PROGRESS`, `COMPLETED` | **Unused** — no code references it |
+
+Issues:
+1. **No completion sync**: When the game server sets `Games.status = 'COMPLETED'` (winner declared), the lobby `GameSessions.status` stays `STARTED` forever. No callback exists from game server → lobby.
+2. **No auto-archive**: `ARCHIVED` is only set by manual `archiveGame()` admin action. Completed games sit as `STARTED` indefinitely, polluting "my active games" queries.
+3. **CONFIGURABLE_CYCLE status stuck at RECRUITING**: Status transitions to `STARTED` only when `count === 0` pending invites (all slots filled). If a player never joins, status stays `RECRUITING` even though the game is running. The playtest game HQEEHE exhibits this — 4 of 5 players joined, game is on Day 2, but lobby status is still `RECRUITING`.
+4. **Dead enum**: `shared-types GameStatus` (OPEN/FULL/IN_PROGRESS/COMPLETED) doesn't match either system and is referenced nowhere.
+
+**Fix**:
+1. Unify status enum: `RECRUITING` → `READY` → `STARTED` → `COMPLETED` → `ARCHIVED`. Use consistently in both lobby and game server.
+2. Add a game server → lobby callback (e.g., HTTP POST to `/api/internal/game-status`) when game completes or winner is declared, to transition lobby status to `COMPLETED`.
+3. For CONFIGURABLE_CYCLE: transition to `STARTED` when the DO initializes (game start date reached), not when all slots are filled.
+4. Delete the unused `GameStatus` enum from shared-types or align it with the unified statuses.
+
+**Status**: Documented — needs design
+
+## [ADMIN-005] No automatic cleanup of archived/completed games
+
+**Priority**: Medium — DO storage and D1 rows accumulate indefinitely.
+
+**Problem**: There is no mechanism to clean up old games. DO instances persist with their SQLite storage (including the `_cf_KV` snapshot) indefinitely. D1 rows in `Games`, `Players`, `GameJournal`, `GameSessions`, `Invites`, `PersonaDraws` accumulate without any TTL or garbage collection.
+
+The CF dashboard showed 5 recently-invoked DOs but there are 13+ games in the lobby DB (10+ archived). Old DO instances are not visible in the dashboard but still consume storage.
+
+**Fix**: Add admin cleanup action:
+1. Lobby admin: "Cleanup games archived more than N days ago" — deletes `GameSessions`, `Invites`, `PersonaDraws` rows
+2. Game server: corresponding cleanup of `Games`, `Players`, `GameJournal` rows in D1
+3. DO storage: call `ctx.storage.deleteAll()` on old game DOs via an admin HTTP endpoint (or let CF garbage-collect DOs with no storage/alarms)
+4. Consider a retention policy: e.g., keep journal data for 30 days, then purge
+
+**Status**: Documented — needs design
 
 ---
 
@@ -1168,6 +1217,89 @@ Players don't understand: DMs cost 1 silver each, how game rewards are calculate
 **Description**: "Clearer timeline. When does a mini game / vote end?" — players don't know the schedule for the current day's events. They can't plan when to play the game or when voting closes.
 **Discussion**: The manifest has all event times. Could show a daily schedule view: "Group Chat: 10am-11am, DMs: 11am-midnight, Game: 11am-1pm, Activity: 3pm-5pm, Voting: 9pm-midnight". The expandable header already shows day/phase/alive count — could add a "Today's Schedule" section.
 **Status**: Needs design — daily schedule / timeline view
+
+## [BUG-015] No strategy for deploying code changes while games are in progress
+
+**Priority**: CRITICAL — must be solved before next playtest. Once the app is live, there will always be at least one game in progress. Every deploy risks breaking running games.
+
+**Related**: ADMIN-001 (KV→SQL migration is a specific instance of this problem)
+
+### The Problem
+
+XState actors (L2/L3/cartridges) are ephemeral in-memory objects inside a single Durable Object per game. On every DO eviction (inactivity, code deploy), the actors are destroyed and recreated from a persisted snapshot blob. The snapshot is an opaque JSON serialization of the entire XState machine tree — context, state value, child actors, everything.
+
+When we deploy new code that changes the machine definition, the DO wakes with:
+```
+old snapshot (persisted before deploy) → createActor(NEW machine, { snapshot: old })
+```
+
+XState does **not** validate the snapshot against the machine. It blindly uses whatever context/state it finds.
+
+### Failure Modes
+
+1. **New code reads `context.newField`** → `undefined` → silent bug, wrong silver calculation, or crash
+2. **State renamed** (`voting` → `votingPhase`) → old snapshot has `state.value = "voting"` → XState can't find that state → throws
+3. **Child actor ID changed** → `snapshot.children['l3-session']` returns nothing → L3 is lost entirely (we already guard this specific case in `onStart()`)
+4. **Guard/action references removed field** → runtime error mid-game
+5. **Context field type changed** (number → object) → downstream code breaks on the old shape
+
+### Why This Is Hard
+
+- XState has no built-in versioning or migration mechanism
+- Storing structured data in DO SQLite (instead of snapshot blob) would fight XState's snapshot model at every step
+- The app is in active development — context shape, state names, and machine structure will change frequently
+- "Just be careful with additive changes" is too fragile as a strategy
+
+### What We Store in DO
+
+Only two things, both schemaless:
+- `game_state_snapshot` → JSON blob: `{ l2: persistedSnapshot, l3Context: { chatLog }, tickerHistory }` (via KV API)
+- `goldCredited` → boolean flag
+
+There are NO SQL tables to migrate in the DO itself (the `tasks` table belongs to PartyWhen). The "schema" is the XState machine definition in code.
+
+### What We Can Reconstruct from D1
+
+If a snapshot is unrestorable, D1 `GameJournal` + the manifest provide:
+- Who's alive/eliminated (ELIMINATION events)
+- Silver balances (sum of SILVER_TRANSFER, DM_SENT, PERK_USED, GAME_RESULT, PLAYER_GAME_RESULT, PROMPT_RESULT)
+- Vote history (VOTE_CAST)
+- Game/prompt completion records
+- The full game configuration (manifest is in L2 context, but also derivable from lobby DB)
+
+What we CANNOT reconstruct from D1: chat log, perk overrides, channel state, cartridge in-progress state.
+
+### Candidate Approaches (not yet decided)
+
+**A. Version stamp + migration pipeline** — stamp `version: N` on each snapshot. On restore, run `v3→v4→v5` transform chain. Similar to DB migrations but for context shape. Con: every breaking change needs a hand-written migration.
+
+**B. Context normalizer (schema-on-read)** — a single `normalizeContext(raw)` function maintained alongside the machine. Always runs on restore, fills defaults, strips obsolete fields. Simpler than migrations, no version tracking. Con: can't handle state hierarchy changes (renamed/removed states).
+
+**C. Journal reconstruction fallback** — if snapshot restore fails (throws or produces invalid state), rebuild essential state from D1 events + manifest. Slow for long games, can't recover chat/ephemeral state, but game continues rather than crashing.
+
+**D. Game-pinned machine versions** — each game records its machine version at creation. Keep old machine definitions available. Running games use their original code. New games use latest. Con: massive maintenance burden, multiple codepaths.
+
+**E. Hybrid (likely best)** — version stamp + normalizer + journal fallback:
+1. Stamp `machineVersion` on manifest at game creation
+2. On restore, compare snapshot version vs current code version
+3. If mismatched, run `normalizeContext()` to fill defaults / strip obsolete
+4. Validate restored `state.value` exists in current machine
+5. If validation fails, attempt journal reconstruction into a known-good state
+6. If all else fails, log error + alert, game enters a "frozen" state for manual intervention
+
+### Current Guardrails (insufficient)
+
+- `onStart()` line 285: checks if L3 child is missing after restore → clears snapshot and starts fresh
+- `onStart()` line 290: catches `createActor` throws → clears snapshot and starts fresh
+- Both fallbacks lose ALL game state — unacceptable for production
+
+### Scope
+
+- Server-only concern — client has no persisted state (reconnects and gets fresh SYNC)
+- D1 migrations are a separate, solved problem (numbered migration files in `migrations/`)
+- PartyWhen's `tasks` table is managed by the library, not by us
+
+**Status**: Needs design — CRITICAL priority, must be resolved before next playtest
 
 ## Positive Feedback
 
