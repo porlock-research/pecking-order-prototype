@@ -176,8 +176,50 @@ export class GameServer extends Server<Env> {
       log('error', 'L1', 'SQL/Alarm check failed', { error: String(e) });
     }
 
-    const snapshotStr = await this.ctx.storage.get<string>(STORAGE_KEY);
-    this.goldCredited = (await this.ctx.storage.get<boolean>('goldCredited')) === true;
+    // Create snapshots table for queryable persistence (ADR-092)
+    this.ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS snapshots (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    )`);
+
+    // Read snapshot — SQL first, KV fallback for pre-migration games
+    let snapshotStr: string | undefined;
+    const sqlRows = this.ctx.storage.sql.exec(
+      "SELECT value FROM snapshots WHERE key = 'game_state'"
+    ).toArray();
+    snapshotStr = sqlRows[0]?.value as string | undefined;
+
+    if (!snapshotStr) {
+      snapshotStr = await this.ctx.storage.get<string>(STORAGE_KEY);
+      if (snapshotStr) {
+        // Lazily migrate KV → SQL on first wake after deploy
+        this.ctx.storage.sql.exec(
+          `INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('game_state', ?, unixepoch())`,
+          snapshotStr
+        );
+        await this.ctx.storage.delete(STORAGE_KEY);
+        log('info', 'L1', 'Migrated snapshot from KV to SQL');
+      }
+    }
+
+    // Read goldCredited — SQL first, KV fallback
+    const goldRows = this.ctx.storage.sql.exec(
+      "SELECT value FROM snapshots WHERE key = 'gold_credited'"
+    ).toArray();
+    if (goldRows.length > 0) {
+      this.goldCredited = goldRows[0].value === 'true';
+    } else {
+      const kvGold = await this.ctx.storage.get<boolean>('goldCredited');
+      if (kvGold) {
+        this.goldCredited = true;
+        this.ctx.storage.sql.exec(
+          `INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('gold_credited', 'true', unixepoch())`
+        );
+        await this.ctx.storage.delete('goldCredited');
+        log('info', 'L1', 'Migrated goldCredited from KV to SQL');
+      }
+    }
 
     // L1 .provide() — override actions that need DO context (D1, WebSocket, push)
     const machineWithPersistence = orchestratorMachine.provide({
@@ -284,12 +326,12 @@ export class GameServer extends Server<Env> {
         const restoredState = JSON.stringify(this.actor.getSnapshot().value);
         if (restoredState.includes('activeSession') && !this.actor.getSnapshot().children['l3-session']) {
           log('warn', 'L1', 'L3 missing after restore — snapshot was corrupted. Clearing state for fresh start.');
-          await this.ctx.storage.delete(STORAGE_KEY);
+          this.ctx.storage.sql.exec("DELETE FROM snapshots WHERE key = 'game_state'");
           this.actor = createActor(machineWithPersistence, { inspect });
         }
       } catch (err) {
         log('error', 'L1', 'Snapshot restore failed — starting fresh', { error: String(err) });
-        await this.ctx.storage.delete(STORAGE_KEY);
+        this.ctx.storage.sql.exec("DELETE FROM snapshots WHERE key = 'game_state'");
         this.actor = createActor(machineWithPersistence, { inspect });
       }
     } else {
@@ -312,13 +354,16 @@ export class GameServer extends Server<Env> {
         broadcastDebugTicker(debugSummary, () => this.getConnections());
       }
 
-      // A. Save state to disk
+      // A. Save state to disk (SQL — ADR-092)
       const persistedSnapshot = this.actor?.getPersistedSnapshot();
-      this.ctx.storage.put(STORAGE_KEY, JSON.stringify({
-        l2: persistedSnapshot,
-        l3Context: { chatLog: l3Context.chatLog ?? this.lastKnownChatLog },
-        tickerHistory: this.tickerHistory,
-      }));
+      this.ctx.storage.sql.exec(
+        `INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('game_state', ?, unixepoch())`,
+        JSON.stringify({
+          l2: persistedSnapshot,
+          l3Context: { chatLog: l3Context.chatLog ?? this.lastKnownChatLog },
+          tickerHistory: this.tickerHistory,
+        })
+      );
 
       // B. (Scheduling moved to handleInit — manifest events pre-scheduled at game creation)
 
@@ -354,7 +399,9 @@ export class GameServer extends Server<Env> {
           }
           if (payouts.length > 0) {
             this.goldCredited = true;
-            this.ctx.storage.put('goldCredited', true);
+            this.ctx.storage.sql.exec(
+              `INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('gold_credited', 'true', unixepoch())`
+            );
           }
         }
 

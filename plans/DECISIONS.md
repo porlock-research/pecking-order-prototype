@@ -1337,3 +1337,17 @@ This document tracks significant architectural decisions, their context, and con
     *   DM/group chat notifications feel like native messaging app notifications (sender name as title, message as body).
     *   No new push triggers or manifest changes required — purely server-side rendering improvement.
     *   **Files**: `apps/game-server/src/push-triggers.ts`, `apps/game-server/src/server.ts`.
+
+## [ADR-092] KV to SQL Snapshot Migration + Granular Orchestration Plan
+*   **Date:** 2026-03-06
+*   **Status:** Accepted
+*   **Context:** DO snapshot persistence used the opaque KV API (`storage.get`/`storage.put`), which stores data in a hidden `_cf_KV` table that is not queryable via the SQL API or Cloudflare Data Studio. Additionally, as the game grows, the monolithic L3 session machine becomes a deploy risk — any change to L3 risks snapshot incompatibility for live games.
+*   **Decision:** Two-part decision:
+    1.  **KV to SQL migration (ADMIN-001)**: Move snapshot persistence from `storage.get`/`storage.put` to `storage.sql.exec` with a `snapshots` table. Permanent KV read fallback for pre-migration games — if SQL is empty, check KV and lazily migrate. Enables direct inspection via `sqlite3` (local) and Data Studio (production).
+    2.  **Granular Orchestration plan (deferred)**: Document the architectural pattern for extracting L3's internal regions (social, voting, game, activity) into spawned sub-machines. Includes `StateTags` centralized tag system for deploy-safe behavioral queries. Full plan saved to `plans/architecture/granular-orchestration.md`. Execution deferred until behavioral tests exist for L2/L3.
+*   **Consequences:**
+    *   Snapshot data is now queryable via SQL — `SELECT * FROM snapshots` works in local dev and Data Studio.
+    *   KV fallback ensures zero-downtime migration for existing live games.
+    *   The granular orchestration plan provides a north star for future L3 work without requiring immediate refactoring.
+    *   New conventions adopted immediately: state names are immutable, context fields always have defaults, registry keys are permanent, new machines should use `StateTags`.
+    *   **Files**: `apps/game-server/src/server.ts`, `plans/architecture/granular-orchestration.md`.
