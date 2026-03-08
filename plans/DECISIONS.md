@@ -1351,3 +1351,20 @@ This document tracks significant architectural decisions, their context, and con
     *   The granular orchestration plan provides a north star for future L3 work without requiring immediate refactoring.
     *   New conventions adopted immediately: state names are immutable, context fields always have defaults, registry keys are permanent, new machines should use `StateTags`.
     *   **Files**: `apps/game-server/src/server.ts`, `plans/architecture/granular-orchestration.md`.
+
+## [ADR-093] Robust Alarm Delivery — onAlarm() as Single WAKEUP Source
+*   **Date:** 2026-03-08
+*   **Status:** Accepted
+*   **Context:** PartyWhen's Scheduler calls `await this.alarm()` inside `blockConcurrencyWhile` during its constructor — before `onStart()` creates the XState actor. This meant every alarm-driven WAKEUP was delivered to an undefined actor and required a `pendingWakeup` boolean buffer + replay in `onStart()`. This was not a race condition but a **deterministic ordering issue**: the Scheduler always processes and deletes tasks before the actor exists. The buffer mechanism worked but was fragile (collapsed multiple wakeups into one boolean) and obscured the actual event delivery path.
+*   **Decision:**
+    1.  **`onAlarm()` is the single WAKEUP delivery point.** PartyServer guarantees `onStart()` runs before `onAlarm()`, so the actor always exists. After PartyWhen housekeeping (`scheduler.alarm()`), `onAlarm()` sends `SYSTEM.WAKEUP` directly to the actor.
+    2.  **`wakeUpL2` callback is a no-op.** PartyWhen still calls it during construction, but it only logs. No actor interaction, no buffering.
+    3.  **Remove `pendingWakeup` flag.** No longer needed — the delivery path is now direct and guaranteed.
+    4.  **Remove vestigial `scheduleNextTimelineEvent` and `scheduleGameStart` actions.** These L2 actions computed `context.nextWakeup` but nothing read the value. Alarm chaining is handled internally by PartyWhen's `scheduleNextAlarm()`. Remove `nextWakeup` from L2 context.
+    5.  **Keep `scheduleManifestAlarms()`** — bulk-inserts all manifest timeline events into the PartyWhen tasks table at game init. This is the real scheduling mechanism and also provides admin visibility via `/scheduled-tasks`.
+*   **Consequences:**
+    *   Fixes BUG-013 (scheduler alarms lost on DO restart). The alarm → actor delivery path no longer depends on a boolean buffer.
+    *   Removes ~70 lines of dead code (`scheduleGameStart`, `scheduleNextTimelineEvent`, `nextWakeup` context field).
+    *   Alarm delivery is now a straight line: alarm fires → constructor (PartyWhen housekeeping, no-op callback) → `onStart()` (actor created) → `onAlarm()` (WAKEUP sent).
+    *   `processTimelineEvent` remains the manifest scanner — it finds due events within the lookback window. The window width is a secondary concern now that delivery is reliable.
+    *   **Files**: `server.ts`, `scheduling.ts`, `l2-orchestrator.ts`, `l2-timeline.ts`, `http-handlers.ts`.

@@ -115,7 +115,7 @@ const DRAW_TTL_MS = 15 * 60 * 1000;  // 15 min lock TTL
 // ── Game Creation ────────────────────────────────────────────────────────
 
 export async function createGame(
-  mode: 'PECKING_ORDER' | 'CONFIGURABLE_CYCLE' | 'DEBUG_PECKING_ORDER',
+  mode: 'CONFIGURABLE_CYCLE' | 'DEBUG_PECKING_ORDER',
   config?: DebugManifestConfig | ConfigurableManifestConfig
 ): Promise<{ success: boolean; gameId?: string; inviteCode?: string; error?: string }> {
   const session = await requireAuth();
@@ -172,7 +172,8 @@ export async function createGame(
         roster: {},
         manifest: {
           id: `manifest-${gameId}`,
-          gameMode: mode,
+          gameMode: mode, // legacy compat
+          scheduling: 'PRE_SCHEDULED' as const,
           days,
           pushConfig: config.pushConfig,
         },
@@ -673,13 +674,15 @@ export async function startGame(
   const t = (offset: number) => new Date(now + offset).toISOString();
   const days = buildManifestDays(game.mode, game.day_count, configParsed, t);
 
+  const scheduling = game.mode === 'DEBUG_PECKING_ORDER' ? 'ADMIN' : 'PRE_SCHEDULED';
   const payload = {
     lobbyId: `lobby-${Date.now()}`,
     inviteCode: inviteCode.toUpperCase(),
     roster,
     manifest: {
       id: `manifest-${game.id}`,
-      gameMode: game.mode,
+      gameMode: game.mode, // legacy compat
+      scheduling,
       days,
       pushConfig: configParsed?.pushConfig,
     },
@@ -734,7 +737,7 @@ export async function startGame(
 // ── Debug: Quick Start (replaces old startGameStub) ──────────────────────
 
 export async function startDebugGame(
-  mode: 'PECKING_ORDER' | 'CONFIGURABLE_CYCLE' | 'DEBUG_PECKING_ORDER' = 'PECKING_ORDER',
+  mode: 'CONFIGURABLE_CYCLE' | 'DEBUG_PECKING_ORDER' = 'DEBUG_PECKING_ORDER',
   debugConfig?: DebugManifestConfig | ConfigurableManifestConfig
 ): Promise<{
   success: boolean;
@@ -797,7 +800,7 @@ export async function startDebugGame(
     lobbyId: `lobby-${Date.now()}`,
     inviteCode: 'DEBUG',
     roster,
-    manifest: { id: 'manifest-1', gameMode: mode, days, pushConfig: debugConfig?.pushConfig },
+    manifest: { id: 'manifest-1', gameMode: mode, scheduling: mode === 'DEBUG_PECKING_ORDER' ? 'ADMIN' as const : 'PRE_SCHEDULED' as const, days, pushConfig: debugConfig?.pushConfig },
   };
 
   const validated = InitPayloadSchema.parse(payload);
@@ -998,23 +1001,17 @@ function buildManifestDays(
     });
   }
 
-  // Default hardcoded manifest (PECKING_ORDER)
-  const timelineDay1 = [
-    { time: t(2000), action: 'INJECT_PROMPT', payload: { msg: 'Chat is open. Who is the imposter?' } },
-    { time: t(10000), action: 'OPEN_VOTING', payload: { msg: 'Voting is now open!' } },
-    { time: t(20000), action: 'END_DAY', payload: { msg: 'Day has ended.' } },
-  ];
-
-  const timelineDay2 = [
-    { time: t(30000), action: 'INJECT_PROMPT', payload: { msg: 'Day 2 begins!' } },
-    { time: t(35000), action: 'OPEN_VOTING', payload: { msg: 'Voting is now open!' } },
-    { time: t(40000), action: 'END_DAY', payload: { msg: 'Day 2 ended.' } },
-  ];
-
-  return [
-    { dayIndex: 1, theme: 'The Beginning', voteType: 'EXECUTIONER' as const, timeline: timelineDay1 },
-    { dayIndex: 2, theme: 'Double Trouble', voteType: 'TRUST_PAIRS' as const, timeline: timelineDay2 },
-  ];
+  // No config provided — return empty days (admin-driven)
+  return Array.from({ length: dayCount }, (_, i) => {
+    const voteType: string = i === dayCount - 1 ? 'FINALS' : 'MAJORITY';
+    return {
+      dayIndex: i + 1,
+      theme: `Day ${i + 1}`,
+      voteType,
+      gameType: 'NONE',
+      timeline: [] as { time: string; action: string; payload: any }[],
+    };
+  });
 }
 
 // ── Existing Admin Actions ───────────────────────────────────────────────

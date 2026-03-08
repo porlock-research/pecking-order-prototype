@@ -102,7 +102,7 @@ async function handleInit(ctx: HandlerContext, req: Request, url: URL): Promise<
     // time; the subscription never touches scheduling.
     await ctx.scheduleManifestAlarms(json.manifest);
 
-    insertGameAndPlayers(ctx.env.DB, gameId, json.manifest?.gameMode || 'PECKING_ORDER', json.roster || {});
+    insertGameAndPlayers(ctx.env.DB, gameId, json.manifest?.gameMode || json.manifest?.scheduling || 'CONFIGURABLE_CYCLE', json.roster || {});
 
     return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
   } catch (err) {
@@ -221,7 +221,7 @@ function handleGetState(ctx: HandlerContext): Response {
   return new Response(JSON.stringify({
     state: snapshot?.value,
     day: snapshot?.context.dayIndex,
-    nextWakeup: snapshot?.context.nextWakeup ? new Date(snapshot.context.nextWakeup).toISOString() : null,
+    nextWakeup: null, // Alarm scheduling managed by PartyWhen tasks table (see /scheduled-tasks)
     manifest: snapshot?.context.manifest,
     roster: rosterSummary,
   }, null, 2), {

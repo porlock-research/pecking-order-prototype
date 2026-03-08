@@ -7,18 +7,11 @@ Deep architectural concerns that affect the overall system design. These are cro
 ## [BUG-013] Scheduler alarms lost on DO restart (ADR-012 race)
 
 **Priority**: Medium
-**Status**: Partially mitigated
+**Status**: Fixed (ADR-093)
 
-PartyWhen's Scheduler calls `await this.alarm()` inside `blockConcurrencyWhile` during its constructor — before `onStart()` creates the XState actor. If a task is due, the Scheduler executes it (calling `wakeUpL2`), but `this.actor` is undefined, so the WAKEUP is silently swallowed.
+PartyWhen's Scheduler calls `await this.alarm()` inside `blockConcurrencyWhile` during its constructor — before `onStart()` creates the XState actor. This was a deterministic ordering issue, not a race condition: the Scheduler always processes and deletes tasks before the actor exists.
 
-**Current mitigation**: Buffered wakeup replay (`pendingWakeup` flag) + `scheduleNextAlarm()` after actor start.
-
-**Deeper concern**: DO alarm persistence is fragile. The composition pattern (ADR-012) splits alarm processing across Scheduler construction and GameServer lifecycle. Production WebSocket connections keep DOs alive, but any eviction near an alarm boundary risks lost events.
-
-**Potential improvements**:
-- Schema-versioned snapshots with alarm recovery
-- Move alarm scheduling out of async subscription callback
-- Replace PartyWhen with direct `ctx.storage.setAlarm()` for simpler scheduling
+**Fix (ADR-093)**: WAKEUP is now delivered from `onAlarm()`, where the actor is guaranteed to exist (PartyServer calls `onStart()` before `onAlarm()`). The PartyWhen callback (`wakeUpL2`) is a no-op. The `pendingWakeup` buffer mechanism has been removed. Vestigial `scheduleNextTimelineEvent`/`scheduleGameStart`/`nextWakeup` dead code also removed.
 
 ---
 
@@ -122,5 +115,5 @@ If snapshot is unrestorable, D1 `GameJournal` + manifest provide: alive/eliminat
 
 ### Root causes (remaining)
 5. **Alarm chaining invisible**: If chain breaks, it's not obvious why alarms stopped or are firing continuously
-6. **Time window filtering fragile**: `processTimelineEvent` uses 10-second lookback window. If DO was asleep longer, events in gap silently skipped.
-7. **PartyWhen replacement**: Direct `ctx.storage.setAlarm()` + hand-managed task list would be simpler and fully inspectable
+6. ~~**Time window filtering fragile**~~: **Addressed** (ADR-093). Window widened to 5min, and delivery is now reliable via `onAlarm()`. Window width is secondary.
+7. **PartyWhen replacement**: Direct `ctx.storage.setAlarm()` + hand-managed task list would be simpler and fully inspectable (deferred — current architecture is now robust)

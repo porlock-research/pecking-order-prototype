@@ -184,7 +184,7 @@ export default function LobbyRoot() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [clientHost, setClientHost] = useState<string>('http://localhost:5173');
-  const [mode, setMode] = useState<'PECKING_ORDER' | 'CONFIGURABLE_CYCLE' | 'DEBUG_PECKING_ORDER'>('PECKING_ORDER');
+  const [mode, setMode] = useState<'CONFIGURABLE_CYCLE' | 'DEBUG_PECKING_ORDER'>('CONFIGURABLE_CYCLE');
   const [isLoading, setIsLoading] = useState(false);
   const [debugConfig, setDebugConfig] = useState<DebugManifestConfig>(createDefaultManifestConfig);
   const [configurableConfig, setConfigurableConfig] = useState<ConfigurableManifestConfig>(createDefaultConfigurableConfig);
@@ -527,7 +527,6 @@ export default function LobbyRoot() {
                     onChange={(e) => setMode(e.target.value as any)}
                     className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-sm hover:border-skin-dim/30"
                   >
-                    <option value="PECKING_ORDER">STANDARD_CYCLE (7 Days)</option>
                     <option value="CONFIGURABLE_CYCLE">CONFIGURABLE_CYCLE (Custom)</option>
                     <option value="DEBUG_PECKING_ORDER">DEBUG_OVERRIDE (Manual)</option>
                   </select>
