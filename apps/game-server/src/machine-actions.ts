@@ -17,17 +17,17 @@ import type { Env } from "./types";
 
 /** Runtime context needed by the .provide() action overrides. */
 export interface ActionContext {
-  actor: { getSnapshot: () => any } | undefined;
+  getActor: () => { getSnapshot: () => any; send: (event: any) => void } | undefined;
   env: Env;
   getConnections: () => Iterable<Connection>;
-  tickerHistory: TickerMessage[];
+  getTickerHistory: () => TickerMessage[];
   setTickerHistory: (history: TickerMessage[]) => void;
   waitUntil: (promise: Promise<any>) => void;
 }
 
 /** Build a PushContext from current actor snapshot + env. */
 function buildPushContext(ctx: ActionContext): PushContext {
-  const snapshot = ctx.actor?.getSnapshot();
+  const snapshot = ctx.getActor()?.getSnapshot();
   return {
     roster: snapshot?.context.roster || {},
     db: ctx.env.DB,
@@ -45,22 +45,21 @@ function handlePerkResult(ctx: ActionContext, fact: any, gameId: string): void {
   const perkType = fact.payload?.perkType;
   if (perkType === 'SPY_DMS' && fact.targetId) {
     querySpyDms(ctx.env.DB, gameId, fact.targetId).then((messages) => {
-      ctx.actor?.getSnapshot(); // ensure actor still alive
-      (ctx.actor as any)?.send({
+      ctx.getActor()?.send({
         type: Events.Perk.RESULT,
         senderId: fact.actorId,
         result: { perkType: 'SPY_DMS', success: true, data: { messages } },
       });
     }).catch((err: any) => {
       log('error', 'L1', 'SPY_DMS D1 query failed', { error: String(err) });
-      (ctx.actor as any)?.send({
+      ctx.getActor()?.send({
         type: Events.Perk.RESULT,
         senderId: fact.actorId,
         result: { perkType: 'SPY_DMS', success: false, data: { messages: [] } },
       });
     });
   } else {
-    (ctx.actor as any)?.send({
+    ctx.getActor()?.send({
       type: Events.Perk.RESULT,
       senderId: fact.actorId,
       result: { perkType, success: true },
@@ -80,7 +79,7 @@ export function buildActionOverrides(ctx: ActionContext) {
       if (!isJournalable(fact.type)) return;
 
       log('info', 'L1', 'Persisting fact to D1', { factType: fact.type });
-      const snapshot = ctx.actor?.getSnapshot();
+      const snapshot = ctx.getActor()?.getSnapshot();
       const gameId = snapshot?.context.gameId || 'unknown';
       const dayIndex = snapshot?.context.dayIndex || 0;
 
@@ -94,7 +93,7 @@ export function buildActionOverrides(ctx: ActionContext) {
       const roster = snapshot?.context.roster || {};
       const tickerMsg = factToTicker(fact, roster);
       if (tickerMsg) {
-        ctx.setTickerHistory(broadcastTicker(tickerMsg, ctx.tickerHistory, ctx.getConnections));
+        ctx.setTickerHistory(broadcastTicker(tickerMsg, ctx.getTickerHistory(), ctx.getConnections));
       }
 
       // Push notifications for significant facts

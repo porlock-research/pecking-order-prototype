@@ -28,6 +28,7 @@ export class GameServer extends Server<Env> {
   tickerHistory: TickerMessage[] = [];
   lastDebugSummary: string = '';
   scheduler: Scheduler<Env>;
+  private realSchedulerAlarm: (() => Promise<void>) | undefined;
   goldCredited = false;
   connectedPlayers = new Map<string, Set<string>>();
   inspectSubscribers = new Set<Connection>();
@@ -35,11 +36,22 @@ export class GameServer extends Server<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.scheduler = new Scheduler(ctx, env);
-    // PartyWhen calls this during construction (before actor exists).
-    // It's a no-op — actual WAKEUP delivery happens in onAlarm().
-    (this.scheduler as any).wakeUpL2 = () => {
-      log('info', 'L1', 'Alarm: task executed (WAKEUP deferred to onAlarm)');
-    };
+
+    // NOSENTRY fix: PartyWhen's constructor calls `await this.alarm()` inside
+    // blockConcurrencyWhile. That processes tasks and calls setAlarm() for the
+    // next task — but calling setAlarm() during the alarm lifecycle causes
+    // Cloudflare to cancel the alarm handler (NOSENTRY), preventing onStart()
+    // and onAlarm() from ever running.
+    //
+    // Fix: save the real alarm() method and replace it with a no-op. The
+    // constructor's blockConcurrencyWhile will still create the tasks table
+    // but won't process tasks or call setAlarm(). We call the real alarm()
+    // ourselves in onAlarm(), where setAlarm() is safe.
+    this.realSchedulerAlarm = (this.scheduler as any).alarm.bind(this.scheduler);
+    (this.scheduler as any).alarm = async () => {};
+
+    // wakeUpL2 is a no-op — WAKEUP delivery happens in onAlarm().
+    (this.scheduler as any).wakeUpL2 = () => {};
   }
 
   // --- Build context objects for extracted modules ---
@@ -69,10 +81,10 @@ export class GameServer extends Server<Env> {
 
   private actionContext(): ActionContext {
     return {
-      actor: this.actor,
+      getActor: () => this.actor,
       env: this.env,
       getConnections: () => this.getConnections(),
-      tickerHistory: this.tickerHistory,
+      getTickerHistory: () => this.tickerHistory,
       setTickerHistory: (h) => { this.tickerHistory = h; },
       waitUntil: (p) => this.ctx.waitUntil(p),
     };
@@ -201,10 +213,14 @@ export class GameServer extends Server<Env> {
   // --- ALARM ---
 
   async onAlarm() {
-    // PartyWhen housekeeping: process any remaining tasks + arm next alarm.
-    // (Due tasks were already consumed in the constructor's blockConcurrencyWhile,
-    // but this ensures alarm chaining and handles edge cases.)
-    await this.scheduler.alarm();
+    // Restore and call the real PartyWhen alarm() — processes due tasks,
+    // deletes them, and chains to the next alarm via setAlarm().
+    // This is safe here: setAlarm() inside onAlarm() is fine,
+    // only setAlarm() inside the constructor's blockConcurrencyWhile causes NOSENTRY.
+    if (this.realSchedulerAlarm) {
+      (this.scheduler as any).alarm = this.realSchedulerAlarm;
+      await this.realSchedulerAlarm();
+    }
 
     // Deliver WAKEUP to the actor. The actor is guaranteed to exist here
     // because PartyServer calls onStart() before onAlarm().
