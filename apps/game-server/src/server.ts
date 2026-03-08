@@ -3,138 +3,76 @@ import { createActor, ActorRefFrom } from "xstate";
 import { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Scheduler } from "partywhen";
 import type { TickerMessage } from "@pecking-order/shared-types";
-import { Events, FactTypes, ALLOWED_CLIENT_EVENTS as CLIENT_EVENTS } from "@pecking-order/shared-types";
-import { isJournalable, persistFactToD1, querySpyDms, insertGameAndPlayers, updateGameEnd, readGoldBalances, creditGold, savePushSubscriptionD1, getPushSubscriptionD1, deletePushSubscriptionD1, getAllPushSubscriptionsD1 } from "./d1-persistence";
-import { flattenState, factToTicker, stateToTicker, buildDebugSummary, broadcastTicker, broadcastDebugTicker } from "./ticker";
-import { createInspector, safeSerializeSnapshot, type InspectBroadcast } from "./inspect";
+import { Events, FactTypes } from "@pecking-order/shared-types";
+import { isJournalable, persistFactToD1, querySpyDms } from "./d1-persistence";
+import { factToTicker, broadcastTicker } from "./ticker";
+import { createInspector, type InspectBroadcast } from "./inspect";
 import { log } from "./log";
-import { extractCartridges, extractL3Context, buildSyncPayload, broadcastSync } from "./sync";
+import { extractL3Context } from "./sync";
 import { isPushEnabled, phasePushPayload, handleFactPush, pushBroadcast, type PushContext } from "./push-triggers";
-import { sendPushNotification } from "./push-send";
+import { wakeUpL2, scheduleManifestAlarms } from "./scheduling";
+import { routeRequest, type HandlerContext } from "./http-handlers";
+import { handleConnect, handleMessage, handleClose, getOnlinePlayerIds, broadcastPresence, rebuildConnectedPlayers, sendToPlayer, type WsContext } from "./ws-handlers";
+import { setupActorSubscription, type SubscriptionState } from "./subscription";
+import { handleGlobalRoutes } from "./global-routes";
+
+export type { Env } from "./types";
+import type { Env } from "./types";
 
 const STORAGE_KEY = "game_state_snapshot";
-
-/** Constant-time comparison to prevent timing attacks on secret values. */
-function timingSafeEqual(a: string, b: string): boolean {
-  const enc = new TextEncoder();
-  const bufA = enc.encode(a);
-  const bufB = enc.encode(b);
-  if (bufA.byteLength !== bufB.byteLength) {
-    // Compare against self to avoid leaking length via early return timing
-    crypto.subtle.timingSafeEqual(bufA, bufA);
-    return false;
-  }
-  return crypto.subtle.timingSafeEqual(bufA, bufB);
-}
-
-export interface Env {
-  GameServer: DurableObjectNamespace;
-  DB: D1Database;
-  AUTH_SECRET: string;
-  AXIOM_DATASET: string;
-  AXIOM_TOKEN?: string;
-  AXIOM_ORG_ID?: string;
-  VAPID_PUBLIC_KEY: string;
-  VAPID_PRIVATE_JWK: string;
-  GAME_CLIENT_HOST: string;
-}
 
 export class GameServer extends Server<Env> {
   static options = { hibernate: true };
 
-  private actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
-  private lastKnownChatLog: any[] = [];
-  private lastBroadcastState: string = '';
-  private lastKnownDmsOpen: boolean = false;
-  private lastKnownGroupChatOpen: boolean = false;
-  private tickerHistory: TickerMessage[] = [];
-  private lastDebugSummary: string = '';
-  private scheduler: Scheduler<Env>;
-  private goldCredited = false;
-  private pendingWakeup = false;  // Buffered wakeup from Scheduler init (ADR-012)
-  private connectedPlayers = new Map<string, Set<string>>();  // playerId → Set<connectionId>
-  private inspectSubscribers = new Set<Connection>();  // Admin connections subscribed to inspection events
+  actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
+  lastKnownChatLog: any[] = [];
+  lastBroadcastState: string = '';
+  lastKnownDmsOpen: boolean = false;
+  lastKnownGroupChatOpen: boolean = false;
+  tickerHistory: TickerMessage[] = [];
+  lastDebugSummary: string = '';
+  scheduler: Scheduler<Env>;
+  goldCredited = false;
+  pendingWakeup = false;
+  connectedPlayers = new Map<string, Set<string>>();
+  inspectSubscribers = new Set<Connection>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.scheduler = new Scheduler(ctx, env);
-    (this.scheduler as any).wakeUpL2 = this.wakeUpL2.bind(this);
+    (this.scheduler as any).wakeUpL2 = () => {
+      wakeUpL2(this.scheduler, this.actor, () => { this.pendingWakeup = true; });
+    };
   }
 
-  async wakeUpL2() {
-    let remaining = '?';
-    try {
-      const rows = (this.scheduler as any).querySql([
-        { sql: "SELECT COUNT(*) as count FROM tasks", params: [] }
-      ]);
-      remaining = rows?.result?.[0]?.count ?? '?';
-    } catch { /* non-critical */ }
-    log('info', 'L1', 'Alarm: wakeUpL2 fired', { remaining });
-    if (this.actor) {
-      this.actor.send({ type: Events.System.WAKEUP });
-    } else {
-      log('info', 'L1', 'Actor not ready — buffering wakeup for replay after onStart');
-      this.pendingWakeup = true;
-    }
+  // --- Build context objects for extracted modules ---
+
+  private handlerContext(): HandlerContext {
+    return {
+      actor: this.actor,
+      env: this.env,
+      scheduler: this.scheduler,
+      scheduleManifestAlarms: (manifest) => scheduleManifestAlarms(this.scheduler, manifest),
+      deleteAllStorage: () => this.ctx.storage.deleteAll(),
+    };
   }
 
-  /**
-   * Schedule all manifest timeline events as individual PartyWhen tasks.
-   * Called once at init — the manifest is the single source of truth.
-   * Each event gets its own task ID so PartyWhen fires them independently.
-   * PartyWhen stores all tasks in SQLite and chains the single DO alarm to
-   * fire for the earliest task. After processing, it re-arms for the next.
-   * For non-CONFIGURABLE_CYCLE modes, schedules a single immediate start.
-   */
-  private async scheduleManifestAlarms(manifest: any) {
-    if (!manifest) return;
+  private wsContext(): WsContext {
+    return {
+      actor: this.actor,
+      env: this.env,
+      connectedPlayers: this.connectedPlayers,
+      inspectSubscribers: this.inspectSubscribers,
+      tickerHistory: this.tickerHistory,
+      lastDebugSummary: this.lastDebugSummary,
+      lastKnownChatLog: this.lastKnownChatLog,
+      getConnections: () => this.getConnections(),
+    };
+  }
 
-    if (manifest.gameMode === 'DEBUG_PECKING_ORDER') {
-      log('info', 'L1', 'Debug mode — no alarms scheduled (admin-triggered)');
-      return;
-    }
-
-    if (manifest.gameMode === 'CONFIGURABLE_CYCLE' && manifest.days) {
-      // Deduplicate by timestamp — one PartyWhen task per unique wakeup time.
-      // processTimelineEvent handles finding all events due at that time.
-      const uniqueTimestamps = new Map<number, string>(); // timestamp(s) → label
-      const now = Date.now();
-      for (const day of manifest.days) {
-        for (const event of day.timeline || []) {
-          const timeMs = new Date(event.time).getTime();
-          if (timeMs > now) {
-            const ts = Math.floor(timeMs / 1000);
-            const existing = uniqueTimestamps.get(ts);
-            uniqueTimestamps.set(ts, existing ? `${existing}+${event.action}` : `d${day.dayIndex}-${event.action}`);
-          }
-        }
-      }
-      const callback = JSON.stringify({ type: "self", function: "wakeUpL2" });
-      for (const [timestamp, label] of uniqueTimestamps) {
-        (this.scheduler as any).querySql([{
-          sql: `INSERT OR REPLACE INTO tasks (id, description, payload, callback, type, time)
-                VALUES (?, ?, ?, ?, 'scheduled', ?)`,
-          params: [`wakeup-${label}`, null, null, callback, timestamp]
-        }]);
-      }
-      // Arm the DO alarm for the earliest task
-      await (this.scheduler as any).scheduleNextAlarm();
-      log('info', 'L1', 'Scheduled alarms', {
-        uniqueAlarms: uniqueTimestamps.size,
-        totalEvents: manifest.days.reduce((n: number, d: any) => n + (d.timeline?.length || 0), 0),
-        days: manifest.days.length,
-      });
-      return;
-    }
-
-    // Standard PECKING_ORDER: immediate start (1s)
-    await this.scheduler.scheduleTask({
-      id: "wakeup-gamestart",
-      type: "scheduled",
-      time: new Date(Date.now() + 1000),
-      callback: { type: "self", function: "wakeUpL2" }
-    });
-    log('info', 'L1', 'Scheduled immediate game start (1s)');
+  private subscriptionState(): SubscriptionState {
+    // Return `this` — the server instance implements SubscriptionState structurally
+    return this;
   }
 
   /** Build a PushContext for the push-triggers module. */
@@ -149,23 +87,7 @@ export class GameServer extends Server<Env> {
     };
   }
 
-  // --- PRESENCE ---
-
-  private getOnlinePlayerIds(): string[] {
-    return Array.from(this.connectedPlayers.keys());
-  }
-
-  private broadcastPresence(): void {
-    const msg = JSON.stringify({
-      type: Events.Presence.UPDATE,
-      onlinePlayers: this.getOnlinePlayerIds(),
-    });
-    for (const ws of this.getConnections()) {
-      ws.send(msg);
-    }
-  }
-
-  // --- 1. LIFECYCLE ---
+  // --- LIFECYCLE ---
 
   async onStart() {
     // PartyWhen persistence check — only log on error
@@ -227,7 +149,6 @@ export class GameServer extends Server<Env> {
         persistFactToD1: ({ event }: any) => {
           if (event.type !== Events.Fact.RECORD) return;
           const fact = event.fact;
-
           if (!isJournalable(fact.type)) return;
 
           log('info', 'L1', 'Persisting fact to D1', { factType: fact.type });
@@ -250,27 +171,25 @@ export class GameServer extends Server<Env> {
           }
 
           // Push notifications for significant facts.
-          // waitUntil keeps the DO alive until delivery completes — without it,
-          // hibernation can evict the DO before the async push fetch finishes.
           const manifest = snapshot?.context.manifest;
           const pushPromise = handleFactPush(this.getPushContext(), fact, manifest);
           if (pushPromise) this.ctx.waitUntil(pushPromise);
         },
         sendDmRejection: ({ event }: any) => {
           if (event.type !== Events.Rejection.DM) return;
-          this.sendToPlayer(event.senderId, { type: Events.Rejection.DM, reason: event.reason });
+          sendToPlayer(() => this.getConnections(), event.senderId, { type: Events.Rejection.DM, reason: event.reason });
         },
         sendSilverTransferRejection: ({ event }: any) => {
           if (event.type !== Events.Rejection.SILVER_TRANSFER) return;
-          this.sendToPlayer(event.senderId, { type: Events.Rejection.SILVER_TRANSFER, reason: event.reason });
+          sendToPlayer(() => this.getConnections(), event.senderId, { type: Events.Rejection.SILVER_TRANSFER, reason: event.reason });
         },
         sendChannelRejection: ({ event }: any) => {
           if (event.type !== Events.Rejection.CHANNEL) return;
-          this.sendToPlayer(event.senderId, { type: Events.Rejection.CHANNEL, reason: event.reason });
+          sendToPlayer(() => this.getConnections(), event.senderId, { type: Events.Rejection.CHANNEL, reason: event.reason });
         },
         deliverPerkResult: ({ event }: any) => {
           if (event.type !== Events.Perk.RESULT && event.type !== Events.Rejection.PERK) return;
-          this.sendToPlayer(event.senderId, event);
+          sendToPlayer(() => this.getConnections(), event.senderId, event);
         },
         broadcastPhasePush: ({ context, event }: any) => {
           const { trigger } = event;
@@ -340,117 +259,20 @@ export class GameServer extends Server<Env> {
     }
 
     // Subscribe: auto-save, broadcast, ticker, push
-    // The first subscription fire happens synchronously during actor.start()
-    // with the restored snapshot — suppress ticker emissions to avoid duplicates.
-    let isRestoreFire = true;
-    this.actor.subscribe(async (snapshot) => {
-      const { l3Context, l3Snapshot, chatLog } = extractL3Context(snapshot, this.lastKnownChatLog);
-      if (l3Context.chatLog) this.lastKnownChatLog = l3Context.chatLog;
-
-      // Debug ticker for connected dev clients (not logged to Axiom)
-      const debugSummary = buildDebugSummary(snapshot, l3Snapshot);
-      if (debugSummary !== this.lastDebugSummary) {
-        this.lastDebugSummary = debugSummary;
-        broadcastDebugTicker(debugSummary, () => this.getConnections());
-      }
-
-      // A. Save state to disk (SQL — ADR-092)
-      const persistedSnapshot = this.actor?.getPersistedSnapshot();
-      this.ctx.storage.sql.exec(
-        `INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('game_state', ?, unixepoch())`,
-        JSON.stringify({
-          l2: persistedSnapshot,
-          l3Context: { chatLog: l3Context.chatLog ?? this.lastKnownChatLog },
-          tickerHistory: this.tickerHistory,
-        })
-      );
-
-      // B. (Scheduling moved to handleInit — manifest events pre-scheduled at game creation)
-
-      // C. Broadcast SYSTEM.SYNC to all clients
-      const cartridges = extractCartridges(snapshot);
-      broadcastSync({ snapshot, l3Context, chatLog, cartridges }, () => this.getConnections(), this.getOnlinePlayerIds());
-
-      // D. Ticker: detect state transitions
-      const l3StateJson = l3Snapshot ? JSON.stringify(l3Snapshot.value) : '';
-      const currentStateStr = JSON.stringify(snapshot.value) + l3StateJson;
-      if (currentStateStr !== this.lastBroadcastState) {
-        if (!isRestoreFire) {
-          const tickerMsg = stateToTicker(currentStateStr, snapshot.context);
-          if (tickerMsg) {
-            this.tickerHistory = broadcastTicker(tickerMsg, this.tickerHistory, () => this.getConnections());
-          }
-        }
-        this.lastBroadcastState = currentStateStr;
-      }
-
-      // E. Update D1 when game ends + persist gold payouts + flush scheduled tasks
-      if (currentStateStr.includes('gameOver') && snapshot.context.gameId) {
-        updateGameEnd(this.env.DB, snapshot.context.gameId, snapshot.context.roster);
-
-        // Persist gold payouts to cross-tournament wallets (idempotent guard)
-        if (!this.goldCredited) {
-          const payouts = snapshot.context.goldPayouts || [];
-          for (const payout of payouts) {
-            const realUserId = snapshot.context.roster[payout.playerId]?.realUserId;
-            if (realUserId && payout.amount > 0) {
-              creditGold(this.env.DB, realUserId, payout.amount);
-            }
-          }
-          if (payouts.length > 0) {
-            this.goldCredited = true;
-            this.ctx.storage.sql.exec(
-              `INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('gold_credited', 'true', unixepoch())`
-            );
-          }
-        }
-
-        // Flush remaining PartyWhen tasks — game is done
-        try {
-          (this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
-        } catch (e) {
-          log('error', 'L1', 'Failed to flush tasks on game end', { error: String(e) });
-        }
-      }
-
-      // F. Ticker: detect DM open/close changes
-      const currentDmsOpen = l3Context.dmsOpen ?? false;
-      if (currentDmsOpen !== this.lastKnownDmsOpen) {
-        if (!isRestoreFire) {
-          this.tickerHistory = broadcastTicker({
-            id: crypto.randomUUID(),
-            text: currentDmsOpen ? 'DMs are now open!' : 'DMs are now closed.',
-            category: currentDmsOpen ? 'GATE.DMS_OPEN' : 'GATE.DMS_CLOSE',
-            timestamp: Date.now(),
-          }, this.tickerHistory, () => this.getConnections());
-        }
-        this.lastKnownDmsOpen = currentDmsOpen;
-      }
-
-      // G. Ticker: detect group chat open/close changes
-      const currentGroupChatOpen = l3Context.groupChatOpen ?? false;
-      if (currentGroupChatOpen !== this.lastKnownGroupChatOpen) {
-        if (!isRestoreFire) {
-          this.tickerHistory = broadcastTicker({
-            id: crypto.randomUUID(),
-            text: currentGroupChatOpen ? 'Group chat is now open!' : 'Group chat is now closed.',
-            category: currentGroupChatOpen ? 'GATE.CHAT_OPEN' : 'GATE.CHAT_CLOSE',
-            timestamp: Date.now(),
-          }, this.tickerHistory, () => this.getConnections());
-        }
-        this.lastKnownGroupChatOpen = currentGroupChatOpen;
-      }
-
-      isRestoreFire = false;
+    setupActorSubscription(this.actor, {
+      getActor: () => this.actor,
+      storage: this.ctx.storage,
+      env: this.env,
+      scheduler: this.scheduler,
+      state: this.subscriptionState(),
+      connectedPlayers: this.connectedPlayers,
+      getConnections: () => this.getConnections(),
     });
 
     this.actor.start();
-    // Note: isRestoreFire flag in subscription handles first-fire ticker
-    // suppression — no post-start initialization needed for tracking vars.
 
     // Rebuild connected players map from surviving WebSocket attachments
-    // (required for hibernation — ws.state is lost but attachments survive).
-    this.rebuildConnectedPlayers();
+    rebuildConnectedPlayers(this.connectedPlayers, () => this.getConnections());
 
     // Replay any wakeup that fired during Scheduler construction (before actor
     // existed). See ADR-012: Scheduler.alarm() runs in blockConcurrencyWhile,
@@ -463,575 +285,6 @@ export class GameServer extends Server<Env> {
 
     // Re-arm alarm for any future tasks still in the table
     await (this.scheduler as any).scheduleNextAlarm();
-  }
-
-  /** Rebuild connectedPlayers map from WebSocket attachments (survives hibernation). */
-  private rebuildConnectedPlayers() {
-    this.connectedPlayers.clear();
-    for (const ws of this.getConnections()) {
-      const attachment = ws.deserializeAttachment();
-      if (attachment?.playerId) {
-        const existing = this.connectedPlayers.get(attachment.playerId) || new Set();
-        existing.add(ws.id);
-        this.connectedPlayers.set(attachment.playerId, existing);
-      }
-    }
-  }
-
-  // --- 2. HTTP HANDLERS ---
-
-  async onRequest(req: Request): Promise<Response> {
-    const url = new URL(req.url);
-    const path = url.pathname;
-
-    if (req.method === "POST" && path.endsWith("/init")) {
-      return this.handleInit(req, url);
-    }
-    if (req.method === "POST" && path.endsWith("/player-joined")) {
-      return this.handlePlayerJoined(req, url);
-    }
-    if (req.method === "GET" && path.endsWith("/state")) {
-      return this.handleGetState();
-    }
-    if (req.method === "POST" && path.endsWith("/admin")) {
-      return this.handleAdmin(req);
-    }
-    if (req.method === "POST" && path.endsWith("/flush-tasks")) {
-      return this.handleFlushTasks(req);
-    }
-    if ((req.method === "GET" || req.method === "POST") && path.endsWith("/scheduled-tasks")) {
-      return this.handleScheduledTasks(req);
-    }
-    if (req.method === "POST" && path.endsWith("/cleanup")) {
-      return this.handleCleanup(req);
-    }
-    if (req.method === "POST" && path.endsWith("/push-game-entry")) {
-      return this.handlePushGameEntry(req);
-    }
-
-    return new Response("Not Found", { status: 404 });
-  }
-
-  private async handleInit(req: Request, url: URL): Promise<Response> {
-    const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-
-    try {
-      const json = await req.json() as any;
-      const pathParts = url.pathname.split('/');
-      const gameId = pathParts[pathParts.length - 2];
-
-      // Enrich roster with persistent gold from D1
-      const realUserIds = Object.values(json.roster || {}).map((p: any) => p.realUserId).filter(Boolean);
-      if (realUserIds.length > 0) {
-        const goldBalances = await readGoldBalances(this.env.DB, realUserIds);
-        for (const p of Object.values(json.roster) as any[]) {
-          if (p.realUserId) {
-            p.gold = goldBalances.get(p.realUserId) || 0;
-          }
-        }
-      }
-
-      this.actor?.send({
-        type: Events.System.INIT,
-        payload: { roster: json.roster, manifest: json.manifest },
-        gameId,
-        inviteCode: json.inviteCode || '',
-      });
-
-      // Schedule alarms from the manifest — the manifest is the single source
-      // of truth for scheduling. All timeline events are pre-scheduled at init
-      // time; the subscription never touches scheduling.
-      await this.scheduleManifestAlarms(json.manifest);
-
-      insertGameAndPlayers(this.env.DB, gameId, json.manifest?.gameMode || 'PECKING_ORDER', json.roster || {});
-
-      return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
-    } catch (err) {
-      log('error', 'L1', 'POST /init failed', { error: String(err) });
-      return new Response("Invalid Payload", { status: 400 });
-    }
-  }
-
-  private async handlePlayerJoined(req: Request, url: URL): Promise<Response> {
-    const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-
-    try {
-      const json = await req.json() as any;
-      const { playerId, realUserId, personaName, avatarUrl, bio, silver } = json;
-
-      if (!playerId || !realUserId || !personaName) {
-        return new Response('Missing required fields', { status: 400 });
-      }
-
-      // Reject if the game has progressed past preGame
-      const snapshot = this.actor?.getSnapshot();
-      if (snapshot && snapshot.value !== 'preGame') {
-        log('info', 'L1', 'Rejecting player-joined', { state: JSON.stringify(snapshot.value) });
-        return new Response(JSON.stringify({ error: 'GAME_STARTED' }), {
-          status: 409,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Enrich with persistent gold from D1
-      const goldBalances = await readGoldBalances(this.env.DB, [realUserId]);
-      const gold = goldBalances.get(realUserId) || 0;
-
-      // Send SYSTEM.PLAYER_JOINED to L2
-      this.actor?.send({
-        type: Events.System.PLAYER_JOINED,
-        player: { id: playerId, realUserId, personaName, avatarUrl: avatarUrl || '', bio: bio || '', silver: silver || 50, gold },
-      });
-
-      // Insert player into D1 Players table
-      const pathParts = url.pathname.split('/');
-      const gameId = pathParts[pathParts.length - 2];
-      const playerStmt = this.env.DB.prepare(
-        `INSERT OR IGNORE INTO Players (game_id, player_id, real_user_id, persona_name, avatar_url, status, silver, gold, destiny_id)
-         VALUES (?, ?, ?, ?, ?, 'ALIVE', ?, ?, ?)`
-      );
-      playerStmt.bind(gameId, playerId, realUserId, personaName, avatarUrl || '', silver || 50, gold, null)
-        .run()
-        .catch((err: any) => log('error', 'L1', 'Failed to insert player', { error: String(err) }));
-
-      return new Response(JSON.stringify({ status: 'OK' }), { status: 200 });
-    } catch (err) {
-      log('error', 'L1', 'POST /player-joined failed', { error: String(err) });
-      return new Response('Invalid Payload', { status: 400 });
-    }
-  }
-
-  private async handlePushGameEntry(req: Request): Promise<Response> {
-    const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-
-    try {
-      const { userId, inviteCode, token } = await req.json() as any;
-      if (!userId || !inviteCode || !token) {
-        return new Response(JSON.stringify({ sent: false }), {
-          status: 200, headers: { 'Content-Type': 'application/json' },
-        });
-      }
-
-      const sub = await getPushSubscriptionD1(this.env.DB, userId);
-      if (!sub) {
-        return new Response(JSON.stringify({ sent: false }), {
-          status: 200, headers: { 'Content-Type': 'application/json' },
-        });
-      }
-
-      const url = `${this.env.GAME_CLIENT_HOST}/game/${inviteCode}`;
-      const result = await sendPushNotification(sub, {
-        title: 'Pecking Order',
-        body: 'Your game is ready! Tap to play.',
-        url,
-        token,
-      }, this.env.VAPID_PRIVATE_JWK);
-
-      if (result === 'expired') {
-        await deletePushSubscriptionD1(this.env.DB, userId);
-      }
-
-      return new Response(JSON.stringify({ sent: result === 'sent' }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (err) {
-      log('error', 'L1', 'POST /push-game-entry failed', { error: String(err) });
-      return new Response(JSON.stringify({ sent: false }), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
-      });
-    }
-  }
-
-  private handleGetState(): Response {
-    const snapshot = this.actor?.getSnapshot();
-    const roster = snapshot?.context.roster || {};
-    const rosterSummary = Object.fromEntries(
-      Object.entries(roster).map(([id, p]: [string, any]) => [id, {
-        personaName: p.personaName,
-        status: p.status,
-        silver: p.silver ?? 0,
-        gold: p.gold ?? 0,
-      }])
-    );
-    return new Response(JSON.stringify({
-      state: snapshot?.value,
-      day: snapshot?.context.dayIndex,
-      nextWakeup: snapshot?.context.nextWakeup ? new Date(snapshot.context.nextWakeup).toISOString() : null,
-      manifest: snapshot?.context.manifest,
-      roster: rosterSummary,
-    }, null, 2), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  private async handleFlushTasks(req: Request): Promise<Response> {
-    const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-    try {
-      (this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
-      await (this.scheduler as any).scheduleNextAlarm();
-      log('info', 'L1', 'All scheduled tasks flushed');
-      return new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    } catch (err: any) {
-      log('error', 'L1', 'Flush tasks error', { error: String(err) });
-      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
-    }
-  }
-
-  private async handleScheduledTasks(req: Request): Promise<Response> {
-    const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-    try {
-      if (req.method === 'POST') {
-        (this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
-        await (this.scheduler as any).scheduleNextAlarm();
-        log('info', 'L1', 'All scheduled tasks flushed via /scheduled-tasks');
-        return new Response(JSON.stringify({ ok: true, flushed: true }), {
-          status: 200,
-          headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-        });
-      }
-      // GET: list tasks
-      const rows = (this.scheduler as any).querySql([
-        { sql: "SELECT id, time FROM tasks ORDER BY time ASC", params: [] }
-      ]);
-      const tasks = rows?.result || [];
-      return new Response(JSON.stringify({ count: tasks.length, tasks }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-      });
-    } catch (err: any) {
-      log('error', 'L1', 'Scheduled tasks error', { error: String(err) });
-      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
-    }
-  }
-
-  private async handleCleanup(req: Request): Promise<Response> {
-    const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-    try {
-      const gameId = this.actor?.getSnapshot()?.context.gameId || 'unknown';
-      const cleaned: string[] = [];
-
-      // 1. Delete D1 rows for this game
-      if (gameId !== 'unknown') {
-        await this.env.DB.batch([
-          this.env.DB.prepare('DELETE FROM GameJournal WHERE game_id = ?').bind(gameId),
-          this.env.DB.prepare('DELETE FROM Players WHERE game_id = ?').bind(gameId),
-          this.env.DB.prepare('DELETE FROM Games WHERE id = ?').bind(gameId),
-        ]);
-        cleaned.push('GameJournal', 'Players', 'Games');
-      }
-
-      // 2. Flush scheduled tasks
-      (this.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
-      cleaned.push('scheduled tasks');
-
-      // 3. Clear DO storage (snapshot, goldCredited, etc.)
-      await this.ctx.storage.deleteAll();
-      cleaned.push('DO storage');
-
-      log('info', 'L1', 'Cleanup complete', { gameId, cleaned });
-      return new Response(JSON.stringify({ ok: true, cleaned }), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-      });
-    } catch (err: any) {
-      log('error', 'L1', 'Cleanup error', { error: String(err) });
-      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
-    }
-  }
-
-  private async handleAdmin(req: Request): Promise<Response> {
-    // Auth check — require Bearer token matching AUTH_SECRET
-    const authHeader = req.headers.get('Authorization');
-    if (this.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${this.env.AUTH_SECRET}`)) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-
-    try {
-      const body = await req.json() as any;
-
-      if (!this.actor) {
-        log('warn', 'L1', 'Admin command received but actor is null', { command: body.type });
-        return new Response(JSON.stringify({ error: 'Actor not initialized' }), { status: 503 });
-      }
-
-      const snapshot = this.actor.getSnapshot();
-      const l2State = JSON.stringify(snapshot.value);
-      log('info', 'L1', 'Admin command', { command: body.type, l2State, dayIndex: snapshot.context.dayIndex });
-
-      if (body.type === "NEXT_STAGE") {
-        this.actor.send({ type: Events.Admin.NEXT_STAGE });
-      } else if (body.type === "INJECT_TIMELINE_EVENT") {
-        this.actor.send({
-          type: Events.Admin.INJECT_TIMELINE_EVENT,
-          payload: { action: body.action, payload: body.payload },
-        });
-      } else if (body.type === "SEND_GAME_MASTER_MSG") {
-        log('info', 'L1', 'GM message', { targetId: body.targetId || 'broadcast', l2State });
-        this.actor.send({
-          type: Events.Admin.INJECT_TIMELINE_EVENT,
-          payload: {
-            action: "INJECT_PROMPT",
-            payload: { text: body.content, targetId: body.targetId },
-          },
-        });
-      } else {
-        return new Response("Unknown Admin Command", { status: 400 });
-      }
-
-      return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
-    } catch (err) {
-      log('error', 'L1', 'Admin request failed', { error: String(err) });
-      return new Response("Internal Error", { status: 500 });
-    }
-  }
-
-  // --- 3. WEBSOCKET ---
-
-  async onConnect(ws: Connection, ctx: ConnectionContext) {
-    const url = new URL(ctx.request.url);
-    const roster = this.actor?.getSnapshot().context.roster || {};
-
-    // Admin connections: Bearer token auth for inspector/admin tools
-    const adminSecret = url.searchParams.get("adminSecret");
-    if (adminSecret) {
-      if (!this.env.AUTH_SECRET || !timingSafeEqual(adminSecret, this.env.AUTH_SECRET)) {
-        ws.close(4003, "Invalid admin secret");
-        return;
-      }
-      ws.setState({ playerId: '__admin__', isAdmin: true });
-      ws.serializeAttachment({ playerId: '__admin__', isAdmin: true });
-      log('info', 'L1', 'Admin connection established');
-      return;
-    }
-
-    let playerId: string | null = null;
-    const token = url.searchParams.get("token");
-    if (token) {
-      try {
-        const { verifyGameToken } = await import("@pecking-order/auth");
-        const payload = await verifyGameToken(token, this.env.AUTH_SECRET);
-        playerId = payload.playerId;
-      } catch (err) {
-        log('warn', 'L1', 'JWT verification failed', { error: String(err) });
-        ws.close(4003, "Invalid token");
-        return;
-      }
-    } else {
-      playerId = url.searchParams.get("playerId");
-    }
-
-    if (!playerId || !roster[playerId]) {
-      log('warn', 'L1', 'Rejecting connection: invalid player ID', { playerId });
-      ws.close(4001, "Invalid Player ID");
-      return;
-    }
-
-    ws.setState({ playerId });
-    ws.serializeAttachment({ playerId });
-    log('info', 'L1', 'Player connected', { playerId, auth: token ? 'JWT' : 'legacy' });
-
-    // Track connection for presence
-    const connId = ws.id;
-    const existing = this.connectedPlayers.get(playerId) || new Set();
-    existing.add(connId);
-    this.connectedPlayers.set(playerId, existing);
-
-    const snapshot = this.actor?.getSnapshot();
-    if (snapshot) {
-      const { l3Context, chatLog } = extractL3Context(snapshot, this.lastKnownChatLog);
-      const cartridges = extractCartridges(snapshot);
-      const onlinePlayers = this.getOnlinePlayerIds();
-      ws.send(JSON.stringify(buildSyncPayload({ snapshot, l3Context, chatLog, cartridges }, playerId, onlinePlayers)));
-
-      if (this.tickerHistory.length > 0) {
-        ws.send(JSON.stringify({ type: Events.Ticker.HISTORY, messages: this.tickerHistory }));
-      }
-      if (this.lastDebugSummary) {
-        ws.send(JSON.stringify({ type: Events.Ticker.DEBUG, summary: this.lastDebugSummary }));
-      }
-    }
-
-    this.broadcastPresence();
-  }
-
-  onClose(ws: Connection) {
-    // ws.state may be lost after hibernation — fall back to attachment
-    const state = ws.state as { playerId: string } | null;
-    const playerId = state?.playerId || ws.deserializeAttachment()?.playerId;
-    if (!playerId) return;
-
-    const conns = this.connectedPlayers.get(playerId);
-    if (conns) {
-      conns.delete(ws.id);
-      if (conns.size === 0) {
-        this.connectedPlayers.delete(playerId);
-      }
-    }
-    this.inspectSubscribers.delete(ws);
-    this.broadcastPresence();
-  }
-
-  private static ALLOWED_CLIENT_EVENTS = CLIENT_EVENTS as readonly string[];
-
-  onMessage(ws: Connection, message: string) {
-    try {
-      const event = JSON.parse(message);
-      // ws.state may be lost after hibernation — fall back to attachment
-      const state = ws.state as { playerId: string; isAdmin?: boolean } | null;
-      const attachment = ws.deserializeAttachment();
-      const playerId = state?.playerId || attachment?.playerId;
-      const isAdmin = state?.isAdmin || attachment?.isAdmin;
-
-      // WS messages are high-frequency — don't log individually
-
-      if (!playerId) {
-        log('warn', 'L1', 'Message received from connection without playerId');
-        ws.close(4001, "Missing Identity");
-        return;
-      }
-
-      // Re-set ws.state if it was lost (so subsequent reads in this session work)
-      if (!state?.playerId && playerId) {
-        ws.setState({ playerId, isAdmin });
-      }
-
-      // Inspector: admin clients can subscribe to inspection events
-      if (event.type === 'INSPECT.SUBSCRIBE') {
-        this.inspectSubscribers.add(ws);
-        log('info', 'L1', 'Inspector subscriber added', { playerId });
-
-        // Replay current actor state so late-connecting inspectors see existing actors
-        if (this.actor) {
-          const snapshot = this.actor.getSnapshot();
-          const now = Date.now();
-          const rootId = this.actor.id || 'pecking-order-l2';
-
-          // Replay root (L2) actor
-          ws.send(JSON.stringify({
-            type: 'INSPECT.ACTOR',
-            actorId: rootId,
-            snapshot: safeSerializeSnapshot(snapshot),
-            timestamp: now,
-          }));
-          ws.send(JSON.stringify({
-            type: 'INSPECT.SNAPSHOT',
-            actorId: rootId,
-            snapshot: safeSerializeSnapshot(snapshot),
-            timestamp: now,
-          }));
-
-          // Replay child actors (L3 session, cartridges, etc.)
-          if (snapshot.children) {
-            for (const [childId, childRef] of Object.entries(snapshot.children)) {
-              try {
-                const childSnapshot = (childRef as any).getSnapshot?.();
-                if (childSnapshot) {
-                  ws.send(JSON.stringify({
-                    type: 'INSPECT.ACTOR',
-                    actorId: childId,
-                    snapshot: safeSerializeSnapshot(childSnapshot),
-                    timestamp: now,
-                  }));
-                  ws.send(JSON.stringify({
-                    type: 'INSPECT.SNAPSHOT',
-                    actorId: childId,
-                    snapshot: safeSerializeSnapshot(childSnapshot),
-                    timestamp: now,
-                  }));
-                }
-              } catch { /* child may not have a snapshot */ }
-            }
-          }
-        }
-        return;
-      }
-      if (event.type === 'INSPECT.UNSUBSCRIBE') {
-        this.inspectSubscribers.delete(ws);
-        return;
-      }
-
-      // Admin connections can only use inspector events
-      if (isAdmin) return;
-
-      // Presence: relay typing indicators without touching XState
-      if (event.type === Events.Presence.TYPING) {
-        const msg = JSON.stringify({
-          type: Events.Presence.TYPING,
-          playerId,
-          channel: event.channel || 'MAIN',
-        });
-        for (const other of this.getConnections()) {
-          if (other !== ws) other.send(msg);
-        }
-        return;
-      }
-      if (event.type === Events.Presence.STOP_TYPING) {
-        const msg = JSON.stringify({
-          type: Events.Presence.STOP_TYPING,
-          playerId,
-          channel: event.channel || 'MAIN',
-        });
-        for (const other of this.getConnections()) {
-          if (other !== ws) other.send(msg);
-        }
-        return;
-      }
-
-      const isAllowed = GameServer.ALLOWED_CLIENT_EVENTS.includes(event.type)
-        || (typeof event.type === 'string' && event.type.startsWith(Events.Vote.PREFIX))
-        || (typeof event.type === 'string' && event.type.startsWith(Events.Game.PREFIX))
-        || (typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX));
-      if (!isAllowed) {
-        log('warn', 'L1', 'Rejected event type from client', { eventType: event.type });
-        return;
-      }
-
-      this.actor?.send({ ...event, senderId: playerId });
-    } catch (err) {
-      log('error', 'L1', 'Error processing message', { error: String(err) });
-    }
-  }
-
-  // --- 4. ALARM ---
-
-  async onAlarm() {
-    await this.scheduler.alarm();
-  }
-
-  // --- Helpers ---
-
-  /** Send a JSON message to a specific player's WebSocket connection. */
-  private sendToPlayer(playerId: string, message: any): void {
-    for (const ws of this.getConnections()) {
-      const state = ws.state as { playerId: string } | null;
-      const wsPlayerId = state?.playerId || ws.deserializeAttachment()?.playerId;
-      if (wsPlayerId === playerId) {
-        ws.send(JSON.stringify(message));
-        break;
-      }
-    }
   }
 
   /** Handle perk result delivery after D1 journal write. */
@@ -1060,272 +313,41 @@ export class GameServer extends Server<Env> {
       } as any);
     }
   }
-}
 
-// --- CORS headers ---
-// Wildcard CORS for admin-only DO class methods (scheduled-tasks, cleanup).
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS, GET',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+  // --- HTTP ---
 
-// Dynamic CORS that reflects the requesting origin. Required because browsers
-// reject wildcard ACAO when credentials are included (Sentry's fetch wrapping
-// adds credentials: 'include').
-function corsHeaders(request: Request): Record<string, string> {
-  const origin = request.headers.get('Origin') || '*';
-  return {
-    'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Max-Age': '86400',
-  };
+  async onRequest(req: Request): Promise<Response> {
+    return routeRequest(this.handlerContext(), req);
+  }
+
+  // --- WEBSOCKET ---
+
+  async onConnect(ws: Connection, ctx: ConnectionContext) {
+    await handleConnect(this.wsContext(), ws, ctx);
+  }
+
+  onClose(ws: Connection) {
+    handleClose(this.wsContext(), ws);
+  }
+
+  onMessage(ws: Connection, message: string) {
+    handleMessage(this.wsContext(), ws, message);
+  }
+
+  // --- ALARM ---
+
+  async onAlarm() {
+    await this.scheduler.alarm();
+  }
 }
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
-    const DYNAMIC_CORS = corsHeaders(request);
+    // Try global routes first (push, admin journal, etc.)
+    const globalResponse = await handleGlobalRoutes(request, env);
+    if (globalResponse) return globalResponse;
 
-    // Global HTTP push subscription endpoints (not routed to DO)
-    if (url.pathname === '/api/push/subscribe') {
-      if (request.method === 'OPTIONS') {
-        return new Response(null, { status: 204, headers: DYNAMIC_CORS });
-      }
-
-      // Authenticate via JWT
-      const authHeader = request.headers.get('Authorization');
-      if (!authHeader?.startsWith('Bearer ')) {
-        return new Response('Unauthorized', { status: 401, headers: DYNAMIC_CORS });
-      }
-      const token = authHeader.slice(7);
-      let userId: string;
-      try {
-        const { verifyGameToken } = await import('@pecking-order/auth');
-        const payload = await verifyGameToken(token, env.AUTH_SECRET);
-        userId = payload.sub;
-      } catch {
-        return new Response('Invalid token', { status: 401, headers: DYNAMIC_CORS });
-      }
-
-      if (request.method === 'POST') {
-        try {
-          const body = await request.json() as { endpoint: string; keys: { p256dh: string; auth: string } };
-          if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
-            return new Response('Invalid subscription', { status: 400, headers: DYNAMIC_CORS });
-          }
-          await savePushSubscriptionD1(env.DB, userId, body);
-          return new Response(JSON.stringify({ ok: true }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
-          });
-        } catch (err) {
-          log('error', 'Push API', 'Save failed', { error: String(err) });
-          return new Response('Server error', { status: 500, headers: DYNAMIC_CORS });
-        }
-      }
-
-      if (request.method === 'DELETE') {
-        try {
-          await deletePushSubscriptionD1(env.DB, userId);
-          return new Response(JSON.stringify({ ok: true }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
-          });
-        } catch (err) {
-          log('error', 'Push API', 'Delete failed', { error: String(err) });
-          return new Response('Server error', { status: 500, headers: DYNAMIC_CORS });
-        }
-      }
-
-      return new Response('Method not allowed', { status: 405, headers: DYNAMIC_CORS });
-    }
-
-    // Admin: query GameJournal for admin dashboard
-    if (url.pathname === '/api/admin/journal') {
-      if (request.method === 'OPTIONS') {
-        return new Response(null, { status: 204, headers: DYNAMIC_CORS });
-      }
-      if (request.method !== 'GET') {
-        return new Response('Method not allowed', { status: 405, headers: DYNAMIC_CORS });
-      }
-
-      const authHeader = request.headers.get('Authorization');
-      if (!authHeader || !timingSafeEqual(authHeader, `Bearer ${env.AUTH_SECRET}`)) {
-        return new Response('Unauthorized', { status: 401, headers: DYNAMIC_CORS });
-      }
-
-      try {
-        const gameId = url.searchParams.get('game_id');
-        if (!gameId) {
-          return new Response(JSON.stringify({ error: 'game_id required' }), {
-            status: 400, headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
-          });
-        }
-
-        const day = url.searchParams.get('day');
-        const type = url.searchParams.get('type');
-        const player = url.searchParams.get('player');
-        const limit = Math.min(parseInt(url.searchParams.get('limit') || '500'), 1000);
-        const offset = parseInt(url.searchParams.get('offset') || '0');
-
-        let sql = 'SELECT * FROM GameJournal WHERE game_id = ?';
-        const bindings: any[] = [gameId];
-
-        if (day !== null && day !== '' && day !== 'all') {
-          sql += ' AND day_index = ?';
-          bindings.push(parseInt(day));
-        }
-
-        if (type && type !== 'all') {
-          sql += ' AND event_type = ?';
-          bindings.push(type);
-        }
-
-        if (player) {
-          sql += ' AND (actor_id = ? OR target_id = ?)';
-          bindings.push(player, player);
-        }
-
-        sql += ' ORDER BY timestamp ASC LIMIT ? OFFSET ?';
-        bindings.push(limit, offset);
-
-        const result = await env.DB.prepare(sql).bind(...bindings).all();
-
-        return new Response(JSON.stringify({
-          entries: result.results || [],
-          total: result.results?.length || 0,
-        }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
-        });
-      } catch (err) {
-        log('error', 'Admin', 'Journal query failed', { error: String(err) });
-        return new Response(JSON.stringify({ error: String(err) }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
-        });
-      }
-    }
-
-    // Admin: wipe all D1 tables (dev reset — requires ALLOW_DB_RESET=true in env)
-    if (url.pathname === '/api/admin/reset-db') {
-      if (request.method === 'OPTIONS') {
-        return new Response(null, { status: 204, headers: DYNAMIC_CORS });
-      }
-      if (request.method !== 'POST') {
-        return new Response('Method not allowed', { status: 405, headers: DYNAMIC_CORS });
-      }
-
-      if ((env as any).ALLOW_DB_RESET !== 'true') {
-        return new Response('Forbidden — ALLOW_DB_RESET not enabled in this environment', { status: 403, headers: DYNAMIC_CORS });
-      }
-
-      const authHeader = request.headers.get('Authorization');
-      if (!authHeader || !timingSafeEqual(authHeader, `Bearer ${env.AUTH_SECRET}`)) {
-        return new Response('Unauthorized', { status: 401, headers: DYNAMIC_CORS });
-      }
-
-      try {
-        // Allowlist prevents SQL injection — only these table names are accepted
-        const ALLOWED_TABLES = ['GameJournal', 'Players', 'Games', 'PushSubscriptions', 'UserWallets'];
-        // FK-safe default order (children before parents)
-        const DEFAULT_ORDER = ['GameJournal', 'Players', 'Games', 'PushSubscriptions', 'UserWallets'];
-
-        let requested: string[] = DEFAULT_ORDER;
-        try {
-          const body = await request.json() as any;
-          if (Array.isArray(body?.tables) && body.tables.length > 0) {
-            const valid = body.tables.filter((t: string) => ALLOWED_TABLES.includes(t));
-            if (valid.length === 0) {
-              return new Response(JSON.stringify({ error: `Invalid tables. Allowed: ${ALLOWED_TABLES.join(', ')}` }), {
-                status: 400, headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
-              });
-            }
-            // Sort by FK-safe order
-            requested = DEFAULT_ORDER.filter(t => valid.includes(t));
-          }
-        } catch {
-          // No body or invalid JSON — use defaults
-        }
-
-        for (const table of requested) {
-          await env.DB.prepare(`DELETE FROM ${table}`).run();
-        }
-        log('info', 'Admin', 'D1 tables wiped', { tables: requested });
-        return new Response(JSON.stringify({ ok: true, tablesCleared: requested }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
-        });
-      } catch (err) {
-        log('error', 'Admin', 'DB reset failed', { error: String(err) });
-        return new Response(JSON.stringify({ error: String(err) }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
-        });
-      }
-    }
-
-    // Admin: broadcast push notification to all subscribers (e.g. "new update available")
-    if (url.pathname === '/api/push/broadcast') {
-      if (request.method === 'OPTIONS') {
-        return new Response(null, { status: 204, headers: DYNAMIC_CORS });
-      }
-      if (request.method !== 'POST') {
-        return new Response('Method not allowed', { status: 405, headers: DYNAMIC_CORS });
-      }
-      const authHeader = request.headers.get('Authorization');
-      if (!authHeader || !timingSafeEqual(authHeader, `Bearer ${env.AUTH_SECRET}`)) {
-        return new Response('Unauthorized', { status: 401, headers: DYNAMIC_CORS });
-      }
-
-      try {
-        let payload: Record<string, string> = { title: 'Pecking Order', body: 'A new update is available! Tap to refresh.' };
-        try {
-          const body = await request.json() as any;
-          if (body?.title) payload.title = body.title;
-          if (body?.body) payload.body = body.body;
-        } catch { /* use defaults */ }
-
-        const subs = await getAllPushSubscriptionsD1(env.DB);
-        log('info', 'Push API', 'Broadcasting to all subscribers', { count: subs.length });
-
-        let sent = 0;
-        let expired = 0;
-        let errors = 0;
-        await Promise.allSettled(subs.map(async (sub) => {
-          const result = await sendPushNotification(
-            { endpoint: sub.endpoint, keys: sub.keys },
-            payload,
-            env.VAPID_PRIVATE_JWK,
-          );
-          if (result === 'sent') sent++;
-          else if (result === 'expired') {
-            expired++;
-            await deletePushSubscriptionD1(env.DB, sub.userId);
-          } else errors++;
-        }));
-
-        return new Response(JSON.stringify({ ok: true, total: subs.length, sent, expired, errors }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
-        });
-      } catch (err) {
-        log('error', 'Push API', 'Broadcast failed', { error: String(err) });
-        return new Response('Server error', { status: 500, headers: DYNAMIC_CORS });
-      }
-    }
-
-    // VAPID public key — static env var, no DO needed
-    if (url.pathname.endsWith('/vapid-key')) {
-      return new Response(JSON.stringify({ publicKey: env.VAPID_PUBLIC_KEY }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...DYNAMIC_CORS },
-      });
-    }
-
+    // Fall through to Durable Object routing
     return (await routePartykitRequest(request, env)) || new Response("Not Found", { status: 404 });
   },
 } satisfies ExportedHandler<Env>;
