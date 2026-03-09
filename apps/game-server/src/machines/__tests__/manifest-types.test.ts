@@ -111,6 +111,7 @@ describe('normalizeManifest', () => {
     const typed: DynamicManifest = {
       kind: 'DYNAMIC',
       scheduling: 'PRE_SCHEDULED',
+      startTime: '2026-03-10T09:00:00Z',
       ruleset: VALID_RULESET,
       schedulePreset: 'DEFAULT',
       maxPlayers: 6,

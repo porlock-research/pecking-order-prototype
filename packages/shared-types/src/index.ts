@@ -111,6 +111,7 @@ export const DailyManifestSchema = z.object({
   gameMode: z.enum(["SOLO", "LIVE"]).optional(),
   activityType: PromptTypeSchema.or(z.literal('NONE')).optional(),
   timeline: z.array(TimelineEventSchema),
+  nextDayStart: z.string().optional(), // ISO 8601 — when the following day begins (undefined on last day)
   // Optional social parameters — director-resolved or lobby-configured
   dmCharsPerPlayer: z.number().optional(),
   dmPartnersPerPlayer: z.number().optional(),
@@ -279,6 +280,7 @@ export type StaticManifest = z.infer<typeof StaticManifestSchema>;
 export const DynamicManifestSchema = z.object({
   kind: z.literal('DYNAMIC'),
   scheduling: SchedulingStrategySchema.default('PRE_SCHEDULED'),
+  startTime: z.string(), // ISO 8601 — when Day 1 begins
   ruleset: GameRulesetSchema,
   schedulePreset: SchedulePresetSchema,
   maxPlayers: z.number(),
