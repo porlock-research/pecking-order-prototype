@@ -98,12 +98,18 @@ export interface VotingCartridgeInput {
   dayIndex: number;
 }
 
+// --- Prompt (Activity) Types (moved here for use in manifest + ruleset schemas) ---
+
+export const PromptTypeSchema = z.enum(['PLAYER_PICK', 'PREDICTION', 'WOULD_YOU_RATHER', 'HOT_TAKE', 'CONFESSION', 'GUESS_WHO']);
+export type PromptType = z.infer<typeof PromptTypeSchema>;
+
 export const DailyManifestSchema = z.object({
   dayIndex: z.number(),
   theme: z.string(),
   voteType: VoteTypeSchema,
   gameType: GameTypeSchema.default("NONE"),
   gameMode: z.enum(["SOLO", "LIVE"]).optional(),
+  activityType: PromptTypeSchema.or(z.literal('NONE')).optional(),
   timeline: z.array(TimelineEventSchema),
   // Optional social parameters — director-resolved or lobby-configured
   dmCharsPerPlayer: z.number().optional(),
@@ -166,11 +172,6 @@ export function resolveScheduling(
   return 'PRE_SCHEDULED';
 }
 
-// --- Prompt (Activity) Types (moved here for use in ruleset schemas) ---
-
-export const PromptTypeSchema = z.enum(['PLAYER_PICK', 'PREDICTION', 'WOULD_YOU_RATHER', 'HOT_TAKE', 'CONFESSION', 'GUESS_WHO']);
-export type PromptType = z.infer<typeof PromptTypeSchema>;
-
 // --- Schedule Presets (lobby-side templates for timeline timestamps) ---
 
 export const SchedulePresetSchema = z.enum(['DEFAULT', 'COMPACT', 'SPEED_RUN']);
@@ -184,9 +185,10 @@ export type ScalingMode = z.infer<typeof ScalingModeSchema>;
 // --- Pecking Order Ruleset Sub-Configs ---
 
 export const PeckingOrderVotingRulesSchema = z.object({
-  mode: z.enum(['SEQUENCE', 'POOL']),
+  mode: z.enum(['SEQUENCE', 'POOL']).optional(),
   sequence: z.array(VoteTypeSchema).optional(),
   pool: z.array(VoteTypeSchema).optional(),
+  allowed: z.array(VoteTypeSchema).optional(),
   constraints: z.array(z.object({
     voteType: VoteTypeSchema,
     minPlayers: z.number(),
@@ -195,18 +197,20 @@ export const PeckingOrderVotingRulesSchema = z.object({
 export type PeckingOrderVotingRules = z.infer<typeof PeckingOrderVotingRulesSchema>;
 
 export const PeckingOrderGameRulesSchema = z.object({
-  mode: z.enum(['SEQUENCE', 'POOL', 'NONE']),
+  mode: z.enum(['SEQUENCE', 'POOL', 'NONE']).optional(),
   sequence: z.array(GameTypeSchema).optional(),
   pool: z.array(GameTypeSchema).optional(),
-  avoidRepeat: z.boolean(),
+  allowed: z.array(GameTypeSchema).optional(),
+  avoidRepeat: z.boolean().default(true),
 });
 export type PeckingOrderGameRules = z.infer<typeof PeckingOrderGameRulesSchema>;
 
 export const PeckingOrderActivityRulesSchema = z.object({
-  mode: z.enum(['SEQUENCE', 'POOL', 'NONE']),
+  mode: z.enum(['SEQUENCE', 'POOL', 'NONE']).optional(),
   sequence: z.array(PromptTypeSchema).optional(),
   pool: z.array(PromptTypeSchema).optional(),
-  avoidRepeat: z.boolean(),
+  allowed: z.array(PromptTypeSchema).optional(),
+  avoidRepeat: z.boolean().default(true),
 });
 export type PeckingOrderActivityRules = z.infer<typeof PeckingOrderActivityRulesSchema>;
 
