@@ -1,6 +1,6 @@
 # Feature: Dynamic Days
 
-**Status**: Phase 3a+3b+3d complete, Phase 3c pending
+**Status**: Phase 3a+3b+3c+3d complete
 **Branch**: `feature/dynamic-days`
 **ADRs**: [094] Dynamic Days, [066-068] CONFIGURABLE_CYCLE, [092] DO Persistence, [093] Alarm Delivery
 
@@ -67,18 +67,21 @@ L2 wiring (all behind `manifest.kind === 'DYNAMIC'`):
 
 Static mode is completely untouched — the Game Master is never spawned.
 
-### Phase 3c: Lobby Integration (not started)
+### Phase 3c: Lobby Integration (complete)
 
-The lobby needs to support dynamic mode game creation. The host would configure:
-- A `GameRuleset` (which vote types, game types, social scaling rules)
-- A `SchedulePreset` (DEFAULT, COMPACT, SPEED_RUN — determines daily timeline timing)
-- Max player count
+The lobby gained a Static/Dynamic toggle. In dynamic mode, the per-day config is replaced by a Ruleset Builder:
 
-The server receives a `DynamicManifest` with an empty `days[]`. Each morning, the director fills in the next day.
+1. **Whitelists.** Host selects which vote types, game types, and activity types the Game Master may use. The Game Master picks from these pools at runtime based on game state (alive count, history, variety).
+2. **Social scaling.** DM characters and partners (FIXED or DIMINISHING with base/floor), DM cost, group DM toggle.
+3. **Inactivity rules.** Enabled toggle, threshold days, action.
+4. **Day count.** ACTIVE_PLAYERS_MINUS_ONE or FIXED, with optional max cap.
+5. **Schedule preset.** DEFAULT, COMPACT, or SPEED_RUN — defines daily timing.
 
-### Phase 3c: Lobby Integration (not started)
+Lobby builds a `DynamicManifest` with empty `days[]` and a populated `ruleset` + `schedulePreset`. Same `/init` endpoint, same two-phase init as CONFIGURABLE_CYCLE.
 
-See above — unchanged.
+Type changes: voting/games/activities rules gained optional `allowed` whitelist arrays. `DailyManifest` gained optional `activityType`. Resolution functions in `game-master.ts` check `allowed` before `sequence`/`pool` — fully backward compatible.
+
+**Key fix**: XState v5 batches entry actions, so `enqueueActions` with `sendTo` queues delivery until after ALL entry actions complete. Combined send + capture into `sendAndCaptureGameMasterDay` using direct `.send()` on the spawned actor ref for synchronous processing.
 
 ## Key Architectural Decisions
 
@@ -112,6 +115,8 @@ The Game Master appends each resolved day to `manifest.days[]`. This means L3's 
 | `plans/architecture/granular-orchestration.md` | L3 refactor strategy (deferred, but relevant to future game types) |
 | `docs/plans/2026-03-09-game-master-inactivity-design.md` | Game Master + inactivity design doc |
 | `docs/plans/2026-03-09-game-master-inactivity.md` | Implementation plan (7 tasks) |
+| `docs/plans/2026-03-09-phase-3c-lobby-integration-design.md` | Phase 3c design doc |
+| `docs/plans/2026-03-09-phase-3c-lobby-integration.md` | Phase 3c implementation plan (7 tasks) |
 | `plans/DECISIONS.md` → ADR-094 | Atomic decision record |
 
 ## Key Files
@@ -125,4 +130,7 @@ The Game Master appends each resolved day to `manifest.days[]`. This means L3's 
 | `apps/game-server/src/machines/actions/l2-day-resolution.ts` | L2 wiring (spawn, lifecycle events, processGameMasterActions, guards) |
 | `apps/game-server/src/machines/l2-orchestrator.ts` | L2 machine (Game Master lifecycle integrated) |
 | `apps/game-server/src/machines/l3-session.ts` | `buildL3Context()` reads social params from manifest |
+| `apps/lobby/app/page.tsx` | Lobby UI (Static/Dynamic toggle, game config) |
+| `apps/lobby/app/actions.ts` | Server actions (`createGame()` builds Static or Dynamic manifest) |
+| `apps/lobby/app/components/DynamicRulesetBuilder.tsx` | Ruleset builder component (whitelists, social, inactivity, schedule) |
 | `apps/game-server/src/snapshot.ts` | `normalizeManifest()` on snapshot restore |
