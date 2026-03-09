@@ -143,7 +143,7 @@ export const orchestratorMachine = setup({
       initial: 'morningBriefing',
       states: {
         morningBriefing: {
-          entry: ['incrementDay', 'sendResolveDayToGameMaster', 'captureGameMasterDay', 'resolveCurrentDay', 'clearRestoredChatLog', raise({ type: 'PUSH.PHASE', trigger: 'DAY_START' } as any)],
+          entry: ['incrementDay', 'sendAndCaptureGameMasterDay', 'resolveCurrentDay', 'clearRestoredChatLog', raise({ type: 'PUSH.PHASE', trigger: 'DAY_START' } as any)],
           always: 'activeSession'
         },
         activeSession: {

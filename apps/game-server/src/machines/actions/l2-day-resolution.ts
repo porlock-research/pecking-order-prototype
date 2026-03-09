@@ -59,28 +59,26 @@ export const l2DayResolutionActions = {
   }),
 
   /**
-   * Send RESOLVE_DAY to Game Master at the start of each day.
+   * Send RESOLVE_DAY to Game Master and capture the resolved day in one action.
+   * Must be a single assign() so the send is synchronous — enqueueActions queues
+   * the sendTo for after ALL entry actions, which means a separate captureGameMasterDay
+   * would read stale state (XState v5 batches entry actions).
    */
-  sendResolveDayToGameMaster: enqueueActions(({ context, enqueue }: any) => {
-    if (!context.gameMasterRef) return;
-    enqueue.sendTo(context.gameMasterRef, {
-      type: Events.GameMaster.RESOLVE_DAY,
-      dayIndex: context.dayIndex,
-      roster: context.roster,
-    });
-  }),
-
-  /**
-   * After sending RESOLVE_DAY, capture the resolved day from Game Master snapshot
-   * and append to manifest.days[] so L3 can find it.
-   */
-  captureGameMasterDay: assign(({ context }: any) => {
+  sendAndCaptureGameMasterDay: assign(({ context }: any) => {
     const manifest = context.manifest;
     if (!manifest || manifest.kind !== 'DYNAMIC') return {};
 
     const gameMasterRef = context.gameMasterRef as AnyActorRef | null;
     if (!gameMasterRef) return {};
 
+    // Send directly — spawned actor processes synchronously
+    gameMasterRef.send({
+      type: Events.GameMaster.RESOLVE_DAY,
+      dayIndex: context.dayIndex,
+      roster: context.roster,
+    });
+
+    // Read snapshot immediately after synchronous processing
     const snap = gameMasterRef.getSnapshot();
     const resolvedDay = snap?.context?.resolvedDay as DailyManifest | null;
     if (!resolvedDay) return {};
@@ -98,34 +96,40 @@ export const l2DayResolutionActions = {
 
   /**
    * Forward FACT.RECORD events to the Game Master (dynamic mode only).
+   * Uses direct .send() — enqueueActions would queue the delivery after the
+   * current action batch, but we need the GM to process facts immediately
+   * so subsequent actions in the same batch see updated state.
    */
-  forwardFactToGameMaster: enqueueActions(({ context, event, enqueue }: any) => {
+  forwardFactToGameMaster: ({ context, event }: any) => {
     if (!context.gameMasterRef) return;
     if (event.type !== Events.Fact.RECORD) return;
-    enqueue.sendTo(context.gameMasterRef, event);
-  }),
+    context.gameMasterRef.send(event);
+  },
 
   /**
    * Send DAY_ENDED to Game Master at nightSummary.
+   * Direct .send() — must execute before processGameMasterActions in the
+   * same entry batch would read stale state (though currently DAY_ENDED
+   * runs AFTER processGameMasterActions, keeping this consistent).
    */
-  sendDayEndedToGameMaster: enqueueActions(({ context, enqueue }: any) => {
+  sendDayEndedToGameMaster: ({ context }: any) => {
     if (!context.gameMasterRef) return;
-    enqueue.sendTo(context.gameMasterRef, {
+    context.gameMasterRef.send({
       type: Events.GameMaster.DAY_ENDED,
       dayIndex: context.dayIndex,
       roster: context.roster,
     });
-  }),
+  },
 
   /**
    * Send GAME_ENDED to Game Master at gameSummary.
    */
-  sendGameEndedToGameMaster: enqueueActions(({ context, enqueue }: any) => {
+  sendGameEndedToGameMaster: ({ context }: any) => {
     if (!context.gameMasterRef) return;
-    enqueue.sendTo(context.gameMasterRef, {
+    context.gameMasterRef.send({
       type: Events.GameMaster.GAME_ENDED,
     });
-  }),
+  },
 
   /**
    * Process Game Master actions at nightSummary (runs AFTER processNightSummary).
