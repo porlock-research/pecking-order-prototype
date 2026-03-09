@@ -105,7 +105,11 @@ export const DailyManifestSchema = z.object({
   gameType: GameTypeSchema.default("NONE"),
   gameMode: z.enum(["SOLO", "LIVE"]).optional(),
   timeline: z.array(TimelineEventSchema),
+  // Optional social parameters — director-resolved or lobby-configured
+  dmCharsPerPlayer: z.number().optional(),
+  dmPartnersPerPlayer: z.number().optional(),
 });
+export type DailyManifest = z.infer<typeof DailyManifestSchema>;
 
 // --- Push Notification Config ---
 
@@ -162,14 +166,141 @@ export function resolveScheduling(
   return 'PRE_SCHEDULED';
 }
 
-export const GameManifestSchema = z.object({
-  id: z.string(),
-  // Legacy field — kept optional for backward compat with persisted snapshots / old clients
+// --- Prompt (Activity) Types (moved here for use in ruleset schemas) ---
+
+export const PromptTypeSchema = z.enum(['PLAYER_PICK', 'PREDICTION', 'WOULD_YOU_RATHER', 'HOT_TAKE', 'CONFESSION', 'GUESS_WHO']);
+export type PromptType = z.infer<typeof PromptTypeSchema>;
+
+// --- Schedule Presets (lobby-side templates for timeline timestamps) ---
+
+export const SchedulePresetSchema = z.enum(['DEFAULT', 'COMPACT', 'SPEED_RUN']);
+export type SchedulePreset = z.infer<typeof SchedulePresetSchema>;
+
+// --- Scaling Mode (for social rules in dynamic manifests) ---
+
+export const ScalingModeSchema = z.enum(['FIXED', 'PER_ACTIVE_PLAYER', 'DIMINISHING']);
+export type ScalingMode = z.infer<typeof ScalingModeSchema>;
+
+// --- Pecking Order Ruleset Sub-Configs ---
+
+export const PeckingOrderVotingRulesSchema = z.object({
+  mode: z.enum(['SEQUENCE', 'POOL']),
+  sequence: z.array(VoteTypeSchema).optional(),
+  pool: z.array(VoteTypeSchema).optional(),
+  constraints: z.array(z.object({
+    voteType: VoteTypeSchema,
+    minPlayers: z.number(),
+  })).optional(),
+});
+export type PeckingOrderVotingRules = z.infer<typeof PeckingOrderVotingRulesSchema>;
+
+export const PeckingOrderGameRulesSchema = z.object({
+  mode: z.enum(['SEQUENCE', 'POOL', 'NONE']),
+  sequence: z.array(GameTypeSchema).optional(),
+  pool: z.array(GameTypeSchema).optional(),
+  avoidRepeat: z.boolean(),
+});
+export type PeckingOrderGameRules = z.infer<typeof PeckingOrderGameRulesSchema>;
+
+export const PeckingOrderActivityRulesSchema = z.object({
+  mode: z.enum(['SEQUENCE', 'POOL', 'NONE']),
+  sequence: z.array(PromptTypeSchema).optional(),
+  pool: z.array(PromptTypeSchema).optional(),
+  avoidRepeat: z.boolean(),
+});
+export type PeckingOrderActivityRules = z.infer<typeof PeckingOrderActivityRulesSchema>;
+
+export const PeckingOrderSocialRulesSchema = z.object({
+  dmChars: z.object({ mode: ScalingModeSchema, base: z.number(), floor: z.number().optional() }),
+  dmPartners: z.object({ mode: ScalingModeSchema, base: z.number(), floor: z.number().optional() }),
+  dmCost: z.number(),
+  groupDmEnabled: z.boolean(),
+});
+export type PeckingOrderSocialRules = z.infer<typeof PeckingOrderSocialRulesSchema>;
+
+export const PeckingOrderInactivityRulesSchema = z.object({
+  enabled: z.boolean(),
+  thresholdDays: z.number(),
+  socketInactivityHours: z.number().optional(),
+  action: z.enum(['ELIMINATE', 'NUDGE_THEN_ELIMINATE']),
+  nudgeDays: z.number().optional(),
+});
+export type PeckingOrderInactivityRules = z.infer<typeof PeckingOrderInactivityRulesSchema>;
+
+export const PeckingOrderDayCountRulesSchema = z.object({
+  mode: z.enum(['ACTIVE_PLAYERS_MINUS_ONE', 'FIXED']),
+  fixedCount: z.number().optional(),
+  maxDays: z.number().optional(),
+});
+export type PeckingOrderDayCountRules = z.infer<typeof PeckingOrderDayCountRulesSchema>;
+
+// --- GameRuleset (discriminated union — one variant per game type) ---
+
+export const PeckingOrderRulesetSchema = z.object({
+  kind: z.literal('PECKING_ORDER'),
+  voting: PeckingOrderVotingRulesSchema,
+  games: PeckingOrderGameRulesSchema,
+  activities: PeckingOrderActivityRulesSchema,
+  social: PeckingOrderSocialRulesSchema,
+  inactivity: PeckingOrderInactivityRulesSchema,
+  dayCount: PeckingOrderDayCountRulesSchema,
+});
+export type PeckingOrderRuleset = z.infer<typeof PeckingOrderRulesetSchema>;
+
+export const GameRulesetSchema = z.discriminatedUnion('kind', [
+  PeckingOrderRulesetSchema,
+]);
+export type GameRuleset = z.infer<typeof GameRulesetSchema>;
+
+// --- Manifest Discriminated Union ---
+
+const ManifestKindSchema = z.enum(['STATIC', 'DYNAMIC']);
+export type ManifestKind = z.infer<typeof ManifestKindSchema>;
+
+/** Legacy fields shared by both manifest kinds for backward compat */
+const legacyManifestFields = {
+  id: z.string().optional(),
   gameMode: z.enum(["PECKING_ORDER", "CONFIGURABLE_CYCLE", "DEBUG_PECKING_ORDER"]).optional(),
+};
+
+export const StaticManifestSchema = z.object({
+  kind: z.literal('STATIC'),
   scheduling: SchedulingStrategySchema.default('PRE_SCHEDULED'),
   days: z.array(DailyManifestSchema),
   pushConfig: PushConfigSchema.optional(),
+  ...legacyManifestFields,
 });
+export type StaticManifest = z.infer<typeof StaticManifestSchema>;
+
+export const DynamicManifestSchema = z.object({
+  kind: z.literal('DYNAMIC'),
+  scheduling: SchedulingStrategySchema.default('PRE_SCHEDULED'),
+  ruleset: GameRulesetSchema,
+  schedulePreset: SchedulePresetSchema,
+  maxPlayers: z.number(),
+  days: z.array(DailyManifestSchema),
+  pushConfig: PushConfigSchema.optional(),
+  ...legacyManifestFields,
+});
+export type DynamicManifest = z.infer<typeof DynamicManifestSchema>;
+
+export const GameManifestSchema = z.discriminatedUnion('kind', [
+  StaticManifestSchema,
+  DynamicManifestSchema,
+]);
+export type GameManifest = z.infer<typeof GameManifestSchema>;
+
+/**
+ * Normalize a raw manifest (possibly from a legacy snapshot) into the
+ * typed GameManifest discriminated union. Legacy manifests without a
+ * `kind` field are treated as StaticManifest.
+ */
+export function normalizeManifest(raw: any): GameManifest {
+  if (raw?.kind === 'STATIC' || raw?.kind === 'DYNAMIC') {
+    return raw as GameManifest;
+  }
+  return { kind: 'STATIC' as const, ...raw };
+}
 
 export const RosterPlayerSchema = z.object({
   realUserId: z.string(), // Opaque ID (Cookie/Hash), NOT email
@@ -212,8 +343,7 @@ export type Player = z.infer<typeof PlayerSchema>;
 export type Lobby = z.infer<typeof LobbySchema>;
 export type RosterPlayer = z.infer<typeof RosterPlayerSchema>;
 export type Roster = z.infer<typeof RosterSchema>;
-export type GameManifest = z.infer<typeof GameManifestSchema>;
-export type DailyManifest = z.infer<typeof DailyManifestSchema>;
+// GameManifest, DailyManifest — exported inline with their schemas above
 export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
 export type InitPayload = z.infer<typeof InitPayloadSchema>;
 
@@ -327,9 +457,6 @@ export interface DmRejectedEvent {
 }
 
 // --- Prompt (Activity Layer) Types ---
-
-export const PromptTypeSchema = z.enum(['PLAYER_PICK', 'PREDICTION', 'WOULD_YOU_RATHER', 'HOT_TAKE', 'CONFESSION', 'GUESS_WHO']);
-export type PromptType = z.infer<typeof PromptTypeSchema>;
 
 export interface PromptCartridgeInput {
   promptType: PromptType;
