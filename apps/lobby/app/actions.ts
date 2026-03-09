@@ -116,7 +116,15 @@ const DRAW_TTL_MS = 15 * 60 * 1000;  // 15 min lock TTL
 
 export async function createGame(
   mode: 'CONFIGURABLE_CYCLE' | 'DEBUG_PECKING_ORDER',
-  config?: DebugManifestConfig | ConfigurableManifestConfig
+  config?: DebugManifestConfig | ConfigurableManifestConfig,
+  dynamicManifestOverride?: {
+    kind: 'DYNAMIC';
+    ruleset: any;
+    schedulePreset: string;
+    maxPlayers: number;
+    startTime: string;
+    pushConfig?: Record<string, boolean>;
+  }
 ): Promise<{ success: boolean; gameId?: string; inviteCode?: string; error?: string }> {
   const session = await requireAuth();
   const db = await getDB();
@@ -156,6 +164,50 @@ export async function createGame(
   }
   await db.batch(stmts);
 
+  // For DYNAMIC mode: init DO with a DynamicManifest (empty days[], GM resolves at runtime)
+  if (dynamicManifestOverride) {
+    try {
+      const env = await getEnv();
+      const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+      const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+
+      const payload = {
+        lobbyId: `lobby-${now}`,
+        inviteCode,
+        roster: {},
+        manifest: {
+          kind: 'DYNAMIC' as const,
+          id: `manifest-${gameId}`,
+          gameMode: 'CONFIGURABLE_CYCLE', // legacy compat
+          scheduling: 'PRE_SCHEDULED' as const,
+          startTime: new Date(dynamicManifestOverride.startTime).toISOString(),
+          ruleset: dynamicManifestOverride.ruleset,
+          schedulePreset: dynamicManifestOverride.schedulePreset,
+          maxPlayers: dynamicManifestOverride.maxPlayers,
+          days: [],
+          pushConfig: dynamicManifestOverride.pushConfig,
+        },
+      };
+
+      const validated = InitPayloadSchema.parse(payload);
+      const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/init`;
+
+      const res = await fetch(targetUrl, {
+        method: 'POST',
+        body: JSON.stringify(validated),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${AUTH_SECRET}`,
+        },
+      });
+      res.body?.cancel();
+
+      console.log(`[Lobby] Auto-initialized DO for DYNAMIC game ${gameId}`);
+    } catch (err: any) {
+      console.error('[Lobby] Failed to auto-init DYNAMIC DO:', err);
+    }
+  }
+
   // For CONFIGURABLE_CYCLE: auto-init the DO immediately (empty roster, scheduler starts)
   if (mode === 'CONFIGURABLE_CYCLE' && config) {
     try {
@@ -171,6 +223,7 @@ export async function createGame(
         inviteCode,
         roster: {},
         manifest: {
+          kind: 'STATIC' as const,
           id: `manifest-${gameId}`,
           gameMode: mode, // legacy compat
           scheduling: 'PRE_SCHEDULED' as const,
@@ -800,7 +853,7 @@ export async function startDebugGame(
     lobbyId: `lobby-${Date.now()}`,
     inviteCode: 'DEBUG',
     roster,
-    manifest: { id: 'manifest-1', gameMode: mode, scheduling: mode === 'DEBUG_PECKING_ORDER' ? 'ADMIN' as const : 'PRE_SCHEDULED' as const, days, pushConfig: debugConfig?.pushConfig },
+    manifest: { kind: 'STATIC' as const, id: 'manifest-1', gameMode: mode, scheduling: mode === 'DEBUG_PECKING_ORDER' ? 'ADMIN' as const : 'PRE_SCHEDULED' as const, days, pushConfig: debugConfig?.pushConfig },
   };
 
   const validated = InitPayloadSchema.parse(payload);

@@ -1,7 +1,8 @@
 import { setup, assign, sendTo, raise } from 'xstate';
+import type { AnyActorRef } from 'xstate';
 import { dailySessionMachine } from './l3-session';
 import { postGameMachine } from './l4-post-game';
-import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, Events } from '@pecking-order/shared-types';
+import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, DailyManifest, Events } from '@pecking-order/shared-types';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from './cartridges/prompts/_contract';
 
@@ -10,6 +11,8 @@ import { l2TimelineActions } from './actions/l2-timeline';
 import { l2EliminationActions } from './actions/l2-elimination';
 import { l2EconomyActions } from './actions/l2-economy';
 import { l2FactsActions } from './actions/l2-facts';
+import { l2DayResolutionActions, l2DayResolutionGuards } from './actions/l2-day-resolution';
+import { createGameMasterMachine } from './game-master';
 
 // --- Types ---
 export interface GameContext {
@@ -32,6 +35,8 @@ export interface GameContext {
     completedAt: number;
     [key: string]: any;
   }>;
+  // Game Master (dynamic mode only)
+  gameMasterRef: AnyActorRef | null;
 }
 
 export type GameEvent =
@@ -73,10 +78,15 @@ export const orchestratorMachine = setup({
     ...l2EliminationActions,
     ...l2EconomyActions,
     ...l2FactsActions,
+    ...l2DayResolutionActions,
+  } as any,
+  guards: {
+    ...l2DayResolutionGuards,
   } as any,
   actors: {
     dailySessionMachine,
     postGameMachine,
+    gameMasterMachine: createGameMasterMachine(),
   }
 // XState v5 setup() can't infer action string names from externally-defined
 // action objects, so we cast the machine config. Runtime behavior is correct.
@@ -97,6 +107,7 @@ export const orchestratorMachine = setup({
     winner: null,
     gameHistory: [],
     completedPhases: [],
+    gameMasterRef: null,
   },
   states: {
     uninitialized: {
@@ -108,6 +119,7 @@ export const orchestratorMachine = setup({
       }
     },
     preGame: {
+      entry: ['spawnGameMasterIfDynamic'],
       on: {
         'SYSTEM.WAKEUP': { target: 'dayLoop' },
         'ADMIN.NEXT_STAGE': { target: 'dayLoop' },
@@ -133,7 +145,7 @@ export const orchestratorMachine = setup({
       initial: 'morningBriefing',
       states: {
         morningBriefing: {
-          entry: ['incrementDay', 'clearRestoredChatLog', raise({ type: 'PUSH.PHASE', trigger: 'DAY_START' } as any)],
+          entry: ['incrementDay', 'sendAndCaptureGameMasterDay', 'resolveCurrentDay', 'clearRestoredChatLog', raise({ type: 'PUSH.PHASE', trigger: 'DAY_START' } as any)],
           always: 'activeSession'
         },
         activeSession: {
@@ -170,7 +182,7 @@ export const orchestratorMachine = setup({
           on: {
             'ADMIN.NEXT_STAGE': { target: 'nightSummary' },
             'FACT.RECORD': {
-                actions: ['updateJournalTimestamp', 'applyFactToRoster', 'persistFactToD1'],
+                actions: ['updateJournalTimestamp', 'applyFactToRoster', 'persistFactToD1', 'forwardFactToGameMaster'],
                 target: undefined,
                 reenter: false,
                 internal: true
@@ -226,18 +238,17 @@ export const orchestratorMachine = setup({
           }
         },
         nightSummary: {
-          entry: ['recordCompletedVoting', 'processNightSummary', raise({ type: 'PUSH.PHASE', trigger: 'NIGHT_SUMMARY' } as any)],
+          entry: ['recordCompletedVoting', 'processNightSummary', 'processGameMasterActions', 'sendDayEndedToGameMaster', raise({ type: 'PUSH.PHASE', trigger: 'NIGHT_SUMMARY' } as any)],
           always: [
-            { guard: ({ context }: any) => context.winner !== null, target: '#pecking-order-l2.gameSummary' },
-            { guard: ({ context }: any) => context.dayIndex >= (context.manifest?.days.length ?? Infinity), target: '#pecking-order-l2.gameSummary' },
+            { guard: 'isGameComplete', target: '#pecking-order-l2.gameSummary' },
           ],
           on: {
             'ADMIN.NEXT_STAGE': [
-              { guard: ({ context }: any) => context.winner !== null, target: '#pecking-order-l2.gameSummary' },
+              { guard: 'isGameComplete', target: '#pecking-order-l2.gameSummary' },
               { target: 'morningBriefing' },
             ],
             'SYSTEM.WAKEUP': [
-              { guard: ({ context }: any) => context.winner !== null, target: '#pecking-order-l2.gameSummary' },
+              { guard: 'isGameComplete', target: '#pecking-order-l2.gameSummary' },
               { target: 'morningBriefing' },
             ],
             'ADMIN.INJECT_TIMELINE_EVENT': {
@@ -257,10 +268,11 @@ export const orchestratorMachine = setup({
         }
       },
       always: [
-        { guard: ({ context }: any) => context.dayIndex > (context.manifest?.days.length ?? 7), target: 'gameSummary' }
+        { guard: 'isDayIndexPastEnd', target: 'gameSummary' }
       ]
     },
     gameSummary: {
+      entry: ['sendGameEndedToGameMaster'],
       invoke: {
         id: 'l3-session', // Same ID so L1 extraction works unchanged
         src: 'postGameMachine',

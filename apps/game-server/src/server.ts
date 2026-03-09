@@ -226,6 +226,13 @@ export class GameServer extends Server<Env> {
     // because PartyServer calls onStart() before onAlarm().
     if (this.actor) {
       this.actor.send({ type: Events.System.WAKEUP });
+
+      // Re-schedule for dynamic manifests — picks up newly resolved day's events
+      const snap = this.actor.getSnapshot();
+      const manifest = snap?.context?.manifest;
+      if (manifest?.kind === 'DYNAMIC') {
+        await scheduleManifestAlarms(this.scheduler, manifest);
+      }
     }
   }
 }

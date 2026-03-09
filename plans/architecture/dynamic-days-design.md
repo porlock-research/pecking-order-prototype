@@ -1,7 +1,7 @@
 # Dynamic Days — Design Document
 
 **Date**: 2026-03-08
-**Status**: Draft — pending approval
+**Status**: Accepted — Phase 3a+3b+3c+3d complete, timeline generation + alarm pipeline complete
 **Depends on**: Phase 1 complete (server.ts extraction), ADR-093 (alarm delivery)
 
 ## Problem
@@ -141,42 +141,32 @@ interface PeckingOrderDayCountRules {
 }
 ```
 
-### Schedule Presets — Lobby-Side Only
+### Schedule Presets — Server-Side Timeline Generation (IMPLEMENTED)
 
-Presets are templates that stamp out concrete timelines with real timestamps at game creation time. The server never sees the preset name — it only sees the resulting timeline.
+Presets define phase sequences with relative times. Originally intended as lobby-side only, but moved to the **server** so the Game Master can generate timelines for dynamically resolved days.
 
 ```ts
 type SchedulePreset = 'DEFAULT' | 'COMPACT' | 'SPEED_RUN';
-// Stored in DynamicManifest so the director can stamp out
+// Stored in DynamicManifest so the Game Master can stamp out
 // timelines for future days using the same preset.
 ```
 
-Each preset defines a phase sequence with relative times:
+**Implementation**: `apps/game-server/src/machines/timeline-presets.ts`
+
+Two preset types:
+- **CalendarPresetConfig** (DEFAULT, COMPACT): Events at fixed clock times (UTC). Day N = startDate + (N-1) days.
+- **OffsetPresetConfig** (SPEED_RUN): Events at minute offsets from startTime. Day N base = startTime + (N-1) * 26min.
 
 ```ts
-// Lobby-side only — not in shared-types
-const PRESETS: Record<SchedulePreset, PresetTemplate> = {
-  DEFAULT: {
-    // 9am to midnight
-    phases: [
-      { action: 'OPEN_GROUP_CHAT', offset: '09:00' },
-      { action: 'OPEN_DMS',        offset: '10:00' },
-      // ...
-      { action: 'END_DAY',         offset: '23:59' },
-    ],
-  },
-  COMPACT: {
-    // 10am to 5pm
-    phases: [/* ... */],
-  },
-  SPEED_RUN: {
-    // 30-second intervals
-    phases: [/* ... */],
-  },
-};
+generateDayTimeline(preset, dayIndex, startTime, opts) → TimelineEvent[]
+computeNextDayStart(preset, dayIndex, startTime) → ISO string
 ```
 
-The preset is stored on the `DynamicManifest` so the director can stamp out timelines for future days. But the resolution (preset + date → concrete ISO timestamps) always happens before the timeline reaches the server.
+Conditional events: START_GAME/END_GAME only if `gameType !== 'NONE'`, START_ACTIVITY/END_ACTIVITY only if `activityType !== 'NONE'`.
+
+**DynamicManifest additions**:
+- `startTime: string` — ISO 8601, when Day 1 begins (set in lobby)
+- `DailyManifest.nextDayStart?: string` — ISO 8601, when the following day begins (computed per day by Game Master)
 
 ### Director Actor (L2.5)
 
@@ -365,32 +355,38 @@ L1 and L2 remain unchanged. The manifest `kind` dispatches to the right L3.
 
 ## Implementation Phasing
 
-### Phase 3a: Types + Manifest Union (no behavioral change)
-- Add `StaticManifest`, `DynamicManifest`, `GameRuleset`, `SchedulePreset` to shared-types
-- Add `normalizeManifest()` to handle legacy snapshots
-- Add `DailyManifest` social parameter fields (optional, backward-compatible)
-- Update L2 to normalize manifest on init
-- All existing tests pass unchanged
+### Phase 3a: Types + Manifest Union (no behavioral change) — COMPLETE
+- Added `StaticManifest`, `DynamicManifest`, `GameRuleset`, `SchedulePreset` to shared-types
+- Added `normalizeManifest()` to handle legacy snapshots
+- Added `DailyManifest` social parameter fields (optional, backward-compatible)
+- Updated L2 to normalize manifest on init + snapshot restore
+- Extracted `buildL3Context()` for testability; L3 reads social limits from manifest
+- All 105 tests pass, speed run verified
 
-### Phase 3b: Director Actor + Dynamic Day Resolution
-- Implement `PeckingOrderRuleset` sub-configs
-- Implement director actor machine
-- Add `resolveCurrentDay` action to L2 `morningBriefing`
-- Add director spawn logic to L2 `activeSession` (dynamic mode only)
-- Add FACT.* forwarding from L2 to director
-- L3 reads social limits from input
+### Phase 3b: Director Actor + Dynamic Day Resolution — COMPLETE
+- Implemented `PeckingOrderRuleset` sub-configs (voting, games, activities, social, inactivity, dayCount)
+- Implemented director actor machine (`director.ts`) with pure resolution functions
+- Added `resolveCurrentDay` + `spawnDirectorIfDynamic` + `captureDirectorDay` to L2
+- Added FACT.* forwarding from L2 to director
+- Added `isGameComplete` / `isDayIndexPastEnd` guards (consolidated from inline guards)
 
-### Phase 3c: Schedule Presets + Lobby Integration
-- Define preset templates in lobby
-- Update lobby game creation to support dynamic mode
-- Admin dashboard shows director recommendations
-- Admin override endpoint for next day config
+### Phase 3c: Schedule Presets + Lobby Integration — COMPLETE
+- Timeline generator with preset definitions (DEFAULT, COMPACT, SPEED_RUN) — `machines/timeline-presets.ts`
+- Game Master wired to generate real timelines via `generateDayTimeline()` + `computeNextDayStart()`
+- Alarm scheduling: `startTime` alarm at init, re-scheduling in `onAlarm()` after day resolution
+- Lobby: start time picker, "Set to now + 2 min" for SPEED_RUN, `DynamicManifest.startTime` field
+- DailyManifest gained `nextDayStart` for inter-day alarm chaining
 
-### Phase 3d: Inactivity Rules
-- Director tracks player activity from FACT.* events
-- Inactivity report included in director output
-- L2 acts on inactivity recommendations (eliminate or nudge)
-- Admin visibility and override
+### Phase 3d: Inactivity Rules — COMPLETE
+- Game Master tracks player activity from FACT.* events via observation module (`machines/observations/inactivity.ts`)
+- Inactivity actions included in Game Master output
+- L2 `processGameMasterActions` applies ELIMINATE actions at nightSummary
+- `InactivityState.activeDuringCurrentDay` uses `Record<string, true>` (not Set) for JSON serialization compatibility
+
+### Bug Fixes (discovered during e2e testing)
+- **Game Master actor registration**: Spawned with raw machine ref → crashes on snapshot restore. Fixed by registering as `gameMasterMachine` in L2's `setup({ actors })` and spawning via key string.
+- **Set serialization**: `Set<string>` in InactivityState → `{}` on JSON roundtrip → `.has()` undefined. Fixed with `Record<string, true>`.
+- **Timeline lookback window**: 10s window too narrow for SPEED_RUN (events minutes apart). Widened to 5min in `processTimelineEvent`.
 
 ---
 
@@ -402,7 +398,7 @@ L1 and L2 remain unchanged. The manifest `kind` dispatches to the right L3.
 
 3. **Ruleset is a discriminated union per game type** — not a monolithic config. Each game type defines its own shape. This prevents coupling between game types.
 
-4. **Schedule presets are lobby-side only** — the server sees concrete timestamps, not preset names. The preset name is stored in the dynamic manifest so the director can resolve future days' timelines.
+4. **Schedule presets resolve server-side** — (changed from original design) the Game Master generates timelines at day resolution time using `generateDayTimeline()`. The preset name is stored in the dynamic manifest so the Game Master can resolve future days' timelines.
 
 5. **`days[]` grows in dynamic mode** — the director appends each resolved day. This maintains the existing L3 input pattern (`manifest.days.find()`) and creates an audit trail of director decisions.
 

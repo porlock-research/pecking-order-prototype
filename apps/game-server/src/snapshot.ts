@@ -2,6 +2,7 @@
  * Snapshot persistence — read/write game state to DO SQLite storage.
  * Handles the KV → SQL migration path for pre-ADR-092 games.
  */
+import { normalizeManifest } from "@pecking-order/shared-types";
 import { log } from "./log";
 
 const LEGACY_KV_KEY = "game_state_snapshot";
@@ -85,6 +86,11 @@ export function parseSnapshot(snapshotStr: string): ParsedSnapshot {
   }
   if (chatLog) {
     l2Snapshot.context.restoredChatLog = chatLog;
+  }
+
+  // Normalize legacy manifests (no `kind` field) to StaticManifest
+  if (l2Snapshot?.context?.manifest) {
+    l2Snapshot.context.manifest = normalizeManifest(l2Snapshot.context.manifest);
   }
 
   let gameId = 'unknown';

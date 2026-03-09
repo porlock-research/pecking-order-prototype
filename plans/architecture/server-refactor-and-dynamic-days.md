@@ -346,14 +346,59 @@ When motivated (second game type, or significant PO refactoring):
 | `apps/lobby/app/actions.ts` | Modify | Update manifest generation |
 | `e2e/fixtures/game-setup.ts` | Modify | Update test manifest |
 
-### Phase 3 (dynamic days)
+### Phase 3a (types + manifest union) — COMPLETE
 
 | File | Status | Purpose |
 |------|--------|---------|
-| `apps/game-server/src/machines/actions/resolve-day.ts` | NEW | Pure resolveDay function |
-| `apps/game-server/src/machines/actions/resolve-day.test.ts` | NEW | Unit tests |
-| `apps/game-server/src/machines/actions/l2-initialization.ts` | Modify | Add totalPlayerCount |
-| `apps/game-server/src/machines/l2-orchestrator.ts` | Modify | Add resolveCurrentDay to morningBriefing |
-| `apps/game-server/src/machines/l3-session.ts` | Modify | Read social config from input |
-| `apps/game-server/src/machines/actions/l3-social.ts` | Modify | Use context limits instead of constants |
-| `packages/shared-types/src/index.ts` | Modify | Add optional social fields to DailyManifest |
+| `packages/shared-types/src/index.ts` | DONE | Discriminated manifest union, GameRuleset, SchedulePreset, social params |
+| `apps/game-server/src/machines/actions/l2-initialization.ts` | DONE | normalizeManifest on init |
+| `apps/game-server/src/snapshot.ts` | DONE | normalizeManifest on restore |
+| `apps/lobby/app/actions.ts` | DONE | Emit `kind: 'STATIC'` |
+| `e2e/fixtures/game-setup.ts` | DONE | Emit `kind: 'STATIC'` |
+| `.claude/commands/speed-run.md` | DONE | Emit `kind: 'STATIC'` |
+| `apps/game-server/src/machines/l3-session.ts` | DONE | Extract buildL3Context, read social params from manifest |
+| `apps/game-server/src/machines/actions/l3-social.ts` | DONE | Use context limits instead of constants |
+
+### Phase 3b (director actor + dynamic days) — COMPLETE (superseded by 3d)
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `apps/game-server/src/machines/game-master.ts` | DONE | Originally `director.ts` — renamed + extended in Phase 3d |
+| `apps/game-server/src/machines/__tests__/game-master.test.ts` | DONE | 28 tests (resolution + whitelist + actor behavior) |
+| `apps/game-server/src/machines/actions/l2-day-resolution.ts` | DONE | spawnGameMasterIfDynamic, sendAndCaptureGameMasterDay, forwardFactToGameMaster, processGameMasterActions, guards |
+| `apps/game-server/src/machines/l2-orchestrator.ts` | DONE | Game Master spawn at preGame, lifecycle events, guard consolidation |
+
+### Phase 3c (lobby integration + whitelist resolution) — COMPLETE
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `packages/shared-types/src/index.ts` | DONE | `allowed` whitelist arrays on voting/games/activities rules; `activityType` on DailyManifest + GameHistoryEntry |
+| `apps/game-server/src/machines/game-master.ts` | DONE | Whitelist-based resolution: `resolveVoteType`, `resolveGameType`, `resolveActivityType` check `allowed` before `sequence`/`pool` |
+| `apps/game-server/src/machines/__tests__/game-master.test.ts` | DONE | 8 new whitelist resolution tests (28 total) |
+| `apps/lobby/app/page.tsx` | DONE | Static/Dynamic toggle, `manifestKind` state, conditional panel rendering |
+| `apps/lobby/app/components/DynamicRulesetBuilder.tsx` | DONE | Ruleset builder UI (whitelists, social scaling, inactivity, day count, schedule preset) |
+| `apps/lobby/app/actions.ts` | DONE | `createGame()` builds `DynamicManifest` with empty `days[]` + populated `ruleset` |
+
+### Phase 3d (Game Master + inactivity rules) — COMPLETE
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `apps/game-server/src/machines/game-master.ts` | DONE | Renamed director → Game Master. Long-lived lifecycle (pregame → tournament → postgame). Modular observations. |
+| `apps/game-server/src/machines/observations/types.ts` | DONE | `ObservationModule<TState>` contract (pure functions) |
+| `apps/game-server/src/machines/observations/inactivity.ts` | DONE | Inactivity module: tracks activity, produces ELIMINATE actions. Uses `Record<string, true>` (not Set) for JSON serialization. |
+| `apps/game-server/src/machines/actions/l2-day-resolution.ts` | DONE | `sendAndCaptureGameMasterDay` (direct `.send()` for sync processing), `processGameMasterActions`, lifecycle sends |
+| `apps/game-server/src/machines/l2-orchestrator.ts` | DONE | Game Master registered as `gameMasterMachine` in `setup({ actors })` for snapshot restoration. Spawn at preGame, lifecycle events at morningBriefing/nightSummary/gameSummary |
+
+### Timeline generation + alarm pipeline — COMPLETE
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `packages/shared-types/src/index.ts` | DONE | `startTime` on DynamicManifest, `nextDayStart` on DailyManifest |
+| `apps/game-server/src/machines/timeline-presets.ts` | NEW | `generateDayTimeline()`, `computeNextDayStart()`, preset configs (DEFAULT, COMPACT, SPEED_RUN) |
+| `apps/game-server/src/machines/__tests__/timeline-presets.test.ts` | NEW | 10 tests covering all presets + nextDayStart computation |
+| `apps/game-server/src/machines/game-master.ts` | DONE | `resolveDay()` calls timeline generator, produces `nextDayStart` |
+| `apps/game-server/src/scheduling.ts` | DONE | Schedule `startTime` alarm for dynamic manifests, `nextDayStart` alarms per day |
+| `apps/game-server/src/server.ts` | DONE | Re-schedule alarms in `onAlarm()` after WAKEUP for dynamic manifests |
+| `apps/lobby/app/components/DynamicRulesetBuilder.tsx` | DONE | Start time picker with "Set to now + 2 min" button for SPEED_RUN |
+| `apps/lobby/app/actions.ts` | DONE | `startTime` in dynamic manifest payload |
+| `apps/lobby/app/page.tsx` | DONE | Pass `startTime` to `createGame()` |
