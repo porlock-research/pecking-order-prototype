@@ -57,6 +57,7 @@ export function WhispersTab({
   if (activeDmPlayerId) {
     return (
       <DMChat
+        key={activeDmPlayerId}
         mode="1on1"
         targetPlayerId={activeDmPlayerId}
         engine={engine}
@@ -71,6 +72,7 @@ export function WhispersTab({
   if (activeChannelId) {
     return (
       <DMChat
+        key={activeChannelId}
         mode="group"
         channelId={activeChannelId}
         engine={engine}
@@ -90,7 +92,6 @@ export function WhispersTab({
       onSelectGroup={onSelectGroup}
       onNewDm={onNewDm}
       onNewGroup={onNewGroup}
-      onTapAvatar={onTapAvatar}
     />
   );
 }
@@ -105,7 +106,6 @@ interface ConversationListProps {
   onSelectGroup: (channelId: string) => void;
   onNewDm: () => void;
   onNewGroup: () => void;
-  onTapAvatar?: (playerId: string) => void;
 }
 
 function ConversationList({
@@ -437,12 +437,9 @@ function ConversationItem({
       style={{
         width: '100%',
         padding: '12px 16px',
-        borderLeft: `3px solid ${borderColor}`,
         background: 'transparent',
         border: 'none',
-        borderLeftWidth: 3,
-        borderLeftStyle: 'solid',
-        borderLeftColor: borderColor,
+        borderLeft: `3px solid ${borderColor}`,
         display: 'flex',
         alignItems: 'center',
         gap: 12,

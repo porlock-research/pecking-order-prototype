@@ -28,7 +28,7 @@ function resolveAlertStyle(category: string): AlertStyle {
     return {
       gradient: 'linear-gradient(90deg, rgba(255,46,99,0.15), rgba(255,46,99,0.05))',
       accentColor: 'rgba(255,46,99,0.8)',
-      Icon: Danger as any,
+      Icon: Danger as React.ComponentType<{ size?: number; weight?: string; style?: React.CSSProperties }>,
     };
   }
 
@@ -36,7 +36,7 @@ function resolveAlertStyle(category: string): AlertStyle {
     return {
       gradient: 'linear-gradient(90deg, rgba(255,217,61,0.12), rgba(255,217,61,0.04))',
       accentColor: 'rgba(255,217,61,0.8)',
-      Icon: Scale as any,
+      Icon: Scale as React.ComponentType<{ size?: number; weight?: string; style?: React.CSSProperties }>,
     };
   }
 
@@ -44,7 +44,7 @@ function resolveAlertStyle(category: string): AlertStyle {
     return {
       gradient: 'linear-gradient(90deg, rgba(255,217,61,0.15), rgba(255,217,61,0.05))',
       accentColor: 'rgba(255,217,61,0.8)',
-      Icon: Crown as any,
+      Icon: Crown as React.ComponentType<{ size?: number; weight?: string; style?: React.CSSProperties }>,
     };
   }
 
@@ -52,7 +52,7 @@ function resolveAlertStyle(category: string): AlertStyle {
     return {
       gradient: 'linear-gradient(90deg, rgba(255,217,61,0.12), rgba(255,217,61,0.04))',
       accentColor: 'rgba(255,217,61,0.8)',
-      Icon: CupStar as any,
+      Icon: CupStar as React.ComponentType<{ size?: number; weight?: string; style?: React.CSSProperties }>,
     };
   }
 
@@ -60,7 +60,7 @@ function resolveAlertStyle(category: string): AlertStyle {
   return {
     gradient: 'linear-gradient(90deg, rgba(78,205,196,0.1), transparent)',
     accentColor: 'rgba(78,205,196,0.6)',
-    Icon: InfoCircle as any,
+    Icon: InfoCircle as React.ComponentType<{ size?: number; weight?: string; style?: React.CSSProperties }>,
   };
 }
 

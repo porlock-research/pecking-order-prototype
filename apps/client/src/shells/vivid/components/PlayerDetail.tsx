@@ -295,7 +295,7 @@ export function PlayerDetail({
                 color: 'var(--vivid-text)',
               }}
             >
-              {(target as any).gold ?? 0}
+              {target.gold ?? 0}
             </span>
             <span
               style={{

@@ -120,6 +120,3 @@
 .vivid-hide-scrollbar::-webkit-scrollbar { display: none; }
 .vivid-hide-scrollbar { scrollbar-width: none; }
 
-/* Backward compat: PersonaRail uses .persona-rail */
-.persona-rail::-webkit-scrollbar { display: none; }
-.persona-rail { scrollbar-width: none; }

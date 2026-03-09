@@ -167,7 +167,7 @@ export function PlayerQuickSheet({
                       {player.silver ?? 0}
                     </span>
                   </div>
-                  {(player as any).gold != null && (
+                  {player.gold != null && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Dollar size={16} weight="BoldDuotone" color="var(--vivid-gold)" />
                       <span
@@ -178,7 +178,7 @@ export function PlayerQuickSheet({
                           color: 'var(--vivid-gold)',
                         }}
                       >
-                        {(player as any).gold} gold
+                        {player.gold} gold
                       </span>
                     </div>
                   )}

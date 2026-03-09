@@ -42,7 +42,6 @@ function markSeen(gameId: string, reveal: Reveal) {
 
 export function DramaticReveal() {
   const { roster, winner, gameId, playerId } = useGameStore();
-  const tickerMessages = useGameStore(s => s.tickerMessages);
   const [queue, setQueue] = useState<Reveal[]>([]);
   const [current, setCurrent] = useState<Reveal | null>(null);
 
@@ -73,13 +72,10 @@ export function DramaticReveal() {
 
     // Check winner
     if (winner && seen.winner !== winner.playerId) {
-      const goldPayouts = (useGameStore.getState() as any).goldPayouts;
-      const payout = goldPayouts?.find?.((p: any) => p.playerId === winner.playerId);
       newReveals.push({
         kind: 'winner',
         playerId: winner.playerId,
         playerName: roster[winner.playerId]?.personaName || 'Unknown',
-        goldAmount: payout?.amount,
       });
     }
 
@@ -92,18 +88,6 @@ export function DramaticReveal() {
       });
     }
   }, [eliminatedIds, winner, gameId, playerId, roster]);
-
-  // Also check live ticker for ELIMINATION / WINNER_DECLARED events
-  useEffect(() => {
-    if (!gameId) return;
-    const last = tickerMessages[tickerMessages.length - 1];
-    if (!last) return;
-
-    if (last.category === 'ELIMINATION') {
-      // Extract player name from ticker text — best effort
-      // The sync-based detection above is more reliable
-    }
-  }, [tickerMessages, gameId]);
 
   // Dequeue reveals
   useEffect(() => {
@@ -149,7 +133,14 @@ export function DramaticReveal() {
     <AnimatePresence>
       {current && (
         <motion.div
-          className="fixed inset-0 z-[70] flex items-center justify-center"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 70,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -158,8 +149,9 @@ export function DramaticReveal() {
         >
           {/* Backdrop */}
           <motion.div
-            className="absolute inset-0"
             style={{
+              position: 'absolute',
+              inset: 0,
               background: current.kind === 'elimination'
                 ? 'radial-gradient(circle, rgba(255,46,99,0.15) 0%, rgba(0,0,0,0.9) 70%)'
                 : 'radial-gradient(circle, rgba(255,217,61,0.2) 0%, rgba(0,0,0,0.9) 70%)',
@@ -170,7 +162,14 @@ export function DramaticReveal() {
 
           {current.kind === 'elimination' ? (
             <motion.div
-              className="relative flex flex-col items-center gap-4 px-8"
+              style={{
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 16,
+                padding: '0 32px',
+              }}
               initial={{ scale: 0, opacity: 0 }}
               animate={{
                 scale: 1,
@@ -191,7 +190,7 @@ export function DramaticReveal() {
               </motion.div>
 
               <motion.div
-                className="relative"
+                style={{ position: 'relative', borderRadius: '50%' }}
                 animate={{
                   boxShadow: [
                     '0 0 20px rgba(255,46,99,0.3)',
@@ -200,7 +199,6 @@ export function DramaticReveal() {
                   ],
                 }}
                 transition={{ duration: 1.5, repeat: Infinity }}
-                style={{ borderRadius: '50%' }}
               >
                 <PersonaAvatar
                   avatarUrl={roster[current.playerId]?.avatarUrl}
@@ -211,8 +209,7 @@ export function DramaticReveal() {
               </motion.div>
 
               <motion.h2
-                style={{ fontFamily: 'var(--vivid-font-display)', color: 'var(--vivid-text)' }}
-                className="text-2xl text-center"
+                style={{ fontFamily: 'var(--vivid-font-display)', color: 'var(--vivid-text)', fontSize: 24, textAlign: 'center', margin: 0 }}
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
@@ -228,8 +225,10 @@ export function DramaticReveal() {
                   color: 'var(--vivid-pink)',
                   fontWeight: 700,
                   letterSpacing: '0.1em',
+                  fontSize: 14,
+                  textTransform: 'uppercase',
+                  margin: 0,
                 }}
-                className="text-sm uppercase"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.5 }}
@@ -238,8 +237,7 @@ export function DramaticReveal() {
               </motion.p>
 
               <motion.p
-                style={{ color: 'var(--vivid-text-dim)' }}
-                className="text-xs mt-2"
+                style={{ color: 'var(--vivid-text-dim)', fontSize: 12, margin: '8px 0 0' }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1 }}
@@ -249,14 +247,28 @@ export function DramaticReveal() {
             </motion.div>
           ) : (
             <motion.div
-              className="relative flex flex-col items-center gap-4 px-8"
+              style={{
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 16,
+                padding: '0 32px',
+              }}
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={VIVID_SPRING.dramatic}
             >
               <motion.div
-                className="w-28 h-28 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(255,217,61,0.15)' }}
+                style={{
+                  width: 112,
+                  height: 112,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(255,217,61,0.15)',
+                }}
                 animate={{
                   boxShadow: [
                     '0 0 20px rgba(255,217,61,0.3)',
@@ -274,8 +286,10 @@ export function DramaticReveal() {
                   fontFamily: 'var(--vivid-font-display)',
                   color: 'var(--vivid-gold)',
                   fontWeight: 900,
+                  fontSize: 28,
+                  textAlign: 'center',
+                  margin: 0,
                 }}
-                className="text-[28px] text-center"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
@@ -289,8 +303,10 @@ export function DramaticReveal() {
                   color: 'var(--vivid-text)',
                   fontWeight: 700,
                   letterSpacing: '0.1em',
+                  fontSize: 14,
+                  textTransform: 'uppercase',
+                  margin: 0,
                 }}
-                className="text-sm uppercase"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.5 }}
@@ -300,8 +316,13 @@ export function DramaticReveal() {
 
               {current.goldAmount != null && current.goldAmount > 0 && (
                 <motion.div
-                  className="flex items-center gap-2 mt-2 px-4 py-2 rounded-full"
                   style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginTop: 8,
+                    padding: '8px 16px',
+                    borderRadius: 9999,
                     background: 'rgba(255,217,61,0.15)',
                     border: '1px solid rgba(255,217,61,0.35)',
                   }}
@@ -310,14 +331,12 @@ export function DramaticReveal() {
                   transition={{ delay: 0.8, ...VIVID_SPRING.bouncy }}
                 >
                   <span
-                    className="font-mono text-xl"
-                    style={{ color: 'var(--vivid-gold)', fontWeight: 700 }}
+                    style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 20, color: 'var(--vivid-gold)', fontWeight: 700 }}
                   >
                     +{current.goldAmount}
                   </span>
                   <span
-                    className="text-sm"
-                    style={{ color: 'rgba(255,217,61,0.7)' }}
+                    style={{ fontSize: 14, color: 'rgba(255,217,61,0.7)' }}
                   >
                     gold
                   </span>
@@ -325,8 +344,7 @@ export function DramaticReveal() {
               )}
 
               <motion.p
-                style={{ color: 'var(--vivid-text-dim)' }}
-                className="text-xs mt-4"
+                style={{ color: 'var(--vivid-text-dim)', fontSize: 12, margin: '16px 0 0' }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.5 }}
