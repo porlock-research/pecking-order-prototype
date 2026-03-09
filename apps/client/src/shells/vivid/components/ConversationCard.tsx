@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Crown } from '@phosphor-icons/react';
+import { Crown } from '@solar-icons/react';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
@@ -76,7 +76,7 @@ export function ConversationCard({
             justifyContent: 'center',
           }}
         >
-          <Crown size={24} weight="duotone" color="var(--vivid-gold)" />
+          <Crown size={24} weight="BoldDuotone" color="var(--vivid-gold)" />
         </div>
       )}
 

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus } from '@phosphor-icons/react';
+import { AltArrowLeft, AddCircle } from '@solar-icons/react';
 import { useGameStore } from '../../../store/useGameStore';
 import { ChannelTypes, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
@@ -133,7 +133,7 @@ export function Backstage({
             whileTap={VIVID_TAP.button}
             transition={VIVID_SPRING.bouncy}
           >
-            <ArrowLeft size={22} weight="bold" />
+            <AltArrowLeft size={22} weight="Bold" />
           </motion.button>
           <span
             style={{
@@ -168,7 +168,7 @@ export function Backstage({
             whileTap={VIVID_TAP.fab}
             transition={VIVID_SPRING.bouncy}
           >
-            <Plus size={14} weight="bold" />
+            <AddCircle size={14} weight="Bold" />
             DM
           </motion.button>
           <motion.button
@@ -191,7 +191,7 @@ export function Backstage({
             whileTap={VIVID_TAP.fab}
             transition={VIVID_SPRING.bouncy}
           >
-            <Plus size={14} weight="bold" />
+            <AddCircle size={14} weight="Bold" />
             Group
           </motion.button>
         </div>

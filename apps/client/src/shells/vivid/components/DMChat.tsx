@@ -1,7 +1,7 @@
 import { useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowLeft, Crown } from '@phosphor-icons/react';
+import { AltArrowLeft, Crown } from '@solar-icons/react';
 import { PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../store/useGameStore';
@@ -216,7 +216,7 @@ export function DMChat({
           whileTap={VIVID_TAP.button}
           transition={VIVID_SPRING.bouncy}
         >
-          <ArrowLeft size={22} weight="bold" />
+          <AltArrowLeft size={22} weight="Bold" />
         </motion.button>
 
         {/* Avatar + info — tappable for 1:1 */}
@@ -247,7 +247,7 @@ export function DMChat({
                   flexShrink: 0,
                 }}
               >
-                <Crown size={22} weight="duotone" style={{ color: 'var(--vivid-gold)' }} />
+                <Crown size={22} weight="BoldDuotone" style={{ color: 'var(--vivid-gold)' }} />
               </div>
             ) : (
               <PersonaAvatar

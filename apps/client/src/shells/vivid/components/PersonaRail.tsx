@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ChatCircleDots } from '@phosphor-icons/react';
+import { ChatDots } from '@solar-icons/react';
 import { useGameStore } from '../../../store/useGameStore';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { GAME_MASTER_ID, PlayerStatuses, ChannelTypes } from '@pecking-order/shared-types';
@@ -283,7 +283,7 @@ export function PersonaRail({
         transition={VIVID_SPRING.bouncy}
         onClick={handleMainChatClick}
       >
-        <ChatCircleDots size={26} weight="fill" color="var(--vivid-teal)" />
+        <ChatDots size={26} weight="Bold" color="var(--vivid-teal)" />
       </motion.button>
     </div>
   );

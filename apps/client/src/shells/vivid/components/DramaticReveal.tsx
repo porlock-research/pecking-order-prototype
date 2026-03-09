@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useGameStore } from '../../../store/useGameStore';
 import { PlayerStatuses } from '@pecking-order/shared-types';
-import { Skull, Crown } from '@phosphor-icons/react';
+import { Danger, Crown } from '@solar-icons/react';
 import { VIVID_SPRING } from '../springs';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
@@ -187,7 +187,7 @@ export function DramaticReveal() {
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.1, ...VIVID_SPRING.bouncy }}
               >
-                <Skull size={32} weight="duotone" color="var(--vivid-pink)" />
+                <Danger size={32} weight="BoldDuotone" color="var(--vivid-pink)" />
               </motion.div>
 
               <motion.div
@@ -266,7 +266,7 @@ export function DramaticReveal() {
                 }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                <Crown size={56} weight="duotone" color="var(--vivid-gold)" />
+                <Crown size={56} weight="BoldDuotone" color="var(--vivid-gold)" />
               </motion.div>
 
               <motion.h2

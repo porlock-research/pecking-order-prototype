@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../store/useGameStore';
 import { formatPhase } from '../../../utils/formatState';
 import { PlayerStatuses } from '@pecking-order/shared-types';
-import { CurrencyDollarSimple, Trophy, GearSix } from '@phosphor-icons/react';
+import { Dollar, CupStar, Settings } from '@solar-icons/react';
 import { VIVID_SPRING } from '../springs';
 
 /** Map phase label to a vivid accent color */
@@ -120,9 +120,9 @@ export function GameHUD() {
                 className="flex items-center gap-1"
                 title="Silver"
               >
-                <CurrencyDollarSimple
+                <Dollar
                   size={16}
-                  weight="duotone"
+                  weight="BoldDuotone"
                   style={{ color: 'var(--vivid-gold)' }}
                 />
                 <span
@@ -142,9 +142,9 @@ export function GameHUD() {
                 className="flex items-center gap-1"
                 title="Gold pool"
               >
-                <Trophy
+                <CupStar
                   size={14}
-                  weight="duotone"
+                  weight="BoldDuotone"
                   style={{ color: 'var(--vivid-gold)' }}
                 />
                 <span
@@ -170,7 +170,7 @@ export function GameHUD() {
               title="Admin Panel"
               style={{ color: 'var(--vivid-text-dim)', lineHeight: 0 }}
             >
-              <GearSix size={16} weight="duotone" />
+              <Settings size={16} weight="BoldDuotone" />
             </a>
           )}
         </div>

@@ -10,7 +10,7 @@ import GamePanel from '../../../components/panels/GamePanel';
 import PromptPanel from '../../../components/panels/PromptPanel';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
-import { ArrowDown, Scales, GameController, ChatCircleDots } from '@phosphor-icons/react';
+import { AltArrowDown, Scale, Gamepad, ChatDots } from '@solar-icons/react';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
 /* ------------------------------------------------------------------ */
@@ -156,10 +156,10 @@ export function StageChat({ engine, onLongPressBubble }: StageChatProps) {
         : null;
 
   const ReturnPillIcon = activeVotingCartridge
-    ? Scales
+    ? Scale
     : activeGameCartridge
-      ? GameController
-      : ChatCircleDots;
+      ? Gamepad
+      : ChatDots;
 
   /* ---------------------------------------------------------------- */
   /*  Render                                                           */
@@ -350,7 +350,7 @@ export function StageChat({ engine, onLongPressBubble }: StageChatProps) {
                 whileTap={VIVID_TAP.button}
                 transition={VIVID_SPRING.bouncy}
               >
-                <ReturnPillIcon size={16} weight="bold" />
+                <ReturnPillIcon size={16} weight="Bold" />
                 {returnPillLabel}
               </motion.button>
             </motion.div>
@@ -390,7 +390,7 @@ export function StageChat({ engine, onLongPressBubble }: StageChatProps) {
               transition={VIVID_SPRING.snappy}
               whileTap={VIVID_TAP.button}
             >
-              <ArrowDown size={12} weight="bold" />
+              <AltArrowDown size={12} weight="Bold" />
               Jump to latest
             </motion.button>
           )}

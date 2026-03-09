@@ -15,6 +15,7 @@
     "@pecking-order/shared-types": "*",
     "@phosphor-icons/react": "^2.1.10",
     "@sentry/react": "^10.40.0",
+    "@solar-icons/react": "^1.1.0",
     "canvas-confetti": "^1.9.4",
     "framer-motion": "^12.34.0",
     "lucide-react": "^0.563.0",

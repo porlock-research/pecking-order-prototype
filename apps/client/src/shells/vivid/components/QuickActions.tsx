@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChatCircleDots, CurrencyDollarSimple, User } from '@phosphor-icons/react';
+import { ChatDots, Dollar, UserCircle } from '@solar-icons/react';
 import { VIVID_SPRING } from '../springs';
 
 interface QuickActionsProps {
@@ -19,21 +19,21 @@ const ACTIONS = [
   {
     key: 'message',
     label: 'Message',
-    Icon: ChatCircleDots,
+    Icon: ChatDots,
     color: 'var(--vivid-teal)',
     handler: 'onMessage' as const,
   },
   {
     key: 'silver',
     label: 'Send Silver',
-    Icon: CurrencyDollarSimple,
+    Icon: Dollar,
     color: 'var(--vivid-gold)',
     handler: 'onSendSilver' as const,
   },
   {
     key: 'profile',
     label: 'View Profile',
-    Icon: User,
+    Icon: UserCircle,
     color: 'var(--vivid-lavender)',
     handler: 'onViewProfile' as const,
   },
@@ -139,7 +139,7 @@ export function QuickActions({
                   }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  <action.Icon size={22} weight="duotone" color={action.color} />
+                  <action.Icon size={22} weight="BoldDuotone" color={action.color} />
                   <span>{action.label}</span>
                 </motion.button>
               ))}

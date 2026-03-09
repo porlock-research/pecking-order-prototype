@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PaperPlaneRight, CurrencyDollarSimple, X } from '@phosphor-icons/react';
+import { SendSquare, Dollar, CloseCircle } from '@solar-icons/react';
 import type { ChatMessage, SocialPlayer } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../store/useGameStore';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
@@ -324,7 +324,7 @@ export function ChatInput({
                   alignItems: 'center',
                 }}
               >
-                <X size={14} weight="bold" />
+                <CloseCircle size={14} weight="Bold" />
               </button>
             </motion.div>
           )}
@@ -439,7 +439,7 @@ export function ChatInput({
               whileTap={VIVID_TAP.button}
               transition={VIVID_SPRING.bouncy}
             >
-              <CurrencyDollarSimple size={18} weight="bold" />
+              <Dollar size={18} weight="Bold" />
             </motion.button>
           )}
 
@@ -506,7 +506,7 @@ export function ChatInput({
             whileTap={VIVID_TAP.fab}
             transition={VIVID_SPRING.bouncy}
           >
-            <PaperPlaneRight size={20} weight="fill" />
+            <SendSquare size={20} weight="Bold" />
           </motion.button>
         </form>
       </div>

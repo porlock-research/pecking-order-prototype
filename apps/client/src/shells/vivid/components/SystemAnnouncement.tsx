@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import type { TickerMessage } from '@pecking-order/shared-types';
-import { Skull, Scales, GameController, ChatCircleDots } from '@phosphor-icons/react';
+import { Danger, Scale, Gamepad, ChatDots } from '@solar-icons/react';
 import { VIVID_SPRING } from '../springs';
 
 interface AnnouncementStyle {
@@ -15,7 +15,7 @@ function getAnnouncementStyle(category: string): AnnouncementStyle {
     return {
       borderColor: 'var(--vivid-pink)',
       background: 'rgba(255, 46, 99, 0.1)',
-      icon: <Skull size={16} weight="duotone" style={{ color: 'var(--vivid-pink)' }} />,
+      icon: <Danger size={16} weight="BoldDuotone" style={{ color: 'var(--vivid-pink)' }} />,
       isPhase: false,
     };
   }
@@ -24,7 +24,7 @@ function getAnnouncementStyle(category: string): AnnouncementStyle {
     return {
       borderColor: 'var(--vivid-gold)',
       background: 'rgba(255, 217, 61, 0.1)',
-      icon: <Scales size={16} weight="duotone" style={{ color: 'var(--vivid-gold)' }} />,
+      icon: <Scale size={16} weight="BoldDuotone" style={{ color: 'var(--vivid-gold)' }} />,
       isPhase: false,
     };
   }
@@ -33,7 +33,7 @@ function getAnnouncementStyle(category: string): AnnouncementStyle {
     return {
       borderColor: 'var(--vivid-teal)',
       background: 'rgba(78, 205, 196, 0.1)',
-      icon: <GameController size={16} weight="duotone" style={{ color: 'var(--vivid-teal)' }} />,
+      icon: <Gamepad size={16} weight="BoldDuotone" style={{ color: 'var(--vivid-teal)' }} />,
       isPhase: false,
     };
   }
@@ -42,7 +42,7 @@ function getAnnouncementStyle(category: string): AnnouncementStyle {
     return {
       borderColor: 'var(--vivid-lavender)',
       background: 'rgba(167, 139, 250, 0.1)',
-      icon: <ChatCircleDots size={16} weight="duotone" style={{ color: 'var(--vivid-lavender)' }} />,
+      icon: <ChatDots size={16} weight="BoldDuotone" style={{ color: 'var(--vivid-lavender)' }} />,
       isPhase: false,
     };
   }
@@ -62,7 +62,7 @@ function getAnnouncementStyle(category: string): AnnouncementStyle {
     return {
       borderColor: 'var(--vivid-teal)',
       background: 'rgba(78, 205, 196, 0.1)',
-      icon: <ChatCircleDots size={16} weight="duotone" style={{ color: 'var(--vivid-teal)' }} />,
+      icon: <ChatDots size={16} weight="BoldDuotone" style={{ color: 'var(--vivid-teal)' }} />,
       isPhase: false,
     };
   }

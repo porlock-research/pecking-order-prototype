@@ -2,7 +2,7 @@ import React, { useRef, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ChatMessage, SocialPlayer } from '@pecking-order/shared-types';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
-import { Crown } from '@phosphor-icons/react';
+import { Crown } from '@solar-icons/react';
 import { VIVID_SPRING } from '../springs';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
@@ -102,7 +102,7 @@ export function ChatBubble({
           }}
         >
           <div className="flex items-center gap-2 mb-1">
-            <Crown size={14} weight="duotone" style={{ color: 'var(--vivid-gold)' }} />
+            <Crown size={14} weight="BoldDuotone" style={{ color: 'var(--vivid-gold)' }} />
             <span
               className="text-[11px] font-bold uppercase tracking-wider"
               style={{ color: 'var(--vivid-gold)', fontFamily: 'var(--vivid-font-display)' }}

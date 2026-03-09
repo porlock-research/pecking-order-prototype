@@ -1,14 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft,
-  CurrencyDollarSimple,
-  Trophy,
-  ChatCircleDots,
-  WifiHigh,
-  WifiSlash,
-  UsersThree,
-} from '@phosphor-icons/react';
+  AltArrowLeft,
+  Dollar,
+  CupStar,
+  ChatDots,
+  WiFiRouter,
+  UsersGroupRounded,
+} from '@solar-icons/react';
 import { useGameStore } from '../../../store/useGameStore';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { PlayerStatuses, GAME_MASTER_ID, ChannelTypes } from '@pecking-order/shared-types';
@@ -119,7 +118,7 @@ export function Spotlight({
         whileTap={VIVID_TAP.button}
         transition={VIVID_SPRING.bouncy}
       >
-        <ArrowLeft size={24} weight="bold" />
+        <AltArrowLeft size={24} weight="Bold" />
       </motion.button>
 
       {/* Hero section */}
@@ -272,7 +271,7 @@ export function Spotlight({
             gap: 4,
           }}
         >
-          <CurrencyDollarSimple size={28} weight="duotone" color="var(--vivid-gold)" />
+          <Dollar size={28} weight="BoldDuotone" color="var(--vivid-gold)" />
           <span
             style={{
               fontFamily: 'var(--vivid-font-display)',
@@ -307,7 +306,7 @@ export function Spotlight({
             gap: 4,
           }}
         >
-          <Trophy size={28} weight="duotone" color="var(--vivid-gold)" />
+          <CupStar size={28} weight="BoldDuotone" color="var(--vivid-gold)" />
           <span
             style={{
               fontFamily: 'var(--vivid-font-display)',
@@ -342,11 +341,7 @@ export function Spotlight({
             gap: 4,
           }}
         >
-          {isOnline ? (
-            <WifiHigh size={28} weight="bold" color="var(--vivid-teal)" />
-          ) : (
-            <WifiSlash size={28} weight="bold" color="var(--vivid-text-dim)" />
-          )}
+          <WiFiRouter size={28} weight="BoldDuotone" color={isOnline ? 'var(--vivid-teal)' : 'var(--vivid-text-dim)'} />
           <span
             style={{
               fontFamily: 'var(--vivid-font-display)',
@@ -371,7 +366,7 @@ export function Spotlight({
             gap: 4,
           }}
         >
-          <ChatCircleDots size={28} weight="duotone" color="var(--vivid-teal)" />
+          <ChatDots size={28} weight="BoldDuotone" color="var(--vivid-teal)" />
           <span
             style={{
               fontFamily: 'var(--vivid-font-display)',
@@ -438,7 +433,7 @@ export function Spotlight({
               whileTap={VIVID_TAP.button}
               transition={VIVID_SPRING.bouncy}
             >
-              <ChatCircleDots size={18} weight="bold" />
+              <ChatDots size={18} weight="Bold" />
               Message
             </motion.button>
 
@@ -464,7 +459,7 @@ export function Spotlight({
                 whileTap={VIVID_TAP.button}
                 transition={VIVID_SPRING.bouncy}
               >
-                <CurrencyDollarSimple size={18} weight="bold" />
+                <Dollar size={18} weight="Bold" />
                 {silverSent ? 'Sent!' : 'Send Silver'}
               </motion.button>
             )}
@@ -491,7 +486,7 @@ export function Spotlight({
                 whileTap={VIVID_TAP.button}
                 transition={VIVID_SPRING.bouncy}
               >
-                <UsersThree size={18} weight="bold" />
+                <UsersGroupRounded size={18} weight="Bold" />
                 Start Group
               </motion.button>
             )}

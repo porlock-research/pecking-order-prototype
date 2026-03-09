@@ -4,7 +4,7 @@ import { Drawer } from 'vaul';
 import { toast } from 'sonner';
 import { useGameStore } from '../../../store/useGameStore';
 import { PERK_COSTS, PlayerStatuses } from '@pecking-order/shared-types';
-import { Eye, UserPlus, TextAa, CurrencyDollarSimple, X, Sparkle } from '@phosphor-icons/react';
+import { Eye, UserPlus, DocumentText, Dollar, CloseCircle, StarShine } from '@solar-icons/react';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
 interface VividPerkFABProps {
@@ -32,7 +32,7 @@ const PERK_INFO = [
     type: 'EXTRA_DM_CHARS' as const,
     label: 'Extra Chars',
     desc: '+300 DM characters for today',
-    Icon: TextAa,
+    Icon: DocumentText,
     color: 'var(--vivid-pink)',
   },
 ] as const;
@@ -159,7 +159,7 @@ export function VividPerkFAB({ engine }: VividPerkFABProps) {
         whileTap={VIVID_TAP.fab}
         transition={VIVID_SPRING.bouncy}
       >
-        <Sparkle size={26} weight="fill" color="#fff" />
+        <StarShine size={26} weight="Bold" color="#fff" />
       </motion.button>
 
       {/* Perk Drawer */}
@@ -256,7 +256,7 @@ export function VividPerkFAB({ engine }: VividPerkFABProps) {
                         padding: 4,
                       }}
                     >
-                      <X size={16} weight="bold" />
+                      <CloseCircle size={16} weight="Bold" />
                     </button>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -322,7 +322,7 @@ export function VividPerkFAB({ engine }: VividPerkFABProps) {
                       whileTap={canAfford ? VIVID_TAP.card : undefined}
                       transition={VIVID_SPRING.bouncy}
                     >
-                      <perk.Icon size={22} weight="duotone" color={perk.color} />
+                      <perk.Icon size={22} weight="BoldDuotone" color={perk.color} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ fontWeight: 700, fontSize: 15 }}>{perk.label}</span>
                         <p
@@ -346,7 +346,7 @@ export function VividPerkFAB({ engine }: VividPerkFABProps) {
                           flexShrink: 0,
                         }}
                       >
-                        <CurrencyDollarSimple size={14} weight="duotone" />
+                        <Dollar size={14} weight="BoldDuotone" />
                         {cost}
                       </div>
                     </motion.button>

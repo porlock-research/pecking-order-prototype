@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Drawer } from 'vaul';
-import { ChatCircleDots } from '@phosphor-icons/react';
+import { ChatDots } from '@solar-icons/react';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
 interface ChatPeekProps {
@@ -37,7 +37,7 @@ export function ChatPeek({ children }: ChatPeekProps) {
         whileTap={VIVID_TAP.button}
         transition={VIVID_SPRING.bouncy}
       >
-        <ChatCircleDots size={18} weight="fill" />
+        <ChatDots size={18} weight="Bold" />
         Chat
       </motion.button>
 
