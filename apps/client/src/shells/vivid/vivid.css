@@ -34,3 +34,6 @@
 .vivid-phase-game { background: linear-gradient(135deg, #152a28 0%, #1a1b3a 100%); }
 .vivid-phase-elimination { background: linear-gradient(135deg, #2a0a0a 0%, #1a1b3a 100%); }
 .vivid-phase-default { background: var(--vivid-bg-deep); }
+
+/* PersonaRail — hidden scrollbar */
+.persona-rail::-webkit-scrollbar { display: none; }
