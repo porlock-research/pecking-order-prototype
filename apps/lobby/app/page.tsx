@@ -390,6 +390,52 @@ export default function LobbyRoot() {
 
     await new Promise(r => setTimeout(r, 400));
 
+    if (manifestKind === 'DYNAMIC') {
+      // Build the PeckingOrderRuleset from the UI config
+      const rulesetFromConfig = {
+        kind: 'PECKING_ORDER' as const,
+        voting: {
+          allowed: dynamicConfig.allowedVoteTypes,
+          constraints: [
+            { voteType: 'BUBBLE' as const, minPlayers: 6 },
+            { voteType: 'TRUST_PAIRS' as const, minPlayers: 5 },
+            { voteType: 'PODIUM_SACRIFICE' as const, minPlayers: 5 },
+            { voteType: 'EXECUTIONER' as const, minPlayers: 5 },
+            { voteType: 'SHIELD' as const, minPlayers: 4 },
+          ].filter(c => dynamicConfig.allowedVoteTypes.includes(c.voteType)),
+        },
+        games: {
+          allowed: dynamicConfig.allowedGameTypes,
+          avoidRepeat: true,
+        },
+        activities: {
+          allowed: dynamicConfig.allowedActivityTypes,
+          avoidRepeat: true,
+        },
+        social: dynamicConfig.social,
+        inactivity: dynamicConfig.inactivity,
+        dayCount: dynamicConfig.dayCount,
+      };
+
+      const result = await createGame('CONFIGURABLE_CYCLE', undefined, {
+        kind: 'DYNAMIC',
+        ruleset: rulesetFromConfig,
+        schedulePreset: dynamicConfig.schedulePreset,
+        maxPlayers: 8,
+      });
+
+      setIsLoading(false);
+      if (result.success) {
+        setStatus(`GAME_CREATED: ${result.gameId}`);
+        setGameId(result.gameId ?? null);
+        setInviteCode(result.inviteCode ?? null);
+      } else {
+        setStatus(`ERROR: ${result.error}`);
+      }
+      return;
+    }
+
+    // Existing static flow
     const config = mode === 'DEBUG_PECKING_ORDER'
       ? debugConfig
       : mode === 'CONFIGURABLE_CYCLE'
