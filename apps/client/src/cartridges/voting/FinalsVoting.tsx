@@ -99,7 +99,7 @@ export default function FinalsVoting({ cartridge, playerId, roster, engine }: Fi
             You are a finalist
           </p>
         ) : myVote ? (
-          <p className="text-xs font-mono text-skin-pink text-center uppercase tracking-wider">
+          <p data-testid="vote-confirmed" className="text-xs font-mono text-skin-pink text-center uppercase tracking-wider">
             Vote cast!
           </p>
         ) : !canVote ? (
@@ -121,6 +121,7 @@ export default function FinalsVoting({ cartridge, playerId, roster, engine }: Fi
             return (
               <button
                 key={targetId}
+                data-testid={`vote-btn-${targetId}`}
                 disabled={!!myVote || !canVote || isFinalist}
                 onClick={() => engine.sendVoteAction(VoteEvents.FINALS.CAST, targetId)}
                 className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left

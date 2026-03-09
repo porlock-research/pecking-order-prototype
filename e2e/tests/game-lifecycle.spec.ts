@@ -10,7 +10,6 @@ import {
 } from '../fixtures/game-setup';
 
 test.describe('Game Lifecycle — Full Multi-Day Game', () => {
-  // This test drives a full 2-day game — give it extra time
   test('3-player game: Day 1 elimination, Day 2 finals, winner declared', async ({ browser }) => {
     test.setTimeout(90_000);
 
@@ -18,7 +17,6 @@ test.describe('Game Lifecycle — Full Multi-Day Game', () => {
     const game = await createTestGame(3, 2);
 
     // ── Day 0 → Day 1 ──
-    // Advance from preGame to dayLoop (morningBriefing → activeSession)
     await advanceGameState(game.gameId);
     await new Promise(r => setTimeout(r, 500));
 
@@ -62,13 +60,13 @@ test.describe('Game Lifecycle — Full Multi-Day Game', () => {
       let state = await getGameState(game.gameId);
       expect(state.roster?.p2?.status).toBe('ELIMINATED');
 
-      // Dismiss elimination reveals on all pages before continuing
+      // Dismiss elimination reveals on all pages
       await dismissReveal(page0);
       await dismissReveal(page1);
       await dismissReveal(page2);
 
       // ── Transition to Day 2 (FINALS) ──
-      await advanceGameState(game.gameId); // nightSummary → morningBriefing → activeSession
+      await advanceGameState(game.gameId);
       await new Promise(r => setTimeout(r, 500));
 
       // Open group chat + voting for Day 2 (FINALS)
@@ -78,26 +76,26 @@ test.describe('Game Lifecycle — Full Multi-Day Game', () => {
       await new Promise(r => setTimeout(r, 500));
 
       // ── Day 2: FINALS vote ──
-      // In FINALS, eliminated players (p2) vote for an alive candidate
-      // p2 votes for p0 as the winner
+      // In FINALS, eliminated players (p2) vote for an alive candidate.
+      // p2 should see the voting panel with vote buttons for alive players.
       await expect(page2.locator('[data-testid="voting-panel"]')).toBeVisible({ timeout: 10_000 });
       await page2.locator('[data-testid="vote-btn-p0"]').click();
+      await expect(page2.locator('[data-testid="vote-confirmed"]')).toBeVisible({ timeout: 5000 });
 
       // Close voting + end day
       await injectTimelineEvent(game.gameId, 'CLOSE_VOTING');
       await new Promise(r => setTimeout(r, 500));
-      await advanceGameState(game.gameId); // activeSession → nightSummary
+      await advanceGameState(game.gameId);
       await new Promise(r => setTimeout(r, 1000));
 
-      // nightSummary should auto-transition to gameSummary since FINALS sets winner
+      // Should be in gameSummary or gameOver
       state = await getGameState(game.gameId);
-      // The game should be in gameSummary or gameOver
       const stateStr = JSON.stringify(state.state);
       const isEndGame = stateStr.includes('gameSummary') || stateStr.includes('gameOver');
       expect(isEndGame).toBe(true);
 
       // ── Advance to gameOver ──
-      await advanceGameState(game.gameId); // gameSummary → gameOver
+      await advanceGameState(game.gameId);
       await new Promise(r => setTimeout(r, 500));
 
       state = await getGameState(game.gameId);

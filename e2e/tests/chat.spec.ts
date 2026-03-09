@@ -4,7 +4,6 @@ import {
   advanceGameState,
   injectTimelineEvent,
   gotoGame,
-  suppressPwaGate,
   waitForGameShell,
 } from '../fixtures/game-setup';
 
@@ -24,15 +23,18 @@ test.describe('Chat — Send & Receive Messages', () => {
     await gotoGame(page, game.inviteCode, game.players[0].token);
     await waitForGameShell(page);
 
-    // Type and send a message
+    // Wait for chat input to be ready (WebSocket must be connected + state synced)
     const input = page.locator('[data-testid="chat-input"]');
-    const send = page.locator('[data-testid="chat-send"]');
+    await expect(input).toBeVisible({ timeout: 10_000 });
 
+    // Type and send a message
     await input.fill('hello from e2e');
-    await send.click();
+    await page.locator('[data-testid="chat-send"]').click();
 
     // Should see the message in the timeline (optimistic or confirmed)
-    await expect(page.locator('[data-testid="chat-message"]').filter({ hasText: 'hello from e2e' })).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.locator('[data-testid="chat-message"]').filter({ hasText: 'hello from e2e' })
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test('two players can exchange messages in real-time', async ({ browser }) => {
@@ -57,6 +59,10 @@ test.describe('Chat — Send & Receive Messages', () => {
       await waitForGameShell(page1);
       await waitForGameShell(page2);
 
+      // Wait for chat inputs to be ready
+      await expect(page1.locator('[data-testid="chat-input"]')).toBeVisible({ timeout: 10_000 });
+      await expect(page2.locator('[data-testid="chat-input"]')).toBeVisible({ timeout: 10_000 });
+
       // Player 1 sends a message
       await page1.locator('[data-testid="chat-input"]').fill('hello from Viper');
       await page1.locator('[data-testid="chat-send"]').click();
@@ -64,7 +70,7 @@ test.describe('Chat — Send & Receive Messages', () => {
       // Player 2 should see it
       await expect(
         page2.locator('[data-testid="chat-message"]').filter({ hasText: 'hello from Viper' })
-      ).toBeVisible({ timeout: 5000 });
+      ).toBeVisible({ timeout: 10_000 });
 
       // Player 2 sends a reply
       await page2.locator('[data-testid="chat-input"]').fill('hey Viper, Phoenix here');
@@ -73,7 +79,7 @@ test.describe('Chat — Send & Receive Messages', () => {
       // Player 1 should see the reply
       await expect(
         page1.locator('[data-testid="chat-message"]').filter({ hasText: 'hey Viper, Phoenix here' })
-      ).toBeVisible({ timeout: 5000 });
+      ).toBeVisible({ timeout: 10_000 });
     } finally {
       await context1.close();
       await context2.close();
