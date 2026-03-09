@@ -57,7 +57,7 @@ export function PlayerQuickSheet({
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(61, 46, 31, 0.3)',
+            background: 'rgba(61, 46, 31, 0.45)',
             zIndex: 40,
           }}
         />
@@ -70,9 +70,9 @@ export function PlayerQuickSheet({
             zIndex: 50,
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
-            background: 'var(--vivid-bg-surface)',
-            borderTop: '2px solid rgba(139, 115, 85, 0.1)',
-            boxShadow: '0 -4px 24px rgba(139, 115, 85, 0.1)',
+            background: '#FAF3E8',
+            borderTop: '2px solid rgba(139, 115, 85, 0.15)',
+            boxShadow: '0 -8px 32px rgba(139, 115, 85, 0.15)',
           }}
           aria-describedby={undefined}
         >
@@ -80,11 +80,11 @@ export function PlayerQuickSheet({
 
           {/* Drag handle */}
           <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
-            <div style={{ width: 48, height: 4, borderRadius: 2, background: 'rgba(139, 115, 85, 0.2)' }} />
+            <div style={{ width: 48, height: 4, borderRadius: 2, background: 'rgba(139, 115, 85, 0.25)' }} />
           </div>
 
           {/* Content */}
-          <div style={{ padding: '0 20px 24px' }}>
+          <div style={{ padding: '0 20px 32px' }}>
             {player && targetPlayerId && (
               <>
                 {/* Player identity row */}
@@ -110,7 +110,7 @@ export function PlayerQuickSheet({
                     <div
                       style={{
                         fontSize: 20,
-                        fontFamily: 'var(--vivid-font-display)',
+                        fontFamily: "'Quicksand', sans-serif",
                         fontWeight: 800,
                         color: accentColor,
                         overflow: 'hidden',
@@ -132,7 +132,7 @@ export function PlayerQuickSheet({
                         borderRadius: 9999,
                         fontSize: 11,
                         fontWeight: 700,
-                        fontFamily: 'var(--vivid-font-display)',
+                        fontFamily: "'Quicksand', sans-serif",
                         letterSpacing: '0.05em',
                         textTransform: 'uppercase',
                         ...(isEliminated
@@ -175,7 +175,7 @@ export function PlayerQuickSheet({
                     />
                     <span
                       style={{
-                        fontFamily: 'var(--vivid-font-mono)',
+                        fontFamily: "'JetBrains Mono', monospace",
                         fontSize: 14,
                         fontWeight: 700,
                         color: '#D4960A',
@@ -206,7 +206,7 @@ export function PlayerQuickSheet({
                       />
                       <span
                         style={{
-                          fontFamily: 'var(--vivid-font-mono)',
+                          fontFamily: "'JetBrains Mono', monospace",
                           fontSize: 14,
                           fontWeight: 700,
                           color: '#8B6CC1',
@@ -232,7 +232,7 @@ export function PlayerQuickSheet({
                       background: '#3BA99C',
                       border: 'none',
                       color: '#FFFFFF',
-                      fontFamily: 'var(--vivid-font-display)',
+                      fontFamily: "'Quicksand', sans-serif",
                       fontWeight: 700,
                       fontSize: 14,
                       cursor: 'pointer',
@@ -256,7 +256,7 @@ export function PlayerQuickSheet({
                       background: '#D4960A',
                       border: 'none',
                       color: '#FFFFFF',
-                      fontFamily: 'var(--vivid-font-display)',
+                      fontFamily: "'Quicksand', sans-serif",
                       fontWeight: 700,
                       fontSize: 14,
                       cursor: 'pointer',
@@ -280,7 +280,7 @@ export function PlayerQuickSheet({
                       background: '#8B6CC1',
                       border: 'none',
                       color: '#FFFFFF',
-                      fontFamily: 'var(--vivid-font-display)',
+                      fontFamily: "'Quicksand', sans-serif",
                       fontWeight: 700,
                       fontSize: 14,
                       cursor: 'pointer',
@@ -305,7 +305,7 @@ export function PlayerQuickSheet({
                       borderRadius: 16,
                       background: '#FFFFFF',
                       border: '1px solid rgba(139, 115, 85, 0.1)',
-                      boxShadow: 'var(--vivid-surface-shadow)',
+                      boxShadow: '0 1px 3px rgba(139, 115, 85, 0.08)',
                     }}
                   >
                     <input
@@ -319,9 +319,9 @@ export function PlayerQuickSheet({
                         padding: '6px 8px',
                         borderRadius: 10,
                         border: '2px solid rgba(139, 115, 85, 0.12)',
-                        background: 'var(--vivid-bg-deep)',
-                        color: 'var(--vivid-text)',
-                        fontFamily: 'var(--vivid-font-display)',
+                        background: '#FDF8F0',
+                        color: '#3D2E1F',
+                        fontFamily: "'Quicksand', sans-serif",
                         fontWeight: 700,
                         fontSize: 14,
                         textAlign: 'center',
@@ -334,10 +334,10 @@ export function PlayerQuickSheet({
                       style={{
                         padding: '6px 14px',
                         borderRadius: 9999,
-                        background: mySilver < 1 ? 'var(--vivid-text-dim)' : '#D4960A',
+                        background: mySilver < 1 ? '#9B8E7E' : '#D4960A',
                         border: 'none',
                         color: '#FFFFFF',
-                        fontFamily: 'var(--vivid-font-display)',
+                        fontFamily: "'Quicksand', sans-serif",
                         fontWeight: 700,
                         fontSize: 13,
                         cursor: mySilver < 1 ? 'not-allowed' : 'pointer',
@@ -352,8 +352,8 @@ export function PlayerQuickSheet({
                         borderRadius: 9999,
                         background: 'transparent',
                         border: 'none',
-                        color: 'var(--vivid-text-dim)',
-                        fontFamily: 'var(--vivid-font-display)',
+                        color: '#9B8E7E',
+                        fontFamily: "'Quicksand', sans-serif",
                         fontWeight: 700,
                         fontSize: 13,
                         cursor: 'pointer',

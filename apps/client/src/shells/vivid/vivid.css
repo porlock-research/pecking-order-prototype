@@ -216,19 +216,6 @@
   border-left: 8px solid var(--vivid-bubble-self);
 }
 
-/* ---- Scrolling ticker animation ---- */
-@keyframes vivid-ticker-scroll {
-  0% { transform: translate3d(0, 0, 0); }
-  100% { transform: translate3d(-50%, 0, 0); }
-}
-
-.vivid-ticker {
-  display: flex;
-  white-space: nowrap;
-  will-change: transform;
-  animation: vivid-ticker-scroll 30s linear infinite;
-}
-
 /* ---- Pull-to-scroll overscroll feedback ---- */
 .vivid-shell {
   overscroll-behavior-y: contain;

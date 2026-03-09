@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import Marquee from 'react-fast-marquee';
 import { useGameStore } from '../../../store/useGameStore';
 
 function getPhaseLabel(serverState: unknown, dayIndex: number): string {
@@ -38,13 +39,10 @@ export function BroadcastBar() {
     return items;
   }, [phaseLabel, tickerMessages]);
 
-  const tickerContent = tickerItems.join(' \u2022 ');
-
-  // Dynamic speed: ~60px per second, minimum 15s
-  const animationDuration = useMemo(() => {
-    const estimatedWidth = tickerContent.length * 7;
-    return Math.max(15, estimatedWidth / 60);
-  }, [tickerContent]);
+  // Dynamic speed: longer content scrolls faster
+  const marqueeSpeed = useMemo(() => {
+    return Math.max(30, Math.min(60, tickerItems.length * 8));
+  }, [tickerItems]);
 
   return (
     <div
@@ -64,48 +62,27 @@ export function BroadcastBar() {
       {/* Left: LIVE dot */}
       <div className="vivid-live-dot" style={{ flexShrink: 0 }} />
 
-      {/* Scrolling ticker */}
-      <div
-        style={{
-          flex: 1,
-          overflow: 'hidden',
-          maskImage: 'linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)',
-          WebkitMaskImage: 'linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)',
-        }}
-      >
-        <div
-          className="vivid-ticker"
-          style={{
-            animationDuration: `${animationDuration}s`,
-          }}
-        >
-          <span
-            style={{
-              fontFamily: 'var(--vivid-font-display)',
-              fontWeight: 800,
-              fontSize: 13,
-              letterSpacing: '0.04em',
-              color: 'var(--vivid-phase-accent)',
-              textTransform: 'uppercase',
-              paddingRight: 48,
-            }}
-          >
-            {tickerContent}
-          </span>
-          <span
-            style={{
-              fontFamily: 'var(--vivid-font-display)',
-              fontWeight: 800,
-              fontSize: 13,
-              letterSpacing: '0.04em',
-              color: 'var(--vivid-phase-accent)',
-              textTransform: 'uppercase',
-              paddingRight: 48,
-            }}
-          >
-            {tickerContent}
-          </span>
-        </div>
+      {/* Scrolling ticker — seamless loop via react-fast-marquee */}
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        <Marquee speed={marqueeSpeed} gradient gradientColor="var(--vivid-bg-surface)" gradientWidth={24}>
+          {tickerItems.map((item, i) => (
+            <span
+              key={i}
+              style={{
+                fontFamily: 'var(--vivid-font-display)',
+                fontWeight: 800,
+                fontSize: 13,
+                letterSpacing: '0.04em',
+                color: 'var(--vivid-phase-accent)',
+                textTransform: 'uppercase',
+                paddingRight: 12,
+              }}
+            >
+              {item}
+              <span style={{ padding: '0 12px', opacity: 0.4 }}>&bull;</span>
+            </span>
+          ))}
+        </Marquee>
       </div>
 
       {/* Right: currency */}
