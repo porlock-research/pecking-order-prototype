@@ -126,9 +126,9 @@ export default function GameDetailPage() {
             <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
               {typeof state.state === 'string' ? state.state : JSON.stringify(state.state)}
             </Badge>
-            {state.manifest?.gameMode && (
+            {(state.manifest?.scheduling || state.manifest?.gameMode) && (
               <Badge variant="outline" className="bg-yellow-50 text-yellow-800 border-yellow-200">
-                {state.manifest.gameMode}
+                {state.manifest?.scheduling || state.manifest?.gameMode}
               </Badge>
             )}
           </div>

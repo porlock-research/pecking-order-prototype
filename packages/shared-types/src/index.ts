@@ -144,9 +144,29 @@ export const DEFAULT_PUSH_CONFIG: Record<PushTrigger, boolean> = {
   START_GAME: true, END_GAME: true, START_ACTIVITY: true, END_ACTIVITY: true,
 };
 
+// --- Scheduling Strategy (orthogonal to game type) ---
+
+export const SchedulingStrategySchema = z.enum(['ADMIN', 'PRE_SCHEDULED']);
+export type SchedulingStrategy = z.infer<typeof SchedulingStrategySchema>;
+
+/**
+ * Derive scheduling strategy from a manifest, handling both new (`scheduling`)
+ * and legacy (`gameMode`) fields. Safe to call with null/undefined.
+ */
+export function resolveScheduling(
+  manifest: { scheduling?: string; gameMode?: string } | null | undefined
+): SchedulingStrategy {
+  if (!manifest) return 'PRE_SCHEDULED';
+  if (manifest.scheduling === 'ADMIN' || manifest.scheduling === 'PRE_SCHEDULED') return manifest.scheduling;
+  if (manifest.gameMode === 'DEBUG_PECKING_ORDER') return 'ADMIN';
+  return 'PRE_SCHEDULED';
+}
+
 export const GameManifestSchema = z.object({
   id: z.string(),
-  gameMode: z.enum(["PECKING_ORDER", "CONFIGURABLE_CYCLE", "DEBUG_PECKING_ORDER"]),
+  // Legacy field — kept optional for backward compat with persisted snapshots / old clients
+  gameMode: z.enum(["PECKING_ORDER", "CONFIGURABLE_CYCLE", "DEBUG_PECKING_ORDER"]).optional(),
+  scheduling: SchedulingStrategySchema.default('PRE_SCHEDULED'),
   days: z.array(DailyManifestSchema),
   pushConfig: PushConfigSchema.optional(),
 });

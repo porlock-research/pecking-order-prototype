@@ -18,7 +18,6 @@ export interface GameContext {
   roster: Record<string, SocialPlayer>;
   manifest: GameManifest | null;
   dayIndex: number;
-  nextWakeup: number | null;
   lastProcessedTime: number;
   restoredChatLog?: any[]; // For rehydration only
   lastJournalEntry: number; // Triggers state change for syncing
@@ -90,7 +89,6 @@ export const orchestratorMachine = setup({
     roster: {},
     manifest: null,
     dayIndex: 0,
-    nextWakeup: null,
     lastProcessedTime: 0,
     lastJournalEntry: 0,
     goldPool: 0,
@@ -110,7 +108,6 @@ export const orchestratorMachine = setup({
       }
     },
     preGame: {
-      entry: ['scheduleGameStart'],
       on: {
         'SYSTEM.WAKEUP': { target: 'dayLoop' },
         'ADMIN.NEXT_STAGE': { target: 'dayLoop' },
@@ -162,10 +159,10 @@ export const orchestratorMachine = setup({
               }
             },
             running: {
-              entry: ['processTimelineEvent', 'scheduleNextTimelineEvent'],
+              entry: ['processTimelineEvent'],
               on: {
                 'SYSTEM.WAKEUP': {
-                   actions: ['processTimelineEvent', 'scheduleNextTimelineEvent']
+                   actions: ['processTimelineEvent']
                 }
               }
             }
@@ -229,7 +226,7 @@ export const orchestratorMachine = setup({
           }
         },
         nightSummary: {
-          entry: ['recordCompletedVoting', 'processNightSummary', 'scheduleNextTimelineEvent', raise({ type: 'PUSH.PHASE', trigger: 'NIGHT_SUMMARY' } as any)],
+          entry: ['recordCompletedVoting', 'processNightSummary', raise({ type: 'PUSH.PHASE', trigger: 'NIGHT_SUMMARY' } as any)],
           always: [
             { guard: ({ context }: any) => context.winner !== null, target: '#pecking-order-l2.gameSummary' },
             { guard: ({ context }: any) => context.dayIndex >= (context.manifest?.days.length ?? Infinity), target: '#pecking-order-l2.gameSummary' },
