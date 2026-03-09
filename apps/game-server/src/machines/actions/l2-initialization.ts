@@ -1,6 +1,6 @@
 import { assign } from 'xstate';
 import type { SocialPlayer } from '@pecking-order/shared-types';
-import { Events, PlayerStatuses } from '@pecking-order/shared-types';
+import { Events, PlayerStatuses, normalizeManifest } from '@pecking-order/shared-types';
 
 export const l2InitializationActions = {
   initializeContext: assign({
@@ -22,7 +22,7 @@ export const l2InitializationActions = {
       }
       return internalRoster;
     },
-    manifest: ({ event }: any) => (event.type === Events.System.INIT ? event.payload.manifest : null),
+    manifest: ({ event }: any) => (event.type === Events.System.INIT ? normalizeManifest(event.payload.manifest) : null),
     dayIndex: 0,
     lastProcessedTime: 0,
     lastJournalEntry: 0,
