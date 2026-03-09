@@ -50,6 +50,7 @@ describe('GameManifest discriminated union', () => {
     const raw = {
       kind: 'DYNAMIC' as const,
       scheduling: 'PRE_SCHEDULED' as const,
+      startTime: '2026-03-10T09:00:00Z',
       ruleset: VALID_RULESET,
       schedulePreset: 'DEFAULT' as const,
       maxPlayers: 8,
@@ -66,6 +67,7 @@ describe('GameManifest discriminated union', () => {
     const dynamicRaw = {
       kind: 'DYNAMIC' as const,
       scheduling: 'ADMIN' as const,
+      startTime: '2026-03-10T14:00:00Z',
       ruleset: VALID_RULESET,
       schedulePreset: 'SPEED_RUN' as const,
       maxPlayers: 4,
