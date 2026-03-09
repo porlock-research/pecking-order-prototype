@@ -32,6 +32,7 @@ Build a roster with `PLAYER_COUNT` players:
 Persona names: Viper, Phoenix, Shadow, Ember, Raven, Storm, Nyx, Blaze (up to 8).
 
 Build a manifest with `dayCount = playerCount - 1` days:
+- `kind: "STATIC"`
 - `gameMode: "CONFIGURABLE_CYCLE"`
 - Each day has `dayIndex: N` (1-indexed), `theme: "Day N"`, `gameType: "NONE"`, `timeline: []`
 - All days except the last use `voteType: "MAJORITY"`
