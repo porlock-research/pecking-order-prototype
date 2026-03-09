@@ -39,6 +39,15 @@ export async function scheduleManifestAlarms(scheduler: Scheduler<any>, manifest
   // processTimelineEvent handles finding all events due at that time.
   const uniqueTimestamps = new Map<number, string>(); // timestamp(s) → label
   const now = Date.now();
+
+  // Dynamic manifests: schedule alarm at startTime (game-start wake)
+  if (manifest.kind === 'DYNAMIC' && manifest.startTime) {
+    const startMs = new Date(manifest.startTime).getTime();
+    if (startMs > now) {
+      uniqueTimestamps.set(Math.floor(startMs / 1000), 'game-start');
+    }
+  }
+
   for (const day of manifest.days) {
     for (const event of day.timeline || []) {
       const timeMs = new Date(event.time).getTime();
@@ -46,6 +55,14 @@ export async function scheduleManifestAlarms(scheduler: Scheduler<any>, manifest
         const ts = Math.floor(timeMs / 1000);
         const existing = uniqueTimestamps.get(ts);
         uniqueTimestamps.set(ts, existing ? `${existing}+${event.action}` : `d${day.dayIndex}-${event.action}`);
+      }
+    }
+
+    // Schedule next-day wake alarm
+    if (day.nextDayStart) {
+      const nextMs = new Date(day.nextDayStart).getTime();
+      if (nextMs > now) {
+        uniqueTimestamps.set(Math.floor(nextMs / 1000), `d${day.dayIndex}-next-day-wake`);
       }
     }
   }
