@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { InfoCircle } from '@solar-icons/react';
 import { useGameStore } from '../../../store/useGameStore';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { GAME_MASTER_ID, PlayerStatuses } from '@pecking-order/shared-types';
@@ -20,10 +19,10 @@ interface CastTabProps {
 /*  Rank badge colors                                                  */
 /* ------------------------------------------------------------------ */
 
-const RANK_COLORS: Record<number, string> = {
-  1: '#D4960A',
-  2: '#9B8E7E',
-  3: '#C4713B',
+const RANK_BADGE_STYLES: Record<number, { bg: string; color: string }> = {
+  1: { bg: 'rgba(212, 150, 10, 0.15)', color: '#D4960A' },
+  2: { bg: 'rgba(155, 142, 126, 0.12)', color: '#9B8E7E' },
+  3: { bg: 'rgba(196, 113, 59, 0.12)', color: '#C4713B' },
 };
 
 /* ------------------------------------------------------------------ */
@@ -94,7 +93,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
         const isLeader = rank === 1;
         const isMe = p.id === playerId;
         const color = playerColorMap[p.id] || 'var(--vivid-phase-accent)';
-        const rankColor = RANK_COLORS[rank] || 'var(--vivid-text-dim)';
+        const badgeStyle = RANK_BADGE_STYLES[rank] || { bg: 'rgba(155, 142, 126, 0.1)', color: 'var(--vivid-text-dim)' };
 
         return (
           <motion.div
@@ -121,33 +120,32 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                 : 'var(--vivid-card-shadow)',
             }}
           >
-            {/* Rank badge */}
+            {/* Rank badge — styled number with colored background */}
             <div
               style={{
-                width: 28,
-                minWidth: 28,
+                width: 30,
+                height: 30,
+                minWidth: 30,
+                borderRadius: 10,
+                background: badgeStyle.bg,
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
-                gap: 2,
+                justifyContent: 'center',
               }}
             >
-              {isLeader && (
-                <span style={{ fontSize: 14, lineHeight: 1 }}>👑</span>
-              )}
               <span
                 style={{
                   fontFamily: 'var(--vivid-font-mono)',
                   fontSize: 14,
-                  fontWeight: 700,
-                  color: rankColor,
+                  fontWeight: 800,
+                  color: badgeStyle.color,
                 }}
               >
                 #{rank}
               </span>
             </div>
 
-            {/* Avatar */}
+            {/* Avatar — 52px for podium */}
             <div style={{ position: 'relative' }}>
               <div
                 style={{
@@ -160,7 +158,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                 <PersonaAvatar
                   avatarUrl={p.avatarUrl}
                   personaName={p.personaName}
-                  size={48}
+                  size={52}
                   isOnline={onlineSet.has(p.id) || undefined}
                 />
               </div>
@@ -225,7 +223,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               </span>
             </div>
 
-            {/* Info button */}
+            {/* Info button — simple text */}
             <motion.button
               whileTap={VIVID_TAP.button}
               onClick={(e) => {
@@ -235,15 +233,20 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               style={{
                 background: 'var(--vivid-bg-elevated)',
                 border: 'none',
-                padding: 6,
+                padding: '4px 10px',
                 borderRadius: 8,
                 cursor: 'pointer',
                 color: 'var(--vivid-text-dim)',
                 display: 'flex',
                 alignItems: 'center',
+                fontFamily: 'var(--vivid-font-display)',
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
               }}
             >
-              <InfoCircle size={18} weight="Linear" />
+              Info
             </motion.button>
           </motion.div>
         );
@@ -292,12 +295,12 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               #{rank}
             </span>
 
-            {/* Avatar */}
+            {/* Avatar — 40px for rest */}
             <div style={{ position: 'relative' }}>
               <PersonaAvatar
                 avatarUrl={p.avatarUrl}
                 personaName={p.personaName}
-                size={34}
+                size={40}
                 isOnline={onlineSet.has(p.id) || undefined}
               />
               {onlineSet.has(p.id) && (
@@ -361,7 +364,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               {p.silver ?? 0}
             </span>
 
-            {/* Info button */}
+            {/* Info button — simple text */}
             <motion.button
               whileTap={VIVID_TAP.button}
               onClick={(e) => {
@@ -376,9 +379,14 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                 color: 'var(--vivid-text-dim)',
                 display: 'flex',
                 alignItems: 'center',
+                fontFamily: 'var(--vivid-font-display)',
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
               }}
             >
-              <InfoCircle size={16} weight="Linear" />
+              Info
             </motion.button>
           </motion.div>
         );
@@ -430,11 +438,11 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                   border: '1px solid rgba(139, 115, 85, 0.06)',
                 }}
               >
-                {/* Avatar */}
+                {/* Avatar — 36px for eliminated */}
                 <PersonaAvatar
                   avatarUrl={p.avatarUrl}
                   personaName={p.personaName}
-                  size={32}
+                  size={36}
                   eliminated
                 />
 
@@ -491,7 +499,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                   {p.silver ?? 0}
                 </span>
 
-                {/* Info button */}
+                {/* Info button — simple text */}
                 <motion.button
                   whileTap={VIVID_TAP.button}
                   onClick={(e) => {
@@ -506,9 +514,14 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                     color: 'var(--vivid-text-dim)',
                     display: 'flex',
                     alignItems: 'center',
+                    fontFamily: 'var(--vivid-font-display)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
                   }}
                 >
-                  <InfoCircle size={16} weight="Linear" />
+                  Info
                 </motion.button>
               </motion.div>
             );

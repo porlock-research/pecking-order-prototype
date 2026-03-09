@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useGameStore } from '../../../store/useGameStore';
 
 function getPhaseLabel(serverState: unknown, dayIndex: number): string {
@@ -22,54 +22,113 @@ export function BroadcastBar() {
   const playerId = useGameStore(s => s.playerId);
   const roster = useGameStore(s => s.roster);
   const goldPool = useGameStore(s => s.goldPool);
+  const tickerMessages = useGameStore(s => s.tickerMessages);
 
   const mySilver = playerId ? (roster[playerId]?.silver ?? 0) : 0;
   const phaseLabel = getPhaseLabel(serverState, dayIndex);
+
+  // Build ticker items: phase label first, then recent ticker messages
+  const tickerItems = useMemo(() => {
+    const items: string[] = [phaseLabel];
+    // Show the last 20 ticker messages in the scrolling ticker
+    const recent = tickerMessages.slice(-20);
+    for (const msg of recent) {
+      items.push(msg.text);
+    }
+    return items;
+  }, [phaseLabel, tickerMessages]);
+
+  const tickerContent = tickerItems.join(' \u2022 ');
+
+  // Dynamic speed: ~60px per second, minimum 15s
+  const animationDuration = useMemo(() => {
+    const estimatedWidth = tickerContent.length * 7;
+    return Math.max(15, estimatedWidth / 60);
+  }, [tickerContent]);
 
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '10px 16px',
+        padding: '10px 0',
+        paddingLeft: 16,
         background: 'var(--vivid-bg-surface)',
         borderBottom: '2px solid rgba(139, 115, 85, 0.08)',
         flexShrink: 0,
         zIndex: 20,
+        overflow: 'hidden',
+        gap: 10,
       }}
     >
-      {/* Left: LIVE dot + phase label */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div className="vivid-live-dot" />
-        <span
-          className="vivid-phase-shimmer"
+      {/* Left: LIVE dot */}
+      <div className="vivid-live-dot" style={{ flexShrink: 0 }} />
+
+      {/* Scrolling ticker */}
+      <div
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          maskImage: 'linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent)',
+        }}
+      >
+        <div
+          className="vivid-ticker"
           style={{
-            fontFamily: 'var(--vivid-font-display)',
-            fontWeight: 800,
-            fontSize: 13,
-            letterSpacing: '0.04em',
-            color: 'var(--vivid-phase-accent)',
-            textTransform: 'uppercase',
+            animationDuration: `${animationDuration}s`,
           }}
         >
-          {phaseLabel}
-        </span>
+          <span
+            style={{
+              fontFamily: 'var(--vivid-font-display)',
+              fontWeight: 800,
+              fontSize: 13,
+              letterSpacing: '0.04em',
+              color: 'var(--vivid-phase-accent)',
+              textTransform: 'uppercase',
+              paddingRight: 48,
+            }}
+          >
+            {tickerContent}
+          </span>
+          <span
+            style={{
+              fontFamily: 'var(--vivid-font-display)',
+              fontWeight: 800,
+              fontSize: 13,
+              letterSpacing: '0.04em',
+              color: 'var(--vivid-phase-accent)',
+              textTransform: 'uppercase',
+              paddingRight: 48,
+            }}
+          >
+            {tickerContent}
+          </span>
+        </div>
       </div>
 
       {/* Right: currency */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, paddingRight: 16 }}>
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
+            gap: 5,
             background: 'rgba(212, 150, 10, 0.1)',
             borderRadius: 20,
             padding: '4px 10px',
           }}
         >
-          <span style={{ fontSize: 14, lineHeight: 1 }}>🪙</span>
+          <div
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: '#D4960A',
+              flexShrink: 0,
+            }}
+          />
           <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 13, fontWeight: 600, color: '#D4960A' }}>
             {mySilver}
           </span>
@@ -78,13 +137,21 @@ export function BroadcastBar() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
+            gap: 5,
             background: 'rgba(139, 108, 193, 0.1)',
             borderRadius: 20,
             padding: '4px 10px',
           }}
         >
-          <span style={{ fontSize: 14, lineHeight: 1 }}>🏆</span>
+          <div
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: '#8B6CC1',
+              flexShrink: 0,
+            }}
+          />
           <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 13, fontWeight: 600, color: '#8B6CC1' }}>
             {goldPool}
           </span>

@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster } from 'sonner';
+import { useDrag } from '@use-gesture/react';
 import './vivid.css';
 import type { ShellProps } from '../types';
 import { useGameStore } from '../../store/useGameStore';
@@ -18,8 +19,13 @@ import { PlayerQuickSheet } from './components/PlayerQuickSheet';
 import { PlayerDetail } from './components/PlayerDetail';
 import { PhaseTransitionSplash } from './components/PhaseTransitionSplash';
 import { DramaticReveal } from './components/DramaticReveal';
-import { VividPerkFAB } from './components/VividPerkFAB';
 import { VIVID_SPRING } from './springs';
+
+/* ------------------------------------------------------------------ */
+/*  Tab ordering for swipe gestures                                    */
+/* ------------------------------------------------------------------ */
+
+const TAB_ORDER: VividTab[] = ['stage', 'whispers', 'cast'];
 
 /* ------------------------------------------------------------------ */
 /*  Phase class resolver                                               */
@@ -84,6 +90,33 @@ function VividShell({ playerId, engine, token }: ShellProps) {
     setActiveTab(tab);
   }, []);
 
+  /* ---- Swipe gesture for tab switching ---- */
+
+  const mainContentRef = useRef<HTMLElement>(null);
+
+  const bind = useDrag(
+    ({ direction: [dx], velocity: [vx], cancel, event }) => {
+      // Only respond to horizontal swipes with sufficient velocity
+      if (vx < 0.3) return;
+
+      const currentIndex = TAB_ORDER.indexOf(activeTab);
+      if (dx < 0 && currentIndex < TAB_ORDER.length - 1) {
+        // Swipe left -> next tab
+        setActiveTab(TAB_ORDER[currentIndex + 1]);
+        cancel();
+      } else if (dx > 0 && currentIndex > 0) {
+        // Swipe right -> previous tab
+        setActiveTab(TAB_ORDER[currentIndex - 1]);
+        cancel();
+      }
+    },
+    {
+      axis: 'x',
+      filterTaps: true,
+      pointer: { touch: true },
+    }
+  );
+
   /* ---- Render ---- */
 
   return (
@@ -101,8 +134,19 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       {/* Broadcast bar — top */}
       <BroadcastBar />
 
-      {/* Main content — tab panels */}
-      <main style={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+      {/* Main content — tab panels with swipe */}
+      <main
+        ref={mainContentRef}
+        {...bind()}
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          touchAction: 'pan-y',
+        }}
+      >
         <AnimatePresence mode="wait">
           {activeTab === 'stage' && (
             <motion.div
@@ -193,9 +237,6 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       {/* Broadcast chrome */}
       <PhaseTransitionSplash />
       <DramaticReveal />
-
-      {/* Perk FAB — visible on Stage tab only */}
-      {activeTab === 'stage' && <VividPerkFAB engine={engine} />}
 
       {/* New DM picker overlay */}
       {showNewDm && (

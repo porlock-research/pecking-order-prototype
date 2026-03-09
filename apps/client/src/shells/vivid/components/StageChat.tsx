@@ -210,7 +210,7 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                 <PersonaAvatar
                   avatarUrl={p.avatarUrl}
                   personaName={p.personaName}
-                  size={28}
+                  size={36}
                 />
               </motion.div>
               <div

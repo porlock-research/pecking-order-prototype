@@ -256,7 +256,14 @@ export function PlayerDetail({
               boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <span style={{ fontSize: 26, lineHeight: 1 }}>🪙</span>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: '#D4960A',
+              }}
+            />
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
@@ -271,7 +278,7 @@ export function PlayerDetail({
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: 'var(--vivid-text-dim)',
+                color: '#D4960A',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
               }}
@@ -294,7 +301,14 @@ export function PlayerDetail({
               boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <span style={{ fontSize: 26, lineHeight: 1 }}>🏆</span>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: '#8B6CC1',
+              }}
+            />
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
@@ -309,7 +323,7 @@ export function PlayerDetail({
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: 'var(--vivid-text-dim)',
+                color: '#8B6CC1',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
               }}
@@ -332,7 +346,14 @@ export function PlayerDetail({
               boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <span style={{ fontSize: 26, lineHeight: 1 }}>{isOnline ? '🟢' : '⚫'}</span>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: isOnline ? '#4ade80' : '#9B8E7E',
+              }}
+            />
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
@@ -370,7 +391,14 @@ export function PlayerDetail({
               boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <span style={{ fontSize: 26, lineHeight: 1 }}>💬</span>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: '#3BA99C',
+              }}
+            />
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
@@ -385,7 +413,7 @@ export function PlayerDetail({
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: 'var(--vivid-text-dim)',
+                color: '#3BA99C',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
               }}

@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { ChatMessage, SocialPlayer } from '@pecking-order/shared-types';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
@@ -46,6 +46,45 @@ export function MessageCard({
 }: MessageCardProps) {
   const isGameMaster = message.senderId === GAME_MASTER_ID;
 
+  // Long press state
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isPressed, setIsPressed] = useState(false);
+
+  // Double tap state
+  const lastTapTime = useRef(0);
+  const [showReaction, setShowReaction] = useState(false);
+
+  const handleTouchStart = useCallback(() => {
+    setIsPressed(true);
+    longPressTimer.current = setTimeout(() => {
+      // Long press triggers avatar tap (opens player quick sheet)
+      if (onTapAvatar && message.senderId !== GAME_MASTER_ID) {
+        onTapAvatar(message.senderId);
+      }
+      setIsPressed(false);
+    }, 500);
+  }, [onTapAvatar, message.senderId]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    setIsPressed(false);
+  }, []);
+
+  const handleDoubleTap = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTapTime.current < 300) {
+      // Double tap detected
+      setShowReaction(true);
+      setTimeout(() => setShowReaction(false), 800);
+      lastTapTime.current = 0;
+    } else {
+      lastTapTime.current = now;
+    }
+  }, []);
+
   /* -- Game Master card -------------------------------------------- */
   if (isGameMaster) {
     return (
@@ -73,20 +112,27 @@ export function MessageCard({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <div
+            {/* GM text badge instead of emoji */}
+            <span
               style={{
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                background: 'rgba(212, 150, 10, 0.15)',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                padding: '2px 7px',
+                borderRadius: 6,
+                background: 'rgba(212, 150, 10, 0.18)',
+                border: '1px solid rgba(212, 150, 10, 0.3)',
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                color: '#D4960A',
+                fontFamily: 'var(--vivid-font-display)',
+                lineHeight: 1.3,
                 flexShrink: 0,
               }}
             >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>👑</span>
-            </div>
+              GM
+            </span>
             <span
               style={{
                 fontSize: 12,
@@ -138,22 +184,26 @@ export function MessageCard({
       }
       animate={{
         opacity: isOptimistic ? 0.5 : 1,
-        scale: 1,
+        scale: isPressed ? 0.97 : 1,
         y: 0,
         x: 0,
       }}
       whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.98 }}
       transition={VIVID_SPRING.bouncy}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      onClick={handleDoubleTap}
       style={{
         width: '100%',
         display: 'flex',
         flexDirection: isMe ? 'row-reverse' : 'row',
         alignItems: 'flex-end',
         gap: 8,
+        position: 'relative',
       }}
     >
-      {/* Avatar (outside the bubble) */}
+      {/* Avatar (outside the bubble) — 40px */}
       {showSender && (
         <div
           style={{
@@ -161,12 +211,12 @@ export function MessageCard({
             cursor: onTapAvatar ? 'pointer' : undefined,
             alignSelf: 'flex-end',
           }}
-          onClick={() => onTapAvatar?.(message.senderId)}
+          onClick={(e) => { e.stopPropagation(); onTapAvatar?.(message.senderId); }}
         >
           <PersonaAvatar
             avatarUrl={sender?.avatarUrl}
             personaName={sender?.personaName}
-            size={34}
+            size={40}
           />
         </div>
       )}
@@ -175,8 +225,8 @@ export function MessageCard({
       <div
         style={{
           maxWidth: '75%',
-          marginLeft: !showSender && !isMe ? 42 : 0,
-          marginRight: !showSender && isMe ? 42 : 0,
+          marginLeft: !showSender && !isMe ? 48 : 0,
+          marginRight: !showSender && isMe ? 48 : 0,
           position: 'relative',
         }}
       >
@@ -252,6 +302,37 @@ export function MessageCard({
             </div>
           )}
         </div>
+
+        {/* Double-tap reaction */}
+        <AnimatePresence>
+          {showReaction && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0, y: 0 }}
+              animate={{ opacity: 1, scale: 1, y: -8 }}
+              exit={{ opacity: 0, scale: 0.5, y: -20 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              style={{
+                position: 'absolute',
+                bottom: '100%',
+                left: isMe ? 'auto' : '50%',
+                right: isMe ? '50%' : 'auto',
+                transform: 'translateX(-50%)',
+                padding: '3px 8px',
+                borderRadius: 8,
+                background: 'var(--vivid-phase-accent)',
+                color: '#FFFFFF',
+                fontSize: 11,
+                fontWeight: 800,
+                fontFamily: 'var(--vivid-font-display)',
+                letterSpacing: '0.04em',
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              +1
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );

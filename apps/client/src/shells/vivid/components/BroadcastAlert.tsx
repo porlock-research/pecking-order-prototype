@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { VIVID_SPRING } from '../springs';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -18,7 +17,7 @@ interface AlertStyle {
   bgColor: string;
   borderColor: string;
   accentColor: string;
-  emoji: string;
+  label: string;
 }
 
 function resolveAlertStyle(category: string): AlertStyle {
@@ -29,7 +28,7 @@ function resolveAlertStyle(category: string): AlertStyle {
       bgColor: '#FDE8E4',
       borderColor: '#E8614D',
       accentColor: '#D94053',
-      emoji: '💀',
+      label: 'ELIMINATED',
     };
   }
 
@@ -38,7 +37,7 @@ function resolveAlertStyle(category: string): AlertStyle {
       bgColor: '#FFF3D6',
       borderColor: '#E89B3A',
       accentColor: '#D4960A',
-      emoji: '🗳️',
+      label: 'VOTE',
     };
   }
 
@@ -47,7 +46,7 @@ function resolveAlertStyle(category: string): AlertStyle {
       bgColor: '#FFF8E1',
       borderColor: '#D4960A',
       accentColor: '#D4960A',
-      emoji: '👑',
+      label: 'WINNER',
     };
   }
 
@@ -56,7 +55,7 @@ function resolveAlertStyle(category: string): AlertStyle {
       bgColor: '#E6F5EF',
       borderColor: '#3BA99C',
       accentColor: '#3BA99C',
-      emoji: '🎮',
+      label: 'GAME',
     };
   }
 
@@ -65,7 +64,7 @@ function resolveAlertStyle(category: string): AlertStyle {
     bgColor: '#F0F5EE',
     borderColor: '#6B9E6E',
     accentColor: '#6B9E6E',
-    emoji: '📢',
+    label: 'INFO',
   };
 }
 
@@ -74,7 +73,7 @@ function resolveAlertStyle(category: string): AlertStyle {
 /* ------------------------------------------------------------------ */
 
 export function BroadcastAlert({ message }: BroadcastAlertProps) {
-  const { bgColor, borderColor, accentColor, emoji } = resolveAlertStyle(message.category);
+  const { bgColor, borderColor, accentColor, label } = resolveAlertStyle(message.category);
 
   return (
     <motion.div
@@ -97,7 +96,24 @@ export function BroadcastAlert({ message }: BroadcastAlertProps) {
         ['--alert-pulse-color' as string]: accentColor,
       }}
     >
-      <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>{emoji}</span>
+      {/* Category badge instead of emoji */}
+      <span
+        style={{
+          flexShrink: 0,
+          padding: '3px 8px',
+          borderRadius: 6,
+          background: accentColor,
+          color: '#FFFFFF',
+          fontSize: 10,
+          fontWeight: 800,
+          fontFamily: 'var(--vivid-font-display)',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          lineHeight: 1.2,
+        }}
+      >
+        {label}
+      </span>
       <span
         style={{
           fontSize: 14,
