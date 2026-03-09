@@ -1,57 +1,55 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster } from 'sonner';
 import './vivid.css';
 import type { ShellProps } from '../types';
 import { useGameStore } from '../../store/useGameStore';
-import { GameHUD } from './components/GameHUD';
-import { PersonaRail } from './components/PersonaRail';
-import { StageChat } from './components/StageChat';
-import { CartridgeOverlay } from './components/CartridgeOverlay';
-import { Backstage } from './components/Backstage';
-import { DMChat } from './components/DMChat';
-import { Spotlight } from './components/Spotlight';
-import { DramaticReveal } from './components/DramaticReveal';
-import { QuickActions } from './components/QuickActions';
-import { VividPerkFAB } from './components/VividPerkFAB';
+import { buildPlayerColorMap } from './colors';
+import { GAME_MASTER_ID } from '@pecking-order/shared-types';
+import { BroadcastBar } from './components/BroadcastBar';
+import { TabBar, type VividTab } from './components/TabBar';
 import { PwaGate } from '../../components/PwaGate';
-import { NewDmPicker } from '../classic/components/NewDmPicker';
-import { NewGroupPicker } from '../classic/components/NewGroupPicker';
 import { VIVID_SPRING } from './springs';
 
 /* ------------------------------------------------------------------ */
-/*  Types                                                              */
+/*  Phase class resolver                                               */
 /* ------------------------------------------------------------------ */
 
-type Space = 'stage' | 'backstage' | 'dm-chat' | 'spotlight' | 'new-dm' | 'new-group';
+function getPhaseClass(serverState: string | null): string {
+  if (!serverState) return 'vivid-phase-default';
+  const s = serverState.toLowerCase();
+  if (s.includes('pregame')) return 'vivid-phase-pregame';
+  if (s.includes('voting') || s.includes('nightsummary')) return 'vivid-phase-voting';
+  if (s.includes('game')) return 'vivid-phase-game';
+  if (s.includes('gamesummary') || s.includes('gameover')) return 'vivid-phase-elimination';
+  return 'vivid-phase-social';
+}
 
 /* ------------------------------------------------------------------ */
-/*  PhaseBackground                                                    */
+/*  Placeholder tab content                                            */
 /* ------------------------------------------------------------------ */
 
-function PhaseBackground() {
-  const serverState = useGameStore((s) => s.serverState);
-
-  let phaseClass = 'vivid-phase-default';
-  if (typeof serverState === 'string') {
-    if (serverState.includes('voting') || serverState.includes('nightSummary')) {
-      phaseClass = 'vivid-phase-voting';
-    } else if (serverState.includes('game') || serverState.includes('Game')) {
-      phaseClass = 'vivid-phase-game';
-    } else if (
-      serverState.includes('morning') ||
-      serverState.includes('social') ||
-      serverState.includes('dm') ||
-      serverState.includes('chat')
-    ) {
-      phaseClass = 'vivid-phase-social';
-    }
-  }
-
+function StagePlaceholder() {
   return (
-    <div
-      className={`fixed inset-0 -z-10 transition-colors duration-[2000ms] ${phaseClass}`}
-    />
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vivid-text-dim)' }}>
+      Stage — coming soon
+    </div>
+  );
+}
+
+function WhispersPlaceholder() {
+  return (
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vivid-text-dim)' }}>
+      Whispers — coming soon
+    </div>
+  );
+}
+
+function CastPlaceholder() {
+  return (
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vivid-text-dim)' }}>
+      Cast — coming soon
+    </div>
   );
 }
 
@@ -60,103 +58,46 @@ function PhaseBackground() {
 /* ------------------------------------------------------------------ */
 
 function VividShell({ playerId, engine, token }: ShellProps) {
-  const [space, setSpace] = useState<Space>('stage');
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
-  const [contextTarget, setContextTarget] = useState<string | null>(null);
-  const [contextPosition, setContextPosition] = useState<{ x: number; y: number } | null>(null);
+  const [activeTab, setActiveTab] = useState<VividTab>('stage');
+  const [dmTargetPlayerId, setDmTargetPlayerId] = useState<string | null>(null);
+  const [dmChannelId, setDmChannelId] = useState<string | null>(null);
+  const [detailPlayerId, setDetailPlayerId] = useState<string | null>(null);
+  const [quickSheetPlayerId, setQuickSheetPlayerId] = useState<string | null>(null);
 
-  const { roster } = useGameStore();
+  const roster = useGameStore(s => s.roster);
+  const serverState = useGameStore(s => s.serverState);
+
+  const phaseClass = getPhaseClass(serverState);
+
+  const playerColorMap = useMemo(() => {
+    const playerIds = Object.keys(roster).filter(id => id !== GAME_MASTER_ID);
+    return buildPlayerColorMap(playerIds);
+  }, [roster]);
 
   /* ---- Navigation handlers ---- */
 
-  const handleSelectPlayer = useCallback((id: string) => {
-    setSelectedPlayerId(id);
-    setSelectedChannelId(null);
-    setSpace('dm-chat');
+  const handleOpenDm = useCallback((targetId: string) => {
+    setDmTargetPlayerId(targetId);
+    setDmChannelId(null);
+    setActiveTab('whispers');
   }, []);
 
-  const handleSelectMainChat = useCallback(() => {
-    setSpace('stage');
-    setSelectedPlayerId(null);
-    setSelectedChannelId(null);
+  const handleOpenGroupDm = useCallback((channelId: string) => {
+    setDmChannelId(channelId);
+    setDmTargetPlayerId(null);
+    setActiveTab('whispers');
   }, []);
 
-  const handleSelectDm = useCallback((pid: string) => {
-    setSelectedPlayerId(pid);
-    setSelectedChannelId(null);
-    setSpace('dm-chat');
+  const handleOpenPlayerDetail = useCallback((pid: string) => {
+    setDetailPlayerId(pid);
   }, []);
 
-  const handleSelectGroup = useCallback((channelId: string) => {
-    setSelectedChannelId(channelId);
-    setSelectedPlayerId(null);
-    setSpace('dm-chat');
+  const handleClosePlayerDetail = useCallback(() => {
+    setDetailPlayerId(null);
   }, []);
 
-  const handleBackToStage = useCallback(() => {
-    setSpace('stage');
-    setSelectedPlayerId(null);
-    setSelectedChannelId(null);
-  }, []);
-
-  const handleBackFromDm = useCallback(() => {
-    setSpace('backstage');
-  }, []);
-
-  const handleOpenSpotlight = useCallback((pid: string) => {
-    setSelectedPlayerId(pid);
-    setSpace('spotlight');
-  }, []);
-
-  const handleBackFromSpotlight = useCallback(() => {
-    if (selectedPlayerId) {
-      setSpace('dm-chat');
-    } else {
-      setSpace('backstage');
-    }
-  }, [selectedPlayerId]);
-
-  const handleMessageFromSpotlight = useCallback((pid: string) => {
-    setSelectedPlayerId(pid);
-    setSelectedChannelId(null);
-    setSpace('dm-chat');
-  }, []);
-
-  const handleStartGroupFromSpotlight = useCallback((_playerId: string) => {
-    setSpace('new-group');
-  }, []);
-
-  const handleLongPressPlayer = useCallback(
-    (pid: string, position: { x: number; y: number }) => {
-      setContextTarget(pid);
-      setContextPosition(position);
-    },
-    [],
-  );
-
-  const handleLongPressBubble = useCallback(
-    (pid: string, position: { x: number; y: number }) => {
-      setContextTarget(pid);
-      setContextPosition(position);
-    },
-    [],
-  );
-
-  const handleCloseQuickActions = useCallback(() => {
-    setContextTarget(null);
-    setContextPosition(null);
-  }, []);
-
-  const handleQuickMessage = useCallback((pid: string) => {
-    setSelectedPlayerId(pid);
-    setSelectedChannelId(null);
-    setSpace('dm-chat');
-  }, []);
-
-  const handleQuickViewProfile = useCallback((pid: string) => {
-    setSelectedPlayerId(pid);
-    setSpace('spotlight');
+  const handleTabChange = useCallback((tab: VividTab) => {
+    setActiveTab(tab);
   }, []);
 
   /* ---- Render ---- */
@@ -164,159 +105,64 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   return (
     <div
       data-testid="game-shell"
-      className="vivid-shell fixed inset-0 flex flex-col overflow-hidden"
+      className={`vivid-phase-bg ${phaseClass}`}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
     >
-      {/* Phase-reactive background */}
-      <PhaseBackground />
+      {/* Broadcast bar — top */}
+      <BroadcastBar />
 
-      {/* Game HUD — always visible */}
-      <GameHUD />
-
-      {/* Persona Rail — visible on Stage and Backstage */}
-      {(space === 'stage' || space === 'backstage') && (
-        <PersonaRail
-          onSelectPlayer={handleSelectPlayer}
-          onSelectMainChat={handleSelectMainChat}
-          onLongPressPlayer={handleLongPressPlayer}
-          activePlayerId={selectedPlayerId}
-          showingMainChat={space === 'stage'}
-        />
-      )}
-
-      {/* Space content — animated page transitions */}
-      <main className="flex-1 overflow-hidden relative flex flex-col">
+      {/* Main content — tab panels */}
+      <main style={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
         <AnimatePresence mode="wait">
-          {space === 'stage' && (
+          {activeTab === 'stage' && (
             <motion.div
               key="stage"
-              className="absolute inset-0 flex flex-col"
+              style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={VIVID_SPRING.gentle}
             >
-              <StageChat engine={engine} onLongPressBubble={handleLongPressBubble} />
+              <StagePlaceholder />
             </motion.div>
           )}
 
-          {space === 'backstage' && (
+          {activeTab === 'whispers' && (
             <motion.div
-              key="backstage"
-              className="absolute inset-0 flex flex-col"
-              initial={{ x: '-100%', opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: '-100%', opacity: 0 }}
-              transition={VIVID_SPRING.page}
+              key="whispers"
+              style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={VIVID_SPRING.gentle}
             >
-              <Backstage
-                onSelectDm={handleSelectDm}
-                onSelectGroup={handleSelectGroup}
-                onNewDm={() => setSpace('new-dm')}
-                onNewGroup={() => setSpace('new-group')}
-                onBack={handleBackToStage}
-              />
+              <WhispersPlaceholder />
             </motion.div>
           )}
 
-          {space === 'dm-chat' && (selectedPlayerId || selectedChannelId) && (
+          {activeTab === 'cast' && (
             <motion.div
-              key="dm-chat"
-              className="absolute inset-0 flex flex-col"
-              initial={{ y: '100%', opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: '100%', opacity: 0 }}
-              transition={VIVID_SPRING.page}
+              key="cast"
+              style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={VIVID_SPRING.gentle}
             >
-              <DMChat
-                mode={selectedChannelId ? 'group' : '1on1'}
-                targetPlayerId={selectedPlayerId || undefined}
-                channelId={selectedChannelId || undefined}
-                engine={engine}
-                onBack={handleBackFromDm}
-                onOpenSpotlight={handleOpenSpotlight}
-              />
-            </motion.div>
-          )}
-
-          {space === 'spotlight' && selectedPlayerId && (
-            <motion.div
-              key="spotlight"
-              className="absolute inset-0 flex flex-col"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={VIVID_SPRING.dramatic}
-            >
-              <Spotlight
-                targetPlayerId={selectedPlayerId}
-                engine={engine}
-                onBack={handleBackFromSpotlight}
-                onMessage={handleMessageFromSpotlight}
-                onStartGroup={handleStartGroupFromSpotlight}
-              />
-            </motion.div>
-          )}
-
-          {space === 'new-dm' && (
-            <motion.div
-              key="new-dm"
-              className="absolute inset-0 flex flex-col"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={VIVID_SPRING.page}
-            >
-              <NewDmPicker
-                roster={roster}
-                playerId={playerId}
-                onSelect={handleSelectDm}
-                onBack={() => setSpace('backstage')}
-              />
-            </motion.div>
-          )}
-
-          {space === 'new-group' && (
-            <motion.div
-              key="new-group"
-              className="absolute inset-0 flex flex-col"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={VIVID_SPRING.page}
-            >
-              <NewGroupPicker
-                roster={roster}
-                playerId={playerId}
-                onBack={() => setSpace('backstage')}
-                engine={engine}
-              />
+              <CastPlaceholder />
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      {/* Cartridge overlay — only on Stage */}
-      {space === 'stage' && (
-        <CartridgeOverlay engine={engine} chatPeekContent={null} />
-      )}
-
-      {/* Perk FAB — visible on Stage */}
-      {space === 'stage' && <VividPerkFAB engine={engine} />}
-
-      {/* Quick actions context menu */}
-      <QuickActions
-        targetPlayerId={contextTarget}
-        position={contextPosition}
-        onClose={handleCloseQuickActions}
-        onMessage={handleQuickMessage}
-        onSendSilver={(pid) => {
-          engine.sendSilver(1, pid);
-        }}
-        onViewProfile={handleQuickViewProfile}
-      />
-
-      {/* Dramatic reveal overlay */}
-      <DramaticReveal />
+      {/* Tab bar — bottom */}
+      <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
 
       {/* PWA gate */}
       <PwaGate token={token} />
