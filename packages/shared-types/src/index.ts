@@ -498,6 +498,7 @@ export interface GameMasterAction {
 
 export interface GameHistoryEntry {
   gameType: string;
+  activityType?: string;
   dayIndex: number;
   timestamp: number;
   silverRewards: Record<string, number>;
