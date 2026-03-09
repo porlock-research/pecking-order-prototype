@@ -7,6 +7,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { buildPlayerColorMap } from './colors';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { BroadcastBar } from './components/BroadcastBar';
+import { StageChat } from './components/StageChat';
 import { TabBar, type VividTab } from './components/TabBar';
 import { PwaGate } from '../../components/PwaGate';
 import { VIVID_SPRING } from './springs';
@@ -28,14 +29,6 @@ function getPhaseClass(serverState: string | null): string {
 /* ------------------------------------------------------------------ */
 /*  Placeholder tab content                                            */
 /* ------------------------------------------------------------------ */
-
-function StagePlaceholder() {
-  return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vivid-text-dim)' }}>
-      Stage — coming soon
-    </div>
-  );
-}
 
 function WhispersPlaceholder() {
   return (
@@ -129,7 +122,11 @@ function VividShell({ playerId, engine, token }: ShellProps) {
               exit={{ opacity: 0 }}
               transition={VIVID_SPRING.gentle}
             >
-              <StagePlaceholder />
+              <StageChat
+                engine={engine}
+                playerColorMap={playerColorMap}
+                onTapAvatar={(pid) => setQuickSheetPlayerId(pid)}
+              />
             </motion.div>
           )}
 

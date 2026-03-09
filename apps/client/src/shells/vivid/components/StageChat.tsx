@@ -1,15 +1,14 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../store/useGameStore';
 import { useTimeline } from '../../../hooks/useTimeline';
-import { ChatBubble } from './ChatBubble';
-import { SystemAnnouncement } from './SystemAnnouncement';
+import { MessageCard } from './MessageCard';
+import { BroadcastAlert } from './BroadcastAlert';
 import { ChatInput } from './ChatInput';
 import VotingPanel from '../../../components/panels/VotingPanel';
 import GamePanel from '../../../components/panels/GamePanel';
 import PromptPanel from '../../../components/panels/PromptPanel';
 import type { ChatMessage } from '@pecking-order/shared-types';
-import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { AltArrowDown, Scale, Gamepad, ChatDots } from '@solar-icons/react';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
@@ -19,7 +18,8 @@ import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
 interface StageChatProps {
   engine: any;
-  onLongPressBubble?: (playerId: string, position: { x: number; y: number }) => void;
+  playerColorMap: Record<string, string>;
+  onTapAvatar?: (playerId: string) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -32,12 +32,11 @@ const SCROLL_THRESHOLD = 100;
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export function StageChat({ engine, onLongPressBubble }: StageChatProps) {
+export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProps) {
   const { playerId, roster } = useGameStore();
   const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
   const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
   const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
-  const onlinePlayers = useGameStore(s => s.onlinePlayers);
   const entries = useTimeline();
   const chatLog = useGameStore(s => s.chatLog);
 
@@ -47,19 +46,6 @@ export function StageChat({ engine, onLongPressBubble }: StageChatProps) {
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [replyTarget, setReplyTarget] = useState<ChatMessage | null>(null);
-
-  /* -- Player index map -------------------------------------------- */
-
-  const playerIndexMap = useMemo(() => {
-    const map = new Map<string, number>();
-    let idx = 0;
-    Object.keys(roster).forEach(pid => {
-      if (pid !== GAME_MASTER_ID) {
-        map.set(pid, idx++);
-      }
-    });
-    return map;
-  }, [roster]);
 
   /* -- Active cartridge state -------------------------------------- */
 
@@ -237,16 +223,15 @@ export function StageChat({ engine, onLongPressBubble }: StageChatProps) {
               case 'chat':
                 return (
                   <div key={entry.key} style={{ marginTop }}>
-                    <ChatBubble
+                    <MessageCard
                       message={entry.data}
                       isMe={entry.data.senderId === playerId}
                       sender={roster[entry.data.senderId]}
                       showSender={shouldShowSender(i)}
                       showTimestamp={shouldShowTimestamp(i)}
-                      isOnline={onlinePlayers.includes(entry.data.senderId)}
-                      onLongPress={onLongPressBubble}
+                      playerColor={playerColorMap[entry.data.senderId] || '#8B8DB3'}
+                      onTapAvatar={onTapAvatar}
                       onTapReply={handleTapReply}
-                      playerIndex={playerIndexMap.get(entry.data.senderId) ?? 0}
                     />
                   </div>
                 );
@@ -254,7 +239,7 @@ export function StageChat({ engine, onLongPressBubble }: StageChatProps) {
               case 'system':
                 return (
                   <div key={entry.key} style={{ marginTop }}>
-                    <SystemAnnouncement message={entry.data} />
+                    <BroadcastAlert message={entry.data} />
                   </div>
                 );
 
@@ -287,13 +272,13 @@ export function StageChat({ engine, onLongPressBubble }: StageChatProps) {
           {/* Pending optimistic messages */}
           {pendingOptimistic.map(msg => (
             <div key={msg.id} style={{ marginTop: 2 }}>
-              <ChatBubble
+              <MessageCard
                 message={msg}
                 isMe={true}
                 sender={playerId ? roster[playerId] : undefined}
                 showSender={false}
                 isOptimistic
-                playerIndex={playerIndexMap.get(msg.senderId) ?? 0}
+                playerColor={playerColorMap[msg.senderId] || '#8B8DB3'}
               />
             </div>
           ))}
