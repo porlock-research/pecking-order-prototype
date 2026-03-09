@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useMemo } from 'react';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { getActiveShellId, SHELL_REGISTRY } from './registry';
+import { ShellPicker } from './ShellPicker';
 import type { ShellProps } from './types';
 
 interface ShellLoaderProps {
@@ -32,6 +33,7 @@ export function ShellLoader({ gameId, playerId, token }: ShellLoaderProps) {
       }
     >
       <ShellComponent {...shellProps} />
+      <ShellPicker />
     </Suspense>
   );
 }
