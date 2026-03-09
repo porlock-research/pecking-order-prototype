@@ -171,6 +171,7 @@ export async function createGame(
         inviteCode,
         roster: {},
         manifest: {
+          kind: 'STATIC' as const,
           id: `manifest-${gameId}`,
           gameMode: mode, // legacy compat
           scheduling: 'PRE_SCHEDULED' as const,
@@ -800,7 +801,7 @@ export async function startDebugGame(
     lobbyId: `lobby-${Date.now()}`,
     inviteCode: 'DEBUG',
     roster,
-    manifest: { id: 'manifest-1', gameMode: mode, scheduling: mode === 'DEBUG_PECKING_ORDER' ? 'ADMIN' as const : 'PRE_SCHEDULED' as const, days, pushConfig: debugConfig?.pushConfig },
+    manifest: { kind: 'STATIC' as const, id: 'manifest-1', gameMode: mode, scheduling: mode === 'DEBUG_PECKING_ORDER' ? 'ADMIN' as const : 'PRE_SCHEDULED' as const, days, pushConfig: debugConfig?.pushConfig },
   };
 
   const validated = InitPayloadSchema.parse(payload);

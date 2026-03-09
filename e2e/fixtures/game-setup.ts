@@ -52,6 +52,7 @@ function buildManifest(gameId: string, dayCount: number) {
     });
   }
   return {
+    kind: 'STATIC' as const,
     id: gameId,
     gameMode: 'CONFIGURABLE_CYCLE' as const, // legacy compat
     scheduling: 'ADMIN' as const, // admin-driven, no timeline events
