@@ -15,7 +15,8 @@ export interface InactivityState {
     lastActiveDayIndex: number;
     consecutiveInactiveDays: number;
   }>;
-  activeDuringCurrentDay: Set<string>;
+  /** Tracks which players have been active during the current day. Uses Record instead of Set for JSON serialization compatibility (XState snapshot persistence). */
+  activeDuringCurrentDay: Record<string, true>;
 }
 
 const SYSTEM_ACTORS = ['SYSTEM', GAME_MASTER_ID];
@@ -30,7 +31,7 @@ export function createInactivityModule(): ObservationModule<InactivityState> {
           playerActivity[id] = { lastActiveDayIndex: 0, consecutiveInactiveDays: 0 };
         }
       }
-      return { playerActivity, activeDuringCurrentDay: new Set() };
+      return { playerActivity, activeDuringCurrentDay: {} };
     },
 
     onResolveDay(state, dayIndex, roster, ruleset) {
@@ -75,11 +76,11 @@ export function createInactivityModule(): ObservationModule<InactivityState> {
       // Only track players who are in our activity map
       if (!state.playerActivity[fact.actorId]) return state;
 
-      if (state.activeDuringCurrentDay.has(fact.actorId)) return state;
+      if (fact.actorId in state.activeDuringCurrentDay) return state;
 
       return {
         ...state,
-        activeDuringCurrentDay: new Set([...state.activeDuringCurrentDay, fact.actorId]),
+        activeDuringCurrentDay: { ...state.activeDuringCurrentDay, [fact.actorId]: true as const },
       };
     },
 
@@ -91,7 +92,7 @@ export function createInactivityModule(): ObservationModule<InactivityState> {
         const player = roster[id];
         if (!player || player.status !== PlayerStatuses.ALIVE) continue;
 
-        if (state.activeDuringCurrentDay.has(id)) {
+        if (id in state.activeDuringCurrentDay) {
           updated[id] = { lastActiveDayIndex: dayIndex, consecutiveInactiveDays: 0 };
         } else {
           updated[id] = {
@@ -101,7 +102,7 @@ export function createInactivityModule(): ObservationModule<InactivityState> {
         }
       }
 
-      return { playerActivity: updated, activeDuringCurrentDay: new Set() };
+      return { playerActivity: updated, activeDuringCurrentDay: {} };
     },
   };
 }

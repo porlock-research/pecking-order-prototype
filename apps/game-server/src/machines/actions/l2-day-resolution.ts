@@ -1,7 +1,7 @@
 import { assign, enqueueActions, type AnyActorRef } from 'xstate';
 import type { DailyManifest, GameMasterAction, SocialPlayer } from '@pecking-order/shared-types';
 import { Events, FactTypes, PlayerStatuses, GameMasterActionTypes } from '@pecking-order/shared-types';
-import { createGameMasterMachine, type GameMasterInput } from '../game-master';
+import type { GameMasterInput } from '../game-master';
 import { log } from '../../log';
 
 export const l2DayResolutionActions = {
@@ -51,7 +51,7 @@ export const l2DayResolutionActions = {
       gameHistory: context.gameHistory || [],
     };
 
-    const ref = spawnFn(createGameMasterMachine(), {
+    const ref = spawnFn('gameMasterMachine', {
       id: 'game-master',
       input,
     });

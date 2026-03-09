@@ -12,6 +12,7 @@ import { l2EliminationActions } from './actions/l2-elimination';
 import { l2EconomyActions } from './actions/l2-economy';
 import { l2FactsActions } from './actions/l2-facts';
 import { l2DayResolutionActions, l2DayResolutionGuards } from './actions/l2-day-resolution';
+import { createGameMasterMachine } from './game-master';
 
 // --- Types ---
 export interface GameContext {
@@ -85,6 +86,7 @@ export const orchestratorMachine = setup({
   actors: {
     dailySessionMachine,
     postGameMachine,
+    gameMasterMachine: createGameMasterMachine(),
   }
 // XState v5 setup() can't infer action string names from externally-defined
 // action objects, so we cast the machine config. Runtime behavior is correct.

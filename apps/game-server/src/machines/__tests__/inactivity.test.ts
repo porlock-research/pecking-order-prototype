@@ -62,7 +62,7 @@ describe('Inactivity observation module', () => {
       state = mod.onFact(state, {
         type: 'CHAT_MSG', actorId: 'p0', timestamp: Date.now(),
       });
-      expect(state.activeDuringCurrentDay.has('p0')).toBe(true);
+      expect('p0' in state.activeDuringCurrentDay).toBe(true);
     });
 
     it('ignores SYSTEM facts', () => {
@@ -70,7 +70,7 @@ describe('Inactivity observation module', () => {
       state = mod.onFact(state, {
         type: 'ELIMINATION', actorId: 'SYSTEM', timestamp: Date.now(),
       });
-      expect(state.activeDuringCurrentDay.size).toBe(0);
+      expect(Object.keys(state.activeDuringCurrentDay).length).toBe(0);
     });
 
     it('ignores GAME_MASTER facts', () => {
@@ -78,14 +78,14 @@ describe('Inactivity observation module', () => {
       state = mod.onFact(state, {
         type: 'ELIMINATION', actorId: GAME_MASTER_ID, timestamp: Date.now(),
       });
-      expect(state.activeDuringCurrentDay.size).toBe(0);
+      expect(Object.keys(state.activeDuringCurrentDay).length).toBe(0);
     });
   });
 
   describe('onDayEnded', () => {
     it('resets consecutive days for active players', () => {
       let state = mod.init(makeRoster(4), baseRuleset);
-      state.activeDuringCurrentDay.add('p0');
+      state.activeDuringCurrentDay['p0'] = true;
       state.playerActivity['p1'] = { lastActiveDayIndex: 0, consecutiveInactiveDays: 1 };
 
       state = mod.onDayEnded(state, 1, makeRoster(4));
@@ -97,9 +97,9 @@ describe('Inactivity observation module', () => {
 
     it('clears activeDuringCurrentDay set', () => {
       let state = mod.init(makeRoster(4), baseRuleset);
-      state.activeDuringCurrentDay.add('p0');
+      state.activeDuringCurrentDay['p0'] = true;
       state = mod.onDayEnded(state, 1, makeRoster(4));
-      expect(state.activeDuringCurrentDay.size).toBe(0);
+      expect(Object.keys(state.activeDuringCurrentDay).length).toBe(0);
     });
   });
 

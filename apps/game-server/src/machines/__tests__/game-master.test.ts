@@ -230,7 +230,7 @@ describe('Game Master lifecycle', () => {
       fact: { type: 'CHAT_MSG', actorId: 'p0', timestamp: Date.now() },
     });
     const ctx = actor.getSnapshot().context;
-    expect(ctx.inactivityState.activeDuringCurrentDay.has('p0')).toBe(true);
+    expect('p0' in ctx.inactivityState.activeDuringCurrentDay).toBe(true);
     actor.stop();
   });
 
