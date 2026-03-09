@@ -478,6 +478,18 @@ export const PERK_COSTS: Record<PerkType, number> = Config.perk.costs;
 
 export const GAME_MASTER_ID: string = 'GAME_MASTER';
 
+// --- Game Master Action Types ---
+export const GameMasterActionTypes = {
+  ELIMINATE: 'ELIMINATE',
+} as const;
+export type GameMasterActionType = typeof GameMasterActionTypes[keyof typeof GameMasterActionTypes];
+
+export interface GameMasterAction {
+  action: GameMasterActionType;
+  playerId: string;
+  reason: string;
+}
+
 // --- Game History ---
 
 export interface GameHistoryEntry {
