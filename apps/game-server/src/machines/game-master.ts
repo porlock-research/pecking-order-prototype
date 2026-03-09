@@ -11,7 +11,7 @@ import type {
 
 // ── Input / Context types ───────────────────────────────────────────────
 
-export interface DirectorInput {
+export interface GameMasterInput {
   dayIndex: number;
   roster: Record<string, SocialPlayer>;
   ruleset: PeckingOrderRuleset;
@@ -19,7 +19,7 @@ export interface DirectorInput {
   gameHistory: GameHistoryEntry[];
 }
 
-export interface DirectorContext {
+export interface GameMasterContext {
   dayIndex: number;
   roster: Record<string, SocialPlayer>;
   ruleset: PeckingOrderRuleset;
@@ -143,8 +143,8 @@ function resolveSocialParams(
 
 // ── Exported context builder (testable without XState) ──────────────────
 
-/** Build director context from input. Exported for unit testing. */
-export function buildDirectorContext(input: DirectorInput): DirectorContext {
+/** Build Game Master context from input. Exported for unit testing. */
+export function buildGameMasterContext(input: GameMasterInput): GameMasterContext {
   const alive = countAlivePlayers(input.roster);
   const totalDays = computeTotalDays(alive, input.ruleset.dayCount);
   const voteType = resolveVoteType(input.dayIndex, totalDays, input.ruleset.voting, alive);
@@ -178,19 +178,19 @@ export function buildDirectorContext(input: DirectorInput): DirectorContext {
 
 // ── XState machine ──────────────────────────────────────────────────────
 
-export function createDirectorMachine() {
+export function createGameMasterMachine() {
   return setup({
     types: {
-      input: {} as DirectorInput,
-      context: {} as DirectorContext,
+      input: {} as GameMasterInput,
+      context: {} as GameMasterContext,
       events: {} as
         | { type: 'FACT.RECORD'; fact: { type: string; actorId: string; targetId?: string; payload?: any; timestamp: number } }
         | { type: 'ADMIN.OVERRIDE_NEXT_DAY'; day: Partial<DailyManifest> },
     },
   }).createMachine({
-    id: 'director',
+    id: 'game-master',
     initial: 'observing',
-    context: ({ input }) => buildDirectorContext(input),
+    context: ({ input }) => buildGameMasterContext(input),
     states: {
       observing: {
         on: {

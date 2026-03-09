@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createActor } from 'xstate';
-import { createDirectorMachine, buildDirectorContext, type DirectorInput } from '../director';
+import { createGameMasterMachine, buildGameMasterContext, type GameMasterInput } from '../game-master';
 import type { PeckingOrderRuleset, SocialPlayer } from '@pecking-order/shared-types';
 
 const baseRuleset: PeckingOrderRuleset = {
@@ -35,7 +35,7 @@ function makeRoster(count: number, alive?: number): Record<string, SocialPlayer>
   return roster;
 }
 
-function makeInput(overrides?: Partial<DirectorInput>): DirectorInput {
+function makeInput(overrides?: Partial<GameMasterInput>): GameMasterInput {
   return {
     dayIndex: 1,
     roster: makeRoster(4),
@@ -46,27 +46,27 @@ function makeInput(overrides?: Partial<DirectorInput>): DirectorInput {
   };
 }
 
-describe('Director context resolution (buildDirectorContext)', () => {
+describe('Game Master context resolution (buildGameMasterContext)', () => {
   it('resolves day 1 with SEQUENCE voting — picks first vote type', () => {
-    const ctx = buildDirectorContext(makeInput());
+    const ctx = buildGameMasterContext(makeInput());
     expect(ctx.resolvedDay).toBeDefined();
     expect(ctx.resolvedDay?.voteType).toBe('MAJORITY');
     expect(ctx.resolvedDay?.dayIndex).toBe(1);
   });
 
   it('resolves day 2 with SEQUENCE voting — picks second vote type', () => {
-    const ctx = buildDirectorContext(makeInput({ dayIndex: 2 }));
+    const ctx = buildGameMasterContext(makeInput({ dayIndex: 2 }));
     expect(ctx.resolvedDay?.voteType).toBe('BUBBLE');
   });
 
   it('always uses FINALS for the last day', () => {
     // 4 alive players → 3 total days. Day 3 should be FINALS.
-    const ctx = buildDirectorContext(makeInput({ dayIndex: 3 }));
+    const ctx = buildGameMasterContext(makeInput({ dayIndex: 3 }));
     expect(ctx.resolvedDay?.voteType).toBe('FINALS');
   });
 
   it('computes totalDays as alivePlayers - 1', () => {
-    const ctx = buildDirectorContext(makeInput());
+    const ctx = buildGameMasterContext(makeInput());
     expect(ctx.totalDays).toBe(3); // 4 players - 1
   });
 
@@ -76,7 +76,7 @@ describe('Director context resolution (buildDirectorContext)', () => {
       ...baseRuleset,
       dayCount: { mode: 'ACTIVE_PLAYERS_MINUS_ONE', maxDays: 2 },
     };
-    const ctx = buildDirectorContext(input);
+    const ctx = buildGameMasterContext(input);
     expect(ctx.totalDays).toBe(2);
   });
 
@@ -89,7 +89,7 @@ describe('Director context resolution (buildDirectorContext)', () => {
         dmChars: { mode: 'DIMINISHING', base: 1200, floor: 400 },
       },
     };
-    const ctx = buildDirectorContext(input);
+    const ctx = buildGameMasterContext(input);
     const chars = ctx.resolvedDay?.dmCharsPerPlayer;
     expect(chars).toBeDefined();
     expect(chars!).toBeLessThan(1200);
@@ -97,13 +97,13 @@ describe('Director context resolution (buildDirectorContext)', () => {
   });
 
   it('applies FIXED social scaling (no change)', () => {
-    const ctx = buildDirectorContext(makeInput({ dayIndex: 2 }));
+    const ctx = buildGameMasterContext(makeInput({ dayIndex: 2 }));
     expect(ctx.resolvedDay?.dmCharsPerPlayer).toBe(1200);
     expect(ctx.resolvedDay?.dmPartnersPerPlayer).toBe(3);
   });
 
   it('resolves NONE game type correctly', () => {
-    const ctx = buildDirectorContext(makeInput());
+    const ctx = buildGameMasterContext(makeInput());
     expect(ctx.resolvedDay?.gameType).toBe('NONE');
   });
 
@@ -113,14 +113,14 @@ describe('Director context resolution (buildDirectorContext)', () => {
       ...baseRuleset,
       games: { mode: 'SEQUENCE', sequence: ['TRIVIA', 'GAP_RUN'], avoidRepeat: false },
     };
-    const ctx = buildDirectorContext(input);
+    const ctx = buildGameMasterContext(input);
     expect(ctx.resolvedDay?.gameType).toBe('TRIVIA');
   });
 
   it('handles fewer alive players (post-elimination)', () => {
     // 6 started, 3 alive → totalDays = 2
     const input = makeInput({ roster: makeRoster(6, 3), dayIndex: 1 });
-    const ctx = buildDirectorContext(input);
+    const ctx = buildGameMasterContext(input);
     expect(ctx.totalDays).toBe(2);
   });
 
@@ -130,7 +130,7 @@ describe('Director context resolution (buildDirectorContext)', () => {
       ...baseRuleset,
       dayCount: { mode: 'FIXED', fixedCount: 5 },
     };
-    const ctx = buildDirectorContext(input);
+    const ctx = buildGameMasterContext(input);
     expect(ctx.totalDays).toBe(5);
   });
 
@@ -142,21 +142,21 @@ describe('Director context resolution (buildDirectorContext)', () => {
       ...baseRuleset,
       voting: { mode: 'SEQUENCE', sequence: ['MAJORITY', 'BUBBLE', 'EXECUTIONER', 'PODIUM_SACRIFICE'] },
     };
-    const ctx = buildDirectorContext(input);
+    const ctx = buildGameMasterContext(input);
     expect(ctx.resolvedDay?.voteType).toBe('PODIUM_SACRIFICE');
   });
 });
 
-describe('Director actor (XState machine)', () => {
+describe('Game Master actor (XState machine)', () => {
   it('starts in observing state', () => {
-    const actor = createActor(createDirectorMachine(), { input: makeInput() });
+    const actor = createActor(createGameMasterMachine(), { input: makeInput() });
     actor.start();
     expect(actor.getSnapshot().value).toBe('observing');
     actor.stop();
   });
 
   it('accumulates FACT.RECORD events', () => {
-    const actor = createActor(createDirectorMachine(), { input: makeInput() });
+    const actor = createActor(createGameMasterMachine(), { input: makeInput() });
     actor.start();
     actor.send({
       type: 'FACT.RECORD',
@@ -175,7 +175,7 @@ describe('Director actor (XState machine)', () => {
   });
 
   it('handles ADMIN.OVERRIDE_NEXT_DAY', () => {
-    const actor = createActor(createDirectorMachine(), { input: makeInput() });
+    const actor = createActor(createGameMasterMachine(), { input: makeInput() });
     actor.start();
     actor.send({
       type: 'ADMIN.OVERRIDE_NEXT_DAY',

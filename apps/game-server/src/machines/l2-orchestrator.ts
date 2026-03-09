@@ -2,7 +2,7 @@ import { setup, assign, sendTo, raise } from 'xstate';
 import type { AnyActorRef } from 'xstate';
 import { dailySessionMachine } from './l3-session';
 import { postGameMachine } from './l4-post-game';
-import { createDirectorMachine } from './director';
+import { createGameMasterMachine } from './game-master';
 import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, DailyManifest, Events } from '@pecking-order/shared-types';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from './cartridges/prompts/_contract';
@@ -35,9 +35,9 @@ export interface GameContext {
     completedAt: number;
     [key: string]: any;
   }>;
-  // Director (dynamic mode only)
-  directorRef: AnyActorRef | null;
-  directorResolvedDay: DailyManifest | null;
+  // Game Master (dynamic mode only)
+  gameMasterRef: AnyActorRef | null;
+  gameMasterResolvedDay: DailyManifest | null;
 }
 
 export type GameEvent =
@@ -87,7 +87,7 @@ export const orchestratorMachine = setup({
   actors: {
     dailySessionMachine,
     postGameMachine,
-    directorMachine: createDirectorMachine(),
+    gameMasterMachine: createGameMasterMachine(),
   }
 // XState v5 setup() can't infer action string names from externally-defined
 // action objects, so we cast the machine config. Runtime behavior is correct.
@@ -108,8 +108,8 @@ export const orchestratorMachine = setup({
     winner: null,
     gameHistory: [],
     completedPhases: [],
-    directorRef: null,
-    directorResolvedDay: null,
+    gameMasterRef: null,
+    gameMasterResolvedDay: null,
   },
   states: {
     uninitialized: {
@@ -150,8 +150,8 @@ export const orchestratorMachine = setup({
           always: 'activeSession'
         },
         activeSession: {
-          entry: ['spawnDirectorIfDynamic', 'captureDirectorDay'],
-          exit: ['captureDirectorOutputForNextDay'],
+          entry: ['spawnGameMasterIfDynamic', 'captureGameMasterDay'],
+          exit: ['captureGameMasterOutput'],
           invoke: {
             id: 'l3-session',
             src: 'dailySessionMachine',
@@ -185,7 +185,7 @@ export const orchestratorMachine = setup({
           on: {
             'ADMIN.NEXT_STAGE': { target: 'nightSummary' },
             'FACT.RECORD': {
-                actions: ['updateJournalTimestamp', 'applyFactToRoster', 'persistFactToD1', 'forwardFactToDirector'],
+                actions: ['updateJournalTimestamp', 'applyFactToRoster', 'persistFactToD1', 'forwardFactToGameMaster'],
                 target: undefined,
                 reenter: false,
                 internal: true

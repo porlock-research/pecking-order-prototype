@@ -1,21 +1,21 @@
 import { assign, enqueueActions, type AnyActorRef } from 'xstate';
 import type { DailyManifest, DynamicManifest } from '@pecking-order/shared-types';
-import { createDirectorMachine, type DirectorInput } from '../director';
+import { createGameMasterMachine, type GameMasterInput } from '../game-master';
 
 export const l2DayResolutionActions = {
   /**
    * Resolve the current day's manifest. For STATIC manifests, the day already
    * exists in manifest.days[] — no-op. For DYNAMIC manifests, read the
-   * director's resolved day and append it to manifest.days[].
+   * Game Master's resolved day and append it to manifest.days[].
    */
   resolveCurrentDay: assign(({ context }: any) => {
     const manifest = context.manifest;
     if (!manifest || manifest.kind !== 'DYNAMIC') return {};
 
-    // Director should have resolved a day — read from directorResolvedDay
-    const resolvedDay = context.directorResolvedDay as DailyManifest | null;
+    // Game Master should have resolved a day — read from gameMasterResolvedDay
+    const resolvedDay = context.gameMasterResolvedDay as DailyManifest | null;
     if (!resolvedDay) {
-      // Day 1: no director output yet. Director spawns in activeSession
+      // Day 1: no Game Master output yet. Game Master spawns in activeSession
       // and resolves immediately via its context factory.
       return {};
     }
@@ -26,25 +26,25 @@ export const l2DayResolutionActions = {
         ...manifest,
         days: [...manifest.days, resolvedDay],
       },
-      directorResolvedDay: null, // consumed
+      gameMasterResolvedDay: null, // consumed
     };
   }),
 
   /**
-   * Spawn a director actor for dynamic manifests. No-op for static.
-   * The director resolves the current day's config in its context factory,
+   * Spawn a Game Master actor for dynamic manifests. No-op for static.
+   * The Game Master resolves the current day's config in its context factory,
    * then observes FACT.* events throughout the day.
    */
-  spawnDirectorIfDynamic: assign(({ context, spawn: spawnFn }: any) => {
+  spawnGameMasterIfDynamic: assign(({ context, spawn: spawnFn }: any) => {
     const manifest = context.manifest;
     if (!manifest || manifest.kind !== 'DYNAMIC') return {};
 
-    // Stop previous director if any
-    if (context.directorRef) {
-      try { context.directorRef.stop(); } catch (_) { /* already stopped */ }
+    // Stop previous Game Master if any
+    if (context.gameMasterRef) {
+      try { context.gameMasterRef.stop(); } catch (_) { /* already stopped */ }
     }
 
-    const input: DirectorInput = {
+    const input: GameMasterInput = {
       dayIndex: context.dayIndex,
       roster: context.roster,
       ruleset: manifest.ruleset,
@@ -52,27 +52,27 @@ export const l2DayResolutionActions = {
       gameHistory: context.gameHistory || [],
     };
 
-    const ref = spawnFn(createDirectorMachine(), {
-      id: 'director',
+    const ref = spawnFn(createGameMasterMachine(), {
+      id: 'game-master',
       input,
     });
 
-    return { directorRef: ref };
+    return { gameMasterRef: ref };
   }),
 
   /**
-   * After the director actor is spawned, read its initial resolvedDay
+   * After the Game Master actor is spawned, read its initial resolvedDay
    * and append to manifest.days[] so L3 can find it via dayIndex lookup.
    */
-  captureDirectorDay: assign(({ context }: any) => {
+  captureGameMasterDay: assign(({ context }: any) => {
     const manifest = context.manifest;
     if (!manifest || manifest.kind !== 'DYNAMIC') return {};
 
-    const directorRef = context.directorRef as AnyActorRef | null;
-    if (!directorRef) return {};
+    const gameMasterRef = context.gameMasterRef as AnyActorRef | null;
+    if (!gameMasterRef) return {};
 
-    const directorSnap = directorRef.getSnapshot();
-    const resolvedDay = directorSnap?.context?.resolvedDay as DailyManifest | null;
+    const gameMasterSnap = gameMasterRef.getSnapshot();
+    const resolvedDay = gameMasterSnap?.context?.resolvedDay as DailyManifest | null;
     if (!resolvedDay) return {};
 
     // Idempotent: don't append if already exists
@@ -88,28 +88,28 @@ export const l2DayResolutionActions = {
   }),
 
   /**
-   * Forward FACT.RECORD events to the director actor (dynamic mode only).
-   * No-op if no director is active.
+   * Forward FACT.RECORD events to the Game Master actor (dynamic mode only).
+   * No-op if no Game Master is active.
    */
-  forwardFactToDirector: enqueueActions(({ context, event, enqueue }: any) => {
-    if (!context.directorRef) return;
+  forwardFactToGameMaster: enqueueActions(({ context, event, enqueue }: any) => {
+    if (!context.gameMasterRef) return;
     if (event.type !== 'FACT.RECORD') return;
-    enqueue.sendTo(context.directorRef, event);
+    enqueue.sendTo(context.gameMasterRef, event);
   }),
 
   /**
-   * Cleanup director on activeSession exit. Stops the director actor.
+   * Cleanup Game Master on activeSession exit. Stops the Game Master actor.
    */
-  captureDirectorOutputForNextDay: assign(({ context }: any) => {
-    const directorRef = context.directorRef as AnyActorRef | null;
-    if (!directorRef) return {};
+  captureGameMasterOutput: assign(({ context }: any) => {
+    const gameMasterRef = context.gameMasterRef as AnyActorRef | null;
+    if (!gameMasterRef) return {};
 
-    // Stop the director — we'll spawn a new one for the next day
-    try { directorRef.stop(); } catch (_) { /* already stopped */ }
+    // Stop the Game Master — we'll spawn a new one for the next day
+    try { gameMasterRef.stop(); } catch (_) { /* already stopped */ }
 
     return {
-      directorResolvedDay: null,
-      directorRef: null,
+      gameMasterResolvedDay: null,
+      gameMasterRef: null,
     };
   }),
 };
