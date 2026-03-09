@@ -1,5 +1,5 @@
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
-import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, dmChannelId, Events, FactTypes, GAME_MASTER_ID } from '@pecking-order/shared-types';
+import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, dmChannelId, Events, FactTypes, GAME_MASTER_ID, DM_MAX_CHARS_PER_DAY, DM_MAX_PARTNERS_PER_DAY } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from './cartridges/voting/_registry';
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 import { PROMPT_REGISTRY } from './cartridges/prompts/_registry';
@@ -24,6 +24,8 @@ export interface DailyContext {
   dmsOpen: boolean;
   dmPartnersByPlayer: Record<string, string[]>;
   dmCharsByPlayer: Record<string, number>;
+  dmCharsLimit: number;
+  dmPartnersLimit: number;
   perkOverrides: Record<string, { extraPartners: number; extraChars: number }>;
   channels: Record<string, Channel>;
   groupChatOpen: boolean;
@@ -53,6 +55,35 @@ export type DailyEvent =
   | { type: 'FACT.RECORD'; fact: Fact }
   | AdminEvent;
 
+/** Extracted so tests can verify context initialization without XState entry actions. */
+export function buildL3Context(input: { dayIndex: number; roster: Record<string, SocialPlayer>; manifest?: DailyManifest; initialChatLog?: ChatMessage[] }): DailyContext {
+  return {
+    dayIndex: input.dayIndex || 0,
+    chatLog: input.initialChatLog || [],
+    roster: input.roster || {},
+    manifest: input.manifest,
+    activeVotingCartridgeRef: null,
+    activeGameCartridgeRef: null,
+    activePromptCartridgeRef: null,
+    dmsOpen: false,
+    dmPartnersByPlayer: {},
+    dmCharsByPlayer: {},
+    dmCharsLimit: input.manifest?.dmCharsPerPlayer ?? DM_MAX_CHARS_PER_DAY,
+    dmPartnersLimit: input.manifest?.dmPartnersPerPlayer ?? DM_MAX_PARTNERS_PER_DAY,
+    perkOverrides: {},
+    channels: {
+      'MAIN': {
+        id: 'MAIN', type: 'MAIN' as const,
+        memberIds: Object.keys(input.roster || {}),
+        createdBy: 'SYSTEM', createdAt: Date.now(),
+        capabilities: ['CHAT' as const],
+      },
+    },
+    groupChatOpen: false,
+    dmGroupsByPlayer: {},
+  };
+}
+
 export const dailySessionMachine = setup({
   types: {
     input: {} as { dayIndex: number; roster: Record<string, SocialPlayer>; manifest?: DailyManifest; initialChatLog?: ChatMessage[] },
@@ -80,29 +111,7 @@ export const dailySessionMachine = setup({
 // action objects, so we cast the machine config. Runtime behavior is correct.
 }).createMachine({
   id: 'l3-daily-session',
-  context: ({ input }: any) => ({
-    dayIndex: input.dayIndex || 0,
-    chatLog: input.initialChatLog || [],
-    roster: input.roster || {},
-    manifest: input.manifest,
-    activeVotingCartridgeRef: null,
-    activeGameCartridgeRef: null,
-    activePromptCartridgeRef: null,
-    dmsOpen: false,
-    dmPartnersByPlayer: {},
-    dmCharsByPlayer: {},
-    perkOverrides: {},
-    channels: {
-      'MAIN': {
-        id: 'MAIN', type: 'MAIN' as const,
-        memberIds: Object.keys(input.roster || {}),
-        createdBy: 'SYSTEM', createdAt: Date.now(),
-        capabilities: ['CHAT' as const],
-      },
-    },
-    groupChatOpen: false,
-    dmGroupsByPlayer: {},
-  }),
+  context: ({ input }: any) => buildL3Context(input),
   entry: [
     sendParent({ type: 'INTERNAL.READY' })
   ],

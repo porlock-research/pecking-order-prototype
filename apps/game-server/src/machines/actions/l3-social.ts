@@ -87,7 +87,7 @@ export const l3SocialActions = {
     const channel = context.channels[channelId];
 
     const overrides = context.perkOverrides?.[senderId] || { extraPartners: 0, extraChars: 0 };
-    const charLimit = DM_MAX_CHARS_PER_DAY + overrides.extraChars;
+    const charLimit = (context.dmCharsLimit ?? DM_MAX_CHARS_PER_DAY) + overrides.extraChars;
 
     let reason: DmRejectionReason = 'DMS_CLOSED';
     if (channelId === 'MAIN') {
@@ -319,7 +319,7 @@ export const l3SocialGuards = {
     if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) return false;
     // Char limit
     const overrides = context.perkOverrides?.[senderId] || { extraPartners: 0, extraChars: 0 };
-    const charLimit = DM_MAX_CHARS_PER_DAY + overrides.extraChars;
+    const charLimit = (context.dmCharsLimit ?? DM_MAX_CHARS_PER_DAY) + overrides.extraChars;
     const charsUsed = context.dmCharsByPlayer[senderId] || 0;
     if (charsUsed + event.content.length > charLimit) return false;
     // Channel membership (if channel exists)
