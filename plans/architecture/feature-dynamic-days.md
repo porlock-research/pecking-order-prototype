@@ -1,6 +1,6 @@
 # Feature: Dynamic Days
 
-**Status**: Phase 3a+3b complete, Phase 3c+3d pending
+**Status**: Phase 3a+3b+3d complete, Phase 3c pending
 **Branch**: `feature/dynamic-days`
 **ADRs**: [094] Dynamic Days, [066-068] CONFIGURABLE_CYCLE, [092] DO Persistence, [093] Alarm Delivery
 
@@ -42,20 +42,30 @@ The `GameRuleset` is also a discriminated union (`PeckingOrderRuleset` as the fi
 
 **Key decision**: No runtime behavior changed. Every game still runs exactly the same. The type system is in place; the runtime follows later.
 
-### Phase 3b: Director Actor + L2 Wiring (complete)
+### Phase 3b: Director Actor + L2 Wiring (complete, superseded by 3d)
 
-The director (`L2.5`) is an XState actor spawned by L2 alongside L3 in dynamic mode. It does two things:
+The original director was a per-day XState actor spawned by L2 in dynamic mode. Phase 3d replaced it with the long-lived Game Master (see below).
 
-1. **Resolves the day.** On spawn, its context factory computes the day's config (vote type, game type, social limits) from the ruleset and game state. Pure functions — no side effects, highly testable.
+### Phase 3d: Game Master + Inactivity Rules (complete)
 
-2. **Observes the day.** L2 forwards `FACT.RECORD` events to the director throughout the day. It tracks which players are active and what they're doing. This data feeds future features (inactivity rules, adaptive difficulty).
+The director was renamed to Game Master and extended with a long-lived lifecycle (pregame → tournament → postgame). Key changes:
 
-L2 changes are minimal and behind `manifest.kind === 'DYNAMIC'` checks:
-- `activeSession` entry spawns the director and captures its resolved day into `manifest.days[]`
-- `FACT.RECORD` handler forwards to the director (no-op if no director exists)
-- `nightSummary` / `dayLoop` guards consolidated into `isGameComplete` / `isDayIndexPastEnd`
+1. **Long-lived actor.** Spawned once at `preGame` entry (dynamic mode only), lives until game end. Accumulates knowledge across the entire tournament.
 
-Static mode is completely untouched — the director is never spawned.
+2. **Modular observations.** Each observation concern is a pure-function module behind a common `ObservationModule<TState>` contract. The Game Master holds module states on context and delegates to module functions at lifecycle events.
+
+3. **Inactivity module.** First observation module. Tracks per-player activity via `FACT.RECORD` events, evaluates consecutive inactive days against `ruleset.inactivity.thresholdDays`, produces `ELIMINATE` actions. Guards: skip day 1, skip if disabled, never leave fewer than 2 alive.
+
+4. **Generic L2 processing.** New `processGameMasterActions` runs at nightSummary (after `processNightSummary`). Reads `gameMasterActions` from Game Master snapshot and applies eliminations. Uses typed constants (`GameMasterActionTypes.ELIMINATE`, `PlayerStatuses.ALIVE`, `FactTypes.ELIMINATION`).
+
+L2 wiring (all behind `manifest.kind === 'DYNAMIC'`):
+- `preGame` entry spawns the Game Master
+- `morningBriefing` sends `GAME_MASTER.RESOLVE_DAY` → captures resolved day into `manifest.days[]`
+- `activeSession` forwards `FACT.RECORD` to Game Master
+- `nightSummary` runs `processGameMasterActions` → sends `GAME_MASTER.DAY_ENDED`
+- `gameSummary` sends `GAME_MASTER.GAME_ENDED`
+
+Static mode is completely untouched — the Game Master is never spawned.
 
 ### Phase 3c: Lobby Integration (not started)
 
@@ -66,12 +76,9 @@ The lobby needs to support dynamic mode game creation. The host would configure:
 
 The server receives a `DynamicManifest` with an empty `days[]`. Each morning, the director fills in the next day.
 
-### Phase 3d: Inactivity Rules (not started)
+### Phase 3c: Lobby Integration (not started)
 
-The director already tracks active players via FACT observations. This phase adds:
-- Inactivity detection (configurable threshold)
-- Nudge → eliminate pipeline
-- Admin visibility and override
+See above — unchanged.
 
 ## Key Architectural Decisions
 
@@ -79,13 +86,17 @@ The director already tracks active players via FACT observations. This phase add
 
 Feature flags (`isStatic: boolean`, `hasDynamicDays: boolean`) create a combinatorial explosion. A discriminated union on `kind` gives TypeScript exhaustive checking and forces every consumer to handle each variant explicitly. Adding a third manifest kind is a compile-time checklist, not a runtime bug hunt.
 
-### Why an actor, not a pure function?
+### Why a long-lived actor, not per-day?
 
-The director needs to accumulate state throughout the day (fact counts, active player tracking) and could eventually emit mid-day events (nudge a player, inject a prompt). A pure `resolveDay()` function can't observe — it can only compute from a snapshot. The actor model gives us both: pure resolution in the context factory, observation via event handling.
+The Game Master accumulates knowledge across the entire tournament — inactivity tracking, engagement scoring (future), adaptive difficulty (future). A per-day actor loses this state. The long-lived lifecycle (pregame → tournament → postgame) also enables future features like player introductions during pregame.
+
+### Why modular observations, not inline logic?
+
+Each observation concern (inactivity, engagement, adaptive difficulty) is a pure-function module behind a common contract. This gives us: standalone testability (no XState), independent development (add a module without touching others), and clean separation of concerns inside the Game Master.
 
 ### Why `days[]` grows instead of a separate field?
 
-The director appends each resolved day to `manifest.days[]`. This means L3's input pattern (`manifest.days.find(d => d.dayIndex === context.dayIndex)`) works identically in both modes. It also creates an audit trail — you can inspect the manifest to see every day the director resolved.
+The Game Master appends each resolved day to `manifest.days[]`. This means L3's input pattern (`manifest.days.find(d => d.dayIndex === context.dayIndex)`) works identically in both modes. It also creates an audit trail — you can inspect the manifest to see every day the Game Master resolved.
 
 ### Why two game-over guards?
 
@@ -99,6 +110,8 @@ The director appends each resolved day to `manifest.days[]`. This means L3's inp
 | `plans/architecture/2026-03-08-dynamic-days.md` | Implementation plan (10 tasks, step-by-step) |
 | `plans/architecture/server-refactor-and-dynamic-days.md` | Phased roadmap (Phases 1-4) |
 | `plans/architecture/granular-orchestration.md` | L3 refactor strategy (deferred, but relevant to future game types) |
+| `docs/plans/2026-03-09-game-master-inactivity-design.md` | Game Master + inactivity design doc |
+| `docs/plans/2026-03-09-game-master-inactivity.md` | Implementation plan (7 tasks) |
 | `plans/DECISIONS.md` → ADR-094 | Atomic decision record |
 
 ## Key Files
@@ -106,8 +119,10 @@ The director appends each resolved day to `manifest.days[]`. This means L3's inp
 | File | Role |
 |------|------|
 | `packages/shared-types/src/index.ts` | `GameManifest`, `GameRuleset`, `normalizeManifest()`, `SchedulePreset` |
-| `apps/game-server/src/machines/director.ts` | Director actor + `buildDirectorContext()` |
-| `apps/game-server/src/machines/actions/l2-day-resolution.ts` | L2 wiring (spawn, capture, forward, guards) |
-| `apps/game-server/src/machines/l2-orchestrator.ts` | L2 machine (director lifecycle integrated) |
+| `apps/game-server/src/machines/game-master.ts` | Game Master actor + lifecycle (pregame → tournament → postgame) |
+| `apps/game-server/src/machines/observations/types.ts` | `ObservationModule<TState>` contract |
+| `apps/game-server/src/machines/observations/inactivity.ts` | Inactivity observation module (pure functions) |
+| `apps/game-server/src/machines/actions/l2-day-resolution.ts` | L2 wiring (spawn, lifecycle events, processGameMasterActions, guards) |
+| `apps/game-server/src/machines/l2-orchestrator.ts` | L2 machine (Game Master lifecycle integrated) |
 | `apps/game-server/src/machines/l3-session.ts` | `buildL3Context()` reads social params from manifest |
 | `apps/game-server/src/snapshot.ts` | `normalizeManifest()` on snapshot restore |
