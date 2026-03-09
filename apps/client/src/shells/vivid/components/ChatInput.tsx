@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SendSquare, Dollar, CloseCircle } from '@solar-icons/react';
+import { SendSquare, CloseCircle } from '@solar-icons/react';
 import type { ChatMessage, SocialPlayer } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../store/useGameStore';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
@@ -15,7 +15,6 @@ interface ChatInputProps {
     sendMessage: (content: string, targetId?: string) => void;
     sendDM: (targetId: string, content: string) => void;
     sendToChannel: (channelId: string, content: string) => void;
-    sendSilver: (amount: number, targetId: string) => void;
     sendTyping: (channel?: string) => void;
     stopTyping: (channel?: string) => void;
   };
@@ -34,13 +33,21 @@ function getPlaceholder(
   context: 'main' | 'dm' | 'group',
   targetName?: string,
   disabled?: boolean,
+  serverState?: string | null,
 ): string {
   if (disabled) {
     return context === 'main' ? 'Chat closed...' : 'DMs closed...';
   }
   switch (context) {
-    case 'main':
-      return 'Plot in main chat...';
+    case 'main': {
+      // Phase-aware placeholders
+      if (serverState && typeof serverState === 'string') {
+        const s = serverState.toLowerCase();
+        if (s.includes('voting')) return 'Quick, before votes close...';
+        if (s.includes('game')) return 'Talk strategy...';
+      }
+      return 'Plot your next move...';
+    }
     case 'dm':
       return `Whisper to ${targetName ?? 'them'}...`;
     case 'group':
@@ -149,17 +156,15 @@ export function ChatInput({
   onClearReply,
 }: ChatInputProps) {
   const [inputValue, setInputValue] = useState('');
-  const [showSilverTransfer, setShowSilverTransfer] = useState(false);
-  const [silverAmount, setSilverAmount] = useState('');
 
   const { playerId, roster } = useGameStore();
   const typingPlayers = useGameStore((s) => s.typingPlayers);
   const groupChatOpen = useGameStore((s) => s.groupChatOpen);
   const dmsOpen = useGameStore((s) => s.dmsOpen);
+  const serverState = useGameStore((s) => s.serverState);
 
   const channel = getChannel(context, targetId);
   const isDisabled = context === 'main' ? !groupChatOpen : !dmsOpen;
-  const mySilver = playerId ? (roster[playerId]?.silver ?? 0) : 0;
 
   const replyName = replyTarget
     ? roster[replyTarget.senderId]?.personaName || 'Unknown'
@@ -193,16 +198,6 @@ export function ChatInput({
 
     setInputValue('');
     onClearReply?.();
-  };
-
-  /* -- Silver ------------------------------------------------------ */
-
-  const handleSendSilver = () => {
-    const amount = parseInt(silverAmount, 10);
-    if (!amount || amount <= 0 || !targetId) return;
-    engine.sendSilver(amount, targetId);
-    setSilverAmount('');
-    setShowSilverTransfer(false);
   };
 
   /* -- Render ------------------------------------------------------ */
@@ -330,119 +325,11 @@ export function ChatInput({
           )}
         </AnimatePresence>
 
-        {/* Silver transfer inline UI (DM only) */}
-        <AnimatePresence>
-          {showSilverTransfer && context === 'dm' && (
-            <motion.div
-              style={{
-                marginBottom: 8,
-                display: 'flex',
-                gap: 8,
-                alignItems: 'center',
-              }}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={VIVID_SPRING.snappy}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  fontFamily: 'var(--vivid-font-body)',
-                  color: 'var(--vivid-text-dim)',
-                  flexShrink: 0,
-                }}
-              >
-                Send silver
-              </span>
-              <input
-                type="number"
-                min="1"
-                max={mySilver}
-                value={silverAmount}
-                onChange={(e) => setSilverAmount(e.target.value)}
-                placeholder="Amt"
-                style={{
-                  width: 80,
-                  background: 'var(--vivid-bg-elevated)',
-                  border: '1px solid rgba(255, 217, 61, 0.2)',
-                  borderRadius: 9999,
-                  padding: '6px 12px',
-                  fontSize: 12,
-                  fontFamily: 'var(--vivid-font-body)',
-                  color: 'var(--vivid-text)',
-                  outline: 'none',
-                }}
-              />
-              <button
-                onClick={handleSendSilver}
-                disabled={!silverAmount || parseInt(silverAmount, 10) <= 0}
-                style={{
-                  background: 'rgba(255, 217, 61, 0.2)',
-                  color: 'var(--vivid-gold)',
-                  border: '1px solid rgba(255, 217, 61, 0.3)',
-                  borderRadius: 9999,
-                  padding: '6px 12px',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  fontFamily: 'var(--vivid-font-body)',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  opacity: !silverAmount || parseInt(silverAmount, 10) <= 0 ? 0.4 : 1,
-                }}
-              >
-                Send
-              </button>
-              <button
-                onClick={() => {
-                  setShowSilverTransfer(false);
-                  setSilverAmount('');
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--vivid-text-dim)',
-                  fontSize: 12,
-                  fontFamily: 'var(--vivid-font-body)',
-                  cursor: 'pointer',
-                }}
-              >
-                cancel
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Input row */}
         <form
           onSubmit={handleSend}
           style={{ display: 'flex', gap: 8, alignItems: 'center' }}
         >
-          {/* Silver button — DM only, when transfer UI is not open */}
-          {context === 'dm' && !showSilverTransfer && !isDisabled && (
-            <motion.button
-              type="button"
-              onClick={() => setShowSilverTransfer(true)}
-              style={{
-                flexShrink: 0,
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                background: 'rgba(255, 217, 61, 0.1)',
-                border: '1px solid rgba(255, 217, 61, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--vivid-gold)',
-                cursor: 'pointer',
-              }}
-              whileTap={VIVID_TAP.button}
-              transition={VIVID_SPRING.bouncy}
-            >
-              <Dollar size={18} weight="Bold" />
-            </motion.button>
-          )}
-
           {/* Text input */}
           <input
             data-testid="chat-input"
@@ -452,7 +339,7 @@ export function ChatInput({
               setInputValue(e.target.value);
               if (e.target.value) engine.sendTyping(channel);
             }}
-            placeholder={getPlaceholder(context, targetName, isDisabled)}
+            placeholder={getPlaceholder(context, targetName, isDisabled, serverState)}
             maxLength={280}
             disabled={isDisabled}
             style={{
@@ -472,7 +359,7 @@ export function ChatInput({
             onFocus={(e) => {
               if (!isDisabled) {
                 e.currentTarget.style.boxShadow =
-                  '0 0 0 2px var(--vivid-coral), 0 0 0 4px rgba(255, 107, 107, 0.15)';
+                  '0 0 0 2px var(--vivid-phase-accent), 0 0 0 4px var(--vivid-phase-glow)';
                 e.currentTarget.style.borderColor = 'transparent';
               }
             }}
