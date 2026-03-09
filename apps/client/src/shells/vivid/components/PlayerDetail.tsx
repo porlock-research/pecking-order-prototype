@@ -107,13 +107,15 @@ export function PlayerDetail({
           position: 'absolute',
           top: 16,
           left: 16,
-          background: 'none',
-          border: 'none',
+          background: '#FFFFFF',
+          border: '1px solid rgba(139, 115, 85, 0.1)',
+          borderRadius: 12,
           color: 'var(--vivid-text)',
           cursor: 'pointer',
-          padding: 4,
+          padding: 8,
           lineHeight: 0,
           zIndex: 10,
+          boxShadow: 'var(--vivid-surface-shadow)',
         }}
         whileTap={VIVID_TAP.button}
         transition={VIVID_SPRING.bouncy}
@@ -144,14 +146,15 @@ export function PlayerDetail({
             marginBottom: 28,
           }}
         >
-          {/* Avatar with glow ring */}
+          {/* Avatar with warm ring */}
           <div
             style={{
               borderRadius: '50%',
-              padding: 3,
+              padding: 4,
               border: `3px solid ${playerColor}`,
-              boxShadow: `0 0 20px ${playerColor}40`,
+              boxShadow: `0 4px 20px ${playerColor}25`,
               display: 'flex',
+              background: '#FFFFFF',
             }}
           >
             <PersonaAvatar
@@ -166,8 +169,8 @@ export function PlayerDetail({
           <span
             style={{
               fontFamily: 'var(--vivid-font-display)',
-              fontWeight: 900,
-              fontSize: 24,
+              fontWeight: 800,
+              fontSize: 26,
               color: playerColor,
               textAlign: 'center',
             }}
@@ -184,12 +187,12 @@ export function PlayerDetail({
                 gap: 6,
                 padding: '4px 14px',
                 borderRadius: 9999,
-                background: 'rgba(255,46,99,0.2)',
-                border: '1px solid var(--vivid-pink)',
+                background: 'rgba(217, 64, 115, 0.1)',
+                border: '1px solid rgba(217, 64, 115, 0.2)',
                 fontFamily: 'var(--vivid-font-display)',
                 fontWeight: 700,
                 fontSize: 12,
-                color: 'var(--vivid-pink)',
+                color: '#D94073',
                 textDecoration: 'line-through',
                 letterSpacing: '0.05em',
               }}
@@ -204,8 +207,8 @@ export function PlayerDetail({
                 gap: 6,
                 padding: '4px 14px',
                 borderRadius: 9999,
-                background: 'rgba(34,197,94,0.15)',
-                border: '1px solid #22c55e',
+                background: 'rgba(34,197,94,0.08)',
+                border: '1px solid rgba(34,197,94,0.2)',
                 fontFamily: 'var(--vivid-font-display)',
                 fontWeight: 700,
                 fontSize: 12,
@@ -242,21 +245,23 @@ export function PlayerDetail({
           {/* Silver */}
           <div
             style={{
-              background: 'var(--vivid-bg-surface)',
-              borderRadius: 12,
-              padding: 12,
+              background: '#FFFFFF',
+              borderRadius: 16,
+              padding: 14,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: 4,
+              border: '1px solid rgba(139, 115, 85, 0.08)',
+              boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <Dollar size={28} weight="BoldDuotone" color="var(--vivid-gold)" />
+            <Dollar size={28} weight="BoldDuotone" color="#D4960A" />
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
                 fontWeight: 800,
-                fontSize: 20,
+                fontSize: 22,
                 color: 'var(--vivid-text)',
               }}
             >
@@ -265,6 +270,7 @@ export function PlayerDetail({
             <span
               style={{
                 fontSize: 11,
+                fontWeight: 600,
                 color: 'var(--vivid-text-dim)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -277,21 +283,23 @@ export function PlayerDetail({
           {/* Gold */}
           <div
             style={{
-              background: 'var(--vivid-bg-surface)',
-              borderRadius: 12,
-              padding: 12,
+              background: '#FFFFFF',
+              borderRadius: 16,
+              padding: 14,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: 4,
+              border: '1px solid rgba(139, 115, 85, 0.08)',
+              boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <CupStar size={28} weight="BoldDuotone" color="var(--vivid-gold)" />
+            <CupStar size={28} weight="BoldDuotone" color="#8B6CC1" />
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
                 fontWeight: 800,
-                fontSize: 20,
+                fontSize: 22,
                 color: 'var(--vivid-text)',
               }}
             >
@@ -300,6 +308,7 @@ export function PlayerDetail({
             <span
               style={{
                 fontSize: 11,
+                fontWeight: 600,
                 color: 'var(--vivid-text-dim)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -312,22 +321,24 @@ export function PlayerDetail({
           {/* Online status */}
           <div
             style={{
-              background: 'var(--vivid-bg-surface)',
-              borderRadius: 12,
-              padding: 12,
+              background: '#FFFFFF',
+              borderRadius: 16,
+              padding: 14,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: 4,
+              border: '1px solid rgba(139, 115, 85, 0.08)',
+              boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <WiFiRouter size={28} weight="BoldDuotone" color={isOnline ? 'var(--vivid-teal)' : 'var(--vivid-text-dim)'} />
+            <WiFiRouter size={28} weight="BoldDuotone" color={isOnline ? '#3BA99C' : 'var(--vivid-text-dim)'} />
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
                 fontWeight: 700,
                 fontSize: 14,
-                color: isOnline ? 'var(--vivid-teal)' : 'var(--vivid-text-dim)',
+                color: isOnline ? '#3BA99C' : 'var(--vivid-text-dim)',
               }}
             >
               {isOnline ? 'Online' : 'Offline'}
@@ -335,6 +346,7 @@ export function PlayerDetail({
             <span
               style={{
                 fontSize: 11,
+                fontWeight: 600,
                 color: 'var(--vivid-text-dim)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -347,21 +359,23 @@ export function PlayerDetail({
           {/* DM count */}
           <div
             style={{
-              background: 'var(--vivid-bg-surface)',
-              borderRadius: 12,
-              padding: 12,
+              background: '#FFFFFF',
+              borderRadius: 16,
+              padding: 14,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: 4,
+              border: '1px solid rgba(139, 115, 85, 0.08)',
+              boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <ChatDots size={28} weight="BoldDuotone" color="var(--vivid-teal)" />
+            <ChatDots size={28} weight="BoldDuotone" color="#3BA99C" />
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
                 fontWeight: 800,
-                fontSize: 20,
+                fontSize: 22,
                 color: 'var(--vivid-text)',
               }}
             >
@@ -370,6 +384,7 @@ export function PlayerDetail({
             <span
               style={{
                 fontSize: 11,
+                fontWeight: 600,
                 color: 'var(--vivid-text-dim)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -402,14 +417,15 @@ export function PlayerDetail({
                 width: '100%',
                 height: 48,
                 borderRadius: 9999,
-                background: 'var(--vivid-teal)',
+                background: '#3BA99C',
                 border: 'none',
                 color: '#FFFFFF',
                 fontFamily: 'var(--vivid-font-display)',
                 fontWeight: 700,
-                fontSize: 15,
+                fontSize: 16,
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
+                boxShadow: '0 3px 10px rgba(59, 169, 156, 0.2)',
               }}
               whileTap={VIVID_TAP.button}
               transition={VIVID_SPRING.bouncy}
@@ -429,14 +445,15 @@ export function PlayerDetail({
                 width: '100%',
                 height: 48,
                 borderRadius: 9999,
-                background: 'var(--vivid-gold)',
+                background: '#D4960A',
                 border: 'none',
-                color: '#1a1b3a',
+                color: '#FFFFFF',
                 fontFamily: 'var(--vivid-font-display)',
                 fontWeight: 700,
-                fontSize: 15,
+                fontSize: 16,
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
+                boxShadow: '0 3px 10px rgba(212, 150, 10, 0.2)',
               }}
               whileTap={VIVID_TAP.button}
               transition={VIVID_SPRING.bouncy}
@@ -457,9 +474,10 @@ export function PlayerDetail({
                   justifyContent: 'center',
                   gap: 8,
                   padding: '10px 16px',
-                  borderRadius: 16,
-                  background: 'var(--vivid-bg-surface)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 18,
+                  background: '#FFFFFF',
+                  border: '1px solid rgba(139, 115, 85, 0.1)',
+                  boxShadow: 'var(--vivid-surface-shadow)',
                 }}
               >
                 <input
@@ -471,8 +489,8 @@ export function PlayerDetail({
                   style={{
                     width: 64,
                     padding: '6px 8px',
-                    borderRadius: 8,
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: 10,
+                    border: '2px solid rgba(139, 115, 85, 0.12)',
                     background: 'var(--vivid-bg-deep)',
                     color: 'var(--vivid-text)',
                     fontFamily: 'var(--vivid-font-display)',
@@ -488,9 +506,9 @@ export function PlayerDetail({
                   style={{
                     padding: '6px 14px',
                     borderRadius: 9999,
-                    background: mySilver < 1 ? 'var(--vivid-text-dim)' : 'var(--vivid-gold)',
+                    background: mySilver < 1 ? 'var(--vivid-text-dim)' : '#D4960A',
                     border: 'none',
-                    color: '#1a1b3a',
+                    color: '#FFFFFF',
                     fontFamily: 'var(--vivid-font-display)',
                     fontWeight: 700,
                     fontSize: 13,
@@ -507,7 +525,7 @@ export function PlayerDetail({
                     padding: '6px 10px',
                     borderRadius: 9999,
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    border: '1px solid rgba(139, 115, 85, 0.12)',
                     color: 'var(--vivid-text-dim)',
                     fontFamily: 'var(--vivid-font-display)',
                     fontWeight: 700,
@@ -529,8 +547,10 @@ export function PlayerDetail({
           style={{
             marginTop: 32,
             fontSize: 14,
+            fontWeight: 500,
             color: 'var(--vivid-text-dim)',
             textAlign: 'center',
+            fontFamily: 'var(--vivid-font-display)',
           }}
         >
           More coming soon...

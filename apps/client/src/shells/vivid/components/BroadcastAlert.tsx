@@ -16,7 +16,8 @@ interface BroadcastAlertProps {
 /* ------------------------------------------------------------------ */
 
 interface AlertStyle {
-  gradient: string;
+  bgColor: string;
+  borderColor: string;
   accentColor: string;
   Icon: React.ComponentType<{ size?: number; weight?: string; style?: React.CSSProperties }>;
 }
@@ -26,40 +27,45 @@ function resolveAlertStyle(category: string): AlertStyle {
 
   if (cat.includes('ELIMINATION')) {
     return {
-      gradient: 'linear-gradient(90deg, rgba(255,46,99,0.15), rgba(255,46,99,0.05))',
-      accentColor: 'rgba(255,46,99,0.8)',
+      bgColor: '#FDE8E4',
+      borderColor: '#E8614D',
+      accentColor: '#D94053',
       Icon: Danger as React.ComponentType<{ size?: number; weight?: string; style?: React.CSSProperties }>,
     };
   }
 
   if (cat.includes('VOTE') || cat.includes('VOTING')) {
     return {
-      gradient: 'linear-gradient(90deg, rgba(255,217,61,0.12), rgba(255,217,61,0.04))',
-      accentColor: 'rgba(255,217,61,0.8)',
+      bgColor: '#FFF3D6',
+      borderColor: '#E89B3A',
+      accentColor: '#D4960A',
       Icon: Scale as React.ComponentType<{ size?: number; weight?: string; style?: React.CSSProperties }>,
     };
   }
 
   if (cat.includes('WINNER')) {
     return {
-      gradient: 'linear-gradient(90deg, rgba(255,217,61,0.15), rgba(255,217,61,0.05))',
-      accentColor: 'rgba(255,217,61,0.8)',
+      bgColor: '#FFF8E1',
+      borderColor: '#D4960A',
+      accentColor: '#D4960A',
       Icon: Crown as React.ComponentType<{ size?: number; weight?: string; style?: React.CSSProperties }>,
     };
   }
 
   if (cat.includes('GAME') || cat.includes('REWARD')) {
     return {
-      gradient: 'linear-gradient(90deg, rgba(255,217,61,0.12), rgba(255,217,61,0.04))',
-      accentColor: 'rgba(255,217,61,0.8)',
+      bgColor: '#E6F5EF',
+      borderColor: '#3BA99C',
+      accentColor: '#3BA99C',
       Icon: CupStar as React.ComponentType<{ size?: number; weight?: string; style?: React.CSSProperties }>,
     };
   }
 
-  // Default — teal info style
+  // Default — warm sage info style
   return {
-    gradient: 'linear-gradient(90deg, rgba(78,205,196,0.1), transparent)',
-    accentColor: 'rgba(78,205,196,0.6)',
+    bgColor: '#F0F5EE',
+    borderColor: '#6B9E6E',
+    accentColor: '#6B9E6E',
     Icon: InfoCircle as React.ComponentType<{ size?: number; weight?: string; style?: React.CSSProperties }>,
   };
 }
@@ -69,31 +75,46 @@ function resolveAlertStyle(category: string): AlertStyle {
 /* ------------------------------------------------------------------ */
 
 export function BroadcastAlert({ message }: BroadcastAlertProps) {
-  const { gradient, accentColor, Icon } = resolveAlertStyle(message.category);
+  const { bgColor, borderColor, accentColor, Icon } = resolveAlertStyle(message.category);
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={VIVID_SPRING.gentle}
+      initial={{ opacity: 0, scale: 0.92, y: 8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={VIVID_SPRING.bouncy}
       style={{
         width: '100%',
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
-        padding: '10px 16px',
-        borderRadius: 10,
-        background: gradient,
-        border: `1px solid ${accentColor.replace(/[\d.]+\)$/, '0.15)')}`,
-        margin: '4px 0',
+        gap: 12,
+        padding: '14px 18px',
+        borderRadius: 18,
+        background: bgColor,
+        border: `2px solid ${borderColor}`,
+        boxShadow: `0 3px 12px rgba(139, 115, 85, 0.12)`,
+        margin: '6px 0',
       }}
     >
-      <Icon size={20} weight="BoldDuotone" style={{ color: accentColor, flexShrink: 0 }} />
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          background: `${accentColor}18`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <Icon size={20} weight="BoldDuotone" style={{ color: accentColor }} />
+      </div>
       <span
         style={{
-          fontSize: 12,
+          fontSize: 14,
           fontFamily: 'var(--vivid-font-display)',
-          letterSpacing: '0.04em',
+          fontWeight: 700,
+          letterSpacing: '0.02em',
           textTransform: 'uppercase',
           color: 'var(--vivid-text)',
           lineHeight: 1.4,

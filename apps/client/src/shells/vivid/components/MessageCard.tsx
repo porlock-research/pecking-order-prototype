@@ -56,54 +56,76 @@ export function MessageCard({
         transition={VIVID_SPRING.gentle}
         style={{
           width: '100%',
-          borderLeft: '3px solid var(--vivid-gold)',
-          background: 'rgba(255, 217, 61, 0.08)',
-          borderRadius: 8,
-          padding: '8px 12px',
+          display: 'flex',
+          justifyContent: 'center',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <Crown size={14} weight="BoldDuotone" style={{ color: 'var(--vivid-gold)' }} />
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              color: 'var(--vivid-gold)',
-              fontFamily: 'var(--vivid-font-display)',
-            }}
-          >
-            Game Master
-          </span>
-          <span
-            style={{
-              fontSize: 9,
-              fontFamily: 'monospace',
-              color: 'var(--vivid-text-dim)',
-              marginLeft: 'auto',
-            }}
-          >
-            {formatTime(message.timestamp)}
-          </span>
-        </div>
-        <p
+        <div
           style={{
-            margin: 0,
-            fontSize: 14,
-            lineHeight: 1.5,
-            color: 'var(--vivid-text)',
+            maxWidth: '88%',
+            background: 'var(--vivid-bubble-gm)',
+            borderRadius: 20,
+            padding: '10px 16px',
+            boxShadow: '0 2px 8px rgba(180, 140, 60, 0.1)',
+            border: '2px solid rgba(212, 150, 10, 0.2)',
+            position: 'relative',
           }}
         >
-          {message.content}
-        </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'rgba(212, 150, 10, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Crown size={14} weight="BoldDuotone" style={{ color: '#D4960A' }} />
+            </div>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: '#D4960A',
+                fontFamily: 'var(--vivid-font-display)',
+              }}
+            >
+              Game Master
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                fontFamily: 'var(--vivid-font-mono)',
+                color: 'var(--vivid-text-dim)',
+                marginLeft: 'auto',
+              }}
+            >
+              {formatTime(message.timestamp)}
+            </span>
+          </div>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 15,
+              lineHeight: 1.55,
+              color: 'var(--vivid-text)',
+              fontFamily: 'var(--vivid-font-body)',
+            }}
+          >
+            {message.content}
+          </p>
+        </div>
       </motion.div>
     );
   }
 
-  /* -- Player card ------------------------------------------------- */
-
-  const bgColor = isMe ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)';
+  /* -- Player bubble ------------------------------------------------ */
 
   return (
     <motion.div
@@ -113,67 +135,112 @@ export function MessageCard({
       transition={VIVID_SPRING.gentle}
       style={{
         width: '100%',
-        borderLeft: `3px solid ${playerColor}`,
-        background: bgColor,
-        borderRadius: 8,
-        padding: showSender ? '8px 12px' : '4px 12px 8px 12px',
+        display: 'flex',
+        flexDirection: isMe ? 'row-reverse' : 'row',
+        alignItems: 'flex-end',
+        gap: 8,
       }}
     >
-      {/* Sender row */}
+      {/* Avatar (outside the bubble) */}
       {showSender && (
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginBottom: 4,
+            flexShrink: 0,
             cursor: onTapAvatar ? 'pointer' : undefined,
+            alignSelf: 'flex-end',
           }}
           onClick={() => onTapAvatar?.(message.senderId)}
         >
           <PersonaAvatar
             avatarUrl={sender?.avatarUrl}
             personaName={sender?.personaName}
-            size={32}
+            size={34}
           />
-          <span
-            style={{
-              fontWeight: 700,
-              fontSize: 13,
-              color: playerColor,
-              fontFamily: 'var(--vivid-font-display)',
-            }}
-          >
-            {sender?.personaName || 'Unknown'}
-          </span>
-          {showTimestamp && (
-            <span
-              style={{
-                fontSize: 10,
-                fontFamily: 'monospace',
-                color: 'var(--vivid-text-dim)',
-                marginLeft: 'auto',
-              }}
-            >
-              {formatTime(message.timestamp)}
-            </span>
-          )}
         </div>
       )}
 
-      {/* Message body */}
-      <p
+      {/* Bubble */}
+      <div
         style={{
-          margin: 0,
-          fontSize: 14,
-          lineHeight: 1.5,
-          color: 'var(--vivid-text)',
-          overflowWrap: 'anywhere',
-          wordBreak: 'break-word',
+          maxWidth: '75%',
+          marginLeft: !showSender && !isMe ? 42 : 0,
+          marginRight: !showSender && isMe ? 42 : 0,
+          position: 'relative',
         }}
       >
-        {message.content}
-      </p>
+        {/* Sender name */}
+        {showSender && !isMe && (
+          <div
+            style={{
+              marginBottom: 3,
+              marginLeft: 12,
+            }}
+          >
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: 12,
+                color: playerColor,
+                fontFamily: 'var(--vivid-font-display)',
+              }}
+            >
+              {sender?.personaName || 'Unknown'}
+            </span>
+          </div>
+        )}
+
+        {/* Message bubble */}
+        <div
+          style={{
+            background: isMe ? 'var(--vivid-bubble-self)' : 'var(--vivid-bubble-other)',
+            borderRadius: isMe
+              ? showSender ? '20px 20px 6px 20px' : '20px 6px 6px 20px'
+              : showSender ? '20px 20px 20px 6px' : '6px 20px 20px 6px',
+            padding: '10px 14px',
+            boxShadow: isMe
+              ? '0 1px 4px rgba(107, 158, 110, 0.12)'
+              : '0 1px 4px rgba(139, 115, 85, 0.08)',
+            border: isMe
+              ? '1px solid rgba(107, 158, 110, 0.15)'
+              : '1px solid rgba(139, 115, 85, 0.08)',
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 15,
+              lineHeight: 1.5,
+              color: 'var(--vivid-text)',
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
+            }}
+          >
+            {message.content}
+          </p>
+
+          {/* Timestamp */}
+          {showTimestamp && (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: isMe ? 'flex-end' : 'flex-start',
+                marginTop: 4,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  fontFamily: 'var(--vivid-font-mono)',
+                  color: 'var(--vivid-text-dim)',
+                  opacity: 0.7,
+                }}
+              >
+                {formatTime(message.timestamp)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
     </motion.div>
   );
 }

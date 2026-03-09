@@ -212,7 +212,7 @@ export function DMChat({
           gap: 12,
           padding: '0 16px',
           background: 'var(--vivid-bg-surface)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          borderBottom: '2px solid rgba(139, 115, 85, 0.06)',
         }}
       >
         {/* Back button */}
@@ -222,14 +222,15 @@ export function DMChat({
             flexShrink: 0,
             width: 40,
             height: 40,
-            borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.06)',
-            border: 'none',
+            borderRadius: 12,
+            background: '#FFFFFF',
+            border: '1px solid rgba(139, 115, 85, 0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--vivid-text)',
             cursor: 'pointer',
+            boxShadow: 'var(--vivid-surface-shadow)',
           }}
           whileTap={VIVID_TAP.button}
           transition={VIVID_SPRING.bouncy}
@@ -258,14 +259,14 @@ export function DMChat({
                   width: 44,
                   height: 44,
                   borderRadius: '50%',
-                  background: 'rgba(255, 217, 61, 0.2)',
+                  background: 'rgba(212, 150, 10, 0.12)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
                 }}
               >
-                <Crown size={22} weight="BoldDuotone" style={{ color: 'var(--vivid-gold)' }} />
+                <Crown size={22} weight="BoldDuotone" style={{ color: '#D4960A' }} />
               </div>
             ) : (
               <PersonaAvatar
@@ -310,7 +311,7 @@ export function DMChat({
                 fontFamily: 'var(--vivid-font-display)',
                 fontWeight: 700,
                 fontSize: 16,
-                color: isGameMaster ? 'var(--vivid-gold)' : 'var(--vivid-text)',
+                color: isGameMaster ? '#D4960A' : 'var(--vivid-text)',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -337,7 +338,7 @@ export function DMChat({
                     style={{
                       fontSize: 11,
                       fontFamily: 'var(--vivid-font-body)',
-                      color: 'color-mix(in srgb, var(--vivid-gold) 60%, transparent)',
+                      color: 'var(--vivid-text-dim)',
                     }}
                   >
                     System
@@ -350,7 +351,7 @@ export function DMChat({
                       gap: 5,
                       fontSize: 11,
                       fontFamily: 'var(--vivid-font-body)',
-                      color: isOnline ? 'var(--vivid-teal)' : 'var(--vivid-text-dim)',
+                      color: isOnline ? '#3BA99C' : 'var(--vivid-text-dim)',
                     }}
                   >
                     <span
@@ -358,7 +359,7 @@ export function DMChat({
                         width: 7,
                         height: 7,
                         borderRadius: '50%',
-                        background: isOnline ? 'var(--vivid-teal)' : 'var(--vivid-text-dim)',
+                        background: isOnline ? '#3BA99C' : 'var(--vivid-text-dim)',
                         display: 'inline-block',
                         flexShrink: 0,
                       }}
@@ -387,8 +388,11 @@ export function DMChat({
             style={{
               flexShrink: 0,
               fontSize: 11,
-              fontFamily: 'monospace',
+              fontFamily: 'var(--vivid-font-mono)',
               color: 'var(--vivid-text-dim)',
+              background: 'var(--vivid-bg-elevated)',
+              padding: '2px 8px',
+              borderRadius: 8,
             }}
           >
             {charsRemaining}/{charsLimit}
@@ -432,7 +436,7 @@ export function DMChat({
                       sender={roster[entry.data.senderId]}
                       showSender={shouldShowSender1on1(i)}
                       showTimestamp={shouldShowTimestamp1on1(i)}
-                      playerColor={playerColorMap[entry.data.senderId] || '#8B8DB3'}
+                      playerColor={playerColorMap[entry.data.senderId] || '#9B8E7E'}
                       onTapAvatar={onTapAvatar}
                     />
                   );
@@ -456,7 +460,7 @@ export function DMChat({
                 sender={roster[msg.senderId]}
                 showSender={shouldShowSenderGroup(i)}
                 showTimestamp={shouldShowTimestampGroup(i)}
-                playerColor={playerColorMap[msg.senderId] || '#8B8DB3'}
+                playerColor={playerColorMap[msg.senderId] || '#9B8E7E'}
                 onTapAvatar={onTapAvatar}
               />
             ))
@@ -519,19 +523,22 @@ function EmptyState({ text }: { text: string }) {
         style={{
           width: 56,
           height: 56,
-          borderRadius: '50%',
+          borderRadius: 16,
           background: 'var(--vivid-bg-elevated)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          border: '2px solid rgba(139, 115, 85, 0.08)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          boxShadow: 'var(--vivid-surface-shadow)',
         }}
       >
         <span
           style={{
-            color: 'color-mix(in srgb, var(--vivid-text-dim) 40%, transparent)',
-            fontFamily: 'monospace',
+            color: 'var(--vivid-text-dim)',
+            opacity: 0.4,
+            fontFamily: 'var(--vivid-font-display)',
             fontSize: 18,
+            fontWeight: 700,
           }}
         >
           ...
@@ -543,6 +550,7 @@ function EmptyState({ text }: { text: string }) {
           fontFamily: 'var(--vivid-font-display)',
           color: 'var(--vivid-text-dim)',
           fontStyle: 'italic',
+          fontWeight: 600,
           textAlign: 'center',
           maxWidth: 260,
         }}

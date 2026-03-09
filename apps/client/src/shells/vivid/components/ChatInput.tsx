@@ -206,21 +206,10 @@ export function ChatInput({
     <div
       style={{
         flexShrink: 0,
-        background: 'color-mix(in srgb, var(--vivid-bg-surface) 80%, transparent)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+        background: 'var(--vivid-bg-surface)',
+        borderTop: '1px solid rgba(139, 115, 85, 0.08)',
       }}
     >
-      {/* Subtle gradient separator */}
-      <div
-        style={{
-          height: 1,
-          background:
-            'linear-gradient(to right, transparent, rgba(255,255,255,0.12), transparent)',
-        }}
-      />
-
       <div style={{ padding: '6px 12px 12px' }}>
         {/* Typing indicator */}
         <AnimatePresence>
@@ -238,11 +227,11 @@ export function ChatInput({
             style={{
               marginBottom: 8,
               padding: '8px 12px',
-              borderRadius: 8,
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
+              borderRadius: 14,
+              background: 'var(--vivid-bg-elevated)',
+              border: '1px solid rgba(139, 115, 85, 0.1)',
               color: 'var(--vivid-text-dim)',
-              fontSize: 12,
+              fontSize: 13,
               fontFamily: 'var(--vivid-font-body)',
               textAlign: 'center',
             }}
@@ -263,8 +252,9 @@ export function ChatInput({
                 alignItems: 'center',
                 gap: 8,
                 padding: '6px 12px',
-                borderRadius: 8,
-                background: 'rgba(255, 255, 255, 0.04)',
+                borderRadius: 14,
+                background: 'var(--vivid-bg-elevated)',
+                border: '1px solid rgba(139, 115, 85, 0.1)',
               }}
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -274,7 +264,7 @@ export function ChatInput({
               {/* Coral left border bar */}
               <div
                 style={{
-                  width: 2,
+                  width: 3,
                   alignSelf: 'stretch',
                   minHeight: 24,
                   background: 'var(--vivid-coral)',
@@ -285,7 +275,7 @@ export function ChatInput({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <span
                   style={{
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: 700,
                     color: 'var(--vivid-coral)',
                     fontFamily: 'var(--vivid-font-display)',
@@ -344,8 +334,8 @@ export function ChatInput({
             disabled={isDisabled}
             style={{
               flex: 1,
-              background: 'var(--vivid-bg-elevated)',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
+              background: '#FFFFFF',
+              border: '2px solid rgba(139, 115, 85, 0.12)',
               borderRadius: 9999,
               padding: '12px 20px',
               fontSize: 16,
@@ -355,17 +345,18 @@ export function ChatInput({
               opacity: isDisabled ? 0.4 : 1,
               cursor: isDisabled ? 'not-allowed' : 'text',
               transition: 'box-shadow 0.2s, border-color 0.2s',
+              boxShadow: '0 1px 4px rgba(139, 115, 85, 0.06)',
             }}
             onFocus={(e) => {
               if (!isDisabled) {
                 e.currentTarget.style.boxShadow =
-                  '0 0 0 2px var(--vivid-phase-accent), 0 0 0 4px var(--vivid-phase-glow)';
-                e.currentTarget.style.borderColor = 'transparent';
+                  '0 0 0 3px rgba(59, 169, 156, 0.15)';
+                e.currentTarget.style.borderColor = 'var(--vivid-phase-accent)';
               }
             }}
             onBlur={(e) => {
-              e.currentTarget.style.boxShadow = 'none';
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+              e.currentTarget.style.boxShadow = '0 1px 4px rgba(139, 115, 85, 0.06)';
+              e.currentTarget.style.borderColor = 'rgba(139, 115, 85, 0.12)';
             }}
           />
 
@@ -388,7 +379,7 @@ export function ChatInput({
               cursor:
                 !inputValue.trim() || isDisabled ? 'not-allowed' : 'pointer',
               opacity: !inputValue.trim() || isDisabled ? 0.4 : 1,
-              boxShadow: '0 4px 12px rgba(255, 107, 107, 0.3)',
+              boxShadow: '0 3px 10px rgba(232, 97, 77, 0.25)',
             }}
             whileTap={VIVID_TAP.fab}
             transition={VIVID_SPRING.bouncy}

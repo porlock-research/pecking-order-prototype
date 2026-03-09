@@ -183,20 +183,22 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                 style={{
                   width: 64,
                   height: 64,
-                  borderRadius: '50%',
+                  borderRadius: 20,
                   background: 'var(--vivid-bg-elevated)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  border: '2px solid rgba(139, 115, 85, 0.1)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  boxShadow: 'var(--vivid-surface-shadow)',
                 }}
               >
                 <span
                   style={{
                     color: 'var(--vivid-text-dim)',
                     opacity: 0.5,
-                    fontFamily: 'monospace',
-                    fontSize: 18,
+                    fontFamily: 'var(--vivid-font-display)',
+                    fontSize: 22,
+                    fontWeight: 700,
                   }}
                 >
                   ...
@@ -206,7 +208,8 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                 style={{
                   fontFamily: 'var(--vivid-font-display)',
                   color: 'var(--vivid-text-dim)',
-                  fontSize: 14,
+                  fontSize: 15,
+                  fontWeight: 600,
                 }}
               >
                 The stage is set...
@@ -217,7 +220,7 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
           {/* Timeline entries */}
           {entries.map((entry, i) => {
             const isGrouped = entry.kind === 'chat' && !shouldShowSender(i);
-            const marginTop = i === 0 ? 0 : isGrouped ? 2 : 8;
+            const marginTop = i === 0 ? 0 : isGrouped ? 2 : 10;
 
             switch (entry.kind) {
               case 'chat':
@@ -229,7 +232,7 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                       sender={roster[entry.data.senderId]}
                       showSender={shouldShowSender(i)}
                       showTimestamp={shouldShowTimestamp(i)}
-                      playerColor={playerColorMap[entry.data.senderId] || '#8B8DB3'}
+                      playerColor={playerColorMap[entry.data.senderId] || '#9B8E7E'}
                       onTapAvatar={onTapAvatar}
                       onTapReply={handleTapReply}
                     />
@@ -278,7 +281,7 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                 sender={playerId ? roster[playerId] : undefined}
                 showSender={false}
                 isOptimistic
-                playerColor={playerColorMap[msg.senderId] || '#8B8DB3'}
+                playerColor={playerColorMap[msg.senderId] || '#9B8E7E'}
               />
             </div>
           ))}
@@ -298,10 +301,8 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                 display: 'flex',
                 justifyContent: 'center',
                 padding: '12px 16px',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                background: 'rgba(255, 255, 255, 0.03)',
-                borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                background: 'rgba(253, 248, 240, 0.9)',
+                borderTop: '1px solid rgba(139, 115, 85, 0.08)',
                 zIndex: 10,
               }}
               initial={{ opacity: 0, y: 20 }}
@@ -318,19 +319,19 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                   padding: '10px 20px',
                   borderRadius: 9999,
                   background: activeVotingCartridge
-                    ? 'var(--vivid-gold)'
+                    ? '#E89B3A'
                     : activeGameCartridge
-                      ? 'var(--vivid-teal)'
-                      : 'var(--vivid-lavender)',
+                      ? '#3BA99C'
+                      : '#8B6CC1',
                   color: '#FFFFFF',
                   border: 'none',
                   fontWeight: 700,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontFamily: 'var(--vivid-font-display)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   cursor: 'pointer',
-                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+                  boxShadow: '0 3px 12px rgba(139, 115, 85, 0.2)',
                 }}
                 whileTap={VIVID_TAP.button}
                 transition={VIVID_SPRING.bouncy}
@@ -357,16 +358,14 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                 gap: 6,
                 padding: '8px 16px',
                 borderRadius: 9999,
-                background: 'color-mix(in srgb, var(--vivid-bg-elevated) 95%, transparent)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                background: '#FFFFFF',
+                border: '1px solid rgba(139, 115, 85, 0.12)',
                 color: 'var(--vivid-coral)',
-                fontSize: 11,
-                fontFamily: 'var(--vivid-font-body)',
-                fontWeight: 600,
+                fontSize: 12,
+                fontFamily: 'var(--vivid-font-display)',
+                fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)',
+                boxShadow: '0 3px 12px rgba(139, 115, 85, 0.12)',
                 zIndex: 10,
               }}
               initial={{ opacity: 0, y: 8 }}

@@ -29,11 +29,9 @@ export function TabBar({ activeTab, onTabChange, unreadWhispers }: TabBarProps) 
           display: 'flex',
           justifyContent: 'space-around',
           alignItems: 'center',
-          padding: '8px 0 env(safe-area-inset-bottom, 8px)',
-          background: 'color-mix(in srgb, var(--vivid-bg-surface) 90%, transparent)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+          padding: '6px 16px env(safe-area-inset-bottom, 8px)',
+          background: 'var(--vivid-bg-surface)',
+          borderTop: '1px solid rgba(139, 115, 85, 0.06)',
         }}
       >
         {TABS.map(({ id, label, Icon }) => {
@@ -46,13 +44,15 @@ export function TabBar({ activeTab, onTabChange, unreadWhispers }: TabBarProps) 
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 2,
-                padding: '6px 20px',
-                background: 'none',
+                gap: 3,
+                padding: '6px 24px',
+                background: isActive ? 'rgba(139, 115, 85, 0.06)' : 'none',
+                borderRadius: 16,
                 border: 'none',
                 cursor: 'pointer',
                 position: 'relative',
                 WebkitTapHighlightColor: 'transparent',
+                transition: 'background 0.2s ease',
               }}
               whileTap={VIVID_TAP.button}
               transition={VIVID_SPRING.snappy}
@@ -89,7 +89,7 @@ export function TabBar({ activeTab, onTabChange, unreadWhispers }: TabBarProps) 
               </div>
               <span
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: isActive ? 700 : 500,
                   fontFamily: 'var(--vivid-font-display)',
                   color: isActive ? 'var(--vivid-phase-accent)' : 'var(--vivid-text-dim)',

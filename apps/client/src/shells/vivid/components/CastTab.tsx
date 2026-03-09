@@ -21,9 +21,9 @@ interface CastTabProps {
 /* ------------------------------------------------------------------ */
 
 const RANK_COLORS: Record<number, string> = {
-  1: '#FFD700',
-  2: '#C0C0C0',
-  3: '#CD7F32',
+  1: '#D4960A',
+  2: '#9B8E7E',
+  3: '#C4713B',
 };
 
 /* ------------------------------------------------------------------ */
@@ -59,7 +59,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
         padding: 16,
         display: 'flex',
         flexDirection: 'column',
-        gap: 12,
+        gap: 10,
       }}
     >
       {/* Header */}
@@ -67,10 +67,10 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
         <span
           style={{
             fontFamily: 'var(--vivid-font-display)',
-            fontSize: 16,
-            fontWeight: 700,
+            fontSize: 18,
+            fontWeight: 800,
             textTransform: 'uppercase',
-            letterSpacing: '0.08em',
+            letterSpacing: '0.06em',
             color: 'var(--vivid-phase-accent)',
           }}
         >
@@ -78,9 +78,10 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
         </span>
         <span
           style={{
-            fontSize: 12,
+            fontSize: 13,
             color: 'var(--vivid-text-dim)',
             fontFamily: 'var(--vivid-font-body)',
+            fontWeight: 500,
           }}
         >
           {rankedAlive.length} remaining
@@ -108,13 +109,16 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               alignItems: 'center',
               gap: 12,
               padding: isLeader ? '14px 18px' : '12px 16px',
-              background: isMe ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.04)',
-              borderRadius: 12,
+              background: '#FFFFFF',
+              borderRadius: 18,
               cursor: 'pointer',
               position: 'relative',
-              ...(isLeader
-                ? { boxShadow: '0 0 20px rgba(255,217,61,0.08), inset 0 0 30px rgba(255,217,61,0.03)' }
-                : {}),
+              border: isMe
+                ? `2px solid ${color}`
+                : '1px solid rgba(139, 115, 85, 0.08)',
+              boxShadow: isLeader
+                ? '0 3px 14px rgba(212, 150, 10, 0.12)'
+                : 'var(--vivid-card-shadow)',
             }}
           >
             {/* Rank badge */}
@@ -129,7 +133,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               }}
             >
               {isLeader && (
-                <Crown size={16} weight="BoldDuotone" style={{ color: '#FFD700' }} />
+                <Crown size={16} weight="BoldDuotone" style={{ color: '#D4960A' }} />
               )}
               <span
                 style={{
@@ -166,11 +170,11 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                     position: 'absolute',
                     bottom: 2,
                     right: 2,
-                    width: 8,
-                    height: 8,
+                    width: 10,
+                    height: 10,
                     borderRadius: '50%',
                     background: '#4ade80',
-                    border: '2px solid var(--vivid-bg-surface)',
+                    border: '2px solid #FFFFFF',
                   }}
                 />
               )}
@@ -181,12 +185,13 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span
                   style={{
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: 700,
                     color: color,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
+                    fontFamily: 'var(--vivid-font-display)',
                   }}
                 >
                   {p.personaName}
@@ -194,14 +199,14 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                 {isMe && (
                   <span
                     style={{
-                      fontSize: 9,
+                      fontSize: 10,
                       fontWeight: 700,
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
-                      color: 'var(--vivid-gold)',
-                      background: 'rgba(255,217,61,0.12)',
-                      padding: '1px 5px',
-                      borderRadius: 4,
+                      color: '#D4960A',
+                      background: 'rgba(212, 150, 10, 0.12)',
+                      padding: '2px 6px',
+                      borderRadius: 6,
                     }}
                   >
                     YOU
@@ -212,7 +217,8 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                 style={{
                   fontFamily: 'var(--vivid-font-mono)',
                   fontSize: 13,
-                  color: 'var(--vivid-gold)',
+                  color: '#D4960A',
+                  fontWeight: 600,
                 }}
               >
                 {p.silver ?? 0} silver
@@ -227,9 +233,10 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                 onViewProfile(p.id);
               }}
               style={{
-                background: 'none',
+                background: 'var(--vivid-bg-elevated)',
                 border: 'none',
                 padding: 6,
+                borderRadius: 8,
                 cursor: 'pointer',
                 color: 'var(--vivid-text-dim)',
                 display: 'flex',
@@ -260,11 +267,14 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              padding: '8px 12px',
-              background: isMe ? 'rgba(255,255,255,0.06)' : 'transparent',
-              borderRadius: 8,
+              padding: '10px 14px',
+              background: isMe ? '#FFFFFF' : 'var(--vivid-bg-elevated)',
+              borderRadius: 14,
               cursor: 'pointer',
-              borderLeft: `3px solid ${color}`,
+              border: isMe
+                ? `2px solid ${color}`
+                : '1px solid rgba(139, 115, 85, 0.06)',
+              boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
             {/* Rank */}
@@ -272,6 +282,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               style={{
                 fontFamily: 'var(--vivid-font-mono)',
                 fontSize: 12,
+                fontWeight: 600,
                 color: 'var(--vivid-text-dim)',
                 width: 24,
                 minWidth: 24,
@@ -286,7 +297,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               <PersonaAvatar
                 avatarUrl={p.avatarUrl}
                 personaName={p.personaName}
-                size={32}
+                size={34}
                 isOnline={onlineSet.has(p.id) || undefined}
               />
               {onlineSet.has(p.id) && (
@@ -299,7 +310,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                     height: 8,
                     borderRadius: '50%',
                     background: '#4ade80',
-                    border: '2px solid var(--vivid-bg-surface)',
+                    border: '2px solid var(--vivid-bg-elevated)',
                   }}
                 />
               )}
@@ -312,6 +323,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                   fontSize: 14,
                   color: color,
                   fontWeight: 600,
+                  fontFamily: 'var(--vivid-font-display)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -326,8 +338,8 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
-                    color: 'var(--vivid-gold)',
-                    background: 'rgba(255,217,61,0.12)',
+                    color: '#D4960A',
+                    background: 'rgba(212, 150, 10, 0.12)',
                     padding: '1px 5px',
                     borderRadius: 4,
                   }}
@@ -342,7 +354,8 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               style={{
                 fontFamily: 'var(--vivid-font-mono)',
                 fontSize: 12,
-                color: 'var(--vivid-gold)',
+                color: '#D4960A',
+                fontWeight: 600,
               }}
             >
               {p.silver ?? 0}
@@ -374,14 +387,14 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
       {/* Eliminated section */}
       {eliminated.length > 0 && (
         <>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 12 }}>
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 700,
                 textTransform: 'uppercase',
-                letterSpacing: '0.08em',
+                letterSpacing: '0.06em',
                 color: 'var(--vivid-text-dim)',
               }}
             >
@@ -389,7 +402,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
             </span>
             <span
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 color: 'var(--vivid-text-dim)',
                 fontFamily: 'var(--vivid-font-body)',
               }}
@@ -405,16 +418,16 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               <motion.div
                 key={p.id}
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 0.5 }}
+                animate={{ opacity: 0.6 }}
                 transition={{ ...VIVID_SPRING.gentle, delay: 0.03 * i }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
-                  padding: '8px 12px',
-                  background: isMe ? 'rgba(255,255,255,0.06)' : 'transparent',
-                  borderRadius: 8,
-                  borderLeft: '3px solid rgba(255,255,255,0.1)',
+                  padding: '8px 14px',
+                  background: isMe ? 'rgba(217, 64, 115, 0.04)' : 'var(--vivid-bg-elevated)',
+                  borderRadius: 14,
+                  border: '1px solid rgba(139, 115, 85, 0.06)',
                 }}
               >
                 {/* Avatar */}
@@ -445,8 +458,8 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
-                        color: 'var(--vivid-gold)',
-                        background: 'rgba(255,217,61,0.12)',
+                        color: '#D4960A',
+                        background: 'rgba(212, 150, 10, 0.12)',
                         padding: '1px 5px',
                         borderRadius: 4,
                       }}
@@ -459,7 +472,8 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                       fontSize: 10,
                       fontWeight: 700,
                       textTransform: 'uppercase',
-                      color: 'var(--vivid-pink)',
+                      color: '#D94073',
+                      fontFamily: 'var(--vivid-font-display)',
                     }}
                   >
                     ELIMINATED

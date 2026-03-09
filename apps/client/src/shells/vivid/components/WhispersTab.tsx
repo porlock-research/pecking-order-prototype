@@ -202,14 +202,14 @@ function ConversationList({
           justifyContent: 'space-between',
           padding: '12px 16px',
           background: 'var(--vivid-bg-surface)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          borderBottom: '2px solid rgba(139, 115, 85, 0.06)',
         }}
       >
         <span
           style={{
             fontFamily: 'var(--vivid-font-display)',
             fontWeight: 800,
-            fontSize: 20,
+            fontSize: 22,
             color: 'var(--vivid-text)',
             textTransform: 'uppercase',
             letterSpacing: '0.04em',
@@ -227,7 +227,7 @@ function ConversationList({
               gap: 4,
               padding: '6px 14px',
               borderRadius: 9999,
-              background: 'var(--vivid-teal)',
+              background: '#3BA99C',
               border: 'none',
               color: '#FFFFFF',
               fontFamily: 'var(--vivid-font-display)',
@@ -235,6 +235,7 @@ function ConversationList({
               fontSize: 12,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
+              boxShadow: '0 2px 6px rgba(59, 169, 156, 0.2)',
             }}
             whileTap={VIVID_TAP.fab}
             transition={VIVID_SPRING.bouncy}
@@ -250,7 +251,7 @@ function ConversationList({
               gap: 4,
               padding: '6px 14px',
               borderRadius: 9999,
-              background: 'var(--vivid-lavender)',
+              background: '#8B6CC1',
               border: 'none',
               color: '#FFFFFF',
               fontFamily: 'var(--vivid-font-display)',
@@ -258,6 +259,7 @@ function ConversationList({
               fontSize: 12,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
+              boxShadow: '0 2px 6px rgba(139, 108, 193, 0.2)',
             }}
             whileTap={VIVID_TAP.fab}
             transition={VIVID_SPRING.bouncy}
@@ -282,7 +284,7 @@ function ConversationList({
         {gmDm && (
           <ConversationItem
             key="gm"
-            borderColor="var(--vivid-gold)"
+            borderColor="#D4960A"
             onClick={() => onSelectDm(GAME_MASTER_ID)}
             index={staggerIndex++}
             avatar={
@@ -291,18 +293,18 @@ function ConversationList({
                   width: 40,
                   height: 40,
                   borderRadius: '50%',
-                  background: 'rgba(255, 217, 61, 0.2)',
+                  background: 'rgba(212, 150, 10, 0.12)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
                 }}
               >
-                <Crown size={20} weight="BoldDuotone" style={{ color: 'var(--vivid-gold)' }} />
+                <Crown size={20} weight="BoldDuotone" style={{ color: '#D4960A' }} />
               </div>
             }
             name="Game Master"
-            nameColor="var(--vivid-gold)"
+            nameColor="#D4960A"
             lastMessage={gmDm.lastMessage.content}
             timestamp={gmDm.lastTimestamp}
           />
@@ -314,7 +316,7 @@ function ConversationList({
           return (
             <ConversationItem
               key={thread.channelId}
-              borderColor="var(--vivid-lavender)"
+              borderColor="#8B6CC1"
               onClick={() => onSelectGroup(thread.channelId)}
               index={idx}
               avatar={
@@ -342,7 +344,7 @@ function ConversationList({
                 </div>
               }
               name={thread.memberNames.join(', ')}
-              nameColor="var(--vivid-lavender)"
+              nameColor="#8B6CC1"
               lastMessage={thread.lastMsg?.content}
               timestamp={thread.lastTimestamp}
             />
@@ -353,7 +355,7 @@ function ConversationList({
         {dmThreads.map(thread => {
           if (!thread.playerId || !thread.lastMessage) return null;
           const player = roster[thread.playerId];
-          const color = playerColorMap[thread.playerId] || '#8B8DB3';
+          const color = playerColorMap[thread.playerId] || '#9B8E7E';
           const idx = staggerIndex++;
           return (
             <ConversationItem
@@ -393,6 +395,7 @@ function ConversationList({
               style={{
                 fontFamily: 'var(--vivid-font-display)',
                 fontSize: 16,
+                fontWeight: 600,
                 color: 'var(--vivid-text-dim)',
                 fontStyle: 'italic',
               }}
@@ -435,16 +438,18 @@ function ConversationItem({
     <motion.button
       onClick={onClick}
       style={{
-        width: '100%',
         padding: '12px 16px',
-        background: 'transparent',
-        border: 'none',
-        borderLeft: `3px solid ${borderColor}`,
+        margin: '2px 8px',
+        width: 'calc(100% - 16px)',
+        background: '#FFFFFF',
+        border: '1px solid rgba(139, 115, 85, 0.06)',
+        borderRadius: 16,
         display: 'flex',
         alignItems: 'center',
         gap: 12,
         cursor: 'pointer',
         textAlign: 'left',
+        boxShadow: 'var(--vivid-surface-shadow)',
       }}
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
@@ -491,7 +496,7 @@ function ConversationItem({
         <span
           style={{
             flexShrink: 0,
-            fontFamily: 'monospace',
+            fontFamily: 'var(--vivid-font-mono)',
             fontSize: 11,
             color: 'var(--vivid-text-dim)',
           }}

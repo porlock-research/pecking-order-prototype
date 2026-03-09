@@ -29,7 +29,7 @@ export function PlayerQuickSheet({
   const [silverAmount, setSilverAmount] = useState(1);
 
   const player = targetPlayerId ? roster[targetPlayerId] : undefined;
-  const accentColor = targetPlayerId ? (playerColorMap[targetPlayerId] || '#8B8DB3') : '#8B8DB3';
+  const accentColor = targetPlayerId ? (playerColorMap[targetPlayerId] || '#9B8E7E') : '#9B8E7E';
   const isEliminated = player?.status === PlayerStatuses.ELIMINATED;
 
   const playerId = useGameStore(s => s.playerId);
@@ -56,7 +56,7 @@ export function PlayerQuickSheet({
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.6)',
+            background: 'rgba(61, 46, 31, 0.3)',
             zIndex: 40,
           }}
         />
@@ -67,12 +67,11 @@ export function PlayerQuickSheet({
             left: 0,
             right: 0,
             zIndex: 50,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            background: 'color-mix(in srgb, var(--vivid-bg-surface) 95%, transparent)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            background: 'var(--vivid-bg-surface)',
+            borderTop: '2px solid rgba(139, 115, 85, 0.1)',
+            boxShadow: '0 -4px 24px rgba(139, 115, 85, 0.1)',
           }}
           aria-describedby={undefined}
         >
@@ -80,7 +79,7 @@ export function PlayerQuickSheet({
 
           {/* Drag handle */}
           <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
-            <div style={{ width: 48, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)' }} />
+            <div style={{ width: 48, height: 4, borderRadius: 2, background: 'rgba(139, 115, 85, 0.2)' }} />
           </div>
 
           {/* Content */}
@@ -109,9 +108,9 @@ export function PlayerQuickSheet({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
-                        fontSize: 18,
+                        fontSize: 20,
                         fontFamily: 'var(--vivid-font-display)',
-                        fontWeight: 700,
+                        fontWeight: 800,
                         color: accentColor,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -137,12 +136,12 @@ export function PlayerQuickSheet({
                         textTransform: 'uppercase',
                         ...(isEliminated
                           ? {
-                              background: 'rgba(255,46,99,0.2)',
-                              color: 'var(--vivid-pink)',
+                              background: 'rgba(217, 64, 115, 0.1)',
+                              color: '#D94073',
                               textDecoration: 'line-through',
                             }
                           : {
-                              background: 'rgba(34,197,94,0.15)',
+                              background: 'rgba(34,197,94,0.1)',
                               color: '#22c55e',
                             }),
                       }}
@@ -154,28 +153,46 @@ export function PlayerQuickSheet({
 
                 {/* Stats row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Dollar size={16} weight="BoldDuotone" color="var(--vivid-gold)" />
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      background: 'rgba(212, 150, 10, 0.08)',
+                      borderRadius: 12,
+                      padding: '4px 10px',
+                    }}
+                  >
+                    <Dollar size={16} weight="BoldDuotone" color="#D4960A" />
                     <span
                       style={{
                         fontFamily: 'var(--vivid-font-mono)',
                         fontSize: 14,
                         fontWeight: 700,
-                        color: 'var(--vivid-gold)',
+                        color: '#D4960A',
                       }}
                     >
                       {player.silver ?? 0}
                     </span>
                   </div>
                   {player.gold != null && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Dollar size={16} weight="BoldDuotone" color="var(--vivid-gold)" />
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: 'rgba(139, 108, 193, 0.08)',
+                        borderRadius: 12,
+                        padding: '4px 10px',
+                      }}
+                    >
+                      <Dollar size={16} weight="BoldDuotone" color="#8B6CC1" />
                       <span
                         style={{
                           fontFamily: 'var(--vivid-font-mono)',
                           fontSize: 14,
                           fontWeight: 700,
-                          color: 'var(--vivid-gold)',
+                          color: '#8B6CC1',
                         }}
                       >
                         {player.gold} gold
@@ -185,7 +202,7 @@ export function PlayerQuickSheet({
                 </div>
 
                 {/* Action buttons */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   {/* Whisper */}
                   <button
                     onClick={() => { onWhisper(targetPlayerId); handleClose(); }}
@@ -195,14 +212,15 @@ export function PlayerQuickSheet({
                       gap: 6,
                       padding: '10px 18px',
                       borderRadius: 9999,
-                      background: 'rgba(78,205,196,0.15)',
+                      background: '#3BA99C',
                       border: 'none',
-                      color: 'var(--vivid-teal)',
+                      color: '#FFFFFF',
                       fontFamily: 'var(--vivid-font-display)',
                       fontWeight: 700,
                       fontSize: 14,
                       cursor: 'pointer',
                       WebkitTapHighlightColor: 'transparent',
+                      boxShadow: '0 2px 8px rgba(59, 169, 156, 0.2)',
                     }}
                   >
                     <ChatDots size={18} weight="Bold" />
@@ -218,14 +236,15 @@ export function PlayerQuickSheet({
                       gap: 6,
                       padding: '10px 18px',
                       borderRadius: 9999,
-                      background: 'rgba(255,217,61,0.15)',
+                      background: '#D4960A',
                       border: 'none',
-                      color: 'var(--vivid-gold)',
+                      color: '#FFFFFF',
                       fontFamily: 'var(--vivid-font-display)',
                       fontWeight: 700,
                       fontSize: 14,
                       cursor: 'pointer',
                       WebkitTapHighlightColor: 'transparent',
+                      boxShadow: '0 2px 8px rgba(212, 150, 10, 0.2)',
                     }}
                   >
                     <Dollar size={18} weight="Bold" />
@@ -241,14 +260,15 @@ export function PlayerQuickSheet({
                       gap: 6,
                       padding: '10px 18px',
                       borderRadius: 9999,
-                      background: 'rgba(167,139,250,0.15)',
+                      background: '#8B6CC1',
                       border: 'none',
-                      color: 'var(--vivid-lavender)',
+                      color: '#FFFFFF',
                       fontFamily: 'var(--vivid-font-display)',
                       fontWeight: 700,
                       fontSize: 14,
                       cursor: 'pointer',
                       WebkitTapHighlightColor: 'transparent',
+                      boxShadow: '0 2px 8px rgba(139, 108, 193, 0.2)',
                     }}
                   >
                     <UserCircle size={18} weight="Bold" />
@@ -265,9 +285,10 @@ export function PlayerQuickSheet({
                       gap: 8,
                       marginTop: 12,
                       padding: '10px 14px',
-                      borderRadius: 14,
-                      background: 'var(--vivid-bg-elevated)',
-                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: 16,
+                      background: '#FFFFFF',
+                      border: '1px solid rgba(139, 115, 85, 0.1)',
+                      boxShadow: 'var(--vivid-surface-shadow)',
                     }}
                   >
                     <input
@@ -279,8 +300,8 @@ export function PlayerQuickSheet({
                       style={{
                         width: 80,
                         padding: '6px 8px',
-                        borderRadius: 8,
-                        border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: 10,
+                        border: '2px solid rgba(139, 115, 85, 0.12)',
                         background: 'var(--vivid-bg-deep)',
                         color: 'var(--vivid-text)',
                         fontFamily: 'var(--vivid-font-display)',
@@ -296,9 +317,9 @@ export function PlayerQuickSheet({
                       style={{
                         padding: '6px 14px',
                         borderRadius: 9999,
-                        background: mySilver < 1 ? 'var(--vivid-text-dim)' : 'var(--vivid-gold)',
+                        background: mySilver < 1 ? 'var(--vivid-text-dim)' : '#D4960A',
                         border: 'none',
-                        color: '#1a1b3a',
+                        color: '#FFFFFF',
                         fontFamily: 'var(--vivid-font-display)',
                         fontWeight: 700,
                         fontSize: 13,

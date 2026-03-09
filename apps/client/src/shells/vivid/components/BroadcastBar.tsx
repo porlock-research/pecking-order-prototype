@@ -34,10 +34,8 @@ export function BroadcastBar() {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '10px 16px',
-        background: 'color-mix(in srgb, var(--vivid-bg-surface) 80%, transparent)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+        background: 'var(--vivid-bg-surface)',
+        borderBottom: '2px solid rgba(139, 115, 85, 0.08)',
         flexShrink: 0,
         zIndex: 20,
       }}
@@ -48,9 +46,9 @@ export function BroadcastBar() {
         <span
           style={{
             fontFamily: 'var(--vivid-font-display)',
-            fontWeight: 700,
-            fontSize: 12,
-            letterSpacing: '0.06em',
+            fontWeight: 800,
+            fontSize: 13,
+            letterSpacing: '0.04em',
             color: 'var(--vivid-phase-accent)',
             textTransform: 'uppercase',
           }}
@@ -61,15 +59,33 @@ export function BroadcastBar() {
 
       {/* Right: currency */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Dollar size={14} weight="BoldDuotone" color="var(--vivid-gold)" />
-          <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 13, fontWeight: 500, color: 'var(--vivid-gold)' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            background: 'rgba(212, 150, 10, 0.1)',
+            borderRadius: 20,
+            padding: '4px 10px',
+          }}
+        >
+          <Dollar size={14} weight="BoldDuotone" color="#D4960A" />
+          <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 13, fontWeight: 600, color: '#D4960A' }}>
             {mySilver}
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <CupStar size={14} weight="BoldDuotone" color="var(--vivid-lavender)" />
-          <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 13, fontWeight: 500, color: 'var(--vivid-lavender)' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            background: 'rgba(139, 108, 193, 0.1)',
+            borderRadius: 20,
+            padding: '4px 10px',
+          }}
+        >
+          <CupStar size={14} weight="BoldDuotone" color="#8B6CC1" />
+          <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 13, fontWeight: 600, color: '#8B6CC1' }}>
             {goldPool}
           </span>
         </div>

@@ -1,16 +1,16 @@
 // apps/client/src/shells/vivid/colors.ts
 
 const PLAYER_COLORS = [
-  '#FF6B6B', // coral red
-  '#4ECDC4', // teal
-  '#FFD93D', // gold
-  '#A78BFA', // lavender
-  '#F472B6', // pink
-  '#34D399', // emerald
-  '#FB923C', // orange
-  '#60A5FA', // sky blue
-  '#E879F9', // fuchsia
-  '#FBBF24', // amber
+  '#D4654B', // terracotta
+  '#3BA99C', // warm teal
+  '#D4960A', // honeycomb gold
+  '#8B6CC1', // wisteria
+  '#D94073', // raspberry
+  '#6B9E6E', // sage green
+  '#E89B3A', // warm amber
+  '#5B8DAF', // dusty blue
+  '#C4713B', // burnt sienna
+  '#9B7BB5', // soft plum
 ] as const;
 
 export function getPlayerColor(playerIndex: number): string {
