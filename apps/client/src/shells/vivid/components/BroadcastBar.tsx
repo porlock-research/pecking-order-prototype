@@ -2,8 +2,8 @@ import React from 'react';
 import { Dollar, CupStar } from '@solar-icons/react';
 import { useGameStore } from '../../../store/useGameStore';
 
-function getPhaseLabel(serverState: string | null, dayIndex: number): string {
-  if (!serverState) return 'WAITING';
+function getPhaseLabel(serverState: unknown, dayIndex: number): string {
+  if (!serverState || typeof serverState !== 'string') return 'WAITING';
   const s = serverState.toLowerCase();
   const day = `DAY ${dayIndex}`;
   if (s.includes('pregame')) return 'PRE-GAME';

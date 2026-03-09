@@ -16,8 +16,8 @@ import { VIVID_SPRING } from './springs';
 /*  Phase class resolver                                               */
 /* ------------------------------------------------------------------ */
 
-function getPhaseClass(serverState: string | null): string {
-  if (!serverState) return 'vivid-phase-default';
+function getPhaseClass(serverState: unknown): string {
+  if (!serverState || typeof serverState !== 'string') return 'vivid-phase-default';
   const s = serverState.toLowerCase();
   if (s.includes('pregame')) return 'vivid-phase-pregame';
   if (s.includes('voting') || s.includes('nightsummary')) return 'vivid-phase-voting';
@@ -98,7 +98,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   return (
     <div
       data-testid="game-shell"
-      className={`vivid-phase-bg ${phaseClass}`}
+      className={`vivid-shell vivid-phase-bg ${phaseClass}`}
       style={{
         position: 'fixed',
         inset: 0,
