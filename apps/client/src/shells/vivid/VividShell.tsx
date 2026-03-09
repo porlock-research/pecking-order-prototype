@@ -12,6 +12,8 @@ import { Backstage } from './components/Backstage';
 import { DMChat } from './components/DMChat';
 import { Spotlight } from './components/Spotlight';
 import { DramaticReveal } from './components/DramaticReveal';
+import { QuickActions } from './components/QuickActions';
+import { VividPerkFAB } from './components/VividPerkFAB';
 import { PwaGate } from '../../components/PwaGate';
 import { NewDmPicker } from '../classic/components/NewDmPicker';
 import { NewGroupPicker } from '../classic/components/NewGroupPicker';
@@ -61,6 +63,8 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const [space, setSpace] = useState<Space>('stage');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [contextTarget, setContextTarget] = useState<string | null>(null);
+  const [contextPosition, setContextPosition] = useState<{ x: number; y: number } | null>(null);
 
   const { roster } = useGameStore();
 
@@ -124,19 +128,36 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   }, []);
 
   const handleLongPressPlayer = useCallback(
-    (pid: string, _position: { x: number; y: number }) => {
-      setSelectedPlayerId(pid);
-      setSpace('spotlight');
+    (pid: string, position: { x: number; y: number }) => {
+      setContextTarget(pid);
+      setContextPosition(position);
     },
     [],
   );
 
   const handleLongPressBubble = useCallback(
-    (_pid: string, _position: { x: number; y: number }) => {
-      // Noop for now — Task 13 will add context menu
+    (pid: string, position: { x: number; y: number }) => {
+      setContextTarget(pid);
+      setContextPosition(position);
     },
     [],
   );
+
+  const handleCloseQuickActions = useCallback(() => {
+    setContextTarget(null);
+    setContextPosition(null);
+  }, []);
+
+  const handleQuickMessage = useCallback((pid: string) => {
+    setSelectedPlayerId(pid);
+    setSelectedChannelId(null);
+    setSpace('dm-chat');
+  }, []);
+
+  const handleQuickViewProfile = useCallback((pid: string) => {
+    setSelectedPlayerId(pid);
+    setSpace('spotlight');
+  }, []);
 
   /* ---- Render ---- */
 
@@ -278,6 +299,21 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       {space === 'stage' && (
         <CartridgeOverlay engine={engine} chatPeekContent={null} />
       )}
+
+      {/* Perk FAB — visible on Stage */}
+      {space === 'stage' && <VividPerkFAB engine={engine} />}
+
+      {/* Quick actions context menu */}
+      <QuickActions
+        targetPlayerId={contextTarget}
+        position={contextPosition}
+        onClose={handleCloseQuickActions}
+        onMessage={handleQuickMessage}
+        onSendSilver={(pid) => {
+          engine.sendSilver(1, pid);
+        }}
+        onViewProfile={handleQuickViewProfile}
+      />
 
       {/* Dramatic reveal overlay */}
       <DramaticReveal />
