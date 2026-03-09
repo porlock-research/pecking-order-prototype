@@ -10,6 +10,7 @@ import { BroadcastBar } from './components/BroadcastBar';
 import { StageChat } from './components/StageChat';
 import { WhispersTab } from './components/WhispersTab';
 import { TabBar, type VividTab } from './components/TabBar';
+import { CastTab } from './components/CastTab';
 import { NewDmPicker } from '../classic/components/NewDmPicker';
 import { NewGroupPicker } from '../classic/components/NewGroupPicker';
 import { PwaGate } from '../../components/PwaGate';
@@ -27,18 +28,6 @@ function getPhaseClass(serverState: unknown): string {
   if (s.includes('game')) return 'vivid-phase-game';
   if (s.includes('gamesummary') || s.includes('gameover')) return 'vivid-phase-elimination';
   return 'vivid-phase-social';
-}
-
-/* ------------------------------------------------------------------ */
-/*  Placeholder tab content                                            */
-/* ------------------------------------------------------------------ */
-
-function CastPlaceholder() {
-  return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vivid-text-dim)' }}>
-      Cast — coming soon
-    </div>
-  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -160,7 +149,11 @@ function VividShell({ playerId, engine, token }: ShellProps) {
               exit={{ opacity: 0 }}
               transition={VIVID_SPRING.gentle}
             >
-              <CastPlaceholder />
+              <CastTab
+                playerColorMap={playerColorMap}
+                onSelectPlayer={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setActiveTab('whispers'); }}
+                onViewProfile={(pid) => setDetailPlayerId(pid)}
+              />
             </motion.div>
           )}
         </AnimatePresence>
