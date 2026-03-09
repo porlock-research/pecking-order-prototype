@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Crown, InfoCircle } from '@solar-icons/react';
+import { InfoCircle } from '@solar-icons/react';
 import { useGameStore } from '../../../store/useGameStore';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { GAME_MASTER_ID, PlayerStatuses } from '@pecking-order/shared-types';
@@ -133,7 +133,7 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
               }}
             >
               {isLeader && (
-                <Crown size={16} weight="BoldDuotone" style={{ color: '#D4960A' }} />
+                <span style={{ fontSize: 14, lineHeight: 1 }}>👑</span>
               )}
               <span
                 style={{

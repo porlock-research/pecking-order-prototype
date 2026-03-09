@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Drawer } from 'vaul';
 import { ChatDots, Dollar, UserCircle } from '@solar-icons/react';
+// Solar Icons kept for action buttons (Whisper, Send Silver, Profile)
 import { useGameStore } from '../../../store/useGameStore';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { PlayerStatuses } from '@pecking-order/shared-types';
@@ -163,7 +164,7 @@ export function PlayerQuickSheet({
                       padding: '4px 10px',
                     }}
                   >
-                    <Dollar size={16} weight="BoldDuotone" color="#D4960A" />
+                    <span style={{ fontSize: 14, lineHeight: 1 }}>🪙</span>
                     <span
                       style={{
                         fontFamily: 'var(--vivid-font-mono)',
@@ -186,7 +187,7 @@ export function PlayerQuickSheet({
                         padding: '4px 10px',
                       }}
                     >
-                      <Dollar size={16} weight="BoldDuotone" color="#8B6CC1" />
+                      <span style={{ fontSize: 14, lineHeight: 1 }}>🏆</span>
                       <span
                         style={{
                           fontFamily: 'var(--vivid-font-mono)',

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../store/useGameStore';
 import { useTimeline } from '../../../hooks/useTimeline';
@@ -8,7 +8,9 @@ import { ChatInput } from './ChatInput';
 import VotingPanel from '../../../components/panels/VotingPanel';
 import GamePanel from '../../../components/panels/GamePanel';
 import PromptPanel from '../../../components/panels/PromptPanel';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import type { ChatMessage } from '@pecking-order/shared-types';
+import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { AltArrowDown, Scale, Gamepad, ChatDots } from '@solar-icons/react';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
@@ -39,6 +41,14 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
   const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
   const entries = useTimeline();
   const chatLog = useGameStore(s => s.chatLog);
+  const onlinePlayers = useGameStore(s => s.onlinePlayers);
+
+  const onlineRosterPlayers = useMemo(() => {
+    if (!onlinePlayers || onlinePlayers.length === 0) return [];
+    return onlinePlayers
+      .filter(id => id !== GAME_MASTER_ID && roster[id])
+      .map(id => roster[id]);
+  }, [onlinePlayers, roster]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -153,6 +163,73 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Online presence strip */}
+      {onlineRosterPlayers.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 16px',
+            borderBottom: '1px solid rgba(139, 115, 85, 0.06)',
+            background: 'var(--vivid-bg-surface)',
+            flexShrink: 0,
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            scrollbarWidth: 'none',
+          }}
+          className="vivid-hide-scrollbar"
+        >
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              fontFamily: 'var(--vivid-font-display)',
+              color: 'var(--vivid-text-dim)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              flexShrink: 0,
+              marginRight: 2,
+            }}
+          >
+            HERE
+          </span>
+          {onlineRosterPlayers.map((p, i) => (
+            <motion.div
+              key={p.id}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ ...VIVID_SPRING.bouncy, delay: 0.04 * i }}
+              onClick={() => onTapAvatar?.(p.id)}
+              style={{ cursor: onTapAvatar ? 'pointer' : undefined, flexShrink: 0, position: 'relative' }}
+            >
+              <motion.div
+                animate={{ scale: [1, 1.06, 1] }}
+                transition={{ repeat: Infinity, duration: 3, delay: i * 0.5, ease: 'easeInOut' }}
+              >
+                <PersonaAvatar
+                  avatarUrl={p.avatarUrl}
+                  personaName={p.personaName}
+                  size={28}
+                />
+              </motion.div>
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: -1,
+                  right: -1,
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: '#4ade80',
+                  border: '2px solid var(--vivid-bg-surface)',
+                }}
+              />
+            </motion.div>
+          ))}
+        </div>
+      )}
+
       {/* Scrollable timeline area */}
       <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
         <div

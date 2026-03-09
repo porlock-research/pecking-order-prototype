@@ -1,5 +1,4 @@
 import React from 'react';
-import { Dollar, CupStar } from '@solar-icons/react';
 import { useGameStore } from '../../../store/useGameStore';
 
 function getPhaseLabel(serverState: unknown, dayIndex: number): string {
@@ -44,6 +43,7 @@ export function BroadcastBar() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div className="vivid-live-dot" />
         <span
+          className="vivid-phase-shimmer"
           style={{
             fontFamily: 'var(--vivid-font-display)',
             fontWeight: 800,
@@ -69,7 +69,7 @@ export function BroadcastBar() {
             padding: '4px 10px',
           }}
         >
-          <Dollar size={14} weight="BoldDuotone" color="#D4960A" />
+          <span style={{ fontSize: 14, lineHeight: 1 }}>🪙</span>
           <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 13, fontWeight: 600, color: '#D4960A' }}>
             {mySilver}
           </span>
@@ -84,7 +84,7 @@ export function BroadcastBar() {
             padding: '4px 10px',
           }}
         >
-          <CupStar size={14} weight="BoldDuotone" color="#8B6CC1" />
+          <span style={{ fontSize: 14, lineHeight: 1 }}>🏆</span>
           <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 13, fontWeight: 600, color: '#8B6CC1' }}>
             {goldPool}
           </span>

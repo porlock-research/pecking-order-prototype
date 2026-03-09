@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { AltArrowLeft, Dollar, CupStar, ChatDots, WiFiRouter } from '@solar-icons/react';
+import { AltArrowLeft, ChatDots, Dollar } from '@solar-icons/react';
 import { useGameStore } from '../../../store/useGameStore';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { PlayerStatuses, ChannelTypes } from '@pecking-order/shared-types';
@@ -256,7 +256,7 @@ export function PlayerDetail({
               boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <Dollar size={28} weight="BoldDuotone" color="#D4960A" />
+            <span style={{ fontSize: 26, lineHeight: 1 }}>🪙</span>
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
@@ -294,7 +294,7 @@ export function PlayerDetail({
               boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <CupStar size={28} weight="BoldDuotone" color="#8B6CC1" />
+            <span style={{ fontSize: 26, lineHeight: 1 }}>🏆</span>
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
@@ -332,7 +332,7 @@ export function PlayerDetail({
               boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <WiFiRouter size={28} weight="BoldDuotone" color={isOnline ? '#3BA99C' : 'var(--vivid-text-dim)'} />
+            <span style={{ fontSize: 26, lineHeight: 1 }}>{isOnline ? '🟢' : '⚫'}</span>
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
@@ -370,7 +370,7 @@ export function PlayerDetail({
               boxShadow: 'var(--vivid-surface-shadow)',
             }}
           >
-            <ChatDots size={28} weight="BoldDuotone" color="#3BA99C" />
+            <span style={{ fontSize: 26, lineHeight: 1 }}>💬</span>
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',

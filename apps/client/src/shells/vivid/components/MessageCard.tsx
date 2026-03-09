@@ -2,7 +2,6 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import type { ChatMessage, SocialPlayer } from '@pecking-order/shared-types';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
-import { Crown } from '@solar-icons/react';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { VIVID_SPRING } from '../springs';
 
@@ -51,9 +50,11 @@ export function MessageCard({
   if (isGameMaster) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={VIVID_SPRING.gentle}
+        initial={{ opacity: 0, scale: 0.85, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.98 }}
+        transition={VIVID_SPRING.bouncy}
         style={{
           width: '100%',
           display: 'flex',
@@ -84,7 +85,7 @@ export function MessageCard({
                 flexShrink: 0,
               }}
             >
-              <Crown size={14} weight="BoldDuotone" style={{ color: '#D4960A' }} />
+              <span style={{ fontSize: 14, lineHeight: 1 }}>👑</span>
             </div>
             <span
               style={{
@@ -130,9 +131,20 @@ export function MessageCard({
   return (
     <motion.div
       data-testid="chat-message"
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: isOptimistic ? 0.5 : 1, y: 0 }}
-      transition={VIVID_SPRING.gentle}
+      initial={
+        showSender
+          ? { opacity: 0, scale: 0.85, y: 12 }
+          : { opacity: 0, x: isMe ? 8 : -8 }
+      }
+      animate={{
+        opacity: isOptimistic ? 0.5 : 1,
+        scale: 1,
+        y: 0,
+        x: 0,
+      }}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
+      transition={VIVID_SPRING.bouncy}
       style={{
         width: '100%',
         display: 'flex',

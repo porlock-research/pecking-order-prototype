@@ -127,10 +127,10 @@
   opacity: 0.6;
 }
 
-/* ---- LIVE dot pulse ---- */
+/* ---- LIVE dot pulse (enhanced breathing) ---- */
 @keyframes vivid-live-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.8); }
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 6px rgba(232, 97, 77, 0.4); }
+  50% { opacity: 0.4; transform: scale(0.7); box-shadow: 0 0 14px rgba(232, 97, 77, 0.7); }
 }
 
 .vivid-live-dot {
@@ -138,8 +138,41 @@
   height: 8px;
   border-radius: 50%;
   background: var(--vivid-coral);
-  animation: vivid-live-pulse 2s ease-in-out infinite;
+  animation: vivid-live-pulse 1.5s ease-in-out infinite;
   box-shadow: 0 0 8px rgba(232, 97, 77, 0.4);
+}
+
+/* ---- Phase label shimmer ---- */
+@keyframes vivid-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.vivid-phase-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--vivid-phase-accent) 0%,
+    var(--vivid-phase-accent) 40%,
+    color-mix(in srgb, var(--vivid-phase-accent), #FFF8ED 45%) 50%,
+    var(--vivid-phase-accent) 60%,
+    var(--vivid-phase-accent) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: vivid-shimmer 4s ease-in-out infinite;
+}
+
+/* ---- Broadcast alert entrance pulse ---- */
+@keyframes vivid-alert-flash {
+  0% { box-shadow: 0 3px 12px rgba(139, 115, 85, 0.12); }
+  15% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--alert-pulse-color, #6B9E6E), transparent 70%), 0 3px 16px rgba(139, 115, 85, 0.18); }
+  100% { box-shadow: 0 3px 12px rgba(139, 115, 85, 0.12); }
+}
+
+.vivid-alert-pulse {
+  animation: vivid-alert-flash 0.8s ease-out 0.15s;
 }
 
 /* ---- Scrollbar hiding ---- */
