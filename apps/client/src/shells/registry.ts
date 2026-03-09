@@ -11,12 +11,17 @@ export const SHELL_REGISTRY: ShellManifest[] = [
     name: 'Immersive',
     load: () => import('./immersive/ImmersiveShell'),
   },
+  {
+    id: 'vivid',
+    name: 'Vivid',
+    load: () => import('./vivid/VividShell'),
+  },
 ];
 
 const STORAGE_KEY = 'po_shell';
 
 export function getActiveShellId(): string {
-  return 'immersive';
+  return localStorage.getItem(STORAGE_KEY) ?? 'vivid';
 }
 
 export function setActiveShellId(id: string): void {

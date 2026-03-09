@@ -1,0 +1,36 @@
+/* Vivid Shell — scoped theme variables */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:wght@400;500;600&display=swap');
+
+.vivid-shell {
+  /* Backgrounds */
+  --vivid-bg-deep: #1a1b3a;
+  --vivid-bg-surface: #252758;
+  --vivid-bg-elevated: #2f3170;
+  --vivid-bg-glass: rgba(37, 39, 88, 0.7);
+
+  /* Accents */
+  --vivid-coral: #FF6B6B;
+  --vivid-teal: #4ECDC4;
+  --vivid-gold: #FFD93D;
+  --vivid-pink: #FF2E63;
+  --vivid-lavender: #A78BFA;
+
+  /* Text */
+  --vivid-text: #F8F0E3;
+  --vivid-text-dim: #8B8DB3;
+
+  /* Typography */
+  --vivid-font-display: 'Nunito', sans-serif;
+  --vivid-font-body: 'DM Sans', sans-serif;
+
+  font-family: var(--vivid-font-body);
+  color: var(--vivid-text);
+  background: var(--vivid-bg-deep);
+}
+
+/* Phase-reactive background classes */
+.vivid-phase-social { background: linear-gradient(135deg, #1a1b3a 0%, #1e2045 100%); }
+.vivid-phase-voting { background: linear-gradient(135deg, #2a1525 0%, #1a1b3a 100%); }
+.vivid-phase-game { background: linear-gradient(135deg, #152a28 0%, #1a1b3a 100%); }
+.vivid-phase-elimination { background: linear-gradient(135deg, #2a0a0a 0%, #1a1b3a 100%); }
+.vivid-phase-default { background: var(--vivid-bg-deep); }
