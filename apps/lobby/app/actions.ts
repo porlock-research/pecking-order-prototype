@@ -122,6 +122,7 @@ export async function createGame(
     ruleset: any;
     schedulePreset: string;
     maxPlayers: number;
+    startTime: string;
     pushConfig?: Record<string, boolean>;
   }
 ): Promise<{ success: boolean; gameId?: string; inviteCode?: string; error?: string }> {
@@ -179,6 +180,7 @@ export async function createGame(
           id: `manifest-${gameId}`,
           gameMode: 'CONFIGURABLE_CYCLE', // legacy compat
           scheduling: 'PRE_SCHEDULED' as const,
+          startTime: new Date(dynamicManifestOverride.startTime).toISOString(),
           ruleset: dynamicManifestOverride.ruleset,
           schedulePreset: dynamicManifestOverride.schedulePreset,
           maxPlayers: dynamicManifestOverride.maxPlayers,

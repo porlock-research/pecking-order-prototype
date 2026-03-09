@@ -422,6 +422,7 @@ export default function LobbyRoot() {
         ruleset: rulesetFromConfig,
         schedulePreset: dynamicConfig.schedulePreset,
         maxPlayers: 8,
+        startTime: dynamicConfig.startTime,
       });
 
       setIsLoading(false);
