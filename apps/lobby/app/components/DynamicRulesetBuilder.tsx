@@ -9,12 +9,11 @@ export interface DynamicRulesetConfig {
   allowedVoteTypes: string[];
   allowedGameTypes: string[];
   allowedActivityTypes: string[];
-  // Social scaling
+  // Social
   social: {
-    dmChars: { mode: 'FIXED' | 'DIMINISHING'; base: number; floor: number };
-    dmPartners: { mode: 'FIXED' | 'DIMINISHING'; base: number; floor: number };
+    dmCharsPerPlayer: number;       // chars per active player (total = this × alive)
+    dmPartners: number;             // total DM slots (1-on-1 + group DMs combined)
     dmCost: number;
-    groupDmEnabled: boolean;
   };
   // Inactivity
   inactivity: {
@@ -24,9 +23,7 @@ export interface DynamicRulesetConfig {
   };
   // Day count
   dayCount: {
-    mode: 'ACTIVE_PLAYERS_MINUS_ONE' | 'FIXED';
-    maxDays?: number;
-    fixedCount?: number;
+    maxDays: number;
   };
   // Schedule preset
   schedulePreset: 'DEFAULT' | 'COMPACT' | 'SPEED_RUN';
@@ -44,10 +41,9 @@ export function createDefaultDynamicConfig(): DynamicRulesetConfig {
     allowedGameTypes: ['TRIVIA', 'GAP_RUN', 'GRID_PUSH', 'SEQUENCE', 'REACTION_TIME', 'COLOR_MATCH', 'STACKER', 'QUICK_MATH', 'SIMON_SAYS', 'AIM_TRAINER', 'BET_BET_BET', 'BLIND_AUCTION', 'KINGS_RANSOM', 'THE_SPLIT', 'TOUCH_SCREEN', 'REALTIME_TRIVIA'],
     allowedActivityTypes: ['PLAYER_PICK', 'PREDICTION', 'WOULD_YOU_RATHER', 'HOT_TAKE', 'CONFESSION', 'GUESS_WHO'],
     social: {
-      dmChars: { mode: 'DIMINISHING', base: 1200, floor: 400 },
-      dmPartners: { mode: 'DIMINISHING', base: 3, floor: 1 },
+      dmCharsPerPlayer: 300,
+      dmPartners: 3,
       dmCost: 1,
-      groupDmEnabled: true,
     },
     inactivity: {
       enabled: true,
@@ -55,7 +51,7 @@ export function createDefaultDynamicConfig(): DynamicRulesetConfig {
       action: 'ELIMINATE',
     },
     dayCount: {
-      mode: 'ACTIVE_PLAYERS_MINUS_ONE',
+      maxDays: 7,
     },
     schedulePreset: 'DEFAULT',
     startTime: `${dateStr}T09:00`,
@@ -102,28 +98,82 @@ const ACTIVITY_TYPES = [
   { value: 'GUESS_WHO', label: 'Guess Who' },
 ];
 
-const SCHEDULE_PRESETS = [
-  { value: 'DEFAULT', label: 'Default', desc: 'Full-day pacing — events spread across hours' },
-  { value: 'COMPACT', label: 'Compact', desc: 'Condensed schedule — tighter event windows' },
-  { value: 'SPEED_RUN', label: 'Speed Run', desc: 'Minutes apart — same-day testing' },
-] as const;
+// ── Schedule preset data ──
+
+interface PresetTimelineEvent {
+  action: string;
+  label: string;
+  time: string;          // "HH:MM" for calendar, "+Xm" for offset
+  condition?: 'hasGame' | 'hasActivity';
+}
+
+const SCHEDULE_PRESETS: {
+  value: 'DEFAULT' | 'COMPACT' | 'SPEED_RUN';
+  label: string;
+  desc: string;
+  dayLength: string;
+  events: PresetTimelineEvent[];
+}[] = [
+  {
+    value: 'DEFAULT',
+    label: 'Default',
+    desc: 'Full-day pacing — events spread 9am to midnight',
+    dayLength: '~15 hours',
+    events: [
+      { action: 'OPEN_GROUP_CHAT', label: 'Group Chat', time: '09:00' },
+      { action: 'OPEN_DMS', label: 'DMs Open', time: '10:00' },
+      { action: 'CLOSE_GROUP_CHAT', label: 'Group Chat Closes', time: '10:00' },
+      { action: 'START_GAME', label: 'Game Starts', time: '10:00', condition: 'hasGame' },
+      { action: 'END_GAME', label: 'Game Ends', time: '12:00', condition: 'hasGame' },
+      { action: 'START_ACTIVITY', label: 'Activity Starts', time: '14:00', condition: 'hasActivity' },
+      { action: 'END_ACTIVITY', label: 'Activity Ends', time: '16:00', condition: 'hasActivity' },
+      { action: 'OPEN_VOTING', label: 'Voting Opens', time: '20:00' },
+      { action: 'CLOSE_VOTING', label: 'Voting Closes', time: '23:00' },
+      { action: 'CLOSE_DMS', label: 'DMs Close', time: '23:00' },
+      { action: 'END_DAY', label: 'Day Ends', time: '23:59' },
+    ],
+  },
+  {
+    value: 'COMPACT',
+    label: 'Compact',
+    desc: 'Compressed — events 9am to 5:30pm',
+    dayLength: '~8.5 hours',
+    events: [
+      { action: 'OPEN_GROUP_CHAT', label: 'Group Chat', time: '09:00' },
+      { action: 'OPEN_DMS', label: 'DMs Open', time: '09:30' },
+      { action: 'START_GAME', label: 'Game Starts', time: '09:30', condition: 'hasGame' },
+      { action: 'CLOSE_GROUP_CHAT', label: 'Group Chat Closes', time: '10:30' },
+      { action: 'END_GAME', label: 'Game Ends', time: '11:30', condition: 'hasGame' },
+      { action: 'START_ACTIVITY', label: 'Activity Starts', time: '12:00', condition: 'hasActivity' },
+      { action: 'END_ACTIVITY', label: 'Activity Ends', time: '13:00', condition: 'hasActivity' },
+      { action: 'OPEN_VOTING', label: 'Voting Opens', time: '14:00' },
+      { action: 'CLOSE_VOTING', label: 'Voting Closes', time: '17:00' },
+      { action: 'CLOSE_DMS', label: 'DMs Close', time: '17:00' },
+      { action: 'END_DAY', label: 'Day Ends', time: '17:30' },
+    ],
+  },
+  {
+    value: 'SPEED_RUN',
+    label: 'Speed Run',
+    desc: 'Minutes apart — for testing',
+    dayLength: '~23 min',
+    events: [
+      { action: 'OPEN_GROUP_CHAT', label: 'Group Chat', time: '+0m' },
+      { action: 'OPEN_DMS', label: 'DMs Open', time: '+2m' },
+      { action: 'CLOSE_GROUP_CHAT', label: 'Group Chat Closes', time: '+2m' },
+      { action: 'START_GAME', label: 'Game Starts', time: '+3m', condition: 'hasGame' },
+      { action: 'END_GAME', label: 'Game Ends', time: '+8m', condition: 'hasGame' },
+      { action: 'START_ACTIVITY', label: 'Activity Starts', time: '+10m', condition: 'hasActivity' },
+      { action: 'END_ACTIVITY', label: 'Activity Ends', time: '+15m', condition: 'hasActivity' },
+      { action: 'OPEN_VOTING', label: 'Voting Opens', time: '+17m' },
+      { action: 'CLOSE_VOTING', label: 'Voting Closes', time: '+20m' },
+      { action: 'CLOSE_DMS', label: 'DMs Close', time: '+20m' },
+      { action: 'END_DAY', label: 'Day Ends', time: '+23m' },
+    ],
+  },
+];
 
 // ── Sub-components ──
-
-function SectionHeader({ children, badge }: { children: React.ReactNode; badge?: string }) {
-  return (
-    <div className="flex items-center gap-2 mb-2">
-      <span className="text-[10px] font-bold text-skin-dim uppercase tracking-widest font-display">
-        {children}
-      </span>
-      {badge && (
-        <span className="text-[9px] font-mono text-skin-gold/70 bg-skin-gold/10 border border-skin-gold/20 rounded-full px-1.5 py-0.5">
-          {badge}
-        </span>
-      )}
-    </div>
-  );
-}
 
 function Toggle({
   checked,
@@ -193,12 +243,14 @@ function NumberStepper({
   onChange,
   min,
   max,
+  step = 1,
   label,
 }: {
   value: number;
   onChange: (v: number) => void;
   min: number;
   max: number;
+  step?: number;
   label?: string;
 }) {
   return (
@@ -206,7 +258,7 @@ function NumberStepper({
       {label && <span className="text-[10px] font-mono text-skin-dim/50">{label}</span>}
       <button
         type="button"
-        onClick={() => onChange(Math.max(min, value - 1))}
+        onClick={() => onChange(Math.max(min, value - step))}
         disabled={value <= min}
         className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
       >
@@ -215,7 +267,7 @@ function NumberStepper({
       <span className="font-mono text-sm text-skin-gold w-8 text-center">{value}</span>
       <button
         type="button"
-        onClick={() => onChange(Math.min(max, value + 1))}
+        onClick={() => onChange(Math.min(max, value + step))}
         disabled={value >= max}
         className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
       >
@@ -265,6 +317,48 @@ function Section({
   );
 }
 
+// ── Timeline preview ──
+
+function TimelinePreview({
+  preset,
+  hasGames,
+  hasActivities,
+}: {
+  preset: typeof SCHEDULE_PRESETS[number];
+  hasGames: boolean;
+  hasActivities: boolean;
+}) {
+  const filteredEvents = preset.events.filter(e => {
+    if (e.condition === 'hasGame' && !hasGames) return false;
+    if (e.condition === 'hasActivity' && !hasActivities) return false;
+    return true;
+  });
+
+  return (
+    <div className="mt-2 border border-skin-base/40 rounded-lg bg-skin-input/20 p-2">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[8px] font-mono text-skin-dim/40 uppercase tracking-wider">Day 1 preview</span>
+        <span className="text-[8px] font-mono text-skin-dim/30">{preset.dayLength}</span>
+      </div>
+      <div className="space-y-0.5">
+        {filteredEvents.map((e, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="text-[9px] font-mono text-skin-gold/50 w-10 text-right shrink-0">{e.time}</span>
+            <div className="w-1 h-1 rounded-full bg-skin-gold/30 shrink-0" />
+            <span className={`text-[9px] font-mono ${
+              e.condition ? 'text-skin-dim/30 italic' : 'text-skin-dim/50'
+            }`}>
+              {e.label}
+              {e.condition && !((e.condition === 'hasGame' && hasGames) || (e.condition === 'hasActivity' && hasActivities))
+                ? '' : ''}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ──
 
 export function DynamicRulesetBuilder({
@@ -288,25 +382,16 @@ export function DynamicRulesetBuilder({
     onChange({ ...config, social: { ...config.social, ...patch } });
   }
 
-  function updateSocialDmChars(patch: Partial<DynamicRulesetConfig['social']['dmChars']>) {
-    onChange({ ...config, social: { ...config.social, dmChars: { ...config.social.dmChars, ...patch } } });
-  }
-
-  function updateSocialDmPartners(patch: Partial<DynamicRulesetConfig['social']['dmPartners']>) {
-    onChange({ ...config, social: { ...config.social, dmPartners: { ...config.social.dmPartners, ...patch } } });
-  }
-
   function updateInactivity(patch: Partial<DynamicRulesetConfig['inactivity']>) {
     onChange({ ...config, inactivity: { ...config.inactivity, ...patch } });
-  }
-
-  function updateDayCount(patch: Partial<DynamicRulesetConfig['dayCount']>) {
-    onChange({ ...config, dayCount: { ...config.dayCount, ...patch } });
   }
 
   const voteCount = config.allowedVoteTypes.length;
   const gameCount = config.allowedGameTypes.length;
   const activityCount = config.allowedActivityTypes.length;
+  const hasGames = gameCount > 0;
+  const hasActivities = activityCount > 0;
+  const selectedPreset = SCHEDULE_PRESETS.find(p => p.value === config.schedulePreset) ?? SCHEDULE_PRESETS[0];
 
   return (
     <div className="space-y-3">
@@ -329,7 +414,17 @@ export function DynamicRulesetBuilder({
       </Section>
 
       {/* ── Allowed Game Types ── */}
-      <Section title="Games" badge={`${gameCount}/${GAME_TYPES.length}`}>
+      <Section title="Games" badge={gameCount > 0 ? `${gameCount}/${GAME_TYPES.length}` : 'none'}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[9px] font-mono text-skin-dim/40">Deselect all to disable games</span>
+          <button
+            type="button"
+            onClick={() => onChange({ ...config, allowedGameTypes: config.allowedGameTypes.length === GAME_TYPES.length ? [] : GAME_TYPES.map(g => g.value) })}
+            className="text-[9px] font-mono text-skin-gold/50 hover:text-skin-gold transition-colors"
+          >
+            {config.allowedGameTypes.length === GAME_TYPES.length ? 'Clear all' : 'Select all'}
+          </button>
+        </div>
         {(['arcade', 'knowledge', 'social'] as const).map(cat => (
           <div key={cat} className="mt-2 first:mt-1">
             <span className="text-[8px] font-mono text-skin-dim/40 uppercase tracking-wider">{cat}</span>
@@ -339,7 +434,13 @@ export function DynamicRulesetBuilder({
                   key={gt.value}
                   label={gt.label}
                   checked={config.allowedGameTypes.includes(gt.value)}
-                  onChange={() => toggleWhitelist('allowedGameTypes', gt.value)}
+                  onChange={() => {
+                    const current = config.allowedGameTypes;
+                    const next = current.includes(gt.value)
+                      ? current.filter(v => v !== gt.value)
+                      : [...current, gt.value];
+                    onChange({ ...config, allowedGameTypes: next });
+                  }}
                 />
               ))}
             </div>
@@ -348,73 +449,80 @@ export function DynamicRulesetBuilder({
       </Section>
 
       {/* ── Allowed Activity Types ── */}
-      <Section title="Activities" badge={`${activityCount}/${ACTIVITY_TYPES.length}`}>
+      <Section title="Activities" badge={activityCount > 0 ? `${activityCount}/${ACTIVITY_TYPES.length}` : 'none'}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[9px] font-mono text-skin-dim/40">Deselect all to disable activities</span>
+          <button
+            type="button"
+            onClick={() => onChange({ ...config, allowedActivityTypes: config.allowedActivityTypes.length === ACTIVITY_TYPES.length ? [] : ACTIVITY_TYPES.map(a => a.value) })}
+            className="text-[9px] font-mono text-skin-gold/50 hover:text-skin-gold transition-colors"
+          >
+            {config.allowedActivityTypes.length === ACTIVITY_TYPES.length ? 'Clear all' : 'Select all'}
+          </button>
+        </div>
         <div className="grid grid-cols-2 gap-1.5 mt-1">
           {ACTIVITY_TYPES.map(at => (
             <ChipCheckbox
               key={at.value}
               label={at.label}
               checked={config.allowedActivityTypes.includes(at.value)}
-              onChange={() => toggleWhitelist('allowedActivityTypes', at.value)}
+              onChange={() => {
+                const current = config.allowedActivityTypes;
+                const next = current.includes(at.value)
+                  ? current.filter(v => v !== at.value)
+                  : [...current, at.value];
+                onChange({ ...config, allowedActivityTypes: next });
+              }}
             />
           ))}
         </div>
       </Section>
 
-      {/* ── Social Scaling ── */}
+      {/* ── Social Rules ── */}
       <Section title="Social Rules">
         <div className="space-y-3 mt-1">
-          {/* DM Characters */}
-          <div className="space-y-1.5">
+          {/* DM Characters per player */}
+          <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-skin-dim/60">DM Characters</span>
-              <select
-                value={config.social.dmChars.mode}
-                onChange={e => updateSocialDmChars({ mode: e.target.value as any })}
-                className="appearance-none bg-skin-input text-skin-base border border-skin-base rounded-lg px-2 py-1 text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 transition-all"
-              >
-                <option value="FIXED">Fixed</option>
-                <option value="DIMINISHING">Diminishing</option>
-              </select>
+              <NumberStepper
+                value={config.social.dmCharsPerPlayer}
+                onChange={v => updateSocial({ dmCharsPerPlayer: v })}
+                min={50}
+                max={2000}
+                step={50}
+              />
             </div>
-            <div className="flex items-center gap-4">
-              <NumberStepper label="Base" value={config.social.dmChars.base} onChange={v => updateSocialDmChars({ base: v })} min={100} max={5000} />
-              {config.social.dmChars.mode === 'DIMINISHING' && (
-                <NumberStepper label="Floor" value={config.social.dmChars.floor} onChange={v => updateSocialDmChars({ floor: v })} min={50} max={config.social.dmChars.base} />
-              )}
-            </div>
+            <p className="text-[8px] font-mono text-skin-dim/30">
+              {config.social.dmCharsPerPlayer} chars x active players = total DM budget per day
+            </p>
           </div>
 
           {/* DM Partners */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-skin-dim/60">DM Partners</span>
-              <select
-                value={config.social.dmPartners.mode}
-                onChange={e => updateSocialDmPartners({ mode: e.target.value as any })}
-                className="appearance-none bg-skin-input text-skin-base border border-skin-base rounded-lg px-2 py-1 text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 transition-all"
-              >
-                <option value="FIXED">Fixed</option>
-                <option value="DIMINISHING">Diminishing</option>
-              </select>
+              <span className="text-[10px] font-mono text-skin-dim/60">DM Slots</span>
+              <NumberStepper
+                value={config.social.dmPartners}
+                onChange={v => updateSocial({ dmPartners: v })}
+                min={1}
+                max={10}
+              />
             </div>
-            <div className="flex items-center gap-4">
-              <NumberStepper label="Base" value={config.social.dmPartners.base} onChange={v => updateSocialDmPartners({ base: v })} min={1} max={10} />
-              {config.social.dmPartners.mode === 'DIMINISHING' && (
-                <NumberStepper label="Floor" value={config.social.dmPartners.floor} onChange={v => updateSocialDmPartners({ floor: v })} min={1} max={config.social.dmPartners.base} />
-              )}
-            </div>
+            <p className="text-[8px] font-mono text-skin-dim/30">
+              Total DM conversations per day (1-on-1 + group DMs combined)
+            </p>
           </div>
 
-          {/* DM Cost + Group DM */}
+          {/* DM Cost */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <NumberStepper label="DM Cost" value={config.social.dmCost} onChange={v => updateSocial({ dmCost: v })} min={0} max={20} />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono text-skin-dim/50">Group DMs</span>
-              <Toggle checked={config.social.groupDmEnabled} onChange={v => updateSocial({ groupDmEnabled: v })} />
-            </div>
+            <span className="text-[10px] font-mono text-skin-dim/60">Silver per DM</span>
+            <NumberStepper
+              value={config.social.dmCost}
+              onChange={v => updateSocial({ dmCost: v })}
+              min={0}
+              max={20}
+            />
           </div>
         </div>
       </Section>
@@ -443,79 +551,18 @@ export function DynamicRulesetBuilder({
       {/* ── Day Count ── */}
       <Section title="Day Count">
         <div className="space-y-2 mt-1">
+          <p className="text-[8px] font-mono text-skin-dim/30">
+            Days = active players - 1 (capped at max)
+          </p>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-skin-dim/60">Mode</span>
-            <select
-              value={config.dayCount.mode}
-              onChange={e => {
-                const mode = e.target.value as DynamicRulesetConfig['dayCount']['mode'];
-                updateDayCount({
-                  mode,
-                  fixedCount: mode === 'FIXED' ? (config.dayCount.fixedCount ?? 5) : undefined,
-                  maxDays: mode === 'ACTIVE_PLAYERS_MINUS_ONE' ? config.dayCount.maxDays : undefined,
-                });
-              }}
-              className="appearance-none bg-skin-input text-skin-base border border-skin-base rounded-lg px-2 py-1 text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 transition-all"
-            >
-              <option value="ACTIVE_PLAYERS_MINUS_ONE">Players - 1</option>
-              <option value="FIXED">Fixed</option>
-            </select>
-          </div>
-          {config.dayCount.mode === 'ACTIVE_PLAYERS_MINUS_ONE' && (
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-skin-dim/50">Max days cap</span>
-              <NumberStepper
-                value={config.dayCount.maxDays ?? 7}
-                onChange={v => updateDayCount({ maxDays: v })}
-                min={2}
-                max={14}
-              />
-            </div>
-          )}
-          {config.dayCount.mode === 'FIXED' && (
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-skin-dim/50">Fixed day count</span>
-              <NumberStepper
-                value={config.dayCount.fixedCount ?? 5}
-                onChange={v => updateDayCount({ fixedCount: v })}
-                min={1}
-                max={14}
-              />
-            </div>
-          )}
-        </div>
-      </Section>
-
-      {/* ── Start Time ── */}
-      <Section title="Start Time" defaultOpen>
-        <div className="space-y-2 mt-1">
-          <div className="flex items-center gap-3">
-            <input
-              type="datetime-local"
-              value={config.startTime}
-              onChange={e => onChange({ ...config, startTime: e.target.value })}
-              className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 transition-all"
+            <span className="text-[10px] font-mono text-skin-dim/50">Max days</span>
+            <NumberStepper
+              value={config.dayCount.maxDays}
+              onChange={v => onChange({ ...config, dayCount: { maxDays: v } })}
+              min={2}
+              max={14}
             />
           </div>
-          {config.schedulePreset === 'SPEED_RUN' && (
-            <button
-              type="button"
-              onClick={() => {
-                const soon = new Date(Date.now() + 2 * 60_000);
-                const local = new Date(soon.getTime() - soon.getTimezoneOffset() * 60_000)
-                  .toISOString().slice(0, 16);
-                onChange({ ...config, startTime: local });
-              }}
-              className="text-[10px] font-mono text-skin-gold/70 hover:text-skin-gold border border-skin-gold/20 rounded-lg px-2 py-1 transition-all"
-            >
-              Set to now + 2 min
-            </button>
-          )}
-          <p className="text-[8px] font-mono text-skin-dim/30">
-            {config.schedulePreset === 'SPEED_RUN'
-              ? 'Game starts at this time — events fire minutes apart'
-              : 'Day 1 begins on this date — events follow the preset schedule'}
-          </p>
         </div>
       </Section>
 
@@ -550,16 +597,53 @@ export function DynamicRulesetBuilder({
                   <div className="w-1.5 h-1.5 rounded-full bg-skin-gold" />
                 )}
               </div>
-              <div>
-                <span className={`text-[10px] font-mono font-bold ${
-                  config.schedulePreset === sp.value ? 'text-skin-gold' : 'text-skin-dim/60'
-                }`}>
-                  {sp.label}
-                </span>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <span className={`text-[10px] font-mono font-bold ${
+                    config.schedulePreset === sp.value ? 'text-skin-gold' : 'text-skin-dim/60'
+                  }`}>
+                    {sp.label}
+                  </span>
+                  <span className="text-[8px] font-mono text-skin-dim/30">{sp.dayLength}</span>
+                </div>
                 <span className="block text-[8px] font-mono text-skin-dim/30">{sp.desc}</span>
               </div>
             </label>
           ))}
+        </div>
+        <TimelinePreview preset={selectedPreset} hasGames={hasGames} hasActivities={hasActivities} />
+      </Section>
+
+      {/* ── Start Time ── */}
+      <Section title="Start Time" defaultOpen>
+        <div className="space-y-2 mt-1">
+          <div className="flex items-center gap-3">
+            <input
+              type="datetime-local"
+              value={config.startTime}
+              onChange={e => onChange({ ...config, startTime: e.target.value })}
+              className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 transition-all"
+            />
+          </div>
+          {config.schedulePreset === 'SPEED_RUN' && (
+            <button
+              type="button"
+              onClick={() => {
+                const soon = new Date(Date.now() + 2 * 60_000);
+                const local = new Date(soon.getTime() - soon.getTimezoneOffset() * 60_000)
+                  .toISOString().slice(0, 16);
+                onChange({ ...config, startTime: local });
+              }}
+              className="text-[10px] font-mono text-skin-gold/70 hover:text-skin-gold border border-skin-gold/20 rounded-lg px-2 py-1 transition-all"
+            >
+              Set to now + 2 min
+            </button>
+          )}
+          <p className="text-[8px] font-mono text-skin-dim/30">
+            {config.schedulePreset === 'SPEED_RUN'
+              ? 'Game starts at this time — events fire minutes apart'
+              : 'Day 1 begins on this date — events follow the preset schedule'}
+          </p>
         </div>
       </Section>
     </div>

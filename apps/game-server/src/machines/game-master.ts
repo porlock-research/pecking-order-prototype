@@ -184,10 +184,16 @@ function scaleValue(
 function resolveSocialParams(
   dayIndex: number,
   totalDays: number,
+  alivePlayers: number,
   rules: PeckingOrderRuleset['social'],
 ): { dmCharsPerPlayer: number; dmPartnersPerPlayer: number } {
+  let dmChars = scaleValue(dayIndex, totalDays, rules.dmChars);
+  // PER_ACTIVE_PLAYER: base is per-player, multiply by alive count
+  if (rules.dmChars.mode === 'PER_ACTIVE_PLAYER') {
+    dmChars = dmChars * alivePlayers;
+  }
   return {
-    dmCharsPerPlayer: scaleValue(dayIndex, totalDays, rules.dmChars),
+    dmCharsPerPlayer: dmChars,
     dmPartnersPerPlayer: scaleValue(dayIndex, totalDays, rules.dmPartners),
   };
 }
@@ -207,7 +213,7 @@ function resolveDay(
   const voteType = resolveVoteType(dayIndex, totalDays, ruleset.voting, alive);
   const gameType = resolveGameType(dayIndex, ruleset.games, gameHistory);
   const activityType = resolveActivityType(dayIndex, ruleset.activities, gameHistory);
-  const social = resolveSocialParams(dayIndex, totalDays, ruleset.social);
+  const social = resolveSocialParams(dayIndex, totalDays, alive, ruleset.social);
 
   const timeline = generateDayTimeline(schedulePreset, dayIndex, startTime, {
     gameType,

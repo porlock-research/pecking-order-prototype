@@ -391,7 +391,7 @@ export default function LobbyRoot() {
     await new Promise(r => setTimeout(r, 400));
 
     if (manifestKind === 'DYNAMIC') {
-      // Build the PeckingOrderRuleset from the UI config
+      // Build the PeckingOrderRuleset from the simplified UI config
       const rulesetFromConfig = {
         kind: 'PECKING_ORDER' as const,
         voting: {
@@ -412,9 +412,17 @@ export default function LobbyRoot() {
           allowed: dynamicConfig.allowedActivityTypes,
           avoidRepeat: true,
         },
-        social: dynamicConfig.social,
+        social: {
+          dmChars: { mode: 'PER_ACTIVE_PLAYER' as const, base: dynamicConfig.social.dmCharsPerPlayer },
+          dmPartners: { mode: 'FIXED' as const, base: dynamicConfig.social.dmPartners },
+          dmCost: dynamicConfig.social.dmCost,
+          groupDmEnabled: true,
+        },
         inactivity: dynamicConfig.inactivity,
-        dayCount: dynamicConfig.dayCount,
+        dayCount: {
+          mode: 'ACTIVE_PLAYERS_MINUS_ONE' as const,
+          maxDays: dynamicConfig.dayCount.maxDays,
+        },
       };
 
       const result = await createGame('CONFIGURABLE_CYCLE', undefined, {
