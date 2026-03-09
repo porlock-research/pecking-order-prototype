@@ -1354,21 +1354,25 @@ This document tracks significant architectural decisions, their context, and con
 
 ## [ADR-094] Dynamic Days — Manifest Discriminated Union + Director Actor
 *   **Date:** 2026-03-08
-*   **Status:** Accepted (Phase 3a complete, Phase 3b in progress)
+*   **Status:** Accepted (Phase 3a+3b+3c+3d complete)
 *   **Context:** Static manifests (days configured at creation time) can't adapt to runtime conditions: player count mismatches, inactivity, or strategic game-to-game variation. We need dynamic day resolution while keeping static manifests completely untouched.
 *   **Decision:**
     1.  **Manifest discriminated union on `kind`**: `GameManifest = StaticManifest | DynamicManifest`. Static mode is the current code path with zero changes. Dynamic mode adds runtime day resolution.
     2.  **`normalizeManifest()`** handles legacy snapshots (no `kind` field) by defaulting to `STATIC`.
     3.  **GameRuleset discriminated union**: `PeckingOrderRuleset` as first variant. Each game type defines its own ruleset shape (voting, games, activities, social, inactivity, dayCount sub-configs).
-    4.  **Schedule presets** (`DEFAULT`, `COMPACT`, `SPEED_RUN`): lobby-side templates that stamp out concrete timelines. Stored on `DynamicManifest` so the director can resolve future days' timelines.
-    5.  **Director actor (L2.5)**: XState actor spawned alongside L3 in dynamic mode. Observes `FACT.*` events throughout the day, resolves next day's config at day end. Supports admin override.
-    6.  **`DailyManifest` extended** with optional `dmCharsPerPlayer` and `dmPartnersPerPlayer`. L3 reads from manifest input with backward-compatible defaults.
+    4.  **Schedule presets** (`DEFAULT`, `COMPACT`, `SPEED_RUN`): server-side timeline generation via `generateDayTimeline()` + `computeNextDayStart()` in `machines/timeline-presets.ts`. Game Master calls these during day resolution.
+    5.  **Game Master actor (L2.5)**: Registered as `gameMasterMachine` in L2's `setup({ actors })` for snapshot restoration. Long-lived (pregame → tournament → postgame). Resolves day config incl. timeline + nextDayStart. Orchestrates observation modules (inactivity). Supports admin override.
+    6.  **`DailyManifest` extended** with optional `dmCharsPerPlayer`, `dmPartnersPerPlayer`, and `nextDayStart`. L3 reads social params from manifest input with backward-compatible defaults.
     7.  **`buildL3Context()` extracted** as standalone function for testability (XState v5 `sendParent` in entry actions prevents standalone actor testing).
+    8.  **`DynamicManifest.startTime`**: ISO 8601 timestamp for when Day 1 begins. Set in lobby. Used for initial game-start alarm.
+    9.  **Alarm re-scheduling**: `onAlarm()` calls `scheduleManifestAlarms()` after WAKEUP for dynamic manifests, picking up newly resolved day's timeline events + nextDayStart.
+    10. **InactivityState serialization**: Uses `Record<string, true>` instead of `Set<string>` for JSON serialization compatibility with XState snapshot persistence.
 *   **Consequences:**
     *   All existing static games work unchanged — `normalizeManifest()` is the only new code in the static path.
     *   Dynamic days grow `manifest.days[]` progressively, maintaining the existing L3 input pattern.
+    *   Dynamic games are fully alarm-driven: startTime alarm → Day 1 → timeline alarms → nightSummary → nextDayStart alarm → Day 2 → ... → gameOver.
     *   Future game types (Werewolf) can add new `GameRuleset` and `ManifestKind` variants without modifying the orchestrator.
-    *   **Design doc**: `plans/architecture/dynamic-days-design.md`. **Implementation plan**: `plans/architecture/2026-03-08-dynamic-days.md`.
+    *   **Design doc**: `plans/architecture/dynamic-days-design.md`. **Implementation plans**: `plans/architecture/2026-03-08-dynamic-days.md`, `docs/plans/2026-03-09-dynamic-timeline-generation.md`.
 
 ## [ADR-093] Robust Alarm Delivery — onAlarm() as Single WAKEUP Source
 *   **Date:** 2026-03-08
