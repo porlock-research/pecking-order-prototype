@@ -53,6 +53,7 @@ function makeInput(overrides?: Partial<GameMasterInput> & { inactivityEnabled?: 
         : {}),
     },
     schedulePreset: 'DEFAULT',
+    startTime: '2026-01-01T00:00:00.000Z',
     gameHistory: [],
     ...rest,
   };
@@ -385,5 +386,25 @@ describe('Game Master whitelist-based resolution', () => {
     };
     const ctx = resolveAndGetContext(input, 1, makeRoster(3));
     expect(ctx.resolvedDay?.voteType).toBe('MAJORITY');
+  });
+});
+
+describe('resolveDay timeline generation', () => {
+  it('generates timeline events from schedule preset', () => {
+    const input: GameMasterInput = {
+      roster: makeRoster(5),
+      ruleset: baseRuleset,
+      schedulePreset: 'SPEED_RUN',
+      startTime: '2026-03-10T14:00:00.000Z',
+      gameHistory: [],
+    };
+    const actor = createActor(createGameMasterMachine(), { input });
+    actor.start();
+    actor.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex: 1, roster: input.roster });
+    const snap = actor.getSnapshot();
+    expect(snap.context.resolvedDay).toBeDefined();
+    expect(snap.context.resolvedDay!.timeline.length).toBeGreaterThan(0);
+    expect(snap.context.resolvedDay!.nextDayStart).toBeDefined();
+    actor.stop();
   });
 });

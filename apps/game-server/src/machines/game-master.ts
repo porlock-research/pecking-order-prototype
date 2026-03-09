@@ -10,6 +10,7 @@ import type {
   GameHistoryEntry,
   GameMasterAction,
 } from '@pecking-order/shared-types';
+import { generateDayTimeline, computeNextDayStart } from './timeline-presets';
 import { createInactivityModule, type InactivityState } from './observations/inactivity';
 
 // ── Input / Context types ───────────────────────────────────────────────
@@ -18,6 +19,7 @@ export interface GameMasterInput {
   roster: Record<string, SocialPlayer>;
   ruleset: PeckingOrderRuleset;
   schedulePreset: SchedulePreset;
+  startTime: string;
   gameHistory: GameHistoryEntry[];
 }
 
@@ -25,6 +27,7 @@ export interface GameMasterContext {
   roster: Record<string, SocialPlayer>;
   ruleset: PeckingOrderRuleset;
   schedulePreset: SchedulePreset;
+  startTime: string;
   gameHistory: GameHistoryEntry[];
   dayIndex: number;
   totalDays: number;
@@ -196,6 +199,8 @@ function resolveDay(
   roster: Record<string, SocialPlayer>,
   ruleset: PeckingOrderRuleset,
   gameHistory: GameHistoryEntry[],
+  schedulePreset: SchedulePreset,
+  startTime: string,
 ): { resolvedDay: DailyManifest; totalDays: number; reasoning: string } {
   const alive = countAlivePlayers(roster);
   const totalDays = computeTotalDays(alive, ruleset.dayCount);
@@ -204,6 +209,16 @@ function resolveDay(
   const activityType = resolveActivityType(dayIndex, ruleset.activities, gameHistory);
   const social = resolveSocialParams(dayIndex, totalDays, ruleset.social);
 
+  const timeline = generateDayTimeline(schedulePreset, dayIndex, startTime, {
+    gameType,
+    activityType,
+  });
+
+  const isLastDay = dayIndex >= totalDays;
+  const nextDayStart = isLastDay
+    ? undefined
+    : computeNextDayStart(schedulePreset, dayIndex, startTime);
+
   return {
     resolvedDay: {
       dayIndex,
@@ -211,11 +226,12 @@ function resolveDay(
       voteType,
       gameType,
       ...(activityType !== 'NONE' ? { activityType } : {}),
-      timeline: [],
+      timeline,
+      ...(nextDayStart ? { nextDayStart } : {}),
       ...social,
     },
     totalDays,
-    reasoning: `Day ${dayIndex}/${totalDays}: ${voteType} vote, ${gameType} game, ${activityType} activity, ${social.dmCharsPerPlayer} DM chars`,
+    reasoning: `Day ${dayIndex}/${totalDays}: ${voteType} vote, ${gameType} game, ${activityType} activity, ${social.dmCharsPerPlayer} DM chars, ${timeline.length} timeline events`,
   };
 }
 
@@ -229,6 +245,7 @@ export function buildGameMasterContext(input: GameMasterInput): GameMasterContex
     roster: input.roster,
     ruleset: input.ruleset,
     schedulePreset: input.schedulePreset,
+    startTime: input.startTime,
     gameHistory: input.gameHistory,
     dayIndex: 0,
     totalDays: 0,
@@ -265,6 +282,7 @@ export function createGameMasterMachine() {
             actions: assign(({ context, event }) => {
               const { resolvedDay, totalDays, reasoning } = resolveDay(
                 event.dayIndex, event.roster, context.ruleset, context.gameHistory,
+                context.schedulePreset, context.startTime,
               );
               const { state: inactivityState, actions } = inactivityModule.onResolveDay(
                 context.inactivityState, event.dayIndex, event.roster, context.ruleset,
@@ -288,6 +306,7 @@ export function createGameMasterMachine() {
             actions: assign(({ context, event }) => {
               const { resolvedDay, totalDays, reasoning } = resolveDay(
                 event.dayIndex, event.roster, context.ruleset, context.gameHistory,
+                context.schedulePreset, context.startTime,
               );
               const { state: inactivityState, actions } = inactivityModule.onResolveDay(
                 context.inactivityState, event.dayIndex, event.roster, context.ruleset,

@@ -47,6 +47,7 @@ export const l2DayResolutionActions = {
       roster: context.roster,
       ruleset: manifest.ruleset,
       schedulePreset: manifest.schedulePreset,
+      startTime: manifest.startTime,
       gameHistory: context.gameHistory || [],
     };
 

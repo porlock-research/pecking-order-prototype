@@ -1,9 +1,6 @@
-import type { SchedulePreset } from '@pecking-order/shared-types';
+import type { SchedulePreset, TimelineEvent } from '@pecking-order/shared-types';
 
-interface TimelineEvent {
-  time: string;  // ISO 8601
-  action: string;
-}
+type TimelineAction = TimelineEvent['action'];
 
 interface DayOptions {
   gameType: string;
@@ -13,13 +10,13 @@ interface DayOptions {
 // ── Preset definitions ──────────────────────────────────────────────────
 
 interface CalendarEventDef {
-  action: string;
+  action: TimelineAction;
   clockTime: string;  // "HH:MM"
   condition?: 'hasGame' | 'hasActivity';
 }
 
 interface OffsetEventDef {
-  action: string;
+  action: TimelineAction;
   offsetMin: number;
   condition?: 'hasGame' | 'hasActivity';
 }
