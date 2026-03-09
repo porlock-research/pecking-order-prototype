@@ -12,13 +12,13 @@
 
 ---
 
-## Phase 3a: Types + Manifest Union (no behavioral change)
+## Phase 3a: Types + Manifest Union (no behavioral change) — COMPLETE
 
-The goal of this phase is to lay the type foundation. After this phase, all existing tests pass unchanged. No runtime behavior changes.
+All 6 tasks complete. 105 tests passing. Speed run verified.
 
 ---
 
-### Task 1: Add manifest kind types to shared-types
+### Task 1: Add manifest kind types to shared-types — DONE
 
 **Files:**
 - Modify: `packages/shared-types/src/index.ts:60-175` (schemas section)
@@ -330,7 +330,7 @@ git commit -m "feat: add manifest discriminated union and GameRuleset types"
 
 ---
 
-### Task 2: Normalize manifest in L2 initialization
+### Task 2: Normalize manifest in L2 initialization — DONE
 
 **Files:**
 - Modify: `apps/game-server/src/machines/actions/l2-initialization.ts:5-37`
@@ -388,7 +388,7 @@ git commit -m "feat: normalize manifest to discriminated union on init and resto
 
 ---
 
-### Task 3: Update lobby to emit manifest kind
+### Task 3: Update lobby to emit manifest kind — DONE
 
 **Files:**
 - Modify: `apps/lobby/app/actions.ts:160-182` (manifest building)
@@ -435,7 +435,7 @@ git commit -m "feat: lobby emits manifest kind: STATIC"
 
 ---
 
-### Task 4: Update speed-run skill to emit manifest kind
+### Task 4: Update speed-run skill to emit manifest kind — DONE
 
 **Files:**
 - Modify: `.claude/commands/speed-run.md` (or `.claude/skills/speed-run.md`)
@@ -462,7 +462,7 @@ git commit -m "feat: speed-run skill emits manifest kind: STATIC"
 
 ---
 
-### Task 5: Add DailyManifest social params to L3 input
+### Task 5: Add DailyManifest social params to L3 input — DONE
 
 **Files:**
 - Modify: `apps/game-server/src/machines/l3-session.ts:16-31` (DailyContext), `:83-105` (context factory)
@@ -605,7 +605,7 @@ git commit -m "feat: L3 reads DM limits from manifest instead of hardcoded const
 
 ---
 
-### Task 6: Speed run verification
+### Task 6: Speed run verification — DONE
 
 **Step 1: Run speed run**
 
@@ -619,13 +619,11 @@ Expected: Full game cycle completes (preGame → dayLoop ×3 → gameSummary →
 
 ---
 
-## Phase 3b: Director Actor + Dynamic Day Resolution
-
-> Phase 3b builds on 3a. Only start after 3a is complete and verified.
+## Phase 3b: Director Actor + Dynamic Day Resolution — COMPLETE
 
 ---
 
-### Task 7: Implement the director actor machine
+### Task 7: Implement the director actor machine — DONE
 
 **Files:**
 - Create: `apps/game-server/src/machines/director.ts`
@@ -986,7 +984,7 @@ git commit -m "feat: implement game director actor for dynamic day resolution"
 
 ---
 
-### Task 8: Wire director into L2 orchestrator
+### Task 8: Wire director into L2 orchestrator — DONE
 
 **Files:**
 - Modify: `apps/game-server/src/machines/l2-orchestrator.ts:15-35,135-138,139-227,228-261`
@@ -1110,7 +1108,7 @@ git commit -m "feat: wire director into L2 morningBriefing + FACT forwarding"
 
 ---
 
-### Task 9: Speed run verification (full Phase 3a+3b)
+### Task 9: Speed run verification (full Phase 3a+3b) — DONE
 
 **Step 1: Run speed run**
 
@@ -1124,7 +1122,7 @@ Write a quick bash script or use curl to create a game with `kind: 'DYNAMIC'` ma
 
 ---
 
-### Task 10: Update design docs + ADR
+### Task 10: Update design docs + ADR — DONE
 
 **Files:**
 - Modify: `plans/DECISIONS.md` (add ADR for dynamic days)

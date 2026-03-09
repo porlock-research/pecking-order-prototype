@@ -359,12 +359,27 @@ When motivated (second game type, or significant PO refactoring):
 | `apps/game-server/src/machines/l3-session.ts` | DONE | Extract buildL3Context, read social params from manifest |
 | `apps/game-server/src/machines/actions/l3-social.ts` | DONE | Use context limits instead of constants |
 
-### Phase 3b (director actor + dynamic days) — IN PROGRESS
+### Phase 3b (director actor + dynamic days) — COMPLETE
 
 | File | Status | Purpose |
 |------|--------|---------|
-| `apps/game-server/src/machines/director.ts` | NEW | Director actor for dynamic day resolution |
-| `apps/game-server/src/machines/__tests__/director.test.ts` | NEW | Director unit tests |
-| `apps/game-server/src/machines/actions/l2-day-resolution.ts` | NEW | resolveCurrentDay + appendResolvedDay actions |
-| `apps/game-server/src/machines/l2-orchestrator.ts` | Modify | Wire director into morningBriefing + activeSession |
-| `apps/game-server/src/machines/actions/l2-initialization.ts` | Modify | Add directorOutput to initial context |
+| `apps/game-server/src/machines/director.ts` | DONE | Director actor with pure resolution functions + XState machine |
+| `apps/game-server/src/machines/__tests__/director.test.ts` | DONE | 15 director tests (context resolution + actor behavior) |
+| `apps/game-server/src/machines/actions/l2-day-resolution.ts` | DONE | spawnDirectorIfDynamic, captureDirectorDay, forwardFactToDirector, resolveCurrentDay, isGameComplete/isDayIndexPastEnd guards |
+| `apps/game-server/src/machines/l2-orchestrator.ts` | DONE | Director spawn in activeSession entry, FACT forwarding, guard consolidation |
+
+### Phase 3c (schedule presets + lobby integration) — NOT STARTED
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `apps/lobby/app/actions.ts` | Pending | Support dynamic mode game creation |
+| `apps/lobby/app/components/` | Pending | Ruleset config UI for host |
+| TBD | Pending | Schedule preset templates (DEFAULT, COMPACT, SPEED_RUN) |
+| TBD | Pending | Admin dashboard: director recommendations display |
+
+### Phase 3d (inactivity rules) — NOT STARTED
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `apps/game-server/src/machines/director.ts` | Pending | Inactivity tracking from FACT.* observations |
+| `apps/game-server/src/machines/l2-orchestrator.ts` | Pending | Act on director inactivity recommendations |

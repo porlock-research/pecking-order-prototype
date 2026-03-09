@@ -1,7 +1,7 @@
 # Dynamic Days — Design Document
 
 **Date**: 2026-03-08
-**Status**: Draft — pending approval
+**Status**: Accepted — Phase 3a+3b implemented
 **Depends on**: Phase 1 complete (server.ts extraction), ADR-093 (alarm delivery)
 
 ## Problem
@@ -365,20 +365,20 @@ L1 and L2 remain unchanged. The manifest `kind` dispatches to the right L3.
 
 ## Implementation Phasing
 
-### Phase 3a: Types + Manifest Union (no behavioral change)
-- Add `StaticManifest`, `DynamicManifest`, `GameRuleset`, `SchedulePreset` to shared-types
-- Add `normalizeManifest()` to handle legacy snapshots
-- Add `DailyManifest` social parameter fields (optional, backward-compatible)
-- Update L2 to normalize manifest on init
-- All existing tests pass unchanged
+### Phase 3a: Types + Manifest Union (no behavioral change) — COMPLETE
+- Added `StaticManifest`, `DynamicManifest`, `GameRuleset`, `SchedulePreset` to shared-types
+- Added `normalizeManifest()` to handle legacy snapshots
+- Added `DailyManifest` social parameter fields (optional, backward-compatible)
+- Updated L2 to normalize manifest on init + snapshot restore
+- Extracted `buildL3Context()` for testability; L3 reads social limits from manifest
+- All 105 tests pass, speed run verified
 
-### Phase 3b: Director Actor + Dynamic Day Resolution
-- Implement `PeckingOrderRuleset` sub-configs
-- Implement director actor machine
-- Add `resolveCurrentDay` action to L2 `morningBriefing`
-- Add director spawn logic to L2 `activeSession` (dynamic mode only)
-- Add FACT.* forwarding from L2 to director
-- L3 reads social limits from input
+### Phase 3b: Director Actor + Dynamic Day Resolution — COMPLETE
+- Implemented `PeckingOrderRuleset` sub-configs (voting, games, activities, social, inactivity, dayCount)
+- Implemented director actor machine (`director.ts`) with pure resolution functions
+- Added `resolveCurrentDay` + `spawnDirectorIfDynamic` + `captureDirectorDay` to L2
+- Added FACT.* forwarding from L2 to director
+- Added `isGameComplete` / `isDayIndexPastEnd` guards (consolidated from inline guards)
 
 ### Phase 3c: Schedule Presets + Lobby Integration
 - Define preset templates in lobby
