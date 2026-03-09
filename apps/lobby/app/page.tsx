@@ -4,6 +4,8 @@ import { createGame, startDebugGame, getAuthStatus, getActiveGames, sendEmailInv
 import type { DebugManifestConfig, DebugDayConfig, ConfigurableManifestConfig, ConfigurableDayConfig, ConfigurableEventConfig, ActiveGame } from './actions';
 import { generateCycleDefaults, isLiveGame } from '@pecking-order/shared-types';
 import { useState, useEffect } from 'react';
+import { DynamicRulesetBuilder, createDefaultDynamicConfig } from './components/DynamicRulesetBuilder';
+import type { DynamicRulesetConfig } from './components/DynamicRulesetBuilder';
 
 const AVAILABLE_VOTE_TYPES = [
   { value: 'MAJORITY', label: 'Majority Vote' },
@@ -188,6 +190,8 @@ export default function LobbyRoot() {
   const [isLoading, setIsLoading] = useState(false);
   const [debugConfig, setDebugConfig] = useState<DebugManifestConfig>(createDefaultManifestConfig);
   const [configurableConfig, setConfigurableConfig] = useState<ConfigurableManifestConfig>(createDefaultConfigurableConfig);
+  const [manifestKind, setManifestKind] = useState<'STATIC' | 'DYNAMIC'>('STATIC');
+  const [dynamicConfig, setDynamicConfig] = useState<DynamicRulesetConfig>(createDefaultDynamicConfig);
   const [tokens, setTokens] = useState<Record<string, string> | null>(null);
   const [skipInvites, setSkipInvites] = useState(false);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
@@ -536,8 +540,34 @@ export default function LobbyRoot() {
                 </div>
               </div>
 
+              {/* Manifest Kind Toggle */}
+              {!gameId && (
+                <div className="flex items-center justify-between border border-skin-base rounded-lg bg-skin-input/40 p-3">
+                  <div>
+                    <span className="text-xs font-bold text-skin-dim uppercase tracking-widest font-display">
+                      {manifestKind === 'STATIC' ? 'Static' : 'Dynamic'}
+                    </span>
+                    <span className="block text-[10px] font-mono text-skin-dim/40 mt-0.5">
+                      {manifestKind === 'STATIC'
+                        ? 'Configure each day upfront'
+                        : 'Game Master decides day-by-day'}
+                    </span>
+                  </div>
+                  <label className="relative cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={manifestKind === 'DYNAMIC'}
+                      onChange={() => setManifestKind(prev => prev === 'STATIC' ? 'DYNAMIC' : 'STATIC')}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-skin-input border border-skin-base rounded-full peer-checked:bg-skin-gold/30 peer-checked:border-skin-gold/50 transition-all" />
+                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-skin-dim/60 rounded-full peer-checked:translate-x-4 peer-checked:bg-skin-gold transition-all" />
+                  </label>
+                </div>
+              )}
+
               {/* Debug Manifest Panel */}
-              {isDebugMode && !gameId && (
+              {manifestKind === 'STATIC' && isDebugMode && !gameId && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
@@ -630,7 +660,7 @@ export default function LobbyRoot() {
               )}
 
               {/* Configurable Cycle Panel */}
-              {isConfigurableMode && !gameId && (
+              {manifestKind === 'STATIC' && isConfigurableMode && !gameId && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -781,8 +811,21 @@ export default function LobbyRoot() {
                 </div>
               )}
 
+              {/* Dynamic Ruleset Builder */}
+              {manifestKind === 'DYNAMIC' && !gameId && (
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
+                    Game Master Ruleset
+                  </label>
+                  <DynamicRulesetBuilder
+                    config={dynamicConfig}
+                    onChange={setDynamicConfig}
+                  />
+                </div>
+              )}
+
               {/* Push Alerts Config */}
-              {(isDebugMode || isConfigurableMode) && !gameId && (
+              {(isDebugMode || isConfigurableMode || manifestKind === 'DYNAMIC') && !gameId && (
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
                     Push Alerts
