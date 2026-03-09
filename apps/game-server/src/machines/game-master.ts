@@ -7,12 +7,13 @@ import type {
   GameType,
   DailyManifest,
   GameHistoryEntry,
+  GameMasterAction,
 } from '@pecking-order/shared-types';
+import { createInactivityModule, type InactivityState } from './observations/inactivity';
 
 // ── Input / Context types ───────────────────────────────────────────────
 
 export interface GameMasterInput {
-  dayIndex: number;
   roster: Record<string, SocialPlayer>;
   ruleset: PeckingOrderRuleset;
   schedulePreset: SchedulePreset;
@@ -20,21 +21,19 @@ export interface GameMasterInput {
 }
 
 export interface GameMasterContext {
-  dayIndex: number;
   roster: Record<string, SocialPlayer>;
   ruleset: PeckingOrderRuleset;
   schedulePreset: SchedulePreset;
   gameHistory: GameHistoryEntry[];
+  dayIndex: number;
   totalDays: number;
   resolvedDay: DailyManifest | null;
-  observations: {
-    factCounts: Record<string, number>;
-    activePlayerIds: string[];
-  };
   reasoning: string;
+  inactivityState: InactivityState;
+  gameMasterActions: GameMasterAction[];
 }
 
-// ── Pure resolution functions ───────────────────────────────────────────
+// ── Pure resolution functions (unchanged from before) ───────────────────
 
 function countAlivePlayers(roster: Record<string, SocialPlayer>): number {
   return Object.values(roster).filter(p => p.status === 'ALIVE').length;
@@ -45,7 +44,6 @@ function computeTotalDays(alive: number, rules: PeckingOrderRuleset['dayCount'])
   if (rules.mode === 'FIXED') {
     total = rules.fixedCount ?? alive - 1;
   } else {
-    // ACTIVE_PLAYERS_MINUS_ONE
     total = alive - 1;
   }
   if (rules.maxDays !== undefined) {
@@ -60,27 +58,22 @@ function resolveVoteType(
   rules: PeckingOrderRuleset['voting'],
   alivePlayers: number,
 ): VoteType {
-  // Last day is always FINALS
   if (dayIndex >= totalDays) return 'FINALS';
-
   if (rules.mode === 'SEQUENCE' && rules.sequence) {
     const idx = Math.min(dayIndex - 1, rules.sequence.length - 1);
     const candidate = rules.sequence[idx];
-    // Check player-count constraints
     if (rules.constraints) {
       const constraint = rules.constraints.find(c => c.voteType === candidate);
       if (constraint && alivePlayers < constraint.minPlayers) {
-        return 'MAJORITY'; // safe fallback
+        return 'MAJORITY';
       }
     }
     return candidate;
   }
-
   if (rules.mode === 'POOL' && rules.pool) {
     const idx = (dayIndex - 1) % rules.pool.length;
     return rules.pool[idx];
   }
-
   return 'MAJORITY';
 }
 
@@ -90,12 +83,10 @@ function resolveGameType(
   gameHistory: GameHistoryEntry[],
 ): GameType {
   if (rules.mode === 'NONE') return 'NONE';
-
   if (rules.mode === 'SEQUENCE' && rules.sequence) {
     const idx = Math.min(dayIndex - 1, rules.sequence.length - 1);
     return rules.sequence[idx];
   }
-
   if (rules.mode === 'POOL' && rules.pool) {
     if (rules.avoidRepeat && gameHistory.length > 0) {
       const lastGame = gameHistory[gameHistory.length - 1];
@@ -106,7 +97,6 @@ function resolveGameType(
     }
     return rules.pool[(dayIndex - 1) % rules.pool.length];
   }
-
   return 'NONE';
 }
 
@@ -116,17 +106,14 @@ function scaleValue(
   rule: { mode: string; base: number; floor?: number },
 ): number {
   if (rule.mode === 'FIXED') return rule.base;
-
   if (rule.mode === 'DIMINISHING') {
     const floor = rule.floor ?? Math.floor(rule.base * 0.3);
     const progress = Math.min((dayIndex - 1) / Math.max(totalDays - 1, 1), 1);
     return Math.round(rule.base - (rule.base - floor) * progress);
   }
-
   if (rule.mode === 'PER_ACTIVE_PLAYER') {
-    return rule.base; // future: multiply by alive count
+    return rule.base;
   }
-
   return rule.base;
 }
 
@@ -141,38 +128,51 @@ function resolveSocialParams(
   };
 }
 
-// ── Exported context builder (testable without XState) ──────────────────
+// ── Day resolution helper ───────────────────────────────────────────────
 
-/** Build Game Master context from input. Exported for unit testing. */
-export function buildGameMasterContext(input: GameMasterInput): GameMasterContext {
-  const alive = countAlivePlayers(input.roster);
-  const totalDays = computeTotalDays(alive, input.ruleset.dayCount);
-  const voteType = resolveVoteType(input.dayIndex, totalDays, input.ruleset.voting, alive);
-  const gameType = resolveGameType(input.dayIndex, input.ruleset.games, input.gameHistory);
-  const social = resolveSocialParams(input.dayIndex, totalDays, input.ruleset.social);
-
-  const resolvedDay: DailyManifest = {
-    dayIndex: input.dayIndex,
-    theme: `Day ${input.dayIndex}`,
-    voteType,
-    gameType,
-    timeline: [], // Timeline stamped by L2 from schedulePreset
-    ...social,
-  };
+function resolveDay(
+  dayIndex: number,
+  roster: Record<string, SocialPlayer>,
+  ruleset: PeckingOrderRuleset,
+  gameHistory: GameHistoryEntry[],
+): { resolvedDay: DailyManifest; totalDays: number; reasoning: string } {
+  const alive = countAlivePlayers(roster);
+  const totalDays = computeTotalDays(alive, ruleset.dayCount);
+  const voteType = resolveVoteType(dayIndex, totalDays, ruleset.voting, alive);
+  const gameType = resolveGameType(dayIndex, ruleset.games, gameHistory);
+  const social = resolveSocialParams(dayIndex, totalDays, ruleset.social);
 
   return {
-    dayIndex: input.dayIndex,
+    resolvedDay: {
+      dayIndex,
+      theme: `Day ${dayIndex}`,
+      voteType,
+      gameType,
+      timeline: [],
+      ...social,
+    },
+    totalDays,
+    reasoning: `Day ${dayIndex}/${totalDays}: ${voteType} vote, ${gameType} game, ${social.dmCharsPerPlayer} DM chars`,
+  };
+}
+
+// ── Exported context builder ────────────────────────────────────────────
+
+const inactivityModule = createInactivityModule();
+
+/** Build initial Game Master context. Exported for unit testing. */
+export function buildGameMasterContext(input: GameMasterInput): GameMasterContext {
+  return {
     roster: input.roster,
     ruleset: input.ruleset,
     schedulePreset: input.schedulePreset,
     gameHistory: input.gameHistory,
-    totalDays,
-    resolvedDay,
-    observations: {
-      factCounts: {},
-      activePlayerIds: [],
-    },
-    reasoning: `Day ${input.dayIndex}/${totalDays}: ${voteType} vote, ${gameType} game, ${social.dmCharsPerPlayer} DM chars`,
+    dayIndex: 0,
+    totalDays: 0,
+    resolvedDay: null,
+    reasoning: '',
+    inactivityState: inactivityModule.init(input.roster, input.ruleset),
+    gameMasterActions: [],
   };
 }
 
@@ -184,42 +184,90 @@ export function createGameMasterMachine() {
       input: {} as GameMasterInput,
       context: {} as GameMasterContext,
       events: {} as
+        | { type: 'GAME_MASTER.RESOLVE_DAY'; dayIndex: number; roster: Record<string, SocialPlayer> }
+        | { type: 'GAME_MASTER.DAY_ENDED'; dayIndex: number; roster: Record<string, SocialPlayer> }
+        | { type: 'GAME_MASTER.GAME_ENDED' }
         | { type: 'FACT.RECORD'; fact: { type: string; actorId: string; targetId?: string; payload?: any; timestamp: number } }
         | { type: 'ADMIN.OVERRIDE_NEXT_DAY'; day: Partial<DailyManifest> },
     },
   }).createMachine({
     id: 'game-master',
-    initial: 'observing',
+    initial: 'pregame',
     context: ({ input }) => buildGameMasterContext(input),
     states: {
-      observing: {
+      pregame: {
         on: {
-          'FACT.RECORD': {
-            actions: assign({
-              observations: ({ context, event }) => {
-                const factType = event.fact.type;
-                const factCounts = {
-                  ...context.observations.factCounts,
-                  [factType]: (context.observations.factCounts[factType] || 0) + 1,
-                };
-                const activePlayerIds = [...context.observations.activePlayerIds];
-                if (event.fact.actorId && event.fact.actorId !== 'SYSTEM' && !activePlayerIds.includes(event.fact.actorId)) {
-                  activePlayerIds.push(event.fact.actorId);
-                }
-                return { factCounts, activePlayerIds };
-              },
-            }),
-          },
-          'ADMIN.OVERRIDE_NEXT_DAY': {
-            actions: assign({
-              resolvedDay: ({ context, event }) => {
-                if (!context.resolvedDay) return null;
-                return { ...context.resolvedDay, ...event.day };
-              },
-              reasoning: ({ context }) => `${context.reasoning} [ADMIN OVERRIDE]`,
+          'GAME_MASTER.RESOLVE_DAY': {
+            target: 'tournament',
+            actions: assign(({ context, event }) => {
+              const { resolvedDay, totalDays, reasoning } = resolveDay(
+                event.dayIndex, event.roster, context.ruleset, context.gameHistory,
+              );
+              const { state: inactivityState, actions } = inactivityModule.onResolveDay(
+                context.inactivityState, event.dayIndex, event.roster, context.ruleset,
+              );
+              return {
+                dayIndex: event.dayIndex,
+                roster: event.roster,
+                totalDays,
+                resolvedDay,
+                reasoning,
+                inactivityState,
+                gameMasterActions: actions,
+              };
             }),
           },
         },
+      },
+      tournament: {
+        on: {
+          'GAME_MASTER.RESOLVE_DAY': {
+            actions: assign(({ context, event }) => {
+              const { resolvedDay, totalDays, reasoning } = resolveDay(
+                event.dayIndex, event.roster, context.ruleset, context.gameHistory,
+              );
+              const { state: inactivityState, actions } = inactivityModule.onResolveDay(
+                context.inactivityState, event.dayIndex, event.roster, context.ruleset,
+              );
+              return {
+                dayIndex: event.dayIndex,
+                roster: event.roster,
+                totalDays,
+                resolvedDay,
+                reasoning,
+                inactivityState,
+                gameMasterActions: actions,
+              };
+            }),
+          },
+          'GAME_MASTER.DAY_ENDED': {
+            actions: assign(({ context, event }) => ({
+              inactivityState: inactivityModule.onDayEnded(
+                context.inactivityState, event.dayIndex, event.roster,
+              ),
+              gameMasterActions: [],
+            })),
+          },
+          'GAME_MASTER.GAME_ENDED': {
+            target: 'postgame',
+          },
+          'FACT.RECORD': {
+            actions: assign(({ context, event }) => ({
+              inactivityState: inactivityModule.onFact(context.inactivityState, event.fact),
+            })),
+          },
+          'ADMIN.OVERRIDE_NEXT_DAY': {
+            actions: assign(({ context, event }) => ({
+              resolvedDay: context.resolvedDay
+                ? { ...context.resolvedDay, ...event.day }
+                : null,
+              reasoning: `${context.reasoning} [ADMIN OVERRIDE]`,
+            })),
+          },
+        },
+      },
+      postgame: {
+        type: 'final',
       },
     },
   });
