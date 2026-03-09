@@ -346,14 +346,25 @@ When motivated (second game type, or significant PO refactoring):
 | `apps/lobby/app/actions.ts` | Modify | Update manifest generation |
 | `e2e/fixtures/game-setup.ts` | Modify | Update test manifest |
 
-### Phase 3 (dynamic days)
+### Phase 3a (types + manifest union) — COMPLETE
 
 | File | Status | Purpose |
 |------|--------|---------|
-| `apps/game-server/src/machines/actions/resolve-day.ts` | NEW | Pure resolveDay function |
-| `apps/game-server/src/machines/actions/resolve-day.test.ts` | NEW | Unit tests |
-| `apps/game-server/src/machines/actions/l2-initialization.ts` | Modify | Add totalPlayerCount |
-| `apps/game-server/src/machines/l2-orchestrator.ts` | Modify | Add resolveCurrentDay to morningBriefing |
-| `apps/game-server/src/machines/l3-session.ts` | Modify | Read social config from input |
-| `apps/game-server/src/machines/actions/l3-social.ts` | Modify | Use context limits instead of constants |
-| `packages/shared-types/src/index.ts` | Modify | Add optional social fields to DailyManifest |
+| `packages/shared-types/src/index.ts` | DONE | Discriminated manifest union, GameRuleset, SchedulePreset, social params |
+| `apps/game-server/src/machines/actions/l2-initialization.ts` | DONE | normalizeManifest on init |
+| `apps/game-server/src/snapshot.ts` | DONE | normalizeManifest on restore |
+| `apps/lobby/app/actions.ts` | DONE | Emit `kind: 'STATIC'` |
+| `e2e/fixtures/game-setup.ts` | DONE | Emit `kind: 'STATIC'` |
+| `.claude/commands/speed-run.md` | DONE | Emit `kind: 'STATIC'` |
+| `apps/game-server/src/machines/l3-session.ts` | DONE | Extract buildL3Context, read social params from manifest |
+| `apps/game-server/src/machines/actions/l3-social.ts` | DONE | Use context limits instead of constants |
+
+### Phase 3b (director actor + dynamic days) — IN PROGRESS
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `apps/game-server/src/machines/director.ts` | NEW | Director actor for dynamic day resolution |
+| `apps/game-server/src/machines/__tests__/director.test.ts` | NEW | Director unit tests |
+| `apps/game-server/src/machines/actions/l2-day-resolution.ts` | NEW | resolveCurrentDay + appendResolvedDay actions |
+| `apps/game-server/src/machines/l2-orchestrator.ts` | Modify | Wire director into morningBriefing + activeSession |
+| `apps/game-server/src/machines/actions/l2-initialization.ts` | Modify | Add directorOutput to initial context |

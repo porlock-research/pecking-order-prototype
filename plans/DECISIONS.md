@@ -1352,6 +1352,24 @@ This document tracks significant architectural decisions, their context, and con
     *   New conventions adopted immediately: state names are immutable, context fields always have defaults, registry keys are permanent, new machines should use `StateTags`.
     *   **Files**: `apps/game-server/src/server.ts`, `plans/architecture/granular-orchestration.md`.
 
+## [ADR-094] Dynamic Days — Manifest Discriminated Union + Director Actor
+*   **Date:** 2026-03-08
+*   **Status:** Accepted (Phase 3a complete, Phase 3b in progress)
+*   **Context:** Static manifests (days configured at creation time) can't adapt to runtime conditions: player count mismatches, inactivity, or strategic game-to-game variation. We need dynamic day resolution while keeping static manifests completely untouched.
+*   **Decision:**
+    1.  **Manifest discriminated union on `kind`**: `GameManifest = StaticManifest | DynamicManifest`. Static mode is the current code path with zero changes. Dynamic mode adds runtime day resolution.
+    2.  **`normalizeManifest()`** handles legacy snapshots (no `kind` field) by defaulting to `STATIC`.
+    3.  **GameRuleset discriminated union**: `PeckingOrderRuleset` as first variant. Each game type defines its own ruleset shape (voting, games, activities, social, inactivity, dayCount sub-configs).
+    4.  **Schedule presets** (`DEFAULT`, `COMPACT`, `SPEED_RUN`): lobby-side templates that stamp out concrete timelines. Stored on `DynamicManifest` so the director can resolve future days' timelines.
+    5.  **Director actor (L2.5)**: XState actor spawned alongside L3 in dynamic mode. Observes `FACT.*` events throughout the day, resolves next day's config at day end. Supports admin override.
+    6.  **`DailyManifest` extended** with optional `dmCharsPerPlayer` and `dmPartnersPerPlayer`. L3 reads from manifest input with backward-compatible defaults.
+    7.  **`buildL3Context()` extracted** as standalone function for testability (XState v5 `sendParent` in entry actions prevents standalone actor testing).
+*   **Consequences:**
+    *   All existing static games work unchanged — `normalizeManifest()` is the only new code in the static path.
+    *   Dynamic days grow `manifest.days[]` progressively, maintaining the existing L3 input pattern.
+    *   Future game types (Werewolf) can add new `GameRuleset` and `ManifestKind` variants without modifying the orchestrator.
+    *   **Design doc**: `plans/architecture/dynamic-days-design.md`. **Implementation plan**: `plans/architecture/2026-03-08-dynamic-days.md`.
+
 ## [ADR-093] Robust Alarm Delivery — onAlarm() as Single WAKEUP Source
 *   **Date:** 2026-03-08
 *   **Status:** Accepted
