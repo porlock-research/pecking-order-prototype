@@ -8,7 +8,10 @@ import { buildPlayerColorMap } from './colors';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { BroadcastBar } from './components/BroadcastBar';
 import { StageChat } from './components/StageChat';
+import { WhispersTab } from './components/WhispersTab';
 import { TabBar, type VividTab } from './components/TabBar';
+import { NewDmPicker } from '../classic/components/NewDmPicker';
+import { NewGroupPicker } from '../classic/components/NewGroupPicker';
 import { PwaGate } from '../../components/PwaGate';
 import { VIVID_SPRING } from './springs';
 
@@ -30,14 +33,6 @@ function getPhaseClass(serverState: unknown): string {
 /*  Placeholder tab content                                            */
 /* ------------------------------------------------------------------ */
 
-function WhispersPlaceholder() {
-  return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vivid-text-dim)' }}>
-      Whispers — coming soon
-    </div>
-  );
-}
-
 function CastPlaceholder() {
   return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vivid-text-dim)' }}>
@@ -56,6 +51,8 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const [dmChannelId, setDmChannelId] = useState<string | null>(null);
   const [detailPlayerId, setDetailPlayerId] = useState<string | null>(null);
   const [quickSheetPlayerId, setQuickSheetPlayerId] = useState<string | null>(null);
+  const [showNewDm, setShowNewDm] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
 
   const roster = useGameStore(s => s.roster);
   const serverState = useGameStore(s => s.serverState);
@@ -139,7 +136,18 @@ function VividShell({ playerId, engine, token }: ShellProps) {
               exit={{ opacity: 0 }}
               transition={VIVID_SPRING.gentle}
             >
-              <WhispersPlaceholder />
+              <WhispersTab
+                engine={engine}
+                playerColorMap={playerColorMap}
+                activeDmPlayerId={dmTargetPlayerId}
+                activeChannelId={dmChannelId}
+                onSelectDm={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); }}
+                onSelectGroup={(chId) => { setDmChannelId(chId); setDmTargetPlayerId(null); }}
+                onNewDm={() => setShowNewDm(true)}
+                onNewGroup={() => setShowNewGroup(true)}
+                onBack={() => { setDmTargetPlayerId(null); setDmChannelId(null); }}
+                onTapAvatar={(pid) => setQuickSheetPlayerId(pid)}
+              />
             </motion.div>
           )}
 
@@ -160,6 +168,30 @@ function VividShell({ playerId, engine, token }: ShellProps) {
 
       {/* Tab bar — bottom */}
       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
+
+      {/* New DM picker overlay */}
+      {showNewDm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}>
+          <NewDmPicker
+            roster={roster}
+            playerId={playerId}
+            onSelect={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setShowNewDm(false); setActiveTab('whispers'); }}
+            onBack={() => setShowNewDm(false)}
+          />
+        </div>
+      )}
+
+      {/* New Group picker overlay */}
+      {showNewGroup && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}>
+          <NewGroupPicker
+            roster={roster}
+            playerId={playerId}
+            onBack={() => setShowNewGroup(false)}
+            engine={engine}
+          />
+        </div>
+      )}
 
       {/* PWA gate */}
       <PwaGate token={token} />

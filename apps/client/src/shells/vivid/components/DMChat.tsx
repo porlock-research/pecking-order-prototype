@@ -7,8 +7,8 @@ import type { ChatMessage } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../store/useGameStore';
 import { usePlayerTimeline } from '../../../hooks/usePlayerTimeline';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
-import { ChatBubble } from './ChatBubble';
-import { SystemAnnouncement } from './SystemAnnouncement';
+import { MessageCard } from './MessageCard';
+import { BroadcastAlert } from './BroadcastAlert';
 import { ChatInput } from './ChatInput';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
@@ -23,6 +23,8 @@ interface DMChatProps {
   engine: any;
   onBack: () => void;
   onOpenSpotlight?: (playerId: string) => void;
+  playerColorMap: Record<string, string>;
+  onTapAvatar?: (playerId: string) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -52,6 +54,8 @@ export function DMChat({
   engine,
   onBack,
   onOpenSpotlight,
+  playerColorMap,
+  onTapAvatar,
 }: DMChatProps) {
   const { playerId, roster } = useGameStore();
   const chatLog = useGameStore((s) => s.chatLog);
@@ -153,6 +157,20 @@ export function DMChat({
   const shouldShowSenderGroup = (index: number): boolean => {
     if (index === 0) return true;
     return groupMessages[index - 1].senderId !== groupMessages[index].senderId;
+  };
+
+  const shouldShowTimestamp1on1 = (index: number): boolean => {
+    const entry = playerTimelineEntries[index];
+    if (entry.kind !== 'chat') return true;
+    const next = playerTimelineEntries[index + 1];
+    if (!next || next.kind !== 'chat') return true;
+    return next.data.senderId !== entry.data.senderId;
+  };
+
+  const shouldShowTimestampGroup = (index: number): boolean => {
+    const next = groupMessages[index + 1];
+    if (!next) return true;
+    return next.senderId !== groupMessages[index].senderId;
   };
 
   /* ---- Input visibility ------------------------------------------ */
@@ -407,16 +425,19 @@ export function DMChat({
               switch (entry.kind) {
                 case 'chat':
                   return (
-                    <ChatBubble
+                    <MessageCard
                       key={entry.key}
                       message={entry.data}
                       isMe={entry.data.senderId === playerId}
                       sender={roster[entry.data.senderId]}
                       showSender={shouldShowSender1on1(i)}
+                      showTimestamp={shouldShowTimestamp1on1(i)}
+                      playerColor={playerColorMap[entry.data.senderId] || '#8B8DB3'}
+                      onTapAvatar={onTapAvatar}
                     />
                   );
                 case 'system':
-                  return <SystemAnnouncement key={entry.key} message={entry.data} />;
+                  return <BroadcastAlert key={entry.key} message={entry.data} />;
                 default:
                   return null;
               }
@@ -428,12 +449,15 @@ export function DMChat({
             <EmptyState text="No messages yet. Start scheming?" />
           ) : (
             groupMessages.map((msg, i) => (
-              <ChatBubble
+              <MessageCard
                 key={msg.id}
                 message={msg}
                 isMe={msg.senderId === playerId}
                 sender={roster[msg.senderId]}
                 showSender={shouldShowSenderGroup(i)}
+                showTimestamp={shouldShowTimestampGroup(i)}
+                playerColor={playerColorMap[msg.senderId] || '#8B8DB3'}
+                onTapAvatar={onTapAvatar}
               />
             ))
           )
