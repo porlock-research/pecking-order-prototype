@@ -2,7 +2,6 @@ import { setup, assign, sendTo, raise } from 'xstate';
 import type { AnyActorRef } from 'xstate';
 import { dailySessionMachine } from './l3-session';
 import { postGameMachine } from './l4-post-game';
-import { createGameMasterMachine } from './game-master';
 import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, DailyManifest, Events } from '@pecking-order/shared-types';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from './cartridges/prompts/_contract';
@@ -37,7 +36,6 @@ export interface GameContext {
   }>;
   // Game Master (dynamic mode only)
   gameMasterRef: AnyActorRef | null;
-  gameMasterResolvedDay: DailyManifest | null;
 }
 
 export type GameEvent =
@@ -87,7 +85,6 @@ export const orchestratorMachine = setup({
   actors: {
     dailySessionMachine,
     postGameMachine,
-    gameMasterMachine: createGameMasterMachine(),
   }
 // XState v5 setup() can't infer action string names from externally-defined
 // action objects, so we cast the machine config. Runtime behavior is correct.
@@ -109,7 +106,6 @@ export const orchestratorMachine = setup({
     gameHistory: [],
     completedPhases: [],
     gameMasterRef: null,
-    gameMasterResolvedDay: null,
   },
   states: {
     uninitialized: {
@@ -121,6 +117,7 @@ export const orchestratorMachine = setup({
       }
     },
     preGame: {
+      entry: ['spawnGameMasterIfDynamic'],
       on: {
         'SYSTEM.WAKEUP': { target: 'dayLoop' },
         'ADMIN.NEXT_STAGE': { target: 'dayLoop' },
@@ -146,12 +143,10 @@ export const orchestratorMachine = setup({
       initial: 'morningBriefing',
       states: {
         morningBriefing: {
-          entry: ['incrementDay', 'resolveCurrentDay', 'clearRestoredChatLog', raise({ type: 'PUSH.PHASE', trigger: 'DAY_START' } as any)],
+          entry: ['incrementDay', 'sendResolveDayToGameMaster', 'captureGameMasterDay', 'resolveCurrentDay', 'clearRestoredChatLog', raise({ type: 'PUSH.PHASE', trigger: 'DAY_START' } as any)],
           always: 'activeSession'
         },
         activeSession: {
-          entry: ['spawnGameMasterIfDynamic', 'captureGameMasterDay'],
-          exit: ['captureGameMasterOutput'],
           invoke: {
             id: 'l3-session',
             src: 'dailySessionMachine',
@@ -241,7 +236,7 @@ export const orchestratorMachine = setup({
           }
         },
         nightSummary: {
-          entry: ['recordCompletedVoting', 'processNightSummary', raise({ type: 'PUSH.PHASE', trigger: 'NIGHT_SUMMARY' } as any)],
+          entry: ['recordCompletedVoting', 'processNightSummary', 'processGameMasterActions', 'sendDayEndedToGameMaster', raise({ type: 'PUSH.PHASE', trigger: 'NIGHT_SUMMARY' } as any)],
           always: [
             { guard: 'isGameComplete', target: '#pecking-order-l2.gameSummary' },
           ],
@@ -275,6 +270,7 @@ export const orchestratorMachine = setup({
       ]
     },
     gameSummary: {
+      entry: ['sendGameEndedToGameMaster'],
       invoke: {
         id: 'l3-session', // Same ID so L1 extraction works unchanged
         src: 'postGameMachine',

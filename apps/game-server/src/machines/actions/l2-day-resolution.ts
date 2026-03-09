@@ -1,6 +1,8 @@
 import { assign, enqueueActions, type AnyActorRef } from 'xstate';
-import type { DailyManifest, DynamicManifest } from '@pecking-order/shared-types';
+import type { DailyManifest, GameMasterAction, SocialPlayer } from '@pecking-order/shared-types';
+import { Events, FactTypes, PlayerStatuses, GameMasterActionTypes } from '@pecking-order/shared-types';
 import { createGameMasterMachine, type GameMasterInput } from '../game-master';
+import { log } from '../../log';
 
 export const l2DayResolutionActions = {
   /**
@@ -12,40 +14,36 @@ export const l2DayResolutionActions = {
     const manifest = context.manifest;
     if (!manifest || manifest.kind !== 'DYNAMIC') return {};
 
-    // Game Master should have resolved a day — read from gameMasterResolvedDay
-    const resolvedDay = context.gameMasterResolvedDay as DailyManifest | null;
-    if (!resolvedDay) {
-      // Day 1: no Game Master output yet. Game Master spawns in activeSession
-      // and resolves immediately via its context factory.
-      return {};
-    }
+    const gameMasterRef = context.gameMasterRef as AnyActorRef | null;
+    if (!gameMasterRef) return {};
 
-    // Append the resolved day to the manifest's days array
+    const snap = gameMasterRef.getSnapshot();
+    const resolvedDay = snap?.context?.resolvedDay as DailyManifest | null;
+    if (!resolvedDay) return {};
+
+    const alreadyExists = manifest.days.some((d: DailyManifest) => d.dayIndex === resolvedDay.dayIndex);
+    if (alreadyExists) return {};
+
     return {
       manifest: {
         ...manifest,
         days: [...manifest.days, resolvedDay],
       },
-      gameMasterResolvedDay: null, // consumed
     };
   }),
 
   /**
-   * Spawn a Game Master actor for dynamic manifests. No-op for static.
-   * The Game Master resolves the current day's config in its context factory,
-   * then observes FACT.* events throughout the day.
+   * Spawn Game Master actor at game init (dynamic mode only).
+   * Long-lived: lives from pregame through postgame.
    */
   spawnGameMasterIfDynamic: assign(({ context, spawn: spawnFn }: any) => {
     const manifest = context.manifest;
     if (!manifest || manifest.kind !== 'DYNAMIC') return {};
 
-    // Stop previous Game Master if any
-    if (context.gameMasterRef) {
-      try { context.gameMasterRef.stop(); } catch (_) { /* already stopped */ }
-    }
+    // Don't re-spawn if already exists (e.g., snapshot restore)
+    if (context.gameMasterRef) return {};
 
     const input: GameMasterInput = {
-      dayIndex: context.dayIndex,
       roster: context.roster,
       ruleset: manifest.ruleset,
       schedulePreset: manifest.schedulePreset,
@@ -61,8 +59,20 @@ export const l2DayResolutionActions = {
   }),
 
   /**
-   * After the Game Master actor is spawned, read its initial resolvedDay
-   * and append to manifest.days[] so L3 can find it via dayIndex lookup.
+   * Send RESOLVE_DAY to Game Master at the start of each day.
+   */
+  sendResolveDayToGameMaster: enqueueActions(({ context, enqueue }: any) => {
+    if (!context.gameMasterRef) return;
+    enqueue.sendTo(context.gameMasterRef, {
+      type: Events.GameMaster.RESOLVE_DAY,
+      dayIndex: context.dayIndex,
+      roster: context.roster,
+    });
+  }),
+
+  /**
+   * After sending RESOLVE_DAY, capture the resolved day from Game Master snapshot
+   * and append to manifest.days[] so L3 can find it.
    */
   captureGameMasterDay: assign(({ context }: any) => {
     const manifest = context.manifest;
@@ -71,11 +81,10 @@ export const l2DayResolutionActions = {
     const gameMasterRef = context.gameMasterRef as AnyActorRef | null;
     if (!gameMasterRef) return {};
 
-    const gameMasterSnap = gameMasterRef.getSnapshot();
-    const resolvedDay = gameMasterSnap?.context?.resolvedDay as DailyManifest | null;
+    const snap = gameMasterRef.getSnapshot();
+    const resolvedDay = snap?.context?.resolvedDay as DailyManifest | null;
     if (!resolvedDay) return {};
 
-    // Idempotent: don't append if already exists
     const alreadyExists = manifest.days.some((d: DailyManifest) => d.dayIndex === resolvedDay.dayIndex);
     if (alreadyExists) return {};
 
@@ -88,37 +97,92 @@ export const l2DayResolutionActions = {
   }),
 
   /**
-   * Forward FACT.RECORD events to the Game Master actor (dynamic mode only).
-   * No-op if no Game Master is active.
+   * Forward FACT.RECORD events to the Game Master (dynamic mode only).
    */
   forwardFactToGameMaster: enqueueActions(({ context, event, enqueue }: any) => {
     if (!context.gameMasterRef) return;
-    if (event.type !== 'FACT.RECORD') return;
+    if (event.type !== Events.Fact.RECORD) return;
     enqueue.sendTo(context.gameMasterRef, event);
   }),
 
   /**
-   * Cleanup Game Master on activeSession exit. Stops the Game Master actor.
+   * Send DAY_ENDED to Game Master at nightSummary.
    */
-  captureGameMasterOutput: assign(({ context }: any) => {
+  sendDayEndedToGameMaster: enqueueActions(({ context, enqueue }: any) => {
+    if (!context.gameMasterRef) return;
+    enqueue.sendTo(context.gameMasterRef, {
+      type: Events.GameMaster.DAY_ENDED,
+      dayIndex: context.dayIndex,
+      roster: context.roster,
+    });
+  }),
+
+  /**
+   * Send GAME_ENDED to Game Master at gameSummary.
+   */
+  sendGameEndedToGameMaster: enqueueActions(({ context, enqueue }: any) => {
+    if (!context.gameMasterRef) return;
+    enqueue.sendTo(context.gameMasterRef, {
+      type: Events.GameMaster.GAME_ENDED,
+    });
+  }),
+
+  /**
+   * Process Game Master actions at nightSummary (runs AFTER processNightSummary).
+   * Reads gameMasterActions from Game Master snapshot and applies eliminations.
+   * Separate action — does NOT modify the existing elimination pipeline.
+   */
+  processGameMasterActions: enqueueActions(({ context, enqueue }: any) => {
     const gameMasterRef = context.gameMasterRef as AnyActorRef | null;
-    if (!gameMasterRef) return {};
+    if (!gameMasterRef) return;
 
-    // Stop the Game Master — we'll spawn a new one for the next day
-    try { gameMasterRef.stop(); } catch (_) { /* already stopped */ }
+    const snap = gameMasterRef.getSnapshot();
+    const actions: GameMasterAction[] = snap?.context?.gameMasterActions ?? [];
+    if (actions.length === 0) return;
 
-    return {
-      gameMasterResolvedDay: null,
-      gameMasterRef: null,
-    };
+    const rosterUpdate = { ...context.roster };
+    let rosterChanged = false;
+    const aliveCount = Object.values(rosterUpdate).filter((p: any) => p.status === PlayerStatuses.ALIVE).length;
+    let remaining = aliveCount;
+
+    for (const action of actions) {
+      if (action.action === GameMasterActionTypes.ELIMINATE) {
+        const player = rosterUpdate[action.playerId];
+        if (!player || player.status !== PlayerStatuses.ALIVE) continue;
+        if (remaining <= 2) break;
+
+        log('info', 'L2', 'Game Master eliminating player', {
+          playerId: action.playerId,
+          reason: action.reason,
+        });
+
+        rosterUpdate[action.playerId] = { ...player, status: PlayerStatuses.ELIMINATED };
+        rosterChanged = true;
+        remaining--;
+
+        enqueue.raise({
+          type: Events.Fact.RECORD,
+          fact: {
+            type: FactTypes.ELIMINATION,
+            actorId: 'GAME_MASTER',
+            targetId: action.playerId,
+            payload: { mechanism: 'INACTIVITY', reason: action.reason },
+            timestamp: Date.now(),
+          },
+        } as any);
+      }
+    }
+
+    if (rosterChanged) {
+      enqueue.assign({ roster: rosterUpdate });
+    }
   }),
 };
 
 export const l2DayResolutionGuards = {
   /**
-   * Check if the game should end after a completed day (nightSummary context).
-   * dayIndex has been set and the day has finished running.
-   * For STATIC: dayIndex >= manifest.days.length (day N of N just finished)
+   * Check if the game should end after a completed day.
+   * For STATIC: dayIndex >= manifest.days.length
    * For DYNAMIC: winner set or only 1 alive
    */
   isGameComplete: ({ context }: any) => {
@@ -128,7 +192,7 @@ export const l2DayResolutionGuards = {
     if (context.winner !== null) return true;
 
     if (manifest.kind === 'DYNAMIC') {
-      const alive = Object.values(context.roster).filter((p: any) => p.status === 'ALIVE').length;
+      const alive = Object.values(context.roster).filter((p: any) => p.status === PlayerStatuses.ALIVE).length;
       return alive <= 1;
     }
 
@@ -137,15 +201,13 @@ export const l2DayResolutionGuards = {
 
   /**
    * Safety guard on the dayLoop state — catches overshoot.
-   * dayIndex was just incremented but the day hasn't run yet.
-   * Uses strict `>` to avoid blocking the last valid day.
    */
   isDayIndexPastEnd: ({ context }: any) => {
     const manifest = context.manifest;
     if (!manifest) return false;
 
     if (manifest.kind === 'DYNAMIC') {
-      const alive = Object.values(context.roster).filter((p: any) => p.status === 'ALIVE').length;
+      const alive = Object.values(context.roster).filter((p: any) => p.status === PlayerStatuses.ALIVE).length;
       return alive <= 1;
     }
 
