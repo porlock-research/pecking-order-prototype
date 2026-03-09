@@ -140,7 +140,7 @@ export function VividPerkFAB({ engine }: VividPerkFABProps) {
       <motion.button
         style={{
           position: 'fixed',
-          bottom: 96,
+          bottom: 140,
           right: 16,
           width: 56,
           height: 56,

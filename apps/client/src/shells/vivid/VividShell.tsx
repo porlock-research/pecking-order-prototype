@@ -16,6 +16,9 @@ import { NewGroupPicker } from '../classic/components/NewGroupPicker';
 import { PwaGate } from '../../components/PwaGate';
 import { PlayerQuickSheet } from './components/PlayerQuickSheet';
 import { PlayerDetail } from './components/PlayerDetail';
+import { PhaseTransitionSplash } from './components/PhaseTransitionSplash';
+import { DramaticReveal } from './components/DramaticReveal';
+import { VividPerkFAB } from './components/VividPerkFAB';
 import { VIVID_SPRING } from './springs';
 
 /* ------------------------------------------------------------------ */
@@ -186,6 +189,13 @@ function VividShell({ playerId, engine, token }: ShellProps) {
           />
         )}
       </AnimatePresence>
+
+      {/* Broadcast chrome */}
+      <PhaseTransitionSplash />
+      <DramaticReveal />
+
+      {/* Perk FAB — visible on Stage tab only */}
+      {activeTab === 'stage' && <VividPerkFAB engine={engine} />}
 
       {/* New DM picker overlay */}
       {showNewDm && (
