@@ -14,6 +14,8 @@ import { CastTab } from './components/CastTab';
 import { NewDmPicker } from '../classic/components/NewDmPicker';
 import { NewGroupPicker } from '../classic/components/NewGroupPicker';
 import { PwaGate } from '../../components/PwaGate';
+import { PlayerQuickSheet } from './components/PlayerQuickSheet';
+import { PlayerDetail } from './components/PlayerDetail';
 import { VIVID_SPRING } from './springs';
 
 /* ------------------------------------------------------------------ */
@@ -161,6 +163,29 @@ function VividShell({ playerId, engine, token }: ShellProps) {
 
       {/* Tab bar — bottom */}
       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
+
+      {/* Player quick sheet (avatar tap) */}
+      <PlayerQuickSheet
+        targetPlayerId={quickSheetPlayerId}
+        onClose={() => setQuickSheetPlayerId(null)}
+        onWhisper={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setActiveTab('whispers'); }}
+        onViewProfile={(pid) => { setDetailPlayerId(pid); setQuickSheetPlayerId(null); }}
+        engine={engine}
+        playerColorMap={playerColorMap}
+      />
+
+      {/* Player detail (full-screen profile) */}
+      <AnimatePresence>
+        {detailPlayerId && (
+          <PlayerDetail
+            targetPlayerId={detailPlayerId}
+            playerColor={playerColorMap[detailPlayerId] || '#8B8DB3'}
+            engine={engine}
+            onBack={() => setDetailPlayerId(null)}
+            onWhisper={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setActiveTab('whispers'); setDetailPlayerId(null); }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* New DM picker overlay */}
       {showNewDm && (
