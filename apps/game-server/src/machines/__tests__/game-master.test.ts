@@ -298,3 +298,92 @@ describe('Game Master lifecycle', () => {
     actor.stop();
   });
 });
+
+describe('Game Master whitelist-based resolution', () => {
+  it('picks vote type from allowed whitelist', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      voting: { allowed: ['EXECUTIONER', 'SHIELD', 'BUBBLE'] },
+    };
+    const ctx = resolveAndGetContext(input, 1);
+    expect(['EXECUTIONER', 'SHIELD', 'BUBBLE']).toContain(ctx.resolvedDay?.voteType);
+  });
+
+  it('always uses FINALS on last day even with whitelist', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      voting: { allowed: ['EXECUTIONER', 'SHIELD'] },
+    };
+    const ctx = resolveAndGetContext(input, 3); // 4 players = 3 days, day 3 = last
+    expect(ctx.resolvedDay?.voteType).toBe('FINALS');
+  });
+
+  it('picks game type from allowed whitelist', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      games: { allowed: ['TRIVIA', 'GAP_RUN'], avoidRepeat: true },
+    };
+    const ctx = resolveAndGetContext(input, 1);
+    expect(['TRIVIA', 'GAP_RUN']).toContain(ctx.resolvedDay?.gameType);
+  });
+
+  it('returns NONE for games when allowed is empty', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      games: { allowed: [], avoidRepeat: false },
+    };
+    const ctx = resolveAndGetContext(input, 1);
+    expect(ctx.resolvedDay?.gameType).toBe('NONE');
+  });
+
+  it('resolves activity type from allowed whitelist', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      activities: { allowed: ['CONFESSION', 'HOT_TAKE'], avoidRepeat: false },
+    };
+    const ctx = resolveAndGetContext(input, 1);
+    expect(['CONFESSION', 'HOT_TAKE']).toContain(ctx.resolvedDay?.activityType);
+  });
+
+  it('returns NONE/undefined for activities when allowed is empty', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      activities: { allowed: [], avoidRepeat: false },
+    };
+    const ctx = resolveAndGetContext(input, 1);
+    // activityType should be undefined or 'NONE' when nothing allowed
+    expect(ctx.resolvedDay?.activityType).toBeFalsy();
+  });
+
+  it('avoids repeating game types when avoidRepeat is true', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      games: { allowed: ['TRIVIA', 'GAP_RUN', 'SEQUENCE'], avoidRepeat: true },
+    };
+    const ctx1 = resolveAndGetContext(input, 1);
+    // Simulate history from day 1
+    input.gameHistory = [{ gameType: ctx1.resolvedDay?.gameType } as any];
+    const ctx2 = resolveAndGetContext(input, 2);
+    expect(ctx2.resolvedDay?.gameType).not.toBe(ctx1.resolvedDay?.gameType);
+  });
+
+  it('filters vote types by minPlayers constraints', () => {
+    const input = makeInput({ roster: makeRoster(3) });
+    input.ruleset = {
+      ...baseRuleset,
+      voting: {
+        allowed: ['BUBBLE', 'MAJORITY'],
+        constraints: [{ voteType: 'BUBBLE', minPlayers: 6 }],
+      },
+    };
+    const ctx = resolveAndGetContext(input, 1, makeRoster(3));
+    expect(ctx.resolvedDay?.voteType).toBe('MAJORITY');
+  });
+});

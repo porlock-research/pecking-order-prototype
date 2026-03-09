@@ -5,6 +5,7 @@ import type {
   SocialPlayer,
   VoteType,
   GameType,
+  PromptType,
   DailyManifest,
   GameHistoryEntry,
   GameMasterAction,
@@ -59,6 +60,21 @@ function resolveVoteType(
   alivePlayers: number,
 ): VoteType {
   if (dayIndex >= totalDays) return 'FINALS';
+
+  // Whitelist mode (dynamic): pick from allowed pool
+  if (rules.allowed && rules.allowed.length > 0) {
+    let pool = rules.allowed.filter(v => v !== 'FINALS');
+    if (rules.constraints) {
+      pool = pool.filter(v => {
+        const c = rules.constraints!.find(c => c.voteType === v);
+        return !c || alivePlayers >= c.minPlayers;
+      });
+    }
+    if (pool.length === 0) return 'MAJORITY';
+    return pool[(dayIndex - 1) % pool.length];
+  }
+
+  // Legacy strategy mode (static) — unchanged
   if (rules.mode === 'SEQUENCE' && rules.sequence) {
     const idx = Math.min(dayIndex - 1, rules.sequence.length - 1);
     const candidate = rules.sequence[idx];
@@ -82,6 +98,20 @@ function resolveGameType(
   rules: PeckingOrderRuleset['games'],
   gameHistory: GameHistoryEntry[],
 ): GameType {
+  // Whitelist mode (dynamic)
+  if (rules.allowed) {
+    if (rules.allowed.length === 0) return 'NONE';
+    let pool = rules.allowed.filter(g => g !== 'NONE');
+    if (pool.length === 0) return 'NONE';
+    if (rules.avoidRepeat && gameHistory.length > 0) {
+      const lastGame = gameHistory[gameHistory.length - 1];
+      const filtered = pool.filter(g => g !== lastGame?.gameType);
+      if (filtered.length > 0) pool = filtered;
+    }
+    return pool[(dayIndex - 1) % pool.length];
+  }
+
+  // Legacy strategy mode (static) — unchanged
   if (rules.mode === 'NONE') return 'NONE';
   if (rules.mode === 'SEQUENCE' && rules.sequence) {
     const idx = Math.min(dayIndex - 1, rules.sequence.length - 1);
@@ -95,6 +125,37 @@ function resolveGameType(
         return filtered[(dayIndex - 1) % filtered.length];
       }
     }
+    return rules.pool[(dayIndex - 1) % rules.pool.length];
+  }
+  return 'NONE';
+}
+
+function resolveActivityType(
+  dayIndex: number,
+  rules: PeckingOrderRuleset['activities'],
+  gameHistory: GameHistoryEntry[],
+): PromptType | 'NONE' {
+  // Whitelist mode (dynamic)
+  if (rules.allowed) {
+    if (rules.allowed.length === 0) return 'NONE';
+    let pool = [...rules.allowed];
+    if (rules.avoidRepeat && gameHistory.length > 0) {
+      const lastEntry = gameHistory[gameHistory.length - 1];
+      if ((lastEntry as any)?.activityType) {
+        const filtered = pool.filter(a => a !== (lastEntry as any).activityType);
+        if (filtered.length > 0) pool = filtered;
+      }
+    }
+    return pool[(dayIndex - 1) % pool.length];
+  }
+
+  // Legacy strategy mode
+  if (rules.mode === 'NONE') return 'NONE';
+  if (rules.mode === 'SEQUENCE' && rules.sequence) {
+    const idx = Math.min(dayIndex - 1, rules.sequence.length - 1);
+    return rules.sequence[idx];
+  }
+  if (rules.mode === 'POOL' && rules.pool) {
     return rules.pool[(dayIndex - 1) % rules.pool.length];
   }
   return 'NONE';
@@ -140,6 +201,7 @@ function resolveDay(
   const totalDays = computeTotalDays(alive, ruleset.dayCount);
   const voteType = resolveVoteType(dayIndex, totalDays, ruleset.voting, alive);
   const gameType = resolveGameType(dayIndex, ruleset.games, gameHistory);
+  const activityType = resolveActivityType(dayIndex, ruleset.activities, gameHistory);
   const social = resolveSocialParams(dayIndex, totalDays, ruleset.social);
 
   return {
@@ -148,11 +210,12 @@ function resolveDay(
       theme: `Day ${dayIndex}`,
       voteType,
       gameType,
+      ...(activityType !== 'NONE' ? { activityType } : {}),
       timeline: [],
       ...social,
     },
     totalDays,
-    reasoning: `Day ${dayIndex}/${totalDays}: ${voteType} vote, ${gameType} game, ${social.dmCharsPerPlayer} DM chars`,
+    reasoning: `Day ${dayIndex}/${totalDays}: ${voteType} vote, ${gameType} game, ${activityType} activity, ${social.dmCharsPerPlayer} DM chars`,
   };
 }
 
