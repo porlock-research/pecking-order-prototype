@@ -359,6 +359,7 @@ export const SocialPlayerSchema = z.object({
   id: z.string(),
   personaName: z.string(),
   avatarUrl: z.string(),
+  bio: z.string().optional(),
   status: z.enum(["ALIVE", "ELIMINATED"]),
   silver: z.number().int().default(0),
   gold: z.number().int().default(0),

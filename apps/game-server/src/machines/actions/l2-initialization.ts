@@ -14,6 +14,7 @@ export const l2InitializationActions = {
           id,
           personaName: p.personaName,
           avatarUrl: p.avatarUrl,
+          bio: p.bio || '',
           status: p.isAlive ? PlayerStatuses.ALIVE : PlayerStatuses.ELIMINATED,
           silver: p.silver,
           gold: p.gold || 0,
