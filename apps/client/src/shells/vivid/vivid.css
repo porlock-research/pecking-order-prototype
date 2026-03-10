@@ -1,0 +1,222 @@
+/* Vivid Shell v3 — "Sunny Village" Theme */
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+.vivid-shell {
+  /* Backgrounds — warm, light base palette (shifts per phase) */
+  --vivid-bg-deep: #FDF8F0;
+  --vivid-bg-surface: #FAF3E8;
+  --vivid-bg-elevated: #F5EDE0;
+  --vivid-bg-glass: rgba(250, 243, 232, 0.85);
+
+  /* Accents — warm, vibrant */
+  --vivid-coral: #E8614D;
+  --vivid-teal: #3BA99C;
+  --vivid-gold: #D4960A;
+  --vivid-pink: #D94073;
+  --vivid-lavender: #8B6CC1;
+
+  /* Additional warm accents */
+  --vivid-amber: #E89B3A;
+  --vivid-sage: #6B9E6E;
+  --vivid-cream: #FFF8ED;
+  --vivid-warm-brown: #8B7355;
+
+  /* Text — dark and warm, not cold */
+  --vivid-text: #3D2E1F;
+  --vivid-text-dim: #9B8E7E;
+
+  /* Typography */
+  --vivid-font-display: 'Quicksand', sans-serif;
+  --vivid-font-body: 'DM Sans', sans-serif;
+  --vivid-font-mono: 'JetBrains Mono', monospace;
+
+  /* Phase accent — used by broadcast bar, phase line, etc. */
+  --vivid-phase-accent: var(--vivid-teal);
+  --vivid-phase-glow: rgba(59, 169, 156, 0.12);
+
+  /* Bubble styling */
+  --vivid-bubble-self: #E8F5E4;
+  --vivid-bubble-other: #FFFFFF;
+  --vivid-bubble-gm: #FFF8E1;
+
+  /* Surface texture */
+  --vivid-surface-shadow: 0 1px 3px rgba(139, 115, 85, 0.08);
+  --vivid-card-shadow: 0 2px 8px rgba(139, 115, 85, 0.1);
+
+  font-family: var(--vivid-font-body);
+  color: var(--vivid-text);
+  background: var(--vivid-bg-deep);
+}
+
+/* ---- Phase-reactive themes ---- */
+
+.vivid-phase-pregame {
+  --vivid-bg-deep: #FDF6EE;
+  --vivid-bg-surface: #F8EFE3;
+  --vivid-bg-elevated: #F2E7D8;
+  --vivid-phase-accent: var(--vivid-lavender);
+  --vivid-phase-glow: rgba(139, 108, 193, 0.1);
+  --vivid-bubble-self: #EDE6F5;
+  --vivid-bubble-other: #FFFFFF;
+}
+
+.vivid-phase-social {
+  --vivid-bg-deep: #F5FAF2;
+  --vivid-bg-surface: #EFF5EA;
+  --vivid-bg-elevated: #E6EFDF;
+  --vivid-phase-accent: var(--vivid-sage);
+  --vivid-phase-glow: rgba(107, 158, 110, 0.1);
+  --vivid-bubble-self: #E0F0DC;
+  --vivid-bubble-other: #FFFFFF;
+}
+
+.vivid-phase-game {
+  --vivid-bg-deep: #F0F7FA;
+  --vivid-bg-surface: #E8F1F5;
+  --vivid-bg-elevated: #DDE9EE;
+  --vivid-phase-accent: var(--vivid-teal);
+  --vivid-phase-glow: rgba(59, 169, 156, 0.12);
+  --vivid-bubble-self: #DDF0ED;
+  --vivid-bubble-other: #FFFFFF;
+}
+
+.vivid-phase-voting {
+  --vivid-bg-deep: #FFF8ED;
+  --vivid-bg-surface: #FFF2DD;
+  --vivid-bg-elevated: #FFE9C7;
+  --vivid-phase-accent: var(--vivid-amber);
+  --vivid-phase-glow: rgba(232, 155, 58, 0.12);
+  --vivid-bubble-self: #FFF0D6;
+  --vivid-bubble-other: #FFFFFF;
+}
+
+.vivid-phase-elimination {
+  --vivid-bg-deep: #FDF2F0;
+  --vivid-bg-surface: #F9E8E4;
+  --vivid-bg-elevated: #F4DCD6;
+  --vivid-phase-accent: var(--vivid-coral);
+  --vivid-phase-glow: rgba(232, 97, 77, 0.1);
+  --vivid-bubble-self: #FAE0DB;
+  --vivid-bubble-other: #FFFFFF;
+}
+
+.vivid-phase-default {
+  background: var(--vivid-bg-deep);
+}
+
+/* ---- Phase background with smooth transition ---- */
+.vivid-phase-bg {
+  transition: background 2.5s ease,
+              --vivid-bg-deep 2.5s ease,
+              --vivid-bg-surface 2.5s ease,
+              --vivid-bg-elevated 2.5s ease;
+}
+
+/* ---- Phase gradient line (above tab bar) ---- */
+@keyframes vivid-phase-line-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.vivid-phase-line {
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--vivid-phase-accent), transparent);
+  background-size: 200% 100%;
+  animation: vivid-phase-line-shift 4s ease infinite;
+  opacity: 0.6;
+}
+
+/* ---- LIVE dot pulse (enhanced breathing) ---- */
+@keyframes vivid-live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 6px rgba(232, 97, 77, 0.4); }
+  50% { opacity: 0.4; transform: scale(0.7); box-shadow: 0 0 14px rgba(232, 97, 77, 0.7); }
+}
+
+.vivid-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--vivid-coral);
+  animation: vivid-live-pulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(232, 97, 77, 0.4);
+}
+
+/* ---- Phase label shimmer ---- */
+@keyframes vivid-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.vivid-phase-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--vivid-phase-accent) 0%,
+    var(--vivid-phase-accent) 40%,
+    color-mix(in srgb, var(--vivid-phase-accent), #FFF8ED 45%) 50%,
+    var(--vivid-phase-accent) 60%,
+    var(--vivid-phase-accent) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: vivid-shimmer 4s ease-in-out infinite;
+}
+
+/* ---- Broadcast alert entrance pulse ---- */
+@keyframes vivid-alert-flash {
+  0% { box-shadow: 0 3px 12px rgba(139, 115, 85, 0.12); }
+  15% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--alert-pulse-color, #6B9E6E), transparent 70%), 0 3px 16px rgba(139, 115, 85, 0.18); }
+  100% { box-shadow: 0 3px 12px rgba(139, 115, 85, 0.12); }
+}
+
+.vivid-alert-pulse {
+  animation: vivid-alert-flash 0.8s ease-out 0.15s;
+}
+
+/* ---- Scrollbar hiding ---- */
+.vivid-hide-scrollbar::-webkit-scrollbar { display: none; }
+.vivid-hide-scrollbar { scrollbar-width: none; }
+
+/* ---- Warm paper texture overlay (subtle) ---- */
+.vivid-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23B09070'/%3E%3Crect x='0' y='0' width='2' height='2' fill='%23A08060' fill-opacity='0.4'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* ---- Speech bubble tail (CSS pseudo-element helper) ---- */
+.vivid-bubble-tail-left::after {
+  content: '';
+  position: absolute;
+  bottom: 12px;
+  left: -8px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 8px solid var(--vivid-bubble-other);
+}
+
+.vivid-bubble-tail-right::after {
+  content: '';
+  position: absolute;
+  bottom: 12px;
+  right: -8px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 8px solid var(--vivid-bubble-self);
+}
+
+/* ---- Pull-to-scroll overscroll feedback ---- */
+.vivid-shell {
+  overscroll-behavior-y: contain;
+}
