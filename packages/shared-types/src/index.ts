@@ -5,6 +5,8 @@ export * from './events';
 export { Config } from './config';
 export { generateCycleDefaults, isLiveGame } from './cycle-defaults';
 export type { CycleDayDefaults } from './cycle-defaults';
+export { ECONOMY_INFO } from './economy-info';
+export { VOTE_TYPE_INFO } from './vote-type-info';
 import type { TickerCategory } from './events';
 
 // --- Enums ---
