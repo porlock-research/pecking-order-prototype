@@ -4,6 +4,7 @@ import { InitPayloadSchema, Roster } from '@pecking-order/shared-types';
 import { signGameToken } from '@pecking-order/auth';
 import { getDB, getEnv } from '@/lib/db';
 import { requireAuth, getSession, generateId, generateInviteCode, generateToken } from '@/lib/auth';
+import { requireSuperAdmin } from '@/lib/super-admin';
 import { sendEmail } from '@/lib/email';
 import { buildInviteEmailHtml } from '@/lib/email-templates';
 
@@ -1188,6 +1189,7 @@ export async function getGameDetails(gameId: string) {
 // ── Admin: Inspector Connection ──────────────────────────────────────────
 
 export async function getInspectorConnection(gameId: string) {
+  await requireSuperAdmin();
   const env = await getEnv();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
   const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
@@ -1202,6 +1204,7 @@ export async function getInspectorConnection(gameId: string) {
 // ── Admin: Game Manager ──────────────────────────────────────────────────
 
 export async function getAllGames() {
+  await requireSuperAdmin();
   const db = await getDB();
   const { results } = await db
     .prepare('SELECT id, invite_code, mode, status, player_count, day_count, created_at FROM GameSessions ORDER BY created_at DESC')
@@ -1218,6 +1221,7 @@ export async function getAllGames() {
 }
 
 export async function cleanupGame(gameId: string) {
+  await requireSuperAdmin();
   const env = await getEnv();
   const db = await getDB();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
@@ -1263,6 +1267,7 @@ export async function resetSelectedTables(input: ResetTablesInput): Promise<{
   error?: string;
   details?: { lobby: string[]; gameServer: string[] };
 }> {
+  await requireSuperAdmin();
   const env = await getEnv();
   const db = await getDB();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
@@ -1569,6 +1574,7 @@ export async function queryJournal(params: {
   offset?: number;
   view?: string;
 }): Promise<{ entries: any[]; total: number }> {
+  await requireSuperAdmin();
   const env = await getEnv();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
   const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
