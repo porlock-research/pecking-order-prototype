@@ -7,10 +7,11 @@ interface ShellLoaderProps {
   gameId: string;
   playerId: string;
   token: string | null;
+  party?: string;
 }
 
-export function ShellLoader({ gameId, playerId, token }: ShellLoaderProps) {
-  const engine = useGameEngine(gameId, playerId, token);
+export function ShellLoader({ gameId, playerId, token, party }: ShellLoaderProps) {
+  const engine = useGameEngine(gameId, playerId, token, party);
 
   const ShellComponent = useMemo(() => {
     const shellId = getActiveShellId();

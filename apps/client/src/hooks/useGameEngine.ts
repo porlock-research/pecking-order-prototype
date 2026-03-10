@@ -4,7 +4,7 @@ import * as Sentry from "@sentry/react";
 import { useGameStore } from "../store/useGameStore";
 import { dmChannelId, Events } from "@pecking-order/shared-types";
 
-export const useGameEngine = (gameId: string, playerId: string, token?: string | null) => {
+export const useGameEngine = (gameId: string, playerId: string, token?: string | null, party: string = 'game-server') => {
   const sync = useGameStore((s) => s.sync);
   const addChatMessage = useGameStore((s) => s.addChatMessage);
   const addTickerMessage = useGameStore((s) => s.addTickerMessage);
@@ -26,7 +26,7 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
   const socket = usePartySocket({
     host: new URL(import.meta.env.VITE_GAME_SERVER_HOST || "http://localhost:8787").host,
     room: gameId,
-    party: 'game-server',
+    party,
     query,
     onOpen() {
       console.log('[WS] Connected to game', gameId, 'as', playerId);
