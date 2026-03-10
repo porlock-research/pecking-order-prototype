@@ -420,7 +420,8 @@ export const DM_MAX_CHARS_PER_DAY = Config.dm.maxCharsPerDay;
 export const DM_SILVER_COST = Config.dm.silverCost;
 export const DM_MAX_GROUPS_PER_DAY = Config.dm.maxGroupsPerDay;
 
-export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LIMIT' | 'CHAR_LIMIT' | 'SELF_DM' | 'TARGET_ELIMINATED' | 'INSUFFICIENT_SILVER' | 'GROUP_LIMIT' | 'INVALID_MEMBERS';
+export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LIMIT' | 'CHAR_LIMIT' | 'SELF_DM' | 'TARGET_ELIMINATED' | 'INSUFFICIENT_SILVER' | 'GROUP_LIMIT' | 'INVALID_MEMBERS'
+  | 'INVITE_REQUIRED' | 'CONVERSATION_LIMIT' | 'DUPLICATE_INVITE';
 
 // --- Channel System ---
 
@@ -461,6 +462,17 @@ export interface DmRejectedEvent {
   type: 'DM.REJECTED';
   reason: DmRejectionReason;
   senderId: string;
+}
+
+export interface PendingInvite {
+  id: string;
+  channelId: string;
+  senderId: string;
+  recipientIds: string[];
+  acceptedBy: string[];
+  declinedBy: string[];
+  timestamp: number;
+  type: 'DM' | 'GROUP_DM';
 }
 
 // --- Prompt (Activity Layer) Types ---
