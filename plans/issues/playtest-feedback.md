@@ -25,7 +25,7 @@ Feedback from the first live 5-day CONFIGURABLE_CYCLE game (HQEEHE, 5 players).
 **Reporter**: Pierre (p2)
 **Severity**: Medium
 **Description**: Lobby admin panel not locked down — non-admin players can access game config, scheduled events, and potentially trigger actions.
-**Status**: Needs fix — add auth check on admin routes, gate by `host_user_id`
+**Status**: ✅ FIXED (`feature/shell-agnostic-fixes`) — super admin allowlist via `SUPER_ADMIN_IDS` env var, layout-level redirect + server action guards on all 11 admin actions
 
 ---
 
@@ -39,17 +39,17 @@ Players expect both silver and gold from mini games. Gold contribution IS implem
 ### [PT1-UX-002] Alive players list should be sorted by silver
 
 PeopleList alive section should default to highest silver first. Makes economic meta-game visible.
-**Status**: Needs implementation
+**Status**: ✅ FIXED (`feature/shell-agnostic-fixes`) — `selectSortedPlayers` selector: alive sorted by silver descending, eliminated alphabetically
 
 ### [PT1-UX-003] Character bios not visible in game
 
 Bios created during persona selection never surfaced in game client. Only avatar headshots shown. Check if bio data is in roster SYNC payload, then add to PlayerDrawer.
-**Status**: Needs investigation
+**Status**: ✅ FIXED (`feature/shell-agnostic-fixes`) — bio preserved in L2 roster from InitPayload, added to SocialPlayer type, flows through SYNC
 
 ### [PT1-UX-004] Voting interface is confusing / no clear instructions
 
 No explanation of what the vote type means, how it works, or the consequences. Each mechanism has different rules — need a brief explainer per type (collapsible "How this works" or intro screen).
-**Status**: Needs design
+**Status**: Partially addressed (`feature/shell-agnostic-fixes`) — `VOTE_TYPE_INFO` constants added for all 9 vote types. UI integration (showing explainers in cartridges) still needed.
 
 ### [PT1-UX-005] Vote results should be visible (or purchasable with silver)
 
@@ -71,12 +71,12 @@ Post-game results presentation unclear. Players don't understand score, rank, or
 ### [PT1-UX-008] Silver economy is opaque
 
 Multiple complaints: earning/losing/spending unclear, surprise silver changes, "what is a pool?", "what is a partner?". Need a silver transaction history — tap on silver balance to see recent transactions.
-**Status**: Needs design + implementation (silver activity log)
+**Status**: Partially addressed (`feature/shell-agnostic-fixes`) — `ECONOMY_INFO` constants added (silver/gold explanations), `selectSilverHistory` selector added. UI integration (economy explainer, transaction log) still needed.
 
 ### [PT1-UX-009] Player activity / engagement visibility wanted
 
 "Could be interesting to see how many characters are left for other players." Want to know if others are engaging. Could show remaining DM budget, online status, last active time, or heat indicator. Privacy trade-off.
-**Status**: Needs design
+**Status**: Partially addressed (`feature/shell-agnostic-fixes`) — `playerActivity` field added to SYNC payload, `selectPlayerActivity` selector added. UI integration still needed.
 
 ### [PT1-UX-010] Timeline unclear — when do events end?
 

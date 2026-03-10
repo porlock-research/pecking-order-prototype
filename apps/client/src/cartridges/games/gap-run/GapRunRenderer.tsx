@@ -294,7 +294,8 @@ function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth
 // --- Renderer Component ---
 
 export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }: ArcadeRendererProps) {
-  const theme = useCartridgeTheme();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const theme = useCartridgeTheme(containerRef);
   const themeRef = useRef(theme);
   themeRef.current = theme;
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -409,7 +410,7 @@ export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }
   }, []);
 
   return (
-    <div className="px-4 pb-4">
+    <div ref={containerRef} className="px-4 pb-4">
       <canvas
         ref={canvasRef}
         width={320}

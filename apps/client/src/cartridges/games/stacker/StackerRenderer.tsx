@@ -17,7 +17,8 @@ interface Layer {
 }
 
 export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps) {
-  const theme = useCartridgeTheme();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const theme = useCartridgeTheme(containerRef);
   const themeRef = useRef(theme);
   themeRef.current = theme;
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -212,7 +213,7 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
   }, [handleDrop]);
 
   return (
-    <div className="px-4 pb-4 space-y-3">
+    <div ref={containerRef} className="px-4 pb-4 space-y-3">
       <div className="flex items-center justify-between text-xs font-mono">
         <span className="text-skin-dim">
           Height: <span className="text-skin-base font-bold">{height}</span>

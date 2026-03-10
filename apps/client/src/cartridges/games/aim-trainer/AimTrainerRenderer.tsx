@@ -31,7 +31,8 @@ function mulberry32(seed: number) {
 }
 
 export default function AimTrainerRenderer({ seed, difficulty, onResult }: ArcadeRendererProps) {
-  const theme = useCartridgeTheme();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const theme = useCartridgeTheme(containerRef);
   const rngRef = useRef(mulberry32(seed));
   const startTimeRef = useRef(performance.now());
   const resultSentRef = useRef(false);
@@ -150,7 +151,7 @@ export default function AimTrainerRenderer({ seed, difficulty, onResult }: Arcad
   const seconds = Math.ceil(timeLeft / 1000);
 
   return (
-    <div className="px-4 pb-4 space-y-3">
+    <div ref={containerRef} className="px-4 pb-4 space-y-3">
       {/* HUD */}
       <div className="flex items-center justify-between text-xs font-mono">
         <span className={`font-bold ${seconds <= 5 ? 'text-red-400' : 'text-skin-dim'}`}>

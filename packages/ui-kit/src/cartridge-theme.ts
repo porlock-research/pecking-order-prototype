@@ -1,12 +1,15 @@
 /**
- * CartridgeTheme — typed token contract for skinnable game cartridges.
+ * CartridgeTheme — typed token contract for game cartridge renderers.
  *
- * Shells provide a CartridgeTheme object as a prop to CartridgeThemeProvider.
- * Cartridges consume it via useCartridgeTheme() — fully isolated from
- * which shell they're rendered in.
+ * The --po-* CSS custom properties are the shared theming contract.
+ * Each shell sets them in its CSS scope. Tailwind skin-* classes resolve
+ * to --po-* vars, so DOM-based cartridges just work.
  *
- * The contract is deliberately platform-agnostic: only hex strings,
- * numbers, and simple objects — portable to native iOS/Android.
+ * Canvas-based renderers use useCartridgeTheme(ref) which reads --po-*
+ * vars from the DOM and returns this typed object.
+ *
+ * The DEFAULT_CARTRIDGE_THEME matches the :root --po-* values (dark theme)
+ * and serves as the fallback when CSS resolution isn't available.
  */
 
 export interface CartridgeTheme {
@@ -36,7 +39,7 @@ export interface CartridgeTheme {
   };
 }
 
-/** Dark theme — used by Classic and Immersive shells. */
+/** Dark theme fallback — matches :root --po-* values in theme.css. */
 export const DEFAULT_CARTRIDGE_THEME: CartridgeTheme = {
   colors: {
     gold: '#fbbf24',
@@ -54,26 +57,6 @@ export const DEFAULT_CARTRIDGE_THEME: CartridgeTheme = {
   },
   radius: { sm: 4, md: 8, lg: 12 },
   opacity: { subtle: 0.06, medium: 0.15, strong: 0.4 },
-};
-
-/** Light theme — used by Vivid shell. */
-export const VIVID_CARTRIDGE_THEME: CartridgeTheme = {
-  colors: {
-    gold: '#D4960A',
-    pink: '#D94073',
-    danger: '#E8614D',
-    green: '#6B9E6E',
-    orange: '#E89B3A',
-    info: '#8B6CC1',
-    bg: '#FDF8F0',
-    bgSubtle: '#FAF3E8',
-    panel: '#F5EDE0',
-    border: 'rgba(61, 46, 31, 0.12)',
-    text: '#3D2E1F',
-    textDim: '#9B8E7E',
-  },
-  radius: { sm: 8, md: 12, lg: 16 },
-  opacity: { subtle: 0.06, medium: 0.12, strong: 0.3 },
 };
 
 /**
