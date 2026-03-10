@@ -166,15 +166,15 @@ export const dailySessionMachine = setup({
                   { actions: ['rejectGroupDmCreation'] }
                 ],
                 'SOCIAL.INVITE_DM': [
-                  { guard: 'canInviteDm', actions: ['createPendingInvite'] },
+                  { guard: 'canInviteDm', actions: ['createPendingInvite', 'recordInviteSentFacts'] },
                   { actions: ['rejectDmInvite'] }
                 ],
                 'SOCIAL.ACCEPT_DM': [
-                  { guard: 'canAcceptDm', actions: ['acceptDmInvite'] },
+                  { guard: 'canAcceptDm', actions: ['acceptDmInvite', 'recordInviteAcceptedFact'] },
                   { actions: ['rejectDmAccept'] }
                 ],
                 'SOCIAL.DECLINE_DM': {
-                  actions: ['declineDmInvite']
+                  actions: ['declineDmInvite', 'recordInviteDeclinedFact']
                 },
                 'INTERNAL.OPEN_DMS': { actions: [assign({ dmsOpen: true }), sendParent({ type: 'PUSH.PHASE', trigger: 'OPEN_DMS' } as any)] },
                 'INTERNAL.CLOSE_DMS': { actions: [assign({ dmsOpen: false }), sendParent({ type: 'PUSH.PHASE', trigger: 'CLOSE_DMS' } as any)] },
