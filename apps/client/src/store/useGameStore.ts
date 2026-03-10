@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes } from '@pecking-order/shared-types';
+import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes, PendingInvite } from '@pecking-order/shared-types';
 
 interface DmThread {
   partnerId: string;
@@ -35,12 +35,14 @@ interface GameState {
   winner: { playerId: string; mechanism: string; summary: Record<string, any> } | null;
   goldPool: number;
   gameHistory: GameHistoryEntry[];
+  pendingInvites: PendingInvite[];
   dmStats: { charsUsed: number; charsLimit: number; partnersUsed: number; partnersLimit: number; groupsUsed: number; groupsLimit: number } | null;
   onlinePlayers: string[];
   typingPlayers: Record<string, string>;  // playerId → channel
   dmRejection: { reason: DmRejectionReason; timestamp: number } | null;
   silverTransferRejection: { reason: string; timestamp: number } | null;
   lastPerkResult: any | null;
+  playerActivity: Record<string, { messagesInMain: number; dmPartners: number; isOnline: boolean }>;
   tickerMessages: TickerMessage[];
   debugTicker: string | null;
 
@@ -117,12 +119,162 @@ export const selectDmThreads = (state: GameState): DmThread[] => {
     .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
 };
 
+export const selectSortedPlayers = (state: GameState): {
+  alive: [string, SocialPlayer][];
+  eliminated: [string, SocialPlayer][];
+} => {
+  const entries = Object.entries(state.roster);
+  const alive = entries
+    .filter(([, p]) => p.status === 'ALIVE')
+    .sort((a, b) => {
+      const silverDiff = b[1].silver - a[1].silver;
+      if (silverDiff !== 0) return silverDiff;
+      return a[1].personaName.localeCompare(b[1].personaName);
+    });
+  const eliminated = entries
+    .filter(([, p]) => p.status === 'ELIMINATED')
+    .sort((a, b) => a[1].personaName.localeCompare(b[1].personaName));
+  return { alive, eliminated };
+};
+
 export const selectGameDmChannels = (state: GameState): Channel[] => {
   const pid = state.playerId;
   if (!pid) return [];
   return Object.values(state.channels).filter(
     ch => ch.type === ChannelTypes.GAME_DM && ch.memberIds.includes(pid)
   );
+};
+
+export const selectMyPendingInvites = (state: GameState): PendingInvite[] =>
+  state.pendingInvites.filter(inv => inv.recipientIds.includes(state.playerId || ''));
+
+export const selectMySentInvites = (state: GameState): PendingInvite[] =>
+  state.pendingInvites.filter(inv => inv.senderId === state.playerId);
+
+// --- Vote Results (PT1-UX-005) ---
+
+export interface VoteResultEntry {
+  dayIndex: number;
+  mechanism: string;
+  tally: Record<string, number>;
+  votes: Record<string, string>;
+  eliminatedId: string | null;
+  winnerId?: string | null;
+  completedAt: number;
+}
+
+export const selectVoteResults = (state: GameState): VoteResultEntry[] => {
+  return state.completedCartridges
+    .filter(c => c.kind === 'voting')
+    .map(c => ({
+      dayIndex: c.snapshot.dayIndex ?? 0,
+      mechanism: c.snapshot.mechanism ?? 'UNKNOWN',
+      tally: c.snapshot.summary?.tallies ?? {},
+      votes: c.snapshot.summary?.votes ?? c.snapshot.results?.votes ?? {},
+      eliminatedId: c.snapshot.eliminatedId ?? null,
+      winnerId: c.snapshot.winnerId ?? null,
+      completedAt: c.completedAt,
+    }));
+};
+
+// --- Game Results (PT1-UX-006) ---
+
+export interface GameResultEntry {
+  dayIndex: number;
+  gameType: string;
+  silverRewards: Record<string, number>;
+  goldContribution: number;
+  summary: Record<string, any>;
+  completedAt: number;
+}
+
+export const selectGameResults = (state: GameState): GameResultEntry[] => {
+  return state.completedCartridges
+    .filter(c => c.kind === 'game')
+    .map(c => ({
+      dayIndex: c.snapshot.dayIndex ?? 0,
+      gameType: c.snapshot.gameType ?? 'UNKNOWN',
+      silverRewards: c.snapshot.silverRewards ?? {},
+      goldContribution: c.snapshot.goldContribution ?? 0,
+      summary: c.snapshot.summary ?? {},
+      completedAt: c.completedAt,
+    }));
+};
+
+// --- Silver Transaction History (PT1-UX-008) ---
+
+export interface SilverTransaction {
+  type: string;
+  amount: number;
+  description: string;
+  dayIndex: number;
+}
+
+export const selectSilverHistory = (state: GameState): SilverTransaction[] => {
+  const pid = state.playerId;
+  if (!pid) return [];
+
+  const history: SilverTransaction[] = [];
+
+  // From game results
+  for (const c of state.completedCartridges.filter(c => c.kind === 'game')) {
+    const reward = c.snapshot.silverRewards?.[pid];
+    if (reward) {
+      history.push({
+        type: 'GAME_REWARD',
+        amount: reward,
+        description: `${c.snapshot.gameType ?? 'Game'} reward`,
+        dayIndex: c.snapshot.dayIndex ?? state.dayIndex,
+      });
+    }
+  }
+
+  // From prompt results
+  for (const c of state.completedCartridges.filter(c => c.kind === 'prompt')) {
+    const reward = c.snapshot.silverRewards?.[pid];
+    if (reward) {
+      history.push({
+        type: 'PROMPT_REWARD',
+        amount: reward,
+        description: `${c.snapshot.promptType ?? 'Activity'} reward`,
+        dayIndex: c.snapshot.dayIndex ?? state.dayIndex,
+      });
+    }
+  }
+
+  return history;
+};
+
+// --- Day Timeline (PT1-UX-010) ---
+
+export interface TimelineEntry {
+  time: string;
+  action: string;
+  payload?: any;
+}
+
+export const selectDayTimeline = (state: GameState): TimelineEntry[] => {
+  if (!state.manifest) return [];
+  const days = state.manifest.days || [];
+  const currentDay = days[state.dayIndex];
+  if (!currentDay?.timeline) return [];
+  return currentDay.timeline.map((event: any) => ({
+    time: event.time,
+    action: event.action,
+    payload: event.payload,
+  }));
+};
+
+// --- Player Activity (PT1-UX-009) ---
+
+export interface PlayerActivityEntry {
+  messagesInMain: number;
+  dmPartners: number;
+  isOnline: boolean;
+}
+
+export const selectPlayerActivity = (state: GameState): Record<string, PlayerActivityEntry> => {
+  return state.playerActivity ?? {};
 };
 
 export const useGameStore = create<GameState>((set) => ({
@@ -143,12 +295,14 @@ export const useGameStore = create<GameState>((set) => ({
   winner: null,
   goldPool: 0,
   gameHistory: [],
+  pendingInvites: [],
   dmStats: null,
   onlinePlayers: [],
   typingPlayers: {},
   dmRejection: null,
   silverTransferRejection: null,
   lastPerkResult: null,
+  playerActivity: {},
   tickerMessages: [],
   debugTicker: null,
 
@@ -190,8 +344,10 @@ export const useGameStore = create<GameState>((set) => ({
       winner: data.context?.winner ?? null,
       goldPool: data.context?.goldPool ?? state.goldPool,
       gameHistory: data.context?.gameHistory ?? state.gameHistory,
+      pendingInvites: data.context?.pendingInvites ?? state.pendingInvites,
       dmStats: data.context?.dmStats ?? null,
       onlinePlayers: data.context?.onlinePlayers ?? state.onlinePlayers,
+      playerActivity: data.context?.playerActivity ?? state.playerActivity,
     };
   }),
 

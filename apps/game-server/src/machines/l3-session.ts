@@ -1,5 +1,5 @@
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
-import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, dmChannelId, Events, FactTypes, GAME_MASTER_ID, DM_MAX_CHARS_PER_DAY, DM_MAX_PARTNERS_PER_DAY } from '@pecking-order/shared-types';
+import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, PendingInvite, dmChannelId, Events, FactTypes, GAME_MASTER_ID, DM_MAX_CHARS_PER_DAY, DM_MAX_PARTNERS_PER_DAY } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from './cartridges/voting/_registry';
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 import { PROMPT_REGISTRY } from './cartridges/prompts/_registry';
@@ -30,6 +30,9 @@ export interface DailyContext {
   channels: Record<string, Channel>;
   groupChatOpen: boolean;
   dmGroupsByPlayer: Record<string, string[]>;
+  pendingInvites: PendingInvite[];
+  acceptedConversationsByPlayer: Record<string, number>;
+  maxConversationsPerDay: number;
 }
 
 export type DailyEvent =
@@ -52,6 +55,9 @@ export type DailyEvent =
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
   | { type: `GAME.${string}`; senderId: string; [key: string]: any }
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
+  | { type: 'SOCIAL.INVITE_DM'; senderId: string; recipientIds: string[] }
+  | { type: 'SOCIAL.ACCEPT_DM'; senderId: string; inviteId: string }
+  | { type: 'SOCIAL.DECLINE_DM'; senderId: string; inviteId: string }
   | { type: 'FACT.RECORD'; fact: Fact }
   | AdminEvent;
 
@@ -81,6 +87,9 @@ export function buildL3Context(input: { dayIndex: number; roster: Record<string,
     },
     groupChatOpen: false,
     dmGroupsByPlayer: {},
+    pendingInvites: [],
+    acceptedConversationsByPlayer: {},
+    maxConversationsPerDay: (input.manifest as any)?.maxConversationsPerDay ?? 5,
   };
 }
 
@@ -154,6 +163,17 @@ export const dailySessionMachine = setup({
                   { guard: 'isGroupDmCreationAllowed', actions: ['createGroupDmChannel'] },
                   { actions: ['rejectGroupDmCreation'] }
                 ],
+                'SOCIAL.INVITE_DM': [
+                  { guard: 'canInviteDm', actions: ['createPendingInvite'] },
+                  { actions: ['rejectDmInvite'] }
+                ],
+                'SOCIAL.ACCEPT_DM': [
+                  { guard: 'canAcceptDm', actions: ['acceptDmInvite'] },
+                  { actions: ['rejectDmAccept'] }
+                ],
+                'SOCIAL.DECLINE_DM': {
+                  actions: ['declineDmInvite']
+                },
                 'INTERNAL.OPEN_DMS': { actions: [assign({ dmsOpen: true }), sendParent({ type: 'PUSH.PHASE', trigger: 'OPEN_DMS' } as any)] },
                 'INTERNAL.CLOSE_DMS': { actions: [assign({ dmsOpen: false }), sendParent({ type: 'PUSH.PHASE', trigger: 'CLOSE_DMS' } as any)] },
                 'INTERNAL.OPEN_GROUP_CHAT': { actions: [assign({ groupChatOpen: true }), sendParent({ type: 'PUSH.PHASE', trigger: 'OPEN_GROUP_CHAT' } as any)] },

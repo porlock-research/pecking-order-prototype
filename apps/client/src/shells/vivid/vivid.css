@@ -43,6 +43,36 @@
   --vivid-surface-shadow: 0 1px 3px rgba(139, 115, 85, 0.08);
   --vivid-card-shadow: 0 2px 8px rgba(139, 115, 85, 0.1);
 
+  /* ---- Shared skin contract (--po-*) ----
+     Cartridges use skin-* Tailwind classes that resolve to --po-* vars.
+     Each shell overrides these so cartridges adapt automatically. */
+  --po-bg-deep: var(--vivid-bg-deep);
+  --po-bg-panel: var(--vivid-bg-elevated);
+  --po-bg-input: var(--vivid-bg-surface);
+  --po-bg-bubble: var(--vivid-bg-surface);
+  --po-bg-glass: rgba(245, 237, 224, 0.7);
+  --po-bg-glass-elevated: rgba(245, 237, 224, 0.9);
+  --po-text: var(--vivid-text);
+  --po-text-dim: var(--vivid-text-dim);
+  --po-text-inverted: #ffffff;
+  --po-gold: var(--vivid-gold);
+  --po-gold-dim: rgba(212, 150, 10, 0.2);
+  --po-pink: var(--vivid-pink);
+  --po-pink-depth: var(--vivid-pink);
+  --po-green: var(--vivid-sage);
+  --po-green-dim: rgba(107, 158, 110, 0.3);
+  --po-orange: var(--vivid-amber);
+  --po-danger: var(--vivid-coral);
+  --po-info: var(--vivid-lavender);
+  --po-border: rgba(61, 46, 31, 0.12);
+  --po-border-active: var(--vivid-gold);
+  --po-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --po-shadow-glow: 0 0 15px rgba(212, 150, 10, 0.15);
+  --po-shadow-btn: 0 4px 0 var(--vivid-pink);
+  --po-font-display: var(--vivid-font-display);
+  --po-font-body: var(--vivid-font-body);
+  --po-font-mono: var(--vivid-font-mono);
+
   font-family: var(--vivid-font-body);
   color: var(--vivid-text);
   background: var(--vivid-bg-deep);

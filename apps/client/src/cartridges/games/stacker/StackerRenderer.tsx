@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { ArcadeRendererProps } from '@pecking-order/shared-types';
+import { useCartridgeTheme } from '../../CartridgeThemeContext';
+import { withAlpha } from '@pecking-order/ui-kit/cartridge-theme';
 
 const CANVAS_WIDTH = 280;
 const CANVAS_HEIGHT = 360;
@@ -15,6 +17,10 @@ interface Layer {
 }
 
 export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const theme = useCartridgeTheme(containerRef);
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const startTimeRef = useRef(performance.now());
   const resultSentRef = useRef(false);
@@ -66,7 +72,8 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
       }
 
       // Draw
-      ctx.fillStyle = '#0d0d12';
+      const t = themeRef.current;
+      ctx.fillStyle = t.colors.bg;
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
       const layers = layersRef.current;
@@ -103,7 +110,7 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
       }
 
       // Ground line
-      ctx.strokeStyle = 'rgba(255, 215, 0, 0.15)';
+      ctx.strokeStyle = withAlpha(t.colors.gold, t.opacity.medium);
       ctx.lineWidth = 2;
       const groundY = CANVAS_HEIGHT + cameraY;
       if (groundY <= CANVAS_HEIGHT) {
@@ -115,7 +122,7 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
 
       // HUD
       ctx.font = 'bold 14px monospace';
-      ctx.fillStyle = 'rgba(255, 215, 0, 0.7)';
+      ctx.fillStyle = withAlpha(t.colors.gold, 0.7);
       ctx.textAlign = 'right';
       ctx.fillText(`${layers.length}`, CANVAS_WIDTH - 10, 20);
 
@@ -123,11 +130,11 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
         ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         ctx.font = 'bold 18px monospace';
-        ctx.fillStyle = '#ffd700';
+        ctx.fillStyle = t.colors.gold;
         ctx.textAlign = 'center';
         ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 8);
         ctx.font = '12px monospace';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillStyle = withAlpha(t.colors.text, 0.5);
         ctx.fillText(`Height: ${layers.length}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 14);
         return; // stop loop
       }
@@ -206,7 +213,7 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
   }, [handleDrop]);
 
   return (
-    <div className="px-4 pb-4 space-y-3">
+    <div ref={containerRef} className="px-4 pb-4 space-y-3">
       <div className="flex items-center justify-between text-xs font-mono">
         <span className="text-skin-dim">
           Height: <span className="text-skin-base font-bold">{height}</span>

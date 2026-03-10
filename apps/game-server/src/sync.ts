@@ -111,6 +111,17 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
     groupsLimit: 3,
   };
 
+  // Aggregate player activity indicators (visible to all players)
+  const playerActivity: Record<string, { messagesInMain: number; dmPartners: number; isOnline: boolean }> = {};
+  const roster = snapshot.context.roster || {};
+  for (const pid of Object.keys(roster)) {
+    playerActivity[pid] = {
+      messagesInMain: chatLog.filter((m: any) => m.senderId === pid && (m.channelId === 'MAIN' || (!m.channelId && m.channel === 'MAIN'))).length,
+      dmPartners: ((l3Context.dmPartnersByPlayer || {})[pid] || []).length,
+      isOnline: (onlinePlayers || []).includes(pid),
+    };
+  }
+
   return {
     type: Events.System.SYNC,
     state: snapshot.value,
@@ -132,6 +143,10 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       gameHistory: snapshot.context.gameHistory ?? [],
       completedPhases: snapshot.context.completedPhases ?? [],
       dmStats,
+      playerActivity,
+      pendingInvites: (l3Context.pendingInvites || []).filter((inv: any) =>
+        inv.senderId === playerId || inv.recipientIds.includes(playerId)
+      ),
       ...(onlinePlayers ? { onlinePlayers } : {}),
     },
   };

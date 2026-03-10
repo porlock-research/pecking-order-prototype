@@ -56,6 +56,13 @@ export function buildDemoSyncPayload(
         groupsUsed: 0,
         groupsLimit: 999,
       },
+      playerActivity: Object.fromEntries(
+        Object.keys(context.roster).map(pid => [pid, {
+          messagesInMain: context.chatLog.filter((m: any) => m.senderId === pid && m.channelId === 'MAIN').length,
+          dmPartners: 0, // Demo doesn't track DM partners
+          isOnline: onlinePlayers.includes(pid),
+        }])
+      ),
       onlinePlayers,
     },
   };

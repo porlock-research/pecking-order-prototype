@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { ArcadeRendererProps } from '@pecking-order/shared-types';
+import { useCartridgeTheme } from '../../CartridgeThemeContext';
+import { withAlpha } from '@pecking-order/ui-kit/cartridge-theme';
 
 const GAME_DURATION = 30_000; // 30 seconds of gameplay
 const TARGET_LIFETIME = 2000; // ms before target vanishes
@@ -29,6 +31,8 @@ function mulberry32(seed: number) {
 }
 
 export default function AimTrainerRenderer({ seed, difficulty, onResult }: ArcadeRendererProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const theme = useCartridgeTheme(containerRef);
   const rngRef = useRef(mulberry32(seed));
   const startTimeRef = useRef(performance.now());
   const resultSentRef = useRef(false);
@@ -147,7 +151,7 @@ export default function AimTrainerRenderer({ seed, difficulty, onResult }: Arcad
   const seconds = Math.ceil(timeLeft / 1000);
 
   return (
-    <div className="px-4 pb-4 space-y-3">
+    <div ref={containerRef} className="px-4 pb-4 space-y-3">
       {/* HUD */}
       <div className="flex items-center justify-between text-xs font-mono">
         <span className={`font-bold ${seconds <= 5 ? 'text-red-400' : 'text-skin-dim'}`}>
@@ -180,8 +184,8 @@ export default function AimTrainerRenderer({ seed, difficulty, onResult }: Arcad
               top: target.y - target.radius,
               width: target.radius * 2,
               height: target.radius * 2,
-              background: `radial-gradient(circle, rgba(255, 215, 0, 0.9) 0%, rgba(255, 215, 0, 0.3) 70%, transparent 100%)`,
-              border: '2px solid rgba(255, 215, 0, 0.6)',
+              background: `radial-gradient(circle, ${withAlpha(theme.colors.gold, 0.9)} 0%, ${withAlpha(theme.colors.gold, 0.3)} 70%, transparent 100%)`,
+              border: `2px solid ${withAlpha(theme.colors.gold, 0.6)}`,
               cursor: 'pointer',
             }}
           />

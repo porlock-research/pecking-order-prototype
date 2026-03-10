@@ -264,10 +264,10 @@ body {
 
 /* Vote Panel: glass card for all voting cartridges */
 .vote-panel {
-  background: rgba(76, 29, 149, 0.4);
+  background: var(--po-bg-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--po-border);
 }
 
 /* Elimination Reveal: scale + red glow flash */

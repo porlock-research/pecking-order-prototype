@@ -6,7 +6,8 @@
     "main": "src/tailwind-preset.js",
     "exports": {
         "./theme.css": "./src/theme.css",
-        "./tailwind-preset": "./src/tailwind-preset.js"
+        "./tailwind-preset": "./src/tailwind-preset.js",
+        "./cartridge-theme": "./src/cartridge-theme.ts"
     },
     "files": [
         "src"
