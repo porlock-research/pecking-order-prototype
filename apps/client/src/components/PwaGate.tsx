@@ -43,6 +43,13 @@ interface PwaGateProps {
 }
 
 export function PwaGate({ token }: PwaGateProps) {
+  // Skip PWA flow entirely when unauthenticated (e.g. demo mode)
+  if (!token) return null;
+
+  return <PwaGateInner token={token} />;
+}
+
+function PwaGateInner({ token }: { token: string }) {
   const { permission, isSubscribed, isStandalone, ready, subscribe } =
     usePushNotifications(token);
   const [deferred, setDeferred] = useState(
