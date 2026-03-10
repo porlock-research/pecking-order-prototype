@@ -1,5 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import type { ArcadeRendererProps } from '@pecking-order/shared-types';
+import { useCartridgeTheme } from '../../CartridgeThemeContext';
+import type { CartridgeTheme } from '@pecking-order/ui-kit/cartridge-theme';
+import { withAlpha } from '@pecking-order/ui-kit/cartridge-theme';
 
 // --- Game Constants ---
 
@@ -190,15 +193,14 @@ function updateGame(state: GameState, dt: number, canvasWidth: number, timeLimit
   };
 }
 
-function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth: number, timeLimit: number) {
+function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth: number, timeLimit: number, theme: CartridgeTheme) {
   const { cameraX, playerX, playerY, playerVY, segments, distance, elapsed, alive } = state;
 
-  ctx.fillStyle = '#0d0d12';
+  ctx.fillStyle = theme.colors.bg;
   ctx.fillRect(0, 0, canvasWidth, CANVAS_HEIGHT);
 
   // Parallax background lines
-  const lineColor = 'rgba(255, 215, 0, 0.03)';
-  ctx.strokeStyle = lineColor;
+  ctx.strokeStyle = withAlpha(theme.colors.gold, 0.03);
   ctx.lineWidth = 1;
   for (let i = 0; i < 5; i++) {
     const parallaxOffset = (cameraX * (0.1 + i * 0.05)) % canvasWidth;
@@ -217,8 +219,8 @@ function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth
     const screenX = seg.x - cameraX;
     if (screenX + seg.width < -10 || screenX > canvasWidth + 10) continue;
 
-    ctx.fillStyle = 'rgba(255, 215, 0, 0.08)';
-    const radius = 4;
+    ctx.fillStyle = withAlpha(theme.colors.gold, theme.opacity.subtle + 0.02);
+    const radius = theme.radius.sm;
     const x = screenX;
     const y = PLATFORM_Y;
     const w = seg.width;
@@ -234,7 +236,7 @@ function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth
     ctx.closePath();
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.15)';
+    ctx.strokeStyle = withAlpha(theme.colors.gold, theme.opacity.medium);
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
@@ -253,8 +255,8 @@ function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth
     ctx.translate(centerX, centerY);
     ctx.rotate(rotation);
 
-    ctx.fillStyle = '#ffd700';
-    ctx.shadowColor = '#ffd700';
+    ctx.fillStyle = theme.colors.gold;
+    ctx.shadowColor = theme.colors.gold;
     ctx.shadowBlur = 8;
     ctx.fillRect(-PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
     ctx.shadowBlur = 0;
@@ -263,7 +265,7 @@ function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth
 
   // HUD: distance
   ctx.font = 'bold 14px monospace';
-  ctx.fillStyle = 'rgba(255, 215, 0, 0.7)';
+  ctx.fillStyle = withAlpha(theme.colors.gold, 0.7);
   ctx.textAlign = 'right';
   ctx.fillText(`${Math.floor(distance)}m`, canvasWidth - 12, 20);
 
@@ -271,7 +273,7 @@ function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth
   const remaining = Math.max(0, timeLimit - elapsed);
   const seconds = Math.ceil(remaining / 1000);
   ctx.textAlign = 'left';
-  ctx.fillStyle = seconds <= 10 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(255, 255, 255, 0.4)';
+  ctx.fillStyle = seconds <= 10 ? withAlpha(theme.colors.danger, 0.8) : withAlpha(theme.colors.text, 0.4);
   ctx.fillText(`${seconds}s`, 12, 20);
 
   // Death overlay
@@ -279,12 +281,12 @@ function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, canvasWidth, CANVAS_HEIGHT);
     ctx.font = 'bold 18px monospace';
-    ctx.fillStyle = '#ffd700';
+    ctx.fillStyle = theme.colors.gold;
     ctx.textAlign = 'center';
     const label = elapsed >= timeLimit - 1000 ? 'TIME UP!' : 'GAME OVER';
     ctx.fillText(label, canvasWidth / 2, CANVAS_HEIGHT / 2 - 8);
     ctx.font = '12px monospace';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.fillStyle = withAlpha(theme.colors.text, 0.5);
     ctx.fillText(`Distance: ${Math.floor(distance)}m`, canvasWidth / 2, CANVAS_HEIGHT / 2 + 14);
   }
 }
@@ -292,6 +294,9 @@ function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth
 // --- Renderer Component ---
 
 export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }: ArcadeRendererProps) {
+  const theme = useCartridgeTheme();
+  const themeRef = useRef(theme);
+  themeRef.current = theme;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameStateRef = useRef<GameState | null>(null);
   const rafRef = useRef<number>(0);
@@ -348,7 +353,7 @@ export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }
 
       if (activeCanvas) {
         const ctx = activeCanvas.getContext('2d');
-        if (ctx) renderGame(ctx, updated, activeCanvas.width, timeLimit);
+        if (ctx) renderGame(ctx, updated, activeCanvas.width, timeLimit, themeRef.current);
       }
 
       if (!updated.alive) {
