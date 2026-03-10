@@ -44,6 +44,7 @@ const parentWrapper = setup({
   },
 }).createMachine({
   id: 'test-parent',
+  context: { l3Ref: null },
   initial: 'running',
   states: {
     running: {
@@ -58,7 +59,7 @@ const parentWrapper = setup({
     },
     done: { type: 'final' },
   },
-});
+} as any);
 
 function createL3Actor(rosterCount = 4, overrides: Partial<Record<string, any>> = {}) {
   const roster = overrides.roster || makeRoster(rosterCount);
