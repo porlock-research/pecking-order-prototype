@@ -36,7 +36,7 @@ interface GameState {
   goldPool: number;
   gameHistory: GameHistoryEntry[];
   pendingInvites: PendingInvite[];
-  dmStats: { charsUsed: number; charsLimit: number; partnersUsed: number; partnersLimit: number; groupsUsed: number; groupsLimit: number } | null;
+  dmStats: { charsUsed: number; charsLimit: number; partnersUsed: number; partnersLimit: number; groupsUsed: number; groupsLimit: number; slotsUsed: number } | null;
   onlinePlayers: string[];
   typingPlayers: Record<string, string>;  // playerId → channel
   dmRejection: { reason: DmRejectionReason; timestamp: number } | null;
@@ -74,7 +74,7 @@ export const selectDmThreads = (state: GameState): DmThread[] => {
 
   // Channel-based: derive threads from DM + GROUP_DM channels
   const dmChannels = Object.values(state.channels).filter(
-    ch => (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.GROUP_DM) && ch.memberIds.includes(pid)
+    ch => (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.GROUP_DM || ch.type === ChannelTypes.PRIVATE) && ch.memberIds.includes(pid)
   );
 
   if (dmChannels.length > 0) {
@@ -150,6 +150,20 @@ export const selectMyPendingInvites = (state: GameState): PendingInvite[] =>
 
 export const selectMySentInvites = (state: GameState): PendingInvite[] =>
   state.pendingInvites.filter(inv => inv.senderId === state.playerId && inv.status === 'pending');
+
+export const selectRequireDmInvite = (state: GameState): boolean => {
+  if (!state.manifest?.days) return false;
+  const currentDay = state.manifest.days[state.dayIndex - 1];
+  return currentDay?.requireDmInvite ?? false;
+};
+
+export const selectDmSlots = (state: GameState): { used: number; total: number } => {
+  if (!state.manifest?.days) return { used: 0, total: 5 };
+  const currentDay = state.manifest.days[state.dayIndex - 1];
+  const total = currentDay?.dmSlotsPerPlayer ?? 5;
+  const used = state.dmStats?.slotsUsed ?? 0;
+  return { used, total };
+};
 
 // --- Vote Results (PT1-UX-005) ---
 
