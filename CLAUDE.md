@@ -49,6 +49,7 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - **Always run `npm run build` before committing/pushing** in affected apps
 - **Always ask before merging or pushing**. Never merge to main or push without explicit approval
 - **Run `/speed-run` after any machine changes** to verify full game lifecycle
+- **Clean up plans after implementation** — move finished `docs/plans/` files to `docs/plans/archive/` to avoid stale plans confusing future sessions. **Never bulk-delete `~/.claude/plans/`** — that directory is shared across all projects. Only delete plans you can confirm belong to this project and are completed
 - **After changes to L2/L3 machines, SYNC payload shape, manifest types, or cartridge registries** — check if `DemoServer` (`apps/game-server/src/demo/`) needs updating
 
 ## Key Conventions
