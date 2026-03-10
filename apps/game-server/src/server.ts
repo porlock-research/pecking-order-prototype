@@ -13,7 +13,10 @@ import { setupActorSubscription, type SubscriptionState } from "./subscription";
 import { handleGlobalRoutes } from "./global-routes";
 import { buildActionOverrides, type ActionContext } from "./machine-actions";
 import { ensureSnapshotsTable, readSnapshot, readGoldCredited, parseSnapshot } from "./snapshot";
+import { demoMachine } from "./demo/demo-machine";
+import { broadcastDemoSync } from "./demo/demo-sync";
 
+export { DemoServer } from './demo/demo-server';
 export type { Env } from "./types";
 import type { Env } from "./types";
 
@@ -21,6 +24,8 @@ export class GameServer extends Server<Env> {
   static options = { hibernate: true };
 
   actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
+  demoActor: ReturnType<typeof createActor<typeof demoMachine>> | undefined;
+  isDemoMode = false;
   lastKnownChatLog: any[] = [];
   lastBroadcastState: string = '';
   lastKnownDmsOpen: boolean = false;
@@ -61,14 +66,20 @@ export class GameServer extends Server<Env> {
       actor: this.actor,
       env: this.env,
       scheduler: this.scheduler,
+      storage: this.ctx.storage,
+      isDemoMode: this.isDemoMode,
+      demoActor: this.demoActor,
       scheduleManifestAlarms: (manifest) => scheduleManifestAlarms(this.scheduler, manifest),
       deleteAllStorage: () => this.ctx.storage.deleteAll(),
+      reinitAsDemo: (gameId: string) => this.initDemoMode(gameId),
     };
   }
 
   private wsContext(): WsContext {
     return {
       actor: this.actor,
+      demoActor: this.demoActor,
+      isDemoMode: this.isDemoMode,
       env: this.env,
       connectedPlayers: this.connectedPlayers,
       inspectSubscribers: this.inspectSubscribers,
@@ -96,6 +107,17 @@ export class GameServer extends Server<Env> {
     // 1. Ensure storage schema
     this.checkPartyWhenTables();
     ensureSnapshotsTable(this.ctx.storage);
+
+    // 1b. Check if this is a demo game
+    try {
+      const rows = this.ctx.storage.sql.exec("SELECT value FROM snapshots WHERE key = 'demo_mode'").toArray();
+      if (rows.length > 0) {
+        const gameId = (rows[0] as any).value || 'DEMO';
+        this.initDemoMode(gameId);
+        rebuildConnectedPlayers(this.connectedPlayers, () => this.getConnections());
+        return;
+      }
+    } catch { /* table may not exist yet on first boot — not demo */ }
 
     // 2. Restore persisted state (SQL first, KV fallback for legacy games)
     const snapshotStr = await readSnapshot(this.ctx.storage);
@@ -127,6 +149,22 @@ export class GameServer extends Server<Env> {
     // 7. Start actor + rebuild presence from surviving WebSocket attachments
     this.actor.start();
     rebuildConnectedPlayers(this.connectedPlayers, () => this.getConnections());
+  }
+
+  /** Initialize demo mode — lightweight machine, no persistence, no alarms. */
+  private initDemoMode(gameId: string) {
+    this.isDemoMode = true;
+    log('info', 'L1', 'Demo mode — starting lightweight machine', { gameId });
+
+    this.demoActor = createActor(demoMachine, { input: { gameId } });
+
+    // Broadcast SYNC to all connected players on every state change
+    this.demoActor.subscribe(() => {
+      const context = this.demoActor!.getSnapshot().context;
+      broadcastDemoSync(context, () => this.getConnections(), this.connectedPlayers);
+    });
+
+    this.demoActor.start();
   }
 
   /** Verify PartyWhen's tasks table exists (log-only, non-fatal). */

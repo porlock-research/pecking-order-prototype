@@ -8,12 +8,20 @@ compatibility_flags = ["nodejs_compat"]
 tag = "v1"
 new_sqlite_classes = ["GameServer"]
 
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["DemoServer"]
+
 # ── Local Dev Bindings ────────────────────────────────────
 # Required for partyserver's routePartykitRequest to route
 # /parties/game-server/{id}/* to the GameServer DO.
 [[durable_objects.bindings]]
 name = "GameServer"
 class_name = "GameServer"
+
+[[durable_objects.bindings]]
+name = "DEMO_SERVER"
+class_name = "DemoServer"
 
 [[d1_databases]]
 binding = "DB"
@@ -52,6 +60,10 @@ custom_domain = true
 name = "GameServer"
 class_name = "GameServer"
 
+[[env.staging.durable_objects.bindings]]
+name = "DEMO_SERVER"
+class_name = "DemoServer"
+
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "pecking-order-journal-db-staging"
@@ -82,6 +94,10 @@ custom_domain = true
 [[env.production.durable_objects.bindings]]
 name = "GameServer"
 class_name = "GameServer"
+
+[[env.production.durable_objects.bindings]]
+name = "DEMO_SERVER"
+class_name = "DemoServer"
 
 [[env.production.d1_databases]]
 binding = "DB"
