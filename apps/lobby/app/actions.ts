@@ -1071,6 +1071,7 @@ function buildManifestDays(
 // ── Existing Admin Actions ───────────────────────────────────────────────
 
 export async function getGameState(gameId: string) {
+  await requireSuperAdmin();
   const env = await getEnv();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
   const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/state`;
@@ -1085,6 +1086,7 @@ export async function getGameState(gameId: string) {
 }
 
 export async function sendAdminCommand(gameId: string, command: any) {
+  await requireSuperAdmin();
   const env = await getEnv();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
   const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
@@ -1107,6 +1109,7 @@ export async function sendAdminCommand(gameId: string, command: any) {
 }
 
 export async function flushScheduledTasks(gameId: string) {
+  await requireSuperAdmin();
   const env = await getEnv();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
   const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
@@ -1125,6 +1128,7 @@ export async function flushScheduledTasks(gameId: string) {
 }
 
 export async function getScheduledTasks(gameId: string) {
+  await requireSuperAdmin();
   const env = await getEnv();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
   const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
@@ -1146,6 +1150,7 @@ export async function getScheduledTasks(gameId: string) {
 // ── Admin: Push Broadcast ────────────────────────────────────────────────
 
 export async function broadcastPushUpdate(message?: string) {
+  await requireSuperAdmin();
   const env = await getEnv();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
   const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
@@ -1173,6 +1178,7 @@ export async function broadcastPushUpdate(message?: string) {
 // ── Admin: Game Details ──────────────────────────────────────────────────
 
 export async function getGameDetails(gameId: string) {
+  await requireSuperAdmin();
   const db = await getDB();
   const env = await getEnv();
   const game = await db
