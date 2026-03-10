@@ -29,6 +29,8 @@ const VALID_RULESET: PeckingOrderRuleset = {
     dmPartners: { mode: 'FIXED', base: 3 },
     dmCost: 1,
     groupDmEnabled: true,
+    requireDmInvite: false,
+    dmSlotsPerPlayer: 5,
   },
   inactivity: { enabled: false, thresholdDays: 2, action: 'ELIMINATE' },
   dayCount: { mode: 'ACTIVE_PLAYERS_MINUS_ONE' },

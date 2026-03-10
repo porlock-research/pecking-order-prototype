@@ -31,8 +31,9 @@ export interface DailyContext {
   groupChatOpen: boolean;
   dmGroupsByPlayer: Record<string, string[]>;
   pendingInvites: PendingInvite[];
-  acceptedConversationsByPlayer: Record<string, number>;
-  maxConversationsPerDay: number;
+  slotsUsedByPlayer: Record<string, number>;
+  dmSlotsPerPlayer: number;
+  requireDmInvite: boolean;
 }
 
 export type DailyEvent =
@@ -55,9 +56,9 @@ export type DailyEvent =
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
   | { type: `GAME.${string}`; senderId: string; [key: string]: any }
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
-  | { type: 'SOCIAL.INVITE_DM'; senderId: string; recipientIds: string[] }
-  | { type: 'SOCIAL.ACCEPT_DM'; senderId: string; inviteId: string }
-  | { type: 'SOCIAL.DECLINE_DM'; senderId: string; inviteId: string }
+  | { type: 'SOCIAL.INVITE_DM'; senderId: string; recipientIds: string[]; channelId?: string }
+  | { type: 'SOCIAL.ACCEPT_DM'; senderId: string; channelId: string }
+  | { type: 'SOCIAL.DECLINE_DM'; senderId: string; channelId: string }
   | { type: 'FACT.RECORD'; fact: Fact }
   | AdminEvent;
 
@@ -88,8 +89,9 @@ export function buildL3Context(input: { dayIndex: number; roster: Record<string,
     groupChatOpen: false,
     dmGroupsByPlayer: {},
     pendingInvites: [],
-    acceptedConversationsByPlayer: {},
-    maxConversationsPerDay: (input.manifest as any)?.maxConversationsPerDay ?? 5,
+    slotsUsedByPlayer: {},
+    requireDmInvite: input.manifest?.requireDmInvite ?? false,
+    dmSlotsPerPlayer: input.manifest?.dmSlotsPerPlayer ?? 5,
   };
 }
 
