@@ -1409,3 +1409,18 @@ This document tracks significant architectural decisions, their context, and con
     *   Risk: demo SYNC may drift from real game's SYNC if types change. Mitigated by compile-time type imports and workflow rule.
     *   **Design doc**: `docs/plans/2026-03-09-demo-game-rearchitecture-design.md`
     *   **Files**: `apps/game-server/src/demo/` (all demo code), `wrangler.toml` (new DO binding).
+
+## [ADR-096] DM Invite System — Config-Driven Invite Flow + Unified Channel Model
+*   **Date:** 2026-03-10
+*   **Status:** Accepted
+*   **Context:** The existing DM system creates channels immediately on first message. For longer games we want an opt-in invite flow where players must accept before a private channel opens, with per-player slot limits to create scarcity and strategic tension.
+*   **Decision:**
+    1.  **Config flag**: `requireDmInvite` (boolean, default false) on `PeckingOrderSocialRules` and `DailyManifest`. When true, DMs require invite→accept handshake before a channel is created.
+    2.  **Unified channel model**: Added `PRIVATE` to `ChannelType` enum. DM invite flow creates PRIVATE channels (invite-gated) vs legacy DM channels (auto-created).
+    3.  **Per-recipient invites**: Refactored `PendingInvite` from multi-recipient arrays (`recipientIds`, `acceptedBy`, `declinedBy`, `type`) to a per-recipient model (`recipientId`, `status: 'pending' | 'accepted' | 'declined'`). Simpler state transitions, no partial-accept ambiguity.
+    4.  **Slot tracking**: `dmSlotsPerPlayer` (1-20, default 5) caps how many active DM conversations a player can have per day. Enforced server-side at invite creation.
+    5.  **New fact types**: `DM_INVITE_SENT`, `DM_INVITE_ACCEPTED`, `DM_INVITE_DECLINED` added to `FactSchema` and `FactTypes` for journal/ticker pipeline.
+*   **Consequences:**
+    *   `PendingInvite` shape change breaks downstream consumers in `game-server` and `client` — expected, fixed in subsequent tasks.
+    *   Backward compat: `requireDmInvite` defaults to false, so existing games behave identically.
+    *   Social event constants (`INVITE_DM`, `ACCEPT_DM`, `DECLINE_DM`) and client allowlist were already in place.

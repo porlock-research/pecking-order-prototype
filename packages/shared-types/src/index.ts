@@ -117,6 +117,8 @@ export const DailyManifestSchema = z.object({
   // Optional social parameters — director-resolved or lobby-configured
   dmCharsPerPlayer: z.number().optional(),
   dmPartnersPerPlayer: z.number().optional(),
+  requireDmInvite: z.boolean().optional(),
+  dmSlotsPerPlayer: z.number().optional(),
 });
 export type DailyManifest = z.infer<typeof DailyManifestSchema>;
 
@@ -222,6 +224,8 @@ export const PeckingOrderSocialRulesSchema = z.object({
   dmPartners: z.object({ mode: ScalingModeSchema, base: z.number(), floor: z.number().optional() }),
   dmCost: z.number(),
   groupDmEnabled: z.boolean(),
+  requireDmInvite: z.boolean().default(false),
+  dmSlotsPerPlayer: z.number().min(1).max(20).default(5),
 });
 export type PeckingOrderSocialRules = z.infer<typeof PeckingOrderSocialRulesSchema>;
 
@@ -336,7 +340,7 @@ export const InitPayloadSchema = z.object({
 // --- Journal & Facts (Persistence) ---
 
 export const FactSchema = z.object({
-  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "PERK_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED", "PROMPT_RESULT"]),
+  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "PERK_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED", "PROMPT_RESULT", "DM_INVITE_SENT", "DM_INVITE_ACCEPTED", "DM_INVITE_DECLINED"]),
   actorId: z.string(),
   targetId: z.string().optional(),
   payload: z.any().optional(), // JSON details
@@ -427,7 +431,7 @@ export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LI
 
 // --- Channel System ---
 
-export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM']);
+export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM', 'PRIVATE']);
 export type ChannelType = z.infer<typeof ChannelTypeSchema>;
 
 export type ChannelCapability = 'CHAT' | 'SILVER_TRANSFER' | 'GAME_ACTIONS';
@@ -470,11 +474,9 @@ export interface PendingInvite {
   id: string;
   channelId: string;
   senderId: string;
-  recipientIds: string[];
-  acceptedBy: string[];
-  declinedBy: string[];
+  recipientId: string;        // singular — one record per recipient
+  status: 'pending' | 'accepted' | 'declined';
   timestamp: number;
-  type: 'DM' | 'GROUP_DM';
 }
 
 // --- Prompt (Activity Layer) Types ---
