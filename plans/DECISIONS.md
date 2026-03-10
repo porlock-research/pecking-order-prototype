@@ -1390,3 +1390,22 @@ This document tracks significant architectural decisions, their context, and con
     *   Alarm delivery is now a straight line: alarm fires → constructor (PartyWhen housekeeping, no-op callback) → `onStart()` (actor created) → `onAlarm()` (WAKEUP sent).
     *   `processTimelineEvent` remains the manifest scanner — it finds due events within the lookback window. The window width is a secondary concern now that delivery is reliable.
     *   **Files**: `server.ts`, `scheduling.ts`, `l2-orchestrator.ts`, `l2-timeline.ts`, `http-handlers.ts`.
+
+## [ADR-095] Demo Game — Isolated Durable Object with Pre-Seeded State
+*   **Date:** 2026-03-09
+*   **Status:** Accepted
+*   **Context:** The demo game feature was initially implemented by adding `isDemoMode` checks throughout `GameServer`, `ws-handlers.ts`, and `http-handlers.ts`. This scattered demo logic contaminated the real game code. Additionally, the demo used invented personas instead of the existing PersonaPool, and showed a shallow Day 1 state instead of a realistic mid-game.
+*   **Decision:**
+    1.  **Separate `DemoServer` DO class** with its own wrangler binding (`demo-server` party). Zero demo code in `GameServer`.
+    2.  **Real personas** from the existing PersonaPool (Skyler Blue, etc.), hardcoded in the demo module with R2 avatar URLs.
+    3.  **Real manifest types** — the demo uses a `StaticManifest` with real `VoteType`, `GameType`, `PromptType` values so the SYNC payload is structurally identical to a real game's.
+    4.  **Pre-seeded mid-game state** — Day 3 of 5, 2 eliminated players, completed phases for days 1-2, past chat, existing DM channels. Testers land in the middle of an active game.
+    5.  **Lightweight demo machine** — handles only `SOCIAL.SEND_MSG`, `SOCIAL.CREATE_CHANNEL`, `SOCIAL.SEND_SILVER`. No voting, games, day progression, alarms, or persistence.
+    6.  **SYNC drift prevention** — demo sync builder imports shared SYNC types (compile-time guard). Workflow rule: after changes to L2/L3 machines, SYNC payload, manifest types, or cartridge registries, check if DemoServer needs updating.
+*   **Consequences:**
+    *   Complete isolation: demo can evolve independently (test new UI states, new mechanics) without risk to real games.
+    *   All `isDemoMode`, `demoActor`, and demo branching removed from `server.ts`, `ws-handlers.ts`, `http-handlers.ts`.
+    *   Client code cannot distinguish demo from real game — it just renders the SYNC payload.
+    *   Risk: demo SYNC may drift from real game's SYNC if types change. Mitigated by compile-time type imports and workflow rule.
+    *   **Design doc**: `docs/plans/2026-03-09-demo-game-rearchitecture-design.md`
+    *   **Files**: `apps/game-server/src/demo/` (all demo code), `wrangler.toml` (new DO binding).

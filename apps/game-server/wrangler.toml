@@ -73,6 +73,7 @@ database_id = "660e4807-b2ea-4d1c-b412-91877fbcbf81"
 AXIOM_DATASET = "pecking-order-staging"
 VAPID_PUBLIC_KEY = "BCGjVUVQUKz31CzbSrBGfJgAl98xXfS9sY4XfVK7MiIvCWBA5oUmwe_dBWMf_MXCOrs6WW9PPL59pHYG8vYV5ac"
 GAME_CLIENT_HOST = "https://staging-play.peckingorder.ca"
+PERSONA_ASSETS_URL = "https://staging-assets.peckingorder.ca"
 
 # ── Production ───────────────────────────────────────────
 [env.production]
@@ -108,3 +109,4 @@ database_id = "c5941589-2d69-4ae1-9b5d-0554f2ad9721"
 AXIOM_DATASET = "pecking-order"
 VAPID_PUBLIC_KEY = "BDCbn388daKAMq3g1PyJ5nqfi3btLvsjIFllFkwN4S_hgoXwLBWI0JYY9XMTXhXyX-fEqPDfZKoP0EJ9hNM1OzQ"
 GAME_CLIENT_HOST = "https://play.peckingorder.ca"
+PERSONA_ASSETS_URL = "https://assets.peckingorder.ca"

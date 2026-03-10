@@ -56,7 +56,7 @@ export const demoMachine = setup({
   types: {
     context: {} as DemoContext,
     events: {} as DemoEvent,
-    input: {} as { gameId: string },
+    input: {} as { gameId: string; assetsBase?: string },
   },
   actions: {
     handleSendMsg: assign(({ context, event }) => {
@@ -129,7 +129,7 @@ export const demoMachine = setup({
   id: 'demo',
   initial: 'active',
   context: ({ input }) => ({
-    ...buildDemoSeed(input.gameId),
+    ...buildDemoSeed(input.gameId, input.assetsBase),
   }),
   states: {
     active: {

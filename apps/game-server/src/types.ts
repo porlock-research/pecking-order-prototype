@@ -9,4 +9,5 @@ export interface Env {
   VAPID_PUBLIC_KEY: string;
   VAPID_PRIVATE_JWK: string;
   GAME_CLIENT_HOST: string;
+  PERSONA_ASSETS_URL?: string;
 }

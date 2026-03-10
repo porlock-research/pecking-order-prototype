@@ -7,18 +7,36 @@
 import type { VoteType, GameType } from '@pecking-order/shared-types';
 
 // 6 real personas from PersonaPool (apps/lobby/migrations/0004_revamp_persona_pool.sql)
-// Avatar URLs point to R2: /personas/{id}/{variant}.png
-// For demo, use DiceBear with the real persona names as seeds for consistency
-const DEMO_PERSONAS = [
-  { id: 'p0', personaName: 'Skyler Blue', stereotype: 'The Party Animal', avatarUrl: 'https://api.dicebear.com/9.x/adventurer/svg?seed=skyler-blue&backgroundColor=b6e3f4' },
-  { id: 'p1', personaName: 'Bella Rossi', stereotype: 'The Influencer', avatarUrl: 'https://api.dicebear.com/9.x/adventurer/svg?seed=bella-rossi&backgroundColor=ffd5dc' },
-  { id: 'p2', personaName: 'Chad Brock', stereotype: 'The Showmance', avatarUrl: 'https://api.dicebear.com/9.x/adventurer/svg?seed=chad-brock&backgroundColor=c0aede' },
-  { id: 'p3', personaName: 'Brenda Burns', stereotype: 'The Villain', avatarUrl: 'https://api.dicebear.com/9.x/adventurer/svg?seed=brenda-burns&backgroundColor=ffd5b4' },
-  { id: 'p4', personaName: 'Jax Cash', stereotype: 'The Tech Bro', avatarUrl: 'https://api.dicebear.com/9.x/adventurer/svg?seed=jax-cash&backgroundColor=d1f4d1' },
-  { id: 'p5', personaName: 'Raven Thorne', stereotype: 'The Goth Rebel', avatarUrl: 'https://api.dicebear.com/9.x/adventurer/svg?seed=raven-thorne&backgroundColor=ffeab6' },
+// Avatar URLs resolved at runtime from PERSONA_ASSETS_URL env var.
+const STAGING_ASSETS = 'https://staging-assets.peckingorder.ca';
+
+const PERSONA_DEFS = [
+  { id: 'p0', personaId: 'persona-19', personaName: 'Skyler Blue', stereotype: 'The Party Animal' },
+  { id: 'p1', personaId: 'persona-01', personaName: 'Bella Rossi', stereotype: 'The Influencer' },
+  { id: 'p2', personaId: 'persona-02', personaName: 'Chad Brock', stereotype: 'The Showmance' },
+  { id: 'p3', personaId: 'persona-09', personaName: 'Brenda Burns', stereotype: 'The Villain' },
+  { id: 'p4', personaId: 'persona-13', personaName: 'Jax Cash', stereotype: 'The Tech Bro' },
+  { id: 'p5', personaId: 'persona-22', personaName: 'Raven Thorne', stereotype: 'The Goth Rebel' },
 ] as const;
 
-export { DEMO_PERSONAS };
+/**
+ * Build avatar URL matching the lobby's personaImageUrl() pattern:
+ * - CDN (staging/prod): {base}/personas/{id}/headshot.png
+ * - Lobby API (local dev): {base}/{id}/headshot.png
+ */
+function buildPersonaAvatarUrl(personaId: string, assetsBase: string): string {
+  if (assetsBase.includes('/api/persona-image')) {
+    return `${assetsBase}/${personaId}/headshot.png`;
+  }
+  return `${assetsBase}/personas/${personaId}/headshot.png`;
+}
+
+export function getDemoPersonas(assetsBase: string = STAGING_ASSETS) {
+  return PERSONA_DEFS.map(p => ({
+    ...p,
+    avatarUrl: buildPersonaAvatarUrl(p.personaId, assetsBase),
+  }));
+}
 
 export interface DemoSeed {
   gameId: string;
@@ -34,12 +52,13 @@ export interface DemoSeed {
 }
 
 /** Build a mid-game fixture: Day 3 of 5, 2 players eliminated, rich history. */
-export function buildDemoSeed(gameId: string = 'DEMO'): DemoSeed {
+export function buildDemoSeed(gameId: string = 'DEMO', assetsBase?: string): DemoSeed {
   const now = Date.now();
+  const personas = getDemoPersonas(assetsBase);
 
   // Roster: p0-p3 alive, p4-p5 eliminated
   const roster: Record<string, any> = {};
-  for (const p of DEMO_PERSONAS) {
+  for (const p of personas) {
     const isEliminated = p.id === 'p4' || p.id === 'p5';
     roster[p.id] = {
       id: p.id,
@@ -120,7 +139,7 @@ export function buildDemoSeed(gameId: string = 'DEMO'): DemoSeed {
     MAIN: {
       id: 'MAIN',
       type: 'MAIN',
-      memberIds: DEMO_PERSONAS.map(p => p.id),
+      memberIds: personas.map(p => p.id),
       createdBy: 'system',
       createdAt: now - 86400000 * 3,
       capabilities: ['CHAT'],

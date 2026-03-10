@@ -8,6 +8,7 @@ import { initSentry, setSentryUser, setSentryPwaContext, setSentryAuthMethod } f
 initSentry();
 
 const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
+const DemoPage = lazy(() => import('./pages/DemoPage'));
 
 const LOBBY_HOST = import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000';
 
@@ -316,6 +317,8 @@ function applyToken(
 }
 
 export default function App() {
+  // Capture path at mount time (before init can change it via replaceState)
+  const [initialPath] = useState(() => window.location.pathname);
   const [gameId, setGameId] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -324,6 +327,8 @@ export default function App() {
   const [archivedGameCode, setArchivedGameCode] = useState<string | null>(null);
 
   useEffect(() => {
+    // Skip auth flow entirely for special pages
+    if (initialPath === '/demo' || initialPath === '/dev/games') return;
     init();
 
     async function init() {
@@ -508,7 +513,15 @@ export default function App() {
     }
   }, []);
 
-  if (window.location.pathname === '/dev/games') {
+  if (initialPath === '/demo') {
+    return (
+      <Suspense fallback={null}>
+        <DemoPage />
+      </Suspense>
+    );
+  }
+
+  if (initialPath === '/dev/games') {
     return (
       <Suspense fallback={null}>
         <GameDevHarness />

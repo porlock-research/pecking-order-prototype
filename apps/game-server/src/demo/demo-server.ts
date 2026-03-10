@@ -8,9 +8,8 @@ import { Server, type Connection, type ConnectionContext } from 'partyserver';
 import { createActor } from 'xstate';
 import { Events } from '@pecking-order/shared-types';
 import { demoMachine } from './demo-machine';
-import { DEMO_PERSONAS } from './demo-seed';
+import { getDemoPersonas } from './demo-seed';
 import { buildDemoSyncPayload, broadcastDemoSync } from './demo-sync';
-import { ensureSnapshotsTable } from '../snapshot';
 import { getOnlinePlayerIds, broadcastPresence } from '../ws-handlers';
 import type { Env } from '../types';
 
@@ -21,20 +20,14 @@ export class DemoServer extends Server<Env> {
   private connectedPlayers = new Map<string, Set<string>>();
 
   async onStart() {
-    ensureSnapshotsTable(this.ctx.storage);
-
-    // Check if already initialized (survives DO restarts)
-    const rows = this.ctx.storage.sql
-      .exec("SELECT value FROM snapshots WHERE key = 'demo_mode'")
-      .toArray();
-
-    if (rows.length > 0) {
-      this.initDemoActor((rows[0] as any).value || 'DEMO');
-    }
+    // Always auto-initialize — the demo is always on
+    this.initDemoActor('DEMO');
   }
 
   private initDemoActor(gameId: string) {
-    this.demoActor = createActor(demoMachine, { input: { gameId } });
+    this.demoActor = createActor(demoMachine, {
+      input: { gameId, assetsBase: this.env.PERSONA_ASSETS_URL },
+    });
     this.demoActor.subscribe(() => {
       broadcastDemoSync(
         this.demoActor!.getSnapshot().context,
@@ -60,40 +53,18 @@ export class DemoServer extends Server<Env> {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
 
-    // POST /init-demo — admin-authed, initializes demo game
-    if (req.method === 'POST' && path.endsWith('/init-demo')) {
-      const auth = req.headers.get('Authorization');
-      if (!auth || !auth.startsWith('Bearer ') || auth.slice(7) !== this.env.AUTH_SECRET) {
-        return new Response('Unauthorized', { status: 401 });
-      }
-
-      const gameId = path.split('/').slice(-2, -1)[0] || 'DEMO';
-      this.ctx.storage.sql.exec(
-        "INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('demo_mode', ?, unixepoch())",
-        gameId,
-      );
-      this.initDemoActor(gameId);
-
-      return Response.json(
-        { status: 'OK', gameId, personas: DEMO_PERSONAS.map(p => ({ id: p.id, personaName: p.personaName, avatarUrl: p.avatarUrl })) },
-        { headers: corsHeaders },
-      );
-    }
-
     // GET /join-demo — unauthenticated, returns persona list
     if (req.method === 'GET' && path.endsWith('/join-demo')) {
-      if (!this.demoActor) {
-        return Response.json({ error: 'Demo not initialized' }, { status: 400, headers: corsHeaders });
-      }
-      const roster = this.demoActor.getSnapshot().context.roster;
+      const ctx = this.demoActor!.getSnapshot().context;
+      const personas = getDemoPersonas(this.env.PERSONA_ASSETS_URL);
       return Response.json(
         {
-          gameId: this.demoActor.getSnapshot().context.gameId,
-          personas: DEMO_PERSONAS.map(p => ({
+          gameId: ctx.gameId,
+          personas: personas.map(p => ({
             id: p.id,
             personaName: p.personaName,
             avatarUrl: p.avatarUrl,
-            silver: roster[p.id]?.silver ?? 0,
+            silver: ctx.roster[p.id]?.silver ?? 0,
           })),
         },
         { headers: corsHeaders },
@@ -106,14 +77,9 @@ export class DemoServer extends Server<Env> {
   // --- WEBSOCKET ---
 
   async onConnect(ws: Connection, ctx: ConnectionContext) {
-    if (!this.demoActor) {
-      ws.close(4001, 'Demo not initialized');
-      return;
-    }
-
     const url = new URL(ctx.request.url);
     const playerId = url.searchParams.get('playerId');
-    const roster = this.demoActor.getSnapshot().context.roster;
+    const roster = this.demoActor!.getSnapshot().context.roster;
 
     if (!playerId || !roster[playerId]) {
       ws.close(4001, 'Invalid Player ID');
@@ -130,7 +96,7 @@ export class DemoServer extends Server<Env> {
 
     // Send initial SYNC
     const onlinePlayers = getOnlinePlayerIds(this.connectedPlayers);
-    ws.send(JSON.stringify(buildDemoSyncPayload(this.demoActor.getSnapshot().context, playerId, onlinePlayers)));
+    ws.send(JSON.stringify(buildDemoSyncPayload(this.demoActor!.getSnapshot().context, playerId, onlinePlayers)));
 
     broadcastPresence(this.connectedPlayers, () => this.getConnections());
   }
