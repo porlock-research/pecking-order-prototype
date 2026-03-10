@@ -149,7 +149,7 @@ export const selectMyPendingInvites = (state: GameState): PendingInvite[] =>
   state.pendingInvites.filter(inv => inv.recipientId === (state.playerId || ''));
 
 export const selectMySentInvites = (state: GameState): PendingInvite[] =>
-  state.pendingInvites.filter(inv => inv.senderId === state.playerId);
+  state.pendingInvites.filter(inv => inv.senderId === state.playerId && inv.status === 'pending');
 
 // --- Vote Results (PT1-UX-005) ---
 

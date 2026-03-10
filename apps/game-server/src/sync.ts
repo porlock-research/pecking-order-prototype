@@ -145,7 +145,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       dmStats,
       playerActivity,
       pendingInvites: (l3Context.pendingInvites || []).filter((inv: any) =>
-        inv.senderId === playerId || inv.recipientIds.includes(playerId)
+        inv.senderId === playerId || inv.recipientId === playerId
       ),
       ...(onlinePlayers ? { onlinePlayers } : {}),
     },

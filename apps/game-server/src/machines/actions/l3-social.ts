@@ -296,14 +296,17 @@ export const l3SocialActions = {
     };
   }),
 
-  recordInviteSentFacts: sendParent(({ event }: any) => {
+  recordInviteSentFacts: sendParent(({ context, event }: any) => {
     if (event.type !== Events.Social.INVITE_DM) return { type: Events.Fact.RECORD, fact: { type: FactTypes.DM_INVITE_SENT, actorId: '', timestamp: 0 } };
+    // Read channelId from the last created invite (context is already updated by createPendingInvite)
+    const lastInvite = context.pendingInvites[context.pendingInvites.length - 1];
+    const channelId = lastInvite?.channelId ?? event.channelId;
     return {
       type: Events.Fact.RECORD,
       fact: {
         type: FactTypes.DM_INVITE_SENT,
         actorId: event.senderId,
-        payload: { recipientIds: event.recipientIds, channelId: event.channelId },
+        payload: { recipientIds: event.recipientIds, channelId },
         timestamp: Date.now(),
       },
     };
@@ -484,6 +487,16 @@ export const l3SocialGuards = {
     if (used >= context.dmSlotsPerPlayer) return false;
 
     return true;
+  },
+
+  canDeclineDm: ({ context, event }: any) => {
+    if (event.type !== Events.Social.DECLINE_DM) return false;
+    const declinerId = event.senderId;
+    const channelId = event.channelId;
+    // Must have a pending invite to decline
+    return context.pendingInvites.some(
+      (inv: PendingInvite) => inv.channelId === channelId && inv.recipientId === declinerId && inv.status === 'pending'
+    );
   },
 
   isGroupDmCreationAllowed: ({ context, event }: any) => {
