@@ -6,6 +6,7 @@ import { readGoldBalances, insertGameAndPlayers, getPushSubscriptionD1, deletePu
 import { sendPushNotification } from "./push-send";
 import { log } from "./log";
 import type { Env } from "./types";
+import { DEMO_PERSONAS } from "./demo/demo-seed";
 
 /** Constant-time comparison to prevent timing attacks on secret values. */
 export function timingSafeEqual(a: string, b: string): boolean {
@@ -31,8 +32,12 @@ export interface HandlerContext {
   actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
   env: Env;
   scheduler: Scheduler<Env>;
+  storage: DurableObjectStorage;
+  isDemoMode: boolean;
+  demoActor: any;
   scheduleManifestAlarms: (manifest: any) => Promise<void>;
   deleteAllStorage: () => Promise<void>;
+  reinitAsDemo: (gameId: string) => void;
 }
 
 /** Route incoming DO HTTP requests to the appropriate handler. */
@@ -40,6 +45,12 @@ export async function routeRequest(ctx: HandlerContext, req: Request): Promise<R
   const url = new URL(req.url);
   const path = url.pathname;
 
+  if (req.method === "POST" && path.endsWith("/init-demo")) {
+    return handleInitDemo(ctx, req, url);
+  }
+  if (req.method === "GET" && path.endsWith("/join-demo")) {
+    return handleJoinDemo(ctx);
+  }
   if (req.method === "POST" && path.endsWith("/init")) {
     return handleInit(ctx, req, url);
   }
@@ -67,6 +78,72 @@ export async function routeRequest(ctx: HandlerContext, req: Request): Promise<R
 
   return new Response("Not Found", { status: 404 });
 }
+
+/* ------------------------------------------------------------------ */
+/*  Demo endpoints                                                      */
+/* ------------------------------------------------------------------ */
+
+async function handleInitDemo(ctx: HandlerContext, req: Request, url: URL): Promise<Response> {
+  // Auth: only admin can stamp a demo game
+  const authHeader = req.headers.get('Authorization');
+  if (ctx.env.AUTH_SECRET && !timingSafeEqual(authHeader || '', `Bearer ${ctx.env.AUTH_SECRET}`)) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
+  const pathParts = url.pathname.split('/');
+  const gameId = pathParts[pathParts.length - 2];
+
+  // Store demo flag in SQL (survives hibernation)
+  ctx.storage.sql.exec(
+    "INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('demo_mode', ?, unixepoch())",
+    gameId,
+  );
+
+  // Switch to demo mode immediately
+  ctx.reinitAsDemo(gameId);
+
+  log('info', 'L1', 'Demo game initialized', { gameId });
+  return new Response(JSON.stringify({
+    status: 'OK',
+    gameId,
+    personas: DEMO_PERSONAS.map(p => ({ id: p.id, personaName: p.personaName, avatarUrl: p.avatarUrl })),
+  }), {
+    status: 200,
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+  });
+}
+
+function handleJoinDemo(ctx: HandlerContext): Response {
+  if (!ctx.isDemoMode || !ctx.demoActor) {
+    return new Response(JSON.stringify({ error: 'Not a demo game' }), {
+      status: 400,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const roster = ctx.demoActor.getSnapshot().context.roster;
+  // Find first persona slot not currently connected
+  const connectedIds = new Set<string>();
+  // We don't have connectedPlayers here, so return all personas and let client pick
+  const available = DEMO_PERSONAS.map(p => ({
+    id: p.id,
+    personaName: p.personaName,
+    avatarUrl: p.avatarUrl,
+    silver: roster[p.id]?.silver ?? 50,
+  }));
+
+  return new Response(JSON.stringify({
+    gameId: ctx.demoActor.getSnapshot().context.gameId,
+    personas: available,
+  }), {
+    status: 200,
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Standard game endpoints                                            */
+/* ------------------------------------------------------------------ */
 
 async function handleInit(ctx: HandlerContext, req: Request, url: URL): Promise<Response> {
   const authHeader = req.headers.get('Authorization');
