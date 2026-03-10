@@ -20,7 +20,7 @@ Issues related to game observability, admin dashboards, and operational tooling.
 3. Migrate `goldCredited` boolean to same table
 4. On restore, check SQL first, fall back to KV for backward compat, then delete KV entry
 
-**Status**: Documented — urgent, needs implementation before next playtest
+**Status**: ✅ FIXED (ADR-092) — SQL `snapshots` table with KV fallback for legacy DOs. Implemented in `snapshot.ts`.
 
 ---
 

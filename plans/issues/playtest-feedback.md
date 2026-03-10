@@ -85,6 +85,48 @@ Multiple complaints: earning/losing/spending unclear, surprise silver changes, "
 
 ---
 
+## Demo UI Audit (March 2026)
+
+Issues found during staging demo review (`staging-play.peckingorder.ca/demo`, Vivid shell).
+
+### [DEMO-001] DM character counter shows 999999/999999
+
+**Severity**: Medium
+**Description**: In a DM conversation, the top-right character counter displays "999999/999999" instead of a reasonable limit. Demo server likely not setting `dmCharsPerPlayer` properly — falls back to a huge default.
+**Status**: Needs fix — demo seed data should set realistic DM character limits
+
+### [DEMO-002] New DM/Group picker: z-index bleed-through
+
+**Severity**: High
+**Description**: When clicking DM or Group buttons from Whispers tab, the player picker overlay doesn't fully cover the underlying conversation list. The Bella Rossi conversation entry is visible as a ghost between player rows in the picker. Background of the overlay is semi-transparent or has no solid backdrop.
+**Status**: Needs fix — player picker panel needs opaque background or higher z-index
+
+### [DEMO-003] New DM/Group picker: header overlaps with broadcast bar
+
+**Severity**: Medium
+**Description**: The "NEW MESSAGE" / "NEW GROUP" header text overlaps with the "DAY 3 — SOCIAL HOUR" broadcast bar. Both are rendered in the same top area without proper stacking. On the New Group screen, "0 selected" counter also overlaps with silver (38) and gold (50) indicators in the top-right, producing garbled text like "0 se●e●50ed".
+**Status**: Needs fix — picker panel should replace or hide the broadcast bar, and counter needs its own layout space
+
+### [DEMO-004] New Group: "Create Group" bar overlaps tab bar
+
+**Severity**: Medium
+**Description**: The pink "Create Group (0 members)" button at the bottom of the New Group screen overlaps with the Stage/Whispers/Cast tab bar. Both occupy the same vertical space.
+**Status**: Needs fix — Create Group CTA needs to sit above the tab bar (add bottom padding or position above safe area)
+
+### [DEMO-005] New DM/Group picker: DM/Group buttons bleed through
+
+**Severity**: Low
+**Description**: The green DM and purple Group buttons from the Whispers view are partially visible (semi-transparent) in the top-right corner of the New Message picker overlay.
+**Status**: Needs fix — same root cause as DEMO-002 (overlay doesn't fully cover Whispers view)
+
+### [DEMO-006] Cast tab: inconsistent card layout for player #4
+
+**Severity**: Low
+**Description**: Players ranked #1-3 have expanded cards with colored avatar border rings and "X silver" labels below their names. Player #4 (Bella Rossi) has a compact single-line card with no avatar ring and silver as a number on the right side. This appears to be intentional (top 3 podium vs rest), but the visual jump is jarring. The compact card for #4 looks like it belongs to the eliminated section rather than the alive section.
+**Status**: Needs UX review — consider making all alive players use the same card style, or add a clearer visual divider between podium and non-podium
+
+---
+
 ## Positive Feedback
 
 - "Tap in group chat to DM / send silver is niiiiice" — contextual actions on player names well-received
