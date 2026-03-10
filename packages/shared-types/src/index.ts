@@ -308,10 +308,25 @@ export type GameManifest = z.infer<typeof GameManifestSchema>;
  * `kind` field are treated as StaticManifest.
  */
 export function normalizeManifest(raw: any): GameManifest {
-  if (raw?.kind === 'STATIC' || raw?.kind === 'DYNAMIC') {
-    return raw as GameManifest;
+  const manifest = (raw?.kind === 'STATIC' || raw?.kind === 'DYNAMIC')
+    ? raw
+    : { kind: 'STATIC' as const, ...raw };
+
+  // Fill defaults for DM invite fields on each day
+  if (Array.isArray(manifest.days)) {
+    for (const day of manifest.days) {
+      if (day.requireDmInvite === undefined) day.requireDmInvite = false;
+      if (day.dmSlotsPerPlayer === undefined) day.dmSlotsPerPlayer = 5;
+    }
   }
-  return { kind: 'STATIC' as const, ...raw };
+
+  // Fill defaults on dynamic ruleset social config
+  if (manifest.kind === 'DYNAMIC' && manifest.ruleset?.social) {
+    if (manifest.ruleset.social.requireDmInvite === undefined) manifest.ruleset.social.requireDmInvite = false;
+    if (manifest.ruleset.social.dmSlotsPerPlayer === undefined) manifest.ruleset.social.dmSlotsPerPlayer = 5;
+  }
+
+  return manifest as GameManifest;
 }
 
 export const RosterPlayerSchema = z.object({
