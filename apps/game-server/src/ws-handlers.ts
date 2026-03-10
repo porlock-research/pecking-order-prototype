@@ -66,6 +66,8 @@ export function sendToPlayer(getConnections: () => Iterable<Connection>, playerI
 
 export async function handleConnect(ctx: WsContext, ws: Connection, connCtx: ConnectionContext): Promise<void> {
   const url = new URL(connCtx.request.url);
+
+  // --- Standard game mode ---
   const roster = ctx.actor?.getSnapshot().context.roster || {};
 
   // Admin connections: Bearer token auth for inspector/admin tools
