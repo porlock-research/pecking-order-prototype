@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes } from '@pecking-order/shared-types';
+import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes, PendingInvite } from '@pecking-order/shared-types';
 
 interface DmThread {
   partnerId: string;
@@ -35,6 +35,7 @@ interface GameState {
   winner: { playerId: string; mechanism: string; summary: Record<string, any> } | null;
   goldPool: number;
   gameHistory: GameHistoryEntry[];
+  pendingInvites: PendingInvite[];
   dmStats: { charsUsed: number; charsLimit: number; partnersUsed: number; partnersLimit: number; groupsUsed: number; groupsLimit: number } | null;
   onlinePlayers: string[];
   typingPlayers: Record<string, string>;  // playerId → channel
@@ -143,6 +144,12 @@ export const selectGameDmChannels = (state: GameState): Channel[] => {
   );
 };
 
+export const selectMyPendingInvites = (state: GameState): PendingInvite[] =>
+  state.pendingInvites.filter(inv => inv.recipientIds.includes(state.playerId || ''));
+
+export const selectMySentInvites = (state: GameState): PendingInvite[] =>
+  state.pendingInvites.filter(inv => inv.senderId === state.playerId);
+
 export const useGameStore = create<GameState>((set) => ({
   gameId: null,
   dayIndex: 0,
@@ -161,6 +168,7 @@ export const useGameStore = create<GameState>((set) => ({
   winner: null,
   goldPool: 0,
   gameHistory: [],
+  pendingInvites: [],
   dmStats: null,
   onlinePlayers: [],
   typingPlayers: {},
@@ -208,6 +216,7 @@ export const useGameStore = create<GameState>((set) => ({
       winner: data.context?.winner ?? null,
       goldPool: data.context?.goldPool ?? state.goldPool,
       gameHistory: data.context?.gameHistory ?? state.gameHistory,
+      pendingInvites: data.context?.pendingInvites ?? state.pendingInvites,
       dmStats: data.context?.dmStats ?? null,
       onlinePlayers: data.context?.onlinePlayers ?? state.onlinePlayers,
     };
