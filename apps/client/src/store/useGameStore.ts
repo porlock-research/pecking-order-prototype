@@ -117,6 +117,24 @@ export const selectDmThreads = (state: GameState): DmThread[] => {
     .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
 };
 
+export const selectSortedPlayers = (state: GameState): {
+  alive: [string, SocialPlayer][];
+  eliminated: [string, SocialPlayer][];
+} => {
+  const entries = Object.entries(state.roster);
+  const alive = entries
+    .filter(([, p]) => p.status === 'ALIVE')
+    .sort((a, b) => {
+      const silverDiff = b[1].silver - a[1].silver;
+      if (silverDiff !== 0) return silverDiff;
+      return a[1].personaName.localeCompare(b[1].personaName);
+    });
+  const eliminated = entries
+    .filter(([, p]) => p.status === 'ELIMINATED')
+    .sort((a, b) => a[1].personaName.localeCompare(b[1].personaName));
+  return { alive, eliminated };
+};
+
 export const selectGameDmChannels = (state: GameState): Channel[] => {
   const pid = state.playerId;
   if (!pid) return [];
