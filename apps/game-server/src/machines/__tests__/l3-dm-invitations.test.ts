@@ -63,7 +63,8 @@ const parentWrapper = setup({
 
 function createL3Actor(rosterCount = 4, overrides: Partial<Record<string, any>> = {}) {
   const roster = overrides.roster || makeRoster(rosterCount);
-  const input = { dayIndex: 1, roster, manifest: BASE_DAY };
+  const manifest = overrides.manifest || BASE_DAY;
+  const input = { dayIndex: 1, roster, manifest };
 
   const parentActor = createActor(parentWrapper, { input });
   parentActor.start();
@@ -483,5 +484,152 @@ describe('L3 DM Invitation — message on PRIVATE channel', () => {
     ctx = actor.getL3Context();
     const messages = ctx.chatLog.filter((m: any) => m.channelId === channelId);
     expect(messages).toHaveLength(0);
+  });
+});
+
+describe('L3 DM Invitation — group invite fan-out', () => {
+  it('creates one PendingInvite per recipient', () => {
+    const actor = createL3Actor();
+    actor.send({ type: Events.Internal.OPEN_DMS });
+
+    actor.send({
+      type: Events.Social.INVITE_DM,
+      senderId: 'p0',
+      recipientIds: ['p1', 'p2', 'p3'],
+    });
+
+    const ctx = actor.getL3Context();
+    expect(ctx.pendingInvites).toHaveLength(3);
+
+    // All invites share the same channelId
+    const channelIds = ctx.pendingInvites.map((inv: PendingInvite) => inv.channelId);
+    expect(new Set(channelIds).size).toBe(1);
+
+    // Each recipient has their own invite
+    const recipientIds = ctx.pendingInvites.map((inv: PendingInvite) => inv.recipientId);
+    expect(recipientIds).toEqual(expect.arrayContaining(['p1', 'p2', 'p3']));
+
+    // Channel is PRIVATE with only the sender as member
+    const channelId = channelIds[0];
+    expect(ctx.channels[channelId].type).toBe('PRIVATE');
+    expect(ctx.channels[channelId].memberIds).toEqual(['p0']);
+  });
+
+  it('each recipient can accept independently', () => {
+    const actor = createL3Actor();
+    actor.send({ type: Events.Internal.OPEN_DMS });
+
+    actor.send({
+      type: Events.Social.INVITE_DM,
+      senderId: 'p0',
+      recipientIds: ['p1', 'p2', 'p3'],
+    });
+
+    let ctx = actor.getL3Context();
+    const channelId = ctx.pendingInvites[0].channelId;
+
+    // p1 accepts
+    actor.send({
+      type: Events.Social.ACCEPT_DM,
+      senderId: 'p1',
+      channelId,
+    });
+
+    ctx = actor.getL3Context();
+    // p1 is now a member
+    expect(ctx.channels[channelId].memberIds).toContain('p1');
+    expect(ctx.slotsUsedByPlayer['p1']).toBe(1);
+    // p1's invite is accepted
+    const p1Invite = ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p1');
+    expect(p1Invite?.status).toBe('accepted');
+
+    // p2 has NOT accepted yet — not in members
+    expect(ctx.channels[channelId].memberIds).not.toContain('p2');
+    const p2Invite = ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p2');
+    expect(p2Invite?.status).toBe('pending');
+
+    // p3 declines
+    actor.send({
+      type: Events.Social.DECLINE_DM,
+      senderId: 'p3',
+      channelId,
+    });
+
+    ctx = actor.getL3Context();
+    const p3Invite = ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p3');
+    expect(p3Invite?.status).toBe('declined');
+    // p3 did not consume a slot
+    expect(ctx.slotsUsedByPlayer['p3']).toBeUndefined();
+    // p3 not in channel members
+    expect(ctx.channels[channelId].memberIds).not.toContain('p3');
+  });
+
+  it('sender can message the PRIVATE channel before all accept', () => {
+    const actor = createL3Actor();
+    actor.send({ type: Events.Internal.OPEN_DMS });
+
+    actor.send({
+      type: Events.Social.INVITE_DM,
+      senderId: 'p0',
+      recipientIds: ['p1', 'p2'],
+    });
+
+    let ctx = actor.getL3Context();
+    const channelId = ctx.pendingInvites[0].channelId;
+
+    // Sender is the sole member — send a message immediately
+    actor.send({
+      type: Events.Social.SEND_MSG,
+      senderId: 'p0',
+      content: 'hello before anyone accepts',
+      channelId,
+    });
+
+    ctx = actor.getL3Context();
+    const messages = ctx.chatLog.filter((m: any) => m.channelId === channelId);
+    expect(messages).toHaveLength(1);
+    expect(messages[0].content).toBe('hello before anyone accepts');
+    expect(messages[0].senderId).toBe('p0');
+  });
+});
+
+describe('L3 DM Invitation — configurable slot limit', () => {
+  it('uses dmSlotsPerPlayer from manifest when set', () => {
+    const CUSTOM_MANIFEST = { ...BASE_DAY, dmSlotsPerPlayer: 2 };
+    const actor = createL3Actor(6, { manifest: CUSTOM_MANIFEST });
+    actor.send({ type: Events.Internal.OPEN_DMS });
+
+    // Verify the context picked up the custom limit
+    let ctx = actor.getL3Context();
+    expect(ctx.dmSlotsPerPlayer).toBe(2);
+
+    // Create 2 conversations (at the limit)
+    actor.send({
+      type: Events.Social.INVITE_DM,
+      senderId: 'p0',
+      recipientIds: ['p1'],
+    });
+    actor.send({
+      type: Events.Social.INVITE_DM,
+      senderId: 'p0',
+      recipientIds: ['p2'],
+    });
+
+    ctx = actor.getL3Context();
+    expect(ctx.slotsUsedByPlayer['p0']).toBe(2);
+    expect(ctx.pendingInvites).toHaveLength(2);
+
+    // 3rd conversation should be rejected
+    actor.send({
+      type: Events.Social.INVITE_DM,
+      senderId: 'p0',
+      recipientIds: ['p3'],
+    });
+
+    ctx = actor.getL3Context();
+    // No invite for p3
+    expect(ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p3')).toBeUndefined();
+    // Still 2 slots used
+    expect(ctx.slotsUsedByPlayer['p0']).toBe(2);
   });
 });
