@@ -1,30 +1,20 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { createContext, useContext } from 'react';
 import type { CartridgeTheme } from '@pecking-order/ui-kit/cartridge-theme';
-import {
-  resolveCartridgeTheme,
-  DEFAULT_CARTRIDGE_THEME,
-} from '@pecking-order/ui-kit/cartridge-theme';
+import { DEFAULT_CARTRIDGE_THEME } from '@pecking-order/ui-kit/cartridge-theme';
 
 const CartridgeThemeCtx = createContext<CartridgeTheme>(DEFAULT_CARTRIDGE_THEME);
 
 export function CartridgeThemeProvider({
+  theme = DEFAULT_CARTRIDGE_THEME,
   children,
 }: {
+  theme?: CartridgeTheme;
   children: React.ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [theme, setTheme] = useState<CartridgeTheme>(DEFAULT_CARTRIDGE_THEME);
-
-  useEffect(() => {
-    setTheme(resolveCartridgeTheme(ref.current || undefined));
-  }, []);
-
   return (
-    <div ref={ref}>
-      <CartridgeThemeCtx.Provider value={theme}>
-        {children}
-      </CartridgeThemeCtx.Provider>
-    </div>
+    <CartridgeThemeCtx.Provider value={theme}>
+      {children}
+    </CartridgeThemeCtx.Provider>
   );
 }
 

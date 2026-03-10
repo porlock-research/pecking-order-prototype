@@ -15,16 +15,19 @@ interface ShellLoaderProps {
 export function ShellLoader({ gameId, playerId, token, party }: ShellLoaderProps) {
   const engine = useGameEngine(gameId, playerId, token, party);
 
-  const ShellComponent = useMemo(() => {
+  const { ShellComponent, cartridgeTheme } = useMemo(() => {
     const shellId = getActiveShellId();
     const manifest = SHELL_REGISTRY.find(s => s.id === shellId) || SHELL_REGISTRY[0];
-    return lazy(manifest.load);
+    return {
+      ShellComponent: lazy(manifest.load),
+      cartridgeTheme: manifest.cartridgeTheme,
+    };
   }, []);
 
   const shellProps: ShellProps = { playerId, engine, token };
 
   return (
-    <CartridgeThemeProvider>
+    <CartridgeThemeProvider theme={cartridgeTheme}>
       <Suspense
         fallback={
           <div className="min-h-screen bg-gradient-velvet flex flex-col items-center justify-center gap-3">

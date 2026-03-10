@@ -1,9 +1,9 @@
 /**
  * CartridgeTheme — typed token contract for skinnable game cartridges.
  *
- * Shells provide these tokens via CSS custom properties (--po-*).
- * Canvas renderers and inline-styled components resolve them once
- * at mount time via `resolveCartridgeTheme()`.
+ * Shells provide a CartridgeTheme object as a prop to CartridgeThemeProvider.
+ * Cartridges consume it via useCartridgeTheme() — fully isolated from
+ * which shell they're rendered in.
  *
  * The contract is deliberately platform-agnostic: only hex strings,
  * numbers, and simple objects — portable to native iOS/Android.
@@ -36,6 +36,7 @@ export interface CartridgeTheme {
   };
 }
 
+/** Dark theme — used by Classic and Immersive shells. */
 export const DEFAULT_CARTRIDGE_THEME: CartridgeTheme = {
   colors: {
     gold: '#fbbf24',
@@ -55,34 +56,25 @@ export const DEFAULT_CARTRIDGE_THEME: CartridgeTheme = {
   opacity: { subtle: 0.06, medium: 0.15, strong: 0.4 },
 };
 
-/**
- * Read current theme from CSS custom properties.
- * Call once at component mount, not per frame.
- */
-export function resolveCartridgeTheme(element?: HTMLElement): CartridgeTheme {
-  const el = element || document.documentElement;
-  const style = getComputedStyle(el);
-  const get = (prop: string) => style.getPropertyValue(prop).trim();
-
-  return {
-    colors: {
-      gold: get('--po-gold') || DEFAULT_CARTRIDGE_THEME.colors.gold,
-      pink: get('--po-pink') || DEFAULT_CARTRIDGE_THEME.colors.pink,
-      danger: get('--po-danger') || DEFAULT_CARTRIDGE_THEME.colors.danger,
-      green: get('--po-green') || DEFAULT_CARTRIDGE_THEME.colors.green,
-      orange: get('--po-orange') || DEFAULT_CARTRIDGE_THEME.colors.orange,
-      info: get('--po-info') || DEFAULT_CARTRIDGE_THEME.colors.info,
-      bg: get('--po-bg-deep') || DEFAULT_CARTRIDGE_THEME.colors.bg,
-      bgSubtle: get('--po-bg-panel') || DEFAULT_CARTRIDGE_THEME.colors.bgSubtle,
-      panel: get('--po-bg-panel') || DEFAULT_CARTRIDGE_THEME.colors.panel,
-      border: get('--po-border') || DEFAULT_CARTRIDGE_THEME.colors.border,
-      text: get('--po-text') || DEFAULT_CARTRIDGE_THEME.colors.text,
-      textDim: get('--po-text-dim') || DEFAULT_CARTRIDGE_THEME.colors.textDim,
-    },
-    radius: { sm: 4, md: 8, lg: 12 },
-    opacity: { subtle: 0.06, medium: 0.15, strong: 0.4 },
-  };
-}
+/** Light theme — used by Vivid shell. */
+export const VIVID_CARTRIDGE_THEME: CartridgeTheme = {
+  colors: {
+    gold: '#D4960A',
+    pink: '#D94073',
+    danger: '#E8614D',
+    green: '#6B9E6E',
+    orange: '#E89B3A',
+    info: '#8B6CC1',
+    bg: '#FDF8F0',
+    bgSubtle: '#FAF3E8',
+    panel: '#F5EDE0',
+    border: 'rgba(61, 46, 31, 0.12)',
+    text: '#3D2E1F',
+    textDim: '#9B8E7E',
+  },
+  radius: { sm: 8, md: 12, lg: 16 },
+  opacity: { subtle: 0.06, medium: 0.12, strong: 0.3 },
+};
 
 /**
  * Append alpha channel to a hex color string.
