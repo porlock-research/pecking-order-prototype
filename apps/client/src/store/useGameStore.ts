@@ -146,7 +146,7 @@ export const selectGameDmChannels = (state: GameState): Channel[] => {
 };
 
 export const selectMyPendingInvites = (state: GameState): PendingInvite[] =>
-  state.pendingInvites.filter(inv => inv.recipientIds.includes(state.playerId || ''));
+  state.pendingInvites.filter(inv => inv.recipientId === (state.playerId || ''));
 
 export const selectMySentInvites = (state: GameState): PendingInvite[] =>
   state.pendingInvites.filter(inv => inv.senderId === state.playerId);

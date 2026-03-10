@@ -1,6 +1,6 @@
 import { assign, sendParent } from 'xstate';
 import type { DmRejectionReason, Channel, PendingInvite } from '@pecking-order/shared-types';
-import { DM_MAX_CHARS_PER_DAY, DM_MAX_GROUPS_PER_DAY, Config, dmChannelId, groupDmChannelId, Events, FactTypes, PlayerStatuses } from '@pecking-order/shared-types';
+import { DM_MAX_CHARS_PER_DAY, DM_MAX_GROUPS_PER_DAY, Config, groupDmChannelId, Events, FactTypes, PlayerStatuses } from '@pecking-order/shared-types';
 import { buildChatMessage, appendToChatLog, deductSilver, transferSilverBetween, resolveChannelId } from './social-helpers';
 
 export const l3SocialActions = {
@@ -26,7 +26,8 @@ export const l3SocialActions = {
     // Update DM tracking (skip for MAIN and exempt channels)
     let dmPartnersByPlayer = context.dmPartnersByPlayer;
     let dmCharsByPlayer = context.dmCharsByPlayer;
-    const isDmOrGroupDm = channelId.startsWith('dm:') || channelId.startsWith('gdm:');
+    const isPrivate = ch?.type === 'PRIVATE';
+    const isDmOrGroupDm = channelId.startsWith('dm:') || channelId.startsWith('gdm:') || isPrivate;
     if (!isMainOrExempt && isDmOrGroupDm) {
       // Partner tracking: only for 1-to-1 DMs
       if (channelId.startsWith('dm:')) {
@@ -100,6 +101,17 @@ export const l3SocialActions = {
     } else if (channelId.startsWith('gdm:')) {
       if (!channel) {
         reason = 'INVALID_MEMBERS'; // Group DM channel doesn't exist (must be pre-created)
+      } else if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) {
+        reason = 'INSUFFICIENT_SILVER';
+      } else {
+        const charsUsed = context.dmCharsByPlayer[senderId] || 0;
+        if (charsUsed + content.length > charLimit) {
+          reason = 'CHAR_LIMIT';
+        }
+      }
+    } else if (channel?.type === 'PRIVATE') {
+      if (!channel.memberIds.includes(senderId)) {
+        reason = 'INVITE_REQUIRED';
       } else if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) {
         reason = 'INSUFFICIENT_SILVER';
       } else {
@@ -246,99 +258,125 @@ export const l3SocialActions = {
     if (event.type !== Events.Social.INVITE_DM) return {};
     const senderId = event.senderId;
     const recipientIds = event.recipientIds || [];
-    const type = recipientIds.length === 1 ? 'DM' : 'GROUP_DM';
-    const channelId = type === 'DM'
-      ? dmChannelId(senderId, recipientIds[0])
-      : groupDmChannelId([senderId, ...recipientIds]);
+    const existingChannelId = event.channelId;
+    const isNewConversation = !existingChannelId;
 
-    const invite: PendingInvite = {
-      id: `inv_${Date.now()}_${senderId}`,
-      channelId,
+    let channelId = existingChannelId;
+    let channels = { ...context.channels };
+    if (isNewConversation) {
+      channelId = crypto.randomUUID();
+      channels[channelId] = {
+        id: channelId,
+        type: 'PRIVATE',
+        memberIds: [senderId],
+        createdBy: senderId,
+        createdAt: Date.now(),
+        capabilities: ['CHAT', 'SILVER_TRANSFER'],
+      };
+    }
+
+    const newInvites: PendingInvite[] = recipientIds.map((recipientId: string) => ({
+      id: crypto.randomUUID(),
+      channelId: channelId!,
       senderId,
-      recipientIds,
-      acceptedBy: [],
-      declinedBy: [],
+      recipientId,
+      status: 'pending' as const,
       timestamp: Date.now(),
-      type,
-    };
+    }));
 
-    return { pendingInvites: [...context.pendingInvites, invite] };
+    const slotsUsedByPlayer = { ...context.slotsUsedByPlayer };
+    if (isNewConversation) {
+      slotsUsedByPlayer[senderId] = (slotsUsedByPlayer[senderId] ?? 0) + 1;
+    }
+
+    return {
+      channels,
+      pendingInvites: [...context.pendingInvites, ...newInvites],
+      slotsUsedByPlayer,
+    };
+  }),
+
+  recordInviteSentFacts: sendParent(({ event }: any) => {
+    if (event.type !== Events.Social.INVITE_DM) return { type: Events.Fact.RECORD, fact: { type: FactTypes.DM_INVITE_SENT, actorId: '', timestamp: 0 } };
+    return {
+      type: Events.Fact.RECORD,
+      fact: {
+        type: FactTypes.DM_INVITE_SENT,
+        actorId: event.senderId,
+        payload: { recipientIds: event.recipientIds, channelId: event.channelId },
+        timestamp: Date.now(),
+      },
+    };
   }),
 
   acceptDmInvite: assign(({ context, event }: any) => {
     if (event.type !== Events.Social.ACCEPT_DM) return {};
-    const { senderId, inviteId } = event;
+    const acceptorId = event.senderId;
+    const channelId = event.channelId;
 
-    const inviteIndex = context.pendingInvites.findIndex((inv: PendingInvite) => inv.id === inviteId);
-    if (inviteIndex === -1) return {};
+    const updatedInvites = context.pendingInvites.map((inv: PendingInvite) =>
+      inv.channelId === channelId && inv.recipientId === acceptorId && inv.status === 'pending'
+        ? { ...inv, status: 'accepted' as const }
+        : inv
+    );
 
-    const invite = context.pendingInvites[inviteIndex];
-    const updatedAcceptedBy = [...invite.acceptedBy, senderId];
-    const allAccepted = invite.recipientIds.every((id: string) => updatedAcceptedBy.includes(id));
-
-    // Update conversation counts
-    const acceptedConversationsByPlayer = { ...context.acceptedConversationsByPlayer };
-    acceptedConversationsByPlayer[senderId] = (acceptedConversationsByPlayer[senderId] || 0) + 1;
-
-    if (allAccepted) {
-      // All recipients accepted — create the channel and remove the invite
-      const allMembers = [invite.senderId, ...invite.recipientIds];
-      const newChannel: Channel = {
-        id: invite.channelId,
-        type: invite.type === 'DM' ? 'DM' : 'GROUP_DM',
-        memberIds: allMembers,
-        createdBy: invite.senderId,
-        createdAt: Date.now(),
-        capabilities: ['CHAT', 'SILVER_TRANSFER'],
+    const channels = { ...context.channels };
+    const channel = channels[channelId];
+    if (channel && !channel.memberIds.includes(acceptorId)) {
+      channels[channelId] = {
+        ...channel,
+        memberIds: [...channel.memberIds, acceptorId],
       };
-
-      // Also increment sender's conversation count
-      acceptedConversationsByPlayer[invite.senderId] = (acceptedConversationsByPlayer[invite.senderId] || 0) + 1;
-
-      const pendingInvites = context.pendingInvites.filter((_: any, i: number) => i !== inviteIndex);
-      return {
-        pendingInvites,
-        channels: { ...context.channels, [invite.channelId]: newChannel },
-        acceptedConversationsByPlayer,
-      };
-    } else {
-      // Update the invite with this acceptance
-      const updatedInvite = { ...invite, acceptedBy: updatedAcceptedBy };
-      const pendingInvites = [...context.pendingInvites];
-      pendingInvites[inviteIndex] = updatedInvite;
-      return { pendingInvites, acceptedConversationsByPlayer };
     }
+
+    const slotsUsedByPlayer = { ...context.slotsUsedByPlayer };
+    slotsUsedByPlayer[acceptorId] = (slotsUsedByPlayer[acceptorId] ?? 0) + 1;
+
+    return {
+      channels,
+      pendingInvites: updatedInvites,
+      slotsUsedByPlayer,
+    };
+  }),
+
+  recordInviteAcceptedFact: sendParent(({ event }: any) => {
+    if (event.type !== Events.Social.ACCEPT_DM) return { type: Events.Fact.RECORD, fact: { type: FactTypes.DM_INVITE_ACCEPTED, actorId: '', timestamp: 0 } };
+    return {
+      type: Events.Fact.RECORD,
+      fact: {
+        type: FactTypes.DM_INVITE_ACCEPTED,
+        actorId: event.senderId,
+        payload: { channelId: event.channelId },
+        timestamp: Date.now(),
+      },
+    };
   }),
 
   declineDmInvite: assign(({ context, event }: any) => {
     if (event.type !== Events.Social.DECLINE_DM) return {};
-    const { senderId, inviteId } = event;
+    const declinerId = event.senderId;
+    const channelId = event.channelId;
 
-    const inviteIndex = context.pendingInvites.findIndex((inv: PendingInvite) => inv.id === inviteId);
-    if (inviteIndex === -1) return {};
-
-    const invite = context.pendingInvites[inviteIndex];
-
-    // For 1:1 DM, just remove the invite
-    // For group DM, mark declined and check if all have responded
-    if (invite.type === 'DM') {
-      return { pendingInvites: context.pendingInvites.filter((_: any, i: number) => i !== inviteIndex) };
-    }
-
-    const updatedDeclinedBy = [...invite.declinedBy, senderId];
-    const allResponded = invite.recipientIds.every((id: string) =>
-      invite.acceptedBy.includes(id) || updatedDeclinedBy.includes(id)
+    const updatedInvites = context.pendingInvites.map((inv: PendingInvite) =>
+      inv.channelId === channelId && inv.recipientId === declinerId && inv.status === 'pending'
+        ? { ...inv, status: 'declined' as const }
+        : inv
     );
 
-    if (allResponded) {
-      // Remove invite
-      return { pendingInvites: context.pendingInvites.filter((_: any, i: number) => i !== inviteIndex) };
-    }
+    return { pendingInvites: updatedInvites };
+  }),
 
-    const updatedInvite = { ...invite, declinedBy: updatedDeclinedBy };
-    const pendingInvites = [...context.pendingInvites];
-    pendingInvites[inviteIndex] = updatedInvite;
-    return { pendingInvites };
+  recordInviteDeclinedFact: sendParent(({ event }: any) => {
+    if (event.type !== Events.Social.DECLINE_DM) return { type: Events.Fact.RECORD, fact: { type: FactTypes.DM_INVITE_DECLINED, actorId: '', timestamp: 0 } };
+    return {
+      type: Events.Fact.RECORD,
+      fact: {
+        type: FactTypes.DM_INVITE_DECLINED,
+        actorId: event.senderId,
+        payload: { channelId: event.channelId },
+        timestamp: Date.now(),
+      },
+    };
   }),
 
   rejectDmInvite: sendParent(({ context, event }: any): any => {
@@ -358,8 +396,8 @@ export const l3SocialActions = {
       if (hasEliminated) {
         reason = 'TARGET_ELIMINATED';
       } else {
-        const senderConvs = context.acceptedConversationsByPlayer[senderId] || 0;
-        if (senderConvs >= context.maxConversationsPerDay) {
+        const used = context.slotsUsedByPlayer[senderId] ?? 0;
+        if (used >= context.dmSlotsPerPlayer) {
           reason = 'CONVERSATION_LIMIT';
         } else {
           reason = 'DUPLICATE_INVITE';
@@ -382,6 +420,7 @@ export const l3SocialGuards = {
     if (!context.dmsOpen) return false;
     const senderId = event.senderId;
     const recipientIds = event.recipientIds || [];
+    const existingChannelId = event.channelId;
 
     // Sender must be alive
     if (context.roster[senderId]?.status !== PlayerStatuses.ALIVE) return false;
@@ -394,23 +433,36 @@ export const l3SocialGuards = {
       if (!context.roster[id] || context.roster[id].status !== PlayerStatuses.ALIVE) return false;
     }
 
-    // Check sender conversation limit
-    const senderConvs = context.acceptedConversationsByPlayer[senderId] || 0;
-    if (senderConvs >= context.maxConversationsPerDay) return false;
+    // Slot check only for new conversations (no channelId = new conversation)
+    if (!existingChannelId) {
+      const used = context.slotsUsedByPlayer[senderId] ?? 0;
+      if (used >= context.dmSlotsPerPlayer) return false;
+    }
 
-    // No duplicate invites
-    const isDuplicate = context.pendingInvites.some((inv: PendingInvite) =>
-      inv.senderId === senderId &&
-      recipientIds.length === inv.recipientIds.length &&
-      recipientIds.every((id: string) => inv.recipientIds.includes(id))
-    );
-    if (isDuplicate) return false;
+    // If inviting to existing channel, sender must be a member
+    if (existingChannelId) {
+      const channel = context.channels[existingChannelId];
+      if (!channel || !channel.memberIds.includes(senderId)) return false;
+    }
 
-    // Check if channel already exists (already accepted)
-    // For 1:1 DM
-    if (recipientIds.length === 1) {
-      const channelId = dmChannelId(senderId, recipientIds[0]);
-      if (context.channels[channelId]) return false;
+    // No duplicate pending invites for same channel+recipient, and no already-member
+    for (const rid of recipientIds) {
+      const targetChannelId = existingChannelId;
+      if (targetChannelId) {
+        const hasPending = context.pendingInvites.some(
+          (inv: PendingInvite) => inv.channelId === targetChannelId && inv.recipientId === rid && inv.status === 'pending'
+        );
+        if (hasPending) return false;
+
+        const channel = context.channels[targetChannelId];
+        if (channel?.memberIds.includes(rid)) return false;
+      } else {
+        // For new conversations, check if there's already a pending invite from this sender to this recipient
+        const hasPending = context.pendingInvites.some(
+          (inv: PendingInvite) => inv.senderId === senderId && inv.recipientId === rid && inv.status === 'pending'
+        );
+        if (hasPending) return false;
+      }
     }
 
     return true;
@@ -418,21 +470,18 @@ export const l3SocialGuards = {
 
   canAcceptDm: ({ context, event }: any) => {
     if (event.type !== Events.Social.ACCEPT_DM) return false;
-    const { senderId, inviteId } = event;
+    const acceptorId = event.senderId;
+    const channelId = event.channelId;
 
-    // Find the invite
-    const invite = context.pendingInvites.find((inv: PendingInvite) => inv.id === inviteId);
+    // Find a pending invite for this channel + acceptor
+    const invite = context.pendingInvites.find(
+      (inv: PendingInvite) => inv.channelId === channelId && inv.recipientId === acceptorId && inv.status === 'pending'
+    );
     if (!invite) return false;
 
-    // Sender must be a recipient of this invite
-    if (!invite.recipientIds.includes(senderId)) return false;
-
-    // Check conversation limit for the acceptor
-    const acceptorConvs = context.acceptedConversationsByPlayer[senderId] || 0;
-    if (acceptorConvs >= context.maxConversationsPerDay) return false;
-
-    // Can't accept twice
-    if (invite.acceptedBy.includes(senderId)) return false;
+    // Check slot limit for the acceptor
+    const used = context.slotsUsedByPlayer[acceptorId] ?? 0;
+    if (used >= context.dmSlotsPerPlayer) return false;
 
     return true;
   },
@@ -498,6 +547,18 @@ export const l3SocialGuards = {
     if (channelId.startsWith('gdm:') && !channel) return false;
 
     const senderId = event.senderId;
+
+    // PRIVATE channels (invite-mode): must exist and sender must be a member
+    if (channel?.type === 'PRIVATE') {
+      if (!channel.memberIds.includes(senderId)) return false;
+      const overrides = context.perkOverrides?.[senderId] || { extraPartners: 0, extraChars: 0 };
+      const charLimit = (context.dmCharsLimit ?? DM_MAX_CHARS_PER_DAY) + overrides.extraChars;
+      const charsUsed = context.dmCharsByPlayer[senderId] || 0;
+      if (charsUsed + event.content.length > charLimit) return false;
+      if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) return false;
+      return true;
+    }
+
     const target = channelId.startsWith('dm:')
       ? channelId.split(':').find((s: string) => s !== 'dm' && s !== senderId)
       : null;
