@@ -89,7 +89,7 @@ export function buildL3Context(input: { dayIndex: number; roster: Record<string,
     dmGroupsByPlayer: {},
     pendingInvites: [],
     acceptedConversationsByPlayer: {},
-    maxConversationsPerDay: 5,
+    maxConversationsPerDay: (input.manifest as any)?.maxConversationsPerDay ?? 5,
   };
 }
 

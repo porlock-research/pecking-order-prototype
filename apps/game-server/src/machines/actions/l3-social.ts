@@ -80,17 +80,21 @@ export const l3SocialActions = {
     } else if (!context.dmsOpen) {
       reason = 'DMS_CLOSED';
     } else if (channelId.startsWith('dm:')) {
-      const targetId = channelId.split(':').find((s: string) => s !== 'dm' && s !== senderId);
-      if (senderId === targetId) {
-        reason = 'SELF_DM';
-      } else if (targetId && context.roster[targetId]?.status === PlayerStatuses.ELIMINATED) {
-        reason = 'TARGET_ELIMINATED';
-      } else if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) {
-        reason = 'INSUFFICIENT_SILVER';
+      if (!channel) {
+        reason = 'INVITE_REQUIRED';
       } else {
-        const charsUsed = context.dmCharsByPlayer[senderId] || 0;
-        if (charsUsed + content.length > charLimit) {
-          reason = 'CHAR_LIMIT';
+        const targetId = channelId.split(':').find((s: string) => s !== 'dm' && s !== senderId);
+        if (senderId === targetId) {
+          reason = 'SELF_DM';
+        } else if (targetId && context.roster[targetId]?.status === PlayerStatuses.ELIMINATED) {
+          reason = 'TARGET_ELIMINATED';
+        } else if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) {
+          reason = 'INSUFFICIENT_SILVER';
+        } else {
+          const charsUsed = context.dmCharsByPlayer[senderId] || 0;
+          if (charsUsed + content.length > charLimit) {
+            reason = 'CHAR_LIMIT';
+          }
         }
       }
     } else if (channelId.startsWith('gdm:')) {

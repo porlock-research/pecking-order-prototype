@@ -132,6 +132,9 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       gameHistory: snapshot.context.gameHistory ?? [],
       completedPhases: snapshot.context.completedPhases ?? [],
       dmStats,
+      pendingInvites: (l3Context.pendingInvites || []).filter((inv: any) =>
+        inv.senderId === playerId || inv.recipientIds.includes(playerId)
+      ),
       ...(onlinePlayers ? { onlinePlayers } : {}),
     },
   };
