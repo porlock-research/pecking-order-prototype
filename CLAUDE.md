@@ -25,7 +25,7 @@ L2 states: `uninitialized` → `preGame` → `dayLoop` (invokes L3) → `nightSu
 Server modules (L1 is a thin shell): `http-handlers.ts`, `ws-handlers.ts`, `subscription.ts`, `machine-actions.ts`, `scheduling.ts`, `snapshot.ts`, `sync.ts`, `global-routes.ts`, `log.ts`
 
 - **Specs**: `spec/spec_master_technical_spec.md` and `spec/spec_implementation_guidance.md` are the source of truth
-- **ADR log**: `plans/DECISIONS.md` (ADR-001 through ADR-095)
+- **ADR log**: `plans/DECISIONS.md` (ADR-001 through ADR-096)
 - **Cartridge registries**: Voting (`cartridges/voting/_registry.ts`), Prompts (`cartridges/prompts/_registry.ts`), Games (`packages/game-cartridges/src/machines/index.ts`)
 
 ## Commands
@@ -40,7 +40,7 @@ npm run format           # Prettier
 ```
 
 Per-app: `cd apps/<name> && npm run dev|build|test`
-- game-server: `wrangler dev` (8787), `tsc --noEmit`, `vitest run`
+- game-server: `wrangler dev` (8787), `tsc --noEmit`, `vitest run`. Single test: `npx vitest run src/machines/__tests__/<name>.test.ts`
 - client: `vite` (5173), `vite build`
 - lobby: `next dev` (3000), `next build`, `npm run deploy` (opennextjs + wrangler)
 
@@ -66,6 +66,8 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - **Cartridge termination**: NEVER kill spawned children directly. Forward termination event → child calculates results → final state → `xstate.done.actor.*` → parent handles.
 - **Player IDs**: `p${slot_index}` (e.g., `p0`, `p1`)
 - **DO persistence**: SQL `snapshots` table (key/value/updated_at). No KV for new features.
+- **Channel types**: MAIN, DM, GROUP_DM, GAME_DM, PRIVATE. PRIVATE channels use UUID IDs and mutable membership (DM invite flow, ADR-096).
+- **DM invite flow**: Config-driven via `requireDmInvite` on manifest. Per-recipient `PendingInvite` records. Slot tracking via `slotsUsedByPlayer`. Facts: `DM_INVITE_SENT`, `DM_INVITE_ACCEPTED`, `DM_INVITE_DECLINED`.
 - **Presence**: Ephemeral in L1 (`connectedPlayers`), NOT in XState context.
 - **Logging**: `log(level, component, event, data?)` — structured JSON output (Axiom + Workers Logs)
 
@@ -85,8 +87,9 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - **WebSocket**: PartySocket via `useGameEngine` hook. Connects to `/parties/game-server/{gameId}`.
 - **Shells**: `ShellLoader` lazy-loads from `shells/registry.ts`. Select via `?shell=immersive|classic|vivid`.
 - **CSS**: Tailwind + `@pecking-order/ui-kit` preset. Shell-specific CSS variables (e.g., `--vivid-*`).
+- **Vivid shell**: Inline styles with `--vivid-*` CSS variables (NOT Tailwind classes). `@solar-icons/react` icons with `weight="Bold"`. Springs from `shells/vivid/springs.ts`.
 - **Vaul Portal**: `Drawer.Portal` renders outside shell DOM tree — CSS custom properties don't resolve. Use explicit hex values.
-- **Icons**: lucide-react. **Motion**: framer-motion. **Toasts**: sonner. **Drawers**: vaul.
+- **Icons**: `@solar-icons/react` (vivid), lucide-react (classic/admin). **Motion**: framer-motion. **Toasts**: sonner. **Drawers**: vaul.
 - **PWA**: vite-plugin-pwa, custom service worker (`src/sw.ts`), autoUpdate strategy.
 - **Error reporting**: Sentry (`@sentry/react`), tunneled via sentry-tunnel worker.
 
@@ -113,5 +116,7 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - `plans/DECISIONS.md` — ADR log (ADR-001 through ADR-095)
 - `plans/architecture/server-refactor-and-dynamic-days.md` — Phased refactor plan
 - `plans/architecture/feature-dynamic-days.md` — Dynamic days design
+- `docs/plans/` — Design docs and implementation plans (active work)
+- `docs/plans/archive/` — Completed plans (moved here after implementation)
 - `plans/issues/` — Categorized issue tracker
 - `docs/machines/` — Auto-generated XState machine diagrams (`npm run generate:docs`)
