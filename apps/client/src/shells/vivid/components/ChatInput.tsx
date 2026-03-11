@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SendSquare, CloseCircle } from '@solar-icons/react';
+import { SendSquare, CloseCircle, AddCircle } from '@solar-icons/react';
 import type { ChatMessage, SocialPlayer } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../store/useGameStore';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
+import { ChatActions } from './ChatActions';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -23,6 +24,8 @@ interface ChatInputProps {
   targetName?: string;
   replyTarget?: ChatMessage | null;
   onClearReply?: () => void;
+  channelId?: string;
+  onChatAction?: (action: 'invite' | 'silver') => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -154,8 +157,11 @@ export function ChatInput({
   targetName,
   replyTarget,
   onClearReply,
+  channelId,
+  onChatAction,
 }: ChatInputProps) {
   const [inputValue, setInputValue] = useState('');
+  const [showActions, setShowActions] = useState(false);
 
   const { playerId, roster } = useGameStore();
   const typingPlayers = useGameStore((s) => s.typingPlayers);
@@ -315,11 +321,50 @@ export function ChatInput({
           )}
         </AnimatePresence>
 
+        {/* Action tray */}
+        <AnimatePresence>
+          {showActions && channelId && (context === 'dm' || context === 'group') && (
+            <ChatActions
+              channelId={channelId}
+              onInvitePlayer={() => onChatAction?.('invite')}
+              onSendSilver={() => onChatAction?.('silver')}
+              onClose={() => setShowActions(false)}
+            />
+          )}
+        </AnimatePresence>
+
         {/* Input row */}
         <form
           onSubmit={handleSend}
           style={{ display: 'flex', gap: 8, alignItems: 'center' }}
         >
+          {/* Actions toggle button — DM/group only */}
+          {(context === 'dm' || context === 'group') && (
+            <motion.button
+              type="button"
+              onClick={() => setShowActions((v) => !v)}
+              style={{
+                flexShrink: 0,
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: 'none',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: showActions ? 'var(--vivid-coral)' : 'var(--vivid-text-dim)',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+              animate={{ rotate: showActions ? 45 : 0 }}
+              transition={VIVID_SPRING.snappy}
+              whileTap={VIVID_TAP.button}
+            >
+              <AddCircle size={24} weight="Bold" />
+            </motion.button>
+          )}
+
           {/* Text input */}
           <input
             data-testid="chat-input"
@@ -327,7 +372,10 @@ export function ChatInput({
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);
-              if (e.target.value) engine.sendTyping(channel);
+              if (e.target.value) {
+                engine.sendTyping(channel);
+                if (showActions) setShowActions(false);
+              }
             }}
             placeholder={getPlaceholder(context, targetName, isDisabled, serverState)}
             maxLength={280}
