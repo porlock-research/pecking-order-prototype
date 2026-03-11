@@ -139,22 +139,28 @@ function ConversationList({
   const groupThreads = useMemo(() => {
     if (!playerId) return [];
     return Object.values(channels)
-      .filter(ch => ch.type === ChannelTypes.GROUP_DM && ch.memberIds.includes(playerId))
+      .filter(ch =>
+        ch.type === ChannelTypes.GROUP_DM &&
+        (ch.memberIds.includes(playerId) || (ch.pendingMemberIds || []).includes(playerId))
+      )
       .map(ch => {
         const messages = chatLog
           .filter((m: ChatMessage) => m.channelId === ch.id)
           .sort((a, b) => a.timestamp - b.timestamp);
-        const memberNames = ch.memberIds
+        const allIds = [...ch.memberIds, ...(ch.pendingMemberIds || [])];
+        const memberNames = allIds
           .filter(id => id !== playerId)
           .map(id => roster[id]?.personaName || 'Unknown');
-        const otherMemberIds = ch.memberIds.filter(id => id !== playerId);
+        const otherMemberIds = allIds.filter(id => id !== playerId);
         const lastMsg = messages[messages.length - 1];
+        const isPending = (ch.pendingMemberIds || []).includes(playerId);
         return {
           channelId: ch.id,
           memberNames,
           otherMemberIds,
           lastMsg,
           lastTimestamp: messages.length > 0 ? messages[messages.length - 1].timestamp : ch.createdAt,
+          isPending,
         };
       })
       .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
@@ -311,10 +317,12 @@ function ConversationList({
         {/* Group threads */}
         {groupThreads.map(thread => {
           const idx = staggerIndex++;
+          const borderColor = thread.isPending ? 'rgba(59, 169, 156, 0.6)' : '#8B6CC1';
+          const nameColor = thread.isPending ? '#3BA99C' : '#8B6CC1';
           return (
             <ConversationItem
               key={thread.channelId}
-              borderColor="#8B6CC1"
+              borderColor={borderColor}
               onClick={() => onSelectGroup(thread.channelId)}
               index={idx}
               avatar={
@@ -342,9 +350,10 @@ function ConversationList({
                 </div>
               }
               name={thread.memberNames.join(', ')}
-              nameColor="#8B6CC1"
-              lastMessage={thread.lastMsg?.content}
+              nameColor={nameColor}
+              lastMessage={thread.isPending ? 'Tap to view invite' : thread.lastMsg?.content}
               timestamp={thread.lastTimestamp}
+              blurred={thread.isPending}
             />
           );
         })}

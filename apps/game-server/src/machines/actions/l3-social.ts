@@ -215,16 +215,21 @@ export const l3SocialActions = {
   createGroupDmChannel: assign(({ context, event }: any) => {
     if (event.type !== Events.Social.CREATE_CHANNEL) return {};
     const senderId = event.senderId;
-    const allMembers = [senderId, ...event.memberIds];
+    const recipientIds: string[] = event.memberIds;
+    const allMembers = [senderId, ...recipientIds];
     const channelId = groupDmChannelId(allMembers);
 
     // Idempotent: if channel already exists, no-op
     if (context.channels[channelId]) return {};
 
+    const isInviteMode = context.requireDmInvite;
+
     const newChannel: Channel = {
       id: channelId,
       type: 'GROUP_DM',
-      memberIds: allMembers,
+      ...(isInviteMode
+        ? { memberIds: [senderId], pendingMemberIds: recipientIds }
+        : { memberIds: allMembers }),
       createdBy: senderId,
       createdAt: Date.now(),
       capabilities: ['CHAT'],
@@ -234,9 +239,14 @@ export const l3SocialActions = {
     const groups = dmGroupsByPlayer[senderId] || [];
     dmGroupsByPlayer[senderId] = [...groups, channelId];
 
+    // Consume a whisper slot for the sender
+    const slotsUsedByPlayer = { ...context.slotsUsedByPlayer };
+    slotsUsedByPlayer[senderId] = (slotsUsedByPlayer[senderId] ?? 0) + 1;
+
     return {
       channels: { ...context.channels, [channelId]: newChannel },
       dmGroupsByPlayer,
+      slotsUsedByPlayer,
     };
   }),
 
@@ -463,6 +473,10 @@ export const l3SocialGuards = {
     const allMembers = [senderId, ...memberIds];
     const channelId = groupDmChannelId(allMembers);
     if (context.channels[channelId]) return true;
+
+    // Check unified whisper slot limit
+    const used = context.slotsUsedByPlayer[senderId] ?? 0;
+    if (used >= context.dmSlotsPerPlayer) return false;
 
     // Check group creation limit
     const groups = context.dmGroupsByPlayer[senderId] || [];

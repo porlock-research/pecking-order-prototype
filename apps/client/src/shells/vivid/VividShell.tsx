@@ -251,7 +251,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
                 setDmChannelId(null);
                 setActiveTab('whispers');
               } else {
-                engine.createGroupDm([playerId, ...recipientIds]);
+                engine.createGroupDm(recipientIds);
               }
             }}
             onBack={() => setShowNewConversation(false)}
