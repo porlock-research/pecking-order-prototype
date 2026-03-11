@@ -26,9 +26,10 @@ export const Events = {
     SEND_SILVER: 'SOCIAL.SEND_SILVER',
     USE_PERK: 'SOCIAL.USE_PERK',
     CREATE_CHANNEL: 'SOCIAL.CREATE_CHANNEL',
-    INVITE_DM: 'SOCIAL.INVITE_DM',
+    ADD_MEMBER: 'SOCIAL.ADD_MEMBER',
     ACCEPT_DM: 'SOCIAL.ACCEPT_DM',
     DECLINE_DM: 'SOCIAL.DECLINE_DM',
+    // INVITE_DM removed — first message IS the invite
   },
   Internal: {
     READY: 'INTERNAL.READY',
@@ -246,7 +247,8 @@ export const ALLOWED_CLIENT_EVENTS = [
   Events.Social.SEND_SILVER,
   Events.Social.USE_PERK,
   Events.Social.CREATE_CHANNEL,
-  Events.Social.INVITE_DM,
+  Events.Social.ADD_MEMBER,
   Events.Social.ACCEPT_DM,
   Events.Social.DECLINE_DM,
+  // INVITE_DM removed — first message IS the invite
 ] as const;

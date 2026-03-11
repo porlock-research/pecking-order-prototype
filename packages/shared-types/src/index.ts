@@ -446,7 +446,7 @@ export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LI
 
 // --- Channel System ---
 
-export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM', 'PRIVATE']);
+export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM']);
 export type ChannelType = z.infer<typeof ChannelTypeSchema>;
 
 export type ChannelCapability = 'CHAT' | 'SILVER_TRANSFER' | 'GAME_ACTIONS';
@@ -455,6 +455,7 @@ export interface Channel {
   id: string;
   type: ChannelType;
   memberIds: string[];
+  pendingMemberIds?: string[];  // invited but haven't accepted yet
   createdBy: string;           // playerId | 'SYSTEM' | 'GAME:{type}'
   createdAt: number;
   label?: string;
@@ -464,11 +465,6 @@ export interface Channel {
     exempt?: boolean;          // exempt from daily limits + open/close flags
     silverCost?: number;       // per-message cost (default: 1 for DM, 0 for MAIN/GAME_DM)
   };
-}
-
-export function dmChannelId(a: string, b: string): string {
-  const sorted = [a, b].sort();
-  return `dm:${sorted[0]}:${sorted[1]}`;
 }
 
 export function groupDmChannelId(memberIds: string[]): string {
@@ -483,15 +479,6 @@ export interface DmRejectedEvent {
   type: 'DM.REJECTED';
   reason: DmRejectionReason;
   senderId: string;
-}
-
-export interface PendingInvite {
-  id: string;
-  channelId: string;
-  senderId: string;
-  recipientId: string;        // singular — one record per recipient
-  status: 'pending' | 'accepted' | 'declined';
-  timestamp: number;
 }
 
 // --- Prompt (Activity Layer) Types ---
