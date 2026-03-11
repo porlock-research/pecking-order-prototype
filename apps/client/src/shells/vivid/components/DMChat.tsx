@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useShallow } from 'zustand/react/shallow';
 import { AltArrowLeft, Crown } from '@solar-icons/react';
-import { PlayerStatuses, GAME_MASTER_ID, Events } from '@pecking-order/shared-types';
+import { PlayerStatuses, GAME_MASTER_ID, Events, ChannelTypes } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
-import { useGameStore, selectMyPendingInvites, selectDmSlots } from '../../../store/useGameStore';
+import { useGameStore, selectDmSlots } from '../../../store/useGameStore';
 import { InviteOverlay } from './InviteOverlay';
 import { usePlayerTimeline } from '../../../hooks/usePlayerTimeline';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
@@ -67,7 +67,6 @@ export function DMChat({
   const dmRejection = useGameStore((s) => s.dmRejection);
   const clearDmRejection = useGameStore((s) => s.clearDmRejection);
   const typingPlayers = useGameStore((s) => s.typingPlayers);
-  const pendingInvites = useGameStore(useShallow(selectMyPendingInvites));
   const dmSlots = useGameStore(useShallow(selectDmSlots));
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -92,13 +91,25 @@ export function DMChat({
     [otherMemberIds, roster],
   );
 
-  /* ---- Derived: pending invite (locked conversation) --------------- */
-  const pendingInvite = useMemo(() => {
-    if (mode !== 'group' || !channelId) return null;
-    return pendingInvites.find(inv => inv.channelId === channelId && inv.status === 'pending') ?? null;
-  }, [pendingInvites, channelId, mode]);
+  /* ---- Derived: DM channel lookup (1:1 mode) ----------------------- */
+  const dmChannel = useMemo(() => {
+    if (mode !== '1on1') return null;
+    if (channelId) return channels[channelId] ?? null;
+    if (!playerId || !targetPlayerId) return null;
+    return Object.values(channels).find(ch =>
+      ch.type === ChannelTypes.DM &&
+      (ch.memberIds.includes(playerId) || (ch.pendingMemberIds || []).includes(playerId)) &&
+      (ch.memberIds.includes(targetPlayerId) || (ch.pendingMemberIds || []).includes(targetPlayerId))
+    ) ?? null;
+  }, [channels, channelId, playerId, targetPlayerId, mode]);
 
-  const isLockedInvite = !!pendingInvite;
+  const dmChannelId = dmChannel?.id ?? channelId ?? null;
+
+  /* ---- Derived: pending invite (locked conversation) --------------- */
+  const isPendingDm = !!(playerId && dmChannel && (dmChannel.pendingMemberIds || []).includes(playerId));
+  const isPendingGroup = !!(playerId && channel && (channel.pendingMemberIds || []).includes(playerId));
+  const isLockedInvite = isPendingDm || isPendingGroup;
+  const pendingChannel = isPendingDm ? dmChannel : isPendingGroup ? channel : null;
 
   /* ---- Derived: DM stats ----------------------------------------- */
   const charsRemaining = dmStats ? Math.max(0, dmStats.charsLimit - dmStats.charsUsed) : 0;
@@ -484,27 +495,26 @@ export function DMChat({
 
         {/* Invite overlay — positioned over messages */}
         <AnimatePresence>
-          {isLockedInvite && pendingInvite && (
+          {isLockedInvite && pendingChannel && (
             <InviteOverlay
-              invite={pendingInvite}
+              channel={pendingChannel}
+              firstMessage={chatLog.find(m => m.channelId === pendingChannel.id)?.content}
               roster={roster}
               slotsRemaining={dmSlots.total - dmSlots.used}
               slotsTotal={dmSlots.total}
               onAccept={() => {
-                if (channelId) {
-                  engine.socket.send(JSON.stringify({
-                    type: Events.Social.ACCEPT_DM,
-                    channelId,
-                  }));
-                }
+                const chId = pendingChannel.id;
+                engine.socket.send(JSON.stringify({
+                  type: Events.Social.ACCEPT_DM,
+                  channelId: chId,
+                }));
               }}
               onDecline={() => {
-                if (channelId) {
-                  engine.socket.send(JSON.stringify({
-                    type: Events.Social.DECLINE_DM,
-                    channelId,
-                  }));
-                }
+                const chId = pendingChannel.id;
+                engine.socket.send(JSON.stringify({
+                  type: Events.Social.DECLINE_DM,
+                  channelId: chId,
+                }));
                 onBack();
               }}
             />
@@ -540,6 +550,7 @@ export function DMChat({
               ? target?.personaName ?? 'them'
               : 'the group'
           }
+          channelId={mode === '1on1' ? (dmChannelId ?? undefined) : channelId}
         />
       )}
     </motion.div>

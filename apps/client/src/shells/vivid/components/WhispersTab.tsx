@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
 import { Crown, AddCircle } from '@solar-icons/react';
-import { useGameStore, selectMyPendingInvites, selectRequireDmInvite, selectDmSlots } from '../../../store/useGameStore';
+import { useGameStore, selectRequireDmInvite, selectDmSlots } from '../../../store/useGameStore';
 import { ChannelTypes, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
@@ -18,7 +18,7 @@ interface WhispersTabProps {
   playerColorMap: Record<string, string>;
   activeDmPlayerId?: string | null;
   activeChannelId?: string | null;
-  onSelectDm: (playerId: string) => void;
+  onSelectDm: (playerId: string, channelId?: string) => void;
   onSelectGroup: (channelId: string) => void;
   onNew: () => void;
   onBack: () => void;
@@ -59,6 +59,7 @@ export function WhispersTab({
         key={activeDmPlayerId}
         mode="1on1"
         targetPlayerId={activeDmPlayerId}
+        channelId={activeChannelId ?? undefined}
         engine={engine}
         onBack={onBack}
         onOpenSpotlight={onTapAvatar}
@@ -100,7 +101,7 @@ export function WhispersTab({
 
 interface ConversationListProps {
   playerColorMap: Record<string, string>;
-  onSelectDm: (playerId: string) => void;
+  onSelectDm: (playerId: string, channelId?: string) => void;
   onSelectGroup: (channelId: string) => void;
   onNew: () => void;
 }
@@ -114,7 +115,6 @@ function ConversationList({
   const { playerId, roster } = useGameStore();
   const chatLog = useGameStore(s => s.chatLog);
   const channels = useGameStore(s => s.channels);
-  const pendingInvites = useGameStore(useShallow(selectMyPendingInvites));
   const requireDmInvite = useGameStore(selectRequireDmInvite);
   const dmSlots = useGameStore(useShallow(selectDmSlots));
 
@@ -165,17 +165,25 @@ function ConversationList({
   const dmThreads = useMemo(() => {
     if (!playerId) return [];
     return Object.values(channels)
-      .filter(ch => (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.PRIVATE) && ch.memberIds.includes(playerId))
+      .filter(ch =>
+        ch.type === ChannelTypes.DM &&
+        !ch.memberIds.includes(GAME_MASTER_ID) &&
+        (ch.memberIds.includes(playerId) || (ch.pendingMemberIds || []).includes(playerId))
+      )
       .map(ch => {
-        const otherPlayerId = ch.memberIds.find(id => id !== playerId && id !== GAME_MASTER_ID);
+        const allIds = [...ch.memberIds, ...(ch.pendingMemberIds || [])];
+        const otherPlayerId = allIds.find(id => id !== playerId && id !== GAME_MASTER_ID);
         const messages = chatLog
           .filter((m: ChatMessage) => m.channelId === ch.id)
           .sort((a, b) => a.timestamp - b.timestamp);
         const lastMsg = messages[messages.length - 1];
+        const isPending = (ch.pendingMemberIds || []).includes(playerId);
         return {
+          channelId: ch.id,
           playerId: otherPlayerId,
           lastMessage: lastMsg,
           lastTimestamp: lastMsg?.timestamp ?? ch.createdAt,
+          isPending,
         };
       })
       .filter(t => t.playerId)
@@ -186,8 +194,7 @@ function ConversationList({
 
   let staggerIndex = 0;
 
-  const receivedPending = pendingInvites.filter(inv => inv.status === 'pending');
-  const isEmpty = !gmDm && groupThreads.length === 0 && dmThreads.length === 0 && receivedPending.length === 0;
+  const isEmpty = !gmDm && groupThreads.length === 0 && dmThreads.length === 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -301,32 +308,6 @@ function ConversationList({
           />
         )}
 
-        {/* Received invites — blurred */}
-        {receivedPending.map(invite => {
-          const sender = roster[invite.senderId];
-          const idx = staggerIndex++;
-          return (
-            <ConversationItem
-              key={invite.id}
-              borderColor="rgba(59, 169, 156, 0.6)"
-              onClick={() => onSelectGroup(invite.channelId)}
-              index={idx}
-              avatar={
-                <PersonaAvatar
-                  avatarUrl={sender?.avatarUrl}
-                  personaName={sender?.personaName}
-                  size={40}
-                />
-              }
-              name={sender?.personaName ?? 'Unknown'}
-              nameColor="#3BA99C"
-              lastMessage="Tap to view invite"
-              timestamp={invite.timestamp}
-              blurred
-            />
-          );
-        })}
-
         {/* Group threads */}
         {groupThreads.map(thread => {
           const idx = staggerIndex++;
@@ -372,13 +353,13 @@ function ConversationList({
         {dmThreads.map(thread => {
           if (!thread.playerId) return null;
           const player = roster[thread.playerId];
-          const color = playerColorMap[thread.playerId] || '#9B8E7E';
+          const color = thread.isPending ? '#3BA99C' : (playerColorMap[thread.playerId] || '#9B8E7E');
           const idx = staggerIndex++;
           return (
             <ConversationItem
-              key={thread.playerId}
-              borderColor={color}
-              onClick={() => onSelectDm(thread.playerId!)}
+              key={thread.channelId}
+              borderColor={thread.isPending ? 'rgba(59, 169, 156, 0.6)' : color}
+              onClick={() => onSelectDm(thread.playerId!, thread.channelId)}
               index={idx}
               avatar={
                 <PersonaAvatar
@@ -389,8 +370,9 @@ function ConversationList({
               }
               name={player?.personaName ?? 'Unknown'}
               nameColor={color}
-              lastMessage={thread.lastMessage?.content}
+              lastMessage={thread.isPending ? 'Tap to view invite' : thread.lastMessage?.content}
               timestamp={thread.lastTimestamp}
+              blurred={thread.isPending}
             />
           );
         })}

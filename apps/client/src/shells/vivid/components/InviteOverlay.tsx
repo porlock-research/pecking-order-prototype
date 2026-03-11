@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
-import type { PendingInvite, SocialPlayer } from '@pecking-order/shared-types';
+import type { Channel, SocialPlayer } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
 interface InviteOverlayProps {
-  invite: PendingInvite;
+  channel: Channel;
+  firstMessage?: string;
   roster: Record<string, SocialPlayer>;
   slotsRemaining: number;
   slotsTotal: number;
@@ -13,14 +14,15 @@ interface InviteOverlayProps {
 }
 
 export function InviteOverlay({
-  invite,
+  channel,
+  firstMessage,
   roster,
   slotsRemaining,
   slotsTotal,
   onAccept,
   onDecline,
 }: InviteOverlayProps) {
-  const sender = roster[invite.senderId];
+  const sender = roster[channel.createdBy];
 
   return (
     <motion.div
@@ -61,6 +63,26 @@ export function InviteOverlay({
       >
         {sender?.personaName ?? 'Someone'} wants to chat
       </div>
+
+      {/* First message preview */}
+      {firstMessage && (
+        <div
+          style={{
+            fontFamily: 'var(--vivid-font-body)',
+            fontSize: 14,
+            color: 'var(--vivid-text)',
+            textAlign: 'center',
+            maxWidth: 260,
+            padding: '8px 16px',
+            background: 'var(--vivid-bg-elevated)',
+            borderRadius: 12,
+            border: '1px solid rgba(139, 115, 85, 0.1)',
+            fontStyle: 'italic',
+          }}
+        >
+          &ldquo;{firstMessage}&rdquo;
+        </div>
+      )}
 
       {/* Slots remaining */}
       <div

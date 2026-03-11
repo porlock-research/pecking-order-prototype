@@ -65,9 +65,9 @@ function VividShell({ playerId, engine, token }: ShellProps) {
 
   /* ---- Navigation handlers ---- */
 
-  const handleOpenDm = useCallback((targetId: string) => {
+  const handleOpenDm = useCallback((targetId: string, channelId?: string) => {
     setDmTargetPlayerId(targetId);
-    setDmChannelId(null);
+    setDmChannelId(channelId ?? null);
     setActiveTab('whispers');
   }, []);
 
@@ -178,7 +178,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
                 playerColorMap={playerColorMap}
                 activeDmPlayerId={dmTargetPlayerId}
                 activeChannelId={dmChannelId}
-                onSelectDm={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); }}
+                onSelectDm={(pid, chId) => { setDmTargetPlayerId(pid); setDmChannelId(chId ?? null); }}
                 onSelectGroup={(chId) => { setDmChannelId(chId); setDmTargetPlayerId(null); }}
                 onNew={() => setShowNewConversation(true)}
                 onBack={() => { setDmTargetPlayerId(null); setDmChannelId(null); }}

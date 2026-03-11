@@ -24,11 +24,9 @@ export function usePlayerTimeline(targetPlayerId: string): TimelineEntry[] {
     const channelIds = new Set<string>();
 
     for (const ch of Object.values(channels)) {
-      if (
-        ch.type === ChannelTypes.DM &&
-        ch.memberIds.includes(playerId) &&
-        ch.memberIds.includes(targetPlayerId)
-      ) {
+      if (ch.type !== ChannelTypes.DM) continue;
+      const allIds = [...ch.memberIds, ...(ch.pendingMemberIds || [])];
+      if (allIds.includes(playerId) && allIds.includes(targetPlayerId)) {
         channelIds.add(ch.id);
       }
     }

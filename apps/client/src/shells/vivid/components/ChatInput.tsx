@@ -15,6 +15,7 @@ interface ChatInputProps {
   engine: {
     sendMessage: (content: string) => void;
     sendToChannel: (channelId: string, content: string) => void;
+    sendFirstMessage: (recipientIds: string[], content: string) => void;
     sendTyping: (channel?: string) => void;
     stopTyping: (channel?: string) => void;
   };
@@ -191,6 +192,8 @@ export function ChatInput({
         if (channelId) {
           engine.sendToChannel(channelId, text);
           engine.stopTyping(channelId);
+        } else if (targetId) {
+          engine.sendFirstMessage([targetId], text);
         }
         break;
       case 'group':
