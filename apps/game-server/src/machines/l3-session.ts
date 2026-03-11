@@ -1,5 +1,5 @@
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
-import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, PendingInvite, dmChannelId, Events, FactTypes, GAME_MASTER_ID, DM_MAX_CHARS_PER_DAY, DM_MAX_PARTNERS_PER_DAY } from '@pecking-order/shared-types';
+import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, Events, FactTypes, GAME_MASTER_ID, DM_MAX_CHARS_PER_DAY, DM_MAX_PARTNERS_PER_DAY } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from './cartridges/voting/_registry';
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 import { PROMPT_REGISTRY } from './cartridges/prompts/_registry';
@@ -30,7 +30,7 @@ export interface DailyContext {
   channels: Record<string, Channel>;
   groupChatOpen: boolean;
   dmGroupsByPlayer: Record<string, string[]>;
-  pendingInvites: PendingInvite[];
+  // pendingInvites removed — invite state lives on channel.pendingMemberIds
   slotsUsedByPlayer: Record<string, number>;
   dmSlotsPerPlayer: number;
   requireDmInvite: boolean;
@@ -38,6 +38,8 @@ export interface DailyContext {
 
 export type DailyEvent =
   | (SocialEvent & { senderId: string })
+  | { type: 'SOCIAL.SEND_MSG'; senderId: string; content: string; channelId?: string; recipientIds?: string[]; targetId?: string }
+  | { type: 'SOCIAL.ADD_MEMBER'; senderId: string; channelId: string; memberIds: string[]; message?: string }
   | { type: 'INTERNAL.END_DAY' }
   | { type: 'INTERNAL.START_CARTRIDGE'; payload: any }
   | { type: 'INTERNAL.OPEN_VOTING'; payload: any }
@@ -56,7 +58,6 @@ export type DailyEvent =
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
   | { type: `GAME.${string}`; senderId: string; [key: string]: any }
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
-  | { type: 'SOCIAL.INVITE_DM'; senderId: string; recipientIds: string[]; channelId?: string }
   | { type: 'SOCIAL.ACCEPT_DM'; senderId: string; channelId: string }
   | { type: 'SOCIAL.DECLINE_DM'; senderId: string; channelId: string }
   | { type: 'FACT.RECORD'; fact: Fact }
@@ -88,7 +89,6 @@ export function buildL3Context(input: { dayIndex: number; roster: Record<string,
     },
     groupChatOpen: false,
     dmGroupsByPlayer: {},
-    pendingInvites: [],
     slotsUsedByPlayer: {},
     requireDmInvite: input.manifest?.requireDmInvite ?? false,
     dmSlotsPerPlayer: input.manifest?.dmSlotsPerPlayer ?? 5,
@@ -289,7 +289,7 @@ export const dailySessionMachine = setup({
             const text = event.payload?.text || event.payload?.msg || 'The Game Master speaks...';
             const targetId = event.payload?.targetId;
             const channelId = targetId
-              ? dmChannelId(GAME_MASTER_ID, targetId)
+              ? `dm:${[GAME_MASTER_ID, targetId].sort().join(':')}`
               : 'MAIN';
             const msg = buildChatMessage(GAME_MASTER_ID, text, channelId);
 
