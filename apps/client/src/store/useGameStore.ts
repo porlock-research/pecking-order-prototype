@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes, PendingInvite } from '@pecking-order/shared-types';
+import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes } from '@pecking-order/shared-types';
 
 interface DmThread {
   partnerId: string;
@@ -35,7 +35,6 @@ interface GameState {
   winner: { playerId: string; mechanism: string; summary: Record<string, any> } | null;
   goldPool: number;
   gameHistory: GameHistoryEntry[];
-  pendingInvites: PendingInvite[];
   dmStats: { charsUsed: number; charsLimit: number; partnersUsed: number; partnersLimit: number; groupsUsed: number; groupsLimit: number; slotsUsed: number } | null;
   onlinePlayers: string[];
   typingPlayers: Record<string, string>;  // playerId → channel
@@ -145,11 +144,23 @@ export const selectGameDmChannels = (state: GameState): Channel[] => {
   );
 };
 
-export const selectMyPendingInvites = (state: GameState): PendingInvite[] =>
-  state.pendingInvites.filter(inv => inv.recipientId === (state.playerId || ''));
+/** Channels where the player is a pending member (needs to accept/decline) */
+export const selectPendingChannels = (state: GameState): Channel[] => {
+  const pid = state.playerId;
+  if (!pid) return [];
+  return Object.values(state.channels).filter(
+    ch => (ch.pendingMemberIds || []).includes(pid)
+  );
+};
 
-export const selectMySentInvites = (state: GameState): PendingInvite[] =>
-  state.pendingInvites.filter(inv => inv.senderId === state.playerId && inv.status === 'pending');
+/** Channels where the player has sent invites (created channel, others are pending) */
+export const selectSentInviteChannels = (state: GameState): Channel[] => {
+  const pid = state.playerId;
+  if (!pid) return [];
+  return Object.values(state.channels).filter(
+    ch => ch.createdBy === pid && (ch.pendingMemberIds || []).length > 0
+  );
+};
 
 export const selectRequireDmInvite = (state: GameState): boolean => {
   if (!state.manifest?.days) return false;
@@ -309,7 +320,6 @@ export const useGameStore = create<GameState>((set) => ({
   winner: null,
   goldPool: 0,
   gameHistory: [],
-  pendingInvites: [],
   dmStats: null,
   onlinePlayers: [],
   typingPlayers: {},
@@ -358,7 +368,6 @@ export const useGameStore = create<GameState>((set) => ({
       winner: data.context?.winner ?? null,
       goldPool: data.context?.goldPool ?? state.goldPool,
       gameHistory: data.context?.gameHistory ?? state.gameHistory,
-      pendingInvites: data.context?.pendingInvites ?? state.pendingInvites,
       dmStats: data.context?.dmStats ?? null,
       onlinePlayers: data.context?.onlinePlayers ?? state.onlinePlayers,
       playerActivity: data.context?.playerActivity ?? state.playerActivity,
