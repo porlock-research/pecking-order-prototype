@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useShallow } from 'zustand/react/shallow';
 import { Crown, AddCircle } from '@solar-icons/react';
 import { useGameStore, selectMyPendingInvites, selectRequireDmInvite, selectDmSlots } from '../../../store/useGameStore';
 import { ChannelTypes, GAME_MASTER_ID } from '@pecking-order/shared-types';
@@ -113,9 +114,9 @@ function ConversationList({
   const { playerId, roster } = useGameStore();
   const chatLog = useGameStore(s => s.chatLog);
   const channels = useGameStore(s => s.channels);
-  const pendingInvites = useGameStore(selectMyPendingInvites);
+  const pendingInvites = useGameStore(useShallow(selectMyPendingInvites));
   const requireDmInvite = useGameStore(selectRequireDmInvite);
-  const dmSlots = useGameStore(selectDmSlots);
+  const dmSlots = useGameStore(useShallow(selectDmSlots));
 
   /* -- Game Master DM ------------------------------------------------ */
 
@@ -164,7 +165,7 @@ function ConversationList({
   const dmThreads = useMemo(() => {
     if (!playerId) return [];
     return Object.values(channels)
-      .filter(ch => ch.type === ChannelTypes.DM && ch.memberIds.includes(playerId))
+      .filter(ch => (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.PRIVATE) && ch.memberIds.includes(playerId))
       .map(ch => {
         const otherPlayerId = ch.memberIds.find(id => id !== playerId && id !== GAME_MASTER_ID);
         const messages = chatLog
@@ -177,7 +178,7 @@ function ConversationList({
           lastTimestamp: lastMsg?.timestamp ?? ch.createdAt,
         };
       })
-      .filter(t => t.playerId && t.lastMessage)
+      .filter(t => t.playerId)
       .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
   }, [channels, chatLog, playerId]);
 
@@ -369,7 +370,7 @@ function ConversationList({
 
         {/* 1:1 DM threads */}
         {dmThreads.map(thread => {
-          if (!thread.playerId || !thread.lastMessage) return null;
+          if (!thread.playerId) return null;
           const player = roster[thread.playerId];
           const color = playerColorMap[thread.playerId] || '#9B8E7E';
           const idx = staggerIndex++;
@@ -388,7 +389,7 @@ function ConversationList({
               }
               name={player?.personaName ?? 'Unknown'}
               nameColor={color}
-              lastMessage={thread.lastMessage.content}
+              lastMessage={thread.lastMessage?.content}
               timestamp={thread.lastTimestamp}
             />
           );

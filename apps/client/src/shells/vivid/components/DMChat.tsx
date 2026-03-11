@@ -1,6 +1,7 @@
 import { useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useShallow } from 'zustand/react/shallow';
 import { AltArrowLeft, Crown } from '@solar-icons/react';
 import { PlayerStatuses, GAME_MASTER_ID, Events } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
@@ -66,8 +67,8 @@ export function DMChat({
   const dmRejection = useGameStore((s) => s.dmRejection);
   const clearDmRejection = useGameStore((s) => s.clearDmRejection);
   const typingPlayers = useGameStore((s) => s.typingPlayers);
-  const pendingInvites = useGameStore(selectMyPendingInvites);
-  const dmSlots = useGameStore(selectDmSlots);
+  const pendingInvites = useGameStore(useShallow(selectMyPendingInvites));
+  const dmSlots = useGameStore(useShallow(selectDmSlots));
 
   const scrollRef = useRef<HTMLDivElement>(null);
 

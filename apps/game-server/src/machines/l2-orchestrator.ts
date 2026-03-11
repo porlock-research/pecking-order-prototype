@@ -187,8 +187,6 @@ export const orchestratorMachine = setup({
                 reenter: false,
                 internal: true
             },
-            'SOCIAL.SEND_MSG': { actions: sendTo('l3-session', ({ event }: any) => event) },
-            'SOCIAL.SEND_SILVER': { actions: sendTo('l3-session', ({ event }: any) => event) },
             'CARTRIDGE.VOTE_RESULT': { actions: ['storeVoteResult'] },
             'CARTRIDGE.GAME_RESULT': { actions: ['recordGameResult', 'recordCompletedGame', 'emitGameResultFact', 'raiseGameEconomyEvents'] },
             'CARTRIDGE.PLAYER_GAME_RESULT': { actions: ['emitPlayerGameResultFact', 'raisePlayerGameEconomyEvent'] },
@@ -197,13 +195,15 @@ export const orchestratorMachine = setup({
             'ECONOMY.CONTRIBUTE_GOLD': { actions: 'applyGoldContribution' },
             'DM.REJECTED': { actions: 'sendDmRejection' },
             'SILVER_TRANSFER.REJECTED': { actions: 'sendSilverTransferRejection' },
-            'SOCIAL.USE_PERK': { actions: sendTo('l3-session', ({ event }: any) => event) },
-            'SOCIAL.CREATE_CHANNEL': { actions: sendTo('l3-session', ({ event }: any) => event) },
             'CHANNEL.REJECTED': { actions: 'sendChannelRejection' },
             'PERK.RESULT': { actions: 'deliverPerkResult' },
             'PERK.REJECTED': { actions: 'deliverPerkResult' },
             'PUSH.PHASE': { actions: 'broadcastPhasePush' },
             '*': [
+              {
+                guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Social.PREFIX),
+                actions: sendTo('l3-session', ({ event }: any) => event),
+              },
               {
                 guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Vote.PREFIX),
                 actions: sendTo('l3-session', ({ event }: any) => event),
