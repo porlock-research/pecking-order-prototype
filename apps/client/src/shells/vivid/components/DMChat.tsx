@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useShallow } from 'zustand/react/shallow';
@@ -6,7 +6,6 @@ import { AltArrowLeft, Crown } from '@solar-icons/react';
 import { PlayerStatuses, GAME_MASTER_ID, Events, ChannelTypes } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { useGameStore, selectDmSlots } from '../../../store/useGameStore';
-import { InviteOverlay } from './InviteOverlay';
 import { usePlayerTimeline } from '../../../hooks/usePlayerTimeline';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { MessageCard } from './MessageCard';
@@ -197,7 +196,26 @@ export function DMChat({
   };
 
   /* ---- Input visibility ------------------------------------------ */
-  const hideInput = isMe || isGameMaster || isLockedInvite;
+  const hideInput = isMe || isGameMaster;
+
+  /* ---- Chat action handler --------------------------------------- */
+  const handleChatAction = useCallback((action: 'invite' | 'silver') => {
+    if (action === 'silver') {
+      // For 1:1 DMs, target is the other player
+      // For groups, we'd need a picker — for now, toast a placeholder
+      if (mode === '1on1' && targetPlayerId) {
+        engine.sendSilver(1, targetPlayerId);
+        toast.success('Sent 1 silver!');
+      } else {
+        toast.info('Select a player to send silver to');
+      }
+    } else if (action === 'invite') {
+      // Add member to group DM
+      if (mode === 'group' && channelId) {
+        toast.info('Invite player coming soon');
+      }
+    }
+  }, [mode, targetPlayerId, channelId, engine]);
 
   /* ---- Header tap ------------------------------------------------ */
   const handleHeaderTap = () => {
@@ -423,7 +441,7 @@ export function DMChat({
         )}
       </header>
 
-      {/* ---- Messages area + invite overlay container --------------- */}
+      {/* ---- Messages area --------------------------------------------- */}
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         <div
           ref={scrollRef}
@@ -434,7 +452,6 @@ export function DMChat({
             display: 'flex',
             flexDirection: 'column',
             gap: 12,
-            ...(isLockedInvite ? { filter: 'blur(6px)', pointerEvents: 'none' as const } : {}),
           }}
         >
           {mode === '1on1' ? (
@@ -493,33 +510,6 @@ export function DMChat({
           )}
         </div>
 
-        {/* Invite overlay — positioned over messages */}
-        <AnimatePresence>
-          {isLockedInvite && pendingChannel && (
-            <InviteOverlay
-              channel={pendingChannel}
-              firstMessage={chatLog.find(m => m.channelId === pendingChannel.id)?.content}
-              roster={roster}
-              slotsRemaining={dmSlots.total - dmSlots.used}
-              slotsTotal={dmSlots.total}
-              onAccept={() => {
-                const chId = pendingChannel.id;
-                engine.socket.send(JSON.stringify({
-                  type: Events.Social.ACCEPT_DM,
-                  channelId: chId,
-                }));
-              }}
-              onDecline={() => {
-                const chId = pendingChannel.id;
-                engine.socket.send(JSON.stringify({
-                  type: Events.Social.DECLINE_DM,
-                  channelId: chId,
-                }));
-                onBack();
-              }}
-            />
-          )}
-        </AnimatePresence>
       </div>
 
       {/* ---- Typing indicator (above input) ----------------------- */}
@@ -539,21 +529,125 @@ export function DMChat({
         )}
       </AnimatePresence>
 
-      {/* ---- Input ------------------------------------------------- */}
+      {/* ---- Input / Invite bar ------------------------------------- */}
       {!hideInput && (
-        <ChatInput
-          engine={engine}
-          context={mode === '1on1' ? 'dm' : 'group'}
-          targetId={mode === '1on1' ? targetPlayerId : channelId}
-          targetName={
-            mode === '1on1'
-              ? target?.personaName ?? 'them'
-              : 'the group'
-          }
-          channelId={mode === '1on1' ? (dmChannelId ?? undefined) : channelId}
-        />
+        isLockedInvite && pendingChannel ? (
+          <InviteInputBar
+            channel={pendingChannel}
+            slotsRemaining={dmSlots.total - dmSlots.used}
+            slotsTotal={dmSlots.total}
+            onAccept={() => {
+              engine.socket.send(JSON.stringify({
+                type: Events.Social.ACCEPT_DM,
+                channelId: pendingChannel.id,
+              }));
+            }}
+            onDecline={() => {
+              engine.socket.send(JSON.stringify({
+                type: Events.Social.DECLINE_DM,
+                channelId: pendingChannel.id,
+              }));
+              onBack();
+            }}
+          />
+        ) : (
+          <ChatInput
+            engine={engine}
+            context={mode === '1on1' ? 'dm' : 'group'}
+            targetId={mode === '1on1' ? targetPlayerId : channelId}
+            targetName={
+              mode === '1on1'
+                ? target?.personaName ?? 'them'
+                : 'the group'
+            }
+            channelId={mode === '1on1' ? (dmChannelId ?? undefined) : channelId}
+            onChatAction={handleChatAction}
+          />
+        )
       )}
     </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Invite input bar (replaces chat input for pending invites)         */
+/* ------------------------------------------------------------------ */
+
+function InviteInputBar({
+  channel,
+  slotsRemaining,
+  slotsTotal,
+  onAccept,
+  onDecline,
+}: {
+  channel: { id: string; createdBy?: string };
+  slotsRemaining: number;
+  slotsTotal: number;
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  return (
+    <div
+      style={{
+        flexShrink: 0,
+        background: 'var(--vivid-bg-surface)',
+        borderTop: '1px solid rgba(139, 115, 85, 0.08)',
+        padding: '12px 16px 16px',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 12,
+          fontFamily: 'var(--vivid-font-body)',
+          color: 'var(--vivid-text-dim)',
+          textAlign: 'center',
+          marginBottom: 10,
+        }}
+      >
+        {slotsRemaining} of {slotsTotal} whisper slots remaining
+      </div>
+      <div style={{ display: 'flex', gap: 10 }}>
+        <motion.button
+          onClick={onDecline}
+          style={{
+            flex: 1,
+            padding: '14px 0',
+            borderRadius: 14,
+            background: 'var(--vivid-bg-elevated)',
+            border: '1.5px solid rgba(139, 115, 85, 0.12)',
+            fontFamily: 'var(--vivid-font-display)',
+            fontWeight: 700,
+            fontSize: 15,
+            color: '#B0736A',
+            cursor: 'pointer',
+          }}
+          whileTap={VIVID_TAP.button}
+          transition={VIVID_SPRING.bouncy}
+        >
+          Decline
+        </motion.button>
+        <motion.button
+          onClick={onAccept}
+          style={{
+            flex: 1,
+            padding: '14px 0',
+            borderRadius: 14,
+            background: '#3BA99C',
+            border: 'none',
+            fontFamily: 'var(--vivid-font-display)',
+            fontWeight: 700,
+            fontSize: 15,
+            color: '#FFFFFF',
+            cursor: 'pointer',
+            boxShadow: '0 3px 10px rgba(59, 169, 156, 0.25)',
+          }}
+          whileTap={VIVID_TAP.button}
+          transition={VIVID_SPRING.bouncy}
+        >
+          Accept
+        </motion.button>
+      </div>
+    </div>
   );
 }
 

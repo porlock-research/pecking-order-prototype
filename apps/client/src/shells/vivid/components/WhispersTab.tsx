@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
-import { Crown, AddCircle } from '@solar-icons/react';
+import { Crown, AddCircle, CheckCircle, CloseCircle } from '@solar-icons/react';
 import { useGameStore, selectRequireDmInvite, selectDmSlots } from '../../../store/useGameStore';
-import { ChannelTypes, GAME_MASTER_ID } from '@pecking-order/shared-types';
+import { ChannelTypes, GAME_MASTER_ID, Events } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { DMChat } from './DMChat';
@@ -87,6 +87,7 @@ export function WhispersTab({
   /* ---- Otherwise render the conversation list --------------------- */
   return (
     <ConversationList
+      engine={engine}
       playerColorMap={playerColorMap}
       onSelectDm={onSelectDm}
       onSelectGroup={onSelectGroup}
@@ -100,6 +101,7 @@ export function WhispersTab({
 /* ------------------------------------------------------------------ */
 
 interface ConversationListProps {
+  engine: any;
   playerColorMap: Record<string, string>;
   onSelectDm: (playerId: string, channelId?: string) => void;
   onSelectGroup: (channelId: string) => void;
@@ -107,6 +109,7 @@ interface ConversationListProps {
 }
 
 function ConversationList({
+  engine,
   playerColorMap,
   onSelectDm,
   onSelectGroup,
@@ -317,7 +320,7 @@ function ConversationList({
         {/* Group threads */}
         {groupThreads.map(thread => {
           const idx = staggerIndex++;
-          const borderColor = thread.isPending ? 'rgba(59, 169, 156, 0.6)' : '#8B6CC1';
+          const borderColor = thread.isPending ? '#3BA99C' : '#8B6CC1';
           const nameColor = thread.isPending ? '#3BA99C' : '#8B6CC1';
           return (
             <ConversationItem
@@ -351,9 +354,20 @@ function ConversationList({
               }
               name={thread.memberNames.join(', ')}
               nameColor={nameColor}
-              lastMessage={thread.isPending ? 'Tap to view invite' : thread.lastMsg?.content}
-              timestamp={thread.lastTimestamp}
-              blurred={thread.isPending}
+              lastMessage={thread.isPending ? 'Wants to whisper...' : thread.lastMsg?.content}
+              timestamp={thread.isPending ? undefined : thread.lastTimestamp}
+              onAccept={thread.isPending ? () => {
+                engine.socket.send(JSON.stringify({
+                  type: Events.Social.ACCEPT_DM,
+                  channelId: thread.channelId,
+                }));
+              } : undefined}
+              onDecline={thread.isPending ? () => {
+                engine.socket.send(JSON.stringify({
+                  type: Events.Social.DECLINE_DM,
+                  channelId: thread.channelId,
+                }));
+              } : undefined}
             />
           );
         })}
@@ -379,9 +393,20 @@ function ConversationList({
               }
               name={player?.personaName ?? 'Unknown'}
               nameColor={color}
-              lastMessage={thread.isPending ? 'Tap to view invite' : thread.lastMessage?.content}
-              timestamp={thread.lastTimestamp}
-              blurred={thread.isPending}
+              lastMessage={thread.isPending ? 'Wants to whisper...' : thread.lastMessage?.content}
+              timestamp={thread.isPending ? undefined : thread.lastTimestamp}
+              onAccept={thread.isPending ? () => {
+                engine.socket.send(JSON.stringify({
+                  type: Events.Social.ACCEPT_DM,
+                  channelId: thread.channelId,
+                }));
+              } : undefined}
+              onDecline={thread.isPending ? () => {
+                engine.socket.send(JSON.stringify({
+                  type: Events.Social.DECLINE_DM,
+                  channelId: thread.channelId,
+                }));
+              } : undefined}
             />
           );
         })}
@@ -430,7 +455,8 @@ interface ConversationItemProps {
   nameColor: string;
   lastMessage?: string;
   timestamp?: number;
-  blurred?: boolean;
+  onAccept?: () => void;
+  onDecline?: () => void;
 }
 
 function ConversationItem({
@@ -442,35 +468,37 @@ function ConversationItem({
   nameColor,
   lastMessage,
   timestamp,
-  blurred,
+  onAccept,
+  onDecline,
 }: ConversationItemProps) {
+  const isPending = !!(onAccept && onDecline);
+
   return (
-    <motion.button
-      onClick={onClick}
+    <motion.div
       style={{
         padding: '12px 16px',
         margin: '2px 8px',
         width: 'calc(100% - 16px)',
         background: '#FFFFFF',
-        border: '1px solid rgba(139, 115, 85, 0.06)',
+        border: isPending ? `1.5px solid ${borderColor}` : '1px solid rgba(139, 115, 85, 0.06)',
         borderRadius: 16,
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        cursor: 'pointer',
         textAlign: 'left',
         boxShadow: 'var(--vivid-surface-shadow)',
       }}
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.03, ...VIVID_SPRING.gentle }}
-      whileTap={VIVID_TAP.card}
     >
-      {/* Avatar */}
-      {avatar}
+      {/* Avatar — tappable to open conversation */}
+      <div onClick={onClick} style={{ cursor: 'pointer', flexShrink: 0 }}>
+        {avatar}
+      </div>
 
       {/* Name + last message */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div onClick={onClick} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
         <div
           style={{
             fontFamily: 'var(--vivid-font-display)',
@@ -494,7 +522,6 @@ function ConversationItem({
               textOverflow: 'ellipsis',
               marginTop: 2,
               lineHeight: 1.3,
-              ...(blurred ? { filter: 'blur(4px)', userSelect: 'none' as const } : {}),
             }}
           >
             {lastMessage}
@@ -502,8 +529,50 @@ function ConversationItem({
         )}
       </div>
 
-      {/* Timestamp */}
-      {timestamp && (
+      {/* Accept/Decline buttons OR timestamp */}
+      {isPending ? (
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <motion.button
+            onClick={(e) => { e.stopPropagation(); onDecline!(); }}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: 'var(--vivid-bg-elevated)',
+              border: '1px solid rgba(139, 115, 85, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#B0736A',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+            whileTap={VIVID_TAP.button}
+          >
+            <CloseCircle size={20} weight="Bold" />
+          </motion.button>
+          <motion.button
+            onClick={(e) => { e.stopPropagation(); onAccept!(); }}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: '#3BA99C',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              padding: 0,
+              boxShadow: '0 2px 6px rgba(59, 169, 156, 0.3)',
+            }}
+            whileTap={VIVID_TAP.button}
+          >
+            <CheckCircle size={20} weight="Bold" />
+          </motion.button>
+        </div>
+      ) : timestamp ? (
         <span
           style={{
             flexShrink: 0,
@@ -514,7 +583,7 @@ function ConversationItem({
         >
           {relativeTime(timestamp)}
         </span>
-      )}
-    </motion.button>
+      ) : null}
+    </motion.div>
   );
 }
