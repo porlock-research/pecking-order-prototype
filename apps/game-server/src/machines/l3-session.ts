@@ -30,7 +30,6 @@ export interface DailyContext {
   channels: Record<string, Channel>;
   groupChatOpen: boolean;
   dmGroupsByPlayer: Record<string, string[]>;
-  // pendingInvites removed — invite state lives on channel.pendingMemberIds
   slotsUsedByPlayer: Record<string, number>;
   dmSlotsPerPlayer: number;
   requireDmInvite: boolean;

@@ -29,7 +29,6 @@ export const Events = {
     ADD_MEMBER: 'SOCIAL.ADD_MEMBER',
     ACCEPT_DM: 'SOCIAL.ACCEPT_DM',
     DECLINE_DM: 'SOCIAL.DECLINE_DM',
-    // INVITE_DM removed — first message IS the invite
   },
   Internal: {
     READY: 'INTERNAL.READY',
@@ -250,5 +249,4 @@ export const ALLOWED_CLIENT_EVENTS = [
   Events.Social.ADD_MEMBER,
   Events.Social.ACCEPT_DM,
   Events.Social.DECLINE_DM,
-  // INVITE_DM removed — first message IS the invite
 ] as const;

@@ -1,5 +1,5 @@
 import type { ChatMessage, SocialPlayer } from '@pecking-order/shared-types';
-import { dmChannelId, Config } from '@pecking-order/shared-types';
+import { Config } from '@pecking-order/shared-types';
 
 const MAX_CHAT_LOG = Config.chat.maxLogSize;
 
@@ -8,11 +8,7 @@ export function buildChatMessage(
   content: string,
   channelId: string,
 ): ChatMessage {
-  // Derive deprecated fields for backward compat
   const channel = channelId === 'MAIN' ? 'MAIN' as const : 'DM' as const;
-  const targetId = channelId.startsWith('dm:')
-    ? channelId.split(':').find(s => s !== 'dm' && s !== senderId)
-    : undefined;
   return {
     id: crypto.randomUUID(),
     senderId,
@@ -20,14 +16,46 @@ export function buildChatMessage(
     content,
     channelId,
     channel,
-    targetId,
   };
 }
 
-/** Bridge old events (with targetId) to channelId-based model */
-export function resolveChannelId(event: any): string {
+/**
+ * Resolve an existing channel for a SEND_MSG event.
+ * - If channelId is present -> use it directly
+ * - If recipientIds present (no channelId) -> find existing channel by member set
+ * - If targetId present (legacy compat) -> find existing channel by member pair
+ * - Otherwise -> MAIN
+ * Returns null if no existing channel found (signals new channel needed).
+ */
+export function resolveExistingChannel(
+  channels: Record<string, any>,
+  event: any,
+): string | null {
   if (event.channelId) return event.channelId;
-  if (event.targetId) return dmChannelId(event.senderId, event.targetId);
+
+  const recipientIds: string[] = event.recipientIds || (event.targetId ? [event.targetId] : []);
+  if (recipientIds.length === 0) return 'MAIN';
+
+  const senderId = event.senderId;
+  const allMembers = new Set([senderId, ...recipientIds]);
+
+  for (const ch of Object.values(channels) as any[]) {
+    if (ch.type !== 'DM' && ch.type !== 'GROUP_DM') continue;
+    const chMembers = new Set([...(ch.memberIds || []), ...(ch.pendingMemberIds || [])]);
+    if (chMembers.size !== allMembers.size) continue;
+    if ([...allMembers].every((id: string) => chMembers.has(id))) return ch.id;
+  }
+
+  return null;
+}
+
+/** Backward-compat wrapper: resolves to an existing channel or falls back to 'MAIN'. */
+export function resolveChannelId(event: any, channels?: Record<string, any>): string {
+  if (event.channelId) return event.channelId;
+  if (channels) {
+    const found = resolveExistingChannel(channels, event);
+    if (found) return found;
+  }
   return 'MAIN';
 }
 

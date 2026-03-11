@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createActor, setup, assign } from 'xstate';
 import { buildL3Context, dailySessionMachine } from '../l3-session';
-import type { SocialPlayer, DailyManifest, PendingInvite } from '@pecking-order/shared-types';
+import type { SocialPlayer, DailyManifest } from '@pecking-order/shared-types';
 import { Events } from '@pecking-order/shared-types';
 
 function makeRoster(count: number): Record<string, SocialPlayer> {
@@ -83,553 +83,993 @@ function createL3Actor(rosterCount = 4, overrides: Partial<Record<string, any>> 
   };
 }
 
-describe('L3 DM Invitation context defaults', () => {
-  it('initializes pendingInvites as empty array', () => {
-    const ctx = buildL3Context({ dayIndex: 1, roster: makeRoster(4), manifest: BASE_DAY });
-    expect(ctx.pendingInvites).toEqual([]);
-  });
+// Helper: find DM/GROUP_DM channels (exclude MAIN and GAME_DM)
+function findDmChannels(ctx: any): any[] {
+  return Object.values(ctx.channels).filter(
+    (ch: any) => ch.type === 'DM' || ch.type === 'GROUP_DM'
+  );
+}
 
-  it('initializes slotsUsedByPlayer as empty object', () => {
-    const ctx = buildL3Context({ dayIndex: 1, roster: makeRoster(4), manifest: BASE_DAY });
-    expect(ctx.slotsUsedByPlayer).toEqual({});
-  });
+describe('unified DM channels', () => {
+  describe('non-invite mode (requireDmInvite: false)', () => {
+    it('SEND_MSG with recipientIds creates DM channel with UUID', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
 
-  it('defaults dmSlotsPerPlayer to 5', () => {
-    const ctx = buildL3Context({ dayIndex: 1, roster: makeRoster(4), manifest: BASE_DAY });
-    expect(ctx.dmSlotsPerPlayer).toBe(5);
-  });
-
-  it('defaults requireDmInvite to false', () => {
-    const ctx = buildL3Context({ dayIndex: 1, roster: makeRoster(4), manifest: BASE_DAY });
-    expect(ctx.requireDmInvite).toBe(false);
-  });
-});
-
-describe('L3 DM Invitation — INVITE_DM', () => {
-  it('creates a pending invite when DMs are open', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
-    });
-
-    const ctx = actor.getL3Context();
-    expect(ctx.pendingInvites).toHaveLength(1);
-    expect(ctx.pendingInvites[0].senderId).toBe('p0');
-    expect(ctx.pendingInvites[0].recipientId).toBe('p1');
-    expect(ctx.pendingInvites[0].status).toBe('pending');
-    // New model: channel is PRIVATE with UUID
-    const channelId = ctx.pendingInvites[0].channelId;
-    expect(ctx.channels[channelId]).toBeDefined();
-    expect(ctx.channels[channelId].type).toBe('PRIVATE');
-    expect(ctx.channels[channelId].memberIds).toEqual(['p0']);
-  });
-
-  it('rejects invite when DMs are closed', () => {
-    const actor = createL3Actor();
-    // DMs start closed
-
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
-    });
-
-    const ctx = actor.getL3Context();
-    expect(ctx.pendingInvites).toHaveLength(0);
-  });
-
-  it('rejects duplicate invite', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
-    });
-
-    // Send same invite again — duplicate pending invite from p0 to p1
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
-    });
-
-    const ctx = actor.getL3Context();
-    expect(ctx.pendingInvites).toHaveLength(1);
-  });
-
-  it('rejects invite when sender is at slot limit', () => {
-    const actor = createL3Actor(8);
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    // Fill up 5 slots for p0 by creating 5 new conversations
-    for (let i = 1; i <= 5; i++) {
       actor.send({
-        type: Events.Social.INVITE_DM,
+        type: Events.Social.SEND_MSG,
         senderId: 'p0',
-        recipientIds: [`p${i}`],
-      });
-    }
-
-    // Now p0 should be at slot limit (5 new conversations = 5 slots)
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p6'],
-    });
-
-    const ctx = actor.getL3Context();
-    // No pending invite for p6
-    expect(ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p6')).toBeUndefined();
-    // p0 has 5 slots used
-    expect(ctx.slotsUsedByPlayer['p0']).toBe(5);
-  });
-
-  it('rejects invite to eliminated player', () => {
-    const roster = makeRoster(4);
-    roster['p1'] = { ...roster['p1'], status: 'ELIMINATED' };
-    const actor = createL3Actor(4, { roster });
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
-    });
-
-    const ctx = actor.getL3Context();
-    expect(ctx.pendingInvites).toHaveLength(0);
-  });
-
-  it('rejects invite to self', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p0'],
-    });
-
-    const ctx = actor.getL3Context();
-    expect(ctx.pendingInvites).toHaveLength(0);
-  });
-
-  it('inviting to existing channel does not consume a slot', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    // Create a new conversation (consumes 1 slot)
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
-    });
-
-    let ctx = actor.getL3Context();
-    const channelId = ctx.pendingInvites[0].channelId;
-    expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
-
-    // Accept the invite so p1 joins the channel
-    actor.send({
-      type: Events.Social.ACCEPT_DM,
-      senderId: 'p1',
-      channelId,
-    });
-
-    // Invite p2 to the existing channel (no new slot)
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p2'],
-      channelId,
-    });
-
-    ctx = actor.getL3Context();
-    // Still 1 slot used for p0
-    expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
-    // New invite for p2 exists
-    expect(ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p2')).toBeDefined();
-  });
-});
-
-describe('L3 DM Invitation — ACCEPT_DM', () => {
-  it('adds acceptor to channel members and uses a slot', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
-    });
-
-    let ctx = actor.getL3Context();
-    const channelId = ctx.pendingInvites[0].channelId;
-
-    actor.send({
-      type: Events.Social.ACCEPT_DM,
-      senderId: 'p1',
-      channelId,
-    });
-
-    ctx = actor.getL3Context();
-    // Invite is marked accepted
-    const invite = ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p1');
-    expect(invite?.status).toBe('accepted');
-    // Channel now has both members
-    expect(ctx.channels[channelId].memberIds).toEqual(expect.arrayContaining(['p0', 'p1']));
-    // Slot used by acceptor
-    expect(ctx.slotsUsedByPlayer['p1']).toBe(1);
-    // Sender used 1 slot at invite time
-    expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
-  });
-
-  it('rejects accept when acceptor is at slot limit', () => {
-    const actor = createL3Actor(8);
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    // Fill up 5 slots for p1 by accepting 5 invites
-    for (let i = 2; i <= 6; i++) {
-      actor.send({
-        type: Events.Social.INVITE_DM,
-        senderId: `p${i}`,
+        content: 'Hello!',
         recipientIds: ['p1'],
       });
 
       const ctx = actor.getL3Context();
-      const inv = ctx.pendingInvites.find((inv: PendingInvite) =>
-        inv.senderId === `p${i}` && inv.recipientId === 'p1' && inv.status === 'pending'
-      );
-      if (inv) {
+      const dmChannels = findDmChannels(ctx);
+      expect(dmChannels).toHaveLength(1);
+
+      const ch = dmChannels[0];
+      expect(ch.type).toBe('DM');
+      // UUID format: 8-4-4-4-12 hex chars
+      expect(ch.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    });
+
+    it('both players are in memberIds immediately', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      const ctx = actor.getL3Context();
+      const ch = findDmChannels(ctx)[0];
+      expect(ch.memberIds).toContain('p0');
+      expect(ch.memberIds).toContain('p1');
+      // No pending members in non-invite mode
+      expect(ch.pendingMemberIds).toBeUndefined();
+    });
+
+    it('subsequent messages use channelId', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      // Create channel via first message
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'First message',
+        recipientIds: ['p1'],
+      });
+
+      const ctx1 = actor.getL3Context();
+      const channelId = findDmChannels(ctx1)[0].id;
+
+      // Send second message using channelId
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p1',
+        content: 'Reply',
+        channelId,
+      });
+
+      const ctx2 = actor.getL3Context();
+      const messages = ctx2.chatLog.filter((m: any) => m.channelId === channelId);
+      expect(messages).toHaveLength(2);
+      expect(messages[0].content).toBe('First message');
+      expect(messages[1].content).toBe('Reply');
+    });
+
+    it('sender slot is consumed on channel creation', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      const ctx = actor.getL3Context();
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
+    });
+
+    it('first message is stored in chatLog', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      const ctx = actor.getL3Context();
+      const ch = findDmChannels(ctx)[0];
+      const messages = ctx.chatLog.filter((m: any) => m.channelId === ch.id);
+      expect(messages).toHaveLength(1);
+      expect(messages[0].content).toBe('Hello!');
+      expect(messages[0].senderId).toBe('p0');
+    });
+
+    it('recipient can also send to the channel', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      const ctx1 = actor.getL3Context();
+      const channelId = findDmChannels(ctx1)[0].id;
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p1',
+        content: 'Hey back!',
+        channelId,
+      });
+
+      const ctx2 = actor.getL3Context();
+      const messages = ctx2.chatLog.filter((m: any) => m.channelId === channelId);
+      expect(messages).toHaveLength(2);
+      expect(messages[1].senderId).toBe('p1');
+    });
+
+    it('rejects when DMs are closed', () => {
+      const actor = createL3Actor();
+      // DMs start closed — do NOT open them
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      const ctx = actor.getL3Context();
+      expect(findDmChannels(ctx)).toHaveLength(0);
+      expect(ctx.chatLog).toHaveLength(0);
+    });
+
+    it('rejects DM to self', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello me!',
+        recipientIds: ['p0'],
+      });
+
+      const ctx = actor.getL3Context();
+      expect(findDmChannels(ctx)).toHaveLength(0);
+    });
+
+    it('rejects DM to eliminated player', () => {
+      const roster = makeRoster(4);
+      roster['p1'] = { ...roster['p1'], status: 'ELIMINATED' };
+      const actor = createL3Actor(4, { roster });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      const ctx = actor.getL3Context();
+      expect(findDmChannels(ctx)).toHaveLength(0);
+    });
+
+    it('does not create duplicate channel for same participants', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      // First message creates the channel
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'First',
+        recipientIds: ['p1'],
+      });
+
+      // Second message with same recipientIds should use existing channel
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Second',
+        recipientIds: ['p1'],
+      });
+
+      const ctx = actor.getL3Context();
+      expect(findDmChannels(ctx)).toHaveLength(1);
+      // Only 1 slot consumed (not 2)
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
+    });
+  });
+
+  describe('invite mode (requireDmInvite: true)', () => {
+    const INVITE_MANIFEST = { ...BASE_DAY, requireDmInvite: true };
+
+    it('SEND_MSG with recipientIds creates channel — sender in memberIds, recipient in pendingMemberIds', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      const ctx = actor.getL3Context();
+      const dmChannels = findDmChannels(ctx);
+      expect(dmChannels).toHaveLength(1);
+
+      const ch = dmChannels[0];
+      expect(ch.type).toBe('DM');
+      expect(ch.memberIds).toContain('p0');
+      expect(ch.memberIds).not.toContain('p1');
+      expect(ch.pendingMemberIds).toContain('p1');
+    });
+
+    it('first message is stored in chatLog', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Invite message!',
+        recipientIds: ['p1'],
+      });
+
+      const ctx = actor.getL3Context();
+      const ch = findDmChannels(ctx)[0];
+      const messages = ctx.chatLog.filter((m: any) => m.channelId === ch.id);
+      expect(messages).toHaveLength(1);
+      expect(messages[0].content).toBe('Invite message!');
+    });
+
+    it('sender slot consumed on creation', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      const ctx = actor.getL3Context();
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
+    });
+
+    it('ACCEPT_DM moves recipient from pendingMemberIds to memberIds', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      actor.send({
+        type: Events.Social.ACCEPT_DM,
+        senderId: 'p1',
+        channelId,
+      });
+
+      ctx = actor.getL3Context();
+      const ch = ctx.channels[channelId];
+      expect(ch.memberIds).toContain('p0');
+      expect(ch.memberIds).toContain('p1');
+      expect(ch.pendingMemberIds).not.toContain('p1');
+    });
+
+    it('acceptor slot consumed on accept', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      actor.send({
+        type: Events.Social.ACCEPT_DM,
+        senderId: 'p1',
+        channelId,
+      });
+
+      ctx = actor.getL3Context();
+      expect(ctx.slotsUsedByPlayer['p1']).toBe(1);
+      // Sender's slot was consumed at creation
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
+    });
+
+    it('DECLINE_DM removes from pendingMemberIds and frees sender slot', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
+
+      actor.send({
+        type: Events.Social.DECLINE_DM,
+        senderId: 'p1',
+        channelId,
+      });
+
+      ctx = actor.getL3Context();
+      const ch = ctx.channels[channelId];
+      expect(ch.pendingMemberIds).not.toContain('p1');
+      // Sender's slot freed on decline
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(0);
+      // Decliner did not consume a slot
+      expect(ctx.slotsUsedByPlayer['p1']).toBeUndefined();
+    });
+
+    it('pending member cannot send messages to channel', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      // p1 is in pendingMemberIds, not memberIds — should be rejected
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p1',
+        content: 'I should not be able to send',
+        channelId,
+      });
+
+      ctx = actor.getL3Context();
+      const messages = ctx.chatLog.filter((m: any) => m.channelId === channelId);
+      // Only the original creation message
+      expect(messages).toHaveLength(1);
+      expect(messages[0].senderId).toBe('p0');
+    });
+
+    it('active member can send messages after accept', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      actor.send({
+        type: Events.Social.ACCEPT_DM,
+        senderId: 'p1',
+        channelId,
+      });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p1',
+        content: 'Now I can reply!',
+        channelId,
+      });
+
+      ctx = actor.getL3Context();
+      const messages = ctx.chatLog.filter((m: any) => m.channelId === channelId);
+      expect(messages).toHaveLength(2);
+      expect(messages[1].senderId).toBe('p1');
+      expect(messages[1].content).toBe('Now I can reply!');
+    });
+
+    it('sender can message channel before recipient accepts', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Initial invite',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      // Sender (who is in memberIds) can send more messages
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Follow-up before accept',
+        channelId,
+      });
+
+      ctx = actor.getL3Context();
+      const messages = ctx.chatLog.filter((m: any) => m.channelId === channelId);
+      expect(messages).toHaveLength(2);
+    });
+
+    it('creates GROUP_DM when multiple recipients', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Group invite!',
+        recipientIds: ['p1', 'p2'],
+      });
+
+      const ctx = actor.getL3Context();
+      const dmChannels = findDmChannels(ctx);
+      expect(dmChannels).toHaveLength(1);
+
+      const ch = dmChannels[0];
+      expect(ch.type).toBe('GROUP_DM');
+      expect(ch.memberIds).toEqual(['p0']);
+      expect(ch.pendingMemberIds).toEqual(expect.arrayContaining(['p1', 'p2']));
+    });
+
+    it('each recipient can accept independently', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Group invite!',
+        recipientIds: ['p1', 'p2'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      // p1 accepts
+      actor.send({
+        type: Events.Social.ACCEPT_DM,
+        senderId: 'p1',
+        channelId,
+      });
+
+      ctx = actor.getL3Context();
+      expect(ctx.channels[channelId].memberIds).toContain('p1');
+      expect(ctx.channels[channelId].pendingMemberIds).not.toContain('p1');
+      // p2 still pending
+      expect(ctx.channels[channelId].pendingMemberIds).toContain('p2');
+      expect(ctx.channels[channelId].memberIds).not.toContain('p2');
+    });
+
+    it('rejects accept from non-pending member', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      // p2 is NOT in pendingMemberIds — should be rejected
+      actor.send({
+        type: Events.Social.ACCEPT_DM,
+        senderId: 'p2',
+        channelId,
+      });
+
+      ctx = actor.getL3Context();
+      expect(ctx.channels[channelId].memberIds).not.toContain('p2');
+    });
+
+    it('rejects accept for non-existent channel', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      // No crash expected — gracefully rejected
+      actor.send({
+        type: Events.Social.ACCEPT_DM,
+        senderId: 'p1',
+        channelId: 'nonexistent-channel-id',
+      });
+
+      const ctx = actor.getL3Context();
+      // No channels created
+      expect(findDmChannels(ctx)).toHaveLength(0);
+    });
+
+    it('decline for non-existent channel is a no-op', () => {
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.DECLINE_DM,
+        senderId: 'p1',
+        channelId: 'nonexistent-channel-id',
+      });
+
+      const ctx = actor.getL3Context();
+      expect(findDmChannels(ctx)).toHaveLength(0);
+    });
+  });
+
+  describe('ADD_MEMBER', () => {
+    it('channel creator can add new members', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      // Create a channel first
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Starting a chat',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      // Creator (p0) adds p2
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p0',
+        channelId,
+        memberIds: ['p2'],
+      });
+
+      ctx = actor.getL3Context();
+      // In non-invite mode, new members go directly to memberIds
+      expect(ctx.channels[channelId].memberIds).toContain('p2');
+    });
+
+    it('non-creator cannot add members', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Starting a chat',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      // p1 (not creator) tries to add p2
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p1',
+        channelId,
+        memberIds: ['p2'],
+      });
+
+      ctx = actor.getL3Context();
+      expect(ctx.channels[channelId].memberIds).not.toContain('p2');
+    });
+
+    it('in invite mode, new members go to pendingMemberIds', () => {
+      const INVITE_MANIFEST = { ...BASE_DAY, requireDmInvite: true };
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      // Create invite-mode channel
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Starting',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      // p1 accepts so they're a full member
+      actor.send({
+        type: Events.Social.ACCEPT_DM,
+        senderId: 'p1',
+        channelId,
+      });
+
+      // Creator adds p2
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p0',
+        channelId,
+        memberIds: ['p2'],
+      });
+
+      ctx = actor.getL3Context();
+      expect(ctx.channels[channelId].pendingMemberIds).toContain('p2');
+      expect(ctx.channels[channelId].memberIds).not.toContain('p2');
+    });
+
+    it('in non-invite mode, new members go to memberIds', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p0',
+        channelId,
+        memberIds: ['p2'],
+      });
+
+      ctx = actor.getL3Context();
+      expect(ctx.channels[channelId].memberIds).toContain('p2');
+    });
+
+    it('optional message is stored in chatLog', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p0',
+        channelId,
+        memberIds: ['p2'],
+        message: 'Welcome to the chat!',
+      });
+
+      ctx = actor.getL3Context();
+      const messages = ctx.chatLog.filter((m: any) => m.channelId === channelId);
+      // Original message + add-member message
+      expect(messages).toHaveLength(2);
+      expect(messages[1].content).toBe('Welcome to the chat!');
+      expect(messages[1].senderId).toBe('p0');
+    });
+
+    it('cannot add already-present member', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      // p1 is already a member (non-invite mode) — adding again should be rejected
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p0',
+        channelId,
+        memberIds: ['p1'],
+      });
+
+      ctx = actor.getL3Context();
+      // p1 should appear only once
+      const p1Count = ctx.channels[channelId].memberIds.filter((id: string) => id === 'p1').length;
+      expect(p1Count).toBe(1);
+    });
+
+    it('cannot add eliminated player', () => {
+      const roster = makeRoster(4);
+      roster['p2'] = { ...roster['p2'], status: 'ELIMINATED' };
+      const actor = createL3Actor(4, { roster });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p0',
+        channelId,
+        memberIds: ['p2'],
+      });
+
+      ctx = actor.getL3Context();
+      expect(ctx.channels[channelId].memberIds).not.toContain('p2');
+    });
+  });
+
+  describe('slot tracking', () => {
+    it('sender slot incremented on new channel creation', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Chat 1',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Chat 2',
+        recipientIds: ['p2'],
+      });
+
+      ctx = actor.getL3Context();
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(2);
+    });
+
+    it('acceptor slot incremented on accept (invite mode)', () => {
+      const INVITE_MANIFEST = { ...BASE_DAY, requireDmInvite: true };
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+
+      actor.send({
+        type: Events.Social.ACCEPT_DM,
+        senderId: 'p1',
+        channelId,
+      });
+
+      ctx = actor.getL3Context();
+      expect(ctx.slotsUsedByPlayer['p1']).toBe(1);
+    });
+
+    it('sender slot decremented on decline (invite mode)', () => {
+      const INVITE_MANIFEST = { ...BASE_DAY, requireDmInvite: true };
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello!',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
+
+      actor.send({
+        type: Events.Social.DECLINE_DM,
+        senderId: 'p1',
+        channelId,
+      });
+
+      ctx = actor.getL3Context();
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(0);
+    });
+
+    it('slot limit enforced on channel creation', () => {
+      const CUSTOM_MANIFEST = { ...BASE_DAY, dmSlotsPerPlayer: 2 };
+      const actor = createL3Actor(6, { manifest: CUSTOM_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      // Create 2 channels (at limit)
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Chat 1',
+        recipientIds: ['p1'],
+      });
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Chat 2',
+        recipientIds: ['p2'],
+      });
+
+      let ctx = actor.getL3Context();
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(2);
+      expect(findDmChannels(ctx)).toHaveLength(2);
+
+      // 3rd should be rejected
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Chat 3',
+        recipientIds: ['p3'],
+      });
+
+      ctx = actor.getL3Context();
+      expect(findDmChannels(ctx)).toHaveLength(2);
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(2);
+    });
+
+    it('slot limit enforced on accept (invite mode)', () => {
+      const INVITE_MANIFEST = { ...BASE_DAY, requireDmInvite: true, dmSlotsPerPlayer: 2 };
+      const actor = createL3Actor(8, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      // Fill up 2 slots for p1 by accepting 2 invites
+      for (let i = 2; i <= 3; i++) {
         actor.send({
-          type: Events.Social.ACCEPT_DM,
-          senderId: 'p1',
-          channelId: inv.channelId,
+          type: Events.Social.SEND_MSG,
+          senderId: `p${i}`,
+          content: `Invite from p${i}`,
+          recipientIds: ['p1'],
         });
+
+        let ctx = actor.getL3Context();
+        const ch = findDmChannels(ctx).find((ch: any) =>
+          ch.createdBy === `p${i}` && (ch.pendingMemberIds || []).includes('p1')
+        );
+        if (ch) {
+          actor.send({
+            type: Events.Social.ACCEPT_DM,
+            senderId: 'p1',
+            channelId: ch.id,
+          });
+        }
       }
-    }
 
-    // Now p0 invites p1 — p1 is at limit
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
+      let ctx = actor.getL3Context();
+      expect(ctx.slotsUsedByPlayer['p1']).toBe(2);
+
+      // Now p0 invites p1 — p1 is at slot limit
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hello p1',
+        recipientIds: ['p1'],
+      });
+
+      ctx = actor.getL3Context();
+      const p0Channel = findDmChannels(ctx).find((ch: any) =>
+        ch.createdBy === 'p0' && (ch.pendingMemberIds || []).includes('p1')
+      );
+      expect(p0Channel).toBeDefined();
+
+      // p1 tries to accept — should be rejected (at slot limit)
+      actor.send({
+        type: Events.Social.ACCEPT_DM,
+        senderId: 'p1',
+        channelId: p0Channel!.id,
+      });
+
+      ctx = actor.getL3Context();
+      // p1 should still be in pendingMemberIds (accept was rejected)
+      expect(ctx.channels[p0Channel!.id].pendingMemberIds).toContain('p1');
+      expect(ctx.channels[p0Channel!.id].memberIds).not.toContain('p1');
+      expect(ctx.slotsUsedByPlayer['p1']).toBe(2);
     });
 
-    let ctx = actor.getL3Context();
-    const invite = ctx.pendingInvites.find((inv: PendingInvite) => inv.senderId === 'p0' && inv.recipientId === 'p1');
-    expect(invite).toBeDefined();
+    it('message on existing channel does not consume additional slots', () => {
+      const actor = createL3Actor();
+      actor.send({ type: Events.Internal.OPEN_DMS });
 
-    // p1 tries to accept — should be rejected (at slot limit)
-    actor.send({
-      type: Events.Social.ACCEPT_DM,
-      senderId: 'p1',
-      channelId: invite!.channelId,
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Create channel',
+        recipientIds: ['p1'],
+      });
+
+      let ctx = actor.getL3Context();
+      const channelId = findDmChannels(ctx)[0].id;
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
+
+      // Send more messages on same channel — no additional slot
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Follow-up',
+        channelId,
+      });
+
+      ctx = actor.getL3Context();
+      expect(ctx.slotsUsedByPlayer['p0']).toBe(1);
     });
-
-    ctx = actor.getL3Context();
-    // Invite should still be pending (accept was rejected)
-    const stillPending = ctx.pendingInvites.find((inv: PendingInvite) => inv.senderId === 'p0' && inv.recipientId === 'p1');
-    expect(stillPending?.status).toBe('pending');
   });
 
-  it('rejects accept from non-recipient', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
+  describe('context defaults', () => {
+    it('initializes slotsUsedByPlayer as empty object', () => {
+      const ctx = buildL3Context({ dayIndex: 1, roster: makeRoster(4), manifest: BASE_DAY });
+      expect(ctx.slotsUsedByPlayer).toEqual({});
     });
 
-    let ctx = actor.getL3Context();
-    const channelId = ctx.pendingInvites[0].channelId;
-
-    // p2 tries to accept — not a recipient
-    actor.send({
-      type: Events.Social.ACCEPT_DM,
-      senderId: 'p2',
-      channelId,
+    it('defaults dmSlotsPerPlayer to 5', () => {
+      const ctx = buildL3Context({ dayIndex: 1, roster: makeRoster(4), manifest: BASE_DAY });
+      expect(ctx.dmSlotsPerPlayer).toBe(5);
     });
 
-    ctx = actor.getL3Context();
-    // Invite still pending
-    expect(ctx.pendingInvites[0].status).toBe('pending');
-    // p2 not added to channel
-    expect(ctx.channels[channelId].memberIds).not.toContain('p2');
-  });
-
-  it('rejects accept for non-existent channel', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    actor.send({
-      type: Events.Social.ACCEPT_DM,
-      senderId: 'p1',
-      channelId: 'nonexistent-channel-id',
+    it('defaults requireDmInvite to false', () => {
+      const ctx = buildL3Context({ dayIndex: 1, roster: makeRoster(4), manifest: BASE_DAY });
+      expect(ctx.requireDmInvite).toBe(false);
     });
 
-    const ctx = actor.getL3Context();
-    expect(ctx.pendingInvites).toHaveLength(0);
-  });
-});
-
-describe('L3 DM Invitation — DECLINE_DM', () => {
-  it('marks invite as declined', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
+    it('respects requireDmInvite from manifest', () => {
+      const manifest = { ...BASE_DAY, requireDmInvite: true };
+      const ctx = buildL3Context({ dayIndex: 1, roster: makeRoster(4), manifest });
+      expect(ctx.requireDmInvite).toBe(true);
     });
 
-    let ctx = actor.getL3Context();
-    const channelId = ctx.pendingInvites[0].channelId;
-
-    actor.send({
-      type: Events.Social.DECLINE_DM,
-      senderId: 'p1',
-      channelId,
+    it('respects dmSlotsPerPlayer from manifest', () => {
+      const manifest = { ...BASE_DAY, dmSlotsPerPlayer: 3 };
+      const ctx = buildL3Context({ dayIndex: 1, roster: makeRoster(4), manifest });
+      expect(ctx.dmSlotsPerPlayer).toBe(3);
     });
 
-    ctx = actor.getL3Context();
-    const invite = ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p1');
-    expect(invite?.status).toBe('declined');
-    // No slot consumed by declining
-    expect(ctx.slotsUsedByPlayer['p1']).toBeUndefined();
-  });
-
-  it('handles decline for non-matching channel gracefully', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    // Decline with non-matching channel — should be a no-op
-    actor.send({
-      type: Events.Social.DECLINE_DM,
-      senderId: 'p1',
-      channelId: 'nonexistent-channel-id',
+    it('initializes channels with MAIN channel', () => {
+      const ctx = buildL3Context({ dayIndex: 1, roster: makeRoster(4), manifest: BASE_DAY });
+      expect(ctx.channels['MAIN']).toBeDefined();
+      expect(ctx.channels['MAIN'].type).toBe('MAIN');
+      expect(ctx.channels['MAIN'].memberIds).toEqual(['p0', 'p1', 'p2', 'p3']);
     });
 
-    const ctx = actor.getL3Context();
-    expect(ctx.pendingInvites).toHaveLength(0);
-  });
-});
-
-describe('L3 DM Invitation — message on PRIVATE channel', () => {
-  it('allows SEND_MSG on PRIVATE channel after invite accept', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    // Invite + accept
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
-    });
-
-    let ctx = actor.getL3Context();
-    const channelId = ctx.pendingInvites[0].channelId;
-
-    actor.send({
-      type: Events.Social.ACCEPT_DM,
-      senderId: 'p1',
-      channelId,
-    });
-
-    // Now send a message on the PRIVATE channel
-    actor.send({
-      type: Events.Social.SEND_MSG,
-      senderId: 'p0',
-      content: 'hello from invitation',
-      channelId,
-    });
-
-    ctx = actor.getL3Context();
-    const messages = ctx.chatLog.filter((m: any) => m.channelId === channelId);
-    expect(messages).toHaveLength(1);
-    expect(messages[0].content).toBe('hello from invitation');
-  });
-
-  it('rejects SEND_MSG on PRIVATE channel from non-member', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    // Create invite (p0 creates PRIVATE channel, only p0 is a member)
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
-    });
-
-    let ctx = actor.getL3Context();
-    const channelId = ctx.pendingInvites[0].channelId;
-
-    // p2 tries to message the channel (not a member)
-    actor.send({
-      type: Events.Social.SEND_MSG,
-      senderId: 'p2',
-      content: 'intruder',
-      channelId,
-    });
-
-    ctx = actor.getL3Context();
-    const messages = ctx.chatLog.filter((m: any) => m.channelId === channelId);
-    expect(messages).toHaveLength(0);
-  });
-});
-
-describe('L3 DM Invitation — group invite fan-out', () => {
-  it('creates one PendingInvite per recipient', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1', 'p2', 'p3'],
-    });
-
-    const ctx = actor.getL3Context();
-    expect(ctx.pendingInvites).toHaveLength(3);
-
-    // All invites share the same channelId
-    const channelIds = ctx.pendingInvites.map((inv: PendingInvite) => inv.channelId);
-    expect(new Set(channelIds).size).toBe(1);
-
-    // Each recipient has their own invite
-    const recipientIds = ctx.pendingInvites.map((inv: PendingInvite) => inv.recipientId);
-    expect(recipientIds).toEqual(expect.arrayContaining(['p1', 'p2', 'p3']));
-
-    // Channel is PRIVATE with only the sender as member
-    const channelId = channelIds[0];
-    expect(ctx.channels[channelId].type).toBe('PRIVATE');
-    expect(ctx.channels[channelId].memberIds).toEqual(['p0']);
-  });
-
-  it('each recipient can accept independently', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1', 'p2', 'p3'],
-    });
-
-    let ctx = actor.getL3Context();
-    const channelId = ctx.pendingInvites[0].channelId;
-
-    // p1 accepts
-    actor.send({
-      type: Events.Social.ACCEPT_DM,
-      senderId: 'p1',
-      channelId,
-    });
-
-    ctx = actor.getL3Context();
-    // p1 is now a member
-    expect(ctx.channels[channelId].memberIds).toContain('p1');
-    expect(ctx.slotsUsedByPlayer['p1']).toBe(1);
-    // p1's invite is accepted
-    const p1Invite = ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p1');
-    expect(p1Invite?.status).toBe('accepted');
-
-    // p2 has NOT accepted yet — not in members
-    expect(ctx.channels[channelId].memberIds).not.toContain('p2');
-    const p2Invite = ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p2');
-    expect(p2Invite?.status).toBe('pending');
-
-    // p3 declines
-    actor.send({
-      type: Events.Social.DECLINE_DM,
-      senderId: 'p3',
-      channelId,
-    });
-
-    ctx = actor.getL3Context();
-    const p3Invite = ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p3');
-    expect(p3Invite?.status).toBe('declined');
-    // p3 did not consume a slot
-    expect(ctx.slotsUsedByPlayer['p3']).toBeUndefined();
-    // p3 not in channel members
-    expect(ctx.channels[channelId].memberIds).not.toContain('p3');
-  });
-
-  it('sender can message the PRIVATE channel before all accept', () => {
-    const actor = createL3Actor();
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1', 'p2'],
-    });
-
-    let ctx = actor.getL3Context();
-    const channelId = ctx.pendingInvites[0].channelId;
-
-    // Sender is the sole member — send a message immediately
-    actor.send({
-      type: Events.Social.SEND_MSG,
-      senderId: 'p0',
-      content: 'hello before anyone accepts',
-      channelId,
-    });
-
-    ctx = actor.getL3Context();
-    const messages = ctx.chatLog.filter((m: any) => m.channelId === channelId);
-    expect(messages).toHaveLength(1);
-    expect(messages[0].content).toBe('hello before anyone accepts');
-    expect(messages[0].senderId).toBe('p0');
-  });
-});
-
-describe('L3 DM Invitation — configurable slot limit', () => {
-  it('uses dmSlotsPerPlayer from manifest when set', () => {
-    const CUSTOM_MANIFEST = { ...BASE_DAY, dmSlotsPerPlayer: 2 };
-    const actor = createL3Actor(6, { manifest: CUSTOM_MANIFEST });
-    actor.send({ type: Events.Internal.OPEN_DMS });
-
-    // Verify the context picked up the custom limit
-    let ctx = actor.getL3Context();
-    expect(ctx.dmSlotsPerPlayer).toBe(2);
-
-    // Create 2 conversations (at the limit)
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p1'],
-    });
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p2'],
-    });
-
-    ctx = actor.getL3Context();
-    expect(ctx.slotsUsedByPlayer['p0']).toBe(2);
-    expect(ctx.pendingInvites).toHaveLength(2);
-
-    // 3rd conversation should be rejected
-    actor.send({
-      type: Events.Social.INVITE_DM,
-      senderId: 'p0',
-      recipientIds: ['p3'],
-    });
-
-    ctx = actor.getL3Context();
-    // No invite for p3
-    expect(ctx.pendingInvites.find((inv: PendingInvite) => inv.recipientId === 'p3')).toBeUndefined();
-    // Still 2 slots used
-    expect(ctx.slotsUsedByPlayer['p0']).toBe(2);
   });
 });

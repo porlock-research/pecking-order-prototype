@@ -73,49 +73,29 @@ export const selectDmThreads = (state: GameState): DmThread[] => {
 
   // Channel-based: derive threads from DM + GROUP_DM channels
   const dmChannels = Object.values(state.channels).filter(
-    ch => (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.GROUP_DM || ch.type === ChannelTypes.PRIVATE) && ch.memberIds.includes(pid)
+    ch => (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.GROUP_DM) && ch.memberIds.includes(pid)
   );
 
-  if (dmChannels.length > 0) {
-    return dmChannels.map(ch => {
-      const isGroup = ch.type === ChannelTypes.GROUP_DM;
-      const partnerId = isGroup
-        ? ch.id  // For groups, use channelId as the thread key
-        : (ch.memberIds.find(id => id !== pid) || ch.memberIds[0]);
-      const messages = state.chatLog
-        .filter(m => m.channelId === ch.id)
-        .sort((a, b) => a.timestamp - b.timestamp);
-      return {
-        partnerId,
-        channelId: ch.id,
-        messages,
-        lastTimestamp: messages.length > 0 ? messages[messages.length - 1].timestamp : ch.createdAt,
-        isGroup,
-        memberIds: isGroup ? ch.memberIds : undefined,
-      };
-    })
-    // Group threads appear even if empty (just created); 1-to-1 only if messages exist
-    .filter(t => t.isGroup || t.messages.length > 0)
-    .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
-  }
-
-  // Legacy fallback: derive from message channel field
-  const dmMessages = state.chatLog.filter(m => m.channel === 'DM');
-  const threadMap = new Map<string, ChatMessage[]>();
-  for (const msg of dmMessages) {
-    const partnerId = msg.senderId === pid ? msg.targetId! : msg.senderId;
-    const existing = threadMap.get(partnerId) || [];
-    existing.push(msg);
-    threadMap.set(partnerId, existing);
-  }
-  return Array.from(threadMap.entries())
-    .map(([partnerId, messages]) => ({
+  return dmChannels.map(ch => {
+    const isGroup = ch.type === ChannelTypes.GROUP_DM;
+    const partnerId = isGroup
+      ? ch.id  // For groups, use channelId as the thread key
+      : (ch.memberIds.find(id => id !== pid) || ch.memberIds[0]);
+    const messages = state.chatLog
+      .filter(m => m.channelId === ch.id)
+      .sort((a, b) => a.timestamp - b.timestamp);
+    return {
       partnerId,
-      channelId: `dm:${[pid, partnerId].sort().join(':')}`,
-      messages: messages.sort((a, b) => a.timestamp - b.timestamp),
-      lastTimestamp: messages[messages.length - 1].timestamp,
-    }))
-    .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+      channelId: ch.id,
+      messages,
+      lastTimestamp: messages.length > 0 ? messages[messages.length - 1].timestamp : ch.createdAt,
+      isGroup,
+      memberIds: isGroup ? ch.memberIds : undefined,
+    };
+  })
+  // Group threads appear even if empty (just created); 1-to-1 only if messages exist
+  .filter(t => t.isGroup || t.messages.length > 0)
+  .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
 };
 
 export const selectSortedPlayers = (state: GameState): {

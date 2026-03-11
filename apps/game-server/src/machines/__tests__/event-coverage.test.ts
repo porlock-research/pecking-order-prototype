@@ -129,13 +129,13 @@ describe('L2 Orchestrator - Event Coverage', () => {
     expect(events).toContain('ADMIN.INJECT_TIMELINE_EVENT');
   });
 
-  test('SOCIAL.SEND_MSG forwarding in activeSession', () => {
+  test('SOCIAL.SEND_MSG forwarding in activeSession (via wildcard)', () => {
     const activeNodes = findStateNodes(orchestratorMachine, 'activeSession');
     const activeNode = activeNodes.find((n) => n.key === 'activeSession');
     expect(activeNode).toBeDefined();
 
-    const events = getHandledEvents(activeNode!);
-    expect(events).toContain('SOCIAL.SEND_MSG');
+    // SOCIAL.SEND_MSG is handled by the '*' wildcard with a SOCIAL.* prefix guard
+    expect(nodeHandlesEvent(activeNode!, 'SOCIAL.SEND_MSG')).toBe(true);
   });
 
   test('FACT.RECORD is handled in activeSession and nightSummary', () => {

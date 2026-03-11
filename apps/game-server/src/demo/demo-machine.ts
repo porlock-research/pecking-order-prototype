@@ -25,18 +25,13 @@ export interface DemoContext {
 }
 
 type DemoEvent =
-  | { type: 'SOCIAL.SEND_MSG'; senderId: string; content: string; channelId?: string; targetId?: string }
+  | { type: 'SOCIAL.SEND_MSG'; senderId: string; content: string; channelId?: string; targetId?: string; recipientIds?: string[] }
   | { type: 'SOCIAL.CREATE_CHANNEL'; senderId: string; memberIds: string[] }
   | { type: 'SOCIAL.SEND_SILVER'; senderId: string; amount: number; targetId: string };
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-
-function dmChannelId(a: string, b: string): string {
-  const sorted = [a, b].sort();
-  return `dm:${sorted[0]}:${sorted[1]}`;
-}
 
 function makeMessage(senderId: string, content: string, channelId: string): any {
   return {
@@ -61,20 +56,32 @@ export const demoMachine = setup({
   actions: {
     handleSendMsg: assign(({ context, event }) => {
       if (event.type !== 'SOCIAL.SEND_MSG') return {};
-      const channelId = event.channelId || 'MAIN';
       const channels = { ...context.channels };
+      const recipientIds = event.recipientIds || (event.targetId ? [event.targetId] : []);
 
-      // Auto-create DM channel if targeting a player directly
-      if (channelId.startsWith('dm:') && !channels[channelId] && event.targetId) {
-        channels[channelId] = {
-          id: channelId,
-          type: 'DM',
-          memberIds: [event.senderId, event.targetId].sort(),
-          createdBy: event.senderId,
-          createdAt: Date.now(),
-          capabilities: ['CHAT', 'SILVER_TRANSFER'],
-          constraints: { silverCost: 0 }, // free in demo
-        };
+      let channelId = event.channelId || 'MAIN';
+
+      // First-message-creates-channel: if recipientIds present and no channelId, find or create
+      if (!event.channelId && recipientIds.length > 0) {
+        const allMembers = [event.senderId, ...recipientIds].sort();
+        const existing = Object.values(channels).find(
+          ch => ch.type === 'DM' && ch.memberIds.length === allMembers.length &&
+            allMembers.every((id: string) => ch.memberIds.includes(id))
+        );
+        if (existing) {
+          channelId = existing.id;
+        } else {
+          channelId = crypto.randomUUID();
+          channels[channelId] = {
+            id: channelId,
+            type: 'DM',
+            memberIds: allMembers,
+            createdBy: event.senderId,
+            createdAt: Date.now(),
+            capabilities: ['CHAT', 'SILVER_TRANSFER'],
+            constraints: { silverCost: 0 }, // free in demo
+          };
+        }
       }
 
       const channel = channels[channelId];

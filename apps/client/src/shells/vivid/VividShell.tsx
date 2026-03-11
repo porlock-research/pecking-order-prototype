@@ -245,8 +245,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             requireDmInvite={requireDmInvite}
             onStart={(recipientIds) => {
               setShowNewConversation(false);
-              // In unified model, first message IS the invite — just navigate to DM view
-              // TODO(Task 9): sendFirstMessage on first message, not on picker selection
+              // First message IS the invite — just navigate to DM view
               if (recipientIds.length === 1) {
                 setDmTargetPlayerId(recipientIds[0]);
                 setDmChannelId(null);

@@ -1410,17 +1410,19 @@ This document tracks significant architectural decisions, their context, and con
     *   **Design doc**: `docs/plans/2026-03-09-demo-game-rearchitecture-design.md`
     *   **Files**: `apps/game-server/src/demo/` (all demo code), `wrangler.toml` (new DO binding).
 
-## [ADR-096] DM Invite System — Config-Driven Invite Flow + Unified Channel Model
+## [ADR-096] Unified DM Channels — First Message Creates Channel + Invite via pendingMemberIds
 *   **Date:** 2026-03-10
 *   **Status:** Accepted
-*   **Context:** The existing DM system creates channels immediately on first message. For longer games we want an opt-in invite flow where players must accept before a private channel opens, with per-player slot limits to create scarcity and strategic tension.
+*   **Context:** The DM system had two parallel models: immediate channels (non-invite mode) and a `PendingInvite` + `PRIVATE` channel type (invite mode). This created duplicated code paths, a separate `SOCIAL.INVITE_DM` event, deterministic `dm:pX:pY` channel IDs, and complex state management. Needed unification.
 *   **Decision:**
-    1.  **Config flag**: `requireDmInvite` (boolean, default false) on `PeckingOrderSocialRules` and `DailyManifest`. When true, DMs require invite→accept handshake before a channel is created.
-    2.  **Unified channel model**: Added `PRIVATE` to `ChannelType` enum. DM invite flow creates PRIVATE channels (invite-gated) vs legacy DM channels (auto-created).
-    3.  **Per-recipient invites**: Refactored `PendingInvite` from multi-recipient arrays (`recipientIds`, `acceptedBy`, `declinedBy`, `type`) to a per-recipient model (`recipientId`, `status: 'pending' | 'accepted' | 'declined'`). Simpler state transitions, no partial-accept ambiguity.
-    4.  **Slot tracking**: `dmSlotsPerPlayer` (1-20, default 5) caps how many active DM conversations a player can have per day. Enforced server-side at invite creation.
-    5.  **New fact types**: `DM_INVITE_SENT`, `DM_INVITE_ACCEPTED`, `DM_INVITE_DECLINED` added to `FactSchema` and `FactTypes` for journal/ticker pipeline.
+    1.  **Single channel creation path**: First `SOCIAL.SEND_MSG` with `recipientIds` creates a UUID-based DM channel. No separate invite event. In non-invite mode, recipients go to `memberIds` immediately. In invite mode, recipients go to `pendingMemberIds` on the channel — the first message IS the invite.
+    2.  **Removed concepts**: `PRIVATE` channel type, `PendingInvite` interface, `dmChannelId()` deterministic ID function, `SOCIAL.INVITE_DM` event, `pendingInvites` context array, `sendDM()` client method.
+    3.  **Added concepts**: `pendingMemberIds?: string[]` on `Channel`, `SOCIAL.ADD_MEMBER` event (for adding members to existing channels), `sendFirstMessage(recipientIds, content)` client method, `resolveExistingChannel()` helper (searches channels by member set).
+    4.  **Slot tracking**: `slotsUsedByPlayer` tracks per-player conversation count. Enforced server-side at channel creation, not at invite time.
+    5.  **Pending flow**: Pending members see the channel in their conversation list with blurred preview. Accept promotes from `pendingMemberIds` to `memberIds`. Decline removes from `pendingMemberIds` (channel removed if empty).
+    6.  **Channel IDs**: UUID-based (`crypto.randomUUID()`), replacing deterministic `dm:${sorted_ids}` pattern. Existing channels found via `resolveExistingChannel()` member-set search.
 *   **Consequences:**
-    *   `PendingInvite` shape change breaks downstream consumers in `game-server` and `client` — expected, fixed in subsequent tasks.
-    *   Backward compat: `requireDmInvite` defaults to false, so existing games behave identically.
-    *   Social event constants (`INVITE_DM`, `ACCEPT_DM`, `DECLINE_DM`) and client allowlist were already in place.
+    *   Breaking change for any existing game snapshots with `dm:pX:pY` channel IDs or `pendingInvites` data — requires new game.
+    *   `SYNC` payload includes channels where player is in `pendingMemberIds`, so pending invites appear client-side.
+    *   Backward compat: `requireDmInvite` defaults to false, existing non-invite games work identically.
+    *   Simpler codebase: one code path for both modes, no separate invite machinery.
