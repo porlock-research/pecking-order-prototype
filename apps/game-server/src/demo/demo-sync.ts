@@ -13,18 +13,18 @@ export function buildDemoSyncPayload(
   playerId: string,
   onlinePlayers: string[],
 ): any {
-  // Filter chatLog: only messages in channels this player belongs to
+  // Filter chatLog: only messages in channels this player belongs to (or is pending)
   const playerChatLog = context.chatLog.filter((msg: any) => {
     const ch = context.channels[msg.channelId];
     if (!ch) return msg.channelId === 'MAIN';
     if (ch.type === 'MAIN') return true;
-    return ch.memberIds.includes(playerId);
+    return ch.memberIds.includes(playerId) || (ch.pendingMemberIds || []).includes(playerId);
   });
 
-  // Filter channels: only those the player belongs to
+  // Filter channels: only those the player belongs to (or is pending)
   const playerChannels = Object.fromEntries(
     Object.entries(context.channels).filter(([_, ch]: [string, any]) =>
-      ch.type === 'MAIN' || ch.memberIds.includes(playerId)
+      ch.type === 'MAIN' || ch.memberIds.includes(playerId) || (ch.pendingMemberIds || []).includes(playerId)
     )
   );
 

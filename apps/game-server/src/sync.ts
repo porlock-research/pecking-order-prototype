@@ -86,7 +86,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       const ch = channels[msg.channelId];
       if (!ch) return msg.channelId === 'MAIN';
       if (ch.type === 'MAIN') return true;
-      return ch.memberIds.includes(playerId);
+      return ch.memberIds.includes(playerId) || (ch.pendingMemberIds || []).includes(playerId);
     }
     // Legacy path
     return msg.channel === 'MAIN' || (msg.channel === 'DM' && (msg.senderId === playerId || msg.targetId === playerId));
@@ -94,7 +94,9 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
 
   const playerChannels = Object.fromEntries(
     Object.entries(channels).filter(([_, ch]: [string, any]) =>
-      ch.type === 'MAIN' || ch.memberIds.includes(playerId)
+      ch.type === 'MAIN' ||
+      ch.memberIds.includes(playerId) ||
+      (ch.pendingMemberIds || []).includes(playerId)
     )
   );
 
@@ -145,9 +147,6 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       completedPhases: snapshot.context.completedPhases ?? [],
       dmStats,
       playerActivity,
-      pendingInvites: (l3Context.pendingInvites || []).filter((inv: any) =>
-        inv.senderId === playerId || inv.recipientId === playerId
-      ),
       ...(onlinePlayers ? { onlinePlayers } : {}),
     },
   };

@@ -130,8 +130,8 @@ export function buildDemoSeed(gameId: string = 'DEMO', assetsBase?: string): Dem
     { id: crypto.randomUUID(), senderId: 'p0', content: 'The auction was wild. Bella came out of nowhere with that bid.', channelId: 'MAIN', timestamp: now - 360000 },
     { id: crypto.randomUUID(), senderId: 'p1', content: 'Strategy', channelId: 'MAIN', timestamp: now - 300000 },
     // DM between p0 and p1
-    { id: crypto.randomUUID(), senderId: 'p0', content: 'Hey, are we still aligned?', channelId: 'dm:p0:p1', timestamp: now - 240000 },
-    { id: crypto.randomUUID(), senderId: 'p1', content: 'Always. Target is Brenda tonight.', channelId: 'dm:p0:p1', timestamp: now - 180000 },
+    { id: crypto.randomUUID(), senderId: 'p0', content: 'Hey, are we still aligned?', channelId: 'demo-dm-p0-p1', timestamp: now - 240000 },
+    { id: crypto.randomUUID(), senderId: 'p1', content: 'Always. Target is Brenda tonight.', channelId: 'demo-dm-p0-p1', timestamp: now - 180000 },
   ];
 
   // Channels: MAIN + one pre-existing DM
@@ -145,8 +145,8 @@ export function buildDemoSeed(gameId: string = 'DEMO', assetsBase?: string): Dem
       capabilities: ['CHAT'],
       constraints: {},
     },
-    'dm:p0:p1': {
-      id: 'dm:p0:p1',
+    'demo-dm-p0-p1': {
+      id: 'demo-dm-p0-p1',
       type: 'DM',
       memberIds: ['p0', 'p1'],
       createdBy: 'p0',
