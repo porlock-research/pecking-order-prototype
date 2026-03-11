@@ -10,7 +10,7 @@ import { l3VotingActions } from './actions/l3-voting';
 import { l3GameActions } from './actions/l3-games';
 import { l3ActivityActions } from './actions/l3-activity';
 import { l3PerkActions, l3PerkGuards } from './actions/l3-perks';
-import { buildChatMessage, appendToChatLog, resolveChannelId } from './actions/social-helpers';
+import { buildChatMessage, appendToChatLog, resolveExistingChannel } from './actions/social-helpers';
 
 // 1. Define strict types
 export interface DailyContext {
@@ -143,8 +143,8 @@ export const dailySessionMachine = setup({
                     actions: ['processChannelMessage', 'emitChatFact'],
                   },
                   {
-                    guard: ({ event }: any) => {
-                      const chId = resolveChannelId(event);
+                    guard: ({ context, event }: any) => {
+                      const chId = resolveExistingChannel(context.channels, event);
                       return chId !== 'MAIN';
                     },
                     actions: ['rejectChannelMessage'],
@@ -165,9 +165,9 @@ export const dailySessionMachine = setup({
                   { guard: 'isGroupDmCreationAllowed', actions: ['createGroupDmChannel'] },
                   { actions: ['rejectGroupDmCreation'] }
                 ],
-                'SOCIAL.INVITE_DM': [
-                  { guard: 'canInviteDm', actions: ['createPendingInvite', 'recordInviteSentFacts'] },
-                  { actions: ['rejectDmInvite'] }
+                'SOCIAL.ADD_MEMBER': [
+                  { guard: 'canAddMember', actions: ['addMemberToChannel', 'recordAddMemberFact'] },
+                  { actions: ['rejectAddMember'] }
                 ],
                 'SOCIAL.ACCEPT_DM': [
                   { guard: 'canAcceptDm', actions: ['acceptDmInvite', 'recordInviteAcceptedFact'] },
@@ -288,9 +288,17 @@ export const dailySessionMachine = setup({
           actions: enqueueActions(({ context, event, enqueue }: any) => {
             const text = event.payload?.text || event.payload?.msg || 'The Game Master speaks...';
             const targetId = event.payload?.targetId;
-            const channelId = targetId
-              ? `dm:${[GAME_MASTER_ID, targetId].sort().join(':')}`
-              : 'MAIN';
+
+            // For targeted GM messages, find existing GM↔player channel or create one
+            let channelId = 'MAIN';
+            if (targetId) {
+              // Look for existing GM↔player DM channel
+              const existing = Object.values(context.channels).find(
+                (ch: any) => ch.type === 'DM' && ch.memberIds.includes(GAME_MASTER_ID) && ch.memberIds.includes(targetId)
+              ) as Channel | undefined;
+              channelId = existing?.id ?? crypto.randomUUID();
+            }
+
             const msg = buildChatMessage(GAME_MASTER_ID, text, channelId);
 
             // Lazy-create DM channel for GM→player messages so SYNC includes them
