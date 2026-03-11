@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Crown, AddCircle } from '@solar-icons/react';
-import { useGameStore } from '../../../store/useGameStore';
+import { useGameStore, selectMyPendingInvites, selectRequireDmInvite, selectDmSlots } from '../../../store/useGameStore';
 import { ChannelTypes, GAME_MASTER_ID } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
@@ -118,6 +118,9 @@ function ConversationList({
   const { playerId, roster } = useGameStore();
   const chatLog = useGameStore(s => s.chatLog);
   const channels = useGameStore(s => s.channels);
+  const pendingInvites = useGameStore(selectMyPendingInvites);
+  const requireDmInvite = useGameStore(selectRequireDmInvite);
+  const dmSlots = useGameStore(selectDmSlots);
 
   /* -- Game Master DM ------------------------------------------------ */
 
@@ -187,7 +190,8 @@ function ConversationList({
 
   let staggerIndex = 0;
 
-  const isEmpty = !gmDm && groupThreads.length === 0 && dmThreads.length === 0;
+  const receivedPending = pendingInvites.filter(inv => inv.status === 'pending');
+  const isEmpty = !gmDm && groupThreads.length === 0 && dmThreads.length === 0 && receivedPending.length === 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -205,18 +209,35 @@ function ConversationList({
           borderBottom: '2px solid rgba(139, 115, 85, 0.06)',
         }}
       >
-        <span
-          style={{
-            fontFamily: 'var(--vivid-font-display)',
-            fontWeight: 800,
-            fontSize: 22,
-            color: 'var(--vivid-text)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-          }}
-        >
-          Whispers
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              fontFamily: 'var(--vivid-font-display)',
+              fontWeight: 800,
+              fontSize: 22,
+              color: 'var(--vivid-text)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            Whispers
+          </span>
+          {requireDmInvite && (
+            <span
+              style={{
+                fontFamily: 'var(--vivid-font-mono)',
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--vivid-text-dim)',
+                background: 'var(--vivid-bg-elevated)',
+                padding: '2px 10px',
+                borderRadius: 12,
+              }}
+            >
+              {dmSlots.total - dmSlots.used}/{dmSlots.total}
+            </span>
+          )}
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <motion.button
@@ -309,6 +330,32 @@ function ConversationList({
             timestamp={gmDm.lastTimestamp}
           />
         )}
+
+        {/* Received invites — blurred */}
+        {receivedPending.map(invite => {
+          const sender = roster[invite.senderId];
+          const idx = staggerIndex++;
+          return (
+            <ConversationItem
+              key={invite.id}
+              borderColor="rgba(59, 169, 156, 0.6)"
+              onClick={() => onSelectGroup(invite.channelId)}
+              index={idx}
+              avatar={
+                <PersonaAvatar
+                  avatarUrl={sender?.avatarUrl}
+                  personaName={sender?.personaName}
+                  size={40}
+                />
+              }
+              name={sender?.personaName ?? 'Unknown'}
+              nameColor="#3BA99C"
+              lastMessage="Tap to view invite"
+              timestamp={invite.timestamp}
+              blurred
+            />
+          );
+        })}
 
         {/* Group threads */}
         {groupThreads.map(thread => {
@@ -422,6 +469,7 @@ interface ConversationItemProps {
   nameColor: string;
   lastMessage?: string;
   timestamp?: number;
+  blurred?: boolean;
 }
 
 function ConversationItem({
@@ -433,6 +481,7 @@ function ConversationItem({
   nameColor,
   lastMessage,
   timestamp,
+  blurred,
 }: ConversationItemProps) {
   return (
     <motion.button
@@ -484,6 +533,7 @@ function ConversationItem({
               textOverflow: 'ellipsis',
               marginTop: 2,
               lineHeight: 1.3,
+              ...(blurred ? { filter: 'blur(4px)', userSelect: 'none' as const } : {}),
             }}
           >
             {lastMessage}

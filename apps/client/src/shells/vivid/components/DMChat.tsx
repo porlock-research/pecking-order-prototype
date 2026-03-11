@@ -2,9 +2,10 @@ import { useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { AltArrowLeft, Crown } from '@solar-icons/react';
-import { PlayerStatuses, GAME_MASTER_ID } from '@pecking-order/shared-types';
+import { PlayerStatuses, GAME_MASTER_ID, Events } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
-import { useGameStore } from '../../../store/useGameStore';
+import { useGameStore, selectMyPendingInvites, selectDmSlots } from '../../../store/useGameStore';
+import { InviteOverlay } from './InviteOverlay';
 import { usePlayerTimeline } from '../../../hooks/usePlayerTimeline';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { MessageCard } from './MessageCard';
@@ -65,6 +66,8 @@ export function DMChat({
   const dmRejection = useGameStore((s) => s.dmRejection);
   const clearDmRejection = useGameStore((s) => s.clearDmRejection);
   const typingPlayers = useGameStore((s) => s.typingPlayers);
+  const pendingInvites = useGameStore(selectMyPendingInvites);
+  const dmSlots = useGameStore(selectDmSlots);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -87,6 +90,14 @@ export function DMChat({
     () => otherMemberIds.map((id) => roster[id]?.personaName || 'Unknown').join(', '),
     [otherMemberIds, roster],
   );
+
+  /* ---- Derived: pending invite (locked conversation) --------------- */
+  const pendingInvite = useMemo(() => {
+    if (mode !== 'group' || !channelId) return null;
+    return pendingInvites.find(inv => inv.channelId === channelId && inv.status === 'pending') ?? null;
+  }, [pendingInvites, channelId, mode]);
+
+  const isLockedInvite = !!pendingInvite;
 
   /* ---- Derived: DM stats ----------------------------------------- */
   const charsRemaining = dmStats ? Math.max(0, dmStats.charsLimit - dmStats.charsUsed) : 0;
@@ -174,7 +185,7 @@ export function DMChat({
   };
 
   /* ---- Input visibility ------------------------------------------ */
-  const hideInput = isMe || isGameMaster;
+  const hideInput = isMe || isGameMaster || isLockedInvite;
 
   /* ---- Header tap ------------------------------------------------ */
   const handleHeaderTap = () => {
@@ -400,72 +411,104 @@ export function DMChat({
         )}
       </header>
 
-      {/* ---- Messages area ----------------------------------------- */}
-      <div
-        ref={scrollRef}
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: 16,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-        }}
-      >
-        {mode === '1on1' ? (
-          /* ---- 1:1 messages ---- */
-          playerTimelineEntries.length === 0 ? (
-            <EmptyState
-              text={
-                isMe
-                  ? 'Your profile'
-                  : isGameMaster
-                    ? 'No messages from the Game Master yet.'
-                    : 'No whispers exchanged yet. Start scheming?'
-              }
-            />
-          ) : (
-            playerTimelineEntries.map((entry, i) => {
-              switch (entry.kind) {
-                case 'chat':
-                  return (
-                    <MessageCard
-                      key={entry.key}
-                      message={entry.data}
-                      isMe={entry.data.senderId === playerId}
-                      sender={roster[entry.data.senderId]}
-                      showSender={shouldShowSender1on1(i)}
-                      showTimestamp={shouldShowTimestamp1on1(i)}
-                      playerColor={playerColorMap[entry.data.senderId] || '#9B8E7E'}
-                      onTapAvatar={onTapAvatar}
-                    />
-                  );
-                case 'system':
-                  return <BroadcastAlert key={entry.key} message={entry.data} />;
-                default:
-                  return null;
-              }
-            })
-          )
-        ) : (
-          /* ---- Group messages ---- */
-          groupMessages.length === 0 ? (
-            <EmptyState text="No messages yet. Start scheming?" />
-          ) : (
-            groupMessages.map((msg, i) => (
-              <MessageCard
-                key={msg.id}
-                message={msg}
-                isMe={msg.senderId === playerId}
-                sender={roster[msg.senderId]}
-                showSender={shouldShowSenderGroup(i)}
-                showTimestamp={shouldShowTimestampGroup(i)}
-                playerColor={playerColorMap[msg.senderId] || '#9B8E7E'}
-                onTapAvatar={onTapAvatar}
+      {/* ---- Messages area + invite overlay container --------------- */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <div
+          ref={scrollRef}
+          style={{
+            height: '100%',
+            overflowY: 'auto',
+            padding: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            ...(isLockedInvite ? { filter: 'blur(6px)', pointerEvents: 'none' as const } : {}),
+          }}
+        >
+          {mode === '1on1' ? (
+            /* ---- 1:1 messages ---- */
+            playerTimelineEntries.length === 0 ? (
+              <EmptyState
+                text={
+                  isMe
+                    ? 'Your profile'
+                    : isGameMaster
+                      ? 'No messages from the Game Master yet.'
+                      : 'No whispers exchanged yet. Start scheming?'
+                }
               />
-            ))
-          )
-        )}
+            ) : (
+              playerTimelineEntries.map((entry, i) => {
+                switch (entry.kind) {
+                  case 'chat':
+                    return (
+                      <MessageCard
+                        key={entry.key}
+                        message={entry.data}
+                        isMe={entry.data.senderId === playerId}
+                        sender={roster[entry.data.senderId]}
+                        showSender={shouldShowSender1on1(i)}
+                        showTimestamp={shouldShowTimestamp1on1(i)}
+                        playerColor={playerColorMap[entry.data.senderId] || '#9B8E7E'}
+                        onTapAvatar={onTapAvatar}
+                      />
+                    );
+                  case 'system':
+                    return <BroadcastAlert key={entry.key} message={entry.data} />;
+                  default:
+                    return null;
+                }
+              })
+            )
+          ) : (
+            /* ---- Group messages ---- */
+            groupMessages.length === 0 ? (
+              <EmptyState text="No messages yet. Start scheming?" />
+            ) : (
+              groupMessages.map((msg, i) => (
+                <MessageCard
+                  key={msg.id}
+                  message={msg}
+                  isMe={msg.senderId === playerId}
+                  sender={roster[msg.senderId]}
+                  showSender={shouldShowSenderGroup(i)}
+                  showTimestamp={shouldShowTimestampGroup(i)}
+                  playerColor={playerColorMap[msg.senderId] || '#9B8E7E'}
+                  onTapAvatar={onTapAvatar}
+                />
+              ))
+            )
+          )}
+        </div>
+
+        {/* Invite overlay — positioned over messages */}
+        <AnimatePresence>
+          {isLockedInvite && pendingInvite && (
+            <InviteOverlay
+              invite={pendingInvite}
+              roster={roster}
+              slotsRemaining={dmSlots.total - dmSlots.used}
+              slotsTotal={dmSlots.total}
+              onAccept={() => {
+                if (channelId) {
+                  engine.socket.send(JSON.stringify({
+                    type: Events.Social.ACCEPT_DM,
+                    channelId,
+                  }));
+                }
+              }}
+              onDecline={() => {
+                if (channelId) {
+                  engine.socket.send(JSON.stringify({
+                    type: Events.Social.DECLINE_DM,
+                    channelId,
+                  }));
+                }
+                onBack();
+              }}
+            />
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ---- Typing indicator (above input) ----------------------- */}
