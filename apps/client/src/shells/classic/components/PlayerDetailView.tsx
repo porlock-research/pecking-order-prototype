@@ -11,7 +11,7 @@ interface PlayerDetailViewProps {
   targetPlayerId: string;
   onBack: () => void;
   engine: {
-    sendDM: (targetId: string, content: string) => void;
+    sendFirstMessage: (recipientIds: string[], content: string) => void;
     sendSilver: (amount: number, targetId: string) => void;
     sendTyping: (channel?: string) => void;
     stopTyping: (channel?: string) => void;
@@ -100,7 +100,8 @@ export const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || !targetPlayerId) return;
-    engine.sendDM(targetPlayerId, inputValue);
+    // TODO: Use sendToChannel once classic shell tracks channel IDs
+    engine.sendFirstMessage([targetPlayerId], inputValue);
     engine.stopTyping(targetPlayerId);
     setInputValue('');
   };

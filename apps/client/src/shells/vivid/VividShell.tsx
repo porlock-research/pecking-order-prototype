@@ -245,9 +245,9 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             requireDmInvite={requireDmInvite}
             onStart={(recipientIds) => {
               setShowNewConversation(false);
-              if (requireDmInvite) {
-                engine.socket.send(JSON.stringify({ type: Events.Social.INVITE_DM, recipientIds }));
-              } else if (recipientIds.length === 1) {
+              // In unified model, first message IS the invite — just navigate to DM view
+              // TODO(Task 9): sendFirstMessage on first message, not on picker selection
+              if (recipientIds.length === 1) {
                 setDmTargetPlayerId(recipientIds[0]);
                 setDmChannelId(null);
                 setActiveTab('whispers');

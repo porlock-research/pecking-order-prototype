@@ -13,8 +13,7 @@ import { ChatActions } from './ChatActions';
 
 interface ChatInputProps {
   engine: {
-    sendMessage: (content: string, targetId?: string) => void;
-    sendDM: (targetId: string, content: string) => void;
+    sendMessage: (content: string) => void;
     sendToChannel: (channelId: string, content: string) => void;
     sendTyping: (channel?: string) => void;
     stopTyping: (channel?: string) => void;
@@ -189,9 +188,9 @@ export function ChatInput({
         engine.stopTyping('MAIN');
         break;
       case 'dm':
-        if (targetId) {
-          engine.sendDM(targetId, text);
-          engine.stopTyping(targetId);
+        if (channelId) {
+          engine.sendToChannel(channelId, text);
+          engine.stopTyping(channelId);
         }
         break;
       case 'group':

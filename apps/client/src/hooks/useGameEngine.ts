@@ -2,7 +2,7 @@ import { useRef, useCallback } from "react";
 import usePartySocket from "partysocket/react";
 import * as Sentry from "@sentry/react";
 import { useGameStore } from "../store/useGameStore";
-import { dmChannelId, Events } from "@pecking-order/shared-types";
+import { Events } from "@pecking-order/shared-types";
 
 export const useGameEngine = (gameId: string, playerId: string, token?: string | null, party: string = 'game-server') => {
   const sync = useGameStore((s) => s.sync);
@@ -90,23 +90,28 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     },
   });
 
-  const sendMessage = (content: string, targetId?: string) => {
-    const channelId = targetId ? dmChannelId(playerId, targetId) : 'MAIN';
+  const sendMessage = (content: string) => {
     socket.send(JSON.stringify({
       type: Events.Social.SEND_MSG,
       content,
-      channelId,
-      targetId,  // kept for backward compat
+      channelId: 'MAIN',
     }));
   };
 
-  const sendDM = (targetId: string, content: string) => {
-    const channelId = dmChannelId(playerId, targetId);
+  const sendFirstMessage = (recipientIds: string[], content: string) => {
     socket.send(JSON.stringify({
       type: Events.Social.SEND_MSG,
       content,
+      recipientIds,
+    }));
+  };
+
+  const addMember = (channelId: string, memberIds: string[], message?: string) => {
+    socket.send(JSON.stringify({
+      type: Events.Social.ADD_MEMBER,
       channelId,
-      targetId,  // kept for backward compat
+      memberIds,
+      ...(message ? { message } : {}),
     }));
   };
 
@@ -169,7 +174,8 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
   return {
     socket,
     sendMessage,
-    sendDM,
+    sendFirstMessage,
+    addMember,
     sendSilver,
     sendToChannel,
     createGroupDm,

@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
-import { dmChannelId, ChannelTypes } from '@pecking-order/shared-types';
+import { ChannelTypes } from '@pecking-order/shared-types';
 import type { TimelineEntry } from '../types/timeline';
 
 /**
  * Merges DM messages with filtered ticker messages for a specific player pair.
- * - DM messages: from the DM or PRIVATE channel between playerId and targetPlayerId
+ * - DM messages: from DM channels between playerId and targetPlayerId
  * - Ticker messages: where involvedPlayerIds includes targetPlayerId
  *   (bilateral events like silver transfers, or unilateral like elimination)
  */
@@ -20,14 +20,12 @@ export function usePlayerTimeline(targetPlayerId: string): TimelineEntry[] {
 
     const entries: TimelineEntry[] = [];
 
-    // Collect all channel IDs for conversations between me and the target
-    const legacyChannelId = dmChannelId(playerId, targetPlayerId);
-    const channelIds = new Set<string>([legacyChannelId]);
+    // Collect all channel IDs for DM conversations between me and the target
+    const channelIds = new Set<string>();
 
-    // Include PRIVATE channels between the two players (invite-based DMs)
     for (const ch of Object.values(channels)) {
       if (
-        ch.type === ChannelTypes.PRIVATE &&
+        ch.type === ChannelTypes.DM &&
         ch.memberIds.includes(playerId) &&
         ch.memberIds.includes(targetPlayerId)
       ) {
