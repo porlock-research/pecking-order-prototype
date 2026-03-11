@@ -19,8 +19,7 @@ interface WhispersTabProps {
   activeChannelId?: string | null;
   onSelectDm: (playerId: string) => void;
   onSelectGroup: (channelId: string) => void;
-  onNewDm: () => void;
-  onNewGroup: () => void;
+  onNew: () => void;
   onBack: () => void;
   onTapAvatar?: (playerId: string) => void;
 }
@@ -48,8 +47,7 @@ export function WhispersTab({
   activeChannelId,
   onSelectDm,
   onSelectGroup,
-  onNewDm,
-  onNewGroup,
+  onNew,
   onBack,
   onTapAvatar,
 }: WhispersTabProps) {
@@ -90,8 +88,7 @@ export function WhispersTab({
       playerColorMap={playerColorMap}
       onSelectDm={onSelectDm}
       onSelectGroup={onSelectGroup}
-      onNewDm={onNewDm}
-      onNewGroup={onNewGroup}
+      onNew={onNew}
     />
   );
 }
@@ -104,16 +101,14 @@ interface ConversationListProps {
   playerColorMap: Record<string, string>;
   onSelectDm: (playerId: string) => void;
   onSelectGroup: (channelId: string) => void;
-  onNewDm: () => void;
-  onNewGroup: () => void;
+  onNew: () => void;
 }
 
 function ConversationList({
   playerColorMap,
   onSelectDm,
   onSelectGroup,
-  onNewDm,
-  onNewGroup,
+  onNew,
 }: ConversationListProps) {
   const { playerId, roster } = useGameStore();
   const chatLog = useGameStore(s => s.chatLog);
@@ -239,56 +234,30 @@ function ConversationList({
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <motion.button
-            onClick={onNewDm}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '6px 14px',
-              borderRadius: 9999,
-              background: '#3BA99C',
-              border: 'none',
-              color: '#FFFFFF',
-              fontFamily: 'var(--vivid-font-display)',
-              fontWeight: 700,
-              fontSize: 12,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 2px 6px rgba(59, 169, 156, 0.2)',
-            }}
-            whileTap={VIVID_TAP.fab}
-            transition={VIVID_SPRING.bouncy}
-          >
-            <AddCircle size={14} weight="Bold" />
-            DM
-          </motion.button>
-          <motion.button
-            onClick={onNewGroup}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '6px 14px',
-              borderRadius: 9999,
-              background: '#8B6CC1',
-              border: 'none',
-              color: '#FFFFFF',
-              fontFamily: 'var(--vivid-font-display)',
-              fontWeight: 700,
-              fontSize: 12,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              boxShadow: '0 2px 6px rgba(139, 108, 193, 0.2)',
-            }}
-            whileTap={VIVID_TAP.fab}
-            transition={VIVID_SPRING.bouncy}
-          >
-            <AddCircle size={14} weight="Bold" />
-            Group
-          </motion.button>
-        </div>
+        <motion.button
+          onClick={onNew}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '6px 14px',
+            borderRadius: 9999,
+            background: '#3BA99C',
+            border: 'none',
+            color: '#FFFFFF',
+            fontFamily: 'var(--vivid-font-display)',
+            fontWeight: 700,
+            fontSize: 12,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            boxShadow: '0 2px 6px rgba(59, 169, 156, 0.2)',
+          }}
+          whileTap={VIVID_TAP.fab}
+          transition={VIVID_SPRING.bouncy}
+        >
+          <AddCircle size={14} weight="Bold" />
+          New
+        </motion.button>
       </div>
 
       {/* Conversation list */}

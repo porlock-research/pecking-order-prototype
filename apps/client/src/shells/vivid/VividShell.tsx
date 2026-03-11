@@ -4,16 +4,15 @@ import { Toaster } from 'sonner';
 import { useDrag } from '@use-gesture/react';
 import './vivid.css';
 import type { ShellProps } from '../types';
-import { useGameStore } from '../../store/useGameStore';
+import { useGameStore, selectRequireDmInvite } from '../../store/useGameStore';
 import { buildPlayerColorMap } from './colors';
-import { GAME_MASTER_ID } from '@pecking-order/shared-types';
+import { GAME_MASTER_ID, Events } from '@pecking-order/shared-types';
 import { BroadcastBar } from './components/BroadcastBar';
 import { StageChat } from './components/StageChat';
 import { WhispersTab } from './components/WhispersTab';
 import { TabBar, type VividTab } from './components/TabBar';
 import { CastTab } from './components/CastTab';
-import { NewDmPicker } from '../classic/components/NewDmPicker';
-import { NewGroupPicker } from '../classic/components/NewGroupPicker';
+import { NewConversationPicker } from './components/NewConversationPicker';
 import { PwaGate } from '../../components/PwaGate';
 import { PlayerQuickSheet } from './components/PlayerQuickSheet';
 import { PlayerDetail } from './components/PlayerDetail';
@@ -51,11 +50,11 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const [dmChannelId, setDmChannelId] = useState<string | null>(null);
   const [detailPlayerId, setDetailPlayerId] = useState<string | null>(null);
   const [quickSheetPlayerId, setQuickSheetPlayerId] = useState<string | null>(null);
-  const [showNewDm, setShowNewDm] = useState(false);
-  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [showNewConversation, setShowNewConversation] = useState(false);
 
   const roster = useGameStore(s => s.roster);
   const serverState = useGameStore(s => s.serverState);
+  const requireDmInvite = useGameStore(selectRequireDmInvite);
 
   const phaseClass = getPhaseClass(serverState);
 
@@ -181,8 +180,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
                 activeChannelId={dmChannelId}
                 onSelectDm={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); }}
                 onSelectGroup={(chId) => { setDmChannelId(chId); setDmTargetPlayerId(null); }}
-                onNewDm={() => setShowNewDm(true)}
-                onNewGroup={() => setShowNewGroup(true)}
+                onNew={() => setShowNewConversation(true)}
                 onBack={() => { setDmTargetPlayerId(null); setDmChannelId(null); }}
                 onTapAvatar={(pid) => setQuickSheetPlayerId(pid)}
               />
@@ -238,29 +236,29 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       <PhaseTransitionSplash />
       <DramaticReveal />
 
-      {/* New DM picker overlay */}
-      {showNewDm && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}>
-          <NewDmPicker
+      {/* New conversation picker overlay */}
+      <AnimatePresence>
+        {showNewConversation && (
+          <NewConversationPicker
             roster={roster}
             playerId={playerId}
-            onSelect={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setShowNewDm(false); setActiveTab('whispers'); }}
-            onBack={() => setShowNewDm(false)}
+            requireDmInvite={requireDmInvite}
+            onStart={(recipientIds) => {
+              setShowNewConversation(false);
+              if (requireDmInvite) {
+                engine.socket.send(JSON.stringify({ type: Events.Social.INVITE_DM, recipientIds }));
+              } else if (recipientIds.length === 1) {
+                setDmTargetPlayerId(recipientIds[0]);
+                setDmChannelId(null);
+                setActiveTab('whispers');
+              } else {
+                engine.createGroupDm([playerId, ...recipientIds]);
+              }
+            }}
+            onBack={() => setShowNewConversation(false)}
           />
-        </div>
-      )}
-
-      {/* New Group picker overlay */}
-      {showNewGroup && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}>
-          <NewGroupPicker
-            roster={roster}
-            playerId={playerId}
-            onBack={() => setShowNewGroup(false)}
-            engine={engine}
-          />
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* PWA gate */}
       <PwaGate token={token} />
