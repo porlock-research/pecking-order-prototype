@@ -35,6 +35,8 @@ export interface DebugManifestConfig {
   dayCount: number;
   days: DebugDayConfig[];
   pushConfig: Record<string, boolean>;
+  requireDmInvite?: boolean;       // require mutual invite before DM (applies to all days)
+  dmSlotsPerPlayer?: number;       // max DM conversations per player per day (when invite mode on)
 }
 
 export interface ConfigurableEventConfig {
@@ -56,6 +58,8 @@ export interface ConfigurableManifestConfig {
   days: ConfigurableDayConfig[];
   pushConfig: Record<string, boolean>;
   speedRun?: boolean; // All days use startDate (no day offset) — for same-day testing
+  requireDmInvite?: boolean;       // require mutual invite before DM (applies to all days)
+  dmSlotsPerPlayer?: number;       // max DM conversations per player per day (when invite mode on)
 }
 
 export interface Persona {
@@ -1018,6 +1022,7 @@ function buildManifestDays(
         voteType: day.voteType,
         gameType: day.gameType,
         ...(day.gameMode ? { gameMode: day.gameMode } : {}),
+        ...(debugConfig.requireDmInvite ? { requireDmInvite: true, dmSlotsPerPlayer: debugConfig.dmSlotsPerPlayer ?? 5 } : {}),
         timeline,
       };
     });
@@ -1050,6 +1055,7 @@ function buildManifestDays(
         voteType: day.voteType,
         gameType: day.gameType,
         ...(day.gameMode ? { gameMode: day.gameMode } : {}),
+        ...(cfgConfig.requireDmInvite ? { requireDmInvite: true, dmSlotsPerPlayer: cfgConfig.dmSlotsPerPlayer ?? 5 } : {}),
         timeline,
       };
     });

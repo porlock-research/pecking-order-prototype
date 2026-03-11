@@ -14,6 +14,8 @@ export interface DynamicRulesetConfig {
     dmCharsPerPlayer: number;       // chars per active player (total = this × alive)
     dmPartners: number;             // total DM slots (1-on-1 + group DMs combined)
     dmCost: number;
+    requireDmInvite: boolean;       // require mutual invite before DM
+    dmSlotsPerPlayer: number;       // max DM conversations per player per day (when invite mode on)
   };
   // Inactivity
   inactivity: {
@@ -44,6 +46,8 @@ export function createDefaultDynamicConfig(): DynamicRulesetConfig {
       dmCharsPerPlayer: 300,
       dmPartners: 3,
       dmCost: 1,
+      requireDmInvite: false,
+      dmSlotsPerPlayer: 5,
     },
     inactivity: {
       enabled: true,
@@ -523,6 +527,33 @@ export function DynamicRulesetBuilder({
               min={0}
               max={20}
             />
+          </div>
+
+          {/* DM Invite Mode */}
+          <div className="space-y-2 pt-1 border-t border-skin-base/30">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono text-skin-dim/60">Require DM invitations</span>
+              <Toggle checked={config.social.requireDmInvite} onChange={v => updateSocial({ requireDmInvite: v })} size="md" />
+            </div>
+            <p className="text-[8px] font-mono text-skin-dim/30">
+              Players must send and accept mutual invites before DM conversations open
+            </p>
+            {config.social.requireDmInvite && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-skin-dim/50">Conversations per player per day</span>
+                  <NumberStepper
+                    value={config.social.dmSlotsPerPlayer}
+                    onChange={v => updateSocial({ dmSlotsPerPlayer: v })}
+                    min={2}
+                    max={10}
+                  />
+                </div>
+                <p className="text-[8px] font-mono text-skin-dim/30">
+                  Each player can have up to {config.social.dmSlotsPerPlayer} active DM conversations per day
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </Section>

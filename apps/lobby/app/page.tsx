@@ -150,6 +150,8 @@ function createDefaultConfigurableConfig(): ConfigurableManifestConfig {
       DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
       DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
     },
+    requireDmInvite: false,
+    dmSlotsPerPlayer: 5,
   };
 }
 
@@ -416,6 +418,8 @@ export default function LobbyRoot() {
           dmChars: { mode: 'PER_ACTIVE_PLAYER' as const, base: dynamicConfig.social.dmCharsPerPlayer },
           dmPartners: { mode: 'FIXED' as const, base: dynamicConfig.social.dmPartners },
           dmCost: dynamicConfig.social.dmCost,
+          requireDmInvite: dynamicConfig.social.requireDmInvite,
+          dmSlotsPerPlayer: dynamicConfig.social.dmSlotsPerPlayer,
           groupDmEnabled: true,
         },
         inactivity: dynamicConfig.inactivity,
@@ -711,6 +715,59 @@ export default function LobbyRoot() {
                       </div>
                     ))}
                   </div>
+
+                  {/* DM Invite Mode */}
+                  <div className="border border-skin-base rounded-lg bg-skin-input/40 p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-skin-dim/60">Require DM invitations</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={debugConfig.requireDmInvite ?? false}
+                        onClick={() => setDebugConfig(prev => ({ ...prev, requireDmInvite: !prev.requireDmInvite }))}
+                        className={`relative inline-flex shrink-0 w-9 h-5 items-center rounded-full border transition-all duration-200 ${
+                          debugConfig.requireDmInvite
+                            ? 'bg-skin-gold/30 border-skin-gold/50'
+                            : 'bg-skin-input border-skin-base'
+                        }`}
+                      >
+                        <span
+                          className={`w-4 h-4 rounded-full transition-all duration-200 ${
+                            debugConfig.requireDmInvite
+                              ? 'translate-x-4 bg-skin-gold'
+                              : 'translate-x-0.5 bg-skin-dim/40'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-[8px] font-mono text-skin-dim/30">
+                      Players must send and accept mutual invites before DM conversations open
+                    </p>
+                    {debugConfig.requireDmInvite && (
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[10px] font-mono text-skin-dim/50">Conversations per player per day</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDebugConfig(prev => ({ ...prev, dmSlotsPerPlayer: Math.max(2, (prev.dmSlotsPerPlayer ?? 5) - 1) }))}
+                            disabled={(debugConfig.dmSlotsPerPlayer ?? 5) <= 2}
+                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                          >
+                            -
+                          </button>
+                          <span className="font-mono text-sm text-skin-gold w-8 text-center">{debugConfig.dmSlotsPerPlayer ?? 5}</span>
+                          <button
+                            type="button"
+                            onClick={() => setDebugConfig(prev => ({ ...prev, dmSlotsPerPlayer: Math.min(10, (prev.dmSlotsPerPlayer ?? 5) + 1) }))}
+                            disabled={(debugConfig.dmSlotsPerPlayer ?? 5) >= 10}
+                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -862,6 +919,59 @@ export default function LobbyRoot() {
                       </div>
                       );
                     })}
+                  </div>
+
+                  {/* DM Invite Mode */}
+                  <div className="border border-skin-base rounded-lg bg-skin-input/40 p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-skin-dim/60">Require DM invitations</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={configurableConfig.requireDmInvite ?? false}
+                        onClick={() => setConfigurableConfig(prev => ({ ...prev, requireDmInvite: !prev.requireDmInvite }))}
+                        className={`relative inline-flex shrink-0 w-9 h-5 items-center rounded-full border transition-all duration-200 ${
+                          configurableConfig.requireDmInvite
+                            ? 'bg-skin-gold/30 border-skin-gold/50'
+                            : 'bg-skin-input border-skin-base'
+                        }`}
+                      >
+                        <span
+                          className={`w-4 h-4 rounded-full transition-all duration-200 ${
+                            configurableConfig.requireDmInvite
+                              ? 'translate-x-4 bg-skin-gold'
+                              : 'translate-x-0.5 bg-skin-dim/40'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className="text-[8px] font-mono text-skin-dim/30">
+                      Players must send and accept mutual invites before DM conversations open
+                    </p>
+                    {configurableConfig.requireDmInvite && (
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[10px] font-mono text-skin-dim/50">Conversations per player per day</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setConfigurableConfig(prev => ({ ...prev, dmSlotsPerPlayer: Math.max(2, (prev.dmSlotsPerPlayer ?? 5) - 1) }))}
+                            disabled={(configurableConfig.dmSlotsPerPlayer ?? 5) <= 2}
+                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                          >
+                            -
+                          </button>
+                          <span className="font-mono text-sm text-skin-gold w-8 text-center">{configurableConfig.dmSlotsPerPlayer ?? 5}</span>
+                          <button
+                            type="button"
+                            onClick={() => setConfigurableConfig(prev => ({ ...prev, dmSlotsPerPlayer: Math.min(10, (prev.dmSlotsPerPlayer ?? 5) + 1) }))}
+                            disabled={(configurableConfig.dmSlotsPerPlayer ?? 5) >= 10}
+                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
