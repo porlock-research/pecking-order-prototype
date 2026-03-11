@@ -82,11 +82,11 @@ export function buildDemoSeed(gameId: string = 'DEMO', assetsBase?: string): Dem
     gameMode: 'CONFIGURABLE_CYCLE',
     scheduling: 'PRE_SCHEDULED' as const,
     days: [
-      { dayIndex: 1, theme: 'First Impressions', voteType: 'MAJORITY' as VoteType, gameType: 'TRIVIA' as GameType, timeline: [] },
-      { dayIndex: 2, theme: 'Alliances Form', voteType: 'BUBBLE' as VoteType, gameType: 'BLIND_AUCTION' as GameType, timeline: [] },
-      { dayIndex: 3, theme: 'Betrayal', voteType: 'EXECUTIONER' as VoteType, gameType: 'BET_BET_BET' as GameType, timeline: [] },
-      { dayIndex: 4, theme: 'Desperate Moves', voteType: 'PODIUM_SACRIFICE' as VoteType, gameType: 'THE_SPLIT' as GameType, timeline: [] },
-      { dayIndex: 5, theme: 'The Finale', voteType: 'FINALS' as VoteType, gameType: 'KINGS_RANSOM' as GameType, timeline: [] },
+      { dayIndex: 1, theme: 'First Impressions', voteType: 'MAJORITY' as VoteType, gameType: 'TRIVIA' as GameType, timeline: [], requireDmInvite: false, dmSlotsPerPlayer: 5 },
+      { dayIndex: 2, theme: 'Alliances Form', voteType: 'BUBBLE' as VoteType, gameType: 'BLIND_AUCTION' as GameType, timeline: [], requireDmInvite: false, dmSlotsPerPlayer: 5 },
+      { dayIndex: 3, theme: 'Betrayal', voteType: 'EXECUTIONER' as VoteType, gameType: 'BET_BET_BET' as GameType, timeline: [], requireDmInvite: false, dmSlotsPerPlayer: 5 },
+      { dayIndex: 4, theme: 'Desperate Moves', voteType: 'PODIUM_SACRIFICE' as VoteType, gameType: 'THE_SPLIT' as GameType, timeline: [], requireDmInvite: false, dmSlotsPerPlayer: 5 },
+      { dayIndex: 5, theme: 'The Finale', voteType: 'FINALS' as VoteType, gameType: 'KINGS_RANSOM' as GameType, timeline: [], requireDmInvite: false, dmSlotsPerPlayer: 5 },
     ],
     pushConfig: {},
   };

@@ -109,6 +109,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
     partnersLimit: 3 + overrides.extraPartners,
     groupsUsed: ((l3Context.dmGroupsByPlayer || {})[playerId] || []).length,
     groupsLimit: 3,
+    slotsUsed: (l3Context.slotsUsedByPlayer || {})[playerId] || 0,
   };
 
   // Aggregate player activity indicators (visible to all players)

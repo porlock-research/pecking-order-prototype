@@ -55,6 +55,7 @@ export function buildDemoSyncPayload(
         partnersLimit: 999,
         groupsUsed: 0,
         groupsLimit: 999,
+        slotsUsed: 0,
       },
       playerActivity: Object.fromEntries(
         Object.keys(context.roster).map(pid => [pid, {
