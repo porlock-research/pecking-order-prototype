@@ -45,6 +45,11 @@ interface GameState {
   tickerMessages: TickerMessage[];
   debugTicker: string | null;
 
+  // Dashboard
+  dashboardOpen: boolean;
+  dashboardSeenForDay: number | null;
+  welcomeSeen: boolean;
+
   // Actions
   sync: (data: any) => void;
   addChatMessage: (msg: ChatMessage) => void;
@@ -61,6 +66,11 @@ interface GameState {
   setOnlinePlayers: (players: string[]) => void;
   setTyping: (playerId: string, channel: string) => void;
   clearTyping: (playerId: string) => void;
+  openDashboard: () => void;
+  closeDashboard: () => void;
+  toggleDashboard: () => void;
+  markDashboardSeen: (dayIndex: number) => void;
+  markWelcomeSeen: () => void;
 }
 
 // Selectors
@@ -282,6 +292,10 @@ export const selectPlayerActivity = (state: GameState): Record<string, PlayerAct
   return state.playerActivity ?? {};
 };
 
+export const selectShouldAutoOpenDashboard = (state: GameState): boolean => {
+  return state.dayIndex > 0 && state.dashboardSeenForDay !== state.dayIndex;
+};
+
 export const useGameStore = create<GameState>((set) => ({
   gameId: null,
   dayIndex: 0,
@@ -309,6 +323,9 @@ export const useGameStore = create<GameState>((set) => ({
   playerActivity: {},
   tickerMessages: [],
   debugTicker: null,
+  dashboardOpen: false,
+  dashboardSeenForDay: null,
+  welcomeSeen: false,
 
   sync: (data) => set((state) => {
     console.log('[SYNC] Received', {
@@ -386,4 +403,9 @@ export const useGameStore = create<GameState>((set) => ({
     const { [playerId]: _, ...rest } = state.typingPlayers;
     return { typingPlayers: rest };
   }),
+  openDashboard: () => set({ dashboardOpen: true }),
+  closeDashboard: () => set({ dashboardOpen: false }),
+  toggleDashboard: () => set((state) => ({ dashboardOpen: !state.dashboardOpen })),
+  markDashboardSeen: (dayIndex) => set({ dashboardSeenForDay: dayIndex }),
+  markWelcomeSeen: () => set({ welcomeSeen: true }),
 }));
