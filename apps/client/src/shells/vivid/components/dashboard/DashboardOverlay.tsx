@@ -4,9 +4,9 @@ import { useGameStore } from '../../../../store/useGameStore';
 import { DayBriefing } from './DayBriefing';
 import { DayTimeline } from './DayTimeline';
 import { VIVID_SPRING } from '../../springs';
-import { ClockCircle, Letter } from '@solar-icons/react';
+import { Letter } from '@solar-icons/react';
 
-const DISMISS_THRESHOLD = -80; // px upward drag to dismiss
+const DISMISS_THRESHOLD = -80;
 
 export function DashboardOverlay() {
   const dashboardOpen = useGameStore(s => s.dashboardOpen);
@@ -14,7 +14,6 @@ export function DashboardOverlay() {
   const welcomeSeen = useGameStore(s => s.welcomeSeen);
   const markWelcomeSeen = useGameStore(s => s.markWelcomeSeen);
   const dayIndex = useGameStore(s => s.dayIndex);
-  // Derive count directly — avoids new array reference on every render
   const pendingCount = useGameStore(s => {
     const pid = s.playerId;
     if (!pid) return 0;
@@ -45,18 +44,18 @@ export function DashboardOverlay() {
               position: 'fixed',
               inset: 0,
               zIndex: 45,
-              background: 'rgba(0,0,0,0.6)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
+              background: 'rgba(61, 46, 31, 0.55)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.25 }}
             onClick={closeDashboard}
           />
 
-          {/* Overlay panel */}
+          {/* Panel */}
           <motion.div
             key="dashboard-panel"
             style={{
@@ -64,14 +63,14 @@ export function DashboardOverlay() {
               top: 0,
               left: 0,
               right: 0,
-              maxHeight: '85vh',
+              maxHeight: '82vh',
               zIndex: 46,
               display: 'flex',
               flexDirection: 'column',
-              background: 'var(--vivid-bg-base)',
-              borderBottomLeftRadius: 20,
-              borderBottomRightRadius: 20,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+              background: '#FAF3E8',
+              borderBottomLeftRadius: 24,
+              borderBottomRightRadius: 24,
+              boxShadow: '0 12px 48px rgba(61, 46, 31, 0.2), 0 2px 8px rgba(61, 46, 31, 0.08)',
               overflow: 'hidden',
               y: dragY,
             }}
@@ -84,21 +83,23 @@ export function DashboardOverlay() {
             dragElastic={0.3}
             onDragEnd={handleDragEnd}
           >
-            {/* Drag handle */}
+            {/* Safe area + drag handle */}
             <div
               style={{
+                paddingTop: 'env(safe-area-inset-top, 12px)',
                 display: 'flex',
                 justifyContent: 'center',
-                padding: '12px 0 4px',
+                paddingBottom: 4,
                 flexShrink: 0,
               }}
             >
               <div
                 style={{
-                  width: 36,
-                  height: 4,
-                  borderRadius: 2,
-                  background: 'rgba(155,142,126,0.3)',
+                  width: 40,
+                  height: 5,
+                  borderRadius: 3,
+                  background: 'rgba(139, 115, 85, 0.25)',
+                  marginTop: 10,
                 }}
               />
             </div>
@@ -108,67 +109,139 @@ export function DashboardOverlay() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '4px 20px 12px',
-                borderBottom: '1px solid rgba(155,142,126,0.1)',
+                padding: '4px 20px 14px',
                 flexShrink: 0,
               }}
             >
-              <ClockCircle size={18} weight="Bold" color="var(--vivid-phase-accent)" />
-              <span
+              <div
                 style={{
-                  fontFamily: 'var(--vivid-font-display)',
-                  fontSize: 16,
-                  fontWeight: 800,
-                  color: 'var(--vivid-text)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
                   flex: 1,
                 }}
               >
-                Today
-              </span>
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: 'var(--vivid-phase-glow)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: 'var(--vivid-phase-accent)',
+                    }}
+                  />
+                </div>
+                <span
+                  style={{
+                    fontFamily: 'var(--vivid-font-display)',
+                    fontSize: 17,
+                    fontWeight: 800,
+                    color: '#3D2E1F',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  Today's Briefing
+                </span>
+              </div>
+              <button
+                onClick={closeDashboard}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 10,
+                  border: 'none',
+                  background: 'rgba(139, 115, 85, 0.08)',
+                  color: '#9B8E7E',
+                  fontSize: 18,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  lineHeight: 1,
+                }}
+              >
+                &times;
+              </button>
             </div>
+
+            {/* Divider */}
+            <div
+              style={{
+                height: 1,
+                margin: '0 20px',
+                background: 'linear-gradient(90deg, transparent, rgba(139, 115, 85, 0.12), transparent)',
+                flexShrink: 0,
+              }}
+            />
 
             {/* Scrollable content */}
             <div
               ref={scrollRef}
+              className="vivid-hide-scrollbar"
               style={{
                 flex: 1,
                 overflowY: 'auto',
                 overflowX: 'hidden',
                 WebkitOverflowScrolling: 'touch',
+                padding: '0 16px 24px',
               }}
             >
-              {/* Welcome card (first launch) */}
+              {/* Welcome card */}
               {showWelcome && (
                 <motion.div
                   style={{
-                    margin: '16px 16px 0',
-                    padding: 16,
-                    borderRadius: 12,
-                    background: 'rgba(139,108,193,0.08)',
-                    border: '1px solid rgba(139,108,193,0.15)',
+                    marginTop: 16,
+                    padding: '18px 18px 16px',
+                    borderRadius: 16,
+                    background: 'linear-gradient(135deg, rgba(139, 108, 193, 0.06) 0%, rgba(139, 108, 193, 0.12) 100%)',
+                    border: '1px solid rgba(139, 108, 193, 0.14)',
+                    position: 'relative',
+                    overflow: 'hidden',
                   }}
-                  initial={{ opacity: 0, scale: 0.95 }}
+                  initial={{ opacity: 0, scale: 0.96 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={VIVID_SPRING.gentle}
                 >
+                  {/* Decorative corner accent */}
+                  <div style={{
+                    position: 'absolute',
+                    top: -20,
+                    right: -20,
+                    width: 60,
+                    height: 60,
+                    borderRadius: '50%',
+                    background: 'rgba(139, 108, 193, 0.06)',
+                  }} />
                   <h3 style={{
                     fontFamily: 'var(--vivid-font-display)',
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: 800,
-                    color: '#8B6CC1',
+                    color: '#7B5DAF',
                     margin: '0 0 8px',
+                    letterSpacing: '0.01em',
                   }}>
                     Welcome to Pecking Order
                   </h3>
                   <p style={{
                     fontFamily: 'var(--vivid-font-body)',
-                    fontSize: 14,
-                    lineHeight: 1.5,
-                    color: 'var(--vivid-text)',
-                    margin: 0,
+                    fontSize: 13,
+                    lineHeight: 1.55,
+                    color: '#5A4A3A',
+                    margin: '0 0 14px',
                   }}>
                     Survive elimination votes. Earn silver through games and activities.
                     Use DMs to form alliances — but every message costs silver.
@@ -177,16 +250,17 @@ export function DashboardOverlay() {
                   <button
                     onClick={() => markWelcomeSeen()}
                     style={{
-                      marginTop: 12,
-                      padding: '6px 14px',
-                      borderRadius: 9999,
-                      background: 'rgba(139,108,193,0.15)',
-                      border: '1px solid rgba(139,108,193,0.2)',
-                      color: '#8B6CC1',
+                      padding: '7px 18px',
+                      borderRadius: 10,
+                      background: 'rgba(139, 108, 193, 0.14)',
+                      border: '1px solid rgba(139, 108, 193, 0.18)',
+                      color: '#7B5DAF',
                       fontFamily: 'var(--vivid-font-display)',
                       fontSize: 12,
-                      fontWeight: 700,
+                      fontWeight: 800,
                       cursor: 'pointer',
+                      letterSpacing: '0.03em',
+                      textTransform: 'uppercase',
                     }}
                   >
                     Got it
@@ -194,15 +268,15 @@ export function DashboardOverlay() {
                 </motion.div>
               )}
 
-              {/* Pending invites badge */}
+              {/* Pending invites */}
               {pendingCount > 0 && (
                 <motion.div
                   style={{
-                    margin: '12px 16px 0',
-                    padding: '10px 16px',
-                    borderRadius: 12,
-                    background: 'rgba(59,169,156,0.08)',
-                    border: '1px solid rgba(59,169,156,0.15)',
+                    marginTop: 12,
+                    padding: '12px 16px',
+                    borderRadius: 14,
+                    background: 'linear-gradient(135deg, rgba(59, 169, 156, 0.06) 0%, rgba(59, 169, 156, 0.1) 100%)',
+                    border: '1px solid rgba(59, 169, 156, 0.14)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
@@ -211,18 +285,37 @@ export function DashboardOverlay() {
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={VIVID_SPRING.gentle}
-                  onClick={() => {
-                    closeDashboard();
-                  }}
+                  onClick={() => closeDashboard()}
+                  whileTap={{ scale: 0.97 }}
                 >
-                  <Letter size={18} weight="Bold" color="#3BA99C" />
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    background: 'rgba(59, 169, 156, 0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <Letter size={16} weight="Bold" color="#3BA99C" />
+                  </div>
                   <span style={{
                     fontFamily: 'var(--vivid-font-display)',
                     fontSize: 13,
                     fontWeight: 700,
-                    color: '#3BA99C',
+                    color: '#2D8A7F',
+                    flex: 1,
                   }}>
                     {pendingCount} pending invite{pendingCount !== 1 ? 's' : ''}
+                  </span>
+                  <span style={{
+                    fontFamily: 'var(--vivid-font-body)',
+                    fontSize: 12,
+                    color: '#3BA99C',
+                    opacity: 0.7,
+                  }}>
+                    View &rsaquo;
                   </span>
                 </motion.div>
               )}
@@ -230,7 +323,7 @@ export function DashboardOverlay() {
               {/* Day briefing */}
               <DayBriefing />
 
-              {/* Day timeline */}
+              {/* Timeline */}
               <DayTimeline />
             </div>
           </motion.div>

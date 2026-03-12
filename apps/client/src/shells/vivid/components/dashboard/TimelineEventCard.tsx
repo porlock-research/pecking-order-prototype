@@ -5,7 +5,7 @@ import type { DashboardEvent } from './dashboardUtils';
 import { formatEventTime } from './dashboardUtils';
 import { VIVID_SPRING } from '../../springs';
 import {
-  ChatDots, Scale, Gamepad, PlayCircle, ClockCircle, CheckCircle,
+  ChatDots, Scale, Gamepad, PlayCircle, ClockCircle, CheckCircle, AltArrowDown,
 } from '@solar-icons/react';
 
 interface TimelineEventCardProps {
@@ -14,6 +14,7 @@ interface TimelineEventCardProps {
   gameType?: string;
   promptType?: string;
   roster?: Record<string, { personaName: string }>;
+  isLast?: boolean;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -32,116 +33,168 @@ const CATEGORY_ICONS: Record<string, React.FC<any>> = {
   day: ClockCircle,
 };
 
-export function TimelineEventCard({ event, voteType, gameType, promptType, roster }: TimelineEventCardProps) {
+export function TimelineEventCard({ event, voteType, roster, isLast }: TimelineEventCardProps) {
   const [expanded, setExpanded] = useState(false);
   const color = CATEGORY_COLORS[event.category] || '#9B8E7E';
   const Icon = CATEGORY_ICONS[event.category] || ClockCircle;
 
   const explainer = getExplainer(event, voteType);
-  const hasExpandable = !!explainer || event.state === 'completed';
+  const hasExpandable = !!explainer || (event.state === 'completed' && !!event.result);
+
+  const isActive = event.state === 'active';
+  const isCompleted = event.state === 'completed';
+  const isUpcoming = event.state === 'upcoming';
 
   return (
-    <motion.div
-      style={{
-        display: 'flex',
-        gap: 12,
-        padding: '12px 0',
-        minHeight: 44,
-        opacity: event.state === 'upcoming' ? 0.6 : 1,
-      }}
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: event.state === 'upcoming' ? 0.6 : 1, y: 0 }}
-      transition={VIVID_SPRING.gentle}
-    >
-      {/* Time column */}
+    <div style={{ display: 'flex', gap: 0 }}>
+      {/* Left rail: time + dot + line */}
       <div
         style={{
-          width: 52,
+          width: 56,
           flexShrink: 0,
-          fontFamily: 'var(--vivid-font-mono)',
-          fontSize: 12,
-          fontWeight: 600,
-          color: event.state === 'active' ? color : 'var(--vivid-text-dim)',
-          textAlign: 'right',
-          paddingTop: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          paddingTop: 14,
         }}
       >
-        {formatEventTime(event.time)}
+        {/* Time label */}
+        <span
+          style={{
+            fontFamily: 'var(--vivid-font-mono)',
+            fontSize: 10,
+            fontWeight: 600,
+            color: isActive ? color : '#9B8E7E',
+            textAlign: 'center',
+            lineHeight: 1.3,
+            letterSpacing: '0.02em',
+            marginBottom: 8,
+            opacity: isUpcoming ? 0.65 : 1,
+          }}
+        >
+          {formatEventTime(event.time)}
+        </span>
+
+        {/* Dot */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {isActive && (
+            <div style={{
+              position: 'absolute',
+              width: 20,
+              height: 20,
+              borderRadius: '50%',
+              background: `${color}18`,
+              animation: 'vivid-live-pulse 2s ease-in-out infinite',
+            }} />
+          )}
+          <div
+            style={{
+              width: isActive ? 10 : isCompleted ? 10 : 6,
+              height: isActive ? 10 : isCompleted ? 10 : 6,
+              borderRadius: '50%',
+              background: isUpcoming ? 'rgba(155, 142, 126, 0.2)' : color,
+              transition: 'all 0.3s ease',
+              position: 'relative',
+              zIndex: 1,
+            }}
+          />
+        </div>
+
+        {/* Connector line */}
+        {!isLast && (
+          <div
+            style={{
+              flex: 1,
+              width: 1.5,
+              background: isCompleted
+                ? `linear-gradient(to bottom, ${color}40, rgba(155, 142, 126, 0.1))`
+                : 'rgba(155, 142, 126, 0.1)',
+              marginTop: 6,
+              borderRadius: 1,
+              minHeight: 12,
+            }}
+          />
+        )}
       </div>
 
-      {/* Timeline dot + line */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 20, flexShrink: 0 }}>
-        <div
-          style={{
-            width: event.state === 'active' ? 12 : 8,
-            height: event.state === 'active' ? 12 : 8,
-            borderRadius: '50%',
-            background: event.state === 'completed' ? color : event.state === 'active' ? color : 'rgba(155,142,126,0.3)',
-            border: event.state === 'active' ? `2px solid ${color}` : 'none',
-            boxShadow: event.state === 'active' ? `0 0 8px ${color}50` : 'none',
-            transition: 'all 0.3s ease',
-            marginTop: 4,
-          }}
-        />
-        <div
-          style={{
-            flex: 1,
-            width: 1,
-            background: 'rgba(155,142,126,0.15)',
-            marginTop: 4,
-          }}
-        />
-      </div>
-
-      {/* Card content */}
-      <div
+      {/* Card */}
+      <motion.div
         onClick={hasExpandable ? () => setExpanded(!expanded) : undefined}
         style={{
           flex: 1,
+          marginBottom: 8,
+          padding: isActive ? '12px 14px' : hasExpandable ? '10px 14px' : '10px 14px',
+          borderRadius: 14,
           cursor: hasExpandable ? 'pointer' : 'default',
-          background: event.state === 'active'
-            ? `${color}10`
-            : event.state === 'completed'
-              ? 'rgba(155,142,126,0.06)'
+          background: isActive
+            ? `linear-gradient(135deg, ${color}0A 0%, ${color}14 100%)`
+            : isCompleted
+              ? 'rgba(139, 115, 85, 0.04)'
               : 'transparent',
-          borderRadius: 12,
-          padding: hasExpandable ? '10px 12px' : '4px 0',
-          border: event.state === 'active' ? `1px solid ${color}30` : '1px solid transparent',
+          border: isActive
+            ? `1.5px solid ${color}30`
+            : isCompleted
+              ? '1px solid rgba(139, 115, 85, 0.06)'
+              : '1px solid transparent',
+          opacity: isUpcoming ? 0.65 : 1,
+          transition: 'background 0.3s, border 0.3s, opacity 0.3s',
         }}
+        whileTap={hasExpandable ? { scale: 0.98 } : undefined}
       >
         {/* Header row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Icon size={16} weight="Bold" color={color} />
+          <div style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            background: isUpcoming ? 'rgba(155, 142, 126, 0.06)' : `${color}12`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Icon size={15} weight="Bold" color={isUpcoming ? '#9B8E7E' : color} />
+          </div>
           <span
             style={{
               fontFamily: 'var(--vivid-font-display)',
               fontSize: 14,
               fontWeight: 700,
-              color: 'var(--vivid-text)',
+              color: isUpcoming ? '#9B8E7E' : '#3D2E1F',
               flex: 1,
             }}
           >
             {event.label}
           </span>
-          {event.state === 'active' && (
+
+          {/* Status badges */}
+          {isActive && (
             <span
               style={{
                 fontFamily: 'var(--vivid-font-display)',
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: 800,
                 color: color,
                 textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                padding: '2px 8px',
-                borderRadius: 9999,
-                background: `${color}20`,
+                letterSpacing: '0.1em',
+                padding: '3px 8px',
+                borderRadius: 6,
+                background: `${color}18`,
               }}
             >
               LIVE
             </span>
           )}
-          {event.state === 'completed' && (
+          {isCompleted && (
             <CheckCircle size={16} weight="Bold" color={color} />
+          )}
+          {hasExpandable && !isCompleted && !isActive && (
+            <motion.div
+              animate={{ rotate: expanded ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <AltArrowDown size={14} weight="Bold" color="#9B8E7E" />
+            </motion.div>
           )}
         </div>
 
@@ -155,16 +208,20 @@ export function TimelineEventCard({ event, voteType, gameType, promptType, roste
               transition={{ duration: 0.2 }}
               style={{ overflow: 'hidden' }}
             >
-              <div style={{ paddingTop: 8 }}>
+              <div style={{
+                paddingTop: 10,
+                marginTop: 10,
+                borderTop: '1px solid rgba(139, 115, 85, 0.06)',
+              }}>
                 {event.state === 'completed' && event.result ? (
-                  <CompletedContent event={event} roster={roster} />
+                  <CompletedContent event={event} roster={roster} color={color} />
                 ) : explainer ? (
                   <p
                     style={{
                       fontFamily: 'var(--vivid-font-body)',
                       fontSize: 13,
-                      lineHeight: 1.5,
-                      color: 'var(--vivid-text-dim)',
+                      lineHeight: 1.55,
+                      color: '#7A6E60',
                       margin: 0,
                     }}
                   >
@@ -175,12 +232,11 @@ export function TimelineEventCard({ event, voteType, gameType, promptType, roste
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }
 
-/** Get explainer text for an event */
 function getExplainer(event: DashboardEvent, voteType?: string): string | null {
   if (event.category === 'voting' && voteType) {
     const info = VOTE_TYPE_INFO[voteType as keyof typeof VOTE_TYPE_INFO];
@@ -193,8 +249,7 @@ function getExplainer(event: DashboardEvent, voteType?: string): string | null {
   return null;
 }
 
-/** Render completed results inline */
-function CompletedContent({ event, roster }: { event: DashboardEvent; roster?: Record<string, { personaName: string }> }) {
+function CompletedContent({ event, roster, color }: { event: DashboardEvent; roster?: Record<string, { personaName: string }>; color: string }) {
   const result = event.result;
   if (!result) return null;
 
@@ -206,41 +261,82 @@ function CompletedContent({ event, roster }: { event: DashboardEvent; roster?: R
     const winnerId: string | null = result.winnerId ?? null;
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {Object.entries(tally)
           .sort(([, a], [, b]) => b - a)
           .map(([pid, votes]) => (
-            <div key={pid} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div key={pid} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '4px 0',
+            }}>
               <span style={{
-                fontFamily: 'var(--vivid-font-body)', fontSize: 13, color: 'var(--vivid-text)',
-                fontWeight: pid === eliminatedId ? 700 : 400,
+                fontFamily: 'var(--vivid-font-body)',
+                fontSize: 13,
+                color: '#3D2E1F',
+                fontWeight: pid === eliminatedId ? 700 : 500,
                 textDecoration: pid === eliminatedId ? 'line-through' : 'none',
+                flex: 1,
               }}>
                 {getName(pid)}
               </span>
-              <span style={{
-                fontFamily: 'var(--vivid-font-mono)', fontSize: 12, color: '#E89B3A',
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
               }}>
-                {votes} vote{votes !== 1 ? 's' : ''}
-              </span>
+                <div style={{
+                  height: 4,
+                  width: Math.max(8, votes * 20),
+                  maxWidth: 60,
+                  borderRadius: 2,
+                  background: color,
+                  opacity: 0.4,
+                }} />
+                <span style={{
+                  fontFamily: 'var(--vivid-font-mono)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: color,
+                  minWidth: 18,
+                  textAlign: 'right',
+                }}>
+                  {votes}
+                </span>
+              </div>
             </div>
           ))}
         {eliminatedId && (
           <div style={{
-            marginTop: 4, padding: '6px 10px', borderRadius: 8,
-            background: 'rgba(232,97,77,0.1)', border: '1px solid rgba(232,97,77,0.2)',
-            fontFamily: 'var(--vivid-font-display)', fontSize: 12, fontWeight: 700,
-            color: '#E8614D', textTransform: 'uppercase', letterSpacing: '0.04em',
+            marginTop: 4,
+            padding: '8px 12px',
+            borderRadius: 10,
+            background: 'rgba(232, 97, 77, 0.06)',
+            border: '1px solid rgba(232, 97, 77, 0.12)',
+            fontFamily: 'var(--vivid-font-display)',
+            fontSize: 11,
+            fontWeight: 800,
+            color: '#D04A35',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
           }}>
             {getName(eliminatedId)} eliminated
           </div>
         )}
         {winnerId && (
           <div style={{
-            marginTop: 4, padding: '6px 10px', borderRadius: 8,
-            background: 'rgba(255,217,61,0.1)', border: '1px solid rgba(255,217,61,0.3)',
-            fontFamily: 'var(--vivid-font-display)', fontSize: 12, fontWeight: 700,
-            color: '#D4960A', textTransform: 'uppercase', letterSpacing: '0.04em',
+            marginTop: 4,
+            padding: '8px 12px',
+            borderRadius: 10,
+            background: 'rgba(212, 150, 10, 0.06)',
+            border: '1px solid rgba(212, 150, 10, 0.15)',
+            fontFamily: 'var(--vivid-font-display)',
+            fontSize: 11,
+            fontWeight: 800,
+            color: '#B8840A',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
           }}>
             {getName(winnerId)} wins!
           </div>
@@ -252,17 +348,28 @@ function CompletedContent({ event, roster }: { event: DashboardEvent; roster?: R
   if (event.category === 'game') {
     const rewards: Record<string, number> = result.silverRewards ?? {};
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {Object.entries(rewards)
           .sort(([, a], [, b]) => b - a)
           .slice(0, 5)
           .map(([pid, amount]) => (
             <div key={pid} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontFamily: 'var(--vivid-font-body)', fontSize: 13, color: 'var(--vivid-text)' }}>
+              <span style={{
+                fontFamily: 'var(--vivid-font-body)',
+                fontSize: 13,
+                color: '#3D2E1F',
+                fontWeight: 500,
+                flex: 1,
+              }}>
                 {getName(pid)}
               </span>
-              <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 12, color: '#D4960A' }}>
-                +{amount} silver
+              <span style={{
+                fontFamily: 'var(--vivid-font-mono)',
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#B8840A',
+              }}>
+                +{amount}
               </span>
             </div>
           ))}
