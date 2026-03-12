@@ -1,7 +1,18 @@
 import { assign, sendParent } from 'xstate';
-import type { DmRejectionReason, Channel } from '@pecking-order/shared-types';
+import type { DmRejectionReason, Channel, ChannelCapability } from '@pecking-order/shared-types';
 import { DM_MAX_CHARS_PER_DAY, DM_MAX_GROUPS_PER_DAY, Config, groupDmChannelId, Events, FactTypes, PlayerStatuses } from '@pecking-order/shared-types';
 import { buildChatMessage, appendToChatLog, deductSilver, transferSilverBetween, resolveExistingChannel } from './social-helpers';
+
+function channelHasCapability(
+  channels: Record<string, Channel>,
+  channelId: string | undefined,
+  capability: ChannelCapability,
+): boolean {
+  if (!channelId) return false;
+  const ch = channels[channelId];
+  if (!ch) return false;
+  return ch.capabilities?.includes(capability) ?? false;
+}
 
 export const l3SocialActions = {
   // Unified message handler — handles existing channels, new channel creation, and legacy targetId
@@ -36,7 +47,7 @@ export const l3SocialActions = {
             pendingMemberIds: recipientIds,
             createdBy: senderId,
             createdAt: Date.now(),
-            capabilities: ['CHAT', 'SILVER_TRANSFER'],
+            capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
           };
         } else {
           channels[channelId] = {
@@ -45,7 +56,7 @@ export const l3SocialActions = {
             memberIds: [senderId, ...recipientIds],
             createdBy: senderId,
             createdAt: Date.now(),
-            capabilities: ['CHAT', 'SILVER_TRANSFER'],
+            capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
           };
         }
         // Sender consumes a slot for new conversation
@@ -232,7 +243,7 @@ export const l3SocialActions = {
         : { memberIds: allMembers }),
       createdBy: senderId,
       createdAt: Date.now(),
-      capabilities: ['CHAT'],
+      capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
     };
 
     const dmGroupsByPlayer = { ...context.dmGroupsByPlayer };
@@ -416,6 +427,7 @@ export const l3SocialGuards = {
     const { senderId, channelId, memberIds: newMemberIds } = event;
     const channel = context.channels[channelId];
     if (!channel) return false;
+    if (!channelHasCapability(context.channels, channelId, 'INVITE_MEMBER')) return false;
     if (channel.createdBy !== senderId) return false;
     if (!context.dmsOpen) return false;
 
@@ -487,6 +499,9 @@ export const l3SocialGuards = {
   isSilverTransferAllowed: ({ context, event }: any) => {
     if (event.type !== Events.Social.SEND_SILVER) return false;
     const { senderId, targetId, amount } = event;
+    // Capability check — if within a channel, require SILVER_TRANSFER
+    const resolvedChannel = resolveExistingChannel(context.channels, event);
+    if (resolvedChannel && !channelHasCapability(context.channels, resolvedChannel, 'SILVER_TRANSFER')) return false;
     if (senderId === targetId) return false;
     if (!amount || amount <= 0) return false;
     if ((context.roster[senderId]?.silver ?? 0) < amount) return false;
@@ -504,6 +519,7 @@ export const l3SocialGuards = {
     if (existingChannelId) {
       const channel = context.channels[existingChannelId];
       if (!channel) return false;
+      if (!channel.capabilities?.includes('CHAT')) return false;
       if (channel.constraints?.exempt) return true;
       if (existingChannelId === 'MAIN') return context.groupChatOpen;
       if (!context.dmsOpen && !channel.constraints?.exempt) return false;

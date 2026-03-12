@@ -449,7 +449,7 @@ export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LI
 export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM']);
 export type ChannelType = z.infer<typeof ChannelTypeSchema>;
 
-export type ChannelCapability = 'CHAT' | 'SILVER_TRANSFER' | 'GAME_ACTIONS';
+export type ChannelCapability = 'CHAT' | 'SILVER_TRANSFER' | 'INVITE_MEMBER' | 'REACTIONS' | 'REPLIES' | 'GAME_ACTIONS';
 
 export interface Channel {
   id: string;
