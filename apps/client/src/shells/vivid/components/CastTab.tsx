@@ -477,10 +477,14 @@ export function CastTab({ playerColorMap, onSelectPlayer, onViewProfile }: CastT
                   )}
                   <span
                     style={{
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: 700,
                       textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
                       color: '#D94073',
+                      background: 'rgba(217, 64, 115, 0.08)',
+                      padding: '2px 6px',
+                      borderRadius: 4,
                       fontFamily: 'var(--vivid-font-display)',
                     }}
                   >

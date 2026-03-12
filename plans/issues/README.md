@@ -6,7 +6,7 @@ Quick reference for all tracked issues. Each category has its own file.
 
 | File | Description | Open Issues |
 |------|-------------|-------------|
-| [client-bugs.md](client-bugs.md) | Client/UI bugs + missing UI features | 8 |
+| [client-bugs.md](client-bugs.md) | Client/UI bugs + missing UI features + Vivid shell audit | 11 |
 | [playtest-feedback.md](playtest-feedback.md) | Playtest 1 feedback + demo UI audit | 16 |
 | [production-infra.md](production-infra.md) | Production hardening & infrastructure | 12 |
 | [admin-tooling.md](admin-tooling.md) | Admin dashboard, lobby tooling, game status | 4 |
@@ -26,13 +26,15 @@ Quick reference for all tracked issues. Each category has its own file.
 | ID | Category | Summary |
 |----|----------|---------|
 | BUG-015 | Architecture | No deploy strategy for live games — code push during active game loses state |
+| BUG-016 | Client UI | Stage "HERE" avatar perpetual animation instability — never settles, blocks interaction |
+| BUG-017 | Client UI | ~~BroadcastBar marquee text clipping~~ ✅ FIXED |
 
 ### HIGH — Must fix before next playtest
 | ID | Category | Summary |
 |----|----------|---------|
-| BUG-014 | Client UI | **Missing UI: DM accept/decline flow** — backend + store ready, zero client UI |
+| BUG-014 | Client UI | ~~**Missing UI: DM accept/decline flow**~~ ✅ FIXED (ADR-096) |
 | PT1-BUG-002 | Client Bug | Message input field disappears intermittently — no repro steps |
-| DEMO-002 | Client UI | Whispers picker: z-index bleed-through (underlying list visible through overlay) |
+| DEMO-002 | Client UI | ~~Whispers picker: z-index bleed-through~~ ✅ FIXED |
 | ADMIN-004 | Admin | Game status not synced between lobby and game server |
 | PROD-030 | Testing | Speed run creates false positives — missed critical bugs before playtest |
 
@@ -41,11 +43,16 @@ Quick reference for all tracked issues. Each category has its own file.
 |----|----------|---------|
 | PT1-BUG-001 | Client Bug | Opening conversation jumps back instead of latest message |
 | DEMO-001 | Client UI | DM character counter shows 999999/999999 (demo seed data) |
-| DEMO-003 | Client UI | Whispers picker: header overlaps with broadcast bar + silver/gold |
-| DEMO-004 | Client UI | New Group: "Create Group" button overlaps tab bar |
+| DEMO-003 | Client UI | ~~Whispers picker: header overlaps with broadcast bar~~ ✅ FIXED |
+| DEMO-004 | Client UI | ~~New Group: "Create Group" button overlaps tab bar~~ ✅ FIXED |
 | BUG-012 | Client Bug | iOS standalone PWA session persistence (largely mitigated) |
-| BUG-015a | Client UI | **Missing UI: voting explainer** in cartridges (constants ready) |
+| BUG-015a | Client UI | ~~**Missing UI: voting explainer**~~ ✅ FIXED (ADR-098) |
 | BUG-015b | Client UI | **Missing UI: economy explainer + transaction log** (selector ready) |
+| BUG-018 | Client UI | ~~"Vivid" debug button visible in production tab bar~~ ✅ FIXED |
+| BUG-019 | Client UI | DramaticReveal doesn't auto-dismiss — blocks interaction indefinitely |
+| BUG-020 | Client UI | Empty Stage chat — no actionable empty state or guidance |
+| BUG-021 | Client UI | Whispers empty state lacks guidance for new players |
+| BUG-022 | Client UI | ~~NewConversationPicker disabled button nearly invisible~~ ✅ FIXED |
 | PT1-UX-004 | UX | Voting interface confusing — `VOTE_TYPE_INFO` exists, needs cartridge integration |
 | PT1-UX-005 | UX | Vote results not visible after voting — needs design (open vs purchasable) |
 | PT1-UX-006 | UX | Mini game results confusing — CelebrationSequence needs clearer breakdown |
@@ -68,12 +75,17 @@ Quick reference for all tracked issues. Each category has its own file.
 ### LOW — Nice to have
 | ID | Category | Summary |
 |----|----------|---------|
-| DEMO-005 | Client UI | Whispers picker: DM/Group buttons bleed through (same root as DEMO-002) |
+| DEMO-005 | Client UI | ~~Whispers picker: DM/Group buttons bleed through~~ ✅ FIXED |
 | DEMO-006 | Client UI | Cast tab: inconsistent card layout for #4 vs podium (#1-3) |
 | BUG-004 | Client UI | Cartridge enter animation missed on late join |
-| BUG-005 | Client UI | Completed phase timeline cards lack visual polish |
+| BUG-005 | Client UI | ~~Completed phase timeline cards lack visual polish~~ ✅ FIXED (ADR-098) |
 | BUG-008 | Client UI | Group chat creation UI needs redesign for non-classic shells |
 | BUG-015c | Client UI | **Missing UI: player activity indicators** (data ready) |
+| BUG-023 | Client UI | ~~Player Detail "More coming soon..." placeholder~~ ✅ FIXED |
+| BUG-024 | Client UI | ~~Cast "ELIMINATED" badge has no visual container~~ ✅ FIXED |
+| BUG-025 | Client UI | ~~No safe area padding on BroadcastBar~~ ✅ FIXED |
+| BUG-026 | Client UI | Dashboard "No events scheduled yet." unclear for ADMIN games |
+| BUG-027 | Client UI | ~~BroadcastBar currency pills have no labels~~ ✅ FIXED |
 | PT1-UX-001 | UX | Gold not communicated alongside silver in mini games |
 | PT1-UX-009 | UX | Player activity/engagement visibility wanted |
 | PROD-003 | Infra | Storage operations volume (6k/24h, no delta) |
@@ -101,3 +113,9 @@ Quick reference for all tracked issues. Each category has its own file.
 **Missing UI for backend features (BUG-014, BUG-015a/b/c)** — Backend + store selectors exist, need client components. Could batch these into a "UI integration" sprint.
 
 **Playtest UX feedback (PT1-UX-004/005/006/007/008/010)** — All need design decisions before implementation. Could batch the design phase.
+
+**BroadcastBar polish (BUG-017/025/027)** — Three issues in the same component: marquee clipping, safe area padding, unlabeled currency pills. Single pass fix.
+
+**Empty states (BUG-020/021/026)** — Stage chat, Whispers, and Dashboard all need contextual empty states. Could batch as a "first-run experience" pass.
+
+**Vivid shell audit (BUG-016 through BUG-027)** — 12 new issues from Playwright audit at 390×844 mobile viewport. 2 critical, 5 medium, 5 low.

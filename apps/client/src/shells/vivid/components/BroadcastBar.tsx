@@ -20,12 +20,8 @@ function getPhaseLabel(serverState: unknown, dayIndex: number): string {
 export function BroadcastBar({ onClick }: { onClick?: () => void }) {
   const dayIndex = useGameStore(s => s.dayIndex);
   const serverState = useGameStore(s => s.serverState);
-  const playerId = useGameStore(s => s.playerId);
-  const roster = useGameStore(s => s.roster);
-  const goldPool = useGameStore(s => s.goldPool);
   const tickerMessages = useGameStore(s => s.tickerMessages);
 
-  const mySilver = playerId ? (roster[playerId]?.silver ?? 0) : 0;
   const phaseLabel = getPhaseLabel(serverState, dayIndex);
 
   // Build ticker items: phase label first, then recent ticker messages
@@ -51,6 +47,7 @@ export function BroadcastBar({ onClick }: { onClick?: () => void }) {
         display: 'flex',
         alignItems: 'center',
         padding: '10px 0',
+        paddingTop: 'max(10px, env(safe-area-inset-top, 10px))',
         paddingLeft: 16,
         background: 'var(--vivid-bg-surface)',
         borderBottom: '2px solid rgba(139, 115, 85, 0.08)',
@@ -66,7 +63,7 @@ export function BroadcastBar({ onClick }: { onClick?: () => void }) {
 
       {/* Scrolling ticker — seamless loop via react-fast-marquee */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
-        <Marquee speed={marqueeSpeed} gradient gradientColor="var(--vivid-bg-surface)" gradientWidth={24}>
+        <Marquee speed={marqueeSpeed} gradient gradientColor="var(--vivid-bg-surface)" gradientWidth={40}>
           {tickerItems.map((item, i) => (
             <span
               key={i}
@@ -87,54 +84,24 @@ export function BroadcastBar({ onClick }: { onClick?: () => void }) {
         </Marquee>
       </div>
 
-      {/* Right: currency */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, paddingRight: 16 }}>
+      {/* Right: dashboard hint */}
+      <div
+        style={{
+          flexShrink: 0,
+          paddingRight: 14,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            background: 'rgba(212, 150, 10, 0.1)',
-            borderRadius: 20,
-            padding: '4px 10px',
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: 'var(--vivid-phase-accent)',
+            opacity: 0.5,
           }}
-        >
-          <div
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              background: '#D4960A',
-              flexShrink: 0,
-            }}
-          />
-          <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 13, fontWeight: 600, color: '#D4960A' }}>
-            {mySilver}
-          </span>
-        </div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            background: 'rgba(139, 108, 193, 0.1)',
-            borderRadius: 20,
-            padding: '4px 10px',
-          }}
-        >
-          <div
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              background: '#8B6CC1',
-              flexShrink: 0,
-            }}
-          />
-          <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 13, fontWeight: 600, color: '#8B6CC1' }}>
-            {goldPool}
-          </span>
-        </div>
+        />
       </div>
     </div>
   );

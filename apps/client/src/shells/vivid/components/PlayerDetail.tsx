@@ -570,19 +570,6 @@ export function PlayerDetail({
           </div>
         )}
 
-        {/* Future features placeholder */}
-        <div
-          style={{
-            marginTop: 32,
-            fontSize: 14,
-            fontWeight: 500,
-            color: 'var(--vivid-text-dim)',
-            textAlign: 'center',
-            fontFamily: 'var(--vivid-font-display)',
-          }}
-        >
-          More coming soon...
-        </div>
       </div>
     </motion.div>
   );

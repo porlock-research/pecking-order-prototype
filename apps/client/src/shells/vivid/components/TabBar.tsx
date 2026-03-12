@@ -1,23 +1,22 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ChatRoundDots, Letter, UsersGroupRounded } from '@solar-icons/react';
+import { ChatRoundDots, UsersGroupRounded } from '@solar-icons/react';
 import { VIVID_TAP, VIVID_SPRING } from '../springs';
 
-export type VividTab = 'stage' | 'whispers' | 'cast';
+export type VividTab = 'chat' | 'people';
 
 interface TabBarProps {
   activeTab: VividTab;
   onTabChange: (tab: VividTab) => void;
-  unreadWhispers?: number;
+  unreadPeople?: number;
 }
 
 const TABS: Array<{ id: VividTab; label: string; Icon: React.ComponentType<any> }> = [
-  { id: 'stage', label: 'Stage', Icon: ChatRoundDots },
-  { id: 'whispers', label: 'Whispers', Icon: Letter },
-  { id: 'cast', label: 'Cast', Icon: UsersGroupRounded },
+  { id: 'chat', label: 'Chat', Icon: ChatRoundDots },
+  { id: 'people', label: 'People', Icon: UsersGroupRounded },
 ];
 
-export function TabBar({ activeTab, onTabChange, unreadWhispers }: TabBarProps) {
+export function TabBar({ activeTab, onTabChange, unreadPeople }: TabBarProps) {
   return (
     <div style={{ flexShrink: 0 }}>
       {/* Phase gradient line */}
@@ -29,7 +28,7 @@ export function TabBar({ activeTab, onTabChange, unreadWhispers }: TabBarProps) 
           display: 'flex',
           justifyContent: 'space-around',
           alignItems: 'center',
-          padding: '6px 16px env(safe-area-inset-bottom, 8px)',
+          padding: '6px 32px env(safe-area-inset-bottom, 8px)',
           background: 'var(--vivid-bg-surface)',
           borderTop: '1px solid rgba(139, 115, 85, 0.06)',
         }}
@@ -45,7 +44,7 @@ export function TabBar({ activeTab, onTabChange, unreadWhispers }: TabBarProps) 
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 3,
-                padding: '6px 24px',
+                padding: '6px 32px',
                 background: isActive ? 'rgba(139, 115, 85, 0.06)' : 'none',
                 borderRadius: 16,
                 border: 'none',
@@ -63,7 +62,7 @@ export function TabBar({ activeTab, onTabChange, unreadWhispers }: TabBarProps) 
                   weight={isActive ? 'BoldDuotone' : 'Linear'}
                   color={isActive ? 'var(--vivid-phase-accent)' : 'var(--vivid-text-dim)'}
                 />
-                {id === 'whispers' && unreadWhispers && unreadWhispers > 0 ? (
+                {id === 'people' && unreadPeople && unreadPeople > 0 ? (
                   <div
                     style={{
                       position: 'absolute',
@@ -83,7 +82,7 @@ export function TabBar({ activeTab, onTabChange, unreadWhispers }: TabBarProps) 
                       padding: '0 4px',
                     }}
                   >
-                    {unreadWhispers}
+                    {unreadPeople}
                   </div>
                 ) : null}
               </div>

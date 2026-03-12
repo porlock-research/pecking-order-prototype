@@ -198,6 +198,7 @@ export function ChatInput({
   const groupChatOpen = useGameStore((s) => s.groupChatOpen);
   const dmsOpen = useGameStore((s) => s.dmsOpen);
   const serverState = useGameStore((s) => s.serverState);
+  const dmStats = useGameStore((s) => s.dmStats);
 
   const channel = getChannel(context, targetId);
   const isDisabled = context === 'main' ? !groupChatOpen : !dmsOpen;
@@ -327,6 +328,43 @@ export function ChatInput({
       }}
     >
       <div style={{ padding: '6px 12px 10px' }}>
+        {/* Silver + char count stats row */}
+        {!isDisabled && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 6px 4px',
+            }}
+          >
+            <span
+              style={{
+                fontFamily: 'var(--vivid-font-mono)',
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#D4960A',
+                opacity: 0.7,
+              }}
+            >
+              {myBalance} silver
+            </span>
+            {context === 'dm' && dmStats && (
+              <span
+                style={{
+                  fontFamily: 'var(--vivid-font-mono)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: 'var(--vivid-text-dim)',
+                  opacity: 0.7,
+                }}
+              >
+                {Math.max(0, (dmStats.charsLimit ?? 0) - (dmStats.charsUsed ?? 0))}/{dmStats.charsLimit ?? 0} chars
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Typing indicator */}
         <AnimatePresence>
           <TypingIndicator

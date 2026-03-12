@@ -9,9 +9,8 @@ import { buildPlayerColorMap } from './colors';
 import { GAME_MASTER_ID, Events } from '@pecking-order/shared-types';
 import { BroadcastBar } from './components/BroadcastBar';
 import { StageChat } from './components/StageChat';
-import { WhispersTab } from './components/WhispersTab';
+import { PeopleTab } from './components/PeopleTab';
 import { TabBar, type VividTab } from './components/TabBar';
-import { CastTab } from './components/CastTab';
 import { NewConversationPicker } from './components/NewConversationPicker';
 import { PwaGate } from '../../components/PwaGate';
 import { PlayerQuickSheet } from './components/PlayerQuickSheet';
@@ -25,7 +24,7 @@ import { VIVID_SPRING } from './springs';
 /*  Tab ordering for swipe gestures                                    */
 /* ------------------------------------------------------------------ */
 
-const TAB_ORDER: VividTab[] = ['stage', 'whispers', 'cast'];
+const TAB_ORDER: VividTab[] = ['chat', 'people'];
 
 /* ------------------------------------------------------------------ */
 /*  Phase class resolver                                               */
@@ -46,7 +45,7 @@ function getPhaseClass(serverState: unknown): string {
 /* ------------------------------------------------------------------ */
 
 function VividShell({ playerId, engine, token }: ShellProps) {
-  const [activeTab, setActiveTab] = useState<VividTab>('stage');
+  const [activeTab, setActiveTab] = useState<VividTab>('chat');
   const [dmTargetPlayerId, setDmTargetPlayerId] = useState<string | null>(null);
   const [dmChannelId, setDmChannelId] = useState<string | null>(null);
   const [detailPlayerId, setDetailPlayerId] = useState<string | null>(null);
@@ -70,13 +69,13 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const handleOpenDm = useCallback((targetId: string, channelId?: string) => {
     setDmTargetPlayerId(targetId);
     setDmChannelId(channelId ?? null);
-    setActiveTab('whispers');
+    setActiveTab('people');
   }, []);
 
   const handleOpenGroupDm = useCallback((channelId: string) => {
     setDmChannelId(channelId);
     setDmTargetPlayerId(null);
-    setActiveTab('whispers');
+    setActiveTab('people');
   }, []);
 
   const handleOpenPlayerDetail = useCallback((pid: string) => {
@@ -89,6 +88,11 @@ function VividShell({ playerId, engine, token }: ShellProps) {
 
   const handleTabChange = useCallback((tab: VividTab) => {
     setActiveTab(tab);
+    // Clear DM selection when switching away from People
+    if (tab !== 'people') {
+      setDmTargetPlayerId(null);
+      setDmChannelId(null);
+    }
   }, []);
 
   /* ---- Swipe gesture for tab switching ---- */
@@ -103,11 +107,11 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       const currentIndex = TAB_ORDER.indexOf(activeTab);
       if (dx < 0 && currentIndex < TAB_ORDER.length - 1) {
         // Swipe left -> next tab
-        setActiveTab(TAB_ORDER[currentIndex + 1]);
+        handleTabChange(TAB_ORDER[currentIndex + 1]);
         cancel();
       } else if (dx > 0 && currentIndex > 0) {
         // Swipe right -> previous tab
-        setActiveTab(TAB_ORDER[currentIndex - 1]);
+        handleTabChange(TAB_ORDER[currentIndex - 1]);
         cancel();
       }
     },
@@ -149,9 +153,9 @@ function VividShell({ playerId, engine, token }: ShellProps) {
         }}
       >
         <AnimatePresence mode="wait">
-          {activeTab === 'stage' && (
+          {activeTab === 'chat' && (
             <motion.div
-              key="stage"
+              key="chat"
               style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -166,42 +170,26 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             </motion.div>
           )}
 
-          {activeTab === 'whispers' && (
+          {activeTab === 'people' && (
             <motion.div
-              key="whispers"
+              key="people"
               style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={VIVID_SPRING.gentle}
             >
-              <WhispersTab
+              <PeopleTab
                 engine={engine}
                 playerColorMap={playerColorMap}
                 activeDmPlayerId={dmTargetPlayerId}
                 activeChannelId={dmChannelId}
-                onSelectDm={(pid, chId) => { setDmTargetPlayerId(pid); setDmChannelId(chId ?? null); }}
+                onSelectPlayer={(pid, chId) => { setDmTargetPlayerId(pid); setDmChannelId(chId ?? null); }}
                 onSelectGroup={(chId) => { setDmChannelId(chId); setDmTargetPlayerId(null); }}
-                onNew={() => setShowNewConversation(true)}
                 onBack={() => { setDmTargetPlayerId(null); setDmChannelId(null); }}
                 onTapAvatar={(pid) => setQuickSheetPlayerId(pid)}
-              />
-            </motion.div>
-          )}
-
-          {activeTab === 'cast' && (
-            <motion.div
-              key="cast"
-              style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={VIVID_SPRING.gentle}
-            >
-              <CastTab
-                playerColorMap={playerColorMap}
-                onSelectPlayer={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setActiveTab('whispers'); }}
                 onViewProfile={(pid) => setDetailPlayerId(pid)}
+                onNewGroup={() => setShowNewConversation(true)}
               />
             </motion.div>
           )}
@@ -218,7 +206,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       <PlayerQuickSheet
         targetPlayerId={quickSheetPlayerId}
         onClose={() => setQuickSheetPlayerId(null)}
-        onWhisper={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setActiveTab('whispers'); }}
+        onWhisper={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setActiveTab('people'); }}
         onViewProfile={(pid) => { setDetailPlayerId(pid); setQuickSheetPlayerId(null); }}
         engine={engine}
         playerColorMap={playerColorMap}
@@ -232,7 +220,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             playerColor={playerColorMap[detailPlayerId] || '#8B8DB3'}
             engine={engine}
             onBack={() => setDetailPlayerId(null)}
-            onWhisper={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setActiveTab('whispers'); setDetailPlayerId(null); }}
+            onWhisper={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setActiveTab('people'); setDetailPlayerId(null); }}
           />
         )}
       </AnimatePresence>
@@ -241,7 +229,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       <PhaseTransitionSplash />
       <DramaticReveal />
 
-      {/* New conversation picker overlay */}
+      {/* New conversation picker overlay (group DMs) */}
       <AnimatePresence>
         {showNewConversation && (
           <NewConversationPicker
@@ -250,11 +238,10 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             requireDmInvite={requireDmInvite}
             onStart={(recipientIds) => {
               setShowNewConversation(false);
-              // First message IS the invite — just navigate to DM view
               if (recipientIds.length === 1) {
                 setDmTargetPlayerId(recipientIds[0]);
                 setDmChannelId(null);
-                setActiveTab('whispers');
+                setActiveTab('people');
               } else {
                 engine.createGroupDm(recipientIds);
               }

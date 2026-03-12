@@ -15,6 +15,8 @@ export function ShellPicker() {
     window.location.reload();
   };
 
+  if (!import.meta.env.DEV) return null;
+
   return (
     <button
       onClick={handleCycle}
