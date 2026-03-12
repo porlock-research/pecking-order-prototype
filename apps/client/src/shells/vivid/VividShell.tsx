@@ -18,6 +18,7 @@ import { PlayerQuickSheet } from './components/PlayerQuickSheet';
 import { PlayerDetail } from './components/PlayerDetail';
 import { PhaseTransitionSplash } from './components/PhaseTransitionSplash';
 import { DramaticReveal } from './components/DramaticReveal';
+import { DashboardOverlay } from './components/dashboard/DashboardOverlay';
 import { VIVID_SPRING } from './springs';
 
 /* ------------------------------------------------------------------ */
@@ -55,6 +56,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const roster = useGameStore(s => s.roster);
   const serverState = useGameStore(s => s.serverState);
   const requireDmInvite = useGameStore(selectRequireDmInvite);
+  const toggleDashboard = useGameStore(s => s.toggleDashboard);
 
   const phaseClass = getPhaseClass(serverState);
 
@@ -131,7 +133,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       }}
     >
       {/* Broadcast bar — top */}
-      <BroadcastBar />
+      <BroadcastBar onClick={toggleDashboard} />
 
       {/* Main content — tab panels with swipe */}
       <main
@@ -208,6 +210,9 @@ function VividShell({ playerId, engine, token }: ShellProps) {
 
       {/* Tab bar — bottom */}
       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
+
+      {/* Dashboard overlay */}
+      <DashboardOverlay />
 
       {/* Player quick sheet (avatar tap) */}
       <PlayerQuickSheet

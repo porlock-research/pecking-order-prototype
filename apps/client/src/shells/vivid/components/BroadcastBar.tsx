@@ -17,7 +17,7 @@ function getPhaseLabel(serverState: unknown, dayIndex: number): string {
   return `${day} — LIVE`;
 }
 
-export function BroadcastBar() {
+export function BroadcastBar({ onClick }: { onClick?: () => void }) {
   const dayIndex = useGameStore(s => s.dayIndex);
   const serverState = useGameStore(s => s.serverState);
   const playerId = useGameStore(s => s.playerId);
@@ -46,6 +46,7 @@ export function BroadcastBar() {
 
   return (
     <div
+      onClick={onClick}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -57,6 +58,7 @@ export function BroadcastBar() {
         zIndex: 20,
         overflow: 'hidden',
         gap: 10,
+        cursor: onClick ? 'pointer' : undefined,
       }}
     >
       {/* Left: LIVE dot */}
