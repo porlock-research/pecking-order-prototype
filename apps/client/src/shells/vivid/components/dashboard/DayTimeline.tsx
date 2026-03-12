@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react';
-import { useGameStore, selectDayTimeline } from '../../../../store/useGameStore';
+import { useGameStore } from '../../../../store/useGameStore';
 import { buildDashboardEvents } from './dashboardUtils';
 import { TimelineEventCard } from './TimelineEventCard';
 
 export function DayTimeline() {
-  const timeline = useGameStore(selectDayTimeline);
   const completedCartridges = useGameStore(s => s.completedCartridges);
   const serverState = useGameStore(s => s.serverState);
   const dayIndex = useGameStore(s => s.dayIndex);
@@ -12,6 +11,7 @@ export function DayTimeline() {
   const roster = useGameStore(s => s.roster);
 
   const currentDay = manifest?.days?.[dayIndex - 1];
+  const timeline = currentDay?.timeline ?? [];
   const voteType = currentDay?.voteType;
   const gameType = currentDay?.gameType;
   const promptType = currentDay?.activityType;

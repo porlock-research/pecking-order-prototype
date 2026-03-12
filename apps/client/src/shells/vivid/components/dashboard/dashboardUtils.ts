@@ -57,7 +57,7 @@ interface ManifestEvent {
 interface BuildDashboardEventsInput {
   timeline: ManifestEvent[];
   completedCartridges: CompletedCartridge[];
-  serverState: string | null;
+  serverState: unknown;
   dayIndex: number;
 }
 
@@ -129,10 +129,13 @@ export function buildDashboardEvents(input: BuildDashboardEventsInput): Dashboar
   return events;
 }
 
-/** Infer which phase is active from the server state string */
-function getActivePhase(serverState: string | null): string | null {
+/** Infer which phase is active from the server state value */
+function getActivePhase(serverState: unknown): string | null {
   if (!serverState) return null;
-  const s = serverState.toLowerCase();
+  // XState value can be string or nested object — flatten to string
+  const s = typeof serverState === 'string'
+    ? serverState.toLowerCase()
+    : JSON.stringify(serverState).toLowerCase();
   if (s.includes('voting') || s.includes('nightsummary')) return 'voting';
   if (s.includes('game')) return 'game';
   if (s.includes('prompt') || s.includes('activity')) return 'prompt';

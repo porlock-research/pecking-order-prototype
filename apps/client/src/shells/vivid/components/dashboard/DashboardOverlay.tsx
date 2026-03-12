@@ -1,6 +1,6 @@
 import React, { useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue, type PanInfo } from 'framer-motion';
-import { useGameStore, selectPendingChannels } from '../../../../store/useGameStore';
+import { useGameStore } from '../../../../store/useGameStore';
 import { DayBriefing } from './DayBriefing';
 import { DayTimeline } from './DayTimeline';
 import { VIVID_SPRING } from '../../springs';
@@ -14,7 +14,14 @@ export function DashboardOverlay() {
   const welcomeSeen = useGameStore(s => s.welcomeSeen);
   const markWelcomeSeen = useGameStore(s => s.markWelcomeSeen);
   const dayIndex = useGameStore(s => s.dayIndex);
-  const pendingChannels = useGameStore(selectPendingChannels);
+  // Derive count directly — avoids new array reference on every render
+  const pendingCount = useGameStore(s => {
+    const pid = s.playerId;
+    if (!pid) return 0;
+    return Object.values(s.channels).filter(
+      ch => (ch.pendingMemberIds || []).includes(pid)
+    ).length;
+  });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragY = useMotionValue(0);
@@ -26,7 +33,6 @@ export function DashboardOverlay() {
   }, [closeDashboard]);
 
   const showWelcome = dayIndex <= 1 && !welcomeSeen;
-  const pendingCount = pendingChannels.length;
 
   return (
     <AnimatePresence>
