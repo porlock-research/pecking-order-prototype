@@ -50,11 +50,11 @@ export function buildDemoSyncPayload(
       completedPhases: context.completedPhases,
       dmStats: {
         charsUsed: 0,
-        charsLimit: 999999,
+        charsLimit: 1200,
         partnersUsed: 0,
-        partnersLimit: 999,
+        partnersLimit: 5,
         groupsUsed: 0,
-        groupsLimit: 999,
+        groupsLimit: 3,
         slotsUsed: 0,
       },
       playerActivity: Object.fromEntries(

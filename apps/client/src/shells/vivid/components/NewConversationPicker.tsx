@@ -72,7 +72,7 @@ export function NewConversationPicker({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 50,
+        zIndex: 100,
         background: 'var(--vivid-bg-deep)',
         display: 'flex',
         flexDirection: 'column',

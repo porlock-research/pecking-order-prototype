@@ -69,6 +69,7 @@ export function DMChat({
   const dmSlots = useGameStore(useShallow(selectDmSlots));
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   /* ---- Derived: 1:1 mode ----------------------------------------- */
   const target = targetPlayerId ? roster[targetPlayerId] : null;
@@ -154,8 +155,8 @@ export function DMChat({
     mode === '1on1' ? playerTimelineEntries.length : groupMessages.length;
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'auto' });
     }
   }, [entryCount]);
 
@@ -498,6 +499,7 @@ export function DMChat({
               ))
             )
           )}
+          <div ref={bottomRef} />
         </div>
 
       </div>

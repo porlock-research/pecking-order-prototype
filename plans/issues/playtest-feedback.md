@@ -11,7 +11,7 @@ Feedback from the first live 5-day CONFIGURABLE_CYCLE game (HQEEHE, 5 players).
 **Reporter**: Pierre (p2)
 **Severity**: Medium
 **Description**: When opening a DM or group DM, scroll position lands a few messages back instead of at the most recent message. Expected: conversation opens scrolled to bottom.
-**Status**: Needs investigation — likely scroll-to-bottom timing issue in chat component
+**Status**: ✅ FIXED (`feature/ui-polish`) — replaced synchronous `scrollTop` assignment with `scrollIntoView()` sentinel pattern (matching StageChat)
 
 ### [PT1-BUG-002] Message input field disappears intermittently
 
@@ -93,31 +93,31 @@ Issues found during staging demo review (`staging-play.peckingorder.ca/demo`, Vi
 
 **Severity**: Medium
 **Description**: In a DM conversation, the top-right character counter displays "999999/999999" instead of a reasonable limit. Demo server likely not setting `dmCharsPerPlayer` properly — falls back to a huge default.
-**Status**: Needs fix — demo seed data should set realistic DM character limits
+**Status**: ✅ FIXED (`feature/ui-polish`) — demo dmStats set to realistic values (1200 chars, 5 partners, 3 groups)
 
 ### [DEMO-002] New DM/Group picker: z-index bleed-through
 
 **Severity**: High
 **Description**: When clicking DM or Group buttons from Whispers tab, the player picker overlay doesn't fully cover the underlying conversation list. The Bella Rossi conversation entry is visible as a ghost between player rows in the picker. Background of the overlay is semi-transparent or has no solid backdrop.
-**Status**: Needs fix — player picker panel needs opaque background or higher z-index
+**Status**: ✅ FIXED (`feature/ui-polish`) — bumped NewConversationPicker z-index to 100, fully covers BroadcastBar and TabBar
 
 ### [DEMO-003] New DM/Group picker: header overlaps with broadcast bar
 
 **Severity**: Medium
 **Description**: The "NEW MESSAGE" / "NEW GROUP" header text overlaps with the "DAY 3 — SOCIAL HOUR" broadcast bar. Both are rendered in the same top area without proper stacking. On the New Group screen, "0 selected" counter also overlaps with silver (38) and gold (50) indicators in the top-right, producing garbled text like "0 se●e●50ed".
-**Status**: Needs fix — picker panel should replace or hide the broadcast bar, and counter needs its own layout space
+**Status**: ✅ FIXED (`feature/ui-polish`) — same fix as DEMO-002 (z-index 100 covers broadcast bar entirely)
 
 ### [DEMO-004] New Group: "Create Group" bar overlaps tab bar
 
 **Severity**: Medium
 **Description**: The pink "Create Group (0 members)" button at the bottom of the New Group screen overlaps with the Stage/Whispers/Cast tab bar. Both occupy the same vertical space.
-**Status**: Needs fix — Create Group CTA needs to sit above the tab bar (add bottom padding or position above safe area)
+**Status**: ✅ FIXED (`feature/ui-polish`) — same fix as DEMO-002 (z-index 100 covers tab bar entirely)
 
 ### [DEMO-005] New DM/Group picker: DM/Group buttons bleed through
 
 **Severity**: Low
 **Description**: The green DM and purple Group buttons from the Whispers view are partially visible (semi-transparent) in the top-right corner of the New Message picker overlay.
-**Status**: Needs fix — same root cause as DEMO-002 (overlay doesn't fully cover Whispers view)
+**Status**: ✅ FIXED (`feature/ui-polish`) — same fix as DEMO-002
 
 ### [DEMO-006] Cast tab: inconsistent card layout for player #4
 

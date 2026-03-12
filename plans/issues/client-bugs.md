@@ -54,25 +54,9 @@ The NewGroupPicker is reused from the classic shell and doesn't match the immers
 ## [BUG-014] Missing UI: DM invitation accept/decline flow
 
 **Priority**: High — core social mechanic has no client-side interface
-**Status**: Backend complete, client UI missing
+**Status**: ✅ FIXED (`feature/ui-polish`, ADR-096)
 
-### What exists
-- **Backend**: `INVITE_DM`, `ACCEPT_DM`, `DECLINE_DM` events fully implemented in L3 (`l3-social.ts`) with guards, actions, and comprehensive tests (`l3-dm-invitations.test.ts`)
-- **Store**: `pendingInvites` array in Zustand, `selectMyPendingInvites` and `selectMySentInvites` selectors ready
-- **Rejection handling**: `DMChat.tsx` shows toast for `INVITE_REQUIRED`, `CONVERSATION_LIMIT` reasons
-- **Types**: `PendingInvite` interface in shared-types
-
-### What's missing
-- **No incoming invite notification** — when another player sends you a DM invite, there's no visual indicator (badge, toast, inbox)
-- **No accept/decline UI** — no way to respond to a pending invite
-- **No sent invite status** — no way to see if your DM invite is pending/accepted/declined
-- **No invite flow in NewDmPicker** — currently tapping a player in NewDmPicker triggers `SOCIAL.CREATE_CHANNEL` directly, bypassing the invite system entirely
-
-### Design considerations
-- Whispers tab could show pending invites above conversation list (with accept/decline buttons)
-- Badge on Whispers tab icon when invites are pending
-- Sent invites could show as "pending" conversations in the list
-- Consider whether invite flow is always required or only when DM limits are tight
+Unified DM channel model with `pendingMemberIds` replaces old `PendingInvite` system. First message IS the invite. WhispersTab shows pending conversations with inline accept/decline. DMChat shows InviteInputBar with slot tracking for pending conversations. NewConversationPicker sends invites via the unified flow.
 
 ---
 
