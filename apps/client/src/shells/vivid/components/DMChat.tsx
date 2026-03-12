@@ -199,12 +199,13 @@ export function DMChat({
   const hideInput = isMe || isGameMaster;
 
   /* ---- Channel capabilities for ChatInput ------------------------- */
-  const currentChannel = channelId ? channels[channelId] : undefined;
-  const channelCapabilities = currentChannel?.capabilities;
+  const resolvedChannelId = mode === '1on1' ? (dmChannelId ?? channelId) : channelId;
+  const resolvedChannel = resolvedChannelId ? channels[resolvedChannelId] : undefined;
+  const channelCapabilities = resolvedChannel?.capabilities;
   const channelMemberIds = useMemo(() => [
-    ...(currentChannel?.memberIds ?? []),
-    ...(currentChannel?.pendingMemberIds ?? []),
-  ], [currentChannel?.memberIds, currentChannel?.pendingMemberIds]);
+    ...(resolvedChannel?.memberIds ?? []),
+    ...(resolvedChannel?.pendingMemberIds ?? []),
+  ], [resolvedChannel?.memberIds, resolvedChannel?.pendingMemberIds]);
 
   /* ---- Header tap ------------------------------------------------ */
   const handleHeaderTap = () => {
