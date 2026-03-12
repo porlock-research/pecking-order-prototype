@@ -344,8 +344,6 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                   </div>
                 );
 
-              case 'completed-cartridge':
-                return null;
             }
           })}
 

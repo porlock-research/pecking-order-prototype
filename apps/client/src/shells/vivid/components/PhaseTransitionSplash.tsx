@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGameStore } from '../../../store/useGameStore';
+import { useGameStore, selectShouldAutoOpenDashboard } from '../../../store/useGameStore';
+import { VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { VIVID_SPRING } from '../springs';
 
 function getPhaseDisplayName(serverState: unknown): string | null {
@@ -13,6 +14,33 @@ function getPhaseDisplayName(serverState: unknown): string | null {
   if (s.includes('voting')) return 'VOTING';
   if (s.includes('nightsummary')) return 'ELIMINATION';
   if (s.includes('gamesummary') || s.includes('gameover')) return 'FINALE';
+  return null;
+}
+
+function getPhaseSubtitle(serverState: unknown, manifest: any, dayIndex: number): string | null {
+  if (!serverState || typeof serverState !== 'string') return null;
+  const s = serverState.toLowerCase();
+  const currentDay = manifest?.days?.[dayIndex - 1];
+  const voteType = currentDay?.voteType;
+
+  if (s.includes('morningbriefing') || s.includes('socialperiod')) {
+    if (voteType) {
+      const info = VOTE_TYPE_INFO[voteType as keyof typeof VOTE_TYPE_INFO];
+      if (info) return `Today's vote: ${info.name}`;
+    }
+    return 'A new day begins';
+  }
+  if (s.includes('voting')) {
+    if (voteType) {
+      const info = VOTE_TYPE_INFO[voteType as keyof typeof VOTE_TYPE_INFO];
+      if (info) return info.description;
+    }
+    return 'Choose wisely';
+  }
+  if (s.includes('game')) return 'Time to earn some silver';
+  if (s.includes('prompt') || s.includes('activity')) return 'Show them who you are';
+  if (s.includes('nightsummary')) return 'The votes have been counted';
+  if (s.includes('gamesummary') || s.includes('gameover')) return 'The game is over';
   return null;
 }
 
@@ -30,10 +58,18 @@ function getPhaseBackgroundColor(serverState: unknown): string {
 
 export function PhaseTransitionSplash() {
   const serverState = useGameStore(s => s.serverState);
+  const manifest = useGameStore(s => s.manifest);
+  const dayIndex = useGameStore(s => s.dayIndex);
+  const shouldAutoOpen = useGameStore(selectShouldAutoOpenDashboard);
+  const openDashboard = useGameStore(s => s.openDashboard);
+  const markDashboardSeen = useGameStore(s => s.markDashboardSeen);
+
   const [visible, setVisible] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [subtitle, setSubtitle] = useState<string | null>(null);
   const prevStateRef = useRef<unknown>(serverState);
   const hasInitialized = useRef(false);
+  const shouldOpenDashboardRef = useRef(false);
 
   useEffect(() => {
     if (!hasInitialized.current) {
@@ -47,17 +83,27 @@ export function PhaseTransitionSplash() {
       const name = getPhaseDisplayName(serverState);
       if (name) {
         setDisplayName(name);
+        setSubtitle(getPhaseSubtitle(serverState, manifest, dayIndex));
+        shouldOpenDashboardRef.current = shouldAutoOpen;
         setVisible(true);
-        const timer = setTimeout(() => setVisible(false), 1500);
+        const timer = setTimeout(() => setVisible(false), 2000);
         return () => clearTimeout(timer);
       }
     }
-  }, [serverState]);
+  }, [serverState, manifest, dayIndex, shouldAutoOpen]);
+
+  const handleExitComplete = () => {
+    if (shouldOpenDashboardRef.current) {
+      shouldOpenDashboardRef.current = false;
+      openDashboard();
+      markDashboardSeen(dayIndex);
+    }
+  };
 
   const bgColor = getPhaseBackgroundColor(serverState);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={handleExitComplete}>
       {visible && displayName && (
         <motion.div
           style={{
@@ -107,6 +153,26 @@ export function PhaseTransitionSplash() {
           >
             {displayName}
           </motion.span>
+
+          {/* Contextual subtitle */}
+          {subtitle && (
+            <motion.span
+              style={{
+                fontFamily: 'var(--vivid-font-body)',
+                fontSize: 16,
+                fontWeight: 500,
+                color: 'var(--vivid-text-dim)',
+                textAlign: 'center',
+                marginTop: 8,
+                maxWidth: '80%',
+              }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.3 }}
+            >
+              {subtitle}
+            </motion.span>
+          )}
 
           {/* Decorative bar below */}
           <motion.div
