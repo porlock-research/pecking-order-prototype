@@ -464,6 +464,7 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
         context="main"
         replyTarget={replyTarget}
         onClearReply={() => setReplyTarget(null)}
+        capabilities={['CHAT', 'REACTIONS']}
       />
     </div>
   );

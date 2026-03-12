@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo, useState, useCallback } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useShallow } from 'zustand/react/shallow';
@@ -198,24 +198,13 @@ export function DMChat({
   /* ---- Input visibility ------------------------------------------ */
   const hideInput = isMe || isGameMaster;
 
-  /* ---- Chat action handler --------------------------------------- */
-  const handleChatAction = useCallback((action: 'invite' | 'silver') => {
-    if (action === 'silver') {
-      // For 1:1 DMs, target is the other player
-      // For groups, we'd need a picker — for now, toast a placeholder
-      if (mode === '1on1' && targetPlayerId) {
-        engine.sendSilver(1, targetPlayerId);
-        toast.success('Sent 1 silver!');
-      } else {
-        toast.info('Select a player to send silver to');
-      }
-    } else if (action === 'invite') {
-      // Add member to group DM
-      if (mode === 'group' && channelId) {
-        toast.info('Invite player coming soon');
-      }
-    }
-  }, [mode, targetPlayerId, channelId, engine]);
+  /* ---- Channel capabilities for ChatInput ------------------------- */
+  const currentChannel = channelId ? channels[channelId] : undefined;
+  const channelCapabilities = currentChannel?.capabilities;
+  const channelMemberIds = useMemo(() => [
+    ...(currentChannel?.memberIds ?? []),
+    ...(currentChannel?.pendingMemberIds ?? []),
+  ], [currentChannel?.memberIds, currentChannel?.pendingMemberIds]);
 
   /* ---- Header tap ------------------------------------------------ */
   const handleHeaderTap = () => {
@@ -561,7 +550,8 @@ export function DMChat({
                 : 'the group'
             }
             channelId={mode === '1on1' ? (dmChannelId ?? undefined) : channelId}
-            onChatAction={handleChatAction}
+            capabilities={channelCapabilities}
+            channelMemberIds={channelMemberIds}
           />
         )
       )}

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SendSquare, CloseCircle, AddCircle } from '@solar-icons/react';
-import type { ChatMessage, SocialPlayer } from '@pecking-order/shared-types';
+import { SendSquare, CloseCircle, Dollar, UserPlus } from '@solar-icons/react';
+import type { ChatMessage, SocialPlayer, ChannelCapability } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../store/useGameStore';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
-import { ChatActions } from './ChatActions';
+import { SilverTransferFlow } from './SilverTransferFlow';
+import { InviteMemberFlow } from './InviteMemberFlow';
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -18,6 +19,8 @@ interface ChatInputProps {
     sendFirstMessage: (recipientIds: string[], content: string) => void;
     sendTyping: (channel?: string) => void;
     stopTyping: (channel?: string) => void;
+    sendSilver: (amount: number, targetId: string) => void;
+    addMember: (channelId: string, memberIds: string[], message?: string) => void;
   };
   context: 'main' | 'dm' | 'group';
   targetId?: string;
@@ -25,7 +28,8 @@ interface ChatInputProps {
   replyTarget?: ChatMessage | null;
   onClearReply?: () => void;
   channelId?: string;
-  onChatAction?: (action: 'invite' | 'silver') => void;
+  capabilities?: ChannelCapability[];
+  channelMemberIds?: string[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -43,7 +47,6 @@ function getPlaceholder(
   }
   switch (context) {
     case 'main': {
-      // Phase-aware placeholders
       if (serverState && typeof serverState === 'string') {
         const s = serverState.toLowerCase();
         if (s.includes('voting')) return 'Quick, before votes close...';
@@ -150,6 +153,8 @@ function TypingIndicator({
 /*  ChatInput                                                          */
 /* ------------------------------------------------------------------ */
 
+type ActiveCapability = 'SILVER_TRANSFER' | 'INVITE_MEMBER' | null;
+
 export function ChatInput({
   engine,
   context,
@@ -158,10 +163,11 @@ export function ChatInput({
   replyTarget,
   onClearReply,
   channelId,
-  onChatAction,
+  capabilities,
+  channelMemberIds,
 }: ChatInputProps) {
   const [inputValue, setInputValue] = useState('');
-  const [showActions, setShowActions] = useState(false);
+  const [activeCapability, setActiveCapability] = useState<ActiveCapability>(null);
 
   const { playerId, roster } = useGameStore();
   const typingPlayers = useGameStore((s) => s.typingPlayers);
@@ -171,6 +177,15 @@ export function ChatInput({
 
   const channel = getChannel(context, targetId);
   const isDisabled = context === 'main' ? !groupChatOpen : !dmsOpen;
+
+  // Input-area capabilities (exclude CHAT, REACTIONS, REPLIES — those are message-level)
+  const inputCapabilities = useMemo(() =>
+    (capabilities ?? []).filter(c => c !== 'CHAT' && c !== 'REACTIONS' && c !== 'REPLIES'),
+    [capabilities]
+  );
+
+  const hasSilver = inputCapabilities.includes('SILVER_TRANSFER');
+  const hasInvite = inputCapabilities.includes('INVITE_MEMBER');
 
   const replyName = replyTarget
     ? roster[replyTarget.senderId]?.personaName || 'Unknown'
@@ -323,14 +338,36 @@ export function ChatInput({
           )}
         </AnimatePresence>
 
-        {/* Action tray */}
+        {/* Active capability flow panels */}
         <AnimatePresence>
-          {showActions && channelId && (context === 'dm' || context === 'group') && (
-            <ChatActions
+          {activeCapability === 'SILVER_TRANSFER' && (
+            <SilverTransferFlow
+              playerId={playerId}
+              targetId={targetId}
+              targetName={targetName}
               channelId={channelId}
-              onInvitePlayer={() => onChatAction?.('invite')}
-              onSendSilver={() => onChatAction?.('silver')}
-              onClose={() => setShowActions(false)}
+              roster={roster}
+              context={context}
+              onSend={(amount, recipientId) => {
+                engine.sendSilver(amount, recipientId);
+                setActiveCapability(null);
+              }}
+              onCancel={() => setActiveCapability(null)}
+            />
+          )}
+          {activeCapability === 'INVITE_MEMBER' && (
+            <InviteMemberFlow
+              playerId={playerId}
+              channelId={channelId}
+              roster={roster}
+              channelMemberIds={channelMemberIds ?? []}
+              onInvite={(memberIds) => {
+                if (channelId) {
+                  engine.addMember(channelId, memberIds);
+                }
+                setActiveCapability(null);
+              }}
+              onCancel={() => setActiveCapability(null)}
             />
           )}
         </AnimatePresence>
@@ -340,33 +377,6 @@ export function ChatInput({
           onSubmit={handleSend}
           style={{ display: 'flex', gap: 8, alignItems: 'center' }}
         >
-          {/* Actions toggle button — DM/group only */}
-          {(context === 'dm' || context === 'group') && (
-            <motion.button
-              type="button"
-              onClick={() => setShowActions((v) => !v)}
-              style={{
-                flexShrink: 0,
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                background: 'none',
-                border: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: showActions ? 'var(--vivid-coral)' : 'var(--vivid-text-dim)',
-                cursor: 'pointer',
-                padding: 0,
-              }}
-              animate={{ rotate: showActions ? 45 : 0 }}
-              transition={VIVID_SPRING.snappy}
-              whileTap={VIVID_TAP.button}
-            >
-              <AddCircle size={24} weight="Bold" />
-            </motion.button>
-          )}
-
           {/* Text input */}
           <input
             data-testid="chat-input"
@@ -376,7 +386,6 @@ export function ChatInput({
               setInputValue(e.target.value);
               if (e.target.value) {
                 engine.sendTyping(channel);
-                if (showActions) setShowActions(false);
               }
             }}
             placeholder={getPlaceholder(context, targetName, isDisabled, serverState)}
@@ -409,6 +418,54 @@ export function ChatInput({
               e.currentTarget.style.borderColor = 'rgba(139, 115, 85, 0.12)';
             }}
           />
+
+          {/* Capability action icons — small, inline, always visible */}
+          {hasSilver && (
+            <motion.button
+              type="button"
+              onClick={() => setActiveCapability(activeCapability === 'SILVER_TRANSFER' ? null : 'SILVER_TRANSFER')}
+              style={{
+                flexShrink: 0,
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                background: 'none',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: activeCapability === 'SILVER_TRANSFER' ? '#C49A20' : 'var(--vivid-text-dim)',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+              whileTap={VIVID_TAP.button}
+            >
+              <Dollar size={20} weight="Bold" />
+            </motion.button>
+          )}
+          {hasInvite && (
+            <motion.button
+              type="button"
+              onClick={() => setActiveCapability(activeCapability === 'INVITE_MEMBER' ? null : 'INVITE_MEMBER')}
+              style={{
+                flexShrink: 0,
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                background: 'none',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: activeCapability === 'INVITE_MEMBER' ? '#3BA99C' : 'var(--vivid-text-dim)',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+              whileTap={VIVID_TAP.button}
+            >
+              <UserPlus size={20} weight="Bold" />
+            </motion.button>
+          )}
 
           {/* Send button */}
           <motion.button
