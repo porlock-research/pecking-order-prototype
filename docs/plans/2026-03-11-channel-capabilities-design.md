@@ -81,22 +81,24 @@ Capabilities surface in two UI locations:
 
 ### Chat Input UX (Vivid Shell)
 
-**Default state** — capabilities shown as subtle chips above the text input:
+**Default state** — small icon buttons alongside the input, always visible but minimal:
 
 ```
 ┌─────────────────────────────────────────────┐
-│  [💰 Silver]  [👤 Invite]          ← chips  │
-│  ┌──────────────────────────────┐  ┌──────┐ │
-│  │ Whisper to Phoenix...        │  │ Send │ │
-│  └──────────────────────────────┘  └──────┘ │
+│  ┌──────────────────────────────┐  (💰)(👤) │
+│  │ Whisper to Phoenix...        │  ┌──────┐ │
+│  └──────────────────────────────┘  │ Send │ │
+│                                    └──────┘ │
 └─────────────────────────────────────────────┘
 ```
 
-- Chips are always visible (no discovery needed)
-- Only non-CHAT capabilities appear as chips
-- A channel with only `CHAT` shows the bare input (e.g., MAIN channel)
+- Icon buttons are always visible (no discovery needed), minimal and uncluttered
+- Only non-CHAT input-area capabilities render as icon buttons
+- A channel with only `CHAT` shows the bare input + send (e.g., MAIN channel)
+- Icons are self-explanatory in context (Dollar = silver, UserPlus = invite)
+- Labels appear in the active flow header, not in the default state
 
-**Active capability** — tapping a chip activates that capability's flow:
+**Active capability** — tapping an icon activates that capability's flow:
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -106,9 +108,10 @@ Capabilities surface in two UI locations:
 ```
 
 - Text input + send button replaced by capability's step UI
+- Flow header labels the action clearly (no ambiguity once activated)
 - Options rendered as tappable chips (amounts, player avatars, etc.)
 - Client derives constraints from SYNC: clips amounts to player balance, filters eligible players from roster
-- Cancel (or tap active chip again) returns to freeform chat
+- Cancel (or tap active icon again) returns to freeform chat
 - Completing the flow fires the action and returns to default
 
 ### Dynamic Behavior
