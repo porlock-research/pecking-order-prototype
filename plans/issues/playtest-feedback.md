@@ -49,7 +49,7 @@ Bios created during persona selection never surfaced in game client. Only avatar
 ### [PT1-UX-004] Voting interface is confusing / no clear instructions
 
 No explanation of what the vote type means, how it works, or the consequences. Each mechanism has different rules — need a brief explainer per type (collapsible "How this works" or intro screen).
-**Status**: Partially addressed (`feature/shell-agnostic-fixes`) — `VOTE_TYPE_INFO` constants added for all 9 vote types. UI integration (showing explainers in cartridges) still needed.
+**Status**: ✅ FIXED (`feature/user-friendliness`, ADR-098) — `VOTE_TYPE_INFO` explainers shown on collapsible timeline event cards in the Dashboard Overlay.
 
 ### [PT1-UX-005] Vote results should be visible (or purchasable with silver)
 
@@ -66,7 +66,7 @@ Post-game results presentation unclear. Players don't understand score, rank, or
 ### [PT1-UX-007] No rules / onboarding screen
 
 "Did I miss a screen about the rules or are we discovering them as we go?" — no tutorial or onboarding flow. Need at minimum a "How to Play" section. Ideally a brief onboarding sequence on first join.
-**Status**: Needs design
+**Status**: Partially addressed (`feature/user-friendliness`, ADR-098) — Welcome card + contextual explainers in Dashboard Overlay. Full onboarding/tutorial strategy still needed.
 
 ### [PT1-UX-008] Silver economy is opaque
 
@@ -81,7 +81,7 @@ Multiple complaints: earning/losing/spending unclear, surprise silver changes, "
 ### [PT1-UX-010] Timeline unclear — when do events end?
 
 "When does a mini game / vote end?" Players can't plan their day. Manifest has all event times — could show a daily schedule view in the expandable header.
-**Status**: Needs design
+**Status**: ✅ FIXED (`feature/user-friendliness`, ADR-098) — Day schedule with event times visible in the Dashboard Overlay.
 
 ---
 

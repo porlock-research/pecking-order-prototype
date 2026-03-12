@@ -1441,3 +1441,20 @@ This document tracks significant architectural decisions, their context, and con
     *   New capabilities follow the same pattern — add a `ChannelCapability`, an icon, and a canned response view inside `ChatInput`.
     *   Single component owns all send logic (text, silver, invite) — simpler state management.
     *   Vivid shell only for now; Classic/Immersive shells use their own ChatInput implementations.
+
+## [ADR-098] Dashboard Overlay (Vivid Shell)
+*   **Date:** 2026-03-12
+*   **Status:** Accepted
+*   **Context:** Multiple issues required surfacing game state information that was either missing or scattered: schedule visibility (PT1-UX-010), voting explainers (BUG-015a), completed phase results (BUG-005), and basic onboarding (PT1-UX-007). The Stage tab was trying to be both a chat room and a game state dashboard.
+*   **Decision:**
+    1.  **Ephemeral overlay**: A Framer Motion `motion.div` slides down from behind the BroadcastBar with backdrop blur. Global Zustand state (`dashboardOpen`) makes it accessible from anywhere. Not a tab or route — a lightweight, always-accessible surface.
+    2.  **Living timeline cards**: Each manifest timeline event renders as a card that transitions through `upcoming → active → completed` states. Completed cards show results (vote tallies, game scores). Upcoming cards have collapsible explainers from `VOTE_TYPE_INFO`.
+    3.  **Splash-to-dashboard crossfade**: `PhaseTransitionSplash` now shows contextual subtitles and crossfades into the open dashboard on first view per day (`dashboardSeenForDay` tracking).
+    4.  **Welcome card**: Brief game overview on first launch (Day 0/1). Full onboarding strategy deferred.
+    5.  **Stage cleanup**: Completed cartridges removed from `useTimeline` and StageChat — Stage tab is now a clean chat surface.
+    6.  **`buildDashboardEvents()`**: Pure function maps manifest timeline + completed cartridges → enriched display events with state inference from `serverState`.
+*   **Consequences:**
+    *   Stage tab is purely chat + active cartridges. Game state awareness lives in the dashboard.
+    *   Future economy explainer, full onboarding, and deeper dashboard features have a natural home.
+    *   Notification badges (pending invites) provide a lightweight bridge to Whispers tab.
+    *   Vivid shell only; Classic/Immersive shells unaffected.

@@ -18,9 +18,7 @@ Tried: requestAnimationFrame defer, setTimeout delay, larger y/scale values, sep
 ## [BUG-005] Completed phase timeline cards lack visual polish
 
 **Priority**: Low
-**Status**: Not yet investigated
-
-Timeline cards for completed phases (voting results, game results, prompt results) use plain/minimal styling that doesn't match the premium aesthetic of the live cartridge panels. They should carry the same visual language — accent-colored borders, glass backgrounds, subtle glow.
+**Status**: ✅ FIXED (`feature/user-friendliness`, ADR-098) — completed phase results render as living cards in the Dashboard Overlay with category-colored accents and glass styling.
 
 ---
 
@@ -63,11 +61,7 @@ Unified DM channel model with `pendingMemberIds` replaces old `PendingInvite` sy
 ## [BUG-015a] Missing UI: voting explainer in cartridges
 
 **Priority**: Medium
-**Status**: Constants ready, UI integration missing
-
-`VOTE_TYPE_INFO` constants added for all 9 vote types (PT1-UX-004), but no cartridge UI shows them. Each voting cartridge should display a collapsible "How this works" section or brief intro explaining the vote mechanism and consequences.
-
-**Relevant store**: `VOTE_TYPE_INFO` in shared constants
+**Status**: ✅ FIXED (`feature/user-friendliness`, ADR-098) — `VOTE_TYPE_INFO` explainers shown on collapsible timeline event cards in the Dashboard Overlay.
 
 ---
 
@@ -85,6 +79,4 @@ Unified DM channel model with `pendingMemberIds` replaces old `PendingInvite` sy
 ## [BUG-015c] Missing UI: player activity indicators
 
 **Priority**: Low
-**Status**: Data available, UI missing
-
-`playerActivity` field added to SYNC payload and `selectPlayerActivity` selector created (PT1-UX-009), but no UI surfaces this data. Could show on Cast tab cards or player profile sheets.
+**Status**: Deferred — player activity data available via ticker/marquee (existing infrastructure). Dedicated UI not yet implemented.
