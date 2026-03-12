@@ -1426,3 +1426,18 @@ This document tracks significant architectural decisions, their context, and con
     *   `SYNC` payload includes channels where player is in `pendingMemberIds`, so pending invites appear client-side.
     *   Backward compat: `requireDmInvite` defaults to false, existing non-invite games work identically.
     *   Simpler codebase: one code path for both modes, no separate invite machinery.
+
+## [ADR-097] Unified ChatInput Composer with Canned Response Pattern
+*   **Date:** 2026-03-11
+*   **Status:** Accepted
+*   **Context:** ChatInput had separate flow panels (`SilverTransferFlow`, `InviteMemberFlow`) that spawned above the input when a capability action was triggered. This felt disconnected — each new capability introduced a new UI pattern for users to learn. Inspired by CometChat and Slack's message composers, we wanted all actions to feel like composing a message.
+*   **Decision:**
+    1.  **Unified composer shell**: Single `COMPOSER_SHELL` container wraps both the input surface and capability toolbar. Two rows: input + inline send button on top, optional capability icons below with a subtle separator.
+    2.  **Canned response pattern**: Clicking a capability icon (e.g., $, +User) switches the input surface to a pre-populated "canned response" — silver shows "Send [1] [2] [5] [10] silver to {name}" with tappable amount chips, invite shows "Invite [avatar+name chips]". Same container, same send button, same visual treatment. Users don't learn new interaction patterns per capability.
+    3.  **Capability-driven toolbar**: `ChannelCapability[]` from server determines which icons appear. Main chat (`['CHAT', 'REACTIONS']`) has no toolbar row — renders as a clean single-row input. DM channels with `SILVER_TRANSFER` or `INVITE_MEMBER` show the sub-row.
+    4.  **Removed separate flows**: `SilverTransferFlow.tsx` and `InviteMemberFlow.tsx` deleted. All capability logic now lives in `ChatInput.tsx` via `ActiveCapability` state and mode-switching `AnimatePresence`.
+    5.  **Border accent**: Container border tints gold (silver mode) or teal (invite mode) to reinforce the active capability without disrupting the input metaphor.
+*   **Consequences:**
+    *   New capabilities follow the same pattern — add a `ChannelCapability`, an icon, and a canned response view inside `ChatInput`.
+    *   Single component owns all send logic (text, silver, invite) — simpler state management.
+    *   Vivid shell only for now; Classic/Immersive shells use their own ChatInput implementations.
