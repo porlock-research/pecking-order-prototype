@@ -473,32 +473,145 @@ function ConversationItem({
 }: ConversationItemProps) {
   const isPending = !!(onAccept && onDecline);
 
+  if (isPending) {
+    return (
+      <motion.div
+        style={{
+          margin: '4px 8px',
+          width: 'calc(100% - 16px)',
+          borderRadius: 16,
+          background: 'linear-gradient(135deg, rgba(59, 169, 156, 0.08), rgba(59, 169, 156, 0.03))',
+          border: '2px solid rgba(59, 169, 156, 0.35)',
+          boxShadow: '0 2px 12px rgba(59, 169, 156, 0.12)',
+          overflow: 'hidden',
+        }}
+        initial={{ opacity: 0, y: -8, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ delay: index * 0.03, ...VIVID_SPRING.gentle }}
+      >
+        {/* Top row: avatar + name + message */}
+        <div
+          onClick={onClick}
+          style={{
+            padding: '14px 16px 10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ flexShrink: 0 }}>{avatar}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontFamily: 'var(--vivid-font-display)',
+                fontWeight: 700,
+                fontSize: 14,
+                color: '#2D8F84',
+              }}
+            >
+              {name}
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: 'rgba(59, 169, 156, 0.7)',
+                fontFamily: 'var(--vivid-font-body)',
+                fontStyle: 'italic',
+                marginTop: 2,
+              }}
+            >
+              {lastMessage}
+            </div>
+          </div>
+        </div>
+
+        {/* Action row: decline / accept */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            padding: '0 16px 14px',
+          }}
+        >
+          <motion.button
+            onClick={(e) => { e.stopPropagation(); onDecline!(); }}
+            style={{
+              flex: 1,
+              padding: '10px 0',
+              borderRadius: 10,
+              background: '#FFFFFF',
+              border: '1.5px solid rgba(139, 115, 85, 0.12)',
+              fontFamily: 'var(--vivid-font-display)',
+              fontWeight: 700,
+              fontSize: 13,
+              color: '#B0736A',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+            }}
+            whileTap={VIVID_TAP.button}
+            transition={VIVID_SPRING.bouncy}
+          >
+            <CloseCircle size={16} weight="Bold" />
+            Decline
+          </motion.button>
+          <motion.button
+            onClick={(e) => { e.stopPropagation(); onAccept!(); }}
+            style={{
+              flex: 1,
+              padding: '10px 0',
+              borderRadius: 10,
+              background: '#3BA99C',
+              border: 'none',
+              fontFamily: 'var(--vivid-font-display)',
+              fontWeight: 700,
+              fontSize: 13,
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(59, 169, 156, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+            }}
+            whileTap={VIVID_TAP.button}
+            transition={VIVID_SPRING.bouncy}
+          >
+            <CheckCircle size={16} weight="Bold" />
+            Accept
+          </motion.button>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
-    <motion.div
+    <motion.button
+      onClick={onClick}
       style={{
         padding: '12px 16px',
         margin: '2px 8px',
         width: 'calc(100% - 16px)',
         background: '#FFFFFF',
-        border: isPending ? `1.5px solid ${borderColor}` : '1px solid rgba(139, 115, 85, 0.06)',
+        border: '1px solid rgba(139, 115, 85, 0.06)',
         borderRadius: 16,
         display: 'flex',
         alignItems: 'center',
         gap: 12,
+        cursor: 'pointer',
         textAlign: 'left',
         boxShadow: 'var(--vivid-surface-shadow)',
       }}
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.03, ...VIVID_SPRING.gentle }}
+      whileTap={VIVID_TAP.card}
     >
-      {/* Avatar — tappable to open conversation */}
-      <div onClick={onClick} style={{ cursor: 'pointer', flexShrink: 0 }}>
-        {avatar}
-      </div>
-
-      {/* Name + last message */}
-      <div onClick={onClick} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
+      {avatar}
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
             fontFamily: 'var(--vivid-font-display)',
@@ -528,51 +641,7 @@ function ConversationItem({
           </div>
         )}
       </div>
-
-      {/* Accept/Decline buttons OR timestamp */}
-      {isPending ? (
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <motion.button
-            onClick={(e) => { e.stopPropagation(); onDecline!(); }}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: 'var(--vivid-bg-elevated)',
-              border: '1px solid rgba(139, 115, 85, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#B0736A',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-            whileTap={VIVID_TAP.button}
-          >
-            <CloseCircle size={20} weight="Bold" />
-          </motion.button>
-          <motion.button
-            onClick={(e) => { e.stopPropagation(); onAccept!(); }}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: '#3BA99C',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFFFFF',
-              cursor: 'pointer',
-              padding: 0,
-              boxShadow: '0 2px 6px rgba(59, 169, 156, 0.3)',
-            }}
-            whileTap={VIVID_TAP.button}
-          >
-            <CheckCircle size={20} weight="Bold" />
-          </motion.button>
-        </div>
-      ) : timestamp ? (
+      {timestamp && (
         <span
           style={{
             flexShrink: 0,
@@ -583,7 +652,7 @@ function ConversationItem({
         >
           {relativeTime(timestamp)}
         </span>
-      ) : null}
-    </motion.div>
+      )}
+    </motion.button>
   );
 }
