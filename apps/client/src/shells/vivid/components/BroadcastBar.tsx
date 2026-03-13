@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import Marquee from 'react-fast-marquee';
-import { useGameStore } from '../../../store/useGameStore';
+import { useGameStore, selectUnreadFeedCount } from '../../../store/useGameStore';
+import { useCountdown } from '../../../hooks/useCountdown';
 
 function getPhaseLabel(serverState: unknown, dayIndex: number): string {
   if (!serverState || typeof serverState !== 'string') return 'WAITING';
@@ -21,19 +22,24 @@ export function BroadcastBar({ onClick }: { onClick?: () => void }) {
   const dayIndex = useGameStore(s => s.dayIndex);
   const serverState = useGameStore(s => s.serverState);
   const tickerMessages = useGameStore(s => s.tickerMessages);
+  const unreadCount = useGameStore(selectUnreadFeedCount);
 
   const phaseLabel = getPhaseLabel(serverState, dayIndex);
+  const groupCountdown = useCountdown('group');
+  const dmCountdown = useCountdown('dm');
 
-  // Build ticker items: phase label first, then recent ticker messages
+  // Build ticker items: phase label first, countdowns, then recent ticker messages
   const tickerItems = useMemo(() => {
     const items: string[] = [phaseLabel];
+    if (groupCountdown) items.push(`Chat opens in ${groupCountdown}`);
+    if (dmCountdown) items.push(`DMs open in ${dmCountdown}`);
     // Show the last 20 ticker messages in the scrolling ticker
     const recent = tickerMessages.slice(-20);
     for (const msg of recent) {
       items.push(msg.text);
     }
     return items;
-  }, [phaseLabel, tickerMessages]);
+  }, [phaseLabel, groupCountdown, dmCountdown, tickerMessages]);
 
   // Dynamic speed: longer content scrolls faster
   const marqueeSpeed = useMemo(() => {
@@ -70,7 +76,7 @@ export function BroadcastBar({ onClick }: { onClick?: () => void }) {
               style={{
                 fontFamily: 'var(--vivid-font-display)',
                 fontWeight: 800,
-                fontSize: 13,
+                fontSize: 14,
                 letterSpacing: '0.04em',
                 color: 'var(--vivid-phase-accent)',
                 textTransform: 'uppercase',
@@ -84,19 +90,43 @@ export function BroadcastBar({ onClick }: { onClick?: () => void }) {
         </Marquee>
       </div>
 
-      {/* Right: dashboard chevron hint */}
+      {/* Right: unread badge + chevron hint */}
       <div
         style={{
           flexShrink: 0,
           paddingRight: 14,
           display: 'flex',
           alignItems: 'center',
-          opacity: 0.4,
+          gap: 6,
         }}
       >
-        <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
-          <path d="M1 1L7 7L1 13" stroke="var(--vivid-phase-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        {unreadCount > 0 && (
+          <div style={{
+            minWidth: 18,
+            height: 18,
+            borderRadius: 9,
+            background: 'var(--vivid-coral)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 5px',
+          }}>
+            <span style={{
+              fontFamily: 'var(--vivid-font-mono)',
+              fontSize: 10,
+              fontWeight: 700,
+              color: '#FFFFFF',
+              lineHeight: 1,
+            }}>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          </div>
+        )}
+        <div style={{ opacity: 0.4 }}>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+            <path d="M1 1L7 7L1 13" stroke="var(--vivid-phase-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
       </div>
     </div>
   );

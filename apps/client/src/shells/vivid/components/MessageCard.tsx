@@ -112,17 +112,17 @@ export function MessageCard({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            {/* GM text badge instead of emoji */}
+            {/* GM text badge */}
             <span
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '2px 7px',
+                padding: '2px 8px',
                 borderRadius: 6,
                 background: 'rgba(212, 150, 10, 0.18)',
                 border: '1px solid rgba(212, 150, 10, 0.3)',
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: 800,
                 letterSpacing: '0.08em',
                 color: '#D4960A',
@@ -135,7 +135,7 @@ export function MessageCard({
             </span>
             <span
               style={{
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: 800,
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -145,21 +145,11 @@ export function MessageCard({
             >
               Game Master
             </span>
-            <span
-              style={{
-                fontSize: 10,
-                fontFamily: 'var(--vivid-font-mono)',
-                color: 'var(--vivid-text-dim)',
-                marginLeft: 'auto',
-              }}
-            >
-              {formatTime(message.timestamp)}
-            </span>
           </div>
           <p
             style={{
               margin: 0,
-              fontSize: 15,
+              fontSize: 17,
               lineHeight: 1.55,
               color: 'var(--vivid-text)',
               fontFamily: 'var(--vivid-font-body)',
@@ -203,7 +193,7 @@ export function MessageCard({
         position: 'relative',
       }}
     >
-      {/* Avatar (outside the bubble) — 40px */}
+      {/* Avatar */}
       {showSender && (
         <div
           style={{
@@ -216,7 +206,7 @@ export function MessageCard({
           <PersonaAvatar
             avatarUrl={sender?.avatarUrl}
             personaName={sender?.personaName}
-            size={40}
+            size={44}
           />
         </div>
       )}
@@ -225,8 +215,8 @@ export function MessageCard({
       <div
         style={{
           maxWidth: '75%',
-          marginLeft: !showSender && !isMe ? 48 : 0,
-          marginRight: !showSender && isMe ? 48 : 0,
+          marginLeft: !showSender && !isMe ? 52 : 0,
+          marginRight: !showSender && isMe ? 52 : 0,
           position: 'relative',
         }}
       >
@@ -241,7 +231,7 @@ export function MessageCard({
             <span
               style={{
                 fontWeight: 700,
-                fontSize: 12,
+                fontSize: 14,
                 color: playerColor,
                 fontFamily: 'var(--vivid-font-display)',
               }}
@@ -270,7 +260,7 @@ export function MessageCard({
           <p
             style={{
               margin: 0,
-              fontSize: 15,
+              fontSize: 17,
               lineHeight: 1.5,
               color: 'var(--vivid-text)',
               overflowWrap: 'anywhere',
@@ -279,28 +269,6 @@ export function MessageCard({
           >
             {message.content}
           </p>
-
-          {/* Timestamp */}
-          {showTimestamp && (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: isMe ? 'flex-end' : 'flex-start',
-                marginTop: 4,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  fontFamily: 'var(--vivid-font-mono)',
-                  color: 'var(--vivid-text-dim)',
-                  opacity: 0.7,
-                }}
-              >
-                {formatTime(message.timestamp)}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Double-tap reaction */}

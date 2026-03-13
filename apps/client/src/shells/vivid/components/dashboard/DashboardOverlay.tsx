@@ -1,19 +1,289 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, useMotionValue, type PanInfo } from 'framer-motion';
-import { useGameStore } from '../../../../store/useGameStore';
-import { DayBriefing } from './DayBriefing';
+import { useGameStore, selectUnreadFeedCount } from '../../../../store/useGameStore';
 import { DayTimeline } from './DayTimeline';
 import { VIVID_SPRING } from '../../springs';
 import { Letter } from '@solar-icons/react';
 
 const DISMISS_THRESHOLD = -80;
 
+/* ------------------------------------------------------------------ */
+/*  Compact Progress Bar                                               */
+/* ------------------------------------------------------------------ */
+
+const PHASE_LABELS = ['Morning', 'Social', 'Game', 'Activity', 'Voting', 'Night'] as const;
+
+function getActivePhaseIndex(serverState: unknown): number {
+  if (!serverState || typeof serverState !== 'string') return -1;
+  const s = serverState.toLowerCase();
+  if (s.includes('morningbriefing')) return 0;
+  if (s.includes('socialperiod') || s.includes('dmperiod')) return 1;
+  if (s.includes('game')) return 2;
+  if (s.includes('prompt') || s.includes('activity')) return 3;
+  if (s.includes('voting')) return 4;
+  if (s.includes('nightsummary')) return 5;
+  return -1;
+}
+
+function CompactProgressBar() {
+  const serverState = useGameStore(s => s.serverState);
+  const dayIndex = useGameStore(s => s.dayIndex);
+  const manifest = useGameStore(s => s.manifest);
+
+  const totalDays = manifest?.days?.length ?? 0;
+  const activeIdx = getActivePhaseIndex(serverState);
+
+  return (
+    <div style={{ padding: '0 20px 12px' }}>
+      {/* Day indicator */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: 6,
+        marginBottom: 10,
+      }}>
+        <span style={{
+          fontFamily: 'var(--vivid-font-display)',
+          fontSize: 22,
+          fontWeight: 800,
+          color: '#3D2E1F',
+          lineHeight: 1,
+        }}>
+          Day {dayIndex}
+        </span>
+        {totalDays > 0 && (
+          <span style={{
+            fontFamily: 'var(--vivid-font-display)',
+            fontSize: 12,
+            fontWeight: 700,
+            color: '#9B8E7E',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+          }}>
+            of {totalDays}
+          </span>
+        )}
+      </div>
+
+      {/* Phase segments */}
+      <div style={{
+        display: 'flex',
+        gap: 3,
+        height: 6,
+        borderRadius: 3,
+        overflow: 'hidden',
+      }}>
+        {PHASE_LABELS.map((label, i) => {
+          const isActive = i === activeIdx;
+          const isCompleted = activeIdx > i;
+          return (
+            <div
+              key={label}
+              style={{
+                flex: 1,
+                borderRadius: 3,
+                background: isActive
+                  ? 'var(--vivid-phase-accent)'
+                  : isCompleted
+                    ? 'rgba(107, 158, 110, 0.5)'
+                    : 'rgba(139, 115, 85, 0.1)',
+                transition: 'background 0.3s ease',
+                position: 'relative',
+              }}
+            >
+              {isActive && (
+                <motion.div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 3,
+                    background: 'var(--vivid-phase-accent)',
+                  }}
+                  animate={{ opacity: [0.6, 1, 0.6] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Phase labels */}
+      <div style={{
+        display: 'flex',
+        gap: 3,
+        marginTop: 4,
+      }}>
+        {PHASE_LABELS.map((label, i) => {
+          const isActive = i === activeIdx;
+          return (
+            <span
+              key={label}
+              style={{
+                flex: 1,
+                textAlign: 'center',
+                fontFamily: 'var(--vivid-font-display)',
+                fontSize: 9,
+                fontWeight: isActive ? 800 : 600,
+                color: isActive ? 'var(--vivid-phase-accent)' : 'rgba(139, 115, 85, 0.4)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              {label}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Feed Item                                                          */
+/* ------------------------------------------------------------------ */
+
+function FeedItem({
+  text,
+  timestamp,
+  isUnread,
+  category,
+}: {
+  text: string;
+  timestamp: number;
+  isUnread: boolean;
+  category: string;
+}) {
+  const relTime = useMemo(() => {
+    const diff = Date.now() - timestamp;
+    if (diff < 60_000) return 'now';
+    if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m`;
+    if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h`;
+    return `${Math.floor(diff / 86400_000)}d`;
+  }, [timestamp]);
+
+  const dotColor = useMemo(() => {
+    const c = category.toUpperCase();
+    if (c.includes('VOTE') || c.includes('ELIMINATION')) return '#D94073';
+    if (c.includes('TRANSFER') || c.includes('GOLD')) return '#D4960A';
+    if (c.includes('GAME') || c.includes('ACTIVITY')) return '#8B6CC1';
+    if (c.includes('SOCIAL') || c.includes('PERK')) return '#3BA99C';
+    return 'var(--vivid-phase-accent)';
+  }, [category]);
+
+  return (
+    <motion.div
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        padding: '10px 0',
+        borderBottom: '1px solid rgba(139, 115, 85, 0.06)',
+        position: 'relative',
+      }}
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={VIVID_SPRING.gentle}
+    >
+      {/* Unread indicator + category dot */}
+      <div style={{
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        background: isUnread ? dotColor : 'rgba(139, 115, 85, 0.15)',
+        marginTop: 5,
+        flexShrink: 0,
+        transition: 'background 0.3s ease',
+      }} />
+
+      {/* Content */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          margin: 0,
+          fontFamily: 'var(--vivid-font-body)',
+          fontSize: 14,
+          lineHeight: 1.45,
+          color: isUnread ? '#3D2E1F' : '#5A4A3A',
+          fontWeight: isUnread ? 600 : 400,
+        }}>
+          {text}
+        </p>
+      </div>
+
+      {/* Relative time */}
+      <span style={{
+        flexShrink: 0,
+        fontFamily: 'var(--vivid-font-mono)',
+        fontSize: 11,
+        color: 'var(--vivid-text-dim)',
+        marginTop: 2,
+      }}>
+        {relTime}
+      </span>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Feed Section                                                       */
+/* ------------------------------------------------------------------ */
+
+function FeedSection() {
+  const tickerMessages = useGameStore(s => s.tickerMessages);
+  const lastSeenFeedTimestamp = useGameStore(s => s.lastSeenFeedTimestamp);
+
+  // Show newest first, limit to 50
+  const feedItems = useMemo(
+    () => [...tickerMessages].reverse().slice(0, 50),
+    [tickerMessages],
+  );
+
+  if (feedItems.length === 0) {
+    return (
+      <div style={{
+        padding: '24px 0',
+        textAlign: 'center',
+      }}>
+        <p style={{
+          fontFamily: 'var(--vivid-font-body)',
+          fontSize: 14,
+          color: '#9B8E7E',
+          margin: 0,
+          fontStyle: 'italic',
+        }}>
+          No events yet — check back soon
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {feedItems.map((msg) => (
+        <FeedItem
+          key={msg.id}
+          text={msg.text}
+          timestamp={msg.timestamp}
+          isUnread={msg.timestamp > lastSeenFeedTimestamp}
+          category={msg.category}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  DashboardOverlay (Notifications Panel)                             */
+/* ------------------------------------------------------------------ */
+
 export function DashboardOverlay() {
   const dashboardOpen = useGameStore(s => s.dashboardOpen);
   const closeDashboard = useGameStore(s => s.closeDashboard);
+  const markFeedSeen = useGameStore(s => s.markFeedSeen);
   const welcomeSeen = useGameStore(s => s.welcomeSeen);
   const markWelcomeSeen = useGameStore(s => s.markWelcomeSeen);
   const dayIndex = useGameStore(s => s.dayIndex);
+  const unreadCount = useGameStore(selectUnreadFeedCount);
   const pendingCount = useGameStore(s => {
     const pid = s.playerId;
     if (!pid) return 0;
@@ -30,6 +300,11 @@ export function DashboardOverlay() {
       closeDashboard();
     }
   }, [closeDashboard]);
+
+  // Mark feed as seen when opening
+  const handleOpen = useCallback(() => {
+    markFeedSeen();
+  }, [markFeedSeen]);
 
   const showWelcome = dayIndex <= 1 && !welcomeSeen;
 
@@ -63,7 +338,7 @@ export function DashboardOverlay() {
               top: 0,
               left: 0,
               right: 0,
-              maxHeight: '82vh',
+              maxHeight: '85vh',
               zIndex: 46,
               display: 'flex',
               flexDirection: 'column',
@@ -82,6 +357,9 @@ export function DashboardOverlay() {
             dragConstraints={{ top: -200, bottom: 0 }}
             dragElastic={0.3}
             onDragEnd={handleDragEnd}
+            onAnimationComplete={() => {
+              if (dashboardOpen) handleOpen();
+            }}
           >
             {/* Safe area + drag handle */}
             <div
@@ -109,18 +387,11 @@ export function DashboardOverlay() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                padding: '4px 20px 14px',
+                padding: '4px 20px 10px',
                 flexShrink: 0,
               }}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  flex: 1,
-                }}
-              >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
                 <div
                   style={{
                     width: 28,
@@ -152,8 +423,26 @@ export function DashboardOverlay() {
                     letterSpacing: '0.06em',
                   }}
                 >
-                  Today's Briefing
+                  Notifications
                 </span>
+                {unreadCount > 0 && (
+                  <span style={{
+                    minWidth: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    background: 'var(--vivid-coral)',
+                    color: '#FFFFFF',
+                    fontFamily: 'var(--vivid-font-mono)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 6px',
+                  }}>
+                    {unreadCount}
+                  </span>
+                )}
               </div>
               <button
                 onClick={closeDashboard}
@@ -200,12 +489,18 @@ export function DashboardOverlay() {
                 padding: '0 16px 24px',
               }}
             >
+              {/* Compact Progress Bar */}
+              <div style={{ marginTop: 14 }}>
+                <CompactProgressBar />
+              </div>
+
               {/* Welcome card */}
               {showWelcome && (
                 <motion.div
                   style={{
-                    marginTop: 16,
-                    padding: '18px 18px 16px',
+                    marginTop: 4,
+                    marginBottom: 8,
+                    padding: '16px 18px 14px',
                     borderRadius: 16,
                     background: 'linear-gradient(135deg, rgba(139, 108, 193, 0.06) 0%, rgba(139, 108, 193, 0.12) 100%)',
                     border: '1px solid rgba(139, 108, 193, 0.14)',
@@ -216,7 +511,6 @@ export function DashboardOverlay() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={VIVID_SPRING.gentle}
                 >
-                  {/* Decorative corner accent */}
                   <div style={{
                     position: 'absolute',
                     top: -20,
@@ -272,7 +566,8 @@ export function DashboardOverlay() {
               {pendingCount > 0 && (
                 <motion.div
                   style={{
-                    marginTop: 12,
+                    marginTop: 4,
+                    marginBottom: 8,
                     padding: '12px 16px',
                     borderRadius: 14,
                     background: 'linear-gradient(135deg, rgba(59, 169, 156, 0.06) 0%, rgba(59, 169, 156, 0.1) 100%)',
@@ -320,10 +615,35 @@ export function DashboardOverlay() {
                 </motion.div>
               )}
 
-              {/* Day briefing */}
-              <DayBriefing />
+              {/* Feed section */}
+              <div style={{ marginTop: 8 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginBottom: 4,
+                  paddingLeft: 4,
+                }}>
+                  <span style={{
+                    fontFamily: 'var(--vivid-font-display)',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: '#9B8E7E',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                  }}>
+                    Feed
+                  </span>
+                  <div style={{
+                    flex: 1,
+                    height: 1,
+                    background: 'rgba(155, 142, 126, 0.12)',
+                  }} />
+                </div>
+                <FeedSection />
+              </div>
 
-              {/* Timeline */}
+              {/* Schedule section */}
               <DayTimeline />
             </div>
           </motion.div>

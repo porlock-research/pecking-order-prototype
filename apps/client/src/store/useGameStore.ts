@@ -45,10 +45,11 @@ interface GameState {
   tickerMessages: TickerMessage[];
   debugTicker: string | null;
 
-  // Dashboard
+  // Dashboard / Notifications
   dashboardOpen: boolean;
   dashboardSeenForDay: number | null;
   welcomeSeen: boolean;
+  lastSeenFeedTimestamp: number;
 
   // Actions
   sync: (data: any) => void;
@@ -71,6 +72,7 @@ interface GameState {
   toggleDashboard: () => void;
   markDashboardSeen: (dayIndex: number) => void;
   markWelcomeSeen: () => void;
+  markFeedSeen: () => void;
 }
 
 // Selectors
@@ -292,6 +294,10 @@ export const selectPlayerActivity = (state: GameState): Record<string, PlayerAct
   return state.playerActivity ?? {};
 };
 
+export const selectUnreadFeedCount = (state: GameState): number => {
+  return state.tickerMessages.filter(m => m.timestamp > state.lastSeenFeedTimestamp).length;
+};
+
 export const selectShouldAutoOpenDashboard = (state: GameState): boolean => {
   return state.dayIndex > 0 && state.dashboardSeenForDay !== state.dayIndex;
 };
@@ -326,6 +332,7 @@ export const useGameStore = create<GameState>((set) => ({
   dashboardOpen: false,
   dashboardSeenForDay: null,
   welcomeSeen: false,
+  lastSeenFeedTimestamp: Number(localStorage.getItem('po-lastSeenFeed') || '0'),
 
   sync: (data) => set((state) => {
     console.log('[SYNC] Received', {
@@ -408,4 +415,9 @@ export const useGameStore = create<GameState>((set) => ({
   toggleDashboard: () => set((state) => ({ dashboardOpen: !state.dashboardOpen })),
   markDashboardSeen: (dayIndex) => set({ dashboardSeenForDay: dayIndex }),
   markWelcomeSeen: () => set({ welcomeSeen: true }),
+  markFeedSeen: () => {
+    const now = Date.now();
+    localStorage.setItem('po-lastSeenFeed', String(now));
+    set({ lastSeenFeedTimestamp: now });
+  },
 }));

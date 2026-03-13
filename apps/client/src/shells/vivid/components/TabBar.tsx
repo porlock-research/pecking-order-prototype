@@ -58,7 +58,7 @@ export function TabBar({ activeTab, onTabChange, unreadPeople }: TabBarProps) {
             >
               <div style={{ position: 'relative' }}>
                 <Icon
-                  size={22}
+                  size={24}
                   weight={isActive ? 'BoldDuotone' : 'Linear'}
                   color={isActive ? 'var(--vivid-phase-accent)' : 'var(--vivid-text-dim)'}
                 />
@@ -88,7 +88,7 @@ export function TabBar({ activeTab, onTabChange, unreadPeople }: TabBarProps) {
               </div>
               <span
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: isActive ? 700 : 500,
                   fontFamily: 'var(--vivid-font-display)',
                   color: isActive ? 'var(--vivid-phase-accent)' : 'var(--vivid-text-dim)',

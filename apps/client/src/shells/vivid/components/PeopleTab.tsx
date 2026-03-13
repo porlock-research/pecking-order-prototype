@@ -464,14 +464,14 @@ function PeopleList({
                       <PersonaAvatar
                         avatarUrl={p.avatarUrl}
                         personaName={p.personaName}
-                        size={rank === 1 ? 48 : 42}
+                        size={rank === 1 ? 56 : 48}
                       />
                     </div>
                   ) : (
                     <PersonaAvatar
                       avatarUrl={p.avatarUrl}
                       personaName={p.personaName}
-                      size={38}
+                      size={44}
                     />
                   )}
                   {isOnline && (
@@ -495,7 +495,7 @@ function PeopleList({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span
                       style={{
-                        fontSize: rank <= 3 ? 15 : 14,
+                        fontSize: 16,
                         fontWeight: 700,
                         color: pending ? '#2D8F84' : color,
                         overflow: 'hidden',
@@ -560,7 +560,7 @@ function PeopleList({
                 <span
                   style={{
                     fontFamily: 'var(--vivid-font-mono)',
-                    fontSize: 12,
+                    fontSize: 14,
                     color: '#D4960A',
                     fontWeight: 600,
                     flexShrink: 0,
@@ -863,13 +863,13 @@ function PeopleList({
                   <PersonaAvatar
                     avatarUrl={p.avatarUrl}
                     personaName={p.personaName}
-                    size={34}
+                    size={40}
                     eliminated
                   />
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span
                       style={{
-                        fontSize: 13,
+                        fontSize: 15,
                         color: 'var(--vivid-text-dim)',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',

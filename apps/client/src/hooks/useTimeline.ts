@@ -2,9 +2,12 @@ import { useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import type { TimelineEntry } from '../types/timeline';
 
+/**
+ * Main chat timeline: only chat messages + active cartridges.
+ * System/ticker events live in the notifications feed, not here.
+ */
 export function useTimeline(): TimelineEntry[] {
   const chatLog = useGameStore(s => s.chatLog);
-  const tickerMessages = useGameStore(s => s.tickerMessages);
   const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
   const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
   const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
@@ -15,11 +18,6 @@ export function useTimeline(): TimelineEntry[] {
     const mainChat = chatLog.filter(m => m.channelId === 'MAIN' || (!m.channelId && m.channel === 'MAIN'));
     for (const msg of mainChat) {
       entries.push({ kind: 'chat', key: `chat-${msg.id}`, timestamp: msg.timestamp, data: msg });
-    }
-
-    for (const t of tickerMessages) {
-      if (t.category.startsWith('GATE.')) continue;
-      entries.push({ kind: 'system', key: `sys-${t.id}`, timestamp: t.timestamp, data: t });
     }
 
     // Sort chronologically
@@ -37,5 +35,5 @@ export function useTimeline(): TimelineEntry[] {
     }
 
     return entries;
-  }, [chatLog, tickerMessages, activeVotingCartridge, activeGameCartridge, activePromptCartridge]);
+  }, [chatLog, activeVotingCartridge, activeGameCartridge, activePromptCartridge]);
 }

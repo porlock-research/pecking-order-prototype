@@ -470,7 +470,7 @@ export function DMChat({
                         isMe={entry.data.senderId === playerId}
                         sender={roster[entry.data.senderId]}
                         showSender={shouldShowSender1on1(i)}
-                        showTimestamp={shouldShowTimestamp1on1(i)}
+                        showTimestamp={false}
                         playerColor={playerColorMap[entry.data.senderId] || '#9B8E7E'}
                         onTapAvatar={onTapAvatar}
                       />
@@ -494,7 +494,7 @@ export function DMChat({
                   isMe={msg.senderId === playerId}
                   sender={roster[msg.senderId]}
                   showSender={shouldShowSenderGroup(i)}
-                  showTimestamp={shouldShowTimestampGroup(i)}
+                  showTimestamp={false}
                   playerColor={playerColorMap[msg.senderId] || '#9B8E7E'}
                   onTapAvatar={onTapAvatar}
                 />

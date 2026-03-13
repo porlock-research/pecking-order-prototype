@@ -18,6 +18,7 @@ import { PlayerDetail } from './components/PlayerDetail';
 import { PhaseTransitionSplash } from './components/PhaseTransitionSplash';
 import { DramaticReveal } from './components/DramaticReveal';
 import { DashboardOverlay } from './components/dashboard/DashboardOverlay';
+import { SilverHUD } from './components/SilverHUD';
 import { VIVID_SPRING } from './springs';
 
 /* ------------------------------------------------------------------ */
@@ -201,6 +202,9 @@ function VividShell({ playerId, engine, token }: ShellProps) {
 
       {/* Dashboard overlay */}
       <DashboardOverlay />
+
+      {/* Silver received HUD popups */}
+      <SilverHUD />
 
       {/* Player quick sheet (avatar tap) */}
       <PlayerQuickSheet

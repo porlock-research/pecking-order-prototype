@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../store/useGameStore';
 import { useTimeline } from '../../../hooks/useTimeline';
 import { MessageCard } from './MessageCard';
-import { BroadcastAlert } from './BroadcastAlert';
 import { ChatInput } from './ChatInput';
 import VotingPanel from '../../../components/panels/VotingPanel';
 import GamePanel from '../../../components/panels/GamePanel';
@@ -29,6 +28,17 @@ interface StageChatProps {
 /* ------------------------------------------------------------------ */
 
 const SCROLL_THRESHOLD = 100;
+
+function formatTimeSeparator(ts: number): string {
+  const now = Date.now();
+  const diff = now - ts;
+  if (diff < 60_000) return 'JUST NOW';
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)} MIN AGO`;
+  if (diff < 86400_000) {
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -113,6 +123,8 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
 
   /* -- Message grouping -------------------------------------------- */
 
+  const TIME_GAP_MS = 5 * 60 * 1000; // 5 min gap triggers a time separator
+
   const shouldShowSender = (index: number): boolean => {
     const entry = entries[index];
     if (entry.kind !== 'chat') return true;
@@ -124,15 +136,13 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
     return false;
   };
 
-  const shouldShowTimestamp = (index: number): boolean => {
+  const shouldShowTimeSeparator = (index: number): boolean => {
     const entry = entries[index];
-    if (entry.kind !== 'chat') return true;
-    if (index === entries.length - 1) return true;
-    const next = entries[index + 1];
-    if (next.kind !== 'chat') return true;
-    if (next.data.senderId !== entry.data.senderId) return true;
-    if (next.data.timestamp - entry.data.timestamp > 120000) return true;
-    return false;
+    if (entry.kind !== 'chat') return false;
+    if (index === 0) return true; // Always show time for first message
+    const prev = entries[index - 1];
+    if (prev.kind !== 'chat') return true;
+    return entry.data.timestamp - prev.data.timestamp > TIME_GAP_MS;
   };
 
   /* -- Reply handling ---------------------------------------------- */
@@ -223,7 +233,7 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
               <PersonaAvatar
                 avatarUrl={p.avatarUrl}
                 personaName={p.personaName}
-                size={34}
+                size={40}
               />
               <div
                 style={{
@@ -310,28 +320,48 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
           {entries.map((entry, i) => {
             const isGrouped = entry.kind === 'chat' && !shouldShowSender(i);
             const marginTop = i === 0 ? 0 : isGrouped ? 2 : 10;
+            const showTimeSep = entry.kind === 'chat' && shouldShowTimeSeparator(i);
 
             switch (entry.kind) {
               case 'chat':
                 return (
                   <div key={entry.key} style={{ marginTop }}>
+                    {showTimeSep && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          padding: '8px 0 12px',
+                        }}
+                      >
+                        <div style={{ flex: 1, height: 1, background: 'rgba(139, 115, 85, 0.1)' }} />
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 800,
+                            fontFamily: 'var(--vivid-font-display)',
+                            color: 'var(--vivid-text-dim)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.06em',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {formatTimeSeparator(entry.data.timestamp)}
+                        </span>
+                        <div style={{ flex: 1, height: 1, background: 'rgba(139, 115, 85, 0.1)' }} />
+                      </div>
+                    )}
                     <MessageCard
                       message={entry.data}
                       isMe={entry.data.senderId === playerId}
                       sender={roster[entry.data.senderId]}
                       showSender={shouldShowSender(i)}
-                      showTimestamp={shouldShowTimestamp(i)}
+                      showTimestamp={false}
                       playerColor={playerColorMap[entry.data.senderId] || '#9B8E7E'}
                       onTapAvatar={onTapAvatar}
                       onTapReply={handleTapReply}
                     />
-                  </div>
-                );
-
-              case 'system':
-                return (
-                  <div key={entry.key} style={{ marginTop }}>
-                    <BroadcastAlert message={entry.data} />
                   </div>
                 );
 
@@ -356,6 +386,8 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                   </div>
                 );
 
+              default:
+                return null;
             }
           })}
 
