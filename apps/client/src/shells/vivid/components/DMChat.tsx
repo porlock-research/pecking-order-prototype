@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { AltArrowLeft, Crown } from '@solar-icons/react';
 import { PlayerStatuses, GAME_MASTER_ID, Events, ChannelTypes } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
-import { useGameStore, selectDmSlots } from '../../../store/useGameStore';
+import { useGameStore, selectDmSlots, selectRequireDmInvite } from '../../../store/useGameStore';
 import { usePlayerTimeline } from '../../../hooks/usePlayerTimeline';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { MessageCard } from './MessageCard';
@@ -67,6 +67,7 @@ export function DMChat({
   const clearDmRejection = useGameStore((s) => s.clearDmRejection);
   const typingPlayers = useGameStore((s) => s.typingPlayers);
   const dmSlots = useGameStore(useShallow(selectDmSlots));
+  const requireDmInvite = useGameStore(selectRequireDmInvite);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -238,11 +239,12 @@ export function DMChat({
       <header
         style={{
           flexShrink: 0,
-          height: 64,
+          minHeight: 64,
           display: 'flex',
           alignItems: 'center',
           gap: 12,
           padding: '0 16px',
+          paddingTop: 'env(safe-area-inset-top, 0px)',
           background: 'var(--vivid-bg-surface)',
           borderBottom: '2px solid rgba(139, 115, 85, 0.06)',
         }}
@@ -414,8 +416,8 @@ export function DMChat({
           </div>
         </div>
 
-        {/* DM stats */}
-        {!isMe && !isGameMaster && (
+        {/* DM slots indicator (only when invite mode) */}
+        {!isMe && !isGameMaster && requireDmInvite && dmSlots.total > 0 && (
           <span
             style={{
               flexShrink: 0,
@@ -427,7 +429,7 @@ export function DMChat({
               borderRadius: 8,
             }}
           >
-            {charsRemaining}/{charsLimit}
+            {dmSlots.total - dmSlots.used}/{dmSlots.total} slots
           </span>
         )}
       </header>

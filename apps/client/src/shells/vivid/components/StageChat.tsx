@@ -169,8 +169,8 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
-            padding: '6px 16px',
+            gap: 8,
+            padding: '8px 16px',
             borderBottom: '1px solid rgba(139, 115, 85, 0.06)',
             background: 'var(--vivid-bg-surface)',
             flexShrink: 0,
@@ -180,20 +180,37 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
           }}
           className="vivid-hide-scrollbar"
         >
-          <span
+          <div
             style={{
-              fontSize: 10,
-              fontWeight: 700,
-              fontFamily: 'var(--vivid-font-display)',
-              color: 'var(--vivid-text-dim)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
               flexShrink: 0,
               marginRight: 2,
             }}
           >
-            HERE
-          </span>
+            <div
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: '#4ade80',
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                fontFamily: 'var(--vivid-font-display)',
+                color: 'var(--vivid-text-dim)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              {onlineRosterPlayers.length} online
+            </span>
+          </div>
           {onlineRosterPlayers.map((p, i) => (
             <motion.div
               key={p.id}
@@ -203,23 +220,18 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
               onClick={() => onTapAvatar?.(p.id)}
               style={{ cursor: onTapAvatar ? 'pointer' : undefined, flexShrink: 0, position: 'relative' }}
             >
-              <motion.div
-                animate={{ scale: [1, 1.06, 1] }}
-                transition={{ repeat: Infinity, duration: 3, delay: i * 0.5, ease: 'easeInOut' }}
-              >
-                <PersonaAvatar
-                  avatarUrl={p.avatarUrl}
-                  personaName={p.personaName}
-                  size={36}
-                />
-              </motion.div>
+              <PersonaAvatar
+                avatarUrl={p.avatarUrl}
+                personaName={p.personaName}
+                size={34}
+              />
               <div
                 style={{
                   position: 'absolute',
                   bottom: -1,
                   right: -1,
-                  width: 8,
-                  height: 8,
+                  width: 7,
+                  height: 7,
                   borderRadius: '50%',
                   background: '#4ade80',
                   border: '2px solid var(--vivid-bg-surface)',

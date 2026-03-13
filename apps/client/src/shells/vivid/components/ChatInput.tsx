@@ -328,39 +328,51 @@ export function ChatInput({
       }}
     >
       <div style={{ padding: '6px 12px 10px' }}>
-        {/* Silver + char count stats row */}
+        {/* Contextual stats row */}
         {!isDisabled && (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '0 6px 4px',
+              padding: '0 6px 5px',
             }}
           >
             <span
               style={{
                 fontFamily: 'var(--vivid-font-mono)',
                 fontSize: 11,
-                fontWeight: 600,
+                fontWeight: 700,
                 color: '#D4960A',
-                opacity: 0.7,
+                opacity: 0.55,
+                letterSpacing: '0.02em',
               }}
             >
-              {myBalance} silver
+              {myBalance}
+              <span style={{ fontWeight: 500, marginLeft: 2 }}>silver</span>
             </span>
-            {context === 'dm' && dmStats && (
-              <span
-                style={{
-                  fontFamily: 'var(--vivid-font-mono)',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: 'var(--vivid-text-dim)',
-                  opacity: 0.7,
-                }}
-              >
-                {Math.max(0, (dmStats.charsLimit ?? 0) - (dmStats.charsUsed ?? 0))}/{dmStats.charsLimit ?? 0} chars
-              </span>
+            {(context === 'dm' || context === 'group') && dmStats && (
+              (() => {
+                const remaining = Math.max(0, (dmStats.charsLimit ?? 0) - (dmStats.charsUsed ?? 0));
+                const limit = dmStats.charsLimit ?? 0;
+                const ratio = limit > 0 ? remaining / limit : 1;
+                const isLow = ratio < 0.2;
+                return (
+                  <span
+                    style={{
+                      fontFamily: 'var(--vivid-font-mono)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: isLow ? '#D94073' : 'var(--vivid-text-dim)',
+                      opacity: isLow ? 0.8 : 0.5,
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    {remaining}
+                    <span style={{ fontWeight: 500 }}>/{limit} chars</span>
+                  </span>
+                );
+              })()
             )}
           </div>
         )}

@@ -84,24 +84,19 @@ export function BroadcastBar({ onClick }: { onClick?: () => void }) {
         </Marquee>
       </div>
 
-      {/* Right: dashboard hint */}
+      {/* Right: dashboard chevron hint */}
       <div
         style={{
           flexShrink: 0,
           paddingRight: 14,
           display: 'flex',
           alignItems: 'center',
+          opacity: 0.4,
         }}
       >
-        <div
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: 'var(--vivid-phase-accent)',
-            opacity: 0.5,
-          }}
-        />
+        <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+          <path d="M1 1L7 7L1 13" stroke="var(--vivid-phase-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </div>
     </div>
   );
