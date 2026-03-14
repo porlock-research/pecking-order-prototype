@@ -1474,3 +1474,18 @@ This document tracks significant architectural decisions, their context, and con
     *   Persona showcase prioritizes character identity (image, bio) over mechanical stats — aligns with V1 "meaningful conversations" priority.
     *   `PlayerQuickSheet` component removed; all surfaces now use `PlayerDetail`.
     *   `resolvePersonaVariant()` available for any future surface needing non-headshot persona images.
+
+## [ADR-100] DMChat Full-Screen Overlay & Tab Slide Animations
+*   **Date:** 2026-03-13
+*   **Status:** Accepted
+*   **Context:** DMChat was rendered inside `PeopleTab` which sits inside `<main>` — Framer Motion transforms created a stacking context that trapped the DM view below the broadcast bar. Tab switching used a slow fade animation (`VIVID_SPRING.gentle`) with noticeable delay.
+*   **Decision:**
+    1.  **DMChat at shell level**: Moved DMChat rendering from `PeopleTab` to `VividShell` root (alongside `PlayerDetail`), making it a true full-screen overlay with `position: fixed; inset: 0; z-index: 50`. No broadcast bar overlap.
+    2.  **Tab slide animations**: Replaced fade-only tab transitions with directional slide + fade. `tabDirection` ref tracks swipe direction based on tab index comparison. Snappy spring (`stiffness: 500, damping: 35, mass: 0.8`) replaces `VIVID_SPRING.gentle`.
+    3.  **DM timeline cleanup**: Removed ticker/system event merging from `usePlayerTimeline` — DM conversations now show chat messages only, matching group chat rules. System events live in the notifications feed.
+    4.  **Shell picker removed**: `ShellPicker` button hidden from `ShellLoader` to avoid dev-only UI leaking to users.
+*   **Consequences:**
+    *   DMChat and PlayerDetail share the same overlay layer — consistent full-screen modal pattern.
+    *   `PeopleTab` always renders the leaderboard; DM state is managed by VividShell.
+    *   Tab switching feels snappy and directional — slide direction matches navigation intent.
+    *   DM conversations are clean chat-only views — no visual noise from system events.
