@@ -1489,3 +1489,19 @@ This document tracks significant architectural decisions, their context, and con
     *   `PeopleTab` always renders the leaderboard; DM state is managed by VividShell.
     *   Tab switching feels snappy and directional — slide direction matches navigation intent.
     *   DM conversations are clean chat-only views — no visual noise from system events.
+
+## [ADR-101] Server-Authoritative DayPhase Projection + Redesigned PhaseTransitionSplash
+*   **Date:** 2026-03-13
+*   **Status:** Accepted
+*   **Context:** Client-side phase detection was completely broken — `serverState` (XState `snapshot.value`) is a nested object (e.g., `{dayLoop: "nightSummary"}`), not a string. Three separate client components used `.includes()` on it, which always fell through to defaults. The splash screens never showed meaningful phase-specific content, and the previous implementation used a 5-second auto-dismiss timer that players couldn't control.
+*   **Decision:**
+    1.  **`DayPhases`/`DayPhase` in shared-types**: Open string union type as server-client contract. Named `Day*` to avoid collision with existing `GamePhase` enum (lobby lifecycle). Values: `pregame`, `morning`, `social`, `game`, `activity`, `voting`, `elimination`, `finale`, `gameOver`.
+    2.  **`resolveDayPhase()` in sync.ts**: Pure server-side projection function. Converts XState `snapshot.value` to a flat `DayPhase` string using `flattenState()` from ticker.ts. Order matters — more specific states matched first. Added `phase` field to SYNC payload alongside existing `state`.
+    3.  **Client store**: Added `phase: DayPhase` to Zustand store, consumed from SYNC. All components migrated from parsing `serverState` to using typed `phase`.
+    4.  **PhaseTransitionSplash redesign**: Tap-to-dismiss (no auto-timeout). Phase-specific rich content: icon, title, subtitle, body text. Morning shows alive count, day X of Y, vote type name + howItWorks detail block. Voting shows mechanism name, description, howItWorks. Dashboard auto-opens after splash exit animation completes.
+    5.  **Component migrations**: BroadcastBar (`PHASE_LABELS` lookup), VividShell (`PHASE_CLASSES` lookup), DashboardOverlay (`PHASE_TO_INDEX` lookup) — all replaced string parsing with typed phase comparison.
+*   **Consequences:**
+    *   Server is the single authority for phase — no client-side XState state parsing.
+    *   Follows existing projection pattern (`projectGameCartridge`, `projectPromptCartridge`).
+    *   Phase splash screens now explain game mechanics to first-time players in context.
+    *   `DayPhase` is an open type (`(string & {})`) — extensible without breaking existing code.
