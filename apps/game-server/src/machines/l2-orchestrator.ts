@@ -131,6 +131,7 @@ export const orchestratorMachine = setup({
                 id: event.player.id,
                 personaName: event.player.personaName,
                 avatarUrl: event.player.avatarUrl,
+                bio: event.player.bio || '',
                 status: 'ALIVE',
                 silver: event.player.silver,
                 gold: event.player.gold,

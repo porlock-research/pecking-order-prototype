@@ -6,14 +6,13 @@ import './vivid.css';
 import type { ShellProps } from '../types';
 import { useGameStore, selectRequireDmInvite } from '../../store/useGameStore';
 import { buildPlayerColorMap } from './colors';
-import { GAME_MASTER_ID, Events } from '@pecking-order/shared-types';
+import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { BroadcastBar } from './components/BroadcastBar';
 import { StageChat } from './components/StageChat';
 import { PeopleTab } from './components/PeopleTab';
 import { TabBar, type VividTab } from './components/TabBar';
 import { NewConversationPicker } from './components/NewConversationPicker';
 import { PwaGate } from '../../components/PwaGate';
-import { PlayerQuickSheet } from './components/PlayerQuickSheet';
 import { PlayerDetail } from './components/PlayerDetail';
 import { PhaseTransitionSplash } from './components/PhaseTransitionSplash';
 import { DramaticReveal } from './components/DramaticReveal';
@@ -50,7 +49,6 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const [dmTargetPlayerId, setDmTargetPlayerId] = useState<string | null>(null);
   const [dmChannelId, setDmChannelId] = useState<string | null>(null);
   const [detailPlayerId, setDetailPlayerId] = useState<string | null>(null);
-  const [quickSheetPlayerId, setQuickSheetPlayerId] = useState<string | null>(null);
   const [showNewConversation, setShowNewConversation] = useState(false);
 
   const roster = useGameStore(s => s.roster);
@@ -151,6 +149,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
           display: 'flex',
           flexDirection: 'column',
           touchAction: 'pan-y',
+          zIndex: 1,
         }}
       >
         <AnimatePresence mode="wait">
@@ -166,7 +165,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
               <StageChat
                 engine={engine}
                 playerColorMap={playerColorMap}
-                onTapAvatar={(pid) => setQuickSheetPlayerId(pid)}
+                onTapAvatar={(pid) => setDetailPlayerId(pid)}
               />
             </motion.div>
           )}
@@ -188,7 +187,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
                 onSelectPlayer={(pid, chId) => { setDmTargetPlayerId(pid); setDmChannelId(chId ?? null); }}
                 onSelectGroup={(chId) => { setDmChannelId(chId); setDmTargetPlayerId(null); }}
                 onBack={() => { setDmTargetPlayerId(null); setDmChannelId(null); }}
-                onTapAvatar={(pid) => setQuickSheetPlayerId(pid)}
+                onTapAvatar={(pid) => setDetailPlayerId(pid)}
                 onViewProfile={(pid) => setDetailPlayerId(pid)}
                 onNewGroup={() => setShowNewConversation(true)}
               />
@@ -206,17 +205,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       {/* Silver received HUD popups */}
       <SilverHUD />
 
-      {/* Player quick sheet (avatar tap) */}
-      <PlayerQuickSheet
-        targetPlayerId={quickSheetPlayerId}
-        onClose={() => setQuickSheetPlayerId(null)}
-        onWhisper={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setActiveTab('people'); }}
-        onViewProfile={(pid) => { setDetailPlayerId(pid); setQuickSheetPlayerId(null); }}
-        engine={engine}
-        playerColorMap={playerColorMap}
-      />
-
-      {/* Player detail (full-screen profile) */}
+      {/* Player profile (full-screen modal — avatar tap anywhere) */}
       <AnimatePresence>
         {detailPlayerId && (
           <PlayerDetail

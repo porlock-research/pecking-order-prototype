@@ -12,7 +12,8 @@ interface AnimatedCounterProps {
 
 /**
  * Animated number counter with spring bounce on value changes.
- * Shows a brief color flash + scale bounce when the value changes.
+ * Decrease: dramatic shake + scale + longer color flash.
+ * Increase: gentle scale bounce + brief color flash.
  */
 export function AnimatedCounter({
   value,
@@ -38,23 +39,31 @@ export function AnimatedCounter({
   useEffect(() => {
     if (prevValue.current !== value) {
       setFlash(value > prevValue.current ? 'increase' : 'decrease');
-      const timeout = setTimeout(() => setFlash(null), 400);
+      const duration = value < prevValue.current ? 800 : 400;
+      const timeout = setTimeout(() => setFlash(null), duration);
       prevValue.current = value;
       return () => clearTimeout(timeout);
     }
   }, [value]);
 
   const flashColor = flash === 'decrease' ? decreaseColor : flash === 'increase' ? increaseColor : undefined;
+  const isDecrease = flash === 'decrease';
 
   return (
     <motion.span
       animate={{
-        scale: flash ? [1, 1.2, 1] : 1,
+        scale: isDecrease
+          ? [1, 1.35, 0.9, 1.15, 1]
+          : flash
+            ? [1, 1.2, 1]
+            : 1,
+        x: isDecrease ? [0, -3, 3, -2, 2, 0] : 0,
         color: flashColor ?? (style?.color as string) ?? 'inherit',
       }}
       transition={{
-        scale: { duration: 0.3, ease: 'easeOut' },
-        color: { duration: 0.4 },
+        scale: { duration: isDecrease ? 0.5 : 0.3, ease: 'easeOut' },
+        x: { duration: 0.4, ease: 'easeOut' },
+        color: { duration: isDecrease ? 0.8 : 0.4 },
       }}
       style={{
         ...style,

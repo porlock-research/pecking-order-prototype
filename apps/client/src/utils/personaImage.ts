@@ -11,3 +11,16 @@ export function resolveAvatarUrl(avatarUrl: string | undefined): string | null {
   }
   return `${LOBBY_HOST}${avatarUrl}`;
 }
+
+/**
+ * Derive a different image variant from a headshot URL.
+ * headshot.png → medium.png | full.png
+ */
+export function resolvePersonaVariant(
+  avatarUrl: string | undefined,
+  variant: 'medium' | 'full',
+): string | null {
+  if (!avatarUrl) return null;
+  const swapped = avatarUrl.replace(/headshot\.png$/, `${variant}.png`);
+  return resolveAvatarUrl(swapped);
+}
