@@ -6,7 +6,7 @@ import { useGameStore, selectRequireDmInvite, selectDmSlots } from '../../../sto
 import { ChannelTypes, GAME_MASTER_ID, Events, PlayerStatuses } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
-import { DMChat } from './DMChat';
+
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
 /* ------------------------------------------------------------------ */
@@ -60,39 +60,8 @@ export function PeopleTab({
   onViewProfile,
   onNewGroup,
 }: PeopleTabProps) {
-  /* ---- If a DM is selected, render DMChat ------------------------- */
-  if (activeDmPlayerId) {
-    return (
-      <DMChat
-        key={activeDmPlayerId}
-        mode="1on1"
-        targetPlayerId={activeDmPlayerId}
-        channelId={activeChannelId ?? undefined}
-        engine={engine}
-        onBack={onBack}
-        onOpenSpotlight={onTapAvatar}
-        playerColorMap={playerColorMap}
-        onTapAvatar={onTapAvatar}
-      />
-    );
-  }
-
-  if (activeChannelId) {
-    return (
-      <DMChat
-        key={activeChannelId}
-        mode="group"
-        channelId={activeChannelId}
-        engine={engine}
-        onBack={onBack}
-        onOpenSpotlight={onTapAvatar}
-        playerColorMap={playerColorMap}
-        onTapAvatar={onTapAvatar}
-      />
-    );
-  }
-
-  /* ---- Otherwise render the leaderboard --------------------------- */
+  /* ---- Always render the leaderboard.
+         DMChat is now rendered at the VividShell level as a full-screen overlay. */
   return (
     <PeopleList
       engine={engine}

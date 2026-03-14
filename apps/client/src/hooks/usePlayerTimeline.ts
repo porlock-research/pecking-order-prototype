@@ -4,16 +4,13 @@ import { ChannelTypes } from '@pecking-order/shared-types';
 import type { TimelineEntry } from '../types/timeline';
 
 /**
- * Merges DM messages with filtered ticker messages for a specific player pair.
- * - DM messages: from DM channels between playerId and targetPlayerId
- * - Ticker messages: where involvedPlayerIds includes targetPlayerId
- *   (bilateral events like silver transfers, or unilateral like elimination)
+ * DM chat messages only — same filtering rules as the main group chat.
+ * System/ticker events live in the notifications feed, not inline.
  */
 export function usePlayerTimeline(targetPlayerId: string): TimelineEntry[] {
   const playerId = useGameStore(s => s.playerId);
   const chatLog = useGameStore(s => s.chatLog);
   const channels = useGameStore(s => s.channels);
-  const tickerMessages = useGameStore(s => s.tickerMessages);
 
   return useMemo(() => {
     if (!playerId) return [];
@@ -37,14 +34,7 @@ export function usePlayerTimeline(targetPlayerId: string): TimelineEntry[] {
       entries.push({ kind: 'chat', key: `chat-${msg.id}`, timestamp: msg.timestamp, data: msg });
     }
 
-    // Ticker messages involving BOTH players in the DM conversation
-    for (const t of tickerMessages) {
-      if (t.involvedPlayerIds && t.involvedPlayerIds.includes(targetPlayerId) && t.involvedPlayerIds.includes(playerId)) {
-        entries.push({ kind: 'system', key: `sys-${t.id}`, timestamp: t.timestamp, data: t });
-      }
-    }
-
     entries.sort((a, b) => a.timestamp - b.timestamp);
     return entries;
-  }, [playerId, targetPlayerId, chatLog, channels, tickerMessages]);
+  }, [playerId, targetPlayerId, chatLog, channels]);
 }

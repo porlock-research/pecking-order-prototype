@@ -10,6 +10,7 @@ import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { BroadcastBar } from './components/BroadcastBar';
 import { StageChat } from './components/StageChat';
 import { PeopleTab } from './components/PeopleTab';
+import { DMChat } from './components/DMChat';
 import { TabBar, type VividTab } from './components/TabBar';
 import { NewConversationPicker } from './components/NewConversationPicker';
 import { PwaGate } from '../../components/PwaGate';
@@ -85,14 +86,20 @@ function VividShell({ playerId, engine, token }: ShellProps) {
     setDetailPlayerId(null);
   }, []);
 
+  // Track slide direction for tab transitions
+  const tabDirection = useRef<1 | -1>(1);
+
   const handleTabChange = useCallback((tab: VividTab) => {
+    const oldIdx = TAB_ORDER.indexOf(activeTab);
+    const newIdx = TAB_ORDER.indexOf(tab);
+    tabDirection.current = newIdx >= oldIdx ? 1 : -1;
     setActiveTab(tab);
     // Clear DM selection when switching away from People
     if (tab !== 'people') {
       setDmTargetPlayerId(null);
       setDmChannelId(null);
     }
-  }, []);
+  }, [activeTab]);
 
   /* ---- Swipe gesture for tab switching ---- */
 
@@ -152,15 +159,16 @@ function VividShell({ playerId, engine, token }: ShellProps) {
           zIndex: 1,
         }}
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" custom={tabDirection.current}>
           {activeTab === 'chat' && (
             <motion.div
               key="chat"
+              custom={tabDirection.current}
               style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={VIVID_SPRING.gentle}
+              initial={(dir: number) => ({ opacity: 0, x: `${-dir * 20}%` })}
+              animate={{ opacity: 1, x: 0 }}
+              exit={(dir: number) => ({ opacity: 0, x: `${dir * 20}%` })}
+              transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.8 }}
             >
               <StageChat
                 engine={engine}
@@ -173,11 +181,12 @@ function VividShell({ playerId, engine, token }: ShellProps) {
           {activeTab === 'people' && (
             <motion.div
               key="people"
+              custom={tabDirection.current}
               style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={VIVID_SPRING.gentle}
+              initial={(dir: number) => ({ opacity: 0, x: `${-dir * 20}%` })}
+              animate={{ opacity: 1, x: 0 }}
+              exit={(dir: number) => ({ opacity: 0, x: `${dir * 20}%` })}
+              transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.8 }}
             >
               <PeopleTab
                 engine={engine}
@@ -214,6 +223,23 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             engine={engine}
             onBack={() => setDetailPlayerId(null)}
             onWhisper={(pid) => { setDmTargetPlayerId(pid); setDmChannelId(null); setActiveTab('people'); setDetailPlayerId(null); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* DM chat — full-screen overlay like PlayerDetail */}
+      <AnimatePresence>
+        {(dmTargetPlayerId || dmChannelId) && (
+          <DMChat
+            key={dmTargetPlayerId || dmChannelId || 'dm'}
+            mode={dmTargetPlayerId ? '1on1' : 'group'}
+            targetPlayerId={dmTargetPlayerId ?? undefined}
+            channelId={dmChannelId ?? undefined}
+            engine={engine}
+            onBack={() => { setDmTargetPlayerId(null); setDmChannelId(null); }}
+            onOpenSpotlight={(pid) => setDetailPlayerId(pid)}
+            playerColorMap={playerColorMap}
+            onTapAvatar={(pid) => setDetailPlayerId(pid)}
           />
         )}
       </AnimatePresence>
