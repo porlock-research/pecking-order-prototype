@@ -223,6 +223,9 @@ export function ChatInput({
   // Silver: player balance
   const myBalance = playerId ? (roster[playerId]?.silver ?? 0) : 0;
 
+  // Silver send confirmation flash
+  const [silverSentFlash, setSilverSentFlash] = useState<{ amount: number; target: string } | null>(null);
+
   // Invite: eligible players (not self, not eliminated, not already in channel)
   const eligible = useMemo(() => {
     if (!playerId || !roster) return [];
@@ -267,6 +270,9 @@ export function ChatInput({
     if (activeCapability === 'SILVER_TRANSFER') {
       if (targetId && silverAmount > 0 && silverAmount <= myBalance) {
         engine.sendSilver(silverAmount, targetId);
+        const tName = targetName ?? 'them';
+        setSilverSentFlash({ amount: silverAmount, target: tName });
+        setTimeout(() => setSilverSentFlash(null), 2500);
         setActiveCapability(null);
         setSilverAmount(5);
       }
@@ -521,7 +527,7 @@ export function ChatInput({
             >
               <AnimatePresence mode="wait">
                 {/* Text mode */}
-                {activeCapability === null && (
+                {activeCapability === null && !silverSentFlash && (
                   <motion.div
                     key="text"
                     style={{ flex: 1, display: 'flex', alignItems: 'center' }}
@@ -608,6 +614,44 @@ export function ChatInput({
                     ))}
                     <span style={CANNED_TEXT}>
                       silver{targetName ? ` to ${targetName}` : ''}
+                    </span>
+                  </motion.div>
+                )}
+
+                {/* Silver sent confirmation flash */}
+                {silverSentFlash && !activeCapability && (
+                  <motion.div
+                    key="silver-sent"
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <span style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #A78BFA, #7C3AED)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: '#FFF',
+                      flexShrink: 0,
+                    }}>$</span>
+                    <span style={{
+                      ...CANNED_TEXT,
+                      color: '#7C3AED',
+                      fontWeight: 600,
+                    }}>
+                      Sent {silverSentFlash.amount} silver to {silverSentFlash.target}
                     </span>
                   </motion.div>
                 )}

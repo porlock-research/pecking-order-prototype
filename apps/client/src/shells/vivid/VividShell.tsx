@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Toaster } from 'sonner';
 import { useDrag } from '@use-gesture/react';
 import './vivid.css';
 import type { ShellProps } from '../types';
@@ -56,6 +55,8 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const serverState = useGameStore(s => s.serverState);
   const requireDmInvite = useGameStore(selectRequireDmInvite);
   const toggleDashboard = useGameStore(s => s.toggleDashboard);
+  const dashboardOpen = useGameStore(s => s.dashboardOpen);
+  const openDashboard = useGameStore(s => s.openDashboard);
 
   const phaseClass = getPhaseClass(serverState);
 
@@ -88,6 +89,11 @@ function VividShell({ playerId, engine, token }: ShellProps) {
 
   // Track slide direction for tab transitions
   const tabDirection = useRef<1 | -1>(1);
+  const tabVariants = useMemo(() => ({
+    enter: (dir: number) => ({ opacity: 0, x: `${-dir * 8}%` }),
+    center: { opacity: 1, x: 0 },
+    exit: (dir: number) => ({ opacity: 0, x: `${dir * 8}%` }),
+  }), []);
 
   const handleTabChange = useCallback((tab: VividTab) => {
     const oldIdx = TAB_ORDER.indexOf(activeTab);
@@ -128,6 +134,19 @@ function VividShell({ playerId, engine, token }: ShellProps) {
     }
   );
 
+  /* ---- Swipe-down gesture for notifications panel ---- */
+
+  const bindDashboardPull = useDrag(
+    ({ direction: [, dy], velocity: [, vy], cancel }) => {
+      if (vy < 0.4 || dashboardOpen) return;
+      if (dy > 0) {
+        openDashboard();
+        cancel();
+      }
+    },
+    { axis: 'y', filterTaps: true, pointer: { touch: true } }
+  );
+
   /* ---- Render ---- */
 
   return (
@@ -142,8 +161,10 @@ function VividShell({ playerId, engine, token }: ShellProps) {
         overflow: 'hidden',
       }}
     >
-      {/* Broadcast bar — top */}
-      <BroadcastBar onClick={toggleDashboard} />
+      {/* Broadcast bar — top (swipe down to open notifications) */}
+      <div {...bindDashboardPull()} style={{ touchAction: 'pan-x' }}>
+        <BroadcastBar onClick={toggleDashboard} />
+      </div>
 
       {/* Main content — tab panels with swipe */}
       <main
@@ -164,11 +185,12 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             <motion.div
               key="chat"
               custom={tabDirection.current}
+              variants={tabVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
               style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
-              initial={(dir: number) => ({ opacity: 0, x: `${-dir * 20}%` })}
-              animate={{ opacity: 1, x: 0 }}
-              exit={(dir: number) => ({ opacity: 0, x: `${dir * 20}%` })}
-              transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.8 }}
+              transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
             >
               <StageChat
                 engine={engine}
@@ -182,11 +204,12 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             <motion.div
               key="people"
               custom={tabDirection.current}
+              variants={tabVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
               style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
-              initial={(dir: number) => ({ opacity: 0, x: `${-dir * 20}%` })}
-              animate={{ opacity: 1, x: 0 }}
-              exit={(dir: number) => ({ opacity: 0, x: `${dir * 20}%` })}
-              transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.8 }}
+              transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
             >
               <PeopleTab
                 engine={engine}
@@ -211,7 +234,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       {/* Dashboard overlay */}
       <DashboardOverlay />
 
-      {/* Silver received HUD popups */}
+      {/* Silver HUD popups (sent + received) */}
       <SilverHUD />
 
       {/* Player profile (full-screen modal — avatar tap anywhere) */}
@@ -273,24 +296,6 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       {/* PWA gate */}
       <PwaGate token={token} />
 
-      {/* Toaster */}
-      <Toaster
-        position="top-center"
-        visibleToasts={5}
-        gap={6}
-        closeButton
-        toastOptions={{
-          className: 'font-body',
-          duration: Infinity,
-          style: {
-            background: 'var(--vivid-bg-surface)',
-            color: 'var(--vivid-text)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            fontFamily: 'var(--vivid-font-body)',
-          },
-        }}
-        richColors
-      />
     </div>
   );
 }

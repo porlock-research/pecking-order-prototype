@@ -33,7 +33,7 @@ function formatTimeSeparator(ts: number): string {
   const now = Date.now();
   const diff = now - ts;
   if (diff < 60_000) return 'JUST NOW';
-  if (diff < 3600_000) return `${Math.floor(diff / 60_000)} MIN AGO`;
+  // Always use absolute clock time — broadcast-style timestamps
   if (diff < 86400_000) {
     return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
