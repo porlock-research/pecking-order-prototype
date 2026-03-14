@@ -1458,3 +1458,19 @@ This document tracks significant architectural decisions, their context, and con
     *   Future economy explainer, full onboarding, and deeper dashboard features have a natural home.
     *   Notification badges (pending invites) provide a lightweight bridge to Whispers tab.
     *   Vivid shell only; Classic/Immersive shells unaffected.
+
+## [ADR-099] Unified Avatar-Tap UX — PlayerDetail Full-Screen Modal
+*   **Date:** 2026-03-13
+*   **Status:** Accepted
+*   **Context:** Tapping a player avatar had inconsistent behavior across the Vivid shell — some surfaces opened a `PlayerQuickSheet` drawer (compact stats view), others opened nothing. The drawer was a bottom sheet with cramped layout and stats-forward design that didn't showcase the persona's character. Bios were also missing from `SYSTEM.PLAYER_JOINED` projections.
+*   **Decision:**
+    1.  **Full-screen PlayerDetail modal**: Replaced `PlayerQuickSheet` drawer with a cinematic full-screen modal as the single avatar-tap interaction everywhere. Hero section with full-body persona image, bio with medium variant image, de-emphasized stats section.
+    2.  **Persona image variants**: Added `resolvePersonaVariant(baseUrl, variant)` utility to derive medium/full image URLs from the headshot base URL. Variants: `headshot` (default), `medium`, `full`.
+    3.  **AnimatedCounter enhancement**: Bigger shake amplitude and scale on decrease, added horizontal jitter, longer flash duration — makes silver changes more visceral.
+    4.  **Bio projection fix**: `SYSTEM.PLAYER_JOINED` handler in `l2-orchestrator.ts` now correctly copies the `bio` field from `InitPayload` into the L2 roster. Previously, bio was lost at join time despite being available in the payload.
+    5.  **Z-index stacking fix**: PlayerDetail modal main element given explicit `zIndex` to prevent pointer event interception by underlying layers.
+*   **Consequences:**
+    *   Single interaction model for all avatar taps — consistent and discoverable.
+    *   Persona showcase prioritizes character identity (image, bio) over mechanical stats — aligns with V1 "meaningful conversations" priority.
+    *   `PlayerQuickSheet` component removed; all surfaces now use `PlayerDetail`.
+    *   `resolvePersonaVariant()` available for any future surface needing non-headshot persona images.

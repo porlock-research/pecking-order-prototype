@@ -44,7 +44,7 @@ PeopleList alive section should default to highest silver first. Makes economic 
 ### [PT1-UX-003] Character bios not visible in game
 
 Bios created during persona selection never surfaced in game client. Only avatar headshots shown. Check if bio data is in roster SYNC payload, then add to PlayerDrawer.
-**Status**: ✅ FIXED (`feature/shell-agnostic-fixes`) — bio preserved in L2 roster from InitPayload, added to SocialPlayer type, flows through SYNC
+**Status**: ✅ FIXED (`feature/shell-agnostic-fixes`, `feature/user-friendliness`) — bio preserved in L2 roster from InitPayload, added to SocialPlayer type, flows through SYNC. Additional fix in ADR-099: `SYSTEM.PLAYER_JOINED` handler now also copies bio field (was missing from late-join path).
 
 ### [PT1-UX-004] Voting interface is confusing / no clear instructions
 
