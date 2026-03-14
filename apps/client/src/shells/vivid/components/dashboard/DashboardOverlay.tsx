@@ -4,6 +4,7 @@ import { useGameStore, selectUnreadFeedCount } from '../../../../store/useGameSt
 import { DayTimeline } from './DayTimeline';
 import { VIVID_SPRING } from '../../springs';
 import { Letter } from '@solar-icons/react';
+import { DayPhases } from '@pecking-order/shared-types';
 
 const DISMISS_THRESHOLD = -80;
 
@@ -13,25 +14,22 @@ const DISMISS_THRESHOLD = -80;
 
 const PHASE_LABELS = ['Morning', 'Social', 'Game', 'Activity', 'Voting', 'Night'] as const;
 
-function getActivePhaseIndex(serverState: unknown): number {
-  if (!serverState || typeof serverState !== 'string') return -1;
-  const s = serverState.toLowerCase();
-  if (s.includes('morningbriefing')) return 0;
-  if (s.includes('socialperiod') || s.includes('dmperiod')) return 1;
-  if (s.includes('game')) return 2;
-  if (s.includes('prompt') || s.includes('activity')) return 3;
-  if (s.includes('voting')) return 4;
-  if (s.includes('nightsummary')) return 5;
-  return -1;
-}
+const PHASE_TO_INDEX: Record<string, number> = {
+  [DayPhases.MORNING]: 0,
+  [DayPhases.SOCIAL]: 1,
+  [DayPhases.GAME]: 2,
+  [DayPhases.ACTIVITY]: 3,
+  [DayPhases.VOTING]: 4,
+  [DayPhases.ELIMINATION]: 5,
+};
 
 function CompactProgressBar() {
-  const serverState = useGameStore(s => s.serverState);
+  const phase = useGameStore(s => s.phase);
   const dayIndex = useGameStore(s => s.dayIndex);
   const manifest = useGameStore(s => s.manifest);
 
   const totalDays = manifest?.days?.length ?? 0;
-  const activeIdx = getActivePhaseIndex(serverState);
+  const activeIdx = PHASE_TO_INDEX[phase] ?? -1;
 
   return (
     <div style={{ padding: '0 20px 12px' }}>

@@ -544,6 +544,26 @@ export interface TickerMessage {
   involvedPlayerIds?: string[];
 }
 
+// --- Game Phase (server-projected, consumed by all shells) ---
+
+/**
+ * Server-authoritative day phase — projected from XState snapshot in the sync layer.
+ * Sent in every SYNC payload as `phase`. Open union: game modes may define additional values.
+ */
+export const DayPhases = {
+  PREGAME: 'pregame',
+  MORNING: 'morning',
+  SOCIAL: 'social',
+  GAME: 'game',
+  ACTIVITY: 'activity',
+  VOTING: 'voting',
+  ELIMINATION: 'elimination',
+  FINALE: 'finale',
+  GAME_OVER: 'gameOver',
+} as const;
+
+export type DayPhase = typeof DayPhases[keyof typeof DayPhases] | (string & {});
+
 // --- Per-Game Client Events ---
 
 export type GapRunClientEvent =

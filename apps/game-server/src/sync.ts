@@ -1,11 +1,13 @@
 /**
  * SYSTEM.SYNC payload builder — extracts cartridge context from snapshots
- * and builds per-player SYNC messages. Eliminates duplication between
- * the subscribe callback and onConnect handler.
+ * and builds per-player SYNC messages with server-projected phase.
+ * Eliminates duplication between the subscribe callback and onConnect handler.
  */
 import type { Connection } from "partyserver";
-import { Events } from "@pecking-order/shared-types";
+import { Events, DayPhases } from "@pecking-order/shared-types";
+import type { DayPhase } from "@pecking-order/shared-types";
 import { projectGameCartridge, projectPromptCartridge } from "./projections";
+import { flattenState } from "./ticker";
 
 export interface CartridgeSnapshots {
   activeVotingCartridge: any;
@@ -76,6 +78,25 @@ export interface SyncDeps {
   cartridges: CartridgeSnapshots;
 }
 
+/**
+ * Resolve the current game phase from an L2 snapshot value.
+ * Pure projection — no machine coupling. Uses flattened state string matching
+ * (same approach as stateToTicker). Order matters: more specific matches first.
+ */
+export function resolveDayPhase(snapshotValue: any): DayPhase {
+  const s = flattenState(snapshotValue);
+  if (s.includes('gameOver'))        return DayPhases.GAME_OVER;
+  if (s.includes('gameSummary'))      return DayPhases.FINALE;
+  if (s.includes('nightSummary'))     return DayPhases.ELIMINATION;
+  if (s.includes('voting'))           return DayPhases.VOTING;
+  if (s.includes('dailyGame'))        return DayPhases.GAME;
+  if (s.includes('dailyActivity') || s.includes('dailyPrompt')) return DayPhases.ACTIVITY;
+  if (s.includes('socialPeriod') || s.includes('dmPeriod'))     return DayPhases.SOCIAL;
+  if (s.includes('morningBriefing'))  return DayPhases.MORNING;
+  if (s.includes('preGame'))          return DayPhases.PREGAME;
+  return DayPhases.PREGAME;
+}
+
 /** Build the per-player SYSTEM.SYNC message object. */
 export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers?: string[]): any {
   const { snapshot, l3Context, chatLog, cartridges } = deps;
@@ -128,6 +149,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
   return {
     type: Events.System.SYNC,
     state: snapshot.value,
+    phase: resolveDayPhase(snapshot.value),
     context: {
       gameId: snapshot.context.gameId,
       dayIndex: snapshot.context.dayIndex,

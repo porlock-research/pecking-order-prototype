@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes } from '@pecking-order/shared-types';
+import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes, DayPhases } from '@pecking-order/shared-types';
+import type { DayPhase } from '@pecking-order/shared-types';
 
 interface DmThread {
   partnerId: string;
@@ -27,6 +28,8 @@ interface GameState {
   dmsOpen: boolean;
   manifest: any;
   serverState: string | null;
+  /** Server-projected game phase (e.g. 'morning', 'voting', 'elimination') */
+  phase: DayPhase;
   playerId: string | null;
   activeVotingCartridge: any | null;
   activeGameCartridge: any | null;
@@ -312,6 +315,7 @@ export const useGameStore = create<GameState>((set) => ({
   dmsOpen: false,
   manifest: null,
   serverState: null,
+  phase: DayPhases.PREGAME,
   playerId: null,
   activeVotingCartridge: null,
   activeGameCartridge: null,
@@ -365,6 +369,7 @@ export const useGameStore = create<GameState>((set) => ({
       dmsOpen: data.context?.dmsOpen ?? state.dmsOpen,
       manifest: data.context?.manifest || null,
       serverState: data.state || null,
+      phase: data.phase ?? state.phase,
       activeVotingCartridge: data.context?.activeVotingCartridge ?? null,
       activeGameCartridge: data.context?.activeGameCartridge ?? null,
       activePromptCartridge: data.context?.activePromptCartridge ?? null,

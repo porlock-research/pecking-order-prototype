@@ -5,7 +5,8 @@ import './vivid.css';
 import type { ShellProps } from '../types';
 import { useGameStore, selectRequireDmInvite } from '../../store/useGameStore';
 import { buildPlayerColorMap } from './colors';
-import { GAME_MASTER_ID } from '@pecking-order/shared-types';
+import { GAME_MASTER_ID, DayPhases } from '@pecking-order/shared-types';
+import type { DayPhase } from '@pecking-order/shared-types';
 import { BroadcastBar } from './components/BroadcastBar';
 import { StageChat } from './components/StageChat';
 import { PeopleTab } from './components/PeopleTab';
@@ -30,14 +31,17 @@ const TAB_ORDER: VividTab[] = ['chat', 'people'];
 /*  Phase class resolver                                               */
 /* ------------------------------------------------------------------ */
 
-function getPhaseClass(serverState: unknown): string {
-  if (!serverState || typeof serverState !== 'string') return 'vivid-phase-default';
-  const s = serverState.toLowerCase();
-  if (s.includes('pregame')) return 'vivid-phase-pregame';
-  if (s.includes('voting') || s.includes('nightsummary')) return 'vivid-phase-voting';
-  if (s.includes('game')) return 'vivid-phase-game';
-  if (s.includes('gamesummary') || s.includes('gameover')) return 'vivid-phase-elimination';
-  return 'vivid-phase-social';
+const PHASE_CLASSES: Record<string, string> = {
+  [DayPhases.PREGAME]: 'vivid-phase-pregame',
+  [DayPhases.VOTING]: 'vivid-phase-voting',
+  [DayPhases.ELIMINATION]: 'vivid-phase-voting',
+  [DayPhases.GAME]: 'vivid-phase-game',
+  [DayPhases.FINALE]: 'vivid-phase-elimination',
+  [DayPhases.GAME_OVER]: 'vivid-phase-elimination',
+};
+
+function getPhaseClass(phase: DayPhase): string {
+  return PHASE_CLASSES[phase] ?? 'vivid-phase-social';
 }
 
 /* ------------------------------------------------------------------ */
@@ -52,13 +56,13 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const [showNewConversation, setShowNewConversation] = useState(false);
 
   const roster = useGameStore(s => s.roster);
-  const serverState = useGameStore(s => s.serverState);
+  const phase = useGameStore(s => s.phase);
   const requireDmInvite = useGameStore(selectRequireDmInvite);
   const toggleDashboard = useGameStore(s => s.toggleDashboard);
   const dashboardOpen = useGameStore(s => s.dashboardOpen);
   const openDashboard = useGameStore(s => s.openDashboard);
 
-  const phaseClass = getPhaseClass(serverState);
+  const phaseClass = getPhaseClass(phase);
 
   const playerColorMap = useMemo(() => {
     const playerIds = Object.keys(roster).filter(id => id !== GAME_MASTER_ID);

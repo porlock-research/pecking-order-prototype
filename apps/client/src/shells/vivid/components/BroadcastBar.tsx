@@ -2,29 +2,35 @@ import React, { useMemo } from 'react';
 import Marquee from 'react-fast-marquee';
 import { useGameStore, selectUnreadFeedCount } from '../../../store/useGameStore';
 import { useCountdown } from '../../../hooks/useCountdown';
+import { DayPhases } from '@pecking-order/shared-types';
+import type { DayPhase } from '@pecking-order/shared-types';
 
-function getPhaseLabel(serverState: unknown, dayIndex: number): string {
-  if (!serverState || typeof serverState !== 'string') return 'WAITING';
-  const s = serverState.toLowerCase();
-  const day = `DAY ${dayIndex}`;
-  if (s.includes('pregame')) return 'PRE-GAME';
-  if (s.includes('morningbriefing')) return `${day} — MORNING`;
-  if (s.includes('socialperiod') || s.includes('dmperiod')) return `${day} — SOCIAL HOUR`;
-  if (s.includes('game')) return `${day} — GAME TIME`;
-  if (s.includes('prompt') || s.includes('activity')) return `${day} — ACTIVITY`;
-  if (s.includes('voting')) return `${day} — VOTING`;
-  if (s.includes('nightsummary')) return `${day} — ELIMINATION`;
-  if (s.includes('gamesummary') || s.includes('gameover')) return 'FINALE';
-  return `${day} — LIVE`;
+const PHASE_LABELS: Record<string, string> = {
+  [DayPhases.PREGAME]: 'PRE-GAME',
+  [DayPhases.MORNING]: 'MORNING',
+  [DayPhases.SOCIAL]: 'SOCIAL HOUR',
+  [DayPhases.GAME]: 'GAME TIME',
+  [DayPhases.ACTIVITY]: 'ACTIVITY',
+  [DayPhases.VOTING]: 'VOTING',
+  [DayPhases.ELIMINATION]: 'ELIMINATION',
+  [DayPhases.FINALE]: 'FINALE',
+  [DayPhases.GAME_OVER]: 'FINALE',
+};
+
+function getPhaseLabel(phase: DayPhase, dayIndex: number): string {
+  const label = PHASE_LABELS[phase];
+  if (!label) return 'WAITING';
+  if (phase === DayPhases.PREGAME || phase === DayPhases.FINALE || phase === DayPhases.GAME_OVER) return label;
+  return `DAY ${dayIndex} — ${label}`;
 }
 
 export function BroadcastBar({ onClick }: { onClick?: () => void }) {
   const dayIndex = useGameStore(s => s.dayIndex);
-  const serverState = useGameStore(s => s.serverState);
+  const phase = useGameStore(s => s.phase);
   const tickerMessages = useGameStore(s => s.tickerMessages);
   const unreadCount = useGameStore(selectUnreadFeedCount);
 
-  const phaseLabel = getPhaseLabel(serverState, dayIndex);
+  const phaseLabel = getPhaseLabel(phase, dayIndex);
   const groupCountdown = useCountdown('group');
   const dmCountdown = useCountdown('dm');
 
