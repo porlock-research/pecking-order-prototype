@@ -1,4 +1,4 @@
-Create a local test game against running dev servers and return magic links for each player.
+Create a test game and return magic links for each player. Works against local dev servers or staging.
 
 ## Usage
 
@@ -22,16 +22,21 @@ Create a local test game against running dev servers and return magic links for 
 | `shell=X` | vivid/classic/immersive | `shell=classic` |
 | `vote=X` | any VoteType | `vote=BUBBLE`, `vote=PODIUM_SACRIFICE` |
 | `dm-invite` | flag (no value) | enables requireDmInvite |
+| `env=X` | local/staging | `env=staging` (default: local) |
+| `game=X` | any GameType | `game=TRIVIA`, `game=SEQUENCE` |
+| `activity=X` | any PromptType | `activity=HOT_TAKE`, `activity=CONFESSION` |
 
 ### Examples
 
 ```
-/create-game                          → 3 players, 2 days, vivid, MAJORITY+FINALS
-/create-game speedrun                 → speedrun with alarm pipeline
+/create-game                          → 3 players, 2 days, vivid, MAJORITY+FINALS (local)
+/create-game speedrun                 → speedrun with alarm pipeline (local)
 /create-game speedrun players=5       → 5-player speedrun
 /create-game big shell=classic        → 6 players, 3 days, classic shell
 /create-game quick players=4 dm-invite → 4 players with DM invite mode
 /create-game quick vote=BUBBLE        → BUBBLE voting instead of MAJORITY
+/create-game speedrun env=staging     → create on staging, shareable links
+/create-game big env=staging          → 6-player game on staging
 ```
 
 ## Parameters: $ARGUMENTS
@@ -40,7 +45,22 @@ Create a local test game against running dev servers and return magic links for 
 
 Run a **single** Node.js script from the **monorepo root** (`/Users/manu/Projects/pecking-order`). The script does everything in one shot.
 
-### Two modes
+### Environments
+
+**`env=local` (default):**
+- Game server: `http://localhost:8787`
+- Client: `http://localhost:5173`
+- Auth secret: `dev-secret-change-me`
+- Requires `npm run dev` running locally
+
+**`env=staging`:**
+- Game server: `https://staging-api.peckingorder.ca`
+- Client: `https://staging-play.peckingorder.ca`
+- Auth secret: Read from `apps/game-server/.env.staging-secret` (single line, the AUTH_SECRET value). If file missing, prompt user to create it: `echo 'YOUR_STAGING_SECRET' > apps/game-server/.env.staging-secret`
+- Links are shareable — anyone with the link can join
+- `.env.staging-secret` MUST be gitignored (check before creating)
+
+### Two scheduling modes
 
 **ADMIN mode** (presets: `quick`, `big`, `invite`):
 - Static manifest with `scheduling: 'ADMIN'`, empty `timeline` per day
@@ -58,14 +78,16 @@ Run a **single** Node.js script from the **monorepo root** (`/Users/manu/Project
 ### Critical details
 
 - **Working directory**: Must run from monorepo root for `@pecking-order/auth` to resolve
-- **Auth**: `Authorization: Bearer dev-secret-change-me`
+- **Auth**: `Authorization: Bearer {SECRET}` (secret depends on env)
 - **Game ID**: `test-{timestamp}` — internal, used in API URLs
 - **Invite code**: random alphanumeric 6 chars uppercase — used in client URL (client regex: `[A-Za-z0-9]+`, no dashes)
-- **Client URL**: `http://localhost:5173/game/{INVITE_CODE}?_t={TOKEN}&shell={SHELL}`
+- **Client URL**: `{CLIENT_BASE}/game/{INVITE_CODE}?_t={TOKEN}&shell={SHELL}`
 - **dayIndex is 1-indexed** (first day = 1)
 - **Roster**: must have `isAlive: true` or players default to ELIMINATED
-- **Token signing**: `signGameToken({ sub: 'u{i}', gameId, playerId: 'p{i}', personaName }, 'dev-secret-change-me')`
+- **Token signing**: `signGameToken({ sub: 'u{i}', gameId, playerId: 'p{i}', personaName }, SECRET)`
 - **Last day is always FINALS** when days > 1 (unless vote= override applies to all days)
+- **Game types**: When `game=X` override provided, set `gameType` on all non-FINALS days
+- **Activity types**: When `activity=X` override provided, set `activityType` on all non-FINALS days
 
 ### Real personas
 
@@ -104,8 +126,33 @@ const PERSONA_POOL = [
 
 ```javascript
 const { signGameToken } = require('@pecking-order/auth');
-const GS = 'http://localhost:8787';
-const SECRET = 'dev-secret-change-me';
+const fs = require('fs');
+const path = require('path');
+
+// Environment config
+const ENV = 'ENV_VALUE'; // 'local' or 'staging'
+const ENVS = {
+  local: {
+    gs: 'http://localhost:8787',
+    client: 'http://localhost:5173',
+    secret: 'dev-secret-change-me',
+  },
+  staging: {
+    gs: 'https://staging-api.peckingorder.ca',
+    client: 'https://staging-play.peckingorder.ca',
+    secret: (() => {
+      try {
+        return fs.readFileSync(path.join(__dirname, 'apps/game-server/.env.staging-secret'), 'utf8').trim();
+      } catch {
+        throw new Error('Missing apps/game-server/.env.staging-secret — create it with your staging AUTH_SECRET');
+      }
+    })(),
+  },
+};
+const env = ENVS[ENV] || ENVS.local;
+const GS = env.gs;
+const SECRET = env.secret;
+const CLIENT = env.client;
 const HEADERS = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + SECRET };
 const ASSETS = 'https://staging-assets.peckingorder.ca';
 
@@ -134,7 +181,7 @@ async function main() {
     const days = [];
     for (let d = 1; d <= DAY_COUNT; d++) {
       const isLast = d === DAY_COUNT;
-      const day = { dayIndex: d, theme:'Day '+d, gameType:'NONE', timeline:[] };
+      const day = { dayIndex: d, theme:'Day '+d, gameType: isLast ? 'NONE' : GAME_TYPE, activityType: isLast ? 'NONE' : ACTIVITY_TYPE, timeline:[] };
       day.voteType = (isLast && DAY_COUNT > 1) ? 'FINALS' : VOTE_TYPE;
       if (DM_INVITE) { day.requireDmInvite = true; day.dmSlotsPerPlayer = 3; }
       days.push(day);
@@ -185,13 +232,14 @@ async function main() {
   // Sign tokens + output
   console.log('GAME_ID=' + gameId);
   console.log('INVITE_CODE=' + inviteCode);
+  console.log('ENV=' + ENV);
   console.log('MODE=' + (IS_SPEEDRUN ? 'SPEED_RUN (auto-advancing, 23min/day)' : 'ADMIN (manual inject)'));
   console.log('---');
   for (let i = 0; i < PLAYER_COUNT; i++) {
     const p = personas[i];
     const tok = await signGameToken({sub:'u'+i,gameId,playerId:'p'+i,personaName:p.name},SECRET);
     console.log(p.name + ' (p'+i+') [' + p.stereotype + ']');
-    console.log('  http://localhost:5173/game/' + inviteCode + '?_t=' + tok + '&shell=' + SHELL);
+    console.log('  ' + CLIENT + '/game/' + inviteCode + '?_t=' + tok + '&shell=' + SHELL);
   }
 
   async function post(path, body) {
@@ -203,7 +251,7 @@ async function main() {
 main().catch(e => { console.error(e); process.exit(1); });
 ```
 
-Replace the capitalized placeholders (PLAYER_COUNT, DAY_COUNT, VOTE_TYPE, DM_INVITE, SHELL, IS_ADMIN, IS_SPEEDRUN) with parsed values from the preset + overrides.
+Replace the capitalized placeholders (PLAYER_COUNT, DAY_COUNT, VOTE_TYPE, GAME_TYPE, ACTIVITY_TYPE, DM_INVITE, SHELL, IS_ADMIN, IS_SPEEDRUN, ENV_VALUE) with parsed values from the preset + overrides. GAME_TYPE and ACTIVITY_TYPE default to `'NONE'`.
 
 ## Output
 
@@ -211,14 +259,14 @@ Present results cleanly:
 
 ```
 Game created: test-{id} (invite: {CODE})
-Mode: SPEED_RUN — auto-advancing, ~23 min/day, starts in 30s
+Env: local | Mode: ADMIN (manual inject)
 3 players, 2 days, vivid shell
 
 | Player | Persona | Link |
 |--------|---------|------|
-| p0 | Skyler Blue — The Party Animal | http://localhost:5173/game/... |
-| p1 | Bella Rossi — The Influencer | http://localhost:5173/game/... |
-| p2 | Chad Brock — The Showmance | http://localhost:5173/game/... |
+| p0 | Skyler Blue — The Party Animal | {CLIENT}/game/... |
+| p1 | Bella Rossi — The Influencer | {CLIENT}/game/... |
+| p2 | Chad Brock — The Showmance | {CLIENT}/game/... |
 ```
 
 For speedrun mode, add a note:
@@ -226,4 +274,12 @@ For speedrun mode, add a note:
 Day 1 starts in ~30s. Timeline: chat opens at +0m, DMs at +2m, voting at +17m, day ends at +23m.
 ```
 
-If the script fails, show the error and suggest `npm run dev`.
+For staging, add:
+```
+Links are shareable — send to anyone for testing.
+Admin API: https://staging-api.peckingorder.ca/parties/game-server/{GAME_ID}/admin
+```
+
+If the script fails:
+- `env=local`: suggest `npm run dev`
+- `env=staging`: check if `.env.staging-secret` exists and the secret is correct
