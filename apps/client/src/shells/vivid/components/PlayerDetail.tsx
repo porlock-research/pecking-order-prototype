@@ -34,8 +34,7 @@ export function PlayerDetail({
   const [showSilverPicker, setShowSilverPicker] = useState(false);
   const [silverAmount, setSilverAmount] = useState(1);
   const [silverSent, setSilverSent] = useState(false);
-  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
-  const [heroImageError, setHeroImageError] = useState(false);
+  const [mediumLoaded, setMediumLoaded] = useState(false);
 
   const target = roster[targetPlayerId];
   const me = playerId ? roster[playerId] : undefined;
@@ -44,9 +43,9 @@ export function PlayerDetail({
   const isSelf = targetPlayerId === playerId;
   const mySilver = me?.silver ?? 0;
 
-  // Derive full-body image URL from headshot
   const fullImageUrl = resolvePersonaVariant(target?.avatarUrl, 'full');
   const mediumImageUrl = resolvePersonaVariant(target?.avatarUrl, 'medium');
+  const headshotUrl = resolveAvatarUrl(target?.avatarUrl);
 
   const dmCount = useMemo(() => {
     if (!playerId) return 0;
@@ -75,7 +74,7 @@ export function PlayerDetail({
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 50,
+          zIndex: 55,
           background: '#1A1410',
           display: 'flex',
           alignItems: 'center',
@@ -97,7 +96,7 @@ export function PlayerDetail({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 50,
+        zIndex: 55,
         background: '#1A1410',
         display: 'flex',
         flexDirection: 'column',
@@ -108,253 +107,240 @@ export function PlayerDetail({
       exit={{ opacity: 0, y: '100%' }}
       transition={VIVID_SPRING.page}
     >
-      {/* ---- Hero image area ---- */}
-      <div
+      {/* ---- Full-body atmospheric background (char-select treatment) ---- */}
+      {fullImageUrl && (
+        <motion.img
+          src={fullImageUrl}
+          alt=""
+          aria-hidden
+          initial={{ opacity: 0 }}
+          animate={{ opacity: isEliminated ? 0.25 : 0.45 }}
+          transition={{ duration: 0.8 }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center top',
+            filter: `blur(10px) ${isEliminated ? 'grayscale(0.8) brightness(0.5)' : ''}`,
+            transform: 'scale(1.1)',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
+      {/* Fallback bg when no full image */}
+      {!fullImageUrl && headshotUrl && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: -20,
+            backgroundImage: `url(${headshotUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: `blur(24px) ${isEliminated ? 'grayscale(0.8) brightness(0.5)' : ''}`,
+            transform: 'scale(1.15)',
+            opacity: 0.4,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
+      {/* Dark scrim over background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'rgba(26, 20, 16, 0.55)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Color-tinted radial glow from player accent */}
+      <div style={{
+        position: 'absolute',
+        top: '30%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '140%',
+        aspectRatio: '1',
+        background: `radial-gradient(circle, ${playerColor}20 0%, transparent 65%)`,
+        pointerEvents: 'none',
+      }} />
+
+      {/* ---- Back button ---- */}
+      <motion.button
+        onClick={onBack}
         style={{
-          position: 'relative',
-          width: '100%',
-          height: '52vh',
-          overflow: 'hidden',
-          flexShrink: 0,
+          position: 'absolute',
+          top: 'max(16px, env(safe-area-inset-top, 16px))',
+          left: 16,
+          background: 'rgba(26, 20, 16, 0.6)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: 14,
+          color: '#FAF3E8',
+          cursor: 'pointer',
+          padding: 10,
+          lineHeight: 0,
+          zIndex: 10,
         }}
+        whileTap={VIVID_TAP.button}
+        transition={VIVID_SPRING.bouncy}
       >
-        {/* Full-body background image */}
-        {fullImageUrl && !heroImageError && (
-          <motion.img
-            src={fullImageUrl}
-            alt=""
-            onLoad={() => setHeroImageLoaded(true)}
-            onError={() => setHeroImageError(true)}
-            initial={{ opacity: 0, scale: 1.08 }}
-            animate={{
-              opacity: heroImageLoaded ? 1 : 0,
-              scale: 1,
-              filter: isEliminated ? 'grayscale(0.8) brightness(0.6)' : 'none',
-            }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center 15%',
-            }}
-          />
-        )}
+        <AltArrowLeft size={22} weight="Bold" />
+      </motion.button>
 
-        {/* Fallback: headshot blown up with blur */}
-        {(!fullImageUrl || heroImageError) && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: -20,
-              backgroundImage: `url(${resolveAvatarUrl(target.avatarUrl)})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              filter: `blur(20px) ${isEliminated ? 'grayscale(0.8) brightness(0.6)' : ''}`,
-              transform: 'scale(1.15)',
-            }}
-          />
-        )}
-
-        {/* Gradient overlays */}
-        <div
+      {/* Online indicator (top right) */}
+      {isOnline && (
+        <motion.div
           style={{
             position: 'absolute',
-            inset: 0,
-            background: `linear-gradient(180deg,
-              rgba(26, 20, 16, 0.3) 0%,
-              rgba(26, 20, 16, 0) 30%,
-              rgba(26, 20, 16, 0) 50%,
-              rgba(26, 20, 16, 0.85) 85%,
-              #1A1410 100%)`,
-          }}
-        />
-
-        {/* Color tint from player accent */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: `linear-gradient(135deg, ${playerColor}15 0%, transparent 60%)`,
-            mixBlendMode: 'overlay',
-          }}
-        />
-
-        {/* Back button */}
-        <motion.button
-          onClick={onBack}
-          style={{
-            position: 'absolute',
-            top: 'max(16px, env(safe-area-inset-top, 16px))',
-            left: 16,
+            top: 'max(22px, calc(env(safe-area-inset-top, 22px) + 4px))',
+            right: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '5px 12px',
+            borderRadius: 9999,
             background: 'rgba(26, 20, 16, 0.6)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: 14,
-            color: '#FAF3E8',
-            cursor: 'pointer',
-            padding: 10,
-            lineHeight: 0,
             zIndex: 10,
           }}
-          whileTap={VIVID_TAP.button}
-          transition={VIVID_SPRING.bouncy}
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3, ...VIVID_SPRING.gentle }}
         >
-          <AltArrowLeft size={22} weight="Bold" />
-        </motion.button>
-
-        {/* Online indicator (top right) */}
-        {isOnline && (
           <motion.div
             style={{
-              position: 'absolute',
-              top: 'max(22px, calc(env(safe-area-inset-top, 22px) + 4px))',
-              right: 20,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '5px 12px',
-              borderRadius: 9999,
-              background: 'rgba(26, 20, 16, 0.6)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              zIndex: 10,
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: '#4ade80',
             }}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3, ...VIVID_SPRING.gentle }}
-          >
-            <motion.div
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: '#4ade80',
-              }}
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ repeat: Infinity, duration: 1.5 }}
-            />
-            <span style={{
-              fontFamily: 'var(--vivid-font-display)',
-              fontSize: 11,
-              fontWeight: 700,
-              color: '#4ade80',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-            }}>
-              Online
-            </span>
-          </motion.div>
-        )}
+            animate={{ opacity: [1, 0.3, 1] }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+          />
+          <span style={{
+            fontFamily: 'var(--vivid-font-display)',
+            fontSize: 11,
+            fontWeight: 700,
+            color: '#4ade80',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+          }}>
+            Online
+          </span>
+        </motion.div>
+      )}
 
-        {/* Eliminated banner */}
-        {isEliminated && (
-          <motion.div
-            style={{
-              position: 'absolute',
-              top: '40%',
-              left: 0,
-              right: 0,
-              display: 'flex',
-              justifyContent: 'center',
-              zIndex: 5,
-            }}
-            initial={{ opacity: 0, scale: 0.8, rotate: -3 }}
-            animate={{ opacity: 1, scale: 1, rotate: -3 }}
-            transition={{ delay: 0.4, ...VIVID_SPRING.dramatic }}
-          >
-            <div style={{
-              padding: '8px 28px',
-              background: 'rgba(217, 64, 115, 0.85)',
-              backdropFilter: 'blur(8px)',
-              border: '2px solid rgba(217, 64, 115, 0.4)',
-              fontFamily: 'var(--vivid-font-display)',
-              fontSize: 16,
-              fontWeight: 800,
-              color: '#FFFFFF',
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              textDecoration: 'line-through',
-            }}>
-              Eliminated
-            </div>
-          </motion.div>
-        )}
-
-        {/* Name + stereotype overlay at bottom of hero */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: '0 24px 16px',
-            zIndex: 5,
-          }}
-        >
-          <motion.h1
-            style={{
-              fontFamily: 'var(--vivid-font-display)',
-              fontWeight: 800,
-              fontSize: 32,
-              color: '#FAF3E8',
-              margin: 0,
-              lineHeight: 1.1,
-              textShadow: '0 2px 12px rgba(0,0,0,0.5)',
-            }}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, ...VIVID_SPRING.gentle }}
-          >
-            {target.personaName}
-          </motion.h1>
-
-          {target.bio && (
-            <motion.p
-              style={{
-                fontFamily: 'var(--vivid-font-body)',
-                fontSize: 14,
-                lineHeight: 1.5,
-                color: 'rgba(250, 243, 232, 0.7)',
-                margin: '8px 0 0',
-                maxWidth: '90%',
-                textShadow: '0 1px 4px rgba(0,0,0,0.4)',
-              }}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, ...VIVID_SPRING.gentle }}
-            >
-              {target.bio}
-            </motion.p>
-          )}
-        </div>
-      </div>
-
-      {/* ---- Scrollable content below hero ---- */}
+      {/* ---- Scrollable content ---- */}
       <div
         style={{
+          position: 'relative',
+          zIndex: 5,
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
           WebkitOverflowScrolling: 'touch',
-          background: '#1A1410',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        <div style={{ padding: '20px 24px 40px' }}>
-          {/* Stats row — compact, de-emphasized */}
+        <div style={{
+          padding: 'max(72px, calc(env(safe-area-inset-top, 16px) + 56px)) 24px 40px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 20,
+        }}>
+          {/* ---- Avatar headshot ---- */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.15, ...VIVID_SPRING.bouncy }}
+          >
+            <PersonaAvatar
+              avatarUrl={target.avatarUrl}
+              personaName={target.personaName}
+              size={88}
+              eliminated={isEliminated}
+              isOnline={isOnline}
+            />
+          </motion.div>
+
+          {/* ---- Name + stereotype ---- */}
+          <motion.div
+            style={{ textAlign: 'center' }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, ...VIVID_SPRING.gentle }}
+          >
+            <h1 style={{
+              fontFamily: 'var(--vivid-font-display)',
+              fontWeight: 800,
+              fontSize: 28,
+              color: '#FAF3E8',
+              margin: 0,
+              lineHeight: 1.1,
+              textShadow: '0 2px 16px rgba(0,0,0,0.6)',
+            }}>
+              {target.personaName}
+            </h1>
+
+            {target.bio && (
+              <p style={{
+                fontFamily: 'var(--vivid-font-body)',
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: 'rgba(250, 243, 232, 0.6)',
+                margin: '6px auto 0',
+                maxWidth: 280,
+                textShadow: '0 1px 6px rgba(0,0,0,0.4)',
+              }}>
+                {target.bio}
+              </p>
+            )}
+          </motion.div>
+
+          {/* Eliminated banner */}
+          {isEliminated && (
+            <motion.div
+              style={{
+                padding: '6px 24px',
+                background: 'rgba(217, 64, 115, 0.85)',
+                backdropFilter: 'blur(8px)',
+                border: '2px solid rgba(217, 64, 115, 0.4)',
+                borderRadius: 8,
+                fontFamily: 'var(--vivid-font-display)',
+                fontSize: 13,
+                fontWeight: 800,
+                color: '#FFFFFF',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                textDecoration: 'line-through',
+              }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4, ...VIVID_SPRING.dramatic }}
+            >
+              Eliminated
+            </motion.div>
+          )}
+
+          {/* ---- Stats row ---- */}
           <motion.div
             style={{
               display: 'flex',
               gap: 8,
-              marginBottom: 20,
+              flexWrap: 'wrap',
+              justifyContent: 'center',
             }}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, ...VIVID_SPRING.gentle }}
+            transition={{ delay: 0.35, ...VIVID_SPRING.gentle }}
           >
             {/* Silver */}
             <div style={{
@@ -363,8 +349,9 @@ export function PlayerDetail({
               gap: 6,
               padding: '6px 12px',
               borderRadius: 10,
-              background: 'rgba(212, 150, 10, 0.08)',
-              border: '1px solid rgba(212, 150, 10, 0.12)',
+              background: 'rgba(212, 150, 10, 0.1)',
+              border: '1px solid rgba(212, 150, 10, 0.15)',
+              backdropFilter: 'blur(8px)',
             }}>
               <div style={{
                 width: 8,
@@ -390,8 +377,9 @@ export function PlayerDetail({
               gap: 6,
               padding: '6px 12px',
               borderRadius: 10,
-              background: 'rgba(139, 108, 193, 0.08)',
-              border: '1px solid rgba(139, 108, 193, 0.12)',
+              background: 'rgba(139, 108, 193, 0.1)',
+              border: '1px solid rgba(139, 108, 193, 0.15)',
+              backdropFilter: 'blur(8px)',
             }}>
               <div style={{
                 width: 8,
@@ -417,8 +405,9 @@ export function PlayerDetail({
                 gap: 6,
                 padding: '6px 12px',
                 borderRadius: 10,
-                background: 'rgba(59, 169, 156, 0.08)',
-                border: '1px solid rgba(59, 169, 156, 0.12)',
+                background: 'rgba(59, 169, 156, 0.1)',
+                border: '1px solid rgba(59, 169, 156, 0.15)',
+                backdropFilter: 'blur(8px)',
               }}>
                 <div style={{
                   width: 8,
@@ -445,52 +434,64 @@ export function PlayerDetail({
             )}
           </motion.div>
 
-          {/* Medium image — secondary dramatic shot */}
+          {/* ---- Medium image — personality showcase ---- */}
           {mediumImageUrl && (
             <motion.div
               style={{
-                marginBottom: 20,
-                borderRadius: 16,
+                width: '100%',
+                maxWidth: 320,
+                borderRadius: 20,
                 overflow: 'hidden',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
                 position: 'relative',
+                border: `2px solid ${playerColor}30`,
+                boxShadow: `0 8px 40px ${playerColor}20, 0 2px 12px rgba(0,0,0,0.4)`,
               }}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, ...VIVID_SPRING.gentle }}
+              initial={{ opacity: 0, y: 16, scale: 0.95 }}
+              animate={{ opacity: mediumLoaded ? 1 : 0, y: mediumLoaded ? 0 : 16, scale: 1 }}
+              transition={{ delay: 0.45, ...VIVID_SPRING.gentle }}
             >
               <img
                 src={mediumImageUrl}
-                alt={`${target.personaName}`}
+                alt={target.personaName}
+                onLoad={() => setMediumLoaded(true)}
                 style={{
                   width: '100%',
                   display: 'block',
-                  maxHeight: 280,
                   objectFit: 'cover',
-                  objectPosition: 'center 20%',
+                  objectPosition: 'center 15%',
                   filter: isEliminated ? 'grayscale(0.7) brightness(0.7)' : undefined,
                 }}
                 loading="lazy"
               />
-              {/* Subtle gradient at bottom */}
+              {/* Color accent gradient at bottom */}
               <div style={{
                 position: 'absolute',
                 bottom: 0,
                 left: 0,
                 right: 0,
+                height: 80,
+                background: `linear-gradient(transparent, ${playerColor}40, ${playerColor}15)`,
+              }} />
+              {/* Subtle top vignette */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
                 height: 60,
-                background: 'linear-gradient(transparent, rgba(26, 20, 16, 0.7))',
+                background: 'linear-gradient(rgba(26, 20, 16, 0.3), transparent)',
               }} />
             </motion.div>
           )}
 
-          {/* Action buttons */}
+          {/* ---- Action buttons ---- */}
           {!isSelf && (
             <motion.div
               style={{
                 display: 'flex',
                 gap: 10,
-                marginBottom: 16,
+                width: '100%',
+                maxWidth: 320,
               }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -562,7 +563,7 @@ export function PlayerDetail({
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={VIVID_SPRING.gentle}
-                style={{ overflow: 'hidden', marginBottom: 16 }}
+                style={{ overflow: 'hidden', width: '100%', maxWidth: 320 }}
               >
                 <div
                   style={{
@@ -571,8 +572,10 @@ export function PlayerDetail({
                     gap: 10,
                     padding: '12px 16px',
                     borderRadius: 14,
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    background: 'rgba(26, 20, 16, 0.6)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
                   }}
                 >
                   <input
