@@ -168,13 +168,24 @@ export function handleFactPush(
       title: name(fact.actorId),
       body: (fact.payload?.content || '').slice(0, 100),
     }, EVENT_TTL, [fact.actorId]).catch(err => console.error('[L1] [Push] Error:', err));
-  } else if (fact.type === FactTypes.DM_SENT && fact.targetId) {
+  } else if (fact.type === FactTypes.DM_SENT) {
     if (!isPushEnabled(manifest, 'DM_SENT')) return;
     const snippet = (fact.payload?.content || '').slice(0, 100);
-    return pushToPlayer(ctx, fact.targetId, {
-      title: name(fact.actorId),
-      body: snippet || 'Sent you a message',
-    }, DM_TTL).catch(err => console.error('[L1] [Push] Error:', err));
+    const payload = { title: name(fact.actorId), body: snippet || 'Sent you a message' };
+
+    // Group DM: push to all target members
+    const targetIds: string[] | undefined = fact.payload?.targetIds;
+    if (targetIds && targetIds.length > 0) {
+      return Promise.allSettled(
+        targetIds.map((tid: string) => pushToPlayer(ctx, tid, payload, DM_TTL))
+      ).then(() => {}).catch(err => console.error('[L1] [Push] Error:', err));
+    }
+    // 1:1 DM: push to single target
+    if (fact.targetId) {
+      return pushToPlayer(ctx, fact.targetId, payload, DM_TTL)
+        .catch(err => console.error('[L1] [Push] Error:', err));
+    }
+    return;
   } else if (fact.type === FactTypes.ELIMINATION) {
     if (!isPushEnabled(manifest, 'ELIMINATION')) return;
     return pushBroadcast(ctx, {
@@ -187,5 +198,16 @@ export function handleFactPush(
       title: 'Pecking Order',
       body: `${name(fact.targetId || fact.actorId)} wins!`,
     }, WINNER_TTL).catch(err => console.error('[L1] [Push] Error:', err));
+  } else if (fact.type === FactTypes.DM_INVITE_SENT && fact.payload?.memberIds) {
+    if (!isPushEnabled(manifest, 'DM_SENT')) return;  // reuse DM_SENT toggle
+    const memberIds = fact.payload.memberIds as string[];
+    return Promise.all(
+      memberIds.map((memberId: string) =>
+        pushToPlayer(ctx, memberId, {
+          title: name(fact.actorId),
+          body: `${name(fact.actorId)} invited you to chat`,
+        }, DM_TTL)
+      )
+    ).then(() => {}).catch(err => console.error('[L1] [Push] Error:', err));
   }
 }

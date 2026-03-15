@@ -71,7 +71,7 @@ export function setupActorSubscription(
     // C. Broadcast SYSTEM.SYNC to all clients
     const cartridges = extractCartridges(snapshot);
     broadcastSync(
-      { snapshot, l3Context, chatLog, cartridges },
+      { snapshot, l3Context, l3SnapshotValue: l3Snapshot?.value, chatLog, cartridges },
       deps.getConnections,
       getOnlinePlayerIds(deps.connectedPlayers),
     );
@@ -119,9 +119,12 @@ export function setupActorSubscription(
     }
 
     // F. Ticker: detect DM open/close changes
+    //    Toggle events replace their complement (open removes close, vice versa)
     const currentDmsOpen = l3Context.dmsOpen ?? false;
     if (currentDmsOpen !== state.lastKnownDmsOpen) {
       if (!isRestoreFire) {
+        const opposite = currentDmsOpen ? 'GATE.DMS_CLOSE' : 'GATE.DMS_OPEN';
+        state.tickerHistory = state.tickerHistory.filter(m => m.category !== opposite);
         state.tickerHistory = broadcastTicker({
           id: crypto.randomUUID(),
           text: currentDmsOpen ? 'DMs are now open!' : 'DMs are now closed.',
@@ -136,6 +139,8 @@ export function setupActorSubscription(
     const currentGroupChatOpen = l3Context.groupChatOpen ?? false;
     if (currentGroupChatOpen !== state.lastKnownGroupChatOpen) {
       if (!isRestoreFire) {
+        const opposite = currentGroupChatOpen ? 'GATE.CHAT_CLOSE' : 'GATE.CHAT_OPEN';
+        state.tickerHistory = state.tickerHistory.filter(m => m.category !== opposite);
         state.tickerHistory = broadcastTicker({
           id: crypto.randomUUID(),
           text: currentGroupChatOpen ? 'Group chat is now open!' : 'Group chat is now closed.',

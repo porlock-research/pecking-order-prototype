@@ -117,10 +117,10 @@ export async function handleConnect(ctx: WsContext, ws: Connection, connCtx: Con
 
   const snapshot = ctx.actor?.getSnapshot();
   if (snapshot) {
-    const { l3Context, chatLog } = extractL3Context(snapshot, ctx.lastKnownChatLog);
+    const { l3Context, l3Snapshot, chatLog } = extractL3Context(snapshot, ctx.lastKnownChatLog);
     const cartridges = extractCartridges(snapshot);
     const onlinePlayers = getOnlinePlayerIds(ctx.connectedPlayers);
-    ws.send(JSON.stringify(buildSyncPayload({ snapshot, l3Context, chatLog, cartridges }, playerId, onlinePlayers)));
+    ws.send(JSON.stringify(buildSyncPayload({ snapshot, l3Context, l3SnapshotValue: l3Snapshot?.value, chatLog, cartridges }, playerId, onlinePlayers)));
 
     if (ctx.tickerHistory.length > 0) {
       ws.send(JSON.stringify({ type: Events.Ticker.HISTORY, messages: ctx.tickerHistory }));
