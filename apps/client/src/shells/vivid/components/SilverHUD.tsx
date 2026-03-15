@@ -12,6 +12,31 @@ interface HUDNotification {
   direction: 'received' | 'sent';
 }
 
+/* ------------------------------------------------------------------ */
+/*  localStorage helpers — prevent stale toasts on page reload         */
+/* ------------------------------------------------------------------ */
+
+function silverSeenKey(gameId: string) {
+  return `po-silver-seen-${gameId}`;
+}
+
+function getLastSeenTimestamp(gameId: string): number {
+  try {
+    const raw = localStorage.getItem(silverSeenKey(gameId));
+    if (raw) return Number(raw) || 0;
+  } catch { /* ignore */ }
+  return 0;
+}
+
+function markSeenTimestamp(gameId: string, ts: number) {
+  try {
+    const prev = getLastSeenTimestamp(gameId);
+    if (ts > prev) {
+      localStorage.setItem(silverSeenKey(gameId), String(ts));
+    }
+  } catch { /* ignore */ }
+}
+
 /**
  * Floating HUD notifications for silver received.
  * Stacks newest on top, auto-dismiss after 3s.
@@ -24,19 +49,40 @@ export function SilverHUD() {
   const toggleDashboard = useGameStore(s => s.toggleDashboard);
 
   const playerId = useGameStore(s => s.playerId);
+  const gameId = useGameStore(s => s.gameId);
   const roster = useGameStore(s => s.roster);
   const tickerMessages = useGameStore(s => s.tickerMessages);
 
   // Track silver transfers via ticker messages (silver category)
   const lastTickerCount = useRef(0);
+  // On mount, seed lastTickerCount to skip replayed messages
+  const initialised = useRef(false);
 
   useEffect(() => {
-    if (!playerId) return;
+    if (!playerId || !gameId) return;
 
+    // First run after mount: skip all existing ticker messages and
+    // bump the lastSeen watermark so a future reload won't re-toast.
+    if (!initialised.current) {
+      initialised.current = true;
+      lastTickerCount.current = tickerMessages.length;
+
+      // Advance the localStorage watermark to the newest ticker ts
+      if (tickerMessages.length > 0) {
+        const maxTs = Math.max(...tickerMessages.map(m => m.timestamp));
+        markSeenTimestamp(gameId, maxTs);
+      }
+      return;
+    }
+
+    const lastSeen = getLastSeenTimestamp(gameId);
     const newMessages = tickerMessages.slice(lastTickerCount.current);
     lastTickerCount.current = tickerMessages.length;
 
     for (const msg of newMessages) {
+      // Skip messages already seen in a previous session
+      if (msg.timestamp <= lastSeen) continue;
+
       // Check for silver transfer messages involving the player
       if (msg.category === 'SOCIAL.TRANSFER') {
         const text = msg.text;
@@ -55,14 +101,16 @@ export function SilverHUD() {
         // Recipient notification — someone sent silver TO you
         if (recipientName.toLowerCase() === myName.toLowerCase()) {
           setNotifications(prev => [{ id, senderName, amount, timestamp: Date.now(), direction: 'received' as const }, ...prev].slice(0, 5));
+          markSeenTimestamp(gameId, msg.timestamp);
         }
         // Sender notification — YOU sent silver to someone
         else if (senderName.toLowerCase() === myName.toLowerCase()) {
           setNotifications(prev => [{ id, senderName: recipientName, amount, timestamp: Date.now(), direction: 'sent' as const }, ...prev].slice(0, 5));
+          markSeenTimestamp(gameId, msg.timestamp);
         }
       }
     }
-  }, [tickerMessages, playerId, roster]);
+  }, [tickerMessages, playerId, gameId, roster]);
 
   // Auto-dismiss after 3s
   useEffect(() => {

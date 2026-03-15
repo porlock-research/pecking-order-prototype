@@ -114,7 +114,7 @@ export function PlayerDetail({
           alt=""
           aria-hidden
           initial={{ opacity: 0 }}
-          animate={{ opacity: isEliminated ? 0.25 : 0.45 }}
+          animate={{ opacity: isEliminated ? 0.3 : 0.7 }}
           transition={{ duration: 0.8 }}
           style={{
             position: 'absolute',
@@ -123,8 +123,8 @@ export function PlayerDetail({
             height: '100%',
             objectFit: 'cover',
             objectPosition: 'center top',
-            filter: `blur(10px) ${isEliminated ? 'grayscale(0.8) brightness(0.5)' : ''}`,
-            transform: 'scale(1.1)',
+            filter: `blur(4px) ${isEliminated ? 'grayscale(0.8) brightness(0.5)' : ''}`,
+            transform: 'scale(1.05)',
             pointerEvents: 'none',
           }}
         />
@@ -139,9 +139,9 @@ export function PlayerDetail({
             backgroundImage: `url(${headshotUrl})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            filter: `blur(24px) ${isEliminated ? 'grayscale(0.8) brightness(0.5)' : ''}`,
-            transform: 'scale(1.15)',
-            opacity: 0.4,
+            filter: `blur(16px) ${isEliminated ? 'grayscale(0.8) brightness(0.5)' : ''}`,
+            transform: 'scale(1.1)',
+            opacity: 0.55,
             pointerEvents: 'none',
           }}
         />
@@ -151,7 +151,7 @@ export function PlayerDetail({
       <div style={{
         position: 'absolute',
         inset: 0,
-        background: 'rgba(26, 20, 16, 0.55)',
+        background: 'rgba(26, 20, 16, 0.4)',
         pointerEvents: 'none',
       }} />
 
