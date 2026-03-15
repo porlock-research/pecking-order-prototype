@@ -52,6 +52,8 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
   const entries = useTimeline();
   const chatLog = useGameStore(s => s.chatLog);
   const onlinePlayers = useGameStore(s => s.onlinePlayers);
+  const channels = useGameStore(s => s.channels);
+  const mainChannelHints = channels?.['MAIN']?.hints;
 
   const onlineRosterPlayers = useMemo(() => {
     if (!onlinePlayers || onlinePlayers.length === 0) return [];
@@ -507,6 +509,7 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
         replyTarget={replyTarget}
         onClearReply={() => setReplyTarget(null)}
         capabilities={['CHAT', 'REACTIONS']}
+        hints={mainChannelHints}
       />
     </div>
   );

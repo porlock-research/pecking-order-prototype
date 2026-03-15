@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { VOTE_TYPE_INFO } from '@pecking-order/shared-types';
+import { VOTE_TYPE_INFO, renderActionInfo } from '@pecking-order/shared-types';
 import type { DashboardEvent } from './dashboardUtils';
 import { formatEventTime } from './dashboardUtils';
 import { VIVID_SPRING } from '../../springs';
@@ -242,10 +242,8 @@ function getExplainer(event: DashboardEvent, voteType?: string): string | null {
     const info = VOTE_TYPE_INFO[voteType as keyof typeof VOTE_TYPE_INFO];
     if (info) return info.howItWorks;
   }
-  if (event.category === 'social') {
-    if (event.action === 'OPEN_DMS') return 'Send private messages to other players. Each message costs 1 silver.';
-    if (event.action === 'OPEN_GROUP_CHAT') return 'The main group chat is open. Everyone can see these messages.';
-  }
+  const actionInfo = renderActionInfo(event.action);
+  if (actionInfo.howItWorks) return actionInfo.howItWorks;
   return null;
 }
 

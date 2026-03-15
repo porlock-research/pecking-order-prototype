@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SendSquare, CloseCircle, Dollar, UserPlus } from '@solar-icons/react';
+import { Plain, CloseCircle, Dollar, UserPlus, FileText } from '@solar-icons/react';
 import type { ChatMessage, SocialPlayer, ChannelCapability } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../store/useGameStore';
 import { useCountdown } from '../../../hooks/useCountdown';
@@ -30,35 +30,24 @@ interface ChatInputProps {
   channelId?: string;
   capabilities?: ChannelCapability[];
   channelMemberIds?: string[];
+  hints?: string[];
 }
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function getPlaceholder(
+function getPlaceholderFromHints(
+  hints: string[] | undefined,
+  disabled: boolean,
   context: 'main' | 'dm' | 'group',
-  targetName?: string,
-  disabled?: boolean,
-  serverState?: string | null,
+  tick: number,
 ): string {
   if (disabled) {
     return context === 'main' ? 'Chat closed...' : 'DMs closed...';
   }
-  switch (context) {
-    case 'main': {
-      if (serverState && typeof serverState === 'string') {
-        const s = serverState.toLowerCase();
-        if (s.includes('voting')) return 'Quick, before votes close...';
-        if (s.includes('game')) return 'Talk strategy...';
-      }
-      return 'Plot your next move...';
-    }
-    case 'dm':
-      return `Whisper to ${targetName ?? 'them'}...`;
-    case 'group':
-      return 'Message the group...';
-  }
+  if (!hints || hints.length === 0) return 'Type a message...';
+  return hints[tick % hints.length];
 }
 
 function getChannel(context: 'main' | 'dm' | 'group', targetId?: string): string {
@@ -176,7 +165,7 @@ const CANNED_TEXT: React.CSSProperties = {
 /*  ChatInput                                                          */
 /* ------------------------------------------------------------------ */
 
-type ActiveCapability = 'SILVER_TRANSFER' | 'INVITE_MEMBER' | null;
+type ActiveCapability = 'SILVER_TRANSFER' | 'INVITE_MEMBER' | 'CHAR_INFO' | null;
 
 export function ChatInput({
   engine,
@@ -188,19 +177,27 @@ export function ChatInput({
   channelId,
   capabilities,
   channelMemberIds,
+  hints,
 }: ChatInputProps) {
   const [inputValue, setInputValue] = useState('');
   const [activeCapability, setActiveCapability] = useState<ActiveCapability>(null);
   const [silverAmount, setSilverAmount] = useState<number>(5);
   const [selectedInvitee, setSelectedInvitee] = useState<string | null>(null);
+  const [stashedInput, setStashedInput] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { playerId, roster } = useGameStore();
   const typingPlayers = useGameStore((s) => s.typingPlayers);
   const groupChatOpen = useGameStore((s) => s.groupChatOpen);
   const dmsOpen = useGameStore((s) => s.dmsOpen);
-  const serverState = useGameStore((s) => s.serverState);
   const dmStats = useGameStore((s) => s.dmStats);
+
+  // Cycle placeholder text every 8 seconds
+  const [placeholderTick, setPlaceholderTick] = useState(0);
+  React.useEffect(() => {
+    const id = setInterval(() => setPlaceholderTick(t => t + 1), 8000);
+    return () => clearInterval(id);
+  }, []);
 
   const channel = getChannel(context, targetId);
   const isDisabled = context === 'main' ? !groupChatOpen : !dmsOpen;
@@ -214,7 +211,6 @@ export function ChatInput({
 
   const hasSilver = inputCapabilities.includes('SILVER_TRANSFER');
   const hasInvite = inputCapabilities.includes('INVITE_MEMBER');
-  const hasToolbar = hasSilver || hasInvite;
 
   const replyName = replyTarget
     ? roster[replyTarget.senderId]?.personaName || 'Unknown'
@@ -222,6 +218,18 @@ export function ChatInput({
 
   // Silver: player balance
   const myBalance = playerId ? (roster[playerId]?.silver ?? 0) : 0;
+
+  // Char counter
+  const isDmContext = context === 'dm' || context === 'group';
+  const charsRemaining = isDmContext && dmStats
+    ? Math.max(0, (dmStats.charsLimit ?? 0) - (dmStats.charsUsed ?? 0))
+    : null;
+  const charsLimit = dmStats?.charsLimit ?? 0;
+  const charsRatio = charsLimit > 0 && charsRemaining !== null ? charsRemaining / charsLimit : 1;
+  const charsColor = charsRatio < 0.15 ? '#D94073' : charsRatio < 0.3 ? '#D4960A' : 'var(--vivid-text-dim)';
+  const hasCharCounter = isDmContext && charsRemaining !== null;
+
+  const hasToolbar = hasSilver || hasInvite || hasCharCounter;
 
   // Silver send confirmation flash
   const [silverSentFlash, setSilverSentFlash] = useState<{ amount: number; target: string } | null>(null);
@@ -243,20 +251,31 @@ export function ChatInput({
       ? silverAmount > 0 && silverAmount <= myBalance && !!targetId
       : activeCapability === 'INVITE_MEMBER'
         ? !!selectedInvitee && !!channelId
-        : !!inputValue.trim();
+        : activeCapability === 'CHAR_INFO'
+          ? false
+          : !!inputValue.trim();
 
   /* -- Toggle capability ------------------------------------------- */
 
   const toggleCapability = (cap: ActiveCapability) => {
     if (activeCapability === cap) {
+      if (cap === 'CHAR_INFO' && stashedInput !== null) {
+        setInputValue(stashedInput);
+        setStashedInput(null);
+      }
       setActiveCapability(null);
       setSelectedInvitee(null);
-      // Refocus text input
       setTimeout(() => inputRef.current?.focus(), 50);
     } else {
+      if (cap === 'CHAR_INFO') {
+        setStashedInput(inputValue);
+      } else if (activeCapability === 'CHAR_INFO' && stashedInput !== null) {
+        setInputValue(stashedInput);
+        setStashedInput(null);
+      }
       setActiveCapability(cap);
       setSelectedInvitee(null);
-      setSilverAmount(5);
+      if (cap === 'SILVER_TRANSFER') setSilverAmount(5);
     }
   };
 
@@ -326,7 +345,9 @@ export function ChatInput({
       ? 'rgba(196, 154, 32, 0.35)'
       : activeCapability === 'INVITE_MEMBER'
         ? 'rgba(59, 169, 156, 0.35)'
-        : undefined;
+        : activeCapability === 'CHAR_INFO'
+          ? 'rgba(139, 115, 85, 0.2)'
+          : undefined;
 
   return (
     <div
@@ -337,72 +358,6 @@ export function ChatInput({
       }}
     >
       <div style={{ padding: '6px 12px 10px' }}>
-        {/* Contextual stats row */}
-        {!isDisabled && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0 6px 5px',
-            }}
-          >
-            <span
-              style={{
-                fontFamily: 'var(--vivid-font-mono)',
-                fontSize: 11,
-                fontWeight: 700,
-                color: '#D4960A',
-                opacity: 0.55,
-                letterSpacing: '0.02em',
-              }}
-            >
-              <AnimatedCounter
-                value={myBalance}
-                style={{
-                  fontFamily: 'var(--vivid-font-mono)',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: '#D4960A',
-                }}
-              />
-              <span style={{ fontWeight: 500, marginLeft: 2 }}>silver</span>
-            </span>
-            {(context === 'dm' || context === 'group') && dmStats && (
-              (() => {
-                const remaining = Math.max(0, (dmStats.charsLimit ?? 0) - (dmStats.charsUsed ?? 0));
-                const limit = dmStats.charsLimit ?? 0;
-                const ratio = limit > 0 ? remaining / limit : 1;
-                const isLow = ratio < 0.2;
-                return (
-                  <span
-                    style={{
-                      fontFamily: 'var(--vivid-font-mono)',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: isLow ? '#D94073' : 'var(--vivid-text-dim)',
-                      opacity: isLow ? 0.8 : 0.5,
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    <AnimatedCounter
-                      value={remaining}
-                      style={{
-                        fontFamily: 'var(--vivid-font-mono)',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: isLow ? '#D94073' : 'var(--vivid-text-dim)',
-                      }}
-                      decreaseColor="#D94073"
-                    />
-                    <span style={{ fontWeight: 500 }}>/{limit} chars</span>
-                  </span>
-                );
-              })()
-            )}
-          </div>
-        )}
-
         {/* Typing indicator */}
         <AnimatePresence>
           <TypingIndicator
@@ -530,7 +485,7 @@ export function ChatInput({
                 {activeCapability === null && !silverSentFlash && (
                   <motion.div
                     key="text"
-                    style={{ flex: 1, display: 'flex', alignItems: 'center' }}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -550,7 +505,7 @@ export function ChatInput({
                           engine.sendTyping(channel);
                         }
                       }}
-                      placeholder={getPlaceholder(context, targetName, isDisabled && !countdown, serverState)}
+                      placeholder={getPlaceholderFromHints(hints, isDisabled && !countdown, context, placeholderTick)}
                       maxLength={280}
                       readOnly={isDisabled}
                       style={{
@@ -612,9 +567,14 @@ export function ChatInput({
                         {amt}
                       </motion.button>
                     ))}
-                    <span style={CANNED_TEXT}>
-                      silver{targetName ? ` to ${targetName}` : ''}
-                    </span>
+                    <span style={CANNED_TEXT}>silver</span>
+                    {targetId && (
+                      <PersonaAvatar
+                        avatarUrl={roster[targetId]?.avatarUrl}
+                        personaName={roster[targetId]?.personaName}
+                        size={22}
+                      />
+                    )}
                   </motion.div>
                 )}
 
@@ -714,39 +674,56 @@ export function ChatInput({
                               personaName={player.personaName}
                               size={20}
                             />
-                            {player.personaName}
+                            {player.personaName.split(' ')[0]}
                           </motion.button>
                         ))}
                       </>
                     )}
                   </motion.div>
                 )}
-              </AnimatePresence>
 
-              {/* Cancel button when capability active */}
-              {activeCapability !== null && (
-                <motion.button
-                  type="button"
-                  onClick={() => {
-                    setActiveCapability(null);
-                    setSelectedInvitee(null);
-                    setTimeout(() => inputRef.current?.focus(), 50);
-                  }}
-                  style={{
-                    flexShrink: 0,
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--vivid-text-dim)',
-                    cursor: 'pointer',
-                    padding: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                  whileTap={VIVID_TAP.button}
-                >
-                  <CloseCircle size={20} weight="Bold" />
-                </motion.button>
-              )}
+                {/* Char info mode */}
+                {activeCapability === 'CHAR_INFO' && (
+                  <motion.div
+                    key="char-info"
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <span style={{
+                      fontSize: 14,
+                      fontFamily: 'var(--vivid-font-body)',
+                      color: 'var(--vivid-text-dim)',
+                      fontStyle: 'italic',
+                    }}>
+                      <span style={{
+                        fontFamily: 'var(--vivid-font-mono)',
+                        fontWeight: 700,
+                        fontStyle: 'normal',
+                        color: charsColor,
+                      }}>
+                        {charsRemaining}
+                      </span>
+                      {' of '}
+                      <span style={{
+                        fontFamily: 'var(--vivid-font-mono)',
+                        fontWeight: 700,
+                        fontStyle: 'normal',
+                      }}>
+                        {charsLimit}
+                      </span>
+                      {' chars remaining today'}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Send button — always inline */}
               <motion.button
@@ -771,7 +748,7 @@ export function ChatInput({
                 whileTap={canSend && !isDisabled ? VIVID_TAP.button : undefined}
                 transition={VIVID_SPRING.bouncy}
               >
-                <SendSquare size={20} weight="Bold" />
+                <Plain size={20} weight="Bold" />
               </motion.button>
             </div>
 
@@ -786,6 +763,56 @@ export function ChatInput({
                   borderTop: '1px solid rgba(139, 115, 85, 0.06)',
                 }}
               >
+                {hasCharCounter && (
+                  <motion.button
+                    type="button"
+                    onClick={() => toggleCapability('CHAR_INFO')}
+                    disabled={isDisabled}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: activeCapability === 'CHAR_INFO'
+                        ? 'rgba(139, 115, 85, 0.1)'
+                        : 'transparent',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: activeCapability === 'CHAR_INFO'
+                        ? 'var(--vivid-text)'
+                        : 'var(--vivid-text-dim)',
+                      cursor: isDisabled ? 'not-allowed' : 'pointer',
+                      padding: 0,
+                      position: 'relative',
+                    }}
+                    whileTap={!isDisabled ? VIVID_TAP.button : undefined}
+                  >
+                    <FileText size={20} weight="Bold" />
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: -2,
+                        right: -6,
+                        minWidth: 18,
+                        height: 14,
+                        borderRadius: 7,
+                        background: charsRatio < 0.15 ? '#D94073' : charsRatio < 0.3 ? '#D4960A' : 'rgba(139, 115, 85, 0.5)',
+                        color: '#FFFFFF',
+                        fontFamily: 'var(--vivid-font-mono)',
+                        fontSize: 8,
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 3px',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {charsRemaining}
+                    </span>
+                  </motion.button>
+                )}
                 {hasSilver && (
                   <motion.button
                     type="button"
@@ -807,10 +834,41 @@ export function ChatInput({
                         : 'var(--vivid-text-dim)',
                       cursor: isDisabled ? 'not-allowed' : 'pointer',
                       padding: 0,
+                      position: 'relative',
                     }}
                     whileTap={!isDisabled ? VIVID_TAP.button : undefined}
                   >
                     <Dollar size={20} weight="Bold" />
+                    {/* Silver balance badge */}
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: -2,
+                        right: -4,
+                        minWidth: 16,
+                        height: 16,
+                        borderRadius: 8,
+                        background: '#D4960A',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 3px',
+                        lineHeight: 1,
+                        overflow: 'visible',
+                      }}
+                    >
+                      <AnimatedCounter
+                        value={myBalance}
+                        style={{
+                          fontFamily: 'var(--vivid-font-mono)',
+                          fontSize: 9,
+                          fontWeight: 800,
+                          color: '#FFFFFF',
+                        }}
+                        decreaseColor="#D94073"
+                        increaseColor="#D4960A"
+                      />
+                    </span>
                   </motion.button>
                 )}
                 {hasInvite && (

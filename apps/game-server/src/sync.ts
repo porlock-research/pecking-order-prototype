@@ -4,8 +4,8 @@
  * Eliminates duplication between the subscribe callback and onConnect handler.
  */
 import type { Connection } from "partyserver";
-import { Events, DayPhases } from "@pecking-order/shared-types";
-import type { DayPhase } from "@pecking-order/shared-types";
+import { Events, DayPhases, getChannelHints } from "@pecking-order/shared-types";
+import type { DayPhase, ChannelType, ChannelCapability } from "@pecking-order/shared-types";
 import { projectGameCartridge, projectPromptCartridge } from "./projections";
 import { flattenState } from "./ticker";
 
@@ -74,26 +74,39 @@ export function extractL3Context(snapshot: any, fallbackChatLog: any[]): {
 export interface SyncDeps {
   snapshot: any;
   l3Context: any;
+  l3SnapshotValue?: any;
   chatLog: any[];
   cartridges: CartridgeSnapshots;
 }
 
 /**
- * Resolve the current game phase from an L2 snapshot value.
+ * Resolve the current game phase from L2 + optional L3 snapshot values.
  * Pure projection — no machine coupling. Uses flattened state string matching
  * (same approach as stateToTicker). Order matters: more specific matches first.
+ *
+ * L3 states (voting, dailyGame, playing) live in the invoked child machine
+ * and are NOT visible in the L2 snapshot.value. When l3Value is provided,
+ * we flatten it and check for finer-grained phases.
  */
-export function resolveDayPhase(snapshotValue: any): DayPhase {
+export function resolveDayPhase(snapshotValue: any, l3Value?: any): DayPhase {
   const s = flattenState(snapshotValue);
   if (s.includes('gameOver'))        return DayPhases.GAME_OVER;
   if (s.includes('gameSummary'))      return DayPhases.FINALE;
   if (s.includes('nightSummary'))     return DayPhases.ELIMINATION;
-  if (s.includes('voting'))           return DayPhases.VOTING;
-  if (s.includes('dailyGame'))        return DayPhases.GAME;
-  if (s.includes('dailyActivity') || s.includes('dailyPrompt')) return DayPhases.ACTIVITY;
-  if (s.includes('socialPeriod') || s.includes('dmPeriod'))     return DayPhases.SOCIAL;
   if (s.includes('morningBriefing'))  return DayPhases.MORNING;
   if (s.includes('preGame'))          return DayPhases.PREGAME;
+
+  // L3 states — only available when activeSession is running
+  if (l3Value) {
+    const l3 = flattenState(l3Value);
+    if (l3.includes('voting'))                                    return DayPhases.VOTING;
+    if (l3.includes('dailyGame'))                                 return DayPhases.GAME;
+    if (l3.includes('playing') || l3.includes('dailyActivity') || l3.includes('dailyPrompt')) return DayPhases.ACTIVITY;
+  }
+
+  // Fallback: if we're in activeSession but L3 isn't available, default to SOCIAL
+  if (s.includes('activeSession'))   return DayPhases.SOCIAL;
+
   return DayPhases.PREGAME;
 }
 
@@ -113,12 +126,30 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
     return msg.channel === 'MAIN' || (msg.channel === 'DM' && (msg.senderId === playerId || msg.targetId === playerId));
   });
 
+  const roster = snapshot.context.roster || {};
+  const phase = resolveDayPhase(snapshot.value, deps.l3SnapshotValue);
+
   const playerChannels = Object.fromEntries(
     Object.entries(channels).filter(([_, ch]: [string, any]) =>
       ch.type === 'MAIN' ||
       ch.memberIds.includes(playerId) ||
       (ch.pendingMemberIds || []).includes(playerId)
-    )
+    ).map(([id, ch]: [string, any]) => {
+      // Resolve target name for DM channels
+      let targetName: string | undefined;
+      if (ch.type === 'DM') {
+        const otherId = ch.memberIds.find((mid: string) => mid !== playerId);
+        if (otherId) targetName = roster[otherId]?.personaName;
+      }
+
+      const hints = getChannelHints(ch.type as ChannelType, {
+        targetName,
+        capabilities: ch.capabilities as ChannelCapability[] | undefined,
+        phase,
+      });
+
+      return [id, { ...ch, hints }];
+    })
   );
 
   const activeGameCartridge = projectGameCartridge(cartridges.rawGameCartridge, playerId);
@@ -137,7 +168,6 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
 
   // Aggregate player activity indicators (visible to all players)
   const playerActivity: Record<string, { messagesInMain: number; dmPartners: number; isOnline: boolean }> = {};
-  const roster = snapshot.context.roster || {};
   for (const pid of Object.keys(roster)) {
     playerActivity[pid] = {
       messagesInMain: chatLog.filter((m: any) => m.senderId === pid && (m.channelId === 'MAIN' || (!m.channelId && m.channel === 'MAIN'))).length,
@@ -149,7 +179,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
   return {
     type: Events.System.SYNC,
     state: snapshot.value,
-    phase: resolveDayPhase(snapshot.value),
+    phase,
     context: {
       gameId: snapshot.context.gameId,
       dayIndex: snapshot.context.dayIndex,

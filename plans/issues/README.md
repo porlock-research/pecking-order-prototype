@@ -50,14 +50,14 @@ Quick reference for all tracked issues. Each category has its own file.
 | BUG-015b | Client UI | **Missing UI: economy explainer + transaction log** (selector ready) |
 | BUG-018 | Client UI | ~~"Vivid" debug button visible in production tab bar~~ ✅ FIXED |
 | BUG-019 | Client UI | DramaticReveal doesn't auto-dismiss — blocks interaction indefinitely |
-| BUG-020 | Client UI | Empty Stage chat — no actionable empty state or guidance |
+| BUG-020 | Client UI | Empty Stage chat — partially addressed: server-driven hints via ADR-102 |
 | BUG-021 | Client UI | Whispers empty state lacks guidance for new players |
 | BUG-022 | Client UI | ~~NewConversationPicker disabled button nearly invisible~~ ✅ FIXED |
 | PT1-UX-004 | UX | ~~Voting interface confusing~~ ✅ FIXED (ADR-098 + ADR-101) |
 | PT1-UX-005 | UX | Vote results not visible after voting — needs design (open vs purchasable) |
 | PT1-UX-006 | UX | Mini game results confusing — CelebrationSequence needs clearer breakdown |
 | PT1-UX-007 | UX | No rules / onboarding screen (partially addressed: ADR-098 + ADR-101) |
-| PT1-UX-008 | UX | Silver economy opaque — needs transaction history UI |
+| PT1-UX-008 | UX | Silver economy opaque — silver badge on $ button (ADR-102), still needs transaction history |
 | PT1-UX-010 | UX | Timeline unclear — when do events end? |
 | PROD-002 | Infra | High client disconnected rate (~56%) |
 | PROD-004 | Infra | Lobby→Game Server uses public fetch (should use service bindings) |

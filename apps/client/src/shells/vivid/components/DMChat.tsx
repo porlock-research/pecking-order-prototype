@@ -557,6 +557,7 @@ export function DMChat({
             channelId={mode === '1on1' ? (dmChannelId ?? undefined) : channelId}
             capabilities={channelCapabilities}
             channelMemberIds={channelMemberIds}
+            hints={resolvedChannel?.hints}
           />
         )
       )}

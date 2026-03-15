@@ -1,3 +1,4 @@
+import { ACTION_INFO } from '@pecking-order/shared-types';
 import type { CompletedCartridge } from '../../../../store/useGameStore';
 
 /** Visual state for a timeline event card */
@@ -21,20 +22,26 @@ export interface DashboardEvent {
   payload?: any;
 }
 
-/** Map manifest action to human label and category */
-const ACTION_META: Record<string, { label: string; category: DashboardEvent['category'] }> = {
-  OPEN_GROUP_CHAT: { label: 'Group Chat Opens', category: 'social' },
-  CLOSE_GROUP_CHAT: { label: 'Group Chat Closes', category: 'social' },
-  OPEN_DMS: { label: 'DMs Open', category: 'social' },
-  CLOSE_DMS: { label: 'DMs Close', category: 'social' },
-  OPEN_VOTING: { label: 'Voting Opens', category: 'voting' },
-  CLOSE_VOTING: { label: 'Voting Closes', category: 'voting' },
-  START_GAME: { label: 'Mini-Game', category: 'game' },
-  END_GAME: { label: 'Game Ends', category: 'game' },
-  START_ACTIVITY: { label: 'Activity', category: 'prompt' },
-  END_ACTIVITY: { label: 'Activity Ends', category: 'prompt' },
-  END_DAY: { label: 'Day Ends', category: 'day' },
+/** Category mapping for actions — labels derived from ACTION_INFO */
+const ACTION_CATEGORIES: Record<string, DashboardEvent['category']> = {
+  OPEN_GROUP_CHAT: 'social',
+  CLOSE_GROUP_CHAT: 'social',
+  OPEN_DMS: 'social',
+  CLOSE_DMS: 'social',
+  OPEN_VOTING: 'voting',
+  CLOSE_VOTING: 'voting',
+  START_GAME: 'game',
+  END_GAME: 'game',
+  START_ACTIVITY: 'prompt',
+  END_ACTIVITY: 'prompt',
+  END_DAY: 'day',
 };
+
+function getActionMeta(action: string): { label: string; category: DashboardEvent['category'] } {
+  const category = ACTION_CATEGORIES[action] ?? 'day';
+  const info = ACTION_INFO[action];
+  return { label: info?.name ?? action, category };
+}
 
 /**
  * Pairs that represent a single logical event (open/close, start/end).
@@ -85,7 +92,7 @@ export function buildDashboardEvents(input: BuildDashboardEventsInput): Dashboar
     // Skip "close" halves — they're merged into the "open" card
     if (PAIRED_ACTIONS[event.action]) continue;
 
-    const meta = ACTION_META[event.action] || { label: event.action, category: 'day' as const };
+    const meta = getActionMeta(event.action);
 
     // Determine card state
     let state: CardState = 'upcoming';

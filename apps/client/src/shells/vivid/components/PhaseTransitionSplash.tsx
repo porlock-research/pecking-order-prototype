@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, selectShouldAutoOpenDashboard } from '../../../store/useGameStore';
-import { VOTE_TYPE_INFO, DayPhases } from '@pecking-order/shared-types';
+import { DayPhases, buildPhaseInfo } from '@pecking-order/shared-types';
 import type { DayPhase } from '@pecking-order/shared-types';
+import { Sun2, ChatRound, Gamepad, MagicStick3, Flag, Moon, CupStar } from '@solar-icons/react';
 import { VIVID_SPRING } from '../springs';
 
 /* ------------------------------------------------------------------ */
@@ -11,7 +12,7 @@ import { VIVID_SPRING } from '../springs';
 
 interface PhaseConfig {
   title: string;
-  icon: string;
+  icon: React.ComponentType<any>;
   accent: string;
   bg: string;
   subtitle: string;
@@ -20,6 +21,18 @@ interface PhaseConfig {
   detailLabel?: string;
 }
 
+/** Visual config per phase — accent, bg, icon. Text comes from buildPhaseInfo(). */
+const PHASE_VISUALS: Record<string, { icon: React.ComponentType<any>; accent: string; bg: string }> = {
+  [DayPhases.MORNING]:     { icon: Sun2,        accent: '#D4960A', bg: 'rgba(253, 246, 238, 0.97)' },
+  [DayPhases.SOCIAL]:      { icon: ChatRound,   accent: '#4A9B6E', bg: 'rgba(245, 250, 242, 0.97)' },
+  [DayPhases.GAME]:        { icon: Gamepad,      accent: '#3B82C4', bg: 'rgba(240, 247, 250, 0.97)' },
+  [DayPhases.ACTIVITY]:    { icon: MagicStick3,  accent: '#8B5CF6', bg: 'rgba(245, 242, 255, 0.97)' },
+  [DayPhases.VOTING]:      { icon: Flag,         accent: '#D94073', bg: 'rgba(255, 243, 240, 0.97)' },
+  [DayPhases.ELIMINATION]: { icon: Moon,         accent: '#B03A3A', bg: 'rgba(253, 240, 240, 0.97)' },
+  [DayPhases.FINALE]:      { icon: CupStar,      accent: '#D4960A', bg: 'rgba(255, 248, 225, 0.97)' },
+  [DayPhases.GAME_OVER]:   { icon: CupStar,      accent: '#D4960A', bg: 'rgba(255, 248, 225, 0.97)' },
+};
+
 function buildPhaseConfig(
   phase: DayPhase,
   manifest: any,
@@ -27,97 +40,28 @@ function buildPhaseConfig(
   roster: Record<string, any>,
 ): PhaseConfig | null {
   const currentDay = manifest?.days?.[dayIndex - 1];
-  const voteType = currentDay?.voteType as string | undefined;
-  const voteInfo = voteType ? VOTE_TYPE_INFO[voteType as keyof typeof VOTE_TYPE_INFO] : null;
-  const totalDays = manifest?.days?.length ?? '?';
+  const totalDays = manifest?.days?.length ?? undefined;
   const aliveCount = Object.values(roster).filter((p: any) => p.isAlive).length;
 
-  switch (phase) {
-    case DayPhases.MORNING: {
-      const parts: string[] = [];
-      if (voteInfo) parts.push(`Vote: ${voteInfo.name}`);
-      if (currentDay?.gameType && currentDay.gameType !== 'NONE') parts.push('Mini-game today');
-      if (currentDay?.activityType && currentDay.activityType !== 'NONE') parts.push('Activity today');
-      return {
-        title: `Day ${dayIndex}`,
-        icon: '\u2600\uFE0F',
-        accent: '#D4960A',
-        bg: 'rgba(253, 246, 238, 0.97)',
-        subtitle: `${aliveCount} players remaining \u00B7 Day ${dayIndex} of ${totalDays}`,
-        body: parts.length > 0
-          ? parts.join(' \u00B7 ')
-          : 'Chat, strategize, and prepare for tonight\u2019s vote.',
-        detail: voteInfo?.howItWorks,
-        detailLabel: voteInfo ? `Tonight: ${voteInfo.name}` : undefined,
-      };
-    }
+  const info = buildPhaseInfo(phase, {
+    dayIndex,
+    aliveCount,
+    totalDays,
+    voteType: currentDay?.voteType,
+    gameType: currentDay?.gameType,
+    activityType: currentDay?.activityType,
+  });
 
-    case DayPhases.SOCIAL:
-      return {
-        title: 'Social Hour',
-        icon: '\uD83D\uDCAC',
-        accent: '#4A9B6E',
-        bg: 'rgba(245, 250, 242, 0.97)',
-        subtitle: 'DMs are now open',
-        body: 'Send private messages, form alliances, and gather information. Your DM slots are limited \u2014 choose wisely.',
-      };
+  if (!info) return null;
 
-    case DayPhases.GAME:
-      return {
-        title: 'Game Time',
-        icon: '\uD83C\uDFAE',
-        accent: '#3B82C4',
-        bg: 'rgba(240, 247, 250, 0.97)',
-        subtitle: 'Earn silver to stay in the game',
-        body: 'Play the mini-game to earn silver. Silver breaks vote ties and unlocks perks \u2014 every coin matters.',
-      };
+  const visuals = PHASE_VISUALS[phase] ?? PHASE_VISUALS[DayPhases.MORNING];
 
-    case DayPhases.ACTIVITY:
-      return {
-        title: 'Activity',
-        icon: '\u2728',
-        accent: '#8B5CF6',
-        bg: 'rgba(245, 242, 255, 0.97)',
-        subtitle: 'Express yourself',
-        body: 'Answer the prompt to reveal your personality and earn silver. Other players will see your response.',
-      };
-
-    case DayPhases.VOTING:
-      return {
-        title: 'Voting',
-        icon: '\uD83D\uDDF3\uFE0F',
-        accent: '#D94073',
-        bg: 'rgba(255, 243, 240, 0.97)',
-        subtitle: voteInfo ? voteInfo.name : 'Cast your vote',
-        body: voteInfo?.description ?? 'Choose carefully \u2014 someone will be eliminated.',
-        detail: voteInfo?.howItWorks,
-        detailLabel: 'How it works',
-      };
-
-    case DayPhases.ELIMINATION:
-      return {
-        title: 'Elimination',
-        icon: '\uD83C\uDF19',
-        accent: '#B03A3A',
-        bg: 'rgba(253, 240, 240, 0.97)',
-        subtitle: 'The votes have been counted',
-        body: 'See who was eliminated and check the vote breakdown in your dashboard.',
-      };
-
-    case DayPhases.FINALE:
-    case DayPhases.GAME_OVER:
-      return {
-        title: 'Finale',
-        icon: '\uD83C\uDFC6',
-        accent: '#D4960A',
-        bg: 'rgba(255, 248, 225, 0.97)',
-        subtitle: 'The game is over',
-        body: 'The winner has been decided. Check the dashboard for the full results.',
-      };
-
-    default:
-      return null;
-  }
+  return {
+    ...info,
+    icon: visuals.icon,
+    accent: visuals.accent,
+    bg: visuals.bg,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -194,12 +138,12 @@ export function PhaseTransitionSplash() {
         >
           {/* Icon */}
           <motion.div
-            style={{ fontSize: 48, lineHeight: 1, marginBottom: 12 }}
+            style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             initial={{ scale: 0.3, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={VIVID_SPRING.dramatic}
           >
-            {config.icon}
+            <config.icon size={48} weight="Bold" color={config.accent} />
           </motion.div>
 
           {/* Title */}

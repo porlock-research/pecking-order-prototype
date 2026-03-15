@@ -102,12 +102,29 @@ export const l3SocialActions = {
     const lastMsg = context.chatLog[context.chatLog.length - 1];
     const channelId = lastMsg?.channelId ?? event.channelId ?? 'MAIN';
     const isDM = channelId !== 'MAIN';
+
+    // Resolve target(s) from channel members (needed for push notifications)
+    let targetId: string | undefined;
+    let targetIds: string[] | undefined;
+    if (isDM) {
+      const channel = context.channels[channelId];
+      if (channel) {
+        const others = channel.memberIds.filter((id: string) => id !== event.senderId);
+        if (channel.type === 'DM' && others.length === 1) {
+          targetId = others[0];
+        } else if (others.length > 0) {
+          targetIds = others;
+        }
+      }
+    }
+
     return {
       type: Events.Fact.RECORD,
       fact: {
         type: isDM ? FactTypes.DM_SENT : FactTypes.CHAT_MSG,
         actorId: event.senderId,
-        payload: { content: event.content, channelId },
+        targetId,
+        payload: { content: event.content, channelId, targetIds },
         timestamp: Date.now(),
       },
     };

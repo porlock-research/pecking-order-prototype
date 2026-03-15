@@ -1490,6 +1490,23 @@ This document tracks significant architectural decisions, their context, and con
     *   Tab switching feels snappy and directional — slide direction matches navigation intent.
     *   DM conversations are clean chat-only views — no visual noise from system events.
 
+## [ADR-102] Centralized Game Mechanic Info + ChatInput Redesign
+*   **Date:** 2026-03-14
+*   **Status:** Accepted
+*   **Context:** Game mechanic descriptions (timeline explainers, placeholder text, phase descriptions) were scattered across Vivid shell client code. When game rules change (e.g., DM silver cost goes from 1 to 2), every hardcoded reference in client code would need updating. The ChatInput had a separate stats bar row for silver balance and char counter that was visually clunky. PhaseTransitionSplash used emoji icons instead of the Solar icon system used everywhere else.
+*   **Decision:**
+    1.  **`action-info.ts` in shared-types**: `ACTION_INFO` constant keyed by timeline action string. `renderActionInfo()` resolves template tokens like `{silverCost}` using Config defaults.
+    2.  **`phase-info.ts` in shared-types**: `buildPhaseInfo()` extracts game-semantic text from PhaseTransitionSplash. Visual config (colors, icons, backgrounds) stays in the shell.
+    3.  **`channel-hints.ts` in shared-types**: `getChannelHints()` builds placeholder text arrays from channel type, capabilities, and phase. Server enriches channels with hints at SYNC time.
+    4.  **ChatInput redesign**: Removed stats bar. Silver balance badge on $ toolbar button. Inline char counter (only when typing in DM/group). Placeholder text from server-provided `hints`.
+    5.  **PhaseTransitionSplash**: Emoji replaced with Solar icons. Text from `buildPhaseInfo()`.
+    6.  **Timeline explainers**: `getExplainer()` uses `renderActionInfo()`. Dashboard labels from `ACTION_INFO`.
+*   **Consequences:**
+    *   All game mechanic text in shared-types — single source of truth. Config changes propagate automatically.
+    *   Server smart, client dumb — hints resolved server-side with full context.
+    *   ChatInput more compact — stats integrated into existing controls.
+    *   Consistent Solar icon system across Vivid shell.
+
 ## [ADR-101] Server-Authoritative DayPhase Projection + Redesigned PhaseTransitionSplash
 *   **Date:** 2026-03-13
 *   **Status:** Accepted

@@ -7,6 +7,11 @@ export { generateCycleDefaults, isLiveGame } from './cycle-defaults';
 export type { CycleDayDefaults } from './cycle-defaults';
 export { ECONOMY_INFO } from './economy-info';
 export { VOTE_TYPE_INFO } from './vote-type-info';
+export { ACTION_INFO, renderActionInfo } from './action-info';
+export type { ActionInfo } from './action-info';
+export { buildPhaseInfo } from './phase-info';
+export type { PhaseInfo } from './phase-info';
+export { getChannelHints } from './channel-hints';
 import type { TickerCategory } from './events';
 
 // --- Enums ---
@@ -465,6 +470,7 @@ export interface Channel {
     exempt?: boolean;          // exempt from daily limits + open/close flags
     silverCost?: number;       // per-message cost (default: 1 for DM, 0 for MAIN/GAME_DM)
   };
+  hints?: string[];            // server-enriched placeholder hints for chat input
 }
 
 export function groupDmChannelId(memberIds: string[]): string {
