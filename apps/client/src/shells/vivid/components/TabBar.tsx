@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ChatRoundDots, UsersGroupRounded } from '@solar-icons/react';
+import { ChatRoundDots, CalendarMinimalistic, UsersGroupRounded } from '@solar-icons/react';
 import { VIVID_TAP, VIVID_SPRING } from '../springs';
 
-export type VividTab = 'chat' | 'people';
+export type VividTab = 'chat' | 'schedule' | 'people';
 
 interface TabBarProps {
   activeTab: VividTab;
@@ -13,6 +13,7 @@ interface TabBarProps {
 
 const TABS: Array<{ id: VividTab; label: string; Icon: React.ComponentType<any> }> = [
   { id: 'chat', label: 'Chat', Icon: ChatRoundDots },
+  { id: 'schedule', label: 'Schedule', Icon: CalendarMinimalistic },
   { id: 'people', label: 'People', Icon: UsersGroupRounded },
 ];
 

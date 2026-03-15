@@ -12,6 +12,7 @@ import type { ChatMessage } from '@pecking-order/shared-types';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 import { AltArrowDown, Scale, Gamepad, ChatDots } from '@solar-icons/react';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
+import { CompactProgressBar } from './dashboard/CompactProgressBar';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -175,6 +176,15 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Day progress bar — persistent */}
+      <div style={{
+        flexShrink: 0,
+        borderBottom: '1px solid rgba(139, 115, 85, 0.06)',
+        background: 'var(--vivid-bg-surface)',
+      }}>
+        <CompactProgressBar variant="slim" />
+      </div>
+
       {/* Online presence strip */}
       {onlineRosterPlayers.length > 0 && (
         <div

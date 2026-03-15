@@ -10,6 +10,7 @@ import type { DayPhase } from '@pecking-order/shared-types';
 import { BroadcastBar } from './components/BroadcastBar';
 import { StageChat } from './components/StageChat';
 import { PeopleTab } from './components/PeopleTab';
+import { ScheduleTab } from './components/ScheduleTab';
 import { DMChat } from './components/DMChat';
 import { TabBar, type VividTab } from './components/TabBar';
 import { NewConversationPicker } from './components/NewConversationPicker';
@@ -25,7 +26,7 @@ import { VIVID_SPRING } from './springs';
 /*  Tab ordering for swipe gestures                                    */
 /* ------------------------------------------------------------------ */
 
-const TAB_ORDER: VividTab[] = ['chat', 'people'];
+const TAB_ORDER: VividTab[] = ['chat', 'schedule', 'people'];
 
 /* ------------------------------------------------------------------ */
 /*  Phase class resolver                                               */
@@ -201,6 +202,21 @@ function VividShell({ playerId, engine, token }: ShellProps) {
                 playerColorMap={playerColorMap}
                 onTapAvatar={(pid) => setDetailPlayerId(pid)}
               />
+            </motion.div>
+          )}
+
+          {activeTab === 'schedule' && (
+            <motion.div
+              key="schedule"
+              custom={tabDirection.current}
+              variants={tabVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
+              transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <ScheduleTab />
             </motion.div>
           )}
 
