@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useShallow } from 'zustand/react/shallow';
 import { Crown, AddCircle, CheckCircle, CloseCircle } from '@solar-icons/react';
-import { useGameStore, selectRequireDmInvite, selectDmSlots } from '../../../store/useGameStore';
+import { useGameStore } from '../../../store/useGameStore';
 import { ChannelTypes, GAME_MASTER_ID, Events, PlayerStatuses } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
@@ -99,8 +98,6 @@ function PeopleList({
   const onlinePlayers = useGameStore(s => s.onlinePlayers);
   const chatLog = useGameStore(s => s.chatLog);
   const channels = useGameStore(s => s.channels);
-  const requireDmInvite = useGameStore(selectRequireDmInvite);
-  const dmSlots = useGameStore(useShallow(selectDmSlots));
 
   const onlineSet = useMemo(() => new Set(onlinePlayers), [onlinePlayers]);
 
@@ -251,21 +248,6 @@ function PeopleList({
             {rankedAlive.length} alive
           </span>
         </div>
-        {requireDmInvite && (
-          <span
-            style={{
-              fontFamily: 'var(--vivid-font-mono)',
-              fontSize: 12,
-              fontWeight: 600,
-              color: 'var(--vivid-text-dim)',
-              background: 'var(--vivid-bg-elevated)',
-              padding: '2px 10px',
-              borderRadius: 12,
-            }}
-          >
-            {dmSlots.total - dmSlots.used}/{dmSlots.total} slots
-          </span>
-        )}
       </div>
 
       {/* Content */}

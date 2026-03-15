@@ -92,7 +92,7 @@ export function InviteOverlay({
           color: 'var(--vivid-text-dim)',
         }}
       >
-        {slotsRemaining} of {slotsTotal} conversations remaining today
+        You can start {slotsRemaining} more {slotsRemaining === 1 ? 'conversation' : 'conversations'} today
       </div>
 
       {/* Buttons */}

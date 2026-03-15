@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plain, CloseCircle, Dollar, UserPlus, FileText } from '@solar-icons/react';
 import type { ChatMessage, SocialPlayer, ChannelCapability } from '@pecking-order/shared-types';
-import { useGameStore } from '../../../store/useGameStore';
+import { useGameStore, selectRequireDmInvite } from '../../../store/useGameStore';
 import { useCountdown } from '../../../hooks/useCountdown';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
@@ -191,6 +191,12 @@ export function ChatInput({
   const groupChatOpen = useGameStore((s) => s.groupChatOpen);
   const dmsOpen = useGameStore((s) => s.dmsOpen);
   const dmStats = useGameStore((s) => s.dmStats);
+  const requireDmInvite = useGameStore(selectRequireDmInvite);
+  const dmSlotsUsed = useGameStore((s) => s.dmStats?.slotsUsed ?? 0);
+  const dmSlotsTotal = useGameStore((s) => {
+    if (!s.manifest?.days) return 5;
+    return s.manifest.days[s.dayIndex - 1]?.dmSlotsPerPlayer ?? 5;
+  });
 
   // Cycle placeholder text every 8 seconds
   const [placeholderTick, setPlaceholderTick] = useState(0);
@@ -460,6 +466,24 @@ export function ChatInput({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Sender feedback: first message uses a daily conversation */}
+        {context === 'dm' && !channelId && requireDmInvite && (
+          <div
+            style={{
+              marginBottom: 6,
+              padding: '5px 12px',
+              fontSize: 12,
+              fontFamily: 'var(--vivid-font-body)',
+              color: dmSlotsUsed >= dmSlotsTotal ? '#D94073' : 'var(--vivid-text-dim)',
+              textAlign: 'center',
+            }}
+          >
+            {dmSlotsUsed >= dmSlotsTotal
+              ? "You've used all your conversations for today"
+              : `Sending will use 1 of your ${dmSlotsTotal - dmSlotsUsed} remaining conversations today`}
+          </div>
+        )}
 
         <form onSubmit={handleSend}>
           {/* ---- Unified composer shell ---- */}

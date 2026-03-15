@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { AltArrowLeft, Crown } from '@solar-icons/react';
 import { PlayerStatuses, GAME_MASTER_ID, Events, ChannelTypes } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
-import { useGameStore, selectDmSlots, selectRequireDmInvite } from '../../../store/useGameStore';
+import { useGameStore, selectDmSlots } from '../../../store/useGameStore';
 import { usePlayerTimeline } from '../../../hooks/usePlayerTimeline';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { MessageCard } from './MessageCard';
@@ -67,7 +67,6 @@ export function DMChat({
   const clearDmRejection = useGameStore((s) => s.clearDmRejection);
   const typingPlayers = useGameStore((s) => s.typingPlayers);
   const dmSlots = useGameStore(useShallow(selectDmSlots));
-  const requireDmInvite = useGameStore(selectRequireDmInvite);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -416,22 +415,6 @@ export function DMChat({
           </div>
         </div>
 
-        {/* DM slots indicator (only when invite mode) */}
-        {!isMe && !isGameMaster && requireDmInvite && dmSlots.total > 0 && (
-          <span
-            style={{
-              flexShrink: 0,
-              fontSize: 11,
-              fontFamily: 'var(--vivid-font-mono)',
-              color: 'var(--vivid-text-dim)',
-              background: 'var(--vivid-bg-elevated)',
-              padding: '2px 8px',
-              borderRadius: 8,
-            }}
-          >
-            {dmSlots.total - dmSlots.used}/{dmSlots.total} slots
-          </span>
-        )}
       </header>
 
       {/* ---- Messages area --------------------------------------------- */}
@@ -600,7 +583,7 @@ function InviteInputBar({
           marginBottom: 10,
         }}
       >
-        {slotsRemaining} of {slotsTotal} whisper slots remaining
+        You can start {slotsRemaining} more {slotsRemaining === 1 ? 'conversation' : 'conversations'} today
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
         <motion.button
