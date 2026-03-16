@@ -10,7 +10,8 @@ import PromptPanel from '../../../components/panels/PromptPanel';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
-import { AltArrowDown, Scale, Gamepad, ChatDots } from '@solar-icons/react';
+import { AltArrowDown, Scale, Gamepad, ChatDots, Crown } from '@solar-icons/react';
+import { WELCOME_MESSAGES } from '@pecking-order/shared-types';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 import { CompactProgressBar } from './dashboard/CompactProgressBar';
 
@@ -39,6 +40,77 @@ function formatTimeSeparator(ts: number): string {
     return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
   return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Pregame empty state — welcome + gameplay overview                   */
+/* ------------------------------------------------------------------ */
+
+function GmBubble({ text, delay }: { text: string; delay: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, type: 'spring', stiffness: 300, damping: 24 }}
+      style={{
+        padding: '10px 14px',
+        borderRadius: '4px 16px 16px 16px',
+        background: 'rgba(212, 150, 10, 0.08)',
+        border: '1px solid rgba(212, 150, 10, 0.15)',
+        maxWidth: '85%',
+      }}
+    >
+      <span style={{
+        fontFamily: 'var(--vivid-font-body)',
+        fontSize: 14,
+        fontWeight: 500,
+        color: '#3D2E1F',
+        lineHeight: 1.5,
+      }}>
+        {text}
+      </span>
+    </motion.div>
+  );
+}
+
+function PregameEmptyState() {
+  const dayIndex = useGameStore(s => s.dayIndex);
+
+  if (dayIndex > 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
+        <div style={{ width: 64, height: 64, borderRadius: 20, background: 'var(--vivid-bg-elevated)', border: '2px solid rgba(139, 115, 85, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--vivid-surface-shadow)' }}>
+          <span style={{ color: 'var(--vivid-text-dim)', opacity: 0.5, fontFamily: 'var(--vivid-font-display)', fontSize: 22, fontWeight: 700 }}>...</span>
+        </div>
+        <span style={{ fontFamily: 'var(--vivid-font-display)', color: 'var(--vivid-text-dim)', fontSize: 15, fontWeight: 600 }}>The stage is set...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 8 }}>
+      {/* GM sender header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          background: 'rgba(212, 150, 10, 0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <Crown size={14} weight="Bold" color="#D4960A" />
+        </div>
+        <span style={{
+          fontFamily: 'var(--vivid-font-display)', fontSize: 12, fontWeight: 700,
+          color: '#D4960A', textTransform: 'uppercase', letterSpacing: '0.04em',
+        }}>
+          Game Master
+        </span>
+      </div>
+      {/* GM welcome messages */}
+      {WELCOME_MESSAGES.map((msg, i) => (
+        <GmBubble key={i} text={msg} delay={i * 0.12} />
+      ))}
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -278,54 +350,9 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
             scrollBehavior: 'smooth',
           }}
         >
-          {/* Empty state */}
+          {/* Empty state — welcome overview on Day 0, placeholder otherwise */}
           {entries.length === 0 && pendingOptimistic.length === 0 && (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                gap: 12,
-              }}
-            >
-              <div
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 20,
-                  background: 'var(--vivid-bg-elevated)',
-                  border: '2px solid rgba(139, 115, 85, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: 'var(--vivid-surface-shadow)',
-                }}
-              >
-                <span
-                  style={{
-                    color: 'var(--vivid-text-dim)',
-                    opacity: 0.5,
-                    fontFamily: 'var(--vivid-font-display)',
-                    fontSize: 22,
-                    fontWeight: 700,
-                  }}
-                >
-                  ...
-                </span>
-              </div>
-              <span
-                style={{
-                  fontFamily: 'var(--vivid-font-display)',
-                  color: 'var(--vivid-text-dim)',
-                  fontSize: 15,
-                  fontWeight: 600,
-                }}
-              >
-                The stage is set...
-              </span>
-            </div>
+            <PregameEmptyState />
           )}
 
           {/* Timeline entries */}
