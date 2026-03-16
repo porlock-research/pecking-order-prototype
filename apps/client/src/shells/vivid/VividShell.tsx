@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
 import './vivid.css';
@@ -62,6 +62,8 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const toggleDashboard = useGameStore(s => s.toggleDashboard);
   const dashboardOpen = useGameStore(s => s.dashboardOpen);
   const openDashboard = useGameStore(s => s.openDashboard);
+  const requestedTab = useGameStore(s => s.requestedTab);
+  const clearNavigation = useGameStore(s => s.clearNavigation);
 
   const phaseClass = getPhaseClass(phase);
 
@@ -111,6 +113,14 @@ function VividShell({ playerId, engine, token }: ShellProps) {
       setDmChannelId(null);
     }
   }, [activeTab]);
+
+  // Handle cross-component navigation requests (e.g. from DashboardOverlay)
+  useEffect(() => {
+    if (requestedTab && TAB_ORDER.includes(requestedTab as VividTab)) {
+      handleTabChange(requestedTab as VividTab);
+      clearNavigation();
+    }
+  }, [requestedTab, handleTabChange, clearNavigation]);
 
   /* ---- Swipe gesture for tab switching ---- */
 

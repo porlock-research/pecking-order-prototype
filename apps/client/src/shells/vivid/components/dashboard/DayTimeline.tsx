@@ -1,5 +1,8 @@
 import React, { useMemo } from 'react';
 import { useGameStore } from '../../../../store/useGameStore';
+import {
+  VOTE_TYPE_INFO, GAME_TYPE_INFO, ACTIVITY_TYPE_INFO,
+} from '@pecking-order/shared-types';
 import { buildDashboardEvents } from './dashboardUtils';
 import { TimelineEventCard } from './TimelineEventCard';
 
@@ -13,13 +16,28 @@ export function DayTimeline() {
   const currentDay = manifest?.days?.[dayIndex - 1];
   const timeline = currentDay?.timeline ?? [];
   const voteType = currentDay?.voteType;
-  const gameType = currentDay?.gameType;
-  const promptType = currentDay?.activityType;
+  const gameType = currentDay?.gameType as string | undefined;
+  const promptType = currentDay?.activityType as string | undefined;
 
-  const events = useMemo(
-    () => buildDashboardEvents({ timeline, completedCartridges, serverState, dayIndex }),
-    [timeline, completedCartridges, serverState, dayIndex],
-  );
+  // Enrich event labels with specific mechanic names
+  const events = useMemo(() => {
+    const base = buildDashboardEvents({ timeline, completedCartridges, serverState, dayIndex });
+    return base.map(event => {
+      if (event.category === 'voting' && voteType) {
+        const info = VOTE_TYPE_INFO[voteType as keyof typeof VOTE_TYPE_INFO];
+        if (info) return { ...event, label: info.name };
+      }
+      if (event.category === 'game' && gameType && gameType !== 'NONE') {
+        const info = (GAME_TYPE_INFO as Record<string, { name: string }>)[gameType];
+        if (info) return { ...event, label: info.name };
+      }
+      if (event.category === 'prompt' && promptType && promptType !== 'NONE') {
+        const info = (ACTIVITY_TYPE_INFO as Record<string, { name: string }>)[promptType];
+        if (info) return { ...event, label: info.name };
+      }
+      return event;
+    });
+  }, [timeline, completedCartridges, serverState, dayIndex, voteType, gameType, promptType]);
 
   if (events.length === 0) {
     return (

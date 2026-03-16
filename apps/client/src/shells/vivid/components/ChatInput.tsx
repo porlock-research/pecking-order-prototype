@@ -461,27 +461,6 @@ export function ChatInput({
           />
         </AnimatePresence>
 
-        {/* Closed banner (only when no countdown — ADMIN mode fallback) */}
-        {isDisabled && !countdown && (
-          <div
-            style={{
-              marginBottom: 8,
-              padding: '8px 12px',
-              borderRadius: 14,
-              background: 'var(--vivid-bg-elevated)',
-              border: '1px solid rgba(139, 115, 85, 0.1)',
-              color: 'var(--vivid-text-dim)',
-              fontSize: 13,
-              fontFamily: 'var(--vivid-font-body)',
-              textAlign: 'center',
-            }}
-          >
-            {context === 'main'
-              ? 'Group chat closed'
-              : 'DMs closed'}
-          </div>
-        )}
-
         {/* Reply preview */}
         <AnimatePresence>
           {replyTarget && (

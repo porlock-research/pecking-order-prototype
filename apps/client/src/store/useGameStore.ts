@@ -53,6 +53,7 @@ interface GameState {
   dashboardSeenForDay: number | null;
   welcomeSeen: boolean;
   lastSeenFeedTimestamp: number;
+  requestedTab: string | null;
 
   // Actions
   sync: (data: any) => void;
@@ -76,6 +77,8 @@ interface GameState {
   markDashboardSeen: (dayIndex: number) => void;
   markWelcomeSeen: () => void;
   markFeedSeen: () => void;
+  requestNavigation: (tab: string) => void;
+  clearNavigation: () => void;
 }
 
 // Selectors
@@ -337,6 +340,7 @@ export const useGameStore = create<GameState>((set) => ({
   dashboardSeenForDay: null,
   welcomeSeen: false,
   lastSeenFeedTimestamp: Number(localStorage.getItem('po-lastSeenFeed') || '0'),
+  requestedTab: null,
 
   sync: (data) => set((state) => {
     console.log('[SYNC] Received', {
@@ -380,6 +384,7 @@ export const useGameStore = create<GameState>((set) => ({
       dmStats: data.context?.dmStats ?? null,
       onlinePlayers: data.context?.onlinePlayers ?? state.onlinePlayers,
       playerActivity: data.context?.playerActivity ?? state.playerActivity,
+      welcomeSeen: localStorage.getItem(`po-welcomeSeen-${data.context?.gameId || state.gameId}`) === 'true' || state.welcomeSeen,
     };
   }),
 
@@ -419,10 +424,15 @@ export const useGameStore = create<GameState>((set) => ({
   closeDashboard: () => set({ dashboardOpen: false }),
   toggleDashboard: () => set((state) => ({ dashboardOpen: !state.dashboardOpen })),
   markDashboardSeen: (dayIndex) => set({ dashboardSeenForDay: dayIndex }),
-  markWelcomeSeen: () => set({ welcomeSeen: true }),
+  markWelcomeSeen: () => set((state) => {
+    if (state.gameId) localStorage.setItem(`po-welcomeSeen-${state.gameId}`, 'true');
+    return { welcomeSeen: true };
+  }),
   markFeedSeen: () => {
     const now = Date.now();
     localStorage.setItem('po-lastSeenFeed', String(now));
     set({ lastSeenFeedTimestamp: now });
   },
+  requestNavigation: (tab) => set({ requestedTab: tab }),
+  clearNavigation: () => set({ requestedTab: null }),
 }));

@@ -362,7 +362,7 @@ function PeopleList({
             >
               {/* Player row */}
               <motion.button
-                onClick={() => onSelectPlayer(p.id, pending?.channelId ?? existing?.channelId)}
+                onClick={() => isMe ? onViewProfile(p.id) : onSelectPlayer(p.id, pending?.channelId ?? existing?.channelId)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',

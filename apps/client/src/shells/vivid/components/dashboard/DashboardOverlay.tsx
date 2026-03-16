@@ -1,89 +1,150 @@
 import React, { useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, useMotionValue, type PanInfo } from 'framer-motion';
+import type { TickerMessage, SocialPlayer } from '@pecking-order/shared-types';
 import { useGameStore, selectUnreadFeedCount } from '../../../../store/useGameStore';
+import { PersonaAvatar } from '../../../../components/PersonaAvatar';
 import { VIVID_SPRING } from '../../springs';
-import { Letter } from '@solar-icons/react';
+import {
+  Letter, Flag, Dollar, Gamepad, MagicStick3,
+  Sun2, Moon, CupStar, ChatRound, StarShine, Crown, Danger,
+} from '@solar-icons/react';
 
 const DISMISS_THRESHOLD = -80;
+
+/* ------------------------------------------------------------------ */
+/*  Category visuals                                                    */
+/* ------------------------------------------------------------------ */
+
+interface CategoryMeta {
+  icon: React.ComponentType<any>;
+  color: string;
+  bg: string;
+}
+
+function getCategoryMeta(category: string): CategoryMeta {
+  const c = category.toUpperCase();
+  if (c.includes('WINNER'))      return { icon: Crown,      color: '#D4960A', bg: 'rgba(212, 150, 10, 0.1)' };
+  if (c.includes('ELIMINATION')) return { icon: Danger,      color: '#D94073', bg: 'rgba(217, 64, 115, 0.08)' };
+  if (c === 'VOTE')              return { icon: Flag,        color: '#D94073', bg: 'rgba(217, 64, 115, 0.08)' };
+  if (c.includes('TRANSFER'))    return { icon: Dollar,      color: '#D4960A', bg: 'rgba(212, 150, 10, 0.1)' };
+  if (c.includes('GOLD'))        return { icon: Dollar,      color: '#D4960A', bg: 'rgba(212, 150, 10, 0.1)' };
+  if (c === 'GAME')              return { icon: Gamepad,     color: '#8B6CC1', bg: 'rgba(139, 108, 193, 0.08)' };
+  if (c.includes('REWARD'))      return { icon: Dollar,      color: '#D4960A', bg: 'rgba(212, 150, 10, 0.1)' };
+  if (c.includes('ACTIVITY'))    return { icon: MagicStick3, color: '#8B6CC1', bg: 'rgba(139, 108, 193, 0.08)' };
+  if (c.includes('PERK'))        return { icon: StarShine,   color: '#3BA99C', bg: 'rgba(59, 169, 156, 0.08)' };
+  if (c.includes('DAY_START'))   return { icon: Sun2,        color: '#D4960A', bg: 'rgba(212, 150, 10, 0.1)' };
+  if (c.includes('NIGHT'))       return { icon: Moon,        color: '#8B6CC1', bg: 'rgba(139, 108, 193, 0.08)' };
+  if (c.includes('GAME_OVER'))   return { icon: CupStar,    color: '#D94073', bg: 'rgba(217, 64, 115, 0.08)' };
+  if (c.includes('CHAT'))        return { icon: ChatRound,   color: '#3BA99C', bg: 'rgba(59, 169, 156, 0.08)' };
+  if (c.includes('DMS'))         return { icon: Letter,      color: '#3BA99C', bg: 'rgba(59, 169, 156, 0.08)' };
+  return { icon: ChatRound, color: '#9B8E7E', bg: 'rgba(155, 142, 126, 0.06)' };
+}
 
 /* ------------------------------------------------------------------ */
 /*  Feed Item                                                          */
 /* ------------------------------------------------------------------ */
 
 function FeedItem({
-  text,
-  timestamp,
+  message,
   isUnread,
-  category,
+  roster,
+  index,
 }: {
-  text: string;
-  timestamp: number;
+  message: TickerMessage;
   isUnread: boolean;
-  category: string;
+  roster: Record<string, SocialPlayer>;
+  index: number;
 }) {
   const relTime = useMemo(() => {
-    const diff = Date.now() - timestamp;
+    const diff = Date.now() - message.timestamp;
     if (diff < 60_000) return 'now';
     if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m`;
     if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h`;
     return `${Math.floor(diff / 86400_000)}d`;
-  }, [timestamp]);
+  }, [message.timestamp]);
 
-  const dotColor = useMemo(() => {
-    const c = category.toUpperCase();
-    if (c.includes('VOTE') || c.includes('ELIMINATION')) return '#D94073';
-    if (c.includes('TRANSFER') || c.includes('GOLD')) return '#D4960A';
-    if (c.includes('GAME') || c.includes('ACTIVITY')) return '#8B6CC1';
-    if (c.includes('SOCIAL') || c.includes('PERK')) return '#3BA99C';
-    return 'var(--vivid-phase-accent)';
-  }, [category]);
+  const meta = useMemo(() => getCategoryMeta(message.category), [message.category]);
+
+  // Resolve first involved player for avatar display
+  const avatarPlayer = useMemo(() => {
+    const ids = message.involvedPlayerIds;
+    if (!ids || ids.length === 0) return null;
+    return roster[ids[0]] || null;
+  }, [message.involvedPlayerIds, roster]);
+
+  const Icon = meta.icon;
 
   return (
     <motion.div
       style={{
         display: 'flex',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         gap: 10,
-        padding: '10px 0',
-        borderBottom: '1px solid rgba(139, 115, 85, 0.06)',
-        position: 'relative',
+        padding: '8px 10px',
+        borderRadius: 12,
+        background: isUnread ? meta.bg : 'transparent',
+        borderLeft: isUnread ? `3px solid ${meta.color}` : '3px solid transparent',
+        marginBottom: 2,
       }}
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={VIVID_SPRING.gentle}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...VIVID_SPRING.gentle, delay: Math.min(index * 0.03, 0.3) }}
     >
-      {/* Unread indicator + category dot */}
-      <div style={{
-        width: 8,
-        height: 8,
-        borderRadius: '50%',
-        background: isUnread ? dotColor : 'rgba(139, 115, 85, 0.15)',
-        marginTop: 5,
-        flexShrink: 0,
-        transition: 'background 0.3s ease',
-      }} />
-
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{
-          margin: 0,
-          fontFamily: 'var(--vivid-font-body)',
-          fontSize: 14,
-          lineHeight: 1.45,
-          color: isUnread ? '#3D2E1F' : '#5A4A3A',
-          fontWeight: isUnread ? 600 : 400,
+      {/* Icon or Avatar */}
+      {avatarPlayer ? (
+        <div style={{ flexShrink: 0 }}>
+          <PersonaAvatar
+            avatarUrl={avatarPlayer.avatarUrl}
+            personaName={avatarPlayer.personaName}
+            size={30}
+          />
+        </div>
+      ) : (
+        <div style={{
+          width: 30,
+          height: 30,
+          borderRadius: 10,
+          background: isUnread ? `${meta.color}14` : 'rgba(155, 142, 126, 0.06)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
         }}>
-          {text}
-        </p>
-      </div>
+          <Icon
+            size={16}
+            weight="Bold"
+            color={isUnread ? meta.color : '#9B8E7E'}
+          />
+        </div>
+      )}
 
-      {/* Relative time */}
+      {/* Text */}
+      <p style={{
+        margin: 0,
+        flex: 1,
+        minWidth: 0,
+        fontFamily: 'var(--vivid-font-body)',
+        fontSize: 13,
+        lineHeight: 1.4,
+        color: isUnread ? '#3D2E1F' : '#7A6B5A',
+        fontWeight: isUnread ? 600 : 400,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical' as any,
+      }}>
+        {message.text}
+      </p>
+
+      {/* Time */}
       <span style={{
         flexShrink: 0,
         fontFamily: 'var(--vivid-font-mono)',
-        fontSize: 11,
-        color: 'var(--vivid-text-dim)',
-        marginTop: 2,
+        fontSize: 10,
+        color: isUnread ? meta.color : '#B5A898',
+        fontWeight: isUnread ? 600 : 400,
+        letterSpacing: '0.02em',
       }}>
         {relTime}
       </span>
@@ -98,8 +159,8 @@ function FeedItem({
 function FeedSection() {
   const tickerMessages = useGameStore(s => s.tickerMessages);
   const lastSeenFeedTimestamp = useGameStore(s => s.lastSeenFeedTimestamp);
+  const roster = useGameStore(s => s.roster);
 
-  // Show newest first, limit to 50
   const feedItems = useMemo(
     () => [...tickerMessages].reverse().slice(0, 50),
     [tickerMessages],
@@ -108,31 +169,42 @@ function FeedSection() {
   if (feedItems.length === 0) {
     return (
       <div style={{
-        padding: '24px 0',
+        padding: '28px 0',
         textAlign: 'center',
       }}>
+        <div style={{
+          width: 40,
+          height: 40,
+          borderRadius: 14,
+          background: 'rgba(155, 142, 126, 0.06)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 10px',
+        }}>
+          <ChatRound size={20} weight="Bold" color="#B5A898" />
+        </div>
         <p style={{
           fontFamily: 'var(--vivid-font-body)',
-          fontSize: 14,
-          color: '#9B8E7E',
+          fontSize: 13,
+          color: '#B5A898',
           margin: 0,
-          fontStyle: 'italic',
         }}>
-          No events yet — check back soon
+          No events yet
         </p>
       </div>
     );
   }
 
   return (
-    <div>
-      {feedItems.map((msg) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {feedItems.map((msg, i) => (
         <FeedItem
           key={msg.id}
-          text={msg.text}
-          timestamp={msg.timestamp}
+          message={msg}
           isUnread={msg.timestamp > lastSeenFeedTimestamp}
-          category={msg.category}
+          roster={roster}
+          index={i}
         />
       ))}
     </div>
@@ -151,6 +223,7 @@ export function DashboardOverlay() {
   const markWelcomeSeen = useGameStore(s => s.markWelcomeSeen);
   const dayIndex = useGameStore(s => s.dayIndex);
   const unreadCount = useGameStore(selectUnreadFeedCount);
+  const requestNavigation = useGameStore(s => s.requestNavigation);
   const pendingCount = useGameStore(s => {
     const pid = s.playerId;
     if (!pid) return 0;
@@ -168,10 +241,14 @@ export function DashboardOverlay() {
     }
   }, [closeDashboard]);
 
-  // Mark feed as seen when opening
   const handleOpen = useCallback(() => {
     markFeedSeen();
   }, [markFeedSeen]);
+
+  const handleViewInvites = useCallback(() => {
+    closeDashboard();
+    requestNavigation('people');
+  }, [closeDashboard, requestNavigation]);
 
   const showWelcome = dayIndex <= 1 && !welcomeSeen;
 
@@ -353,14 +430,13 @@ export function DashboardOverlay() {
                 overflowY: 'auto',
                 overflowX: 'hidden',
                 WebkitOverflowScrolling: 'touch',
-                padding: '0 16px 24px',
+                padding: '8px 12px 24px',
               }}
             >
               {/* Welcome card */}
               {showWelcome && (
                 <motion.div
                   style={{
-                    marginTop: 4,
                     marginBottom: 8,
                     padding: '16px 18px 14px',
                     borderRadius: 16,
@@ -428,10 +504,9 @@ export function DashboardOverlay() {
               {pendingCount > 0 && (
                 <motion.div
                   style={{
-                    marginTop: 4,
                     marginBottom: 8,
-                    padding: '12px 16px',
-                    borderRadius: 14,
+                    padding: '10px 14px',
+                    borderRadius: 12,
                     background: 'linear-gradient(135deg, rgba(59, 169, 156, 0.06) 0%, rgba(59, 169, 156, 0.1) 100%)',
                     border: '1px solid rgba(59, 169, 156, 0.14)',
                     display: 'flex',
@@ -442,12 +517,12 @@ export function DashboardOverlay() {
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={VIVID_SPRING.gentle}
-                  onClick={() => closeDashboard()}
+                  onClick={handleViewInvites}
                   whileTap={{ scale: 0.97 }}
                 >
                   <div style={{
-                    width: 32,
-                    height: 32,
+                    width: 30,
+                    height: 30,
                     borderRadius: 10,
                     background: 'rgba(59, 169, 156, 0.12)',
                     display: 'flex',
@@ -455,7 +530,7 @@ export function DashboardOverlay() {
                     justifyContent: 'center',
                     flexShrink: 0,
                   }}>
-                    <Letter size={16} weight="Bold" color="#3BA99C" />
+                    <Letter size={15} weight="Bold" color="#3BA99C" />
                   </div>
                   <span style={{
                     fontFamily: 'var(--vivid-font-display)',
@@ -477,13 +552,13 @@ export function DashboardOverlay() {
                 </motion.div>
               )}
 
-              {/* Feed section */}
-              <div style={{ marginTop: 8 }}>
+              {/* Feed */}
+              <div style={{ marginTop: 4 }}>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  marginBottom: 4,
+                  marginBottom: 6,
                   paddingLeft: 4,
                 }}>
                   <span style={{

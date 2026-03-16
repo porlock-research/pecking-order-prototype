@@ -229,18 +229,39 @@ async function main() {
     // DO NOT inject events — alarm pipeline handles it
   }
 
-  // Sign tokens + output
+  // Sign tokens + build output
+  const players = [];
+  for (let i = 0; i < PLAYER_COUNT; i++) {
+    const p = personas[i];
+    const tok = await signGameToken({sub:'u'+i,gameId,playerId:'p'+i,personaName:p.name},SECRET);
+    const url = CLIENT + '/game/' + inviteCode + '?_t=' + tok + '&shell=' + SHELL;
+    players.push({ id:'p'+i, name:p.name, stereotype:p.stereotype, bio:p.bio, token:tok, url });
+  }
+
+  // Write machine-readable JSON for Playwright / test skill consumption
+  const testGame = {
+    gameId, inviteCode, env: ENV, shell: SHELL,
+    mode: IS_SPEEDRUN ? 'SPEED_RUN' : 'ADMIN',
+    adminUrl: GS + '/parties/game-server/' + gameId + '/admin',
+    stateUrl: GS + '/parties/game-server/' + gameId + '/state',
+    secret: SECRET,
+    players,
+    createdAt: new Date().toISOString(),
+  };
+  fs.writeFileSync('/tmp/pecking-order-test-game.json', JSON.stringify(testGame, null, 2));
+
+  // Console output
   console.log('GAME_ID=' + gameId);
   console.log('INVITE_CODE=' + inviteCode);
   console.log('ENV=' + ENV);
   console.log('MODE=' + (IS_SPEEDRUN ? 'SPEED_RUN (auto-advancing, 23min/day)' : 'ADMIN (manual inject)'));
   console.log('---');
-  for (let i = 0; i < PLAYER_COUNT; i++) {
-    const p = personas[i];
-    const tok = await signGameToken({sub:'u'+i,gameId,playerId:'p'+i,personaName:p.name},SECRET);
-    console.log(p.name + ' (p'+i+') [' + p.stereotype + ']');
-    console.log('  ' + CLIENT + '/game/' + inviteCode + '?_t=' + tok + '&shell=' + SHELL);
+  for (const p of players) {
+    console.log(p.name + ' (' + p.id + ') [' + p.stereotype + ']');
+    console.log('  ' + p.url);
   }
+  console.log('---');
+  console.log('Wrote /tmp/pecking-order-test-game.json (for Playwright/test skill)');
 
   async function post(path, body) {
     const url = GS+'/parties/game-server/'+gameId+path;
@@ -279,6 +300,18 @@ For staging, add:
 Links are shareable — send to anyone for testing.
 Admin API: https://staging-api.peckingorder.ca/parties/game-server/{GAME_ID}/admin
 ```
+
+### Playwright integration
+
+After game creation, `/tmp/pecking-order-test-game.json` contains all player tokens and URLs. To use with Playwright MCP:
+
+```
+1. Read /tmp/pecking-order-test-game.json
+2. For each player: browser_navigate to their `url` field
+3. Auth is handled automatically via the ?_t= token in the URL
+```
+
+The `/test` skill reads this file automatically — run `/create-game` first, then `/test` to use Playwright with the created game.
 
 If the script fails:
 - `env=local`: suggest `npm run dev`
