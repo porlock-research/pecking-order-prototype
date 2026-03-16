@@ -188,7 +188,7 @@ export function resolveScheduling(
 
 // --- Schedule Presets (lobby-side templates for timeline timestamps) ---
 
-export const SchedulePresetSchema = z.enum(['DEFAULT', 'COMPACT', 'SPEED_RUN']);
+export const SchedulePresetSchema = z.enum(['DEFAULT', 'COMPACT', 'SPEED_RUN', 'SMOKE_TEST']);
 export type SchedulePreset = z.infer<typeof SchedulePresetSchema>;
 
 // --- Scaling Mode (for social rules in dynamic manifests) ---

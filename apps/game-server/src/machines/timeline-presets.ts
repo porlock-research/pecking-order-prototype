@@ -89,6 +89,24 @@ const PRESET_CONFIGS: Record<SchedulePreset, PresetConfig> = {
       { action: 'END_DAY', offsetMin: 23 },
     ],
   },
+  SMOKE_TEST: {
+    type: 'offset',
+    dayDurationMin: 5,
+    interDayGapMin: 1,
+    events: [
+      { action: 'OPEN_GROUP_CHAT', offsetMin: 0 },
+      { action: 'OPEN_DMS', offsetMin: 0.5 },
+      { action: 'CLOSE_GROUP_CHAT', offsetMin: 0.5 },
+      { action: 'START_GAME', offsetMin: 1, condition: 'hasGame' },
+      { action: 'END_GAME', offsetMin: 2, condition: 'hasGame' },
+      { action: 'START_ACTIVITY', offsetMin: 2.5, condition: 'hasActivity' },
+      { action: 'END_ACTIVITY', offsetMin: 3.5, condition: 'hasActivity' },
+      { action: 'OPEN_VOTING', offsetMin: 3.5 },
+      { action: 'CLOSE_VOTING', offsetMin: 4.5 },
+      { action: 'CLOSE_DMS', offsetMin: 4.5 },
+      { action: 'END_DAY', offsetMin: 5 },
+    ],
+  },
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────
