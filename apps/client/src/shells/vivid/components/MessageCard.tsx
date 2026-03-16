@@ -206,7 +206,7 @@ export function MessageCard({
           <PersonaAvatar
             avatarUrl={sender?.avatarUrl}
             personaName={sender?.personaName}
-            size={44}
+            size={52}
           />
         </div>
       )}
@@ -215,8 +215,8 @@ export function MessageCard({
       <div
         style={{
           maxWidth: '75%',
-          marginLeft: !showSender && !isMe ? 52 : 0,
-          marginRight: !showSender && isMe ? 52 : 0,
+          marginLeft: !showSender && !isMe ? 60 : 0,
+          marginRight: !showSender && isMe ? 60 : 0,
           position: 'relative',
         }}
       >
@@ -224,7 +224,7 @@ export function MessageCard({
         {showSender && !isMe && (
           <div
             style={{
-              marginBottom: 3,
+              marginBottom: 4,
               marginLeft: 12,
             }}
           >

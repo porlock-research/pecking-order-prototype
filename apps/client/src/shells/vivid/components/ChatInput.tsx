@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plain, CloseCircle, Dollar, UserPlus, FileText } from '@solar-icons/react';
 import type { ChatMessage, SocialPlayer, ChannelCapability } from '@pecking-order/shared-types';
@@ -55,6 +55,93 @@ function getChannel(context: 'main' | 'dm' | 'group', targetId?: string): string
 }
 
 const SILVER_AMOUNTS = [1, 2, 5, 10] as const;
+
+/* ------------------------------------------------------------------ */
+/*  Typing placeholder                                                 */
+/* ------------------------------------------------------------------ */
+
+function TypingPlaceholder({
+  text,
+  visible,
+}: {
+  text: string;
+  visible: boolean;
+}) {
+  const [displayed, setDisplayed] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const prevTextRef = useRef(text);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const charIndexRef = useRef(0);
+
+  const typeChar = useCallback(() => {
+    charIndexRef.current += 1;
+    const target = prevTextRef.current;
+    if (charIndexRef.current <= target.length) {
+      setDisplayed(target.slice(0, charIndexRef.current));
+      timerRef.current = setTimeout(typeChar, 25 + Math.random() * 20);
+    } else {
+      setIsTyping(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (text !== prevTextRef.current) {
+      // New text — start typing it out
+      prevTextRef.current = text;
+      charIndexRef.current = 0;
+      setDisplayed('');
+      setIsTyping(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      // Small pause before starting to type
+      timerRef.current = setTimeout(typeChar, 200);
+    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [text, typeChar]);
+
+  // Initial render — show full text immediately (no animation for first mount)
+  useEffect(() => {
+    setDisplayed(text);
+    prevTextRef.current = text;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        alignItems: 'center',
+        pointerEvents: 'none',
+        fontFamily: 'var(--vivid-font-body)',
+        fontSize: 17,
+        color: 'var(--vivid-text-dim)',
+        opacity: 0.5,
+      }}
+    >
+      <span>{displayed}</span>
+      {isTyping && (
+        <motion.span
+          style={{
+            display: 'inline-block',
+            width: 2,
+            height: 18,
+            background: 'var(--vivid-text-dim)',
+            marginLeft: 1,
+            borderRadius: 1,
+          }}
+          animate={{ opacity: [1, 0, 1] }}
+          transition={{ duration: 0.8, repeat: Infinity }}
+        />
+      )}
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Typing indicator                                                   */
@@ -509,43 +596,47 @@ export function ChatInput({
                 {activeCapability === null && !silverSentFlash && (
                   <motion.div
                     key="text"
-                    style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.15 }}
                   >
-                    <input
-                      ref={inputRef}
-                      data-testid="chat-input"
-                      type="text"
-                      value={isDisabled && countdown
-                        ? `${context === 'main' ? 'Group chat' : 'DMs'} open${countdown ? ` in ${countdown}` : ''}`
-                        : inputValue}
-                      onChange={(e) => {
-                        if (isDisabled) return;
-                        setInputValue(e.target.value);
-                        if (e.target.value) {
-                          engine.sendTyping(channel);
-                        }
-                      }}
-                      placeholder={getPlaceholderFromHints(hints, isDisabled && !countdown, context, placeholderTick)}
-                      maxLength={280}
-                      readOnly={isDisabled}
-                      style={{
-                        flex: 1,
-                        border: 'none',
-                        outline: 'none',
-                        background: 'transparent',
-                        fontSize: 17,
-                        fontFamily: isDisabled && countdown ? 'var(--vivid-font-display)' : 'var(--vivid-font-body)',
-                        fontWeight: isDisabled && countdown ? 600 : undefined,
-                        letterSpacing: isDisabled && countdown ? '0.02em' : undefined,
-                        color: isDisabled && countdown ? 'var(--vivid-text-dim)' : 'var(--vivid-text)',
-                        padding: 0,
-                        width: '100%',
-                      }}
-                    />
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <input
+                        ref={inputRef}
+                        data-testid="chat-input"
+                        type="text"
+                        value={isDisabled && countdown
+                          ? `${context === 'main' ? 'Group chat' : 'DMs'} open${countdown ? ` in ${countdown}` : ''}`
+                          : inputValue}
+                        onChange={(e) => {
+                          if (isDisabled) return;
+                          setInputValue(e.target.value);
+                          if (e.target.value) {
+                            engine.sendTyping(channel);
+                          }
+                        }}
+                        maxLength={280}
+                        readOnly={isDisabled}
+                        style={{
+                          width: '100%',
+                          border: 'none',
+                          outline: 'none',
+                          background: 'transparent',
+                          fontSize: 17,
+                          fontFamily: isDisabled && countdown ? 'var(--vivid-font-display)' : 'var(--vivid-font-body)',
+                          fontWeight: isDisabled && countdown ? 600 : undefined,
+                          letterSpacing: isDisabled && countdown ? '0.02em' : undefined,
+                          color: isDisabled && countdown ? 'var(--vivid-text-dim)' : 'var(--vivid-text)',
+                          padding: 0,
+                        }}
+                      />
+                      <TypingPlaceholder
+                        text={getPlaceholderFromHints(hints, isDisabled && !countdown, context, placeholderTick)}
+                        visible={!inputValue && !(isDisabled && countdown)}
+                      />
+                    </div>
                   </motion.div>
                 )}
 

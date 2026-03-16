@@ -245,7 +245,7 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
               <PersonaAvatar
                 avatarUrl={p.avatarUrl}
                 personaName={p.personaName}
-                size={40}
+                size={48}
               />
               <div
                 style={{
