@@ -510,7 +510,6 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                 position: 'absolute',
                 bottom: 12,
                 left: '50%',
-                transform: 'translateX(-50%)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
@@ -526,9 +525,9 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                 boxShadow: '0 3px 12px rgba(139, 115, 85, 0.12)',
                 zIndex: 10,
               }}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 8, x: '-50%' }}
+              animate={{ opacity: 1, y: 0, x: '-50%' }}
+              exit={{ opacity: 0, y: 8, x: '-50%' }}
               transition={VIVID_SPRING.snappy}
               whileTap={VIVID_TAP.button}
             >
