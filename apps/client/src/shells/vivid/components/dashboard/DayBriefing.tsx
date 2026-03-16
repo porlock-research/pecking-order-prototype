@@ -11,7 +11,12 @@ export function DayBriefing() {
 
   if (!manifest || dayIndex === 0) return null;
 
-  const totalDays = manifest.days?.length ?? 0;
+  // Static manifests: days pre-populated. Dynamic FIXED: use fixedCount/value.
+  // Dynamic ACTIVE_PLAYERS_MINUS_ONE: total changes each day, don't show.
+  const dc = manifest.ruleset?.dayCount;
+  const totalDays = dc
+    ? (dc.mode === 'FIXED' ? (dc.fixedCount ?? dc.value ?? 0) : 0)
+    : (manifest.days?.length ?? 0);
   const aliveCount = Object.values(roster).filter((p: any) => p.isAlive || p.status === 'ALIVE').length;
   const currentDay = manifest.days?.[dayIndex - 1];
   const voteType = currentDay?.voteType;

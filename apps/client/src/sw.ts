@@ -1,6 +1,9 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
 import { clientsClaim } from 'workbox-core';
+import { registerRoute } from 'workbox-routing';
+import { CacheFirst } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -15,6 +18,25 @@ cleanupOutdatedCaches();
 
 // Precache static assets injected by vite-plugin-pwa
 precacheAndRoute(self.__WB_MANIFEST);
+
+// ── Persona avatar caching ───────────────────────────────────────────────
+// Cache persona images (headshot, medium, full) from assets CDN.
+// CacheFirst: avatars never change once generated, so serve from cache
+// and avoid redundant network requests.
+// CacheableResponsePlugin with status 0 allows caching opaque cross-origin
+// responses (the assets CDN doesn't serve CORS headers).
+registerRoute(
+  ({ url }) =>
+    url.pathname.includes('/personas/') &&
+    /\.(png|jpg|jpeg|webp)$/i.test(url.pathname),
+  new CacheFirst({
+    cacheName: 'persona-avatars',
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 30 * 24 * 60 * 60 }),
+    ],
+  }),
+);
 
 // ── Token persistence ────────────────────────────────────────────────────
 // Token read/write now uses caches.open() directly from the page context

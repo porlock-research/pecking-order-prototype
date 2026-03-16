@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { VoteTypes } from '@pecking-order/shared-types';
 import { useGameStore } from '../../store/useGameStore';
-import MajorityVoting from '../../cartridges/voting/MajorityVoting';
-import ExecutionerVoting from '../../cartridges/voting/ExecutionerVoting';
-import BubbleVoting from '../../cartridges/voting/BubbleVoting';
-import PodiumSacrificeVoting from '../../cartridges/voting/PodiumSacrificeVoting';
-import SecondToLastVoting from '../../cartridges/voting/SecondToLastVoting';
-import ShieldVoting from '../../cartridges/voting/ShieldVoting';
-import TrustPairsVoting from '../../cartridges/voting/TrustPairsVoting';
-import FinalsVoting from '../../cartridges/voting/FinalsVoting';
+
+const VOTING_COMPONENTS: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
+  [VoteTypes.MAJORITY]: React.lazy(() => import('../../cartridges/voting/MajorityVoting')),
+  [VoteTypes.EXECUTIONER]: React.lazy(() => import('../../cartridges/voting/ExecutionerVoting')),
+  [VoteTypes.BUBBLE]: React.lazy(() => import('../../cartridges/voting/BubbleVoting')),
+  [VoteTypes.PODIUM_SACRIFICE]: React.lazy(() => import('../../cartridges/voting/PodiumSacrificeVoting')),
+  [VoteTypes.SECOND_TO_LAST]: React.lazy(() => import('../../cartridges/voting/SecondToLastVoting')),
+  [VoteTypes.SHIELD]: React.lazy(() => import('../../cartridges/voting/ShieldVoting')),
+  [VoteTypes.TRUST_PAIRS]: React.lazy(() => import('../../cartridges/voting/TrustPairsVoting')),
+  [VoteTypes.FINALS]: React.lazy(() => import('../../cartridges/voting/FinalsVoting')),
+};
 
 interface VotingPanelProps {
   engine: {
@@ -24,34 +27,23 @@ export default function VotingPanel({ engine }: VotingPanelProps) {
   if (!activeVotingCartridge) return null;
 
   const common = { cartridge: activeVotingCartridge, playerId: playerId!, roster, engine };
+  const Component = VOTING_COMPONENTS[activeVotingCartridge.voteType];
 
-  let panel: React.ReactNode;
-  switch (activeVotingCartridge.voteType) {
-    case VoteTypes.MAJORITY:
-      panel = <MajorityVoting {...common} />; break;
-    case VoteTypes.EXECUTIONER:
-      panel = <ExecutionerVoting {...common} />; break;
-    case VoteTypes.BUBBLE:
-      panel = <BubbleVoting {...common} />; break;
-    case VoteTypes.PODIUM_SACRIFICE:
-      panel = <PodiumSacrificeVoting {...common} />; break;
-    case VoteTypes.SECOND_TO_LAST:
-      panel = <SecondToLastVoting {...common} />; break;
-    case VoteTypes.SHIELD:
-      panel = <ShieldVoting {...common} />; break;
-    case VoteTypes.TRUST_PAIRS:
-      panel = <TrustPairsVoting {...common} />; break;
-    case VoteTypes.FINALS:
-      panel = <FinalsVoting {...common} />; break;
-    default:
-      panel = (
-        <div className="mx-4 my-2 p-4 rounded-xl bg-skin-surface border border-skin-base text-center">
-          <span className="text-sm font-mono text-skin-muted">
-            UNKNOWN_VOTE_TYPE: {activeVotingCartridge.voteType}
-          </span>
-        </div>
-      );
+  if (!Component) {
+    return (
+      <div className="mx-4 my-2 p-4 rounded-xl bg-skin-surface border border-skin-base text-center">
+        <span className="text-sm font-mono text-skin-muted">
+          UNKNOWN_VOTE_TYPE: {activeVotingCartridge.voteType}
+        </span>
+      </div>
+    );
   }
 
-  return <div data-testid="voting-panel">{panel}</div>;
+  return (
+    <div data-testid="voting-panel">
+      <Suspense fallback={null}>
+        <Component {...common} />
+      </Suspense>
+    </div>
+  );
 }

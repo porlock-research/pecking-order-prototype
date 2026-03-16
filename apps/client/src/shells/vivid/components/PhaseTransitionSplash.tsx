@@ -40,7 +40,12 @@ function buildPhaseConfig(
   roster: Record<string, any>,
 ): PhaseConfig | null {
   const currentDay = manifest?.days?.[dayIndex - 1];
-  const totalDays = manifest?.days?.length ?? undefined;
+  // Static manifests: days pre-populated. Dynamic FIXED: use fixedCount/value.
+  // Dynamic ACTIVE_PLAYERS_MINUS_ONE: total changes each day, don't show.
+  const dc = manifest?.ruleset?.dayCount;
+  const totalDays = dc
+    ? (dc.mode === 'FIXED' ? (dc.fixedCount ?? dc.value) : undefined)
+    : (manifest?.days?.length || undefined);
   const aliveCount = Object.values(roster).filter((p: any) => p.isAlive).length;
 
   const info = buildPhaseInfo(phase, {

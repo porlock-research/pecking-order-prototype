@@ -61,7 +61,6 @@ function PwaGateInner({ token }: { token: string }) {
 
   // Step 1: Install gate — mobile, not standalone, not deferred
   const showInstallGate = isMobile && !isStandalone && !deferred;
-  console.log('[PwaGate] showInstallGate=' + showInstallGate, { isMobile, isStandalone, deferred, permission, isSubscribed, ready });
 
   // Step 2: Push gate — anyone who hasn't subscribed yet (standalone, desktop, or mobile-deferred)
   // Skips the install gate scenario (mobile non-standalone with gate active)
