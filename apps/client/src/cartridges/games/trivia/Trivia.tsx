@@ -40,12 +40,14 @@ function RoundResult({
       <p className="text-sm font-bold text-skin-base leading-relaxed">
         {result.question}
       </p>
-      <OptionGrid
-        options={result.options}
-        selectedAnswer={selectedAnswer}
-        correctIndex={result.correctIndex}
-      />
-      <ResultFeedback correct={result.correct} silver={result.silver} speedBonus={result.speedBonus} />
+      <div>
+        <OptionGrid
+          options={result.options}
+          selectedAnswer={selectedAnswer}
+          correctIndex={result.correctIndex}
+        />
+        <ResultFeedback correct={result.correct} silver={result.silver} speedBonus={result.speedBonus} />
+      </div>
     </div>
   );
 }

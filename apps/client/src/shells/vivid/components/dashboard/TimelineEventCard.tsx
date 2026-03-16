@@ -114,13 +114,17 @@ export function TimelineEventCard({ event, voteType, roster, isLast }: TimelineE
           <div
             style={{
               flex: 1,
-              width: 1.5,
+              width: isCompleted ? 2 : 1.5,
               background: isCompleted
-                ? `linear-gradient(to bottom, ${color}40, rgba(155, 142, 126, 0.1))`
-                : 'rgba(155, 142, 126, 0.1)',
+                ? color
+                : isActive
+                  ? `linear-gradient(to bottom, ${color}, rgba(155, 142, 126, 0.1))`
+                  : 'rgba(155, 142, 126, 0.1)',
               marginTop: 6,
               borderRadius: 1,
               minHeight: 12,
+              opacity: isCompleted ? 0.4 : 1,
+              transition: 'all 0.3s ease',
             }}
           />
         )}
