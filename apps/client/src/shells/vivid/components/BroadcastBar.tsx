@@ -24,6 +24,31 @@ function getPhaseLabel(phase: DayPhase, dayIndex: number): string {
   return `DAY ${dayIndex} — ${label}`;
 }
 
+function usePregameCountdown(): string | null {
+  const manifest = useGameStore(s => s.manifest);
+  const phase = useGameStore(s => s.phase);
+  const [label, setLabel] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (phase !== DayPhases.PREGAME || !manifest?.startTime) {
+      setLabel(null);
+      return;
+    }
+    const update = () => {
+      const diff = new Date(manifest.startTime).getTime() - Date.now();
+      if (diff <= 0) { setLabel('Starting now...'); return; }
+      const m = Math.floor(diff / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setLabel(`Game starts in ${m}:${String(s).padStart(2, '0')}`);
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [phase, manifest?.startTime]);
+
+  return label;
+}
+
 export function BroadcastBar({ onClick }: { onClick?: () => void }) {
   const dayIndex = useGameStore(s => s.dayIndex);
   const phase = useGameStore(s => s.phase);
@@ -33,10 +58,16 @@ export function BroadcastBar({ onClick }: { onClick?: () => void }) {
   const phaseLabel = getPhaseLabel(phase, dayIndex);
   const groupCountdown = useCountdown('group');
   const dmCountdown = useCountdown('dm');
+  const pregameCountdown = usePregameCountdown();
 
   // Build ticker items: phase label first, countdowns, then recent ticker messages
   const tickerItems = useMemo(() => {
-    const items: string[] = [phaseLabel];
+    const items: string[] = [];
+    if (pregameCountdown) {
+      items.push(pregameCountdown);
+    } else {
+      items.push(phaseLabel);
+    }
     if (groupCountdown) items.push(`Chat opens in ${groupCountdown}`);
     if (dmCountdown) items.push(`DMs open in ${dmCountdown}`);
     // Show the last 20 ticker messages in the scrolling ticker
@@ -45,7 +76,7 @@ export function BroadcastBar({ onClick }: { onClick?: () => void }) {
       items.push(msg.text);
     }
     return items;
-  }, [phaseLabel, groupCountdown, dmCountdown, tickerMessages]);
+  }, [phaseLabel, groupCountdown, dmCountdown, pregameCountdown, tickerMessages]);
 
   // Dynamic speed: longer content scrolls faster
   const marqueeSpeed = useMemo(() => {

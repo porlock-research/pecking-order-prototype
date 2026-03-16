@@ -26,6 +26,9 @@ export function CompactProgressBar({ variant = 'full' }: { variant?: 'full' | 's
     ? (dc.mode === 'FIXED' ? (dc.fixedCount ?? dc.value ?? 0) : 0)
     : (manifest?.days?.length ?? 0);
   const activeIdx = PHASE_TO_INDEX[phase] ?? -1;
+  const isPregame = dayIndex === 0;
+
+  if (isPregame) return null;
 
   return (
     <div style={{ padding: variant === 'slim' ? '8px 16px' : '0 20px 12px' }}>

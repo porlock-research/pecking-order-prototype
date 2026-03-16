@@ -10,6 +10,5 @@ export const WELCOME_MESSAGES: string[] = [
   'Use your DMs wisely — alliances win games, but every message costs silver.',
   'At the end of each day, you will vote. Someone will be eliminated.',
   'The last player standing claims the gold prize pool.',
-  'Trust carefully. The person smiling at you might be sharpening their knife.',
-  'The game begins shortly.',
+  'Keep your friends close, and your enemies closer.',
 ];
