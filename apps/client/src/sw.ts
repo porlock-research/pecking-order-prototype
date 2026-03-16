@@ -23,8 +23,9 @@ precacheAndRoute(self.__WB_MANIFEST);
 // Cache persona images (headshot, medium, full) from assets CDN.
 // CacheFirst: avatars never change once generated, so serve from cache
 // and avoid redundant network requests.
-// CacheableResponsePlugin with status 0 allows caching opaque cross-origin
-// responses (the assets CDN doesn't serve CORS headers).
+// NOTE: Cross-origin opaque responses (status 0) are NOT cached by default.
+// Once CORS headers are added to the assets CDN, this will cache properly.
+// For now, browser HTTP cache handles avatar caching.
 registerRoute(
   ({ url }) =>
     url.pathname.includes('/personas/') &&
@@ -32,7 +33,6 @@ registerRoute(
   new CacheFirst({
     cacheName: 'persona-avatars',
     plugins: [
-      new CacheableResponsePlugin({ statuses: [0, 200] }),
       new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 30 * 24 * 60 * 60 }),
     ],
   }),
