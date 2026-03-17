@@ -117,3 +117,28 @@ If snapshot is unrestorable, D1 `GameJournal` + manifest provide: alive/eliminat
 5. **Alarm chaining invisible**: If chain breaks, it's not obvious why alarms stopped or are firing continuously
 6. ~~**Time window filtering fragile**~~: **Addressed** (ADR-093). Window widened to 5min, and delivery is now reliable via `onAlarm()`. Window width is secondary.
 7. **PartyWhen replacement**: Direct `ctx.storage.setAlarm()` + hand-managed task list would be simpler and fully inspectable (deferred — current architecture is now robust)
+
+---
+
+## [ARCH-018] Lobby timeline events use Record (no repeated events)
+
+**Priority**: Medium
+**Status**: Open — workaround in place for playtest
+
+### Problem
+The lobby's `ConfigurableDayConfig.events` is a `Record<string, ConfigurableEventConfig>` — object keys must be unique. This prevents scheduling the same event type twice in one day (e.g., two `OPEN_GROUP_CHAT` windows: 10-12 and 3-4).
+
+### Current workaround
+`_2` suffix convention: `OPEN_GROUP_CHAT_2`, `CLOSE_GROUP_CHAT_2`. `resolveActionName()` in `actions.ts` strips the suffix before building the manifest timeline. The server receives two separate `OPEN_GROUP_CHAT` events at different times — works correctly.
+
+### Proper fix
+Convert `events` from `Record<string, ConfigurableEventConfig>` to `Array<{ action: string; time: string; enabled: boolean }>`. This requires updating:
+- `ConfigurableDayConfig` type
+- `buildConfigurableDays()` default generation
+- `toISOConfigurableConfig()` date resolution
+- Lobby UI: render event list instead of fixed-key grid
+- `TIMELINE_EVENT_KEYS` iteration in `buildManifestDays()`
+
+### Related
+- `PLAYTEST` schedule preset (`timeline-presets.ts`) already uses arrays — no issue server-side
+- Only affects the lobby's game creation UI
