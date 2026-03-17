@@ -119,6 +119,7 @@ export function buildDashboardEvents(input: BuildDashboardEventsInput): Dashboar
       }
     } else if (meta.category === 'social') {
       // Social events are "active" once we're past the initial phase
+      // TODO: time-based state for repeated open/close cycles (e.g., group chat twice in one day)
       if (activePhase) {
         state = 'active';
       }

@@ -4,6 +4,15 @@ import { PROMPT_REGISTRY } from '../cartridges/prompts/_registry';
 import { Events } from '@pecking-order/shared-types';
 import { log } from '../../log';
 
+const DEFAULT_PROMPT_TEXT: Record<string, string> = {
+  PLAYER_PICK: 'Pick a player',
+  PREDICTION: 'What do you think will happen next?',
+  WOULD_YOU_RATHER: 'Would you rather...',
+  HOT_TAKE: 'The best strategy is to trust no one',
+  CONFESSION: 'Share something nobody here knows about you',
+  GUESS_WHO: 'Who said it?',
+};
+
 export const l3ActivityActions = {
   spawnPromptCartridge: assign({
     activePromptCartridgeRef: ({ context, spawn, event }: any) => {
@@ -18,7 +27,7 @@ export const l3ActivityActions = {
         id: 'activePromptCartridge',
         input: {
           promptType,
-          promptText: payload?.promptText || 'Pick a player',
+          promptText: payload?.promptText || DEFAULT_PROMPT_TEXT[promptType] || 'Share your thoughts',
           roster: context.roster,
           dayIndex: context.dayIndex,
           optionA: payload?.optionA,
