@@ -54,16 +54,38 @@ export function MessageCard({
   const lastTapTime = useRef(0);
   const [showReaction, setShowReaction] = useState(false);
 
-  const handleTouchStart = useCallback(() => {
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const didScrollRef = useRef(false);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (touch) touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    didScrollRef.current = false;
     setIsPressed(true);
     longPressTimer.current = setTimeout(() => {
-      // Long press triggers avatar tap (opens player quick sheet)
-      if (onTapAvatar && message.senderId !== GAME_MASTER_ID) {
+      if (!didScrollRef.current && onTapAvatar && message.senderId !== GAME_MASTER_ID) {
         onTapAvatar(message.senderId);
       }
       setIsPressed(false);
     }, 500);
   }, [onTapAvatar, message.senderId]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (didScrollRef.current) return;
+    const touch = e.touches[0];
+    if (touch && touchStartPos.current) {
+      const dx = Math.abs(touch.clientX - touchStartPos.current.x);
+      const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+      if (dx > 10 || dy > 10) {
+        didScrollRef.current = true;
+        if (longPressTimer.current) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
+        setIsPressed(false);
+      }
+    }
+  }, []);
 
   const handleTouchEnd = useCallback(() => {
     if (longPressTimer.current) {
@@ -181,6 +203,7 @@ export function MessageCard({
       whileHover={{ scale: 1.01 }}
       transition={VIVID_SPRING.bouncy}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
       onClick={handleDoubleTap}
@@ -201,7 +224,10 @@ export function MessageCard({
             cursor: onTapAvatar ? 'pointer' : undefined,
             alignSelf: 'flex-end',
           }}
-          onClick={(e) => { e.stopPropagation(); onTapAvatar?.(message.senderId); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!didScrollRef.current) onTapAvatar?.(message.senderId);
+          }}
         >
           <PersonaAvatar
             avatarUrl={sender?.avatarUrl}
