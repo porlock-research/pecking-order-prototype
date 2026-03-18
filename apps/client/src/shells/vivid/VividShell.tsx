@@ -127,7 +127,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const mainContentRef = useRef<HTMLElement>(null);
 
   const bind = useDrag(
-    ({ direction: [dx], velocity: [vx], cancel, event }) => {
+    ({ direction: [dx], velocity: [vx], distance: [distX], cancel, event }) => {
       // Only respond to horizontal swipes with sufficient velocity
       if (vx < 0.3) return;
 

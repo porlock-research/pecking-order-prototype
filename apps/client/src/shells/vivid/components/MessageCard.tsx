@@ -46,54 +46,12 @@ export function MessageCard({
 }: MessageCardProps) {
   const isGameMaster = message.senderId === GAME_MASTER_ID;
 
-  // Long press state
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [isPressed, setIsPressed] = useState(false);
-
   // Double tap state
   const lastTapTime = useRef(0);
   const [showReaction, setShowReaction] = useState(false);
 
-  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
-  const didScrollRef = useRef(false);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    if (touch) touchStartPos.current = { x: touch.clientX, y: touch.clientY };
-    didScrollRef.current = false;
-    setIsPressed(true);
-    longPressTimer.current = setTimeout(() => {
-      if (!didScrollRef.current && onTapAvatar && message.senderId !== GAME_MASTER_ID) {
-        onTapAvatar(message.senderId);
-      }
-      setIsPressed(false);
-    }, 500);
-  }, [onTapAvatar, message.senderId]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (didScrollRef.current) return;
-    const touch = e.touches[0];
-    if (touch && touchStartPos.current) {
-      const dx = Math.abs(touch.clientX - touchStartPos.current.x);
-      const dy = Math.abs(touch.clientY - touchStartPos.current.y);
-      if (dx > 10 || dy > 10) {
-        didScrollRef.current = true;
-        if (longPressTimer.current) {
-          clearTimeout(longPressTimer.current);
-          longPressTimer.current = null;
-        }
-        setIsPressed(false);
-      }
-    }
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    setIsPressed(false);
-  }, []);
+  // Long press removed — it caused accidental player profile opens during
+  // scroll gestures (PT2-002). Avatar tap is the intentional path instead.
 
   const handleDoubleTap = useCallback(() => {
     const now = Date.now();
@@ -196,16 +154,12 @@ export function MessageCard({
       }
       animate={{
         opacity: isOptimistic ? 0.5 : 1,
-        scale: isPressed ? 0.97 : 1,
+        scale: 1,
         y: 0,
         x: 0,
       }}
       whileHover={{ scale: 1.01 }}
       transition={VIVID_SPRING.bouncy}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
       onClick={handleDoubleTap}
       style={{
         width: '100%',
@@ -224,10 +178,7 @@ export function MessageCard({
             cursor: onTapAvatar ? 'pointer' : undefined,
             alignSelf: 'flex-end',
           }}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!didScrollRef.current) onTapAvatar?.(message.senderId);
-          }}
+          onClick={(e) => { e.stopPropagation(); onTapAvatar?.(message.senderId); }}
         >
           <PersonaAvatar
             avatarUrl={sender?.avatarUrl}
