@@ -356,6 +356,32 @@ async function handleAdmin(ctx: HandlerContext, req: Request): Promise<Response>
           payload: { text: body.content, targetId: body.targetId },
         },
       });
+    } else if (body.type === "ELIMINATE_PLAYER") {
+      const playerId = body.playerId;
+      if (!playerId || !snapshot.context.roster[playerId]) {
+        return new Response(JSON.stringify({ error: 'Invalid playerId' }), { status: 400 });
+      }
+      if (snapshot.context.roster[playerId].status === 'ELIMINATED') {
+        return new Response(JSON.stringify({ error: 'Player already eliminated' }), { status: 400 });
+      }
+      log('info', 'L1', 'GM eliminating player', { playerId });
+      ctx.actor.send({
+        type: Events.Fact.RECORD,
+        fact: {
+          type: 'ELIMINATION',
+          actorId: 'GAME_MASTER',
+          targetId: playerId,
+          payload: { mechanism: 'GM_OVERRIDE', reason: body.reason || 'Eliminated by Game Master' },
+          timestamp: Date.now(),
+        },
+      });
+    } else if (body.type === "CREDIT_SILVER") {
+      const rewards: Record<string, number> = body.rewards;
+      if (!rewards || typeof rewards !== 'object' || Object.keys(rewards).length === 0) {
+        return new Response(JSON.stringify({ error: 'rewards object required: { "p0": 10, "p1": 5 }' }), { status: 400 });
+      }
+      log('info', 'L1', 'GM crediting silver', { rewards });
+      ctx.actor.send({ type: 'ECONOMY.CREDIT_SILVER', rewards });
     } else {
       return new Response("Unknown Admin Command", { status: 400 });
     }
