@@ -302,7 +302,7 @@ export function ChatInput({
     [capabilities]
   );
 
-  const hasSilver = inputCapabilities.includes('SILVER_TRANSFER');
+  const hasSilver = inputCapabilities.includes('SILVER_TRANSFER') && context !== 'group';
   const hasInvite = inputCapabilities.includes('INVITE_MEMBER');
 
   const replyName = replyTarget
