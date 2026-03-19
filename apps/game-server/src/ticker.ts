@@ -22,14 +22,19 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
   const name = (id: string) => roster[id]?.personaName || id;
 
   switch (fact.type) {
-    case FactTypes.SILVER_TRANSFER:
+    case FactTypes.SILVER_TRANSFER: {
+      const amount = fact.payload?.amount || '?';
+      const isGmAward = fact.actorId === 'GAME_MASTER' || fact.payload?.gmAward;
       return {
         id: crypto.randomUUID(),
-        text: `${name(fact.actorId)} sent ${fact.payload?.amount || '?'} silver to ${name(fact.targetId)}`,
+        text: isGmAward
+          ? `Game Master awarded ${amount} silver to ${name(fact.targetId)}`
+          : `${name(fact.actorId)} sent ${amount} silver to ${name(fact.targetId)}`,
         category: TickerCategories.SOCIAL_TRANSFER,
         timestamp: fact.timestamp,
-        involvedPlayerIds: [fact.actorId, fact.targetId].filter(Boolean),
+        involvedPlayerIds: [fact.actorId, fact.targetId].filter(id => id && id !== 'GAME_MASTER'),
       };
+    }
     case FactTypes.GAME_RESULT: {
       const players = fact.payload?.players;
       const gold = fact.payload?.goldContribution || 0;

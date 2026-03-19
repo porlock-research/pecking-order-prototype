@@ -376,6 +376,36 @@ export default function LobbyRoot() {
     });
   }
 
+  function handlePlaytestSchedule() {
+    // Playtest schedule: Chat 10-12+3-4, DMs 11-4, Game 12-2, Activity 12-3, Vote 3-5
+    const PLAYTEST_SCHEDULE: Record<string, string> = {
+      OPEN_GROUP_CHAT: '10:00',
+      OPEN_DMS: '11:00',
+      CLOSE_GROUP_CHAT: '12:00',
+      START_GAME: '12:00',
+      START_ACTIVITY: '12:00',
+      END_GAME: '14:00',
+      END_ACTIVITY: '15:00',
+      OPEN_GROUP_CHAT_2: '15:00',
+      OPEN_VOTING: '15:00',
+      CLOSE_DMS: '16:00',
+      CLOSE_GROUP_CHAT_2: '16:00',
+      CLOSE_VOTING: '17:00',
+      END_DAY: '17:00',
+    };
+
+    setConfigurableConfig(prev => {
+      const days = prev.days.map(day => {
+        const events: Record<string, ConfigurableEventConfig> = {};
+        for (const [key, time] of Object.entries(PLAYTEST_SCHEDULE)) {
+          events[key] = { enabled: true, time };
+        }
+        return { ...day, events };
+      });
+      return { ...prev, days, speedRun: false };
+    });
+  }
+
   function handleCfgPushToggle(trigger: string) {
     setConfigurableConfig(prev => ({
       ...prev,
@@ -784,6 +814,12 @@ export default function LobbyRoot() {
                         className="px-2.5 py-1 rounded-full bg-skin-danger/20 border border-skin-danger/30 text-[10px] font-mono font-bold text-skin-danger hover:bg-skin-danger/30 transition-all"
                       >
                         Speed Run
+                      </button>
+                      <button
+                        onClick={handlePlaytestSchedule}
+                        className="px-2.5 py-1 rounded-full bg-skin-gold/20 border border-skin-gold/30 text-[10px] font-mono font-bold text-skin-gold hover:bg-skin-gold/30 transition-all"
+                      >
+                        Playtest
                       </button>
                     </div>
                     <div className="flex items-center gap-2">

@@ -973,8 +973,14 @@ const ACTIVITY_OPTIONS: Record<string, { optionA: string; optionB: string }> = {
 
 const TIMELINE_EVENT_KEYS = [
   'INJECT_PROMPT', 'OPEN_GROUP_CHAT', 'START_ACTIVITY', 'END_ACTIVITY', 'OPEN_DMS',
-  'START_GAME', 'END_GAME', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'CLOSE_GROUP_CHAT', 'END_DAY',
+  'START_GAME', 'END_GAME',
+  'OPEN_GROUP_CHAT_2', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'CLOSE_GROUP_CHAT_2', 'CLOSE_GROUP_CHAT', 'END_DAY',
 ] as const;
+
+/** Strip _2 suffix for repeated events (e.g., OPEN_GROUP_CHAT_2 → OPEN_GROUP_CHAT) */
+function resolveActionName(key: string): string {
+  return key.replace(/_2$/, '');
+}
 
 function buildEventPayload(eventKey: string, activityType: string, dayIndex: number) {
   const msg = eventKey === 'INJECT_PROMPT'
@@ -1005,8 +1011,9 @@ function buildManifestDays(
 
       let eventOffset = 0;
       for (const eventKey of TIMELINE_EVENT_KEYS) {
+        if (eventKey.endsWith('_2')) continue; // Debug mode doesn't support repeated events
         if ((eventKey === 'START_ACTIVITY' || eventKey === 'END_ACTIVITY') && day.activityType === 'NONE') continue;
-        if (day.events[eventKey]) {
+        if (day.events[eventKey as keyof typeof day.events]) {
           timeline.push({
             time: t(baseOffset + eventOffset),
             action: eventKey,
@@ -1040,8 +1047,8 @@ function buildManifestDays(
         if (eventCfg?.enabled && eventCfg.time) {
           timeline.push({
             time: eventCfg.time,
-            action: eventKey,
-            payload: buildEventPayload(eventKey, day.activityType, i + 1),
+            action: resolveActionName(eventKey),
+            payload: buildEventPayload(resolveActionName(eventKey), day.activityType, i + 1),
           });
         }
       }

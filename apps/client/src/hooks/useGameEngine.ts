@@ -40,7 +40,16 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
           level: 'warning',
           data: { code: event.code, reason: event.reason, gameId },
         });
-        // Game archived or token invalid — redirect to launcher
+        // Clear ALL cached tokens for this game to prevent reconnect loop
+        // (covers secret rotation, game cleanup, token expiry)
+        const code = window.location.pathname.match(/\/game\/([A-Za-z0-9]+)/)?.[1];
+        if (code) {
+          localStorage.removeItem(`po_token_${code}`);
+          document.cookie = `po_token_${code}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+          caches.open('po-tokens-v1').then(c =>
+            c.delete(new Request(`/po-token-cache/po_token_${code}`))
+          ).catch(() => {});
+        }
         window.location.replace('/');
       }
     },

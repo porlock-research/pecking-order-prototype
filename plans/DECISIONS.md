@@ -1522,3 +1522,38 @@ This document tracks significant architectural decisions, their context, and con
     *   Follows existing projection pattern (`projectGameCartridge`, `projectPromptCartridge`).
     *   Phase splash screens now explain game mechanics to first-time players in context.
     *   `DayPhase` is an open type (`(string & {})`) — extensible without breaking existing code.
+
+## [ADR-103] Playtest Polish — Lazy Loading, Day Count, Pregame UX
+*   **Date:** 2026-03-16
+*   **Status:** Accepted
+*   **Context:** Pre-playtest session (March 17, 8 players). Multiple UX issues: initial bundle too large, dynamic manifest day count showing 1 instead of total, stale SW chunks crashing app, splash screens showing generic text, pregame empty state uninformative, trivia pulling obscure categories.
+*   **Decision:**
+    1.  **Lazy loading**: All voting (8), game (16), and prompt (6) panel components converted from static imports to `React.lazy()` with `Suspense`. Follows existing `GameDevHarness` pattern. Reduces initial bundle; each component loads on-demand per phase.
+    2.  **Day count for dynamic manifests**: `CompactProgressBar`, `DayBriefing`, `PhaseTransitionSplash` now read `ruleset.dayCount.fixedCount ?? ruleset.dayCount.value` for FIXED mode. `ACTIVE_PLAYERS_MINUS_ONE` mode hides total (changes each day). Static manifests still use `days.length`. Note: latent schema mismatch — create-game uses `value`, schema declares `fixedCount`, Game Master reads `fixedCount` (works by coincidence).
+    3.  **ErrorBoundary auto-recovery**: Detects chunk load errors from stale SW cache, auto-clears all service workers + caches and reloads (once per session via sessionStorage guard).
+    4.  **Shell param consumption**: `?shell=` URL param overrides `po_shell` localStorage, preventing old playtesters from getting wrong shell.
+    5.  **Splash screen cleanup**: Dismiss no longer auto-opens notifications panel (schedule now in dedicated tab). Game/activity splashes show contextual names from `GAME_TYPE_INFO`/`ACTIVITY_TYPE_INFO` instead of generic text.
+    6.  **Pregame UX**: Progress bar hidden when `dayIndex === 0`. GM welcome messages rendered as chat bubbles from `WELCOME_MESSAGES` (shared-types). Ticker shows countdown to Day 1 start for scheduled games. `INJECT_PROMPT`/`START_CARTRIDGE` filtered from player-facing schedule.
+    7.  **Trivia**: Restricted to General Knowledge category (`category=9`). Fixed feedback bump caused by `space-y-4` gap on `ResultFeedback`.
+    8.  **DM silver validation**: `canSend` checks `myBalance >= silverCost` for DM context. Placeholder shows "Not enough silver to send..." when broke.
+    9.  **SW avatar caching**: Route registered for `/personas/*.png` but cross-origin opaque responses not cached without CORS headers on CDN. Deferred until CORS configured on R2 bucket.
+*   **Consequences:**
+    *   All changes client-side only — no server modifications.
+    *   59 precache entries (up from 41) due to code-split chunks.
+    *   Playwright with `--device` emulation unreliable for click testing (touch mode vs mouse events). Use for visual inspection only; real browser for interaction testing.
+
+## [ADR-104] GM Admin Actions — Eliminate Player and Credit Silver
+*   **Date:** 2026-03-18
+*   **Status:** Accepted
+*   **Context:** During Playtest 2, the BUBBLE vote failed to eliminate anyone (tiebreaker not implemented). The Game Master needed the ability to manually eliminate players and award silver to correct game state. These are needed as permanent admin tools, not one-off fixes.
+*   **Decision:**
+    1.  Two new admin commands in `http-handlers.ts`: `ELIMINATE_PLAYER` and `CREDIT_SILVER`.
+    2.  `ELIMINATE_PLAYER` emits a `FACT.RECORD` with type `ELIMINATION`, actorId `GAME_MASTER`, mechanism `GM_OVERRIDE`. Flows through the existing fact pipeline: `applyFactToRoster` (status change), `persistFactToD1` (journal), `factToTicker` (broadcast), `handleFactPush` (push notification). DramaticReveal triggers on client via roster change detection.
+    3.  `CREDIT_SILVER` sends `ECONOMY.CREDIT_SILVER` event (already handled in L2) plus `FACT.RECORD` with type `SILVER_TRANSFER` per player for ticker visibility ("Game Master sent X silver to Player").
+    4.  Both work in `activeSession` AND `nightSummary` states — L2 handles both events in both states.
+    5.  Lobby admin UI: per-player "Eliminate" button (with confirmation) and "+ Silver" button (inline amount input) added to the roster table in `OverviewTab.tsx`.
+*   **Consequences:**
+    *   GM can correct game state without code changes or manual D1 queries.
+    *   Elimination triggers the full event pipeline: push, ticker, DramaticReveal splash.
+    *   Silver credits are visible in the ticker as "GAME_MASTER sent X silver to Player".
+    *   No changes to existing XState machine logic — uses existing event handlers.

@@ -196,3 +196,39 @@ In ADMIN-scheduled games, the dashboard timeline shows "No events scheduled yet.
 **Status**: ✅ FIXED (`feature/ui-polish`) — colored dots replaced with bold "S"/"G" letter labels
 
 The silver and gold indicators on the BroadcastBar show as small colored dots with numbers, but no text labels. New players have no way to know what the dots represent without prior context. Consider adding "Silver" / "Gold" labels, or at minimum distinctive icons (coin, gem).
+
+---
+
+## [PT2-001] Bubble vote tie — no elimination when silver is equal
+
+**Priority**: HIGH
+**Status**: Open
+**Found**: Playtest 2, Day 1 (2026-03-17)
+
+In BUBBLE voting, when the bottom players have equal votes AND equal silver, no one is eliminated. The tiebreaker logic (lowest silver gets eliminated) either isn't implemented or doesn't handle the case where silver is also tied.
+
+**Expected**: In ANY tie scenario across ALL voting mechanisms, the player with the lowest silver balance should be eliminated. If silver is also tied, use a secondary tiebreaker (e.g., player who joined later, random).
+
+**Scope**: Audit all voting machines (MAJORITY, EXECUTIONER, BUBBLE, PODIUM_SACRIFICE, SECOND_TO_LAST, SHIELD, TRUST_PAIRS, FINALS) for tiebreaker logic.
+
+---
+
+## [PT2-002] Group chat scroll triggers DM navigation
+
+**Priority**: CRITICAL
+**Status**: Open — cannot reproduce locally
+**Found**: Playtest 2, Day 1 (2026-03-17) — multiple player reports
+
+Players report that scrolling up in the group chat opens a DM with whatever player's message they tap during their scroll gesture. The tap-to-scroll touch event is being interpreted as a tap on the message sender's avatar, which triggers the PlayerDetail → DM navigation flow.
+
+**Player quote**: "If you try and scroll up in the group chat, you will instead open a dm with whatever person's message you tapped in your tap-to-scroll gesture"
+
+**Likely cause**: The `onTapAvatar` handler on `MessageCard` fires on touch start rather than distinguishing between taps and scroll gestures. On mobile, a scroll begins with a touch that could be misinterpreted as a tap if the threshold is too low.
+
+**Possible fixes**:
+- Add touch move threshold to `onTapAvatar` — only fire if finger didn't move > N pixels
+- Use `onPointerUp` with a `pointerType` check instead of `onClick`
+- Add a short delay and cancel if scroll detected
+- Check if framer-motion's `whileTap` on MessageCard is intercepting scroll gestures
+
+**Reproduction hint**: May only occur when a cartridge (game/vote/activity) is active and the chat area is shorter, requiring more scrolling.

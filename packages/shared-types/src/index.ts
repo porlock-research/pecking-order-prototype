@@ -13,6 +13,7 @@ export { ACTIVITY_TYPE_INFO } from './activity-type-info';
 export type { ActivityTypeInfo } from './activity-type-info';
 export { ACTION_INFO, renderActionInfo } from './action-info';
 export type { ActionInfo } from './action-info';
+export { WELCOME_MESSAGES } from './welcome-content';
 export { buildPhaseInfo } from './phase-info';
 export type { PhaseInfo } from './phase-info';
 export { getChannelHints } from './channel-hints';
@@ -188,7 +189,7 @@ export function resolveScheduling(
 
 // --- Schedule Presets (lobby-side templates for timeline timestamps) ---
 
-export const SchedulePresetSchema = z.enum(['DEFAULT', 'COMPACT', 'SPEED_RUN', 'SMOKE_TEST']);
+export const SchedulePresetSchema = z.enum(['DEFAULT', 'COMPACT', 'SPEED_RUN', 'SMOKE_TEST', 'PLAYTEST']);
 export type SchedulePreset = z.infer<typeof SchedulePresetSchema>;
 
 // --- Scaling Mode (for social rules in dynamic manifests) ---

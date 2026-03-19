@@ -5,7 +5,9 @@
  */
 import { DayPhases } from './index';
 import { VOTE_TYPE_INFO } from './vote-type-info';
-import type { DayPhase, VoteType } from './index';
+import { GAME_TYPE_INFO } from './game-type-info';
+import { ACTIVITY_TYPE_INFO } from './activity-type-info';
+import type { DayPhase, VoteType, GameType, PromptType } from './index';
 
 export interface PhaseInfo {
   title: string;
@@ -58,19 +60,31 @@ export function buildPhaseInfo(
         body: 'Send private messages, form alliances, and gather information. Your DM slots are limited \u2014 choose wisely.',
       };
 
-    case DayPhases.GAME:
+    case DayPhases.GAME: {
+      const gameType = params?.gameType;
+      const gameInfo = gameType && gameType !== 'NONE'
+        ? GAME_TYPE_INFO[gameType as Exclude<GameType, 'NONE'>]
+        : null;
       return {
-        title: 'Game Time',
+        title: gameInfo ? gameInfo.name : 'Game Time',
         subtitle: 'Earn silver to stay in the game',
-        body: 'Play the mini-game to earn silver. Silver breaks vote ties and unlocks perks \u2014 every coin matters.',
+        body: gameInfo
+          ? gameInfo.description
+          : 'Play the mini-game to earn silver. Silver breaks vote ties and unlocks perks \u2014 every coin matters.',
       };
+    }
 
-    case DayPhases.ACTIVITY:
+    case DayPhases.ACTIVITY: {
+      const actType = params?.activityType;
+      const actInfo = actType && actType !== 'NONE'
+        ? ACTIVITY_TYPE_INFO[actType as PromptType]
+        : null;
       return {
-        title: 'Activity',
-        subtitle: 'Express yourself',
-        body: 'Answer the prompt to reveal your personality and earn silver. Other players will see your response.',
+        title: actInfo ? actInfo.name : 'Activity',
+        subtitle: actInfo ? actInfo.description : 'Express yourself',
+        body: 'Answer the prompt to earn silver. Other players will see your response.',
       };
+    }
 
     case DayPhases.VOTING:
       return {

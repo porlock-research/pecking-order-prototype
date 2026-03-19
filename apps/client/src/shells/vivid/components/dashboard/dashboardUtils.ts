@@ -91,6 +91,8 @@ export function buildDashboardEvents(input: BuildDashboardEventsInput): Dashboar
   for (const event of timeline) {
     // Skip "close" halves — they're merged into the "open" card
     if (PAIRED_ACTIONS[event.action]) continue;
+    // Skip internal-only actions not meant for player-facing schedule
+    if (event.action === 'INJECT_PROMPT' || event.action === 'START_CARTRIDGE') continue;
 
     const meta = getActionMeta(event.action);
 
@@ -117,6 +119,7 @@ export function buildDashboardEvents(input: BuildDashboardEventsInput): Dashboar
       }
     } else if (meta.category === 'social') {
       // Social events are "active" once we're past the initial phase
+      // TODO: time-based state for repeated open/close cycles (e.g., group chat twice in one day)
       if (activePhase) {
         state = 'active';
       }

@@ -8,7 +8,7 @@ export const Config = {
     maxGroupsPerDay: 3,
   },
   chat: {
-    maxLogSize: 50,
+    maxLogSize: 500,
     maxMessageLength: 280,
   },
   perk: {

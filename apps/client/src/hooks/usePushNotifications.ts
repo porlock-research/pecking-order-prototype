@@ -24,6 +24,30 @@ function findCachedToken(): string | null {
   return null;
 }
 
+/** Get the current game code from the URL path. */
+function getGameCodeFromPath(): string | null {
+  const match = window.location.pathname.match(/\/game\/([A-Za-z0-9]+)/);
+  return match?.[1] ?? null;
+}
+
+const LOBBY_HOST = import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000';
+
+/** Try to refresh a stale token via the lobby's refresh-token API. */
+async function refreshToken(gameCode: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${LOBBY_HOST}/api/refresh-token/${gameCode}`, {
+      credentials: 'include',
+    });
+    if (!res.ok) return null;
+    const { token } = await res.json();
+    if (token) {
+      localStorage.setItem(`po_token_${gameCode}`, token);
+      return token;
+    }
+  } catch {}
+  return null;
+}
+
 /**
  * HTTP-based push subscription hook. No WebSocket dependency.
  * Subscribes via POST /api/push/subscribe on the game server.
@@ -105,17 +129,28 @@ export function usePushNotifications(activeToken?: string | null) {
         }
 
         const subJSON = sub.toJSON();
-        const res = await fetch(`${serverHost}/api/push/subscribe`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            endpoint: subJSON.endpoint,
-            keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
-          }),
+        const pushBody = JSON.stringify({
+          endpoint: subJSON.endpoint,
+          keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
         });
+        let res = await fetch(`${serverHost}/api/push/subscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: pushBody,
+        });
+        // Token rejected (e.g., secret rotation) — try refreshing via lobby
+        if (res.status === 401) {
+          const gameCode = getGameCodeFromPath();
+          const freshToken = gameCode ? await refreshToken(gameCode) : null;
+          if (freshToken) {
+            console.log('[Push] Token refreshed via lobby, retrying subscribe');
+            res = await fetch(`${serverHost}/api/push/subscribe`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${freshToken}` },
+              body: pushBody,
+            });
+          }
+        }
         if (!res.ok) {
           console.warn('[Push] Server re-sync returned', res.status);
         } else {
@@ -150,17 +185,27 @@ export function usePushNotifications(activeToken?: string | null) {
         }
 
         const subJSON = sub.toJSON();
-        const res = await fetch(`${serverHost}/api/push/subscribe`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            endpoint: subJSON.endpoint,
-            keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
-          }),
+        const pushBody = JSON.stringify({
+          endpoint: subJSON.endpoint,
+          keys: { p256dh: subJSON.keys?.p256dh, auth: subJSON.keys?.auth },
         });
+        let res = await fetch(`${serverHost}/api/push/subscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: pushBody,
+        });
+        if (res.status === 401) {
+          const gameCode = getGameCodeFromPath();
+          const freshToken = gameCode ? await refreshToken(gameCode) : null;
+          if (freshToken) {
+            console.log('[Push] Auto-resubscribe: token refreshed via lobby, retrying');
+            res = await fetch(`${serverHost}/api/push/subscribe`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${freshToken}` },
+              body: pushBody,
+            });
+          }
+        }
         if (!res.ok) {
           console.error('[Push] Auto-resubscribe server registration failed:', res.status);
           setIsSubscribed(false);

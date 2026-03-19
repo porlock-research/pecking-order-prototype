@@ -80,6 +80,29 @@ export const l2EconomyActions = {
     }
   }),
 
+  // --- ADMIN.ELIMINATE_PLAYER: roster mutation + fact emission ---
+
+  adminEliminatePlayer: enqueueActions(({ context, event, enqueue }: any) => {
+    const { playerId, reason } = event;
+    const player = context.roster[playerId];
+    if (!player || player.status === 'ELIMINATED') return;
+    // 1. Mutate roster
+    enqueue.assign({
+      roster: { ...context.roster, [playerId]: { ...player, status: 'ELIMINATED' } },
+    });
+    // 2. Emit fact for ticker, push, D1 persistence
+    enqueue.raise({
+      type: Events.Fact.RECORD,
+      fact: {
+        type: FactTypes.ELIMINATION,
+        actorId: 'GAME_MASTER',
+        targetId: playerId,
+        payload: { mechanism: 'GM_OVERRIDE', reason: reason || 'Eliminated by Game Master' },
+        timestamp: Date.now(),
+      },
+    } as any);
+  }),
+
   // --- ECONOMY.* handlers: generic currency mutations ---
 
   applySilverCredit: assign({

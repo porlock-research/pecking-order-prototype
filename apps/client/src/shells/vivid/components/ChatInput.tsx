@@ -302,7 +302,7 @@ export function ChatInput({
     [capabilities]
   );
 
-  const hasSilver = inputCapabilities.includes('SILVER_TRANSFER');
+  const hasSilver = inputCapabilities.includes('SILVER_TRANSFER') && context !== 'group';
   const hasInvite = inputCapabilities.includes('INVITE_MEMBER');
 
   const replyName = replyTarget
@@ -339,6 +339,11 @@ export function ChatInput({
 
   /* -- Can send? --------------------------------------------------- */
 
+  // DMs cost silver — prevent composing if broke
+  const dmSilverCost = isDmContext ? 1 : 0;
+  const hasSilverForDm = !isDmContext || myBalance >= dmSilverCost;
+  const hasCharsForDm = !isDmContext || (charsRemaining === null || charsRemaining > 0);
+
   const canSend =
     activeCapability === 'SILVER_TRANSFER'
       ? silverAmount > 0 && silverAmount <= myBalance && !!targetId
@@ -346,7 +351,7 @@ export function ChatInput({
         ? !!selectedInvitee && !!channelId
         : activeCapability === 'CHAR_INFO'
           ? false
-          : !!inputValue.trim();
+          : !!inputValue.trim() && hasSilverForDm && hasCharsForDm;
 
   /* -- Toggle capability ------------------------------------------- */
 
@@ -612,7 +617,13 @@ export function ChatInput({
                         }}
                       />
                       <TypingPlaceholder
-                        text={getPlaceholderFromHints(hints, isDisabled && !countdown, context, placeholderTick)}
+                        text={
+                          isDmContext && !hasSilverForDm
+                            ? 'Not enough silver to send...'
+                            : isDmContext && !hasCharsForDm
+                              ? 'Daily character limit reached'
+                              : getPlaceholderFromHints(hints, isDisabled && !countdown, context, placeholderTick)
+                        }
                         visible={!inputValue && !(isDisabled && countdown)}
                       />
                     </div>
@@ -946,9 +957,10 @@ export function ChatInput({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        padding: '0 3px',
+                        padding: '0 4px',
                         lineHeight: 1,
                         overflow: 'visible',
+                        textAlign: 'center',
                       }}
                     >
                       <AnimatedCounter

@@ -1,7 +1,7 @@
 import type { ActorRefFrom } from "xstate";
 import type { Scheduler } from "partywhen";
 import type { orchestratorMachine } from "./machines/l2-orchestrator";
-import { Events } from "@pecking-order/shared-types";
+import { Events, FactTypes } from "@pecking-order/shared-types";
 import { readGoldBalances, insertGameAndPlayers, getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { sendPushNotification } from "./push-send";
 import { log } from "./log";
@@ -356,6 +356,42 @@ async function handleAdmin(ctx: HandlerContext, req: Request): Promise<Response>
           payload: { text: body.content, targetId: body.targetId },
         },
       });
+    } else if (body.type === "ELIMINATE_PLAYER") {
+      const playerId = body.playerId;
+      if (!playerId || !snapshot.context.roster[playerId]) {
+        return new Response(JSON.stringify({ error: 'Invalid playerId' }), { status: 400 });
+      }
+      if (snapshot.context.roster[playerId].status === 'ELIMINATED') {
+        return new Response(JSON.stringify({ error: 'Player already eliminated' }), { status: 400 });
+      }
+      log('info', 'L1', 'GM eliminating player', { playerId });
+      ctx.actor.send({
+        type: 'ADMIN.ELIMINATE_PLAYER',
+        playerId,
+        reason: body.reason || 'Eliminated by Game Master',
+      });
+    } else if (body.type === "CREDIT_SILVER") {
+      const rewards: Record<string, number> = body.rewards;
+      if (!rewards || typeof rewards !== 'object' || Object.keys(rewards).length === 0) {
+        return new Response(JSON.stringify({ error: 'rewards object required: { "p0": 10, "p1": 5 }' }), { status: 400 });
+      }
+      log('info', 'L1', 'GM crediting silver', { rewards });
+      ctx.actor.send({ type: 'ECONOMY.CREDIT_SILVER', rewards });
+      // Emit facts so ticker shows "Game Master awarded X silver to Player"
+      for (const [playerId, amount] of Object.entries(rewards)) {
+        if (amount > 0) {
+          ctx.actor.send({
+            type: Events.Fact.RECORD,
+            fact: {
+              type: FactTypes.SILVER_TRANSFER,
+              actorId: 'GAME_MASTER',
+              targetId: playerId,
+              payload: { amount, gmAward: true },
+              timestamp: Date.now(),
+            },
+          });
+        }
+      }
     } else {
       return new Response("Unknown Admin Command", { status: 400 });
     }

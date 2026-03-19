@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useGameStore } from './store/useGameStore';
 import { ShellLoader } from './shells/ShellLoader';
+import { setActiveShellId, SHELL_REGISTRY } from './shells/registry';
 import { decodeGameToken } from '@pecking-order/auth';
 import { PushPrompt } from './components/PushPrompt';
 import { initSentry, setSentryUser, setSentryPwaContext, setSentryAuthMethod } from './lib/sentry';
@@ -353,6 +354,14 @@ export default function App() {
       const gameCode = getGameCodeFromPath();
       const transientToken = params.get('_t');
       const rawToken = params.get('token');
+
+      // ── Shell override from URL ──
+      // Magic links include ?shell=vivid to force correct shell,
+      // overriding any stale localStorage value from old sessions.
+      const shellParam = params.get('shell');
+      if (shellParam && SHELL_REGISTRY.some(s => s.id === shellParam)) {
+        setActiveShellId(shellParam);
+      }
 
       // ── Fast path: transient token from lobby redirect ──
       // This is authoritative (just issued by the lobby), skip server validation.

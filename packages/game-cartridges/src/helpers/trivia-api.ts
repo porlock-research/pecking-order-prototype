@@ -52,7 +52,8 @@ function transformQuestion(raw: OpenTDBResponse['results'][number]): TriviaQuest
 export async function fetchTriviaQuestions(amount = 50): Promise<TriviaQuestion[]> {
   // Fetch easy + medium only (no hard questions). Split evenly between difficulties.
   const half = Math.ceil(amount / 2);
-  const base = 'https://opentdb.com/api.php?type=multiple&encode=url3986';
+  // category=9 = General Knowledge (avoids obscure anime/video game categories)
+  const base = 'https://opentdb.com/api.php?type=multiple&encode=url3986&category=9';
 
   const [easyRes, mediumRes] = await Promise.all([
     fetch(`${base}&amount=${half}&difficulty=easy`),

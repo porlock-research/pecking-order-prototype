@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGameStore, selectShouldAutoOpenDashboard } from '../../../store/useGameStore';
+import { useGameStore } from '../../../store/useGameStore';
 import { DayPhases, buildPhaseInfo } from '@pecking-order/shared-types';
 import type { DayPhase } from '@pecking-order/shared-types';
 import { Sun2, ChatRound, Gamepad, MagicStick3, Flag, Moon, CupStar } from '@solar-icons/react';
@@ -40,7 +40,12 @@ function buildPhaseConfig(
   roster: Record<string, any>,
 ): PhaseConfig | null {
   const currentDay = manifest?.days?.[dayIndex - 1];
-  const totalDays = manifest?.days?.length ?? undefined;
+  // Static manifests: days pre-populated. Dynamic FIXED: use fixedCount/value.
+  // Dynamic ACTIVE_PLAYERS_MINUS_ONE: total changes each day, don't show.
+  const dc = manifest?.ruleset?.dayCount;
+  const totalDays = dc
+    ? (dc.mode === 'FIXED' ? (dc.fixedCount ?? dc.value) : undefined)
+    : (manifest?.days?.length || undefined);
   const aliveCount = Object.values(roster).filter((p: any) => p.isAlive).length;
 
   const info = buildPhaseInfo(phase, {
@@ -73,15 +78,10 @@ export function PhaseTransitionSplash() {
   const manifest = useGameStore(s => s.manifest);
   const dayIndex = useGameStore(s => s.dayIndex);
   const roster = useGameStore(s => s.roster);
-  const shouldAutoOpen = useGameStore(selectShouldAutoOpenDashboard);
-  const openDashboard = useGameStore(s => s.openDashboard);
-  const markDashboardSeen = useGameStore(s => s.markDashboardSeen);
-
   const [visible, setVisible] = useState(false);
   const [config, setConfig] = useState<PhaseConfig | null>(null);
   const prevPhaseRef = useRef<DayPhase>(phase);
   const hasInitialized = useRef(false);
-  const shouldOpenDashboardRef = useRef(false);
 
   useEffect(() => {
     if (!hasInitialized.current) {
@@ -95,22 +95,18 @@ export function PhaseTransitionSplash() {
       const c = buildPhaseConfig(phase, manifest, dayIndex, roster);
       if (c) {
         setConfig(c);
-        shouldOpenDashboardRef.current = shouldAutoOpen;
         setVisible(true);
       }
     }
-  }, [phase, manifest, dayIndex, roster, shouldAutoOpen]);
+  }, [phase, manifest, dayIndex, roster]);
 
   const dismiss = useCallback(() => {
     setVisible(false);
   }, []);
 
   const handleExitComplete = () => {
-    if (shouldOpenDashboardRef.current) {
-      shouldOpenDashboardRef.current = false;
-      openDashboard();
-      markDashboardSeen(dayIndex);
-    }
+    // Schedule now lives in its own tab — no need to auto-open
+    // the notifications panel after dismissing the splash.
   };
 
   return (

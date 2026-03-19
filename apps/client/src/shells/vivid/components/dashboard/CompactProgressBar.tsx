@@ -19,8 +19,16 @@ export function CompactProgressBar({ variant = 'full' }: { variant?: 'full' | 's
   const dayIndex = useGameStore(s => s.dayIndex);
   const manifest = useGameStore(s => s.manifest);
 
-  const totalDays = manifest?.days?.length ?? 0;
+  // Static manifests: days pre-populated. Dynamic FIXED: use fixedCount/value.
+  // Dynamic ACTIVE_PLAYERS_MINUS_ONE: total changes each day, don't show.
+  const dc = manifest?.ruleset?.dayCount;
+  const totalDays = dc
+    ? (dc.mode === 'FIXED' ? (dc.fixedCount ?? dc.value ?? 0) : 0)
+    : (manifest?.days?.length ?? 0);
   const activeIdx = PHASE_TO_INDEX[phase] ?? -1;
+  const isPregame = dayIndex === 0;
+
+  if (isPregame) return null;
 
   return (
     <div style={{ padding: variant === 'slim' ? '8px 16px' : '0 20px 12px' }}>

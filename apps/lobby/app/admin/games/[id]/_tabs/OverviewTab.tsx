@@ -25,6 +25,8 @@ interface OverviewTabProps {
 
 export function OverviewTab({ state, gameId, inviteCode, clientHost, onCommand, onFlushAlarms }: OverviewTabProps) {
   const [playerFilter, setPlayerFilter] = useState('');
+  const [silverPlayerId, setSilverPlayerId] = useState<string | null>(null);
+  const [silverAmount, setSilverAmount] = useState(10);
   const roster: Record<string, any> = state.roster || {};
   const rosterEntries = Object.entries(roster).filter(([id, p]) => {
     if (!playerFilter) return true;
@@ -93,6 +95,7 @@ export function OverviewTab({ state, gameId, inviteCode, clientHost, onCommand, 
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Silver</TableHead>
                     <TableHead className="text-right">Gold</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -113,6 +116,62 @@ export function OverviewTab({ state, gameId, inviteCode, clientHost, onCommand, 
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm">{p.silver ?? '-'}</TableCell>
                       <TableCell className="text-right font-mono text-sm">{p.gold ?? '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 items-center">
+                          {p.status === 'ALIVE' && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="text-xs h-7"
+                              onClick={() => {
+                                if (confirm(`Eliminate ${p.personaName}?`)) {
+                                  onCommand({ type: 'ELIMINATE_PLAYER', playerId: id });
+                                }
+                              }}
+                            >
+                              Eliminate
+                            </Button>
+                          )}
+                          {silverPlayerId === id ? (
+                            <div className="flex gap-1 items-center">
+                              <Input
+                                type="number"
+                                value={silverAmount}
+                                onChange={(e) => setSilverAmount(Number(e.target.value))}
+                                className="w-16 h-7 text-xs"
+                                min={1}
+                              />
+                              <Button
+                                size="sm"
+                                className="text-xs h-7"
+                                onClick={() => {
+                                  onCommand({ type: 'CREDIT_SILVER', rewards: { [id]: silverAmount } });
+                                  setSilverPlayerId(null);
+                                }}
+                              >
+                                Send
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-7"
+                                onClick={() => setSilverPlayerId(null)}
+                              >
+                                ✕
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-7"
+                              onClick={() => setSilverPlayerId(id)}
+                            >
+                              + Silver
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

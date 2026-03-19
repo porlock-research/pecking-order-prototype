@@ -10,7 +10,7 @@ Quick reference for all tracked issues. Each category has its own file.
 | [playtest-feedback.md](playtest-feedback.md) | Playtest 1 feedback + demo UI audit | 16 |
 | [production-infra.md](production-infra.md) | Production hardening & infrastructure | 12 |
 | [admin-tooling.md](admin-tooling.md) | Admin dashboard, lobby tooling, game status | 4 |
-| [architecture-debt.md](architecture-debt.md) | Deep architectural concerns (deploy strategy, snapshots, scheduler) | 3 |
+| [architecture-debt.md](architecture-debt.md) | Deep architectural concerns (deploy strategy, snapshots, scheduler) | 4 |
 
 ## Archive
 
