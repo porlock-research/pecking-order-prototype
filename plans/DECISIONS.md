@@ -1541,3 +1541,19 @@ This document tracks significant architectural decisions, their context, and con
     *   All changes client-side only — no server modifications.
     *   59 precache entries (up from 41) due to code-split chunks.
     *   Playwright with `--device` emulation unreliable for click testing (touch mode vs mouse events). Use for visual inspection only; real browser for interaction testing.
+
+## [ADR-104] GM Admin Actions — Eliminate Player and Credit Silver
+*   **Date:** 2026-03-18
+*   **Status:** Accepted
+*   **Context:** During Playtest 2, the BUBBLE vote failed to eliminate anyone (tiebreaker not implemented). The Game Master needed the ability to manually eliminate players and award silver to correct game state. These are needed as permanent admin tools, not one-off fixes.
+*   **Decision:**
+    1.  Two new admin commands in `http-handlers.ts`: `ELIMINATE_PLAYER` and `CREDIT_SILVER`.
+    2.  `ELIMINATE_PLAYER` emits a `FACT.RECORD` with type `ELIMINATION`, actorId `GAME_MASTER`, mechanism `GM_OVERRIDE`. Flows through the existing fact pipeline: `applyFactToRoster` (status change), `persistFactToD1` (journal), `factToTicker` (broadcast), `handleFactPush` (push notification). DramaticReveal triggers on client via roster change detection.
+    3.  `CREDIT_SILVER` sends `ECONOMY.CREDIT_SILVER` event (already handled in L2) plus `FACT.RECORD` with type `SILVER_TRANSFER` per player for ticker visibility ("Game Master sent X silver to Player").
+    4.  Both work in `activeSession` AND `nightSummary` states — L2 handles both events in both states.
+    5.  Lobby admin UI: per-player "Eliminate" button (with confirmation) and "+ Silver" button (inline amount input) added to the roster table in `OverviewTab.tsx`.
+*   **Consequences:**
+    *   GM can correct game state without code changes or manual D1 queries.
+    *   Elimination triggers the full event pipeline: push, ticker, DramaticReveal splash.
+    *   Silver credits are visible in the ticker as "GAME_MASTER sent X silver to Player".
+    *   No changes to existing XState machine logic — uses existing event handlers.
