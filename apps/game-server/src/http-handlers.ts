@@ -382,6 +382,21 @@ async function handleAdmin(ctx: HandlerContext, req: Request): Promise<Response>
       }
       log('info', 'L1', 'GM crediting silver', { rewards });
       ctx.actor.send({ type: 'ECONOMY.CREDIT_SILVER', rewards });
+      // Emit facts so ticker shows "Game Master sent X silver to Player"
+      for (const [playerId, amount] of Object.entries(rewards)) {
+        if (amount > 0) {
+          ctx.actor.send({
+            type: Events.Fact.RECORD,
+            fact: {
+              type: 'SILVER_TRANSFER',
+              actorId: 'GAME_MASTER',
+              targetId: playerId,
+              payload: { amount, mechanism: 'GM_AWARD' },
+              timestamp: Date.now(),
+            },
+          });
+        }
+      }
     } else {
       return new Response("Unknown Admin Command", { status: 400 });
     }
