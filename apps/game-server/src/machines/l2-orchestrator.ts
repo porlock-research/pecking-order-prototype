@@ -46,6 +46,7 @@ export type GameEvent =
   | { type: 'SYSTEM.PAUSE' }
   | { type: 'ADMIN.NEXT_STAGE' }
   | { type: 'ADMIN.INJECT_TIMELINE_EVENT'; payload: { action: string; payload?: any } }
+  | { type: 'ADMIN.ELIMINATE_PLAYER'; playerId: string; reason?: string }
   | { type: 'FACT.RECORD'; fact: Fact }
   | { type: 'INTERNAL.READY' }
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
@@ -192,6 +193,7 @@ export const orchestratorMachine = setup({
             'CARTRIDGE.GAME_RESULT': { actions: ['recordGameResult', 'recordCompletedGame', 'emitGameResultFact', 'raiseGameEconomyEvents'] },
             'CARTRIDGE.PLAYER_GAME_RESULT': { actions: ['emitPlayerGameResultFact', 'raisePlayerGameEconomyEvent'] },
             'CARTRIDGE.PROMPT_RESULT': { actions: ['recordCompletedPrompt', 'emitPromptResultFact', 'raisePromptEconomyEvents'] },
+            'ADMIN.ELIMINATE_PLAYER': { actions: 'adminEliminatePlayer' },
             'ECONOMY.CREDIT_SILVER': { actions: 'applySilverCredit' },
             'ECONOMY.CONTRIBUTE_GOLD': { actions: 'applyGoldContribution' },
             'DM.REJECTED': { actions: 'sendDmRejection' },
@@ -262,6 +264,7 @@ export const orchestratorMachine = setup({
             'FACT.RECORD': {
               actions: ['updateJournalTimestamp', 'applyFactToRoster', 'persistFactToD1'],
             },
+            'ADMIN.ELIMINATE_PLAYER': { actions: 'adminEliminatePlayer' },
             'ECONOMY.CREDIT_SILVER': { actions: 'applySilverCredit' },
             'ECONOMY.CONTRIBUTE_GOLD': { actions: 'applyGoldContribution' },
             'PUSH.PHASE': { actions: 'broadcastPhasePush' },

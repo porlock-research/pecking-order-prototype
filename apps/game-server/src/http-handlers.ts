@@ -1,7 +1,7 @@
 import type { ActorRefFrom } from "xstate";
 import type { Scheduler } from "partywhen";
 import type { orchestratorMachine } from "./machines/l2-orchestrator";
-import { Events } from "@pecking-order/shared-types";
+import { Events, FactTypes } from "@pecking-order/shared-types";
 import { readGoldBalances, insertGameAndPlayers, getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { sendPushNotification } from "./push-send";
 import { log } from "./log";
@@ -366,14 +366,9 @@ async function handleAdmin(ctx: HandlerContext, req: Request): Promise<Response>
       }
       log('info', 'L1', 'GM eliminating player', { playerId });
       ctx.actor.send({
-        type: Events.Fact.RECORD,
-        fact: {
-          type: 'ELIMINATION',
-          actorId: 'GAME_MASTER',
-          targetId: playerId,
-          payload: { mechanism: 'GM_OVERRIDE', reason: body.reason || 'Eliminated by Game Master' },
-          timestamp: Date.now(),
-        },
+        type: 'ADMIN.ELIMINATE_PLAYER',
+        playerId,
+        reason: body.reason || 'Eliminated by Game Master',
       });
     } else if (body.type === "CREDIT_SILVER") {
       const rewards: Record<string, number> = body.rewards;
@@ -382,16 +377,16 @@ async function handleAdmin(ctx: HandlerContext, req: Request): Promise<Response>
       }
       log('info', 'L1', 'GM crediting silver', { rewards });
       ctx.actor.send({ type: 'ECONOMY.CREDIT_SILVER', rewards });
-      // Emit facts so ticker shows "Game Master sent X silver to Player"
+      // Emit facts so ticker shows "Game Master awarded X silver to Player"
       for (const [playerId, amount] of Object.entries(rewards)) {
         if (amount > 0) {
           ctx.actor.send({
             type: Events.Fact.RECORD,
             fact: {
-              type: 'SILVER_TRANSFER',
+              type: FactTypes.SILVER_TRANSFER,
               actorId: 'GAME_MASTER',
               targetId: playerId,
-              payload: { amount, mechanism: 'GM_AWARD' },
+              payload: { amount, gmAward: true },
               timestamp: Date.now(),
             },
           });
