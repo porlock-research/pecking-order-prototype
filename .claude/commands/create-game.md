@@ -12,13 +12,15 @@ Create a test game and return magic links for each player. Works against local d
 | `speedrun` | 3 | 2 | PRE_SCHEDULED | SPEED_RUN | Full alarm pipeline, 23min/day, auto-advances |
 | `big` | 6 | 3 | ADMIN | manual inject | MAJORITY x2 + FINALS |
 | `invite` | 3 | 2 | ADMIN | manual inject | DM invite mode enabled |
+| `playtest` | 8 | 7 | PRE_SCHEDULED | SMOKE_TEST | 5min/day, BUBBLE+EXECUTIONER rotation, game+activity pools |
+| `smoketest` | 3 | 3 | PRE_SCHEDULED | SMOKE_TEST | 5min/day, compact version of playtest |
 
 ### Overrides (append after preset)
 
 | Override | Format | Examples |
 |----------|--------|----------|
 | `players=N` | number 2-8 | `players=4`, `players=6` |
-| `days=N` | number 1-5 | `days=3` |
+| `days=N` | number 1-10 | `days=3`, `days=7` |
 | `shell=X` | vivid/classic/immersive | `shell=classic` |
 | `vote=X` | any VoteType | `vote=BUBBLE`, `vote=PODIUM_SACRIFICE` |
 | `dm-invite` | flag (no value) | enables requireDmInvite |
@@ -37,6 +39,9 @@ Create a test game and return magic links for each player. Works against local d
 /create-game quick vote=BUBBLE        → BUBBLE voting instead of MAJORITY
 /create-game speedrun env=staging     → create on staging, shareable links
 /create-game big env=staging          → 6-player game on staging
+/create-game playtest env=staging     → 8p, 7d, SMOKE_TEST, BUBBLE+EXECUTIONER, staging
+/create-game smoketest                → 3p, 3d, SMOKE_TEST, quick local validation
+/create-game playtest players=6 days=5 → smaller playtest variant
 ```
 
 ## Parameters: $ARGUMENTS
@@ -60,7 +65,7 @@ Run a **single** Node.js script from the **monorepo root** (`/Users/manu/Project
 - Links are shareable — anyone with the link can join
 - `.env.staging-secret` MUST be gitignored (check before creating)
 
-### Two scheduling modes
+### Three scheduling modes
 
 **ADMIN mode** (presets: `quick`, `big`, `invite`):
 - Static manifest with `scheduling: 'ADMIN'`, empty `timeline` per day
@@ -74,6 +79,19 @@ Run a **single** Node.js script from the **monorepo root** (`/Users/manu/Project
 - The alarm pipeline handles everything — days auto-advance on schedule
 - Do NOT inject timeline events manually — the scheduler does it
 - 23min/day, 3min gap between days
+
+**SMOKE_TEST mode** (presets: `playtest`, `smoketest`):
+- Dynamic manifest with `scheduling: 'PRE_SCHEDULED'`, `schedulePreset: 'SMOKE_TEST'`
+- `startTime` = 30 seconds from now
+- Same alarm pipeline as SPEED_RUN but with compressed 5min/day, 1min gap
+- Supports rich rulesets: vote type sequences, game/activity pools
+- `playtest` default ruleset:
+  - Voting: SEQUENCE — `['BUBBLE', 'BUBBLE', 'EXECUTIONER', 'BUBBLE', 'BUBBLE', 'TRUST_PAIRS', 'FINALS']`
+  - Games: POOL — `['TRIVIA', 'SEQUENCE', 'REALTIME_TRIVIA']`, avoidRepeat: true
+  - Activities: POOL — `['HOT_TAKE', 'CONFESSION', 'PREDICTION', 'WOULD_YOU_RATHER']`, avoidRepeat: true
+  - Social: DM chars FIXED 1200, DM partners FIXED 3, dmCost 1, groupDmEnabled true
+  - DayCount: FIXED (from DAY_COUNT)
+- `smoketest` uses same structure but MAJORITY + FINALS voting, fewer days
 
 ### Critical details
 
@@ -194,8 +212,8 @@ async function main() {
     await post('/admin', { type:'INJECT_TIMELINE_EVENT', action:'OPEN_DMS' });
   }
 
-  // ----- SPEED_RUN mode -----
-  if (IS_SPEEDRUN) {
+  // ----- PRE_SCHEDULED mode (SPEED_RUN or SMOKE_TEST) -----
+  if (IS_PRE_SCHEDULED) {
     const startTime = new Date(Date.now() + 30_000).toISOString(); // 30s from now
     const manifest = {
       kind: 'DYNAMIC',
@@ -203,25 +221,10 @@ async function main() {
       gameMode: 'CONFIGURABLE_CYCLE',
       scheduling: 'PRE_SCHEDULED',
       startTime,
-      schedulePreset: 'SPEED_RUN',
+      schedulePreset: SCHEDULE_PRESET, // 'SPEED_RUN' or 'SMOKE_TEST'
       maxPlayers: PLAYER_COUNT,
       days: [], // Game Master resolves
-      ruleset: {
-        kind: 'PECKING_ORDER',
-        voting: { mode: 'SEQUENCE', sequence: [VOTE_TYPE, 'FINALS'] },
-        games: { mode: 'NONE', avoidRepeat: false },
-        activities: { mode: 'NONE', avoidRepeat: false },
-        social: {
-          dmChars: { mode: 'FIXED', base: 1200 },
-          dmPartners: { mode: 'FIXED', base: 3 },
-          dmCost: 1,
-          groupDmEnabled: true,
-          requireDmInvite: DM_INVITE,
-          dmSlotsPerPlayer: 5,
-        },
-        inactivity: { enabled: false, thresholdDays: 2, action: 'ELIMINATE' },
-        dayCount: { mode: 'FIXED', value: DAY_COUNT },
-      },
+      ruleset: RULESET, // see below
     };
 
     await post('/init', { roster, manifest, inviteCode });
@@ -272,7 +275,40 @@ async function main() {
 main().catch(e => { console.error(e); process.exit(1); });
 ```
 
-Replace the capitalized placeholders (PLAYER_COUNT, DAY_COUNT, VOTE_TYPE, GAME_TYPE, ACTIVITY_TYPE, DM_INVITE, SHELL, IS_ADMIN, IS_SPEEDRUN, ENV_VALUE) with parsed values from the preset + overrides. GAME_TYPE and ACTIVITY_TYPE default to `'NONE'`.
+Replace the capitalized placeholders with parsed values from the preset + overrides:
+
+- `PLAYER_COUNT`, `DAY_COUNT` — from preset defaults + `players=`/`days=` overrides
+- `VOTE_TYPE` — from preset default + `vote=` override (used for ADMIN and simple SEQUENCE modes)
+- `GAME_TYPE`, `ACTIVITY_TYPE` — default `'NONE'`, override with `game=`/`activity=`
+- `DM_INVITE` — boolean, true if `dm-invite` flag present
+- `SHELL` — default `'vivid'`, override with `shell=`
+- `IS_ADMIN` — true for `quick`, `big`, `invite`
+- `IS_PRE_SCHEDULED` — true for `speedrun`, `playtest`, `smoketest`
+- `SCHEDULE_PRESET` — `'SPEED_RUN'` for speedrun, `'SMOKE_TEST'` for playtest/smoketest
+- `ENV_VALUE` — `'local'` or `'staging'`
+- `RULESET` — built per preset:
+
+**speedrun ruleset:**
+```javascript
+{ kind: 'PECKING_ORDER', voting: { mode: 'SEQUENCE', sequence: [VOTE_TYPE, 'FINALS'] },
+  games: { mode: 'NONE' }, activities: { mode: 'NONE' },
+  social: { dmChars: { mode: 'FIXED', base: 1200 }, dmPartners: { mode: 'FIXED', base: 3 }, dmCost: 1, groupDmEnabled: true, requireDmInvite: DM_INVITE, dmSlotsPerPlayer: 5 },
+  inactivity: { enabled: false, thresholdDays: 2, action: 'ELIMINATE' },
+  dayCount: { mode: 'FIXED', value: DAY_COUNT } }
+```
+
+**playtest ruleset:**
+```javascript
+{ kind: 'PECKING_ORDER',
+  voting: { mode: 'SEQUENCE', sequence: ['BUBBLE','BUBBLE','EXECUTIONER','BUBBLE','BUBBLE','TRUST_PAIRS','FINALS'] },
+  games: { mode: 'POOL', pool: ['TRIVIA','SEQUENCE','REALTIME_TRIVIA'], avoidRepeat: true },
+  activities: { mode: 'POOL', pool: ['HOT_TAKE','CONFESSION','PREDICTION','WOULD_YOU_RATHER'], avoidRepeat: true },
+  social: { dmChars: { mode: 'FIXED', base: 1200 }, dmPartners: { mode: 'FIXED', base: 3 }, dmCost: 1, groupDmEnabled: true, requireDmInvite: false, dmSlotsPerPlayer: 5 },
+  inactivity: { enabled: false, thresholdDays: 2, action: 'ELIMINATE' },
+  dayCount: { mode: 'FIXED', value: DAY_COUNT } }
+```
+
+**smoketest ruleset:** Same as speedrun but with `games: { mode: 'POOL', pool: ['TRIVIA'] }` and `activities: { mode: 'POOL', pool: ['HOT_TAKE'] }`.
 
 ## Output
 
@@ -293,6 +329,13 @@ Env: local | Mode: ADMIN (manual inject)
 For speedrun mode, add a note:
 ```
 Day 1 starts in ~30s. Timeline: chat opens at +0m, DMs at +2m, voting at +17m, day ends at +23m.
+```
+
+For playtest/smoketest mode, add a note:
+```
+Day 1 starts in ~30s. SMOKE_TEST: 5min/day, 1min gap.
+Timeline: chat +0s, DMs +30s, game +1m, activity +2.5m, voting +3.5m, day ends +5m.
+Total: ~42min for 7 days.
 ```
 
 For staging, add:
