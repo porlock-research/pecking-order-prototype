@@ -303,6 +303,54 @@ export function PlayerDetail({
                 {target.bio}
               </p>
             )}
+
+            {/* Q&A Section */}
+            {target.qaAnswers && target.qaAnswers.length > 0 && (
+              <div style={{
+                marginTop: 16,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                maxWidth: 300,
+                marginLeft: 'auto',
+                marginRight: 'auto',
+              }}>
+                {target.qaAnswers.map((qa: { question: string; answer: string }, i: number) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 + i * 0.05, ...VIVID_SPRING.gentle }}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 10,
+                      background: 'rgba(44, 0, 62, 0.5)',
+                      backdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(250, 243, 232, 0.08)',
+                    }}
+                  >
+                    <div style={{
+                      fontFamily: 'var(--vivid-font-body)',
+                      fontSize: 11,
+                      color: 'rgba(250, 243, 232, 0.35)',
+                      marginBottom: 2,
+                      lineHeight: 1.3,
+                    }}>
+                      {qa.question}
+                    </div>
+                    <div style={{
+                      fontFamily: 'var(--vivid-font-body)',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#D4A853',
+                      lineHeight: 1.4,
+                    }}>
+                      {qa.answer}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </motion.div>
 
           {/* Eliminated banner */}
