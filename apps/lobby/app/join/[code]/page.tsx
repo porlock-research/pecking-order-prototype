@@ -6,6 +6,8 @@ import { useSwipeable } from 'react-swipeable';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getInviteInfo, getRandomPersonas, redrawPersonas, acceptInvite } from '../../actions';
 import type { GameInfo, Persona } from '../../actions';
+import { selectQuestionsForPersona, resolveAnswers, type QuestionWithOptions, type QaSubmission } from './questions-pool';
+import { QuestionStep } from './QuestionStep';
 
 type PersonaWithImage = Persona & { imageUrl: string; fullImageUrl: string };
 
@@ -50,7 +52,8 @@ const LEFT_EDGE_IGNORE = 30;
 const STEP_BG: Record<number, { blur: number; opacity: number }> = {
   1: { blur: 10, opacity: 0.55 },
   2: { blur: 2, opacity: 1 },
-  3: { blur: 8, opacity: 0.45 },
+  3: { blur: 12, opacity: 0.35 },
+  4: { blur: 8, opacity: 0.45 },
 };
 
 export default function InvitePage() {
@@ -65,7 +68,7 @@ export default function InvitePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Wizard state
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [personas, setPersonas] = useState<PersonaWithImage[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedPersona, setSelectedPersona] = useState<PersonaWithImage | null>(null);
@@ -73,6 +76,8 @@ export default function InvitePage() {
   const [isJoining, setIsJoining] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawKey, setDrawKey] = useState(0);
+  const [questions, setQuestions] = useState<QuestionWithOptions[]>([]);
+  const [qaAnswersJson, setQaAnswersJson] = useState<string | null>(null);
 
   // Hero carousel direction tracking — derived synchronously during render
   const prevIndexRef = useRef(0);
@@ -159,7 +164,7 @@ export default function InvitePage() {
     setIsJoining(true);
     setError(null);
 
-    const result = await acceptInvite(code, selectedPersona.id, customBio.trim());
+    const result = await acceptInvite(code, selectedPersona.id, customBio.trim(), qaAnswersJson ?? undefined);
     setIsJoining(false);
 
     if (result.success) {
@@ -223,7 +228,7 @@ export default function InvitePage() {
 
   const activePersona = personas[activeIndex];
 
-  // Background persona: browse-mode on step 1, locked-in persona on steps 2/3
+  // Background persona: browse-mode on step 1, locked-in persona on steps 2-4
   const bgPersona = step === 1 ? activePersona : selectedPersona;
   const bgConfig = STEP_BG[step] || STEP_BG[1];
 
@@ -283,7 +288,7 @@ export default function InvitePage() {
           <div className="flex-1 min-h-0 flex flex-col pt-2 gap-2">
             {/* Step indicator — fixed, animated fill bars */}
             <div className="flex items-center justify-center flex-shrink-0">
-              {[1, 2, 3].map((s) => (
+              {[1, 2, 3, 4].map((s) => (
                 <div key={s} className="flex items-center">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-display font-bold transition-all duration-300
@@ -291,7 +296,7 @@ export default function InvitePage() {
                   >
                     {step > s ? '\u2713' : s}
                   </div>
-                  {s < 3 && (
+                  {s < 4 && (
                     <div className="w-10 h-0.5 bg-skin-input relative overflow-hidden">
                       <motion.div
                         className="absolute inset-0 bg-skin-gold origin-left"
@@ -518,10 +523,43 @@ export default function InvitePage() {
                   </motion.div>
                 )}
 
-                {/* Step 3 — Confirm & Join */}
+                {/* Step 3 — Character Q&A */}
                 {step === 3 && selectedPersona && (
                   <motion.div
                     key="step-3"
+                    custom={stepDirectionRef.current}
+                    variants={stepVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={SPRING_SWIPE}
+                    className="h-full"
+                  >
+                    <QuestionStep
+                      questions={questions}
+                      personaName={selectedPersona.name}
+                      onComplete={(subs) => {
+                        const resolved = resolveAnswers(questions, subs);
+                        setQaAnswersJson(JSON.stringify(resolved));
+                        setStep(4);
+                      }}
+                      onSkip={() => {
+                        const defaultSubs = questions.map(q => ({
+                          questionId: q.id,
+                          selectedIndex: 0,
+                        }));
+                        const resolved = resolveAnswers(questions, defaultSubs);
+                        setQaAnswersJson(JSON.stringify(resolved));
+                        setStep(4);
+                      }}
+                    />
+                  </motion.div>
+                )}
+
+                {/* Step 4 — Confirm & Join */}
+                {step === 4 && selectedPersona && (
+                  <motion.div
+                    key="step-4"
                     custom={stepDirectionRef.current}
                     variants={stepVariants}
                     initial="enter"
@@ -656,7 +694,14 @@ export default function InvitePage() {
                       Back
                     </button>
                     <button
-                      onClick={() => setStep(3)}
+                      onClick={() => {
+                        if (selectedPersona) {
+                          const seed = Date.now();
+                          const qs = selectQuestionsForPersona(selectedPersona.id, seed);
+                          setQuestions(qs);
+                        }
+                        setStep(3);
+                      }}
                       disabled={!customBio.trim()}
                       className={`flex-1 py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all
                         ${
@@ -671,9 +716,9 @@ export default function InvitePage() {
                 </motion.div>
               )}
 
-              {step === 3 && (
+              {step === 4 && (
                 <motion.div
-                  key="btns-3"
+                  key="btns-4"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -681,10 +726,10 @@ export default function InvitePage() {
                 >
                   <div className="flex gap-3">
                     <button
-                      onClick={() => setStep(2)}
+                      onClick={() => setStep(3)}
                       className="px-6 py-4 border border-skin-base text-skin-dim rounded-xl font-display font-bold text-sm uppercase tracking-widest hover:bg-skin-input/30 transition-all"
                     >
-                      Edit Bio
+                      Back
                     </button>
                     <button
                       onClick={handleJoin}
