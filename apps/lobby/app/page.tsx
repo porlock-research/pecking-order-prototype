@@ -616,6 +616,7 @@ export default function LobbyRoot() {
                 </label>
                 <div className="relative group">
                   <select
+                    data-testid="game-mode-select"
                     value={mode}
                     onChange={(e) => setMode(e.target.value as any)}
                     className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-sm hover:border-skin-dim/30"
@@ -642,7 +643,7 @@ export default function LobbyRoot() {
                         : 'Game Master decides day-by-day'}
                     </span>
                   </div>
-                  <label className="relative cursor-pointer">
+                  <label data-testid="manifest-kind-toggle" className="relative cursor-pointer">
                     <input
                       type="checkbox"
                       checked={manifestKind === 'DYNAMIC'}
@@ -1139,6 +1140,7 @@ export default function LobbyRoot() {
                   {/* Primary action: Create Game (invite flow) or Quick Start */}
                   {isDebugMode && skipInvites ? (
                     <button
+                      data-testid="quick-start-btn"
                       onClick={handleDebugStart}
                       disabled={isLoading}
                       className={`group w-full py-5 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transform transition-all flex items-center justify-center gap-3 relative overflow-hidden
@@ -1159,6 +1161,7 @@ export default function LobbyRoot() {
                     </button>
                   ) : (
                     <button
+                      data-testid="create-game-btn"
                       onClick={handleCreateGame}
                       disabled={isLoading}
                       className={`group w-full py-5 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transform transition-all flex items-center justify-center gap-3 relative overflow-hidden
@@ -1187,7 +1190,7 @@ export default function LobbyRoot() {
                   <span>SYSTEM_LOG</span>
                   <span className="w-1.5 h-1.5 rounded-full bg-skin-green/50 pulse-live"></span>
                 </div>
-                <div className={`p-3 rounded bg-skin-deep/80 border border-skin-base/30 text-left transition-colors duration-300 ${gameId ? 'text-skin-green' : 'text-skin-dim/70'}`}>
+                <div data-testid="status-output" className={`p-3 rounded bg-skin-deep/80 border border-skin-base/30 text-left transition-colors duration-300 ${gameId ? 'text-skin-green' : 'text-skin-dim/70'}`}>
                   {`> ${status}`}
                   <span className="animate-pulse">_</span>
                 </div>
@@ -1200,7 +1203,7 @@ export default function LobbyRoot() {
                     <div className="text-xs font-display font-bold text-skin-dim uppercase tracking-widest">
                       Invite Code
                     </div>
-                    <div className="text-4xl font-mono font-black text-skin-gold tracking-[0.3em] select-all">
+                    <div data-testid="invite-code" className="text-4xl font-mono font-black text-skin-gold tracking-[0.3em] select-all">
                       {inviteCode}
                     </div>
                     <p className="text-xs text-skin-dim/60">Share this code with your players</p>

@@ -183,10 +183,12 @@ function Toggle({
   checked,
   onChange,
   size = 'sm',
+  'data-testid': testId,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   size?: 'sm' | 'md';
+  'data-testid'?: string;
 }) {
   const w = size === 'md' ? 'w-9 h-5' : 'w-6 h-3';
   const dot = size === 'md' ? 'w-4 h-4' : 'w-2 h-2';
@@ -197,6 +199,7 @@ function Toggle({
       type="button"
       role="switch"
       aria-checked={checked}
+      data-testid={testId}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex shrink-0 ${w} items-center rounded-full border transition-all duration-200 ${
         checked
@@ -220,15 +223,19 @@ function ChipCheckbox({
   checked,
   onChange,
   sub,
+  testId,
 }: {
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
   sub?: string;
+  testId?: string;
 }) {
   return (
     <button
       type="button"
+      data-testid={testId}
+      aria-pressed={checked}
       onClick={() => onChange(!checked)}
       className={`text-left px-2.5 py-1.5 rounded-lg border text-[10px] font-mono transition-all duration-150 ${
         checked
@@ -287,15 +294,17 @@ function Section({
   title,
   badge,
   defaultOpen = false,
+  testId,
   children,
 }: {
   title: string;
   badge?: string;
   defaultOpen?: boolean;
+  testId?: string;
   children: React.ReactNode;
 }) {
   return (
-    <details open={defaultOpen} className="group border border-skin-base rounded-lg bg-skin-input/40 overflow-hidden">
+    <details data-testid={testId} open={defaultOpen} className="group border border-skin-base rounded-lg bg-skin-input/40 overflow-hidden">
       <summary className="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none hover:bg-skin-input/60 transition-colors">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold text-skin-dim uppercase tracking-widest font-display">
@@ -400,7 +409,7 @@ export function DynamicRulesetBuilder({
   return (
     <div className="space-y-3">
       {/* ── Allowed Vote Types ── */}
-      <Section title="Vote Types" badge={`${voteCount}/${VOTE_TYPES.length}`} defaultOpen>
+      <Section title="Vote Types" badge={`${voteCount}/${VOTE_TYPES.length}`} defaultOpen testId="section-vote-types">
         <div className="grid grid-cols-2 gap-1.5 mt-1">
           {VOTE_TYPES.map(vt => (
             <ChipCheckbox
@@ -409,6 +418,7 @@ export function DynamicRulesetBuilder({
               sub={`${vt.min}+ players`}
               checked={config.allowedVoteTypes.includes(vt.value)}
               onChange={() => toggleWhitelist('allowedVoteTypes', vt.value)}
+              testId={`chip-${vt.value}`}
             />
           ))}
         </div>
@@ -418,7 +428,7 @@ export function DynamicRulesetBuilder({
       </Section>
 
       {/* ── Allowed Game Types ── */}
-      <Section title="Games" badge={gameCount > 0 ? `${gameCount}/${GAME_TYPES.length}` : 'none'}>
+      <Section title="Games" badge={gameCount > 0 ? `${gameCount}/${GAME_TYPES.length}` : 'none'} testId="section-games">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[9px] font-mono text-skin-dim/40">Deselect all to disable games</span>
           <button
@@ -445,6 +455,7 @@ export function DynamicRulesetBuilder({
                       : [...current, gt.value];
                     onChange({ ...config, allowedGameTypes: next });
                   }}
+                  testId={`chip-${gt.value}`}
                 />
               ))}
             </div>
@@ -453,7 +464,7 @@ export function DynamicRulesetBuilder({
       </Section>
 
       {/* ── Allowed Activity Types ── */}
-      <Section title="Activities" badge={activityCount > 0 ? `${activityCount}/${ACTIVITY_TYPES.length}` : 'none'}>
+      <Section title="Activities" badge={activityCount > 0 ? `${activityCount}/${ACTIVITY_TYPES.length}` : 'none'} testId="section-activities">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[9px] font-mono text-skin-dim/40">Deselect all to disable activities</span>
           <button
@@ -477,13 +488,14 @@ export function DynamicRulesetBuilder({
                   : [...current, at.value];
                 onChange({ ...config, allowedActivityTypes: next });
               }}
+              testId={`chip-${at.value}`}
             />
           ))}
         </div>
       </Section>
 
       {/* ── Social Rules ── */}
-      <Section title="Social Rules">
+      <Section title="Social Rules" testId="section-social">
         <div className="space-y-3 mt-1">
           {/* DM Characters per player */}
           <div className="space-y-1">
@@ -533,7 +545,7 @@ export function DynamicRulesetBuilder({
           <div className="space-y-2 pt-1 border-t border-skin-base/30">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-skin-dim/60">Require DM invitations</span>
-              <Toggle checked={config.social.requireDmInvite} onChange={v => updateSocial({ requireDmInvite: v })} size="md" />
+              <Toggle checked={config.social.requireDmInvite} onChange={v => updateSocial({ requireDmInvite: v })} size="md" data-testid="dm-invite-toggle" />
             </div>
             <p className="text-[8px] font-mono text-skin-dim/30">
               Players must send and accept mutual invites before DM conversations open
@@ -559,7 +571,7 @@ export function DynamicRulesetBuilder({
       </Section>
 
       {/* ── Inactivity ── */}
-      <Section title="Inactivity">
+      <Section title="Inactivity" testId="section-inactivity">
         <div className="space-y-2 mt-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-mono text-skin-dim/60">Auto-eliminate inactive players</span>
@@ -580,7 +592,7 @@ export function DynamicRulesetBuilder({
       </Section>
 
       {/* ── Day Count ── */}
-      <Section title="Day Count">
+      <Section title="Day Count" testId="section-day-count">
         <div className="space-y-2 mt-1">
           <p className="text-[8px] font-mono text-skin-dim/30">
             Days = active players - 1 (capped at max)
@@ -598,7 +610,7 @@ export function DynamicRulesetBuilder({
       </Section>
 
       {/* ── Schedule Preset ── */}
-      <Section title="Schedule" defaultOpen>
+      <Section title="Schedule" defaultOpen testId="section-schedule">
         <div className="space-y-1.5 mt-1">
           {SCHEDULE_PRESETS.map(sp => (
             <label
@@ -616,6 +628,7 @@ export function DynamicRulesetBuilder({
                 checked={config.schedulePreset === sp.value}
                 onChange={() => onChange({ ...config, schedulePreset: sp.value })}
                 className="sr-only"
+                data-testid={`preset-${sp.value}`}
               />
               <div
                 className={`w-3 h-3 rounded-full border-2 flex items-center justify-center transition-all ${
@@ -646,11 +659,12 @@ export function DynamicRulesetBuilder({
       </Section>
 
       {/* ── Start Time ── */}
-      <Section title="Start Time" defaultOpen>
+      <Section title="Start Time" defaultOpen testId="section-start-time">
         <div className="space-y-2 mt-1">
           <div className="flex items-center gap-3">
             <input
               type="datetime-local"
+              data-testid="start-time-input"
               value={config.startTime}
               onChange={e => onChange({ ...config, startTime: e.target.value })}
               className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 transition-all"
@@ -659,6 +673,7 @@ export function DynamicRulesetBuilder({
           {config.schedulePreset === 'SPEED_RUN' && (
             <button
               type="button"
+              data-testid="start-time-now-btn"
               onClick={() => {
                 const soon = new Date(Date.now() + 2 * 60_000);
                 const local = new Date(soon.getTime() - soon.getTimezoneOffset() * 60_000)
