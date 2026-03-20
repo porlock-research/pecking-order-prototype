@@ -1,6 +1,6 @@
 import { test, expect } from '../fixtures/lobby-auth';
 
-test.describe('Login Flow', () => {
+test.describe('Login Flow @login', () => {
   test('home page loads when authenticated', async ({ page, consoleErrors }) => {
     await page.goto('/');
     await expect(page.locator('h1')).toContainText('PECKING ORDER');
