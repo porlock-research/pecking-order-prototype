@@ -1576,3 +1576,21 @@ This document tracks significant architectural decisions, their context, and con
     *   Roster schema grows slightly (optional array of {question, answer} pairs).
     *   Progressive reveal, gamification, and "confessional booth" UX deferred to future iterations.
     *   DemoServer (`apps/game-server/src/demo/`) should add sample qaAnswers to seeded data.
+
+## [ADR-106] Per-App Lobby E2E Tests and `/test-lobby` Skill
+*   **Date:** 2026-03-20
+*   **Status:** Accepted
+*   **Context:** The lobby app had zero test coverage. The existing e2e suite in `e2e/` only tests the game client (post-join). After adding the Character Bio Q&A feature (ADR-105), we needed to verify the lobby UI produces architecturally correct output — particularly for dynamic manifests (DynamicRulesetBuilder), which is the primary playtest configuration path.
+*   **Decision:**
+    1.  Add per-app Playwright e2e tests to `apps/lobby/e2e/` following turborepo best practices (tests belong to the app that owns them, with `test:e2e` script in package.json and `apps/lobby/turbo.json` for task config).
+    2.  Auth handled via the real dev-mode magic link flow — no mocks, no backdoors. A Playwright `setup` project authenticates and saves `storageState` for reuse across tests.
+    3.  Create the `/test-lobby` Claude Code slash command with presets (`smoke`, `create-debug`, `create-static`, `create-dynamic`, `join`, `full`) and overrides for game mode, schedule preset, vote/game/activity pools, social config, and day count.
+    4.  The skill drives the real lobby UI via Playwright with configurable parameters, then validates that game manifests conform to shared-types Zod schemas (`DynamicManifestSchema`, `StaticManifestSchema`, `PeckingOrderRulesetSchema`) using `.safeParse()`.
+    5.  Every run outputs usable game info to `/tmp/pecking-order-lobby-game.json` (invite code, join URL, manifest, schema validation results) so created games can be used for further testing.
+    6.  Add `data-testid` attributes to key lobby UI elements (mode select, manifest toggle, DynamicRulesetBuilder sections/chips/radios, invite code display) for stable Playwright selectors. Add `aria-pressed` to ChipCheckbox for semantic toggle state detection.
+    7.  Screenshots captured at key steps for visual record. Headed mode by default (via `--headed` CLI flag), headless for CI.
+*   **Consequences:**
+    *   Lobby now has automated test coverage for login, game creation (all 3 modes), join wizard with Q&A, and schema conformance.
+    *   Dynamic manifest path is validated before every playtest — ruleset, schedule preset, social config all verified against Zod schemas.
+    *   The existing root `e2e/` directory (game client tests) should eventually migrate to `apps/client/e2e/` following the same per-app pattern.
+    *   Admin page tests deferred (requires SUPER_ADMIN_IDS setup).
