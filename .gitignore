@@ -43,6 +43,12 @@ e2e/playwright-report/
 
 # Claude Code (machine-local)
 .claude/projects/
+.claude/skills/
+skills-lock.json
+
+# AI agent tool caches
+.agent/
+.agents/
 
 # Playwright MCP logs
 .playwright-mcp/
