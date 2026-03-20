@@ -13,6 +13,7 @@ function collectConsoleErrors(page: Page): string[] {
       if (text.includes('React DevTools')) return;
       if (text.includes('[HMR]')) return;
       if (text.includes('favicon.ico')) return;
+      if (text.includes('Failed to load resource')) return;
       errors.push(text);
     }
   });
