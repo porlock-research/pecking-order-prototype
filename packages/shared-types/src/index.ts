@@ -339,6 +339,13 @@ export function normalizeManifest(raw: any): GameManifest {
   return manifest as GameManifest;
 }
 
+export const QaEntrySchema = z.object({
+  question: z.string(),
+  answer: z.string(),
+});
+
+export type QaEntry = z.infer<typeof QaEntrySchema>;
+
 export const RosterPlayerSchema = z.object({
   realUserId: z.string(), // Opaque ID (Cookie/Hash), NOT email
   personaName: z.string(),
@@ -349,6 +356,7 @@ export const RosterPlayerSchema = z.object({
   silver: z.number(),
   gold: z.number(),
   destinyId: z.string(),
+  qaAnswers: z.array(QaEntrySchema).optional(),
 });
 
 export const RosterSchema = z.record(z.string(), RosterPlayerSchema);
@@ -395,6 +403,7 @@ export const SocialPlayerSchema = z.object({
   silver: z.number().int().default(0),
   gold: z.number().int().default(0),
   realUserId: z.string().optional(),
+  qaAnswers: z.array(QaEntrySchema).optional(),
 });
 
 export const ChatMessageSchema = z.object({
