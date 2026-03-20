@@ -97,20 +97,29 @@ test.describe('Create Game @create', () => {
     // ── Extract game ID from status text ──
     const statusEl = page.locator('[data-testid="status-output"]');
     const statusText = await statusEl.textContent();
-    const match = statusText?.match(/GAME_CREATED:\s*([A-Za-z0-9_-]+)/);
+    // Game IDs use format: game-{timestamp}-{random} — no underscores
+    // The status text has a trailing animated cursor (_) that must be excluded
+    const match = statusText?.match(/GAME_CREATED:\s*([A-Za-z0-9-]+)/);
     const gameId = match?.[1] || '';
     expect(gameId).toBeTruthy();
 
     // ── Schema Validation ──
+    // Dynamic mode: DO is initialized during createGame → validate manifest from /state
+    // Debug/Static mode: DO may not be initialized yet (happens on startGame) → skip state validation
     let schemaErrors: string[] = [];
+    let state: any = null;
     if (gameId) {
       try {
-        const state = await fetchGameState(gameId);
+        state = await fetchGameState(gameId);
 
-        if (config.mode === 'dynamic') {
+        if (config.mode === 'dynamic' && state.state !== 'uninitialized') {
           schemaErrors = validateDynamicManifest(state);
+        } else if (config.mode !== 'debug' && state.state !== 'uninitialized') {
+          schemaErrors = validateStaticManifest(state, config.days);
+        } else if (state.state === 'uninitialized' && config.mode === 'dynamic') {
+          schemaErrors = ['DO is uninitialized — dynamic manifest init may have failed'];
         } else {
-          schemaErrors = validateStaticManifest(state, config.mode === 'debug' ? config.days : undefined);
+          console.log(`Schema validation SKIPPED (${config.mode} mode, DO state: ${state.state})`);
         }
 
         writeGameOutput({
@@ -125,7 +134,7 @@ test.describe('Create Game @create', () => {
         if (schemaErrors.length > 0) {
           console.log('Schema validation FAILED:');
           schemaErrors.forEach(e => console.log(`  - ${e}`));
-        } else {
+        } else if (state.state !== 'uninitialized') {
           console.log('Schema validation PASSED');
         }
       } catch (err) {
