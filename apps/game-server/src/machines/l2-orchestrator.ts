@@ -41,7 +41,7 @@ export interface GameContext {
 
 export type GameEvent =
   | { type: 'SYSTEM.INIT'; payload: { roster: Roster; manifest: GameManifest }; gameId: string; inviteCode: string }
-  | { type: 'SYSTEM.PLAYER_JOINED'; player: { id: string; realUserId: string; personaName: string; avatarUrl: string; bio: string; silver: number; gold: number } }
+  | { type: 'SYSTEM.PLAYER_JOINED'; player: { id: string; realUserId: string; personaName: string; avatarUrl: string; bio: string; silver: number; gold: number; qaAnswers?: { question: string; answer: string }[] } }
   | { type: 'SYSTEM.WAKEUP' }
   | { type: 'SYSTEM.PAUSE' }
   | { type: 'ADMIN.NEXT_STAGE' }
@@ -137,6 +137,7 @@ export const orchestratorMachine = setup({
                 silver: event.player.silver,
                 gold: event.player.gold,
                 realUserId: event.player.realUserId,
+                qaAnswers: event.player.qaAnswers,
               }
             })
           })

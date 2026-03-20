@@ -124,7 +124,7 @@ async function handlePlayerJoined(ctx: HandlerContext, req: Request, url: URL): 
 
   try {
     const json = await req.json() as any;
-    const { playerId, realUserId, personaName, avatarUrl, bio, silver } = json;
+    const { playerId, realUserId, personaName, avatarUrl, bio, silver, qaAnswers } = json;
 
     if (!playerId || !realUserId || !personaName) {
       return new Response('Missing required fields', { status: 400 });
@@ -147,7 +147,7 @@ async function handlePlayerJoined(ctx: HandlerContext, req: Request, url: URL): 
     // Send SYSTEM.PLAYER_JOINED to L2
     ctx.actor?.send({
       type: Events.System.PLAYER_JOINED,
-      player: { id: playerId, realUserId, personaName, avatarUrl: avatarUrl || '', bio: bio || '', silver: silver || 50, gold },
+      player: { id: playerId, realUserId, personaName, avatarUrl: avatarUrl || '', bio: bio || '', silver: silver || 50, gold, qaAnswers },
     });
 
     // Insert player into D1 Players table

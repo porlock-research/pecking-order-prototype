@@ -19,6 +19,7 @@ export const l2InitializationActions = {
           silver: p.silver,
           gold: p.gold || 0,
           realUserId: p.realUserId || '',
+          qaAnswers: p.qaAnswers,
         };
       }
       return internalRoster;
