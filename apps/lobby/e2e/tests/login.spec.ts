@@ -13,8 +13,8 @@ test.describe('Login Flow', () => {
   });
 
   test('unauthenticated redirect to login', async ({ browser }) => {
-    // Fresh context with no auth state
-    const context = await browser.newContext();
+    // Fresh context with explicitly empty auth state (project config injects storageState by default)
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const page = await context.newPage();
 
     await page.goto('/join/FAKECODE');

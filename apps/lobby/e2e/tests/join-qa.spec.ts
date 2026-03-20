@@ -103,7 +103,7 @@ test.describe.serial('Join Wizard + Q&A', () => {
 
     // Should redirect to waiting room
     await player2Page.waitForURL(/\/game\/.*\/waiting/, { timeout: 15_000 });
-    await expect(player2Page.locator('text=/waiting|joined/i')).toBeVisible({ timeout: 10_000 });
+    await expect(player2Page.getByText('Waiting for Players')).toBeVisible({ timeout: 10_000 });
 
     // No console errors
     expect(p2Errors).toEqual([]);
