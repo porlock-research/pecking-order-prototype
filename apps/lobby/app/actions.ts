@@ -489,7 +489,8 @@ export async function redrawPersonas(
 export async function acceptInvite(
   code: string,
   personaId: string,
-  customBio: string
+  customBio: string,
+  qaAnswers?: string // JSON string of {question, answer}[]
 ): Promise<{ success: boolean; error?: string }> {
   const session = await requireAuth(`/join/${code}`);
   const db = await getDB();
@@ -545,8 +546,8 @@ export async function acceptInvite(
 
   // Claim slot
   await db
-    .prepare('UPDATE Invites SET accepted_by = ?, persona_id = ?, custom_bio = ?, accepted_at = ? WHERE id = ?')
-    .bind(session.userId, personaId, bio, now, slot.id)
+    .prepare('UPDATE Invites SET accepted_by = ?, persona_id = ?, custom_bio = ?, qa_answers = ?, accepted_at = ? WHERE id = ?')
+    .bind(session.userId, personaId, bio, qaAnswers ?? null, now, slot.id)
     .run();
 
   // Release draw lock — unchosen personas go back to the pool
@@ -580,6 +581,7 @@ export async function acceptInvite(
           avatarUrl: personaImageUrl(personaId, 'headshot', env.PERSONA_ASSETS_URL as string),
           bio: bio || persona?.description || '',
           silver: 50,
+          qaAnswers: qaAnswers ? JSON.parse(qaAnswers) : undefined,
         }),
         headers: {
           'Content-Type': 'application/json',
@@ -671,7 +673,7 @@ export async function startGame(
   // Load accepted invites with persona data
   const { results: invites } = await db
     .prepare(
-      `SELECT i.slot_index, i.accepted_by, i.persona_id, i.custom_bio,
+      `SELECT i.slot_index, i.accepted_by, i.persona_id, i.custom_bio, i.qa_answers,
               pp.name as persona_name, pp.description as persona_description
        FROM Invites i
        JOIN PersonaPool pp ON pp.id = i.persona_id
@@ -684,6 +686,7 @@ export async function startGame(
       accepted_by: string;
       persona_id: string;
       custom_bio: string | null;
+      qa_answers: string | null;
       persona_name: string;
       persona_description: string;
     }>();
@@ -701,6 +704,7 @@ export async function startGame(
       personaName: inv.persona_name,
       avatarUrl: personaImageUrl(inv.persona_id, 'headshot', env.PERSONA_ASSETS_URL as string),
       bio: inv.custom_bio || inv.persona_description,
+      qaAnswers: inv.qa_answers ? JSON.parse(inv.qa_answers) : undefined,
       isAlive: true,
       isSpectator: false,
       silver: 50,
