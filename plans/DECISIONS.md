@@ -1557,3 +1557,22 @@ This document tracks significant architectural decisions, their context, and con
     *   Elimination triggers the full event pipeline: push, ticker, DramaticReveal splash.
     *   Silver credits are visible in the ticker as "GAME_MASTER sent X silver to Player".
     *   No changes to existing XState machine logic — uses existing event handlers.
+
+## [ADR-105] Character Bio Q&A System
+*   **Date:** 2026-03-19
+*   **Status:** Accepted
+*   **Context:** Playtest 2 feedback revealed that persona profiles are too thin — just a name, stereotype, and one-liner bio. Players wanted more conversation fuel and deeper character embodiment. The "dead time" before Day 1 also needed filling (Issue #3, #66).
+*   **Decision:**
+    1.  Add a Q&A step to the lobby join flow (Step 3 of 4). Players answer 10 questions as their persona, choosing from 3 pre-generated options or writing their own ("Other").
+    2.  Questions are a static pool in the lobby app: generic questions with persona-specific answer overrides, plus persona-specific questions derived from each persona's bio text. No archetype abstraction — bio text drives specificity directly.
+    3.  Question pool is randomized per game (seeded shuffle). Flexible split between generic and persona-specific questions (up to 5 persona-specific, rest generic).
+    4.  Optional with defaults — skipping auto-selects the first answer for each question. UX designed to encourage engagement but not gate joining.
+    5.  Answers stored as resolved text (`{question, answer}[]`) on the `Invites.qa_answers` D1 column (migration 0008). Flow: Invites → roster `qaAnswers` field → L2 context → SYNC payload → client PlayerDetail.
+    6.  New `QaEntrySchema` added to `shared-types`, extending `RosterPlayerSchema` and `SocialPlayerSchema` with optional `qaAnswers` field. Backward-compatible — existing games without Q&A unaffected.
+    7.  L2 initialization (`l2-initialization.ts`) and PLAYER_JOINED handler (`l2-orchestrator.ts`, `http-handlers.ts`) updated to propagate `qaAnswers` through the roster whitelist.
+    8.  Content expansion via AI generation + human curation. v1 ships with 18 generic + 5 persona-specific starter questions.
+*   **Consequences:**
+    *   Lobby join flow grows from 3 to 4 steps (Persona Select → Bio → Q&A → Confirm).
+    *   Roster schema grows slightly (optional array of {question, answer} pairs).
+    *   Progressive reveal, gamification, and "confessional booth" UX deferred to future iterations.
+    *   DemoServer (`apps/game-server/src/demo/`) should add sample qaAnswers to seeded data.
