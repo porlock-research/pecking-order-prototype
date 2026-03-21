@@ -66,7 +66,13 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
           Get Into Character
         </div>
         <p className="text-xs text-skin-dim/60">
-          Answer as <span className="text-skin-gold font-bold">{personaName}</span> — or skip to use defaults
+          Answer as <span className="text-skin-gold font-bold">{personaName}</span> — or{' '}
+          <button
+            onClick={onSkip}
+            className="text-skin-gold/70 underline underline-offset-2 hover:text-skin-gold transition-colors"
+          >
+            skip to use defaults
+          </button>
         </p>
       </div>
 
