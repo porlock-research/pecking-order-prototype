@@ -44,9 +44,11 @@ test.describe('Join Wizard + Q&A @join', () => {
     await page.click('text=Continue');
 
     // ── Step 3: Q&A ──
-    await expect(page.locator('text=Get Into Character')).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('text=Get Into Character')).toBeVisible({ timeout: 10_000 });
+    // Wait for step transition animation to complete
+    await page.waitForTimeout(500);
     const progressDots = page.locator('.flex.justify-center.gap-1\\.5 button');
-    await expect(progressDots).toHaveCount(10);
+    await expect(progressDots).toHaveCount(10, { timeout: 5_000 });
 
     for (let i = 0; i < 3; i++) {
       const optionA = page.locator('button:has-text("A.")').first();
@@ -74,7 +76,8 @@ test.describe('Join Wizard + Q&A @join', () => {
     await page.click('text=Join Game');
 
     // ── Waiting Room ──
-    await page.waitForURL(/\/game\/.*\/waiting/, { timeout: 15_000 });
+    // acceptInvite for CONFIGURABLE_CYCLE mode POSTs to game server — allow extra time
+    await page.waitForURL(/\/game\/.*\/waiting/, { timeout: 30_000 });
     await expect(page.getByText('Waiting for Players')).toBeVisible({ timeout: 10_000 });
     await page.screenshot({ path: 'e2e/test-results/screenshots/join-waiting.png' });
 

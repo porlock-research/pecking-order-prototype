@@ -598,11 +598,37 @@ export default function InvitePage() {
                             </div>
                           </div>
                         </div>
-                        <div className="p-4">
-                          <div className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest mb-2">
-                            Your Bio
+                        <div className="p-4 space-y-4">
+                          <div>
+                            <div className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest mb-2">
+                              Your Bio
+                            </div>
+                            <p className="text-sm text-skin-base leading-relaxed">{customBio}</p>
                           </div>
-                          <p className="text-sm text-skin-base leading-relaxed">{customBio}</p>
+
+                          {/* Q&A Answers Preview */}
+                          {qaAnswersJson && (() => {
+                            const answers: { question: string; answer: string }[] = JSON.parse(qaAnswersJson);
+                            return answers.length > 0 ? (
+                              <div>
+                                <div className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest mb-2">
+                                  Your Answers
+                                </div>
+                                <div className="space-y-2">
+                                  {answers.map((qa, i) => (
+                                    <div key={i} className="bg-skin-deep/40 rounded-lg px-3 py-2">
+                                      <div className="text-[10px] font-mono text-skin-dim/40 leading-snug">
+                                        {qa.question}
+                                      </div>
+                                      <div className="text-xs text-skin-gold font-bold leading-snug mt-0.5">
+                                        {qa.answer}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                     </div>

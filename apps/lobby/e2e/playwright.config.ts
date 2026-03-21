@@ -8,6 +8,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
+  workers: 1, // Sequential — create-game must complete before join reads output
   retries: 0,
   reporter: [['html', { open: 'never', outputFolder: './playwright-report' }]],
   outputDir: './test-results',

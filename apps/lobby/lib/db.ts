@@ -18,9 +18,23 @@ type D1 = {
   batch(stmts: unknown[]): Promise<unknown[]>;
 };
 
+/**
+ * Get Cloudflare environment bindings (D1, R2, env vars).
+ * Retries once on failure — the OpenNext dev bridge caches a global proxy
+ * that can go stale after HMR reloads. Resetting the cached context symbol
+ * forces re-initialization on retry.
+ */
 export async function getEnv(): Promise<Record<string, unknown>> {
-  const { env } = await getCloudflareContext({ async: true });
-  return env as Record<string, unknown>;
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    return env as Record<string, unknown>;
+  } catch (err) {
+    // Reset the cached context and retry once
+    const CONTEXT_SYMBOL = Symbol.for('__cloudflare-context__');
+    delete (globalThis as any)[CONTEXT_SYMBOL];
+    const { env } = await getCloudflareContext({ async: true });
+    return env as Record<string, unknown>;
+  }
 }
 
 export async function getDB(): Promise<D1> {
