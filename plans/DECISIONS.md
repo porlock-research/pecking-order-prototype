@@ -1594,3 +1594,16 @@ This document tracks significant architectural decisions, their context, and con
     *   Dynamic manifest path is validated before every playtest — ruleset, schedule preset, social config all verified against Zod schemas.
     *   The existing root `e2e/` directory (game client tests) should eventually migrate to `apps/client/e2e/` following the same per-app pattern.
     *   Admin page tests deferred (requires SUPER_ADMIN_IDS setup).
+
+## [ADR-107] OpenNext Dev Bridge Resilience
+*   **Date:** 2026-03-21
+*   **Status:** Accepted
+*   **Context:** The lobby dev server (`next dev` with `@opennextjs/cloudflare`) consistently crashed with "Internal Server Error" after file changes. Root cause: `initOpenNextCloudflareForDev()` in `next.config.js` caches a Cloudflare context proxy at startup via a global symbol (`Symbol.for('__cloudflare-context__')`). When Next.js hot-reloads after file changes, the cached proxy can reference stale/disconnected wrangler handles, causing all `getDB()`/`getEnv()` calls to fail. No `global-error.tsx` exists (GH #67), so errors surfaced as bare "Internal Server Error" with no stack trace.
+*   **Decision:**
+    1.  Add retry logic to `getEnv()` in `lib/db.ts`: on first failure, delete the cached `__cloudflare-context__` global symbol and retry `getCloudflareContext()` once. This forces re-initialization of the proxy on the next call.
+    2.  Upgrade `@opennextjs/cloudflare` from 1.16.3 to 1.17.1.
+    3.  Add health-check retry to the Playwright auth setup (`auth.setup.ts`): attempt `/login` up to 3 times with 2s delays before proceeding, so tests self-recover from transient server errors.
+*   **Consequences:**
+    *   Dev server no longer requires manual restart after file changes in most cases.
+    *   Playwright tests are resilient to transient dev server errors.
+    *   The underlying OpenNext caching design is unchanged — this is a workaround, not a fix. A proper fix would be for OpenNext to handle HMR-triggered context invalidation natively.

@@ -43,6 +43,14 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         storageState: path.join(AUTH_DIR, 'player1.json'),
+        launchOptions: {
+          args: [
+            '--disable-extensions',
+            '--disable-sync',
+            '--disable-translate',
+            '--no-first-run',
+          ],
+        },
       },
       dependencies: ['setup'],
     },
