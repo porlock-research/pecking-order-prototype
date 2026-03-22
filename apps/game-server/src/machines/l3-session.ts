@@ -3,12 +3,14 @@ import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact
 import { VOTE_REGISTRY } from './cartridges/voting/_registry';
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 import { PROMPT_REGISTRY } from './cartridges/prompts/_registry';
+import { DILEMMA_REGISTRY } from './cartridges/dilemmas/_registry';
 import type { AnyActorRef } from 'xstate';
 
 import { l3SocialActions, l3SocialGuards } from './actions/l3-social';
 import { l3VotingActions } from './actions/l3-voting';
 import { l3GameActions } from './actions/l3-games';
 import { l3ActivityActions } from './actions/l3-activity';
+import { l3DilemmaActions } from './actions/l3-dilemma';
 import { l3PerkActions, l3PerkGuards } from './actions/l3-perks';
 import { buildChatMessage, appendToChatLog, resolveExistingChannel } from './actions/social-helpers';
 
@@ -21,6 +23,7 @@ export interface DailyContext {
   activeVotingCartridgeRef: AnyActorRef | null;
   activeGameCartridgeRef: AnyActorRef | null;
   activePromptCartridgeRef: AnyActorRef | null;
+  activeDilemmaCartridgeRef: AnyActorRef | null;
   dmsOpen: boolean;
   dmPartnersByPlayer: Record<string, string[]>;
   dmCharsByPlayer: Record<string, number>;
@@ -54,6 +57,8 @@ export type DailyEvent =
   | { type: 'INTERNAL.END_GAME' }
   | { type: 'INTERNAL.START_ACTIVITY'; payload: any }
   | { type: 'INTERNAL.END_ACTIVITY' }
+  | { type: 'INTERNAL.START_DILEMMA' }
+  | { type: 'INTERNAL.END_DILEMMA' }
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
   | { type: `GAME.${string}`; senderId: string; [key: string]: any }
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
@@ -72,6 +77,7 @@ export function buildL3Context(input: { dayIndex: number; roster: Record<string,
     activeVotingCartridgeRef: null,
     activeGameCartridgeRef: null,
     activePromptCartridgeRef: null,
+    activeDilemmaCartridgeRef: null,
     dmsOpen: false,
     dmPartnersByPlayer: {},
     dmCharsByPlayer: {},
@@ -106,6 +112,7 @@ export const dailySessionMachine = setup({
     ...l3VotingActions,
     ...l3GameActions,
     ...l3ActivityActions,
+    ...l3DilemmaActions,
     ...l3PerkActions,
   } as any,
   guards: {
@@ -116,6 +123,7 @@ export const dailySessionMachine = setup({
     ...VOTE_REGISTRY,
     ...GAME_REGISTRY,
     ...PROMPT_REGISTRY,
+    ...DILEMMA_REGISTRY,
   }
 // XState v5 setup() can't infer action string names from externally-defined
 // action objects, so we cast the machine config. Runtime behavior is correct.
@@ -274,6 +282,43 @@ export const dailySessionMachine = setup({
                 'xstate.done.actor.activePromptCartridge': {
                   target: 'idle',
                   actions: ['applyPromptRewardsLocally', 'forwardPromptResultToL2', 'cleanupPromptCartridge'],
+                }
+              }
+            }
+          }
+        },
+        // REGION D: DILEMMA LAYER
+        dilemmaLayer: {
+          initial: 'idle',
+          states: {
+            idle: {
+              on: {
+                'INTERNAL.START_DILEMMA': { target: 'playing' }
+              }
+            },
+            playing: {
+              entry: ['spawnDilemmaCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'DILEMMA' } as any)],
+              on: {
+                'xstate.done.actor.activeDilemmaCartridge': {
+                  target: 'completed',
+                  actions: ['applyDilemmaRewardsLocally', 'forwardDilemmaResultToL2']
+                },
+                'INTERNAL.END_DILEMMA': {
+                  target: 'completed',
+                  actions: ['forwardToDilemmaChild', sendParent({ type: 'PUSH.PHASE', trigger: 'END_DILEMMA' } as any)]
+                },
+                '*': {
+                  guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Dilemma.PREFIX),
+                  actions: 'forwardToDilemmaChild',
+                }
+              }
+            },
+            completed: {
+              on: {
+                'INTERNAL.END_DILEMMA': { target: 'idle', actions: 'cleanupDilemmaCartridge' },
+                'xstate.done.actor.activeDilemmaCartridge': {
+                  target: 'idle',
+                  actions: ['applyDilemmaRewardsLocally', 'forwardDilemmaResultToL2', 'cleanupDilemmaCartridge'],
                 }
               }
             }
