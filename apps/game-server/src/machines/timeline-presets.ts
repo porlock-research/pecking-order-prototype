@@ -7,13 +7,15 @@ interface DayOptions {
   activityType: string;
 }
 
-// ── Preset definitions ──────────────────────────────────────────────────
-
-interface CalendarEventDef {
-  action: TimelineAction;
-  clockTime: string;  // "HH:MM"
-  condition?: 'hasGame' | 'hasActivity';
-}
+// ── Canonical event ordering ────────────────────────────────────────────
+// All presets use the same event sequence. Each preset only changes the
+// timestamps. This ensures e2e tests (SPEED_RUN, SMOKE_TEST) exercise the
+// same timeline structure as production games.
+//
+// RULE: Events that trigger cartridge completion (CLOSE_VOTING, END_GAME,
+// END_ACTIVITY) must NEVER share a timestamp with state-transitioning
+// events (END_DAY) or each other. XState v5 queues done.actor delivery,
+// so compound events at the same timestamp cause race conditions.
 
 interface OffsetEventDef {
   action: TimelineAction;
@@ -21,10 +23,27 @@ interface OffsetEventDef {
   condition?: 'hasGame' | 'hasActivity';
 }
 
+// Canonical event sequence with minute offsets. Every preset scales these.
+const CANONICAL_EVENTS: OffsetEventDef[] = [
+  { action: 'OPEN_GROUP_CHAT', offsetMin: 0 },
+  { action: 'OPEN_DMS',        offsetMin: 60 },
+  { action: 'CLOSE_GROUP_CHAT', offsetMin: 61 },
+  { action: 'START_GAME',      offsetMin: 62, condition: 'hasGame' },
+  { action: 'END_GAME',        offsetMin: 180, condition: 'hasGame' },
+  { action: 'START_ACTIVITY',  offsetMin: 300, condition: 'hasActivity' },
+  { action: 'END_ACTIVITY',    offsetMin: 420, condition: 'hasActivity' },
+  { action: 'OPEN_VOTING',     offsetMin: 660 },
+  { action: 'CLOSE_VOTING',    offsetMin: 840 },
+  { action: 'CLOSE_DMS',       offsetMin: 841 },
+  { action: 'END_DAY',         offsetMin: 899 },
+];
+
+// ── Preset definitions ──────────────────────────────────────────────────
+
 interface CalendarPresetConfig {
   type: 'calendar';
   firstEventTime: string;  // "HH:MM" — used for next-day-start scheduling
-  events: CalendarEventDef[];
+  events: { action: TimelineAction; clockTime: string; condition?: 'hasGame' | 'hasActivity' }[];
 }
 
 interface OffsetPresetConfig {
@@ -36,22 +55,41 @@ interface OffsetPresetConfig {
 
 type PresetConfig = CalendarPresetConfig | OffsetPresetConfig;
 
+/** Scale canonical events to fit a target day duration (in minutes).
+ *  Guarantees a minimum gap between consecutive events to prevent
+ *  compound timestamp collisions after rounding. */
+function scaleCanonical(targetDurationMin: number): OffsetEventDef[] {
+  const maxOffset = CANONICAL_EVENTS[CANONICAL_EVENTS.length - 1].offsetMin;
+  const scale = targetDurationMin / maxOffset;
+  const MIN_GAP = 0.1; // 6 seconds minimum between events
+  let lastOffset = -MIN_GAP;
+  return CANONICAL_EVENTS.map(e => {
+    let scaled = Math.round(e.offsetMin * scale * 10) / 10;
+    // Enforce minimum gap — nudge forward if rounding caused a collision
+    if (scaled <= lastOffset) {
+      scaled = Math.round((lastOffset + MIN_GAP) * 10) / 10;
+    }
+    lastOffset = scaled;
+    return { ...e, offsetMin: scaled };
+  });
+}
+
 const PRESET_CONFIGS: Record<SchedulePreset, PresetConfig> = {
   DEFAULT: {
     type: 'calendar',
     firstEventTime: '09:00',
     events: [
       { action: 'OPEN_GROUP_CHAT', clockTime: '09:00' },
-      { action: 'OPEN_DMS', clockTime: '10:00' },
-      { action: 'CLOSE_GROUP_CHAT', clockTime: '10:00' },
-      { action: 'START_GAME', clockTime: '10:00', condition: 'hasGame' },
-      { action: 'END_GAME', clockTime: '12:00', condition: 'hasGame' },
-      { action: 'START_ACTIVITY', clockTime: '14:00', condition: 'hasActivity' },
-      { action: 'END_ACTIVITY', clockTime: '16:00', condition: 'hasActivity' },
-      { action: 'OPEN_VOTING', clockTime: '20:00' },
-      { action: 'CLOSE_VOTING', clockTime: '23:00' },
-      { action: 'CLOSE_DMS', clockTime: '23:00' },
-      { action: 'END_DAY', clockTime: '23:59' },
+      { action: 'OPEN_DMS',        clockTime: '10:00' },
+      { action: 'CLOSE_GROUP_CHAT', clockTime: '10:01' },
+      { action: 'START_GAME',      clockTime: '10:02', condition: 'hasGame' },
+      { action: 'END_GAME',        clockTime: '12:00', condition: 'hasGame' },
+      { action: 'START_ACTIVITY',  clockTime: '14:00', condition: 'hasActivity' },
+      { action: 'END_ACTIVITY',    clockTime: '16:00', condition: 'hasActivity' },
+      { action: 'OPEN_VOTING',     clockTime: '20:00' },
+      { action: 'CLOSE_VOTING',    clockTime: '22:59' },
+      { action: 'CLOSE_DMS',       clockTime: '23:00' },
+      { action: 'END_DAY',         clockTime: '23:59' },
     ],
   },
   COMPACT: {
@@ -59,72 +97,48 @@ const PRESET_CONFIGS: Record<SchedulePreset, PresetConfig> = {
     firstEventTime: '09:00',
     events: [
       { action: 'OPEN_GROUP_CHAT', clockTime: '09:00' },
-      { action: 'OPEN_DMS', clockTime: '09:30' },
-      { action: 'START_GAME', clockTime: '09:30', condition: 'hasGame' },
+      { action: 'OPEN_DMS',        clockTime: '09:30' },
+      { action: 'START_GAME',      clockTime: '09:31', condition: 'hasGame' },
       { action: 'CLOSE_GROUP_CHAT', clockTime: '10:30' },
-      { action: 'END_GAME', clockTime: '11:30', condition: 'hasGame' },
-      { action: 'START_ACTIVITY', clockTime: '12:00', condition: 'hasActivity' },
-      { action: 'END_ACTIVITY', clockTime: '13:00', condition: 'hasActivity' },
-      { action: 'OPEN_VOTING', clockTime: '14:00' },
-      { action: 'CLOSE_VOTING', clockTime: '17:00' },
-      { action: 'CLOSE_DMS', clockTime: '17:00' },
-      { action: 'END_DAY', clockTime: '17:30' },
+      { action: 'END_GAME',        clockTime: '11:30', condition: 'hasGame' },
+      { action: 'START_ACTIVITY',  clockTime: '12:00', condition: 'hasActivity' },
+      { action: 'END_ACTIVITY',    clockTime: '13:00', condition: 'hasActivity' },
+      { action: 'OPEN_VOTING',     clockTime: '14:00' },
+      { action: 'CLOSE_VOTING',    clockTime: '16:59' },
+      { action: 'CLOSE_DMS',       clockTime: '17:00' },
+      { action: 'END_DAY',         clockTime: '17:30' },
     ],
   },
   SPEED_RUN: {
     type: 'offset',
     dayDurationMin: 23,
     interDayGapMin: 3,
-    events: [
-      { action: 'OPEN_GROUP_CHAT', offsetMin: 0 },
-      { action: 'OPEN_DMS', offsetMin: 2 },
-      { action: 'CLOSE_GROUP_CHAT', offsetMin: 2 },
-      { action: 'START_GAME', offsetMin: 3, condition: 'hasGame' },
-      { action: 'END_GAME', offsetMin: 8, condition: 'hasGame' },
-      { action: 'START_ACTIVITY', offsetMin: 10, condition: 'hasActivity' },
-      { action: 'END_ACTIVITY', offsetMin: 15, condition: 'hasActivity' },
-      { action: 'OPEN_VOTING', offsetMin: 17 },
-      { action: 'CLOSE_VOTING', offsetMin: 20 },
-      { action: 'CLOSE_DMS', offsetMin: 20 },
-      { action: 'END_DAY', offsetMin: 23 },
-    ],
+    events: scaleCanonical(23),
   },
   PLAYTEST: {
     type: 'calendar',
     firstEventTime: '10:00',
     events: [
       { action: 'OPEN_GROUP_CHAT', clockTime: '10:00' },
-      { action: 'OPEN_DMS', clockTime: '11:00' },
+      { action: 'OPEN_DMS',        clockTime: '11:00' },
       { action: 'CLOSE_GROUP_CHAT', clockTime: '12:00' },
-      { action: 'START_GAME', clockTime: '12:00', condition: 'hasGame' },
-      { action: 'START_ACTIVITY', clockTime: '12:00', condition: 'hasActivity' },
-      { action: 'END_GAME', clockTime: '14:00', condition: 'hasGame' },
-      { action: 'END_ACTIVITY', clockTime: '15:00', condition: 'hasActivity' },
-      { action: 'OPEN_GROUP_CHAT', clockTime: '15:00' },
-      { action: 'OPEN_VOTING', clockTime: '15:00' },
-      { action: 'CLOSE_DMS', clockTime: '16:00' },
-      { action: 'CLOSE_GROUP_CHAT', clockTime: '16:00' },
-      { action: 'CLOSE_VOTING', clockTime: '17:00' },
-      { action: 'END_DAY', clockTime: '17:00' },
+      { action: 'START_GAME',      clockTime: '12:01', condition: 'hasGame' },
+      { action: 'START_ACTIVITY',  clockTime: '12:02', condition: 'hasActivity' },
+      { action: 'END_GAME',        clockTime: '14:00', condition: 'hasGame' },
+      { action: 'END_ACTIVITY',    clockTime: '15:00', condition: 'hasActivity' },
+      { action: 'OPEN_GROUP_CHAT', clockTime: '15:01' },
+      { action: 'OPEN_VOTING',     clockTime: '15:02' },
+      { action: 'CLOSE_DMS',       clockTime: '16:00' },
+      { action: 'CLOSE_GROUP_CHAT', clockTime: '16:01' },
+      { action: 'CLOSE_VOTING',    clockTime: '16:59' },
+      { action: 'END_DAY',         clockTime: '17:00' },
     ],
   },
   SMOKE_TEST: {
     type: 'offset',
     dayDurationMin: 5,
     interDayGapMin: 1,
-    events: [
-      { action: 'OPEN_GROUP_CHAT', offsetMin: 0 },
-      { action: 'OPEN_DMS', offsetMin: 0.5 },
-      { action: 'CLOSE_GROUP_CHAT', offsetMin: 0.5 },
-      { action: 'START_GAME', offsetMin: 1, condition: 'hasGame' },
-      { action: 'END_GAME', offsetMin: 2, condition: 'hasGame' },
-      { action: 'START_ACTIVITY', offsetMin: 2.5, condition: 'hasActivity' },
-      { action: 'END_ACTIVITY', offsetMin: 3.5, condition: 'hasActivity' },
-      { action: 'OPEN_VOTING', offsetMin: 3.5 },
-      { action: 'CLOSE_VOTING', offsetMin: 4.5 },
-      { action: 'CLOSE_DMS', offsetMin: 4.5 },
-      { action: 'END_DAY', offsetMin: 5 },
-    ],
+    events: scaleCanonical(5),
   },
 };
 

@@ -1607,3 +1607,41 @@ This document tracks significant architectural decisions, their context, and con
     *   Dev server no longer requires manual restart after file changes in most cases.
     *   Playwright tests are resilient to transient dev server errors.
     *   The underlying OpenNext caching design is unchanged — this is a workaround, not a fix. A proper fix would be for OpenNext to handle HMR-triggered context invalidation natively.
+
+## [ADR-108] Eliminate Compound Timeline Events to Prevent XState Race Conditions
+*   **Date:** 2026-03-22
+*   **Status:** Accepted
+*   **Context:** Playtest 2 (game M48TJ8, 2026-03-17) revealed that no player was ever eliminated across 3 days of BUBBLE voting despite 6 players casting votes. Axiom log investigation traced the root cause to compound timeline events: CLOSE_VOTING and END_DAY shared the same timestamp in the PLAYTEST preset. `processTimelineEvent` raised both via `enqueue.raise()` in the same tick. XState v5 queues `done.actor` delivery, so the voting cartridge's VOTE_RESULT arrived at L2 **after** `processNightSummary` had already run with `pending: null`. This affected ALL voting mechanisms — BUBBLE, MAJORITY, TRUST_PAIRS, and FINALS all showed empty tallies `{}`. The bug caused 2 of 6 players to permanently drop off on Day 2 (zero engagement from p3, p7).
+*   **Decision:**
+    1.  **No compound timestamps**: Events that trigger cartridge completion (`CLOSE_VOTING`, `END_GAME`, `END_ACTIVITY`) must NEVER share a timestamp with state-transitioning events (`END_DAY`) or each other. Minimum 1-minute gap in calendar presets, enforced minimum 6-second gap in offset presets.
+    2.  **Canonical event ordering**: Introduced `CANONICAL_EVENTS` array defining the single source of truth for event sequence and relative spacing. All presets derive from this structure.
+    3.  **Derived offset presets**: SPEED_RUN and SMOKE_TEST now use `scaleCanonical(targetDurationMin)` instead of independent event definitions. This ensures e2e tests exercise the same timeline structure as production presets. `scaleCanonical` enforces minimum gaps after rounding to prevent collisions.
+    4.  **Calendar presets hand-separated**: DEFAULT, COMPACT, and PLAYTEST presets had compound timestamps manually separated (e.g., CLOSE_VOTING at 22:59, CLOSE_DMS at 23:00, END_DAY at 23:59).
+*   **Consequences:**
+    *   Voting elimination works correctly — verified end-to-end with real SMOKE_TEST alarms on local dev.
+    *   E2e tests using SPEED_RUN/SMOKE_TEST now cover the same event ordering as production games, preventing this class of bug from going undetected.
+    *   The underlying XState v5 `done.actor` queuing behavior is unchanged — this fix avoids the race by ensuring temporal separation rather than changing the state machine topology. A long-term systemic fix (L3 orchestrator with intermediary states, GH #70) is tracked separately.
+    *   Also fixes potential compound event issues in DEFAULT (OPEN_DMS+CLOSE_GROUP_CHAT+START_GAME at 10:00) and COMPACT (CLOSE_VOTING+CLOSE_DMS at 17:00).
+
+## [ADR-109] Fix Push Notification Response Body Leak
+*   **Date:** 2026-03-22
+*   **Status:** Accepted
+*   **Context:** Playtest 2 logs showed recurring Cloudflare warnings: "A stalled HTTP response was canceled to prevent deadlock." These fired at every alarm boundary (19:00, 22:00 on Day 1; 19:00, 22:00 on Day 2) — exactly when push notifications are broadcast to all players. Several players reported not receiving push notifications. Root cause: `sendPushNotification()` in `push-send.ts` called `fetch()` to push endpoints but never read or canceled the response body. Cloudflare Workers have a limit on concurrent in-flight HTTP requests; unread response bodies count against this limit and eventually cause deadlock cancellation.
+*   **Decision:** Add `await response.body?.cancel()` after reading `response.status` in `push-send.ts`. This releases the response body immediately, preventing resource accumulation.
+*   **Consequences:**
+    *   Push notifications should no longer be silently dropped due to HTTP deadlock.
+    *   The fix is minimal (1 line) and safe — `cancel()` on an already-consumed or null body is a no-op.
+
+## [ADR-110] Timeline Preset Design Principles
+*   **Date:** 2026-03-22
+*   **Status:** Accepted
+*   **Context:** Testing EXECUTIONER voting with SMOKE_TEST alarms revealed that after CLOSE_VOTING resolves the election, the executioner has only 18 seconds to pick a target before END_DAY fires. EXECUTIONER overloads `INTERNAL.CLOSE_VOTING` to mean both "stop election" and "begin picking phase" — a design that is fragile when time gaps between events are small. More broadly, different voting mechanisms have different multi-phase requirements that presets must accommodate.
+*   **Decision:**
+    1.  **Minimum gap rule**: Cartridge-completion events (`CLOSE_VOTING`, `END_GAME`, `END_ACTIVITY`) must have a minimum gap before state-transition events (`END_DAY`). For offset presets, `scaleCanonical()` enforces a 6-second floor. For calendar presets, minimum 1-minute separation is maintained manually.
+    2.  **Multi-phase cartridges need wider gaps**: EXECUTIONER needs time between CLOSE_VOTING (election resolves) and END_DAY (picking deadline). Presets should account for the most demanding cartridge's timing needs.
+    3.  **Long-term**: Cartridges should self-complete rather than depending on timeline gaps (GH #70). EXECUTIONER should transition from electing → picking when all votes are in, not when CLOSE_VOTING fires. Timeline alarms become fallback deadlines, not primary drivers.
+*   **Consequences:**
+    *   All 4 tested voting mechanisms (BUBBLE, MAJORITY, EXECUTIONER, PODIUM_SACRIFICE) pass with real SMOKE_TEST alarms.
+    *   EXECUTIONER works but with a tight 18-second pick window in SMOKE_TEST — acceptable for automated testing, not for real gameplay (production presets have 60+ minute gaps).
+    *   Future preset changes must consider the most demanding cartridge's timing needs.
+    *   The self-completion pattern (GH #70) will eliminate timing sensitivity entirely.

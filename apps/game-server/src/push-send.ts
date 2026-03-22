@@ -30,6 +30,11 @@ export async function sendPushNotification(
       body,
     });
 
+    // Always consume the response body to prevent Cloudflare's
+    // "stalled HTTP response" deadlock warning, which silently
+    // cancels in-flight fetch calls and drops push notifications.
+    await response.body?.cancel();
+
     if (response.status === 201 || response.status === 200) return "sent";
     if (response.status === 410 || response.status === 404) return "expired";
 
