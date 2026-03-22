@@ -117,4 +117,19 @@ export const Config = {
       winnerBonus: 10,
     },
   },
+  dilemma: {
+    silverParticipation: 5,
+    silverGambit: {
+      donationCost: 5,
+      jackpotMultiplier: 3,
+    },
+    spotlight: {
+      unanimousReward: 20,
+      participationReward: 5,
+    },
+    giftOrGrief: {
+      giftAmount: 10,
+      griefAmount: 10,
+    },
+  },
 } as const;

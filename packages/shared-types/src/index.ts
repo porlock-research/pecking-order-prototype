@@ -17,6 +17,8 @@ export { WELCOME_MESSAGES } from './welcome-content';
 export { buildPhaseInfo } from './phase-info';
 export type { PhaseInfo } from './phase-info';
 export { getChannelHints } from './channel-hints';
+export { DilemmaTypeSchema, type DilemmaType, type DilemmaCartridgeInput, type DilemmaOutput } from './dilemma-types';
+import { DilemmaTypeSchema } from './dilemma-types';
 import type { TickerCategory } from './events';
 
 // --- Enums ---
@@ -63,7 +65,7 @@ export const LobbySchema = z.object({
 
 export const TimelineEventSchema = z.object({
   time: z.string(), // "09:00" or ISO string
-  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "OPEN_GROUP_CHAT", "CLOSE_GROUP_CHAT", "START_GAME", "END_GAME", "END_DAY"]),
+  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "OPEN_GROUP_CHAT", "CLOSE_GROUP_CHAT", "START_GAME", "END_GAME", "START_DILEMMA", "END_DILEMMA", "END_DAY"]),
   payload: z.any().optional(),
 });
 
@@ -122,6 +124,7 @@ export const DailyManifestSchema = z.object({
   gameType: GameTypeSchema.default("NONE"),
   gameMode: z.enum(["SOLO", "LIVE"]).optional(),
   activityType: PromptTypeSchema.or(z.literal('NONE')).optional(),
+  dilemmaType: DilemmaTypeSchema.or(z.literal('NONE')).optional(),
   timeline: z.array(TimelineEventSchema),
   nextDayStart: z.string().optional(), // ISO 8601 — when the following day begins (undefined on last day)
   // Optional social parameters — director-resolved or lobby-configured
@@ -373,7 +376,7 @@ export const InitPayloadSchema = z.object({
 // --- Journal & Facts (Persistence) ---
 
 export const FactSchema = z.object({
-  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "PERK_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED", "PROMPT_RESULT", "DM_INVITE_SENT", "DM_INVITE_ACCEPTED", "DM_INVITE_DECLINED"]),
+  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "PERK_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED", "PROMPT_RESULT", "DM_INVITE_SENT", "DM_INVITE_ACCEPTED", "DM_INVITE_DECLINED", "DILEMMA_RESULT"]),
   actorId: z.string(),
   targetId: z.string().optional(),
   payload: z.any().optional(), // JSON details

@@ -45,12 +45,15 @@ export const Events = {
     END_GAME: 'INTERNAL.END_GAME',
     START_ACTIVITY: 'INTERNAL.START_ACTIVITY',
     END_ACTIVITY: 'INTERNAL.END_ACTIVITY',
+    START_DILEMMA: 'INTERNAL.START_DILEMMA',
+    END_DILEMMA: 'INTERNAL.END_DILEMMA',
   },
   Cartridge: {
     VOTE_RESULT: 'CARTRIDGE.VOTE_RESULT',
     GAME_RESULT: 'CARTRIDGE.GAME_RESULT',
     PLAYER_GAME_RESULT: 'CARTRIDGE.PLAYER_GAME_RESULT',
     PROMPT_RESULT: 'CARTRIDGE.PROMPT_RESULT',
+    DILEMMA_RESULT: 'CARTRIDGE.DILEMMA_RESULT',
   },
   Fact: { RECORD: 'FACT.RECORD' },
   Presence: {
@@ -90,6 +93,10 @@ export const Events = {
     PREFIX: 'ACTIVITY.',
     event: (promptType: string, action: string) => `ACTIVITY.${promptType}.${action}`,
   },
+  Dilemma: {
+    PREFIX: 'DILEMMA.',
+    submit: (dilemmaType: string) => `DILEMMA.${dilemmaType}.SUBMIT`,
+  },
   Economy: {
     PREFIX: 'ECONOMY.',
     CREDIT_SILVER: 'ECONOMY.CREDIT_SILVER',
@@ -123,6 +130,7 @@ export const FactTypes = {
   DM_INVITE_SENT: 'DM_INVITE_SENT',
   DM_INVITE_ACCEPTED: 'DM_INVITE_ACCEPTED',
   DM_INVITE_DECLINED: 'DM_INVITE_DECLINED',
+  DILEMMA_RESULT: 'DILEMMA_RESULT',
 } as const;
 
 // --- PHASE CONSTANTS ---
@@ -194,6 +202,7 @@ export const TickerCategories = {
   ACTIVITY: 'ACTIVITY',
   ELIMINATION: 'ELIMINATION',
   GOLD_POOL: 'GOLD.POOL',
+  DILEMMA: 'DILEMMA',
 } as const;
 
 export type TickerCategory = typeof TickerCategories[keyof typeof TickerCategories];
@@ -219,6 +228,22 @@ export const ActivityEvents = {
   HOTTAKE:    { RESPOND: 'ACTIVITY.HOTTAKE.RESPOND' },
   CONFESSION: { SUBMIT: 'ACTIVITY.CONFESSION.SUBMIT', VOTE: 'ACTIVITY.CONFESSION.VOTE' },
   GUESSWHO:   { ANSWER: 'ACTIVITY.GUESSWHO.ANSWER', GUESS: 'ACTIVITY.GUESSWHO.GUESS' },
+} as const;
+
+// --- DILEMMA PHASE CONSTANTS ---
+
+export const DilemmaPhases = {
+  ANNOUNCED: 'ANNOUNCED',
+  COLLECTING: 'COLLECTING',
+  REVEAL: 'REVEAL',
+} as const;
+
+// --- DILEMMA EVENT CONSTANTS ---
+
+export const DilemmaEvents = {
+  SILVER_GAMBIT: { SUBMIT: 'DILEMMA.SILVER_GAMBIT.SUBMIT' },
+  SPOTLIGHT:     { SUBMIT: 'DILEMMA.SPOTLIGHT.SUBMIT' },
+  GIFT_OR_GRIEF: { SUBMIT: 'DILEMMA.GIFT_OR_GRIEF.SUBMIT' },
 } as const;
 
 // --- GAME-SPECIFIC EVENT CONSTANTS (non-generic games only) ---
