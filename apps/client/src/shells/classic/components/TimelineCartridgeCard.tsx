@@ -144,8 +144,8 @@ function getPlayerRows(snapshot: any, roster: Record<string, any>): PlayerRow[] 
         isBest: false,
       });
     }
-  } else if (summary?.playerResults) {
-    const results = summary.playerResults as Record<string, { silverReward?: number; result?: any }>;
+  } else if (summary?.players) {
+    const results = summary.players as Record<string, { silverReward?: number; result?: any }>;
     for (const [pid, data] of Object.entries(results)) {
       rows.push({
         id: pid,

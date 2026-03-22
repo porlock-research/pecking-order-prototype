@@ -1645,3 +1645,14 @@ This document tracks significant architectural decisions, their context, and con
     *   EXECUTIONER works but with a tight 18-second pick window in SMOKE_TEST — acceptable for automated testing, not for real gameplay (production presets have 60+ minute gaps).
     *   Future preset changes must consider the most demanding cartridge's timing needs.
     *   The self-completion pattern (GH #70) will eliminate timing sensitivity entirely.
+
+## [ADR-111] Unify Arcade Machine Output Key to `summary.players`
+*   **Date:** 2026-03-22
+*   **Status:** Accepted
+*   **Context:** GH #57 — game results in the schedule/dashboard only showed zero-earners. Arcade machines output per-player data under `summary.playerResults`, but `recordCompletedGame` in L2 merged from `summary.players` (matching trivia's format). The merge silently failed for arcade games, so `completedPhases.silverRewards` only contained non-completed players. The dashboard used this sparse map as the leaderboard, showing only timed-out players.
+*   **Decision:** Rename arcade machine output key from `summary.playerResults` to `summary.players` to match trivia and the L2 merge logic. Update classic shell's fallback reader to match. Add unit tests for arcade output shape verification.
+*   **Consequences:**
+    *   All game types now use `summary.players` as the canonical per-player results key.
+    *   L2 `recordCompletedGame` merge backfills completed players into `completedPhases.silverRewards` for both arcade and trivia.
+    *   Dashboard leaderboard now shows all participants with correct silver rewards.
+    *   Future: Type `GameOutput.summary` properly instead of `Record<string, any>` (GH #70).

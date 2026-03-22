@@ -232,19 +232,19 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
     initial: 'active',
     output: ({ context }: any) => {
       const silverRewards: Record<string, number> = {};
-      const playerResults: Record<string, { silverReward: number; result: Record<string, number> | null }> = {};
+      const players: Record<string, { silverReward: number; result: Record<string, number> | null }> = {};
       for (const [pid, player] of Object.entries(context.players) as [string, ArcadePlayerState][]) {
         if (player.status !== ArcadePhases.COMPLETED) {
           silverRewards[pid] = player.silverReward;
         }
-        playerResults[pid] = { silverReward: player.silverReward, result: player.result };
+        players[pid] = { silverReward: player.silverReward, result: player.result };
       }
       return {
         gameType: context.gameType,
         silverRewards,
         goldContribution: context.goldContribution,
         goldEmittedPerPlayer: true,
-        summary: { playerResults },
+        summary: { players },
       };
     },
     states: {

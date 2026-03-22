@@ -206,8 +206,9 @@ export const l2EconomyActions = {
   recordCompletedGame: assign({
     completedPhases: ({ context, event }: any) => {
       const result = event.result as GameOutput;
-      // Trivia emits per-player results via CARTRIDGE.PLAYER_GAME_RESULT,
-      // so result.silverRewards may be sparse. Merge from summary.players.
+      // Games emit per-player results mid-game via CARTRIDGE.PLAYER_GAME_RESULT,
+      // so result.silverRewards only contains non-completed players. Merge
+      // from summary.players to backfill completed players for display.
       let silverRewards = result.silverRewards || {};
       const summaryPlayers = result.summary?.players as Record<string, { silverReward?: number }> | undefined;
       if (summaryPlayers) {
