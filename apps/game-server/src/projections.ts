@@ -30,3 +30,24 @@ export function projectPromptCartridge(promptCtx: any): any {
 
   return promptCtx;
 }
+
+/**
+ * Project dilemma cartridge context for SYSTEM.SYNC.
+ * During COLLECTING: only reveal who has submitted, not what they chose.
+ * During REVEAL: include full decisions and results.
+ */
+export function projectDilemmaCartridge(raw: any): any {
+  if (!raw) return null;
+  const { dilemmaType, phase, eligiblePlayers, decisions, results } = raw;
+  return {
+    dilemmaType,
+    phase,
+    eligiblePlayers,
+    // During COLLECTING: only show who submitted, not what they chose
+    submitted: Object.fromEntries(
+      (eligiblePlayers || []).map((pid: string) => [pid, pid in (decisions || {})])
+    ),
+    // During REVEAL: include full decisions and results
+    ...(phase === 'REVEAL' ? { decisions, results } : {}),
+  };
+}

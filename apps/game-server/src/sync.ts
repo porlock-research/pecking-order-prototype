@@ -6,20 +6,22 @@
 import type { Connection } from "partyserver";
 import { Events, DayPhases, getChannelHints } from "@pecking-order/shared-types";
 import type { DayPhase, ChannelType, ChannelCapability } from "@pecking-order/shared-types";
-import { projectGameCartridge, projectPromptCartridge } from "./projections";
+import { projectGameCartridge, projectPromptCartridge, projectDilemmaCartridge } from "./projections";
 import { flattenState } from "./ticker";
 
 export interface CartridgeSnapshots {
   activeVotingCartridge: any;
   rawGameCartridge: any;
   activePromptCartridge: any;
+  activeDilemmaCartridge: any;
 }
 
-/** Extract voting, game, and prompt cartridge context from an L2 snapshot. */
+/** Extract voting, game, prompt, and dilemma cartridge context from an L2 snapshot. */
 export function extractCartridges(snapshot: any): CartridgeSnapshots {
   let activeVotingCartridge: any = null;
   let rawGameCartridge: any = null;
   let activePromptCartridge: any = null;
+  let activeDilemmaCartridge: any = null;
 
   try {
     const l3Ref = snapshot.children['l3-session'];
@@ -37,12 +39,16 @@ export function extractCartridges(snapshot: any): CartridgeSnapshots {
       if (promptRef) {
         activePromptCartridge = promptRef.getSnapshot()?.context || null;
       }
+      const dilemmaRef = (l3Snap?.children as any)?.['activeDilemmaCartridge'];
+      if (dilemmaRef) {
+        activeDilemmaCartridge = dilemmaRef.getSnapshot()?.context || null;
+      }
     }
   } catch (err) {
     console.error('[L1] Cartridge context extraction failed:', err);
   }
 
-  return { activeVotingCartridge, rawGameCartridge, activePromptCartridge };
+  return { activeVotingCartridge, rawGameCartridge, activePromptCartridge, activeDilemmaCartridge };
 }
 
 /** Extract L3 context from an L2 snapshot, with fallback chatLog. */
@@ -192,6 +198,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       activeVotingCartridge: cartridges.activeVotingCartridge,
       activeGameCartridge,
       activePromptCartridge: projectPromptCartridge(cartridges.activePromptCartridge),
+      activeDilemmaCartridge: projectDilemmaCartridge(cartridges.activeDilemmaCartridge),
       winner: snapshot.context.winner,
       goldPool: snapshot.context.goldPool ?? 0,
       goldPayouts: snapshot.context.goldPayouts ?? [],
