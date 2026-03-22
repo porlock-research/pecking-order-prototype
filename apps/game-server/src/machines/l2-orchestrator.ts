@@ -2,7 +2,7 @@ import { setup, assign, sendTo, raise } from 'xstate';
 import type { AnyActorRef } from 'xstate';
 import { dailySessionMachine } from './l3-session';
 import { postGameMachine } from './l4-post-game';
-import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, DailyManifest, Events } from '@pecking-order/shared-types';
+import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, DailyManifest, Events, type DilemmaOutput } from '@pecking-order/shared-types';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from './cartridges/prompts/_contract';
 
@@ -30,7 +30,7 @@ export interface GameContext {
   goldPayouts: Array<{ playerId: string; amount: number; reason: string }>;
   gameHistory: GameHistoryEntry[];
   completedPhases: Array<{
-    kind: 'voting' | 'game' | 'prompt';
+    kind: 'voting' | 'game' | 'prompt' | 'dilemma';
     dayIndex: number;
     completedAt: number;
     [key: string]: any;
@@ -55,7 +55,9 @@ export type GameEvent =
   | { type: 'CARTRIDGE.GAME_RESULT'; result: GameOutput }
   | { type: 'CARTRIDGE.PLAYER_GAME_RESULT'; playerId: string; silverReward: number; goldContribution?: number }
   | { type: 'CARTRIDGE.PROMPT_RESULT'; result: PromptOutput; promptType?: string; promptText?: string; participantCount?: number; results?: any }
+  | { type: 'CARTRIDGE.DILEMMA_RESULT'; result: DilemmaOutput }
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
+  | { type: `DILEMMA.${string}`; senderId: string; [key: string]: any }
   | { type: 'ECONOMY.CREDIT_SILVER'; rewards: Record<string, number> }
   | { type: 'ECONOMY.CONTRIBUTE_GOLD'; amount: number; source: string }
   | { type: 'SOCIAL.USE_PERK'; senderId: string; perkType: string; targetId?: string }
@@ -194,6 +196,7 @@ export const orchestratorMachine = setup({
             'CARTRIDGE.GAME_RESULT': { actions: ['recordGameResult', 'recordCompletedGame', 'emitGameResultFact', 'raiseGameEconomyEvents'] },
             'CARTRIDGE.PLAYER_GAME_RESULT': { actions: ['emitPlayerGameResultFact', 'raisePlayerGameEconomyEvent'] },
             'CARTRIDGE.PROMPT_RESULT': { actions: ['recordCompletedPrompt', 'emitPromptResultFact', 'raisePromptEconomyEvents'] },
+            'CARTRIDGE.DILEMMA_RESULT': { actions: ['emitDilemmaResultFact', 'raiseDilemmaEconomyEvents', 'recordCompletedDilemma'] },
             'ADMIN.ELIMINATE_PLAYER': { actions: 'adminEliminatePlayer' },
             'ECONOMY.CREDIT_SILVER': { actions: 'applySilverCredit' },
             'ECONOMY.CONTRIBUTE_GOLD': { actions: 'applyGoldContribution' },
@@ -218,6 +221,10 @@ export const orchestratorMachine = setup({
               },
               {
                 guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX),
+                actions: sendTo('l3-session', ({ event }: any) => event),
+              },
+              {
+                guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Dilemma.PREFIX),
                 actions: sendTo('l3-session', ({ event }: any) => event),
               }
             ],

@@ -255,7 +255,8 @@ export function handleMessage(ctx: WsContext, ws: Connection, message: string): 
     const isAllowed = ALLOWED_CLIENT_EVENTS.includes(event.type)
       || (typeof event.type === 'string' && event.type.startsWith(Events.Vote.PREFIX))
       || (typeof event.type === 'string' && event.type.startsWith(Events.Game.PREFIX))
-      || (typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX));
+      || (typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX))
+      || (typeof event.type === 'string' && event.type.startsWith(Events.Dilemma.PREFIX));
     if (!isAllowed) {
       log('warn', 'L1', 'Rejected event type from client', { eventType: event.type });
       return;

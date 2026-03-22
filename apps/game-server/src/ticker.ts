@@ -138,6 +138,17 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
       }
       return null;
     }
+    case FactTypes.DILEMMA_RESULT: {
+      const dilemmaRewards = fact.payload?.silverRewards;
+      const dilemmaPlayerIds = dilemmaRewards ? Object.keys(dilemmaRewards) : [];
+      return {
+        id: crypto.randomUUID(),
+        text: 'Daily Dilemma resolved!',
+        category: TickerCategories.DILEMMA,
+        timestamp: fact.timestamp,
+        involvedPlayerIds: dilemmaPlayerIds,
+      };
+    }
     default:
       return null;
   }

@@ -1,7 +1,7 @@
 import { assign, raise, enqueueActions } from 'xstate';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from '../cartridges/prompts/_contract';
-import { PERK_COSTS, Config, type PerkType, type GameHistoryEntry, Events, FactTypes } from '@pecking-order/shared-types';
+import { PERK_COSTS, Config, type PerkType, type GameHistoryEntry, Events, FactTypes, type DilemmaOutput } from '@pecking-order/shared-types';
 
 /**
  * L2 Economy Subsystem — all currency mutation logic in one place.
@@ -243,6 +243,41 @@ export const l2EconomyActions = {
         silverRewards: result.silverRewards || {},
         participantCount: event.participantCount || 0,
         results: event.results || null,
+      }];
+    },
+  }),
+
+  // --- Dilemma result recording ---
+
+  raiseDilemmaEconomyEvents: enqueueActions(({ enqueue, event }: any) => {
+    const result = event.result as DilemmaOutput;
+    const silverRewards = result?.silverRewards || {};
+    const hasRewards = Object.values(silverRewards).some((v: any) => v > 0);
+    if (hasRewards) {
+      enqueue.raise({ type: Events.Economy.CREDIT_SILVER, rewards: silverRewards } as any);
+    }
+  }),
+
+  emitDilemmaResultFact: raise(({ event }: any) => ({
+    type: Events.Fact.RECORD,
+    fact: {
+      type: FactTypes.DILEMMA_RESULT,
+      actorId: 'SYSTEM',
+      payload: { dilemmaType: event.result?.dilemmaType, silverRewards: event.result?.silverRewards || {} },
+      timestamp: Date.now(),
+    },
+  } as any)),
+
+  recordCompletedDilemma: assign({
+    completedPhases: ({ context, event }: any) => {
+      const result = event.result as DilemmaOutput;
+      return [...(context.completedPhases || []), {
+        kind: 'dilemma' as const,
+        dayIndex: context.dayIndex,
+        completedAt: Date.now(),
+        dilemmaType: result.dilemmaType || 'UNKNOWN',
+        silverRewards: result.silverRewards || {},
+        summary: result.summary || {},
       }];
     },
   }),
