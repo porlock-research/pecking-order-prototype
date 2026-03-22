@@ -43,6 +43,7 @@ export function buildDemoSyncPayload(
       activeVotingCartridge: null,
       activeGameCartridge: null,
       activePromptCartridge: null,
+      activeDilemmaCartridge: null,
       winner: context.winner,
       goldPool: context.goldPool,
       goldPayouts: [],
