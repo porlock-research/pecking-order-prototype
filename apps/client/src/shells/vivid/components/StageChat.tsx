@@ -7,10 +7,11 @@ import { ChatInput } from './ChatInput';
 import VotingPanel from '../../../components/panels/VotingPanel';
 import GamePanel from '../../../components/panels/GamePanel';
 import PromptPanel from '../../../components/panels/PromptPanel';
+import DilemmaPanel from '../../../components/panels/DilemmaPanel';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
-import { AltArrowDown, Scale, Gamepad, ChatDots, Crown } from '@solar-icons/react';
+import { AltArrowDown, Scale, Gamepad, ChatDots, Crown, HandMoney } from '@solar-icons/react';
 import { WELCOME_MESSAGES } from '@pecking-order/shared-types';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 import { CompactProgressBar } from './dashboard/CompactProgressBar';
@@ -122,6 +123,7 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
   const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
   const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
   const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
+  const activeDilemma = useGameStore(s => s.activeDilemma);
   const entries = useTimeline();
   const chatLog = useGameStore(s => s.chatLog);
   const onlinePlayers = useGameStore(s => s.onlinePlayers);
@@ -144,7 +146,7 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
 
   /* -- Active cartridge state -------------------------------------- */
 
-  const hasActiveCartridge = !!(activeVotingCartridge || activeGameCartridge || activePromptCartridge);
+  const hasActiveCartridge = !!(activeVotingCartridge || activeGameCartridge || activePromptCartridge || activeDilemma);
 
   /* -- Scroll management ------------------------------------------- */
 
@@ -234,13 +236,17 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
       ? 'Return to Game'
       : activePromptCartridge
         ? 'Return to Activity'
-        : null;
+        : activeDilemma
+          ? 'Return to Dilemma'
+          : null;
 
   const ReturnPillIcon = activeVotingCartridge
     ? Scale
     : activeGameCartridge
       ? Gamepad
-      : ChatDots;
+      : activeDilemma
+        ? HandMoney
+        : ChatDots;
 
   /* ---------------------------------------------------------------- */
   /*  Render                                                           */
@@ -425,6 +431,13 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                   </div>
                 );
 
+              case 'dilemma':
+                return (
+                  <div key={entry.key} ref={cartridgeRef} style={{ marginTop }}>
+                    <DilemmaPanel engine={engine} />
+                  </div>
+                );
+
               default:
                 return null;
             }
@@ -480,7 +493,9 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                     ? '#E89B3A'
                     : activeGameCartridge
                       ? '#3BA99C'
-                      : '#8B6CC1',
+                      : activeDilemma
+                        ? '#B8840A'
+                        : '#8B6CC1',
                   color: '#FFFFFF',
                   border: 'none',
                   fontWeight: 700,

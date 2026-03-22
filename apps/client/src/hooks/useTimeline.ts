@@ -11,6 +11,7 @@ export function useTimeline(): TimelineEntry[] {
   const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
   const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
   const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
+  const activeDilemma = useGameStore(s => s.activeDilemma);
 
   return useMemo(() => {
     const entries: TimelineEntry[] = [];
@@ -33,7 +34,10 @@ export function useTimeline(): TimelineEntry[] {
     if (activePromptCartridge) {
       entries.push({ kind: 'prompt', key: 'active-prompt', timestamp: Number.MAX_SAFE_INTEGER });
     }
+    if (activeDilemma) {
+      entries.push({ kind: 'dilemma', key: 'active-dilemma', timestamp: Number.MAX_SAFE_INTEGER });
+    }
 
     return entries;
-  }, [chatLog, activeVotingCartridge, activeGameCartridge, activePromptCartridge]);
+  }, [chatLog, activeVotingCartridge, activeGameCartridge, activePromptCartridge, activeDilemma]);
 }
