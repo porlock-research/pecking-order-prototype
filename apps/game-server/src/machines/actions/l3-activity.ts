@@ -17,7 +17,10 @@ export const l3ActivityActions = {
   spawnPromptCartridge: assign({
     activePromptCartridgeRef: ({ context, spawn, event }: any) => {
       const payload = event.payload;
-      const promptType = payload?.promptType || 'PLAYER_PICK';
+      // Read activityType from manifest (set by Game Master for dynamic days),
+      // fall back to event payload (for INJECT_PROMPT admin commands),
+      // then default to PLAYER_PICK
+      const promptType = context.manifest?.activityType || payload?.promptType || 'PLAYER_PICK';
       if (!(promptType in PROMPT_REGISTRY)) {
         log('error', 'L3', 'Unknown promptType, ignoring', { promptType });
         return null;
