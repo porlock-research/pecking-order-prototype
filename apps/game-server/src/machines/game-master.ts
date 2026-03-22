@@ -6,6 +6,7 @@ import type {
   VoteType,
   GameType,
   PromptType,
+  DilemmaType,
   DailyManifest,
   GameHistoryEntry,
   GameMasterAction,
@@ -164,6 +165,47 @@ function resolveActivityType(
   return 'NONE';
 }
 
+function resolveDilemmaType(
+  dayIndex: number,
+  rules: PeckingOrderRuleset['dilemmas'] | undefined,
+  gameHistory: GameHistoryEntry[],
+): DilemmaType | 'NONE' {
+  if (!rules || rules.mode === 'NONE') return 'NONE';
+
+  // Whitelist mode (dynamic)
+  if (rules.allowed) {
+    if (rules.allowed.length === 0) return 'NONE';
+    let pool = [...rules.allowed];
+    if (rules.avoidRepeat && gameHistory.length > 0) {
+      const lastEntry = gameHistory[gameHistory.length - 1];
+      if ((lastEntry as any)?.dilemmaType) {
+        const filtered = pool.filter(d => d !== (lastEntry as any).dilemmaType);
+        if (filtered.length > 0) pool = filtered;
+      }
+    }
+    return pool[(dayIndex - 1) % pool.length];
+  }
+
+  // Legacy strategy mode
+  if (rules.mode === 'SEQUENCE' && rules.sequence) {
+    const idx = Math.min(dayIndex - 1, rules.sequence.length - 1);
+    return rules.sequence[idx];
+  }
+  if (rules.mode === 'POOL' && rules.pool) {
+    if (rules.avoidRepeat && gameHistory.length > 0) {
+      const lastEntry = gameHistory[gameHistory.length - 1];
+      if ((lastEntry as any)?.dilemmaType) {
+        const filtered = rules.pool.filter(d => d !== (lastEntry as any).dilemmaType);
+        if (filtered.length > 0) {
+          return filtered[(dayIndex - 1) % filtered.length];
+        }
+      }
+    }
+    return rules.pool[(dayIndex - 1) % rules.pool.length];
+  }
+  return 'NONE';
+}
+
 function scaleValue(
   dayIndex: number,
   totalDays: number,
@@ -213,11 +255,13 @@ function resolveDay(
   const voteType = resolveVoteType(dayIndex, totalDays, ruleset.voting, alive);
   const gameType = resolveGameType(dayIndex, ruleset.games, gameHistory);
   const activityType = resolveActivityType(dayIndex, ruleset.activities, gameHistory);
+  const dilemmaType = resolveDilemmaType(dayIndex, ruleset.dilemmas, gameHistory);
   const social = resolveSocialParams(dayIndex, totalDays, alive, ruleset.social);
 
   const timeline = generateDayTimeline(schedulePreset, dayIndex, startTime, {
     gameType,
     activityType,
+    dilemmaType,
   });
 
   const isLastDay = dayIndex >= totalDays;
@@ -232,12 +276,13 @@ function resolveDay(
       voteType,
       gameType,
       ...(activityType !== 'NONE' ? { activityType } : {}),
+      ...(dilemmaType !== 'NONE' ? { dilemmaType } : {}),
       timeline,
       ...(nextDayStart ? { nextDayStart } : {}),
       ...social,
     },
     totalDays,
-    reasoning: `Day ${dayIndex}/${totalDays}: ${voteType} vote, ${gameType} game, ${activityType} activity, ${social.dmCharsPerPlayer} DM chars, ${timeline.length} timeline events`,
+    reasoning: `Day ${dayIndex}/${totalDays}: ${voteType} vote, ${gameType} game, ${activityType} activity, ${dilemmaType} dilemma, ${social.dmCharsPerPlayer} DM chars, ${timeline.length} timeline events`,
   };
 }
 

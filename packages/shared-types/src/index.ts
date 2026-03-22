@@ -260,6 +260,15 @@ export type PeckingOrderDayCountRules = z.infer<typeof PeckingOrderDayCountRules
 
 // --- GameRuleset (discriminated union — one variant per game type) ---
 
+export const PeckingOrderDilemmaRulesSchema = z.object({
+  mode: z.enum(['SEQUENCE', 'POOL', 'NONE']),
+  sequence: z.array(DilemmaTypeSchema).optional(),
+  pool: z.array(DilemmaTypeSchema).optional(),
+  allowed: z.array(DilemmaTypeSchema).optional(),
+  avoidRepeat: z.boolean().default(true),
+});
+export type PeckingOrderDilemmaRules = z.infer<typeof PeckingOrderDilemmaRulesSchema>;
+
 export const PeckingOrderRulesetSchema = z.object({
   kind: z.literal('PECKING_ORDER'),
   voting: PeckingOrderVotingRulesSchema,
@@ -268,6 +277,7 @@ export const PeckingOrderRulesetSchema = z.object({
   social: PeckingOrderSocialRulesSchema,
   inactivity: PeckingOrderInactivityRulesSchema,
   dayCount: PeckingOrderDayCountRulesSchema,
+  dilemmas: PeckingOrderDilemmaRulesSchema.optional(),
 });
 export type PeckingOrderRuleset = z.infer<typeof PeckingOrderRulesetSchema>;
 

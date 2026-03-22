@@ -9,6 +9,7 @@ describe('generateDayTimeline', () => {
       const events = generateDayTimeline('SPEED_RUN', 1, startTime, {
         gameType: 'TRIVIA',
         activityType: 'PLAYER_PICK',
+        dilemmaType: 'NONE',
       });
       const actions = events.map(e => e.action);
       expect(actions).toEqual([
@@ -23,6 +24,7 @@ describe('generateDayTimeline', () => {
       const events = generateDayTimeline('SPEED_RUN', 1, startTime, {
         gameType: 'TRIVIA',
         activityType: 'PLAYER_PICK',
+        dilemmaType: 'NONE',
       });
       const base = new Date(startTime).getTime();
       // First event at +0min, last (END_DAY) at +23min
@@ -34,6 +36,7 @@ describe('generateDayTimeline', () => {
       const events = generateDayTimeline('SPEED_RUN', 2, startTime, {
         gameType: 'TRIVIA',
         activityType: 'NONE',
+        dilemmaType: 'NONE',
       });
       const base = new Date(startTime).getTime();
       const day2Base = base + (23 + 3) * 60_000; // 26min offset
@@ -44,6 +47,7 @@ describe('generateDayTimeline', () => {
       const events = generateDayTimeline('SPEED_RUN', 1, startTime, {
         gameType: 'NONE',
         activityType: 'PLAYER_PICK',
+        dilemmaType: 'NONE',
       });
       const actions = events.map(e => e.action);
       expect(actions).not.toContain('START_GAME');
@@ -54,6 +58,7 @@ describe('generateDayTimeline', () => {
       const events = generateDayTimeline('SPEED_RUN', 1, startTime, {
         gameType: 'TRIVIA',
         activityType: 'NONE',
+        dilemmaType: 'NONE',
       });
       const actions = events.map(e => e.action);
       expect(actions).not.toContain('START_ACTIVITY');
@@ -68,6 +73,7 @@ describe('generateDayTimeline', () => {
       const events = generateDayTimeline('DEFAULT', 1, startTime, {
         gameType: 'TRIVIA',
         activityType: 'PLAYER_PICK',
+        dilemmaType: 'NONE',
       });
       // First event: OPEN_GROUP_CHAT at 09:00 on March 10
       expect(events[0].action).toBe('OPEN_GROUP_CHAT');
@@ -81,6 +87,7 @@ describe('generateDayTimeline', () => {
       const events = generateDayTimeline('DEFAULT', 2, startTime, {
         gameType: 'TRIVIA',
         activityType: 'PLAYER_PICK',
+        dilemmaType: 'NONE',
       });
       expect(events[0].time).toBe('2026-03-11T09:00:00.000Z');
     });
@@ -93,6 +100,7 @@ describe('generateDayTimeline', () => {
       const events = generateDayTimeline('COMPACT', 1, startTime, {
         gameType: 'TRIVIA',
         activityType: 'PLAYER_PICK',
+        dilemmaType: 'NONE',
       });
       expect(events[0].time).toBe('2026-03-10T09:00:00.000Z');
       const endDay = events.find(e => e.action === 'END_DAY');

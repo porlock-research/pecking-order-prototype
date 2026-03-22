@@ -5,6 +5,7 @@ type TimelineAction = TimelineEvent['action'];
 interface DayOptions {
   gameType: string;
   activityType: string;
+  dilemmaType: string;
 }
 
 // ── Canonical event ordering ────────────────────────────────────────────
@@ -20,18 +21,20 @@ interface DayOptions {
 interface OffsetEventDef {
   action: TimelineAction;
   offsetMin: number;
-  condition?: 'hasGame' | 'hasActivity';
+  condition?: 'hasGame' | 'hasActivity' | 'hasDilemma';
 }
 
 // Canonical event sequence with minute offsets. Every preset scales these.
 const CANONICAL_EVENTS: OffsetEventDef[] = [
   { action: 'OPEN_GROUP_CHAT', offsetMin: 0 },
+  { action: 'START_DILEMMA',   offsetMin: 1, condition: 'hasDilemma' },
   { action: 'OPEN_DMS',        offsetMin: 60 },
   { action: 'CLOSE_GROUP_CHAT', offsetMin: 61 },
   { action: 'START_GAME',      offsetMin: 62, condition: 'hasGame' },
   { action: 'END_GAME',        offsetMin: 180, condition: 'hasGame' },
   { action: 'START_ACTIVITY',  offsetMin: 300, condition: 'hasActivity' },
   { action: 'END_ACTIVITY',    offsetMin: 420, condition: 'hasActivity' },
+  { action: 'END_DILEMMA',     offsetMin: 600, condition: 'hasDilemma' },
   { action: 'OPEN_VOTING',     offsetMin: 660 },
   { action: 'CLOSE_VOTING',    offsetMin: 840 },
   { action: 'CLOSE_DMS',       offsetMin: 841 },
@@ -43,7 +46,7 @@ const CANONICAL_EVENTS: OffsetEventDef[] = [
 interface CalendarPresetConfig {
   type: 'calendar';
   firstEventTime: string;  // "HH:MM" — used for next-day-start scheduling
-  events: { action: TimelineAction; clockTime: string; condition?: 'hasGame' | 'hasActivity' }[];
+  events: { action: TimelineAction; clockTime: string; condition?: 'hasGame' | 'hasActivity' | 'hasDilemma' }[];
 }
 
 interface OffsetPresetConfig {
@@ -80,12 +83,14 @@ const PRESET_CONFIGS: Record<SchedulePreset, PresetConfig> = {
     firstEventTime: '09:00',
     events: [
       { action: 'OPEN_GROUP_CHAT', clockTime: '09:00' },
+      { action: 'START_DILEMMA',   clockTime: '09:01', condition: 'hasDilemma' },
       { action: 'OPEN_DMS',        clockTime: '10:00' },
       { action: 'CLOSE_GROUP_CHAT', clockTime: '10:01' },
       { action: 'START_GAME',      clockTime: '10:02', condition: 'hasGame' },
       { action: 'END_GAME',        clockTime: '12:00', condition: 'hasGame' },
       { action: 'START_ACTIVITY',  clockTime: '14:00', condition: 'hasActivity' },
       { action: 'END_ACTIVITY',    clockTime: '16:00', condition: 'hasActivity' },
+      { action: 'END_DILEMMA',     clockTime: '19:00', condition: 'hasDilemma' },
       { action: 'OPEN_VOTING',     clockTime: '20:00' },
       { action: 'CLOSE_VOTING',    clockTime: '22:59' },
       { action: 'CLOSE_DMS',       clockTime: '23:00' },
@@ -97,12 +102,14 @@ const PRESET_CONFIGS: Record<SchedulePreset, PresetConfig> = {
     firstEventTime: '09:00',
     events: [
       { action: 'OPEN_GROUP_CHAT', clockTime: '09:00' },
+      { action: 'START_DILEMMA',   clockTime: '09:01', condition: 'hasDilemma' },
       { action: 'OPEN_DMS',        clockTime: '09:30' },
       { action: 'START_GAME',      clockTime: '09:31', condition: 'hasGame' },
       { action: 'CLOSE_GROUP_CHAT', clockTime: '10:30' },
       { action: 'END_GAME',        clockTime: '11:30', condition: 'hasGame' },
       { action: 'START_ACTIVITY',  clockTime: '12:00', condition: 'hasActivity' },
       { action: 'END_ACTIVITY',    clockTime: '13:00', condition: 'hasActivity' },
+      { action: 'END_DILEMMA',     clockTime: '13:30', condition: 'hasDilemma' },
       { action: 'OPEN_VOTING',     clockTime: '14:00' },
       { action: 'CLOSE_VOTING',    clockTime: '16:59' },
       { action: 'CLOSE_DMS',       clockTime: '17:00' },
@@ -120,12 +127,14 @@ const PRESET_CONFIGS: Record<SchedulePreset, PresetConfig> = {
     firstEventTime: '10:00',
     events: [
       { action: 'OPEN_GROUP_CHAT', clockTime: '10:00' },
+      { action: 'START_DILEMMA',   clockTime: '10:01', condition: 'hasDilemma' },
       { action: 'OPEN_DMS',        clockTime: '11:00' },
       { action: 'CLOSE_GROUP_CHAT', clockTime: '12:00' },
       { action: 'START_GAME',      clockTime: '12:01', condition: 'hasGame' },
       { action: 'START_ACTIVITY',  clockTime: '12:02', condition: 'hasActivity' },
       { action: 'END_GAME',        clockTime: '14:00', condition: 'hasGame' },
       { action: 'END_ACTIVITY',    clockTime: '15:00', condition: 'hasActivity' },
+      { action: 'END_DILEMMA',     clockTime: '14:59', condition: 'hasDilemma' },
       { action: 'OPEN_GROUP_CHAT', clockTime: '15:01' },
       { action: 'OPEN_VOTING',     clockTime: '15:02' },
       { action: 'CLOSE_DMS',       clockTime: '16:00' },
@@ -148,6 +157,7 @@ function meetsCondition(condition: string | undefined, opts: DayOptions): boolea
   if (!condition) return true;
   if (condition === 'hasGame') return opts.gameType !== 'NONE';
   if (condition === 'hasActivity') return opts.activityType !== 'NONE';
+  if (condition === 'hasDilemma') return opts.dilemmaType !== 'NONE';
   return true;
 }
 
