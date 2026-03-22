@@ -1656,3 +1656,15 @@ This document tracks significant architectural decisions, their context, and con
     *   L2 `recordCompletedGame` merge backfills completed players into `completedPhases.silverRewards` for both arcade and trivia.
     *   Dashboard leaderboard now shows all participants with correct silver rewards.
     *   Future: Type `GameOutput.summary` properly instead of `Record<string, any>` (GH #70).
+
+## [ADR-112] Daily Dilemma — Parallel Layer in L3
+*   **Date:** 2026-03-22
+*   **Status:** Accepted
+*   **Context:** Playtest 2 feedback: low engagement between phases, no meaningful conversations in group chat. Need a cooperative/defect social mechanic that drives discussion when group chat opens each day.
+*   **Decision:** New `dilemmaLayer` parallel state in L3 (like `activityLayer`). Own timeline events (`START_DILEMMA`/`END_DILEMMA`), own cartridge registry (`DILEMMA_REGISTRY`), own SYNC projection with privacy filtering (hides decisions during COLLECTING, reveals during REVEAL). Doesn't interfere with game/activity/voting slots — a day can have all four. Three initial types: `SILVER_GAMBIT` (all-or-nothing donation), `SPOTLIGHT` (blind unanimous pick), `GIFT_OR_GRIEF` (nominate for +10/-10). Factory pattern (`createDilemmaMachine`) takes config with `validateDecision` and `calculateResults`.
+*   **Consequences:**
+    *   Additive change — no existing machines modified.
+    *   Dilemma announced at `START_DILEMMA` (offset +1min after group chat) and resolved at `END_DILEMMA` (before voting). Players discuss during social phase.
+    *   Game Master supports dilemma resolution via `resolveDilemmaType()` with SEQUENCE/POOL/NONE modes.
+    *   New dilemma types only require a config file + registry entry — no machine or L3 changes.
+    *   Config-driven rewards via `Config.dilemma.*` in shared-types.
