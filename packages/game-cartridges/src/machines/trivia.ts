@@ -5,6 +5,11 @@
  * within the game window. No global timer — each player's timer starts when
  * they begin or advance to a new question. Server validates timing; client
  * manages countdown UI and auto-submits on timeout.
+ *
+ * Players can RETRY (return to PLAYING with fresh questions) or SUBMIT
+ * (finalize) after completing all rounds. On deadline (INTERNAL.END_GAME),
+ * AWAITING_DECISION players are auto-submitted and mid-retry PLAYING
+ * players fall back to their previousResult.
  */
 import { setup, assign, sendParent, enqueueActions, fromPromise, type AnyEventObject } from 'xstate';
 import type { GameCartridgeInput, SocialPlayer } from '@pecking-order/shared-types';
@@ -21,10 +26,23 @@ function pickRandomQuestions(pool: TriviaQuestion[], count: number): TriviaQuest
   return shuffled.slice(0, count);
 }
 
+/** Pick fresh questions excluding already-used IDs. Falls back to repeats if pool is exhausted. */
+function pickFreshQuestions(pool: TriviaQuestion[], count: number, usedIds: Set<string>): TriviaQuestion[] {
+  const fresh = pool.filter(q => !usedIds.has(q.id));
+  if (fresh.length >= count) {
+    return pickRandomQuestions(fresh, count);
+  }
+  // Not enough fresh questions — fill remainder from full pool
+  const picked = pickRandomQuestions(fresh, fresh.length);
+  const remaining = count - picked.length;
+  const filler = pickRandomQuestions(pool, remaining);
+  return [...picked, ...filler];
+}
+
 // --- Per-Player State ---
 
 export interface PlayerTriviaState {
-  status: 'NOT_STARTED' | 'PLAYING' | 'COMPLETED';
+  status: 'NOT_STARTED' | 'PLAYING' | 'AWAITING_DECISION' | 'COMPLETED';
   currentRound: number;
   totalRounds: number;
   questionStartedAt: number;
@@ -43,6 +61,13 @@ export interface PlayerTriviaState {
     difficulty?: string;
   } | null;
   silverReward: number;
+  goldReward: number;
+  result: Record<string, number> | null;
+  retryCount: number;
+  previousResult: Record<string, number> | null;
+  previousSilverReward: number;
+  previousGoldReward: number;
+  usedQuestionIds: string[];
 }
 
 function createPlayerState(): PlayerTriviaState {
@@ -57,6 +82,13 @@ function createPlayerState(): PlayerTriviaState {
     currentQuestion: null,
     lastRoundResult: null,
     silverReward: 0,
+    goldReward: 0,
+    result: null,
+    retryCount: 0,
+    previousResult: null,
+    previousSilverReward: 0,
+    previousGoldReward: 0,
+    usedQuestionIds: [],
   };
 }
 
@@ -102,9 +134,13 @@ export const triviaMachine = setup({
       if (event.type !== TriviaEvents.START) return {};
       const senderId = (event as any).senderId as string;
       const player = context.players[senderId];
-      if (!player || player.status !== ArcadePhases.NOT_STARTED) return {};
+      // Accept NOT_STARTED (first start) or PLAYING (retry re-start)
+      if (!player || (player.status !== ArcadePhases.NOT_STARTED && player.status !== ArcadePhases.PLAYING)) return {};
 
-      const questions = pickRandomQuestions(context.questionPool, TOTAL_ROUNDS);
+      // On retry re-start, questions are already assigned by retryPlayer
+      const questions = player.status === ArcadePhases.PLAYING && player.questions.length > 0
+        ? player.questions
+        : pickRandomQuestions(context.questionPool, TOTAL_ROUNDS);
       const q = questions[0];
 
       return {
@@ -151,6 +187,7 @@ export const triviaMachine = setup({
 
       const newScore = player.score + silver;
       const newCorrectCount = player.correctCount + (correct ? 1 : 0);
+      const newGoldReward = player.goldReward + (correct ? GOLD_PER_CORRECT : 0);
       const nextRound = player.currentRound + 1;
       const isComplete = nextRound > TOTAL_ROUNDS;
 
@@ -167,12 +204,14 @@ export const triviaMachine = setup({
         ? newScore + PERFECT_BONUS
         : newScore;
 
+      // Transition to AWAITING_DECISION on completion (not COMPLETED)
+      // Gold is accumulated per-player, NOT in machine goldContribution
       enqueue.assign({
         players: {
           ...context.players,
           [senderId]: {
             ...player,
-            status: isComplete ? ArcadePhases.COMPLETED : ArcadePhases.PLAYING,
+            status: isComplete ? ArcadePhases.AWAITING_DECISION : ArcadePhases.PLAYING,
             currentRound: isComplete ? player.currentRound : nextRound,
             score: isComplete ? finalScore : newScore,
             correctCount: newCorrectCount,
@@ -189,36 +228,121 @@ export const triviaMachine = setup({
               difficulty: q.difficulty,
             },
             silverReward: isComplete ? finalScore : 0,
+            goldReward: newGoldReward,
+            result: isComplete ? { score: finalScore, correctCount: newCorrectCount } : player.result,
           },
         },
-        goldContribution: context.goldContribution + (correct ? GOLD_PER_CORRECT : 0),
+      });
+    }),
+
+    submitPlayer: enqueueActions(({ enqueue, context, event }) => {
+      const senderId = (event as any).senderId as string;
+      const player = context.players[senderId];
+      if (!player || player.status !== ArcadePhases.AWAITING_DECISION) return;
+
+      // Add player's gold to machine contribution and mark COMPLETED
+      enqueue.assign({
+        players: {
+          ...context.players,
+          [senderId]: {
+            ...player,
+            status: ArcadePhases.COMPLETED,
+          },
+        },
+        goldContribution: context.goldContribution + player.goldReward,
       });
 
-      // Per-player reward: emit immediately when player completes
-      if (isComplete) {
-        enqueue.raise({ type: 'PLAYER_COMPLETED', playerId: senderId, silverReward: finalScore } as any);
-      }
+      enqueue.raise({ type: 'PLAYER_COMPLETED', playerId: senderId, silverReward: player.silverReward, goldContribution: player.goldReward } as any);
 
-      // Check if ALL alive players are now complete
-      if (isComplete) {
-        const allDone = context.alivePlayers.every(pid =>
-          pid === senderId ? true : context.players[pid]?.status === ArcadePhases.COMPLETED
-        );
-        if (allDone) {
-          enqueue.raise({ type: 'ALL_COMPLETE' } as any);
-        }
+      // Check if all alive players are now COMPLETED
+      const allDone = context.alivePlayers.every((pid: string) =>
+        pid === senderId ? true : context.players[pid]?.status === ArcadePhases.COMPLETED
+      );
+      if (allDone) {
+        enqueue.raise({ type: 'ALL_COMPLETE' } as any);
       }
     }),
 
+    retryPlayer: assign(({ context, event }) => {
+      const senderId = (event as any).senderId as string;
+      const player = context.players[senderId];
+      if (!player || player.status !== ArcadePhases.AWAITING_DECISION) return {};
+
+      // Collect used question IDs (current + previously used)
+      const newUsedIds = [...player.usedQuestionIds, ...player.questions.map(q => q.id)];
+      const usedIdSet = new Set(newUsedIds);
+
+      // Draw fresh questions from pool, excluding used IDs
+      const freshQuestions = pickFreshQuestions(context.questionPool, TOTAL_ROUNDS, usedIdSet);
+      const q = freshQuestions[0];
+
+      return {
+        players: {
+          ...context.players,
+          [senderId]: {
+            ...player,
+            status: ArcadePhases.PLAYING,
+            previousResult: player.result,
+            previousSilverReward: player.silverReward,
+            previousGoldReward: player.goldReward,
+            retryCount: player.retryCount + 1,
+            usedQuestionIds: newUsedIds,
+            // Reset play state
+            currentRound: 1,
+            score: 0,
+            correctCount: 0,
+            questions: freshQuestions,
+            questionStartedAt: Date.now(),
+            currentQuestion: q ? { question: q.question, options: q.options, category: q.category, difficulty: q.difficulty } : null,
+            lastRoundResult: null,
+            silverReward: 0,
+            goldReward: 0,
+            result: null,
+          },
+        },
+      };
+    }),
+
     finalizeResults: assign(({ context }) => {
-      // For players who didn't finish, their current score is their reward
       const updatedPlayers = { ...context.players };
+      let goldContribution = context.goldContribution;
+
       for (const [pid, player] of Object.entries(updatedPlayers)) {
-        if (player.status !== ArcadePhases.COMPLETED) {
-          updatedPlayers[pid] = { ...player, silverReward: player.score };
+        if (player.status === ArcadePhases.AWAITING_DECISION) {
+          // Auto-submit: use current result/rewards
+          goldContribution += player.goldReward;
+          updatedPlayers[pid] = { ...player, status: ArcadePhases.COMPLETED };
+        } else if (player.status === ArcadePhases.PLAYING) {
+          if (player.previousResult) {
+            // Mid-retry: fall back to previous result
+            updatedPlayers[pid] = {
+              ...player,
+              score: player.previousResult.score ?? player.score,
+              correctCount: player.previousResult.correctCount ?? player.correctCount,
+              silverReward: player.previousSilverReward,
+              goldReward: player.previousGoldReward,
+              status: ArcadePhases.COMPLETED,
+            };
+            goldContribution += player.previousGoldReward;
+          } else {
+            // First run, never completed: partial credit for current score
+            updatedPlayers[pid] = {
+              ...player,
+              silverReward: player.score,
+              goldReward: 0,
+              status: ArcadePhases.COMPLETED,
+            };
+          }
+        } else if (player.status === ArcadePhases.NOT_STARTED) {
+          // Never started: zero rewards
+          updatedPlayers[pid] = {
+            ...player,
+            silverReward: 0,
+            goldReward: 0,
+          };
         }
       }
-      return { players: updatedPlayers };
+      return { players: updatedPlayers, goldContribution };
     }),
 
     reportResults: sendParent(({ context }): AnyEventObject => ({
@@ -316,11 +440,13 @@ export const triviaMachine = setup({
       on: {
         [TriviaEvents.START]: { target: 'active', reenter: true, actions: 'startPlayer' },
         [TriviaEvents.ANSWER]: { target: 'active', reenter: true, actions: 'processAnswer' },
+        [Events.Game.SUBMIT]: { actions: 'submitPlayer' },
+        [Events.Game.RETRY]: { actions: 'retryPlayer' },
         'PLAYER_COMPLETED': {
           actions: 'emitPlayerGameResult',
         },
         'ALL_COMPLETE': { target: 'completed' },
-        'INTERNAL.END_GAME': { target: 'completed' },
+        [Events.Internal.END_GAME]: { target: 'completed' },
       },
     },
     completed: {
