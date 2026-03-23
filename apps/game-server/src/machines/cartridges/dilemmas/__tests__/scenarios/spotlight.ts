@@ -13,10 +13,9 @@ const UR = Config.dilemma.spotlight.unanimousReward;
 
 export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
   {
-    name: 'all pick same player (3 of 4 submit) — unanimous, target gets bonus',
+    name: '3 of 4 pick same player + timeout — no reward (universal participation required)',
     dilemmaType: 'SPOTLIGHT',
     roster: alive4(),
-    // p0, p1, p3 all pick p2. p2 does not submit. (allSubmit=false)
     decisions: {
       p0: { targetId: 'p2' },
       p1: { targetId: 'p2' },
@@ -24,12 +23,11 @@ export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
     },
     allSubmit: false,
     expected: {
-      silverRewards: {
-        p2: UR, // target gets unanimousReward
-      },
+      silverRewards: {},
       summary: {
-        unanimous: true,
-        targetId: 'p2',
+        timedOut: true,
+        submitted: 3,
+        eligible: 4,
       },
     },
   },
@@ -95,7 +93,7 @@ export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
   // --- TIMEOUT / PARTIAL SUBMISSION EDGE CASES ---
 
   {
-    name: 'zero submissions + timeout — empty silverRewards',
+    name: 'zero submissions + timeout — no reward (universal participation required)',
     dilemmaType: 'SPOTLIGHT',
     roster: alive4(),
     decisions: {},
@@ -103,13 +101,14 @@ export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
     expected: {
       silverRewards: {},
       summary: {
-        unanimous: false,
-        targetId: null,
+        timedOut: true,
+        submitted: 0,
+        eligible: 4,
       },
     },
   },
   {
-    name: 'single submission + timeout — vacuous unanimity, target gets bonus',
+    name: 'single submission + timeout — no reward (universal participation required)',
     dilemmaType: 'SPOTLIGHT',
     roster: alive4(),
     decisions: {
@@ -117,32 +116,29 @@ export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
     },
     allSubmit: false,
     expected: {
-      silverRewards: {
-        p1: UR, // single vote = unanimous
-      },
+      silverRewards: {},
       summary: {
-        unanimous: true,
-        targetId: 'p1',
+        timedOut: true,
+        submitted: 1,
+        eligible: 4,
       },
     },
   },
   {
-    name: 'unanimous with 2 of 3 submitting — target gets bonus',
+    name: '2 of 3 submit (unanimous pick) + timeout — no reward (universal participation required)',
     dilemmaType: 'SPOTLIGHT',
     roster: alive3(),
-    // p0 and p1 both pick p2. p2 does not submit. Unanimous.
     decisions: {
       p0: { targetId: 'p2' },
       p1: { targetId: 'p2' },
     },
     allSubmit: false,
     expected: {
-      silverRewards: {
-        p2: UR, // target gets unanimousReward
-      },
+      silverRewards: {},
       summary: {
-        unanimous: true,
-        targetId: 'p2',
+        timedOut: true,
+        submitted: 2,
+        eligible: 3,
       },
     },
   },

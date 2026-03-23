@@ -97,7 +97,7 @@ export const GIFT_OR_GRIEF_SCENARIOS: DilemmaScenario[] = [
   // --- TIMEOUT / PARTIAL SUBMISSION EDGE CASES ---
 
   {
-    name: 'zero submissions + timeout — empty silverRewards',
+    name: 'zero submissions + timeout — no reward (universal participation required)',
     dilemmaType: 'GIFT_OR_GRIEF',
     roster: alive4(),
     decisions: {},
@@ -105,47 +105,44 @@ export const GIFT_OR_GRIEF_SCENARIOS: DilemmaScenario[] = [
     expected: {
       silverRewards: {},
       summary: {
-        giftedIds: [],
-        grievedIds: [],
+        timedOut: true,
+        submitted: 0,
+        eligible: 4,
       },
     },
   },
   {
-    name: 'single submission + timeout — target gets gift only (max===min)',
+    name: 'single submission + timeout — no reward (universal participation required)',
     dilemmaType: 'GIFT_OR_GRIEF',
     roster: alive4(),
-    // p0->p1. Nominations: p1=1. max===min(1) => gift, no grief
     decisions: {
       p0: { targetId: 'p1' },
     },
     allSubmit: false,
     expected: {
-      silverRewards: {
-        p1: GIFT,       // 1 nomination, max===min => gift only
-      },
+      silverRewards: {},
       summary: {
-        giftedIds: ['p1'],
-        grievedIds: [],
+        timedOut: true,
+        submitted: 1,
+        eligible: 4,
       },
     },
   },
   {
-    name: '2 of 4 submit + timeout — target gets gift only',
+    name: '2 of 4 submit + timeout — no reward (universal participation required)',
     dilemmaType: 'GIFT_OR_GRIEF',
     roster: alive4(),
-    // p0->p2, p1->p2. Nominations: p2=2. Only 1 nominated player, max===min => gift, no grief
     decisions: {
       p0: { targetId: 'p2' },
       p1: { targetId: 'p2' },
     },
     allSubmit: false,
     expected: {
-      silverRewards: {
-        p2: GIFT,       // max===min(2) => gift only
-      },
+      silverRewards: {},
       summary: {
-        giftedIds: ['p2'],
-        grievedIds: [],
+        timedOut: true,
+        submitted: 2,
+        eligible: 4,
       },
     },
   },

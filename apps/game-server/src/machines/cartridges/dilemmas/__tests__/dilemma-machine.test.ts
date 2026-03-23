@@ -331,9 +331,11 @@ describe('Dilemma machine lifecycle', () => {
 
     const output = doneOutput(actor);
     expect(output.dilemmaType).toBe('SILVER_GAMBIT');
-    expect((output.summary as any).allDonated).toBe(false);
-    expect((output.summary as any).keeperCount).toBe(1);
-    expect((output.summary as any).donorCount).toBe(1);
+    // Timeout path — no rewards, timedOut summary
+    expect(output.silverRewards).toEqual({});
+    expect((output.summary as any).timedOut).toBe(true);
+    expect((output.summary as any).submitted).toBe(2);
+    expect((output.summary as any).eligible).toBe(4);
 
     actor.stop();
   });
@@ -438,8 +440,9 @@ describe('Dilemma machine lifecycle', () => {
     const output = doneOutput(actor);
     expect(output.dilemmaType).toBe('GIFT_OR_GRIEF');
     expect(output.silverRewards).toEqual({});
-    expect((output.summary as any).giftedIds).toEqual([]);
-    expect((output.summary as any).grievedIds).toEqual([]);
+    expect((output.summary as any).timedOut).toBe(true);
+    expect((output.summary as any).submitted).toBe(0);
+    expect((output.summary as any).eligible).toBe(3);
 
     actor.stop();
   });

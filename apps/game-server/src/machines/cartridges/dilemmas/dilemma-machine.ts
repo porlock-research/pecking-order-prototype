@@ -66,6 +66,10 @@ export function createDilemmaMachine<TDecision>(config: DilemmaConfig<TDecision>
         const results = calculateResults(context.decisions, context.roster, context.dayIndex);
         return { results, phase: DilemmaPhases.REVEAL };
       }),
+      finalizeTimeout: assign(({ context }: any) => ({
+        results: { silverRewards: {}, summary: { timedOut: true, submitted: Object.keys(context.decisions).length, eligible: context.eligiblePlayers.length } },
+        phase: DilemmaPhases.REVEAL,
+      })),
       emitResultFact: sendParent(({ context }: any): AnyEventObject => ({
         type: Events.Fact.RECORD,
         fact: {
@@ -125,12 +129,16 @@ export function createDilemmaMachine<TDecision>(config: DilemmaConfig<TDecision>
             },
           ],
           'INTERNAL.END_DILEMMA': {
-            target: 'completed',
+            target: 'timedOut',
           },
         },
       },
       completed: {
         entry: ['finalizeResults', 'emitResultFact'],
+        type: 'final',
+      },
+      timedOut: {
+        entry: ['finalizeTimeout', 'emitResultFact'],
         type: 'final',
       },
     },

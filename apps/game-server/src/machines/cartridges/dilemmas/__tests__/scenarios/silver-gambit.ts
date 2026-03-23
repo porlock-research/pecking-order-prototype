@@ -113,7 +113,7 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
   // --- TIMEOUT / PARTIAL SUBMISSION EDGE CASES ---
 
   {
-    name: 'zero submissions + timeout — empty silverRewards',
+    name: 'zero submissions + timeout — no reward (universal participation required)',
     dilemmaType: 'SILVER_GAMBIT',
     roster: alive4(),
     decisions: {},
@@ -121,17 +121,14 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
     expected: {
       silverRewards: {},
       summary: {
-        allDonated: false,
-        winnerId: null,
-        jackpot: 0,
-        donorCount: 0,
-        keeperCount: 0,
-        playerCount: 0,
+        timedOut: true,
+        submitted: 0,
+        eligible: 4,
       },
     },
   },
   {
-    name: 'single donation + timeout — solo jackpot (vacuous unanimity)',
+    name: 'single donation + timeout — no reward (universal participation required)',
     dilemmaType: 'SILVER_GAMBIT',
     roster: alive4(),
     decisions: {
@@ -139,19 +136,16 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
     },
     allSubmit: false,
     expected: {
-      silverRewards: {
-        p0: COST * 1 * MULT, // jackpot only (15) — single donor = allDonated, p0 wins
-      },
+      silverRewards: {},
       summary: {
-        allDonated: true,
-        winnerId: 'p0', // seed=1+1=2, 2%1=0, sorted=['p0'] => p0
-        jackpot: COST * 1 * MULT,
-        playerCount: 1,
+        timedOut: true,
+        submitted: 1,
+        eligible: 4,
       },
     },
   },
   {
-    name: '2 of 4 submit (1 donate, 1 keep) + timeout — no silver',
+    name: '2 of 4 submit + timeout — no reward (universal participation required)',
     dilemmaType: 'SILVER_GAMBIT',
     roster: alive4(),
     decisions: {
@@ -162,12 +156,9 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
     expected: {
       silverRewards: {},
       summary: {
-        allDonated: false,
-        winnerId: null,
-        jackpot: 0,
-        donorCount: 1,
-        keeperCount: 1,
-        playerCount: 2,
+        timedOut: true,
+        submitted: 2,
+        eligible: 4,
       },
     },
   },
