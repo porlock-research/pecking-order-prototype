@@ -6,6 +6,7 @@ import {
   CartridgeContainer,
   CartridgeHeader,
   CelebrationSequence,
+  RetryDecisionScreen,
 } from '../shared';
 
 interface ArcadeGameWrapperProps {
@@ -33,8 +34,10 @@ export default function ArcadeGameWrapper({
 }: ArcadeGameWrapperProps) {
   const { status, silverReward, goldContribution, seed, timeLimit, difficulty, gameType } = cartridge;
 
-  const [gamePhase, setGamePhase] = useState<'NOT_STARTED' | 'PLAYING' | 'DEAD' | 'COMPLETED'>(
-    status === ArcadePhases.COMPLETED ? 'COMPLETED' : 'NOT_STARTED'
+  const [gamePhase, setGamePhase] = useState<'NOT_STARTED' | 'PLAYING' | 'DEAD' | 'AWAITING_DECISION' | 'COMPLETED'>(
+    status === ArcadePhases.COMPLETED ? 'COMPLETED'
+      : status === ArcadePhases.AWAITING_DECISION ? 'AWAITING_DECISION'
+      : 'NOT_STARTED'
   );
   const [gameDeadline, setGameDeadline] = useState<number | null>(null);
   const [finalResult, setFinalResult] = useState<Record<string, number>>(
@@ -53,14 +56,32 @@ export default function ArcadeGameWrapper({
     engine.sendGameAction(Events.Game.result(gameType), result);
   };
 
-  // Transition from DEAD -> COMPLETED when server confirms
+  const handleSubmit = () => {
+    engine.sendGameAction(Events.Game.SUBMIT);
+    setGamePhase('COMPLETED');
+  };
+
+  const handleRetry = () => {
+    engine.sendGameAction(Events.Game.RETRY);
+    setGamePhase('NOT_STARTED');
+    setGameDeadline(null);
+  };
+
+  // Transition from DEAD -> AWAITING_DECISION or COMPLETED when server confirms
   useEffect(() => {
+    if (status === ArcadePhases.AWAITING_DECISION && gamePhase === 'DEAD') {
+      const timer = setTimeout(() => setGamePhase('AWAITING_DECISION'), 1200);
+      return () => clearTimeout(timer);
+    }
     if (status === ArcadePhases.COMPLETED && gamePhase === 'DEAD') {
       const timer = setTimeout(() => setGamePhase('COMPLETED'), 1200);
       return () => clearTimeout(timer);
     }
     if (status === ArcadePhases.COMPLETED && gamePhase === 'NOT_STARTED') {
       setGamePhase('COMPLETED');
+    }
+    if (status === ArcadePhases.AWAITING_DECISION && gamePhase === 'NOT_STARTED') {
+      setGamePhase('AWAITING_DECISION');
     }
   }, [status, gamePhase]);
 
@@ -109,6 +130,21 @@ export default function ArcadeGameWrapper({
         <div className="p-6 text-center space-y-3 animate-fade-in">
           <p className="text-sm font-mono text-skin-dim animate-pulse">Calculating score...</p>
         </div>
+      )}
+
+      {/* AWAITING_DECISION: Retry or Submit */}
+      {gamePhase === 'AWAITING_DECISION' && (
+        <RetryDecisionScreen
+          result={finalResult}
+          silverReward={silverReward}
+          goldReward={cartridge.goldReward}
+          previousResult={cartridge.previousResult}
+          previousSilverReward={cartridge.previousSilverReward}
+          retryCount={cartridge.retryCount}
+          onSubmit={handleSubmit}
+          onRetry={handleRetry}
+          renderBreakdown={renderBreakdown ? (r) => renderBreakdown(r, silverReward) : undefined}
+        />
       )}
 
       {/* COMPLETED: Celebration */}

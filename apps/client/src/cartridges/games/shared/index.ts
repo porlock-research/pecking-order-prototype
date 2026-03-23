@@ -6,3 +6,4 @@ export { CartridgeHeader } from './CartridgeHeader';
 export { OptionGrid } from './OptionGrid';
 export { ResultFeedback } from './ResultFeedback';
 export { CelebrationSequence } from './CelebrationSequence';
+export { RetryDecisionScreen } from './RetryDecisionScreen';
