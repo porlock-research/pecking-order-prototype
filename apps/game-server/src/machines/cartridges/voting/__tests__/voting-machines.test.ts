@@ -22,7 +22,7 @@ import {
   TRUST_PAIRS_SCENARIOS,
   SECOND_TO_LAST_SCENARIOS,
   FINALS_SCENARIOS,
-} from './voting-scenarios';
+} from './scenarios';
 
 // ---------------------------------------------------------------------------
 // Helpers
