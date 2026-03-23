@@ -607,9 +607,10 @@ describe('Trust Pairs Machine', () => {
 
     const result = doneOutput(actor);
     // p0 is immune (mutual pair with p1), so votes against p0 don't count
+    // Fallback: lowest silver among non-immune targets (p4 has 30s, lowest)
     expect(result.eliminatedId).not.toBe('p0');
     expect(result.eliminatedId).not.toBe('p1');
-    expect(result.eliminatedId).toBeNull(); // no non-immune votes
+    expect(result.eliminatedId).toBe('p4');
     expect(result.summary.mutualPairs).toEqual(expect.arrayContaining([expect.arrayContaining(['p0', 'p1'])]));
   });
 

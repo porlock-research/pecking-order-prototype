@@ -101,7 +101,7 @@ export const trustPairsMachine = setup({
       }
 
       const maxVotes = Math.max(0, ...Object.values(tallies));
-      let eliminatedId: string | null = null;
+      let eliminatedId: string;
 
       if (maxVotes > 0) {
         const tied = Object.entries(tallies)
@@ -118,6 +118,15 @@ export const trustPairsMachine = setup({
             return currentSilver < lowestSilver ? id : lowest;
           });
         }
+      } else {
+        // No valid elimination votes — fallback: lowest silver among non-immune targets
+        const nonImmune = context.eligibleTargets.filter(id => !immuneSet.has(id));
+        const pool = nonImmune.length > 0 ? nonImmune : context.eligibleTargets;
+        eliminatedId = pool.reduce((lowest, id) => {
+          const lowestSilver = context.roster[lowest]?.silver ?? Infinity;
+          const currentSilver = context.roster[id]?.silver ?? Infinity;
+          return currentSilver < lowestSilver ? id : lowest;
+        }, pool[0]);
       }
 
       return {
