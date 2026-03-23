@@ -9,6 +9,7 @@ import {
   OptionGrid,
   ResultFeedback,
   CelebrationSequence,
+  RetryDecisionScreen,
 } from '../shared';
 
 interface TriviaProps {
@@ -92,7 +93,7 @@ function TriviaScoreBreakdown({
 // --- Main Component ---
 
 export default function Trivia({ cartridge, playerId, roster, engine, onDismiss }: TriviaProps) {
-  const { status, currentRound, totalRounds, currentQuestion, roundDeadline, lastRoundResult, score, correctCount, silverReward, goldContribution } = cartridge;
+  const { status, currentRound, totalRounds, currentQuestion, roundDeadline, lastRoundResult, score, correctCount, silverReward, goldContribution, retryCount, previousResult, previousSilverReward, previousGoldReward } = cartridge;
 
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showingResult, setShowingResult] = useState(false);
@@ -102,6 +103,11 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
   // Initialize immediately if already COMPLETED on mount (reconnect)
   const [completionReady, setCompletionReady] = useState(
     status === ArcadePhases.COMPLETED && !lastRoundResult,
+  );
+
+  // For AWAITING_DECISION: show last-round feedback briefly, then decision screen
+  const [decisionReady, setDecisionReady] = useState(
+    status === ArcadePhases.AWAITING_DECISION && !lastRoundResult,
   );
 
   // When lastRoundResult arrives mid-game (round advanced), show result briefly
@@ -119,15 +125,22 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
     }
   }, [currentRound]);
 
-  // Completion: show last-round feedback briefly, then celebration
+  // AWAITING_DECISION: show last-round feedback briefly, then decision screen
   useEffect(() => {
-    if (status === ArcadePhases.COMPLETED) {
+    if (status === ArcadePhases.AWAITING_DECISION) {
       if (lastRoundResult && selectedAnswer !== null) {
-        const timer = setTimeout(() => setCompletionReady(true), 1500);
+        const timer = setTimeout(() => setDecisionReady(true), 1500);
         return () => clearTimeout(timer);
       } else {
-        setCompletionReady(true);
+        setDecisionReady(true);
       }
+    }
+  }, [status]);
+
+  // Completion: show celebration (only reached after submit)
+  useEffect(() => {
+    if (status === ArcadePhases.COMPLETED) {
+      setCompletionReady(true);
     }
   }, [status]);
 
@@ -147,6 +160,20 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
 
   const handleStart = () => engine.sendGameAction(Events.Game.start('TRIVIA'));
 
+  const handleSubmit = useCallback(() => {
+    engine.sendGameAction(Events.Game.SUBMIT);
+  }, [engine]);
+
+  const handleRetry = useCallback(() => {
+    setSelectedAnswer(null);
+    setShowingResult(false);
+    setDisplayedResult(null);
+    setCompletionReady(false);
+    setDecisionReady(false);
+    prevRoundRef.current = 0;
+    engine.sendGameAction(Events.Game.RETRY);
+  }, [engine]);
+
   const handleAnswer = (idx: number) => {
     if (selectedAnswer !== null || showingResult) return;
     setSelectedAnswer(idx);
@@ -160,7 +187,7 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
 
   const roundInfo = status === ArcadePhases.NOT_STARTED
     ? undefined
-    : status === ArcadePhases.COMPLETED
+    : status === ArcadePhases.COMPLETED || status === ArcadePhases.AWAITING_DECISION
       ? `${totalRounds}/${totalRounds}`
       : `${currentRound}/${totalRounds}`;
 
@@ -234,12 +261,35 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
         </>
       )}
 
-      {/* COMPLETED Phase 1: Last Round Feedback */}
-      {status === ArcadePhases.COMPLETED && !completionReady && lastRoundResult && (
+      {/* AWAITING_DECISION Phase 1: Last Round Feedback */}
+      {status === ArcadePhases.AWAITING_DECISION && !decisionReady && lastRoundResult && (
         <RoundResult result={lastRoundResult} selectedAnswer={selectedAnswer} />
       )}
 
-      {/* COMPLETED Phase 2: Celebration Sequence */}
+      {/* AWAITING_DECISION Phase 2: Retry Decision Screen */}
+      {status === ArcadePhases.AWAITING_DECISION && decisionReady && (
+        <RetryDecisionScreen
+          result={{ score, correctCount }}
+          silverReward={silverReward}
+          goldReward={previousGoldReward}
+          previousResult={previousResult}
+          previousSilverReward={previousSilverReward}
+          retryCount={retryCount}
+          onSubmit={handleSubmit}
+          onRetry={handleRetry}
+          renderBreakdown={(r) => (
+            <TriviaScoreBreakdown
+              correctCount={r.correctCount ?? correctCount}
+              totalRounds={totalRounds}
+              baseSilver={(r.correctCount ?? correctCount) * BASE_SILVER_PER_Q}
+              speedBonuses={Math.max(0, (r.score ?? score) - (r.correctCount ?? correctCount) * BASE_SILVER_PER_Q - ((r.correctCount ?? correctCount) === totalRounds ? PERFECT_BONUS_AMT : 0))}
+              isPerfect={(r.correctCount ?? correctCount) === totalRounds}
+            />
+          )}
+        />
+      )}
+
+      {/* COMPLETED: Celebration Sequence (reached after submit) */}
       {status === ArcadePhases.COMPLETED && completionReady && (
         <CelebrationSequence
           title="Trivia Complete"
