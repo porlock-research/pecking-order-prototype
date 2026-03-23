@@ -10,6 +10,7 @@ initSentry();
 
 const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
 const DemoPage = lazy(() => import('./pages/DemoPage'));
+const ShowcasePage = lazy(() => import('./pages/ShowcasePage'));
 
 const LOBBY_HOST = import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000';
 
@@ -321,6 +322,7 @@ export default function App() {
   // Capture path and hostname at mount time (before init can change it via replaceState)
   const [initialPath] = useState(() => window.location.pathname);
   const isDemo = initialPath === '/demo' || window.location.hostname.startsWith('demo');
+  const isShowcase = initialPath === '/showcase';
   const [gameId, setGameId] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -330,7 +332,7 @@ export default function App() {
 
   useEffect(() => {
     // Skip auth flow entirely for special pages
-    if (isDemo || initialPath === '/dev/games') return;
+    if (isDemo || isShowcase || initialPath === '/dev/games') return;
     init();
 
     async function init() {
@@ -527,6 +529,14 @@ export default function App() {
     return (
       <Suspense fallback={null}>
         <DemoPage />
+      </Suspense>
+    );
+  }
+
+  if (isShowcase) {
+    return (
+      <Suspense fallback={null}>
+        <ShowcasePage />
       </Suspense>
     );
   }
