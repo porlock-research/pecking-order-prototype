@@ -12,7 +12,7 @@ interface DmThread {
 }
 
 export interface CompletedCartridge {
-  kind: 'voting' | 'game' | 'prompt';
+  kind: 'voting' | 'game' | 'prompt' | 'dilemma';
   snapshot: any;   // L2 result data (mechanism, gameType, silverRewards, etc.)
   completedAt: number;
   key: string;
@@ -266,6 +266,19 @@ export const selectSilverHistory = (state: GameState): SilverTransaction[] => {
     }
   }
 
+  // From dilemma results
+  for (const c of state.completedCartridges.filter(c => c.kind === 'dilemma')) {
+    const reward = c.snapshot.silverRewards?.[pid];
+    if (reward) {
+      history.push({
+        type: 'DILEMMA_REWARD',
+        amount: reward,
+        description: `${c.snapshot.dilemmaType ?? 'Dilemma'} reward`,
+        dayIndex: c.snapshot.dayIndex ?? state.dayIndex,
+      });
+    }
+  }
+
   return history;
 };
 
@@ -355,8 +368,8 @@ export const useGameStore = create<GameState>((set) => ({
     // Map server completedPhases to client CompletedCartridge format
     const serverPhases: any[] = data.context?.completedPhases ?? [];
     const completedCartridges: CompletedCartridge[] = serverPhases.map((p: any) => {
-      const kind = p.kind as 'voting' | 'game' | 'prompt';
-      const typeKey = p.mechanism || p.gameType || p.promptType || 'UNKNOWN';
+      const kind = p.kind as 'voting' | 'game' | 'prompt' | 'dilemma';
+      const typeKey = p.mechanism || p.gameType || p.promptType || p.dilemmaType || 'UNKNOWN';
       return {
         kind,
         snapshot: p,

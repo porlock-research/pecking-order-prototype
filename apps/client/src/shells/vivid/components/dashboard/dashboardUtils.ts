@@ -15,7 +15,7 @@ export interface DashboardEvent {
   /** Human-readable label */
   label: string;
   /** Event category for styling/icons */
-  category: 'voting' | 'game' | 'prompt' | 'social' | 'day';
+  category: 'voting' | 'game' | 'prompt' | 'dilemma' | 'social' | 'day';
   /** Completed cartridge snapshot (only when state === 'completed') */
   result?: CompletedCartridge['snapshot'];
   /** Optional payload from manifest */
@@ -34,6 +34,8 @@ const ACTION_CATEGORIES: Record<string, DashboardEvent['category']> = {
   END_GAME: 'game',
   START_ACTIVITY: 'prompt',
   END_ACTIVITY: 'prompt',
+  START_DILEMMA: 'dilemma',
+  END_DILEMMA: 'dilemma',
   END_DAY: 'day',
 };
 
@@ -51,6 +53,7 @@ const PAIRED_ACTIONS: Record<string, string> = {
   CLOSE_VOTING: 'OPEN_VOTING',
   END_GAME: 'START_GAME',
   END_ACTIVITY: 'START_ACTIVITY',
+  END_DILEMMA: 'START_DILEMMA',
   CLOSE_GROUP_CHAT: 'OPEN_GROUP_CHAT',
   CLOSE_DMS: 'OPEN_DMS',
 };
@@ -117,6 +120,12 @@ export function buildDashboardEvents(input: BuildDashboardEventsInput): Dashboar
       } else if (activePhase === 'prompt') {
         state = 'active';
       }
+    } else if (meta.category === 'dilemma') {
+      if (completedByKind['dilemma']) {
+        state = 'completed';
+      } else if (activePhase === 'dilemma') {
+        state = 'active';
+      }
     } else if (meta.category === 'social') {
       // Social events are "active" once we're past the initial phase
       // TODO: time-based state for repeated open/close cycles (e.g., group chat twice in one day)
@@ -149,6 +158,7 @@ function getActivePhase(serverState: unknown): string | null {
   if (s.includes('voting') || s.includes('nightsummary')) return 'voting';
   if (s.includes('game')) return 'game';
   if (s.includes('prompt') || s.includes('activity')) return 'prompt';
+  if (s.includes('dilemma')) return 'dilemma';
   if (s.includes('socialperiod') || s.includes('dmperiod')) return 'social';
   return null;
 }
