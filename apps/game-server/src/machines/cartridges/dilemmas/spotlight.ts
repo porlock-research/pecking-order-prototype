@@ -5,8 +5,8 @@
  *
  * Decision: { targetId: string } (must be another alive player, not self)
  *
- * If ALL pick the same person: target gets unanimousReward.
- * Everyone who participated gets participationReward.
+ * If ALL pick the same person: target gets unanimousReward (20 silver).
+ * No participation silver — only the unanimous bonus matters.
  */
 import { Config, PlayerStatuses } from '@pecking-order/shared-types';
 import type { SocialPlayer } from '@pecking-order/shared-types';
@@ -39,11 +39,6 @@ function calculateResults(
   const playerIds = Object.keys(decisions);
   const silverRewards: Record<string, number> = {};
 
-  // Everyone who participated gets participation reward
-  for (const pid of playerIds) {
-    silverRewards[pid] = Config.dilemma.spotlight.participationReward;
-  }
-
   if (playerIds.length === 0) {
     return { silverRewards, summary: { unanimous: false, targetId: null } };
   }
@@ -54,7 +49,7 @@ function calculateResults(
 
   if (allSame) {
     const targetId = targets[0];
-    silverRewards[targetId] = (silverRewards[targetId] || 0) + Config.dilemma.spotlight.unanimousReward;
+    silverRewards[targetId] = Config.dilemma.spotlight.unanimousReward;
     return {
       silverRewards,
       summary: { unanimous: true, targetId },

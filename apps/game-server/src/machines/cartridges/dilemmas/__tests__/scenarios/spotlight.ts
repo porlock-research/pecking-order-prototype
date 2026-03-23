@@ -6,14 +6,9 @@ import { alive3, alive4 } from './helpers';
 // SPOTLIGHT scenarios
 // ---------------------------------------------------------------------------
 // Blind unanimous pick. Each player picks another alive player (not self).
-// If ALL picks are the same person, that person gets unanimousReward.
-// All participants get participationReward.
-//
-// Note: true unanimity requires ALL submitters to pick the same target.
-// Since you can't self-pick, the target player will always break unanimity
-// when all eligible players submit — unless only partial submissions occur.
+// If ALL picks are the same person, that person gets unanimousReward (20 silver).
+// No participation silver. Only the unanimous bonus matters.
 
-const PR = Config.dilemma.spotlight.participationReward;
 const UR = Config.dilemma.spotlight.unanimousReward;
 
 export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
@@ -30,11 +25,7 @@ export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
     allSubmit: false,
     expected: {
       silverRewards: {
-        p0: PR,
-        p1: PR,
-        // p2 is target: not a submitter so no participation base, gets unanimousReward only
-        p2: UR,
-        p3: PR,
+        p2: UR, // target gets unanimousReward
       },
       summary: {
         unanimous: true,
@@ -43,7 +34,7 @@ export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
     },
   },
   {
-    name: 'split picks (2 pick p1, 2 pick p2) — no bonus, participation only',
+    name: 'split picks (2 pick p1, 2 pick p2) — no bonus, no silver',
     dilemmaType: 'SPOTLIGHT',
     roster: alive4(),
     decisions: {
@@ -54,12 +45,7 @@ export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
     },
     allSubmit: true,
     expected: {
-      silverRewards: {
-        p0: PR,
-        p1: PR,
-        p2: PR,
-        p3: PR,
-      },
+      silverRewards: {},
       summary: {
         unanimous: false,
         targetId: null,
@@ -79,12 +65,7 @@ export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
     },
     allSubmit: true,
     expected: {
-      silverRewards: {
-        p0: PR,
-        p1: PR,
-        p2: PR,
-        p3: PR,
-      },
+      silverRewards: {},
       summary: {
         unanimous: false,
         targetId: null,
@@ -92,7 +73,7 @@ export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
     },
   },
   {
-    name: 'all different picks — no bonus, participation only',
+    name: 'all different picks — no bonus, no silver',
     dilemmaType: 'SPOTLIGHT',
     roster: alive4(),
     decisions: {
@@ -103,15 +84,45 @@ export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
     },
     allSubmit: true,
     expected: {
-      silverRewards: {
-        p0: PR,
-        p1: PR,
-        p2: PR,
-        p3: PR,
-      },
+      silverRewards: {},
       summary: {
         unanimous: false,
         targetId: null,
+      },
+    },
+  },
+
+  // --- TIMEOUT / PARTIAL SUBMISSION EDGE CASES ---
+
+  {
+    name: 'zero submissions + timeout — empty silverRewards',
+    dilemmaType: 'SPOTLIGHT',
+    roster: alive4(),
+    decisions: {},
+    allSubmit: false,
+    expected: {
+      silverRewards: {},
+      summary: {
+        unanimous: false,
+        targetId: null,
+      },
+    },
+  },
+  {
+    name: 'single submission + timeout — vacuous unanimity, target gets bonus',
+    dilemmaType: 'SPOTLIGHT',
+    roster: alive4(),
+    decisions: {
+      p0: { targetId: 'p1' },
+    },
+    allSubmit: false,
+    expected: {
+      silverRewards: {
+        p1: UR, // single vote = unanimous
+      },
+      summary: {
+        unanimous: true,
+        targetId: 'p1',
       },
     },
   },
@@ -127,9 +138,7 @@ export const SPOTLIGHT_SCENARIOS: DilemmaScenario[] = [
     allSubmit: false,
     expected: {
       silverRewards: {
-        p0: PR,
-        p1: PR,
-        p2: UR, // target: not a submitter, gets unanimousReward only
+        p2: UR, // target gets unanimousReward
       },
       summary: {
         unanimous: true,

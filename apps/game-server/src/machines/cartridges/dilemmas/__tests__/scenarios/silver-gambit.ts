@@ -7,10 +7,9 @@ import { alive4, alive5 } from './helpers';
 // ---------------------------------------------------------------------------
 // All-or-nothing donation. If ALL donate, a jackpot winner is selected
 // deterministically via (dayIndex + playerCount) % playerCount on sorted IDs.
-// Everyone gets silverParticipation. Winner additionally gets jackpot.
-// If any player keeps, no jackpot. Everyone still gets participation.
+// Winner gets jackpot. No participation silver.
+// If any player keeps, no silver rewarded to anyone.
 
-const P = Config.dilemma.silverParticipation;
 const COST = Config.dilemma.silverGambit.donationCost;
 const MULT = Config.dilemma.silverGambit.jackpotMultiplier;
 
@@ -22,7 +21,7 @@ const JACKPOT_5 = COST * 5 * MULT; // 75
 
 export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
   {
-    name: 'all 4 donate — jackpot awarded to winner, all get participation',
+    name: 'all 4 donate — jackpot awarded to winner only',
     dilemmaType: 'SILVER_GAMBIT',
     roster: alive4(),
     decisions: {
@@ -34,10 +33,7 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
     allSubmit: true,
     expected: {
       silverRewards: {
-        p0: P,
-        p1: P + JACKPOT_4, // winner (dayIndex=1, 4 players)
-        p2: P,
-        p3: P,
+        p1: JACKPOT_4, // winner (dayIndex=1, 4 players)
       },
       summary: {
         allDonated: true,
@@ -48,7 +44,7 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
     },
   },
   {
-    name: '3 donate, 1 keeps — donors get participation only, no jackpot',
+    name: '3 donate, 1 keeps — no silver rewarded',
     dilemmaType: 'SILVER_GAMBIT',
     roster: alive4(),
     decisions: {
@@ -59,12 +55,7 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
     },
     allSubmit: true,
     expected: {
-      silverRewards: {
-        p0: P,
-        p1: P,
-        p2: P,
-        p3: P,
-      },
+      silverRewards: {},
       summary: {
         allDonated: false,
         winnerId: null,
@@ -75,7 +66,7 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
     },
   },
   {
-    name: 'nobody donates (all keep) — everyone gets participation, no jackpot',
+    name: 'nobody donates (all keep) — no silver rewarded',
     dilemmaType: 'SILVER_GAMBIT',
     roster: alive4(),
     decisions: {
@@ -86,12 +77,7 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
     },
     allSubmit: true,
     expected: {
-      silverRewards: {
-        p0: P,
-        p1: P,
-        p2: P,
-        p3: P,
-      },
+      silverRewards: {},
       summary: {
         allDonated: false,
         winnerId: null,
@@ -102,7 +88,7 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
     },
   },
   {
-    name: 'only 1 donates — participation for all, no jackpot',
+    name: 'only 1 donates, rest keep — no silver rewarded',
     dilemmaType: 'SILVER_GAMBIT',
     roster: alive4(),
     decisions: {
@@ -113,18 +99,75 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
     },
     allSubmit: true,
     expected: {
-      silverRewards: {
-        p0: P,
-        p1: P,
-        p2: P,
-        p3: P,
-      },
+      silverRewards: {},
       summary: {
         allDonated: false,
         winnerId: null,
         jackpot: 0,
         donorCount: 1,
         keeperCount: 3,
+      },
+    },
+  },
+
+  // --- TIMEOUT / PARTIAL SUBMISSION EDGE CASES ---
+
+  {
+    name: 'zero submissions + timeout — empty silverRewards',
+    dilemmaType: 'SILVER_GAMBIT',
+    roster: alive4(),
+    decisions: {},
+    allSubmit: false,
+    expected: {
+      silverRewards: {},
+      summary: {
+        allDonated: false,
+        winnerId: null,
+        jackpot: 0,
+        donorCount: 0,
+        keeperCount: 0,
+        playerCount: 0,
+      },
+    },
+  },
+  {
+    name: 'single donation + timeout — solo jackpot (vacuous unanimity)',
+    dilemmaType: 'SILVER_GAMBIT',
+    roster: alive4(),
+    decisions: {
+      p0: { action: 'DONATE' },
+    },
+    allSubmit: false,
+    expected: {
+      silverRewards: {
+        p0: COST * 1 * MULT, // jackpot only (15) — single donor = allDonated, p0 wins
+      },
+      summary: {
+        allDonated: true,
+        winnerId: 'p0', // seed=1+1=2, 2%1=0, sorted=['p0'] => p0
+        jackpot: COST * 1 * MULT,
+        playerCount: 1,
+      },
+    },
+  },
+  {
+    name: '2 of 4 submit (1 donate, 1 keep) + timeout — no silver',
+    dilemmaType: 'SILVER_GAMBIT',
+    roster: alive4(),
+    decisions: {
+      p0: { action: 'DONATE' },
+      p2: { action: 'KEEP' },
+    },
+    allSubmit: false,
+    expected: {
+      silverRewards: {},
+      summary: {
+        allDonated: false,
+        winnerId: null,
+        jackpot: 0,
+        donorCount: 1,
+        keeperCount: 1,
+        playerCount: 2,
       },
     },
   },
@@ -142,11 +185,7 @@ export const SILVER_GAMBIT_SCENARIOS: DilemmaScenario[] = [
     allSubmit: true,
     expected: {
       silverRewards: {
-        p0: P,
-        p1: P + JACKPOT_5, // winner (dayIndex=1, 5 players)
-        p2: P,
-        p3: P,
-        p4: P,
+        p1: JACKPOT_5, // winner (dayIndex=1, 5 players)
       },
       summary: {
         allDonated: true,

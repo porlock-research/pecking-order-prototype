@@ -10,7 +10,7 @@
  * - Least-nominated (with at least 1 nomination) gets -griefAmount (grief).
  *   If tied at bottom, all tied get grief.
  * - Players with 0 nominations are unaffected.
- * - All participants get silverParticipation.
+ * No participation silver — only gift/grief from nominations.
  */
 import { Config, PlayerStatuses } from '@pecking-order/shared-types';
 import type { SocialPlayer } from '@pecking-order/shared-types';
@@ -42,11 +42,6 @@ function calculateResults(
 ): DilemmaResults {
   const playerIds = Object.keys(decisions);
   const silverRewards: Record<string, number> = {};
-
-  // Everyone who participated gets participation
-  for (const pid of playerIds) {
-    silverRewards[pid] = Config.dilemma.silverParticipation;
-  }
 
   if (playerIds.length === 0) {
     return { silverRewards, summary: { giftedIds: [], grievedIds: [], nominations: {} } };

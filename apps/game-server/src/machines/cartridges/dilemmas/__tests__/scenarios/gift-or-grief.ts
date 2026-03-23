@@ -10,9 +10,8 @@ import { alive3, alive4 } from './helpers';
 // Least-nominated (with >=1 nomination) gets -griefAmount (grief). Tied at bottom: all tied.
 // If max === min nominations: everyone gets gift, nobody gets grief.
 // Players with 0 nominations are unaffected.
-// All who submitted get silverParticipation.
+// No participation silver — only gift/grief from nominations.
 
-const P = Config.dilemma.silverParticipation;
 const GIFT = Config.dilemma.giftOrGrief.giftAmount;
 const GRIEF = Config.dilemma.giftOrGrief.griefAmount;
 
@@ -33,10 +32,10 @@ export const GIFT_OR_GRIEF_SCENARIOS: DilemmaScenario[] = [
     allSubmit: true,
     expected: {
       silverRewards: {
-        p0: P - GRIEF,  // participation - grief (1 nomination, tied at bottom)
-        p1: P,          // participation only (0 nominations, unaffected)
-        p2: P + GIFT,   // participation + gift (2 nominations, most)
-        p3: P - GRIEF,  // participation - grief (1 nomination, tied at bottom)
+        p0: -GRIEF,     // 1 nomination (tied at bottom, grief)
+        // p1: 0 nominations, unaffected — not in silverRewards
+        p2: GIFT,        // 2 nominations (most, gift)
+        p3: -GRIEF,      // 1 nomination (tied at bottom, grief)
       },
       summary: {
         giftedIds: ['p2'],
@@ -58,9 +57,9 @@ export const GIFT_OR_GRIEF_SCENARIOS: DilemmaScenario[] = [
     allSubmit: true,
     expected: {
       silverRewards: {
-        p0: P + GIFT,
-        p1: P + GIFT,
-        p2: P + GIFT,
+        p0: GIFT,
+        p1: GIFT,
+        p2: GIFT,
       },
       summary: {
         giftedIds: ['p0', 'p1', 'p2'],
@@ -74,8 +73,7 @@ export const GIFT_OR_GRIEF_SCENARIOS: DilemmaScenario[] = [
     roster: alive4(),
     // p0->p1, p1->p0, p2->p1, p3->p0
     // Nominations: p0=2, p1=2, p2=0, p3=0
-    // Most: p0,p1 (2, tied) => both gift. No others have >=1 nomination
-    // that is lower, so no grief? Actually min for nominated: p0=2,p1=2 => min===max => no grief
+    // Most: p0,p1 (2, tied) => both gift. max===min for nominated => no grief
     decisions: {
       p0: { targetId: 'p1' },
       p1: { targetId: 'p0' },
@@ -85,13 +83,68 @@ export const GIFT_OR_GRIEF_SCENARIOS: DilemmaScenario[] = [
     allSubmit: true,
     expected: {
       silverRewards: {
-        p0: P + GIFT,   // 2 nominations (tied at top, gift)
-        p1: P + GIFT,   // 2 nominations (tied at top, gift)
-        p2: P,          // 0 nominations (unaffected)
-        p3: P,          // 0 nominations (unaffected)
+        p0: GIFT,   // 2 nominations (tied at top, gift)
+        p1: GIFT,   // 2 nominations (tied at top, gift)
+        // p2, p3: 0 nominations, unaffected
       },
       summary: {
         giftedIds: ['p0', 'p1'],
+        grievedIds: [],
+      },
+    },
+  },
+
+  // --- TIMEOUT / PARTIAL SUBMISSION EDGE CASES ---
+
+  {
+    name: 'zero submissions + timeout — empty silverRewards',
+    dilemmaType: 'GIFT_OR_GRIEF',
+    roster: alive4(),
+    decisions: {},
+    allSubmit: false,
+    expected: {
+      silverRewards: {},
+      summary: {
+        giftedIds: [],
+        grievedIds: [],
+      },
+    },
+  },
+  {
+    name: 'single submission + timeout — target gets gift only (max===min)',
+    dilemmaType: 'GIFT_OR_GRIEF',
+    roster: alive4(),
+    // p0->p1. Nominations: p1=1. max===min(1) => gift, no grief
+    decisions: {
+      p0: { targetId: 'p1' },
+    },
+    allSubmit: false,
+    expected: {
+      silverRewards: {
+        p1: GIFT,       // 1 nomination, max===min => gift only
+      },
+      summary: {
+        giftedIds: ['p1'],
+        grievedIds: [],
+      },
+    },
+  },
+  {
+    name: '2 of 4 submit + timeout — target gets gift only',
+    dilemmaType: 'GIFT_OR_GRIEF',
+    roster: alive4(),
+    // p0->p2, p1->p2. Nominations: p2=2. Only 1 nominated player, max===min => gift, no grief
+    decisions: {
+      p0: { targetId: 'p2' },
+      p1: { targetId: 'p2' },
+    },
+    allSubmit: false,
+    expected: {
+      silverRewards: {
+        p2: GIFT,       // max===min(2) => gift only
+      },
+      summary: {
+        giftedIds: ['p2'],
         grievedIds: [],
       },
     },
@@ -112,10 +165,9 @@ export const GIFT_OR_GRIEF_SCENARIOS: DilemmaScenario[] = [
     allSubmit: true,
     expected: {
       silverRewards: {
-        p0: P - GRIEF,  // 1 nomination (least, grief)
-        p1: P + GIFT,   // 3 nominations (most, gift)
-        p2: P,          // 0 nominations (unaffected)
-        p3: P,          // 0 nominations (unaffected)
+        p0: -GRIEF,  // 1 nomination (least, grief)
+        p1: GIFT,    // 3 nominations (most, gift)
+        // p2, p3: 0 nominations, unaffected
       },
       summary: {
         giftedIds: ['p1'],

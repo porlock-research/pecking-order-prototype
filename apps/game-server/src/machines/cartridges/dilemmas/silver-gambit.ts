@@ -9,10 +9,8 @@
  * (dayIndex + number of decisions) as seed. Winner gets
  * donationCost * playerCount * jackpotMultiplier.
  *
- * If ANY keep: donations are lost. Donors get silverParticipation only.
- * Keepers get nothing extra.
- *
- * All participants get silverParticipation regardless.
+ * If ANY keep: donations are lost. No silver rewarded.
+ * No participation silver — only the jackpot matters.
  */
 import { Config } from '@pecking-order/shared-types';
 import type { SocialPlayer } from '@pecking-order/shared-types';
@@ -40,22 +38,16 @@ function calculateResults(
   const playerCount = playerIds.length;
   const silverRewards: Record<string, number> = {};
 
-  // Everyone who submitted gets participation
-  for (const pid of playerIds) {
-    silverRewards[pid] = Config.dilemma.silverParticipation;
-  }
-
   const allDonated = playerIds.every((pid) => decisions[pid].action === 'DONATE');
 
   if (allDonated && playerCount > 0) {
-    // Jackpot: deterministic winner selection
+    // Jackpot: deterministic winner selection. Only the winner gets silver.
     const seed = dayIndex + playerCount;
     const winnerIndex = seed % playerCount;
-    // Sort for deterministic ordering
     const sortedIds = [...playerIds].sort();
     const winnerId = sortedIds[winnerIndex];
     const jackpot = Config.dilemma.silverGambit.donationCost * playerCount * Config.dilemma.silverGambit.jackpotMultiplier;
-    silverRewards[winnerId] = (silverRewards[winnerId] || 0) + jackpot;
+    silverRewards[winnerId] = jackpot;
 
     return {
       silverRewards,
@@ -68,7 +60,7 @@ function calculateResults(
     };
   }
 
-  // Not all donated — donors get nothing extra beyond participation, keepers get nothing extra
+  // Not all donated — no silver rewarded
   const donors = playerIds.filter((pid) => decisions[pid].action === 'DONATE');
   const keepers = playerIds.filter((pid) => decisions[pid].action === 'KEEP');
 
