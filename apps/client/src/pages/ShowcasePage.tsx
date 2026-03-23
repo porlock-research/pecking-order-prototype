@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ShellLoader } from '../shells/ShellLoader';
 import { useGameStore } from '../store/useGameStore';
+import ShowcaseAdminPanel from './ShowcaseAdminPanel';
 
 const GAME_SERVER_HOST = import.meta.env.VITE_GAME_SERVER_HOST || 'http://localhost:8787';
 
@@ -47,7 +48,12 @@ export default function ShowcasePage() {
   }
 
   useGameStore.getState().setPlayerId('p0');
-  return <ShellLoader gameId="SHOWCASE" playerId="p0" token={null} party="showcase-server" />;
+  return (
+    <>
+      <ShellLoader gameId="SHOWCASE" playerId="p0" token={null} party="showcase-server" />
+      <ShowcaseAdminPanel playerId="p0" />
+    </>
+  );
 }
 
 const styles: Record<string, React.CSSProperties> = {
