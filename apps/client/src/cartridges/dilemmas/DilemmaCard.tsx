@@ -1,36 +1,129 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/useGameStore';
-import { DilemmaPhases } from '@pecking-order/shared-types';
+import { DilemmaPhases, DILEMMA_TYPE_INFO } from '@pecking-order/shared-types';
+import type { DilemmaType } from '@pecking-order/shared-types';
 import { VIVID_SPRING } from '../../shells/vivid/springs';
+import { HandMoney, UsersGroupRounded, Gift, QuestionCircle } from '@solar-icons/react';
+import { PersonaAvatar } from '../../components/PersonaAvatar';
 import SilverGambitInput from './SilverGambitInput';
 import SpotlightInput from './SpotlightInput';
 import GiftOrGriefInput from './GiftOrGriefInput';
 import DilemmaReveal from './DilemmaReveal';
 
 /* ------------------------------------------------------------------ */
-/*  Dilemma metadata                                                   */
+/*  Icon map                                                           */
 /* ------------------------------------------------------------------ */
 
-const DILEMMA_INFO: Record<string, { label: string; description: string; icon: string }> = {
-  SILVER_GAMBIT: {
-    label: 'Silver Gambit',
-    description:
-      'If ALL players donate 5 silver, one lucky player wins the jackpot. But if even one person keeps their silver... nobody gets anything.',
-    icon: '\u{1FA99}', // coin
-  },
-  SPOTLIGHT: {
-    label: 'Spotlight',
-    description:
-      'Blind pick: choose one player. If EVERYONE picks the same person, they get 20 silver. Can you all agree without talking?',
-    icon: '\u{1F526}', // flashlight
-  },
-  GIFT_OR_GRIEF: {
-    label: 'Gift or Grief',
-    description:
-      'Name a player. The most-nominated gets +10 silver (a gift!). The least-nominated gets -10 silver (grief!). Choose wisely.',
-    icon: '\u{1F381}', // gift
-  },
+const DILEMMA_ICON: Record<string, React.ComponentType<{ size?: number; weight?: string }>> = {
+  SILVER_GAMBIT: HandMoney,
+  SPOTLIGHT: UsersGroupRounded,
+  GIFT_OR_GRIEF: Gift,
 };
+
+/* ------------------------------------------------------------------ */
+/*  Participation strip (VoterStrip-style)                             */
+/* ------------------------------------------------------------------ */
+
+function ParticipationStrip({
+  eligiblePlayers,
+  submitted,
+  roster,
+}: {
+  eligiblePlayers: string[];
+  submitted: Record<string, boolean>;
+  roster: Record<string, any>;
+}) {
+  const submittedCount = eligiblePlayers.filter((id) => submitted?.[id]).length;
+  const total = eligiblePlayers.length;
+  const remaining = total - submittedCount;
+
+  const statusText =
+    remaining === 0
+      ? `${total} of ${total} decided`
+      : remaining === 1
+        ? 'Waiting for 1 more...'
+        : `${submittedCount} of ${total} decided`;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+      {/* Avatar row */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+        {eligiblePlayers.map((pid) => {
+          const player = roster[pid];
+          const didSubmit = submitted?.[pid] ?? false;
+          return (
+            <div
+              key={pid}
+              style={{ position: 'relative', opacity: didSubmit ? 1 : 0.5 }}
+            >
+              <div
+                style={{
+                  borderRadius: '50%',
+                  border: didSubmit ? '2px solid #2d6a4f' : '2px solid #9B8E7E',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <PersonaAvatar
+                  avatarUrl={player?.avatarUrl}
+                  personaName={player?.personaName}
+                  size={20}
+                />
+              </div>
+              {/* Green checkmark badge */}
+              {didSubmit && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: -2,
+                    right: -2,
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: '#2d6a4f',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <svg
+                    width={5}
+                    height={4}
+                    viewBox="0 0 5 4"
+                    fill="none"
+                    style={{ display: 'block' }}
+                  >
+                    <path
+                      d="M0.5 2L1.8 3.2L4.2 0.8"
+                      stroke="white"
+                      strokeWidth={0.8}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Status text */}
+      <span
+        style={{
+          fontFamily: 'var(--vivid-font-mono)',
+          fontSize: 10,
+          color: '#9B8E7E',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        }}
+      >
+        {statusText}
+      </span>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  DilemmaCard                                                        */
@@ -43,17 +136,20 @@ interface DilemmaCardProps {
 }
 
 export default function DilemmaCard({ engine }: DilemmaCardProps) {
-  const activeDilemma = useGameStore(s => s.activeDilemma);
-  const playerId = useGameStore(s => s.playerId);
-  const roster = useGameStore(s => s.roster);
+  const activeDilemma = useGameStore((s) => s.activeDilemma);
+  const playerId = useGameStore((s) => s.playerId);
+  const roster = useGameStore((s) => s.roster);
 
   if (!activeDilemma || !playerId) return null;
 
   const { dilemmaType, phase, submitted, eligiblePlayers, decisions, results } = activeDilemma;
-  const info = DILEMMA_INFO[dilemmaType] || { label: dilemmaType, description: '', icon: '\u{2753}' };
+  const info = DILEMMA_TYPE_INFO[dilemmaType as DilemmaType] || {
+    name: dilemmaType,
+    howItWorks: '',
+    actionVerb: 'decided',
+  };
+  const IconComponent = DILEMMA_ICON[dilemmaType] || QuestionCircle;
   const hasSubmitted = submitted?.[playerId] ?? false;
-  const submittedCount = Object.values(submitted || {}).filter(Boolean).length;
-  const totalEligible = (eligiblePlayers || []).length;
 
   return (
     <AnimatePresence>
@@ -72,135 +168,91 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
           margin: '10px 0',
         }}
       >
-        {/* Header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          borderBottom: '1px solid rgba(184, 132, 10, 0.1)',
-          background: 'rgba(184, 132, 10, 0.04)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 20 }}>{info.icon}</span>
-            <span style={{
+        {/* Slim header: icon + dilemma name */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '10px 14px',
+            borderBottom: '1px solid rgba(184, 132, 10, 0.1)',
+            background: 'rgba(184, 132, 10, 0.04)',
+            gap: 8,
+          }}
+        >
+          <IconComponent size={18} weight="Bold" />
+          <span
+            style={{
               fontFamily: 'var(--vivid-font-display)',
               fontSize: 13,
               fontWeight: 800,
               color: '#B8840A',
               textTransform: 'uppercase',
               letterSpacing: '0.04em',
-            }}>
-              {info.label}
-            </span>
-          </div>
-          <span style={{
-            fontFamily: 'var(--vivid-font-mono, monospace)',
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#9B8E7E',
-          }}>
-            {submittedCount}/{totalEligible}
+              flex: 1,
+            }}
+          >
+            {info.name}
           </span>
+          {/* Compact submitted indicator when already submitted */}
+          {phase === DilemmaPhases.COLLECTING && hasSubmitted && (
+            <span
+              style={{
+                fontFamily: 'var(--vivid-font-body)',
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#2D6A4F',
+              }}
+            >
+              You {info.actionVerb}!
+            </span>
+          )}
         </div>
 
         {/* Body */}
-        <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Description */}
-          <p style={{
-            fontFamily: 'var(--vivid-font-body)',
-            fontSize: 13,
-            fontWeight: 500,
-            color: '#3D2E1F',
-            lineHeight: 1.5,
-            margin: 0,
-          }}>
-            {info.description}
-          </p>
+        <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* GM-style message box — only show when player hasn't submitted yet */}
+          {phase === DilemmaPhases.COLLECTING && !hasSubmitted && (
+            <div
+              style={{
+                borderLeft: '3px solid #e2b865',
+                background: 'rgba(226, 184, 101, 0.06)',
+                borderRadius: '0 8px 8px 0',
+                padding: '10px 12px',
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: 'var(--vivid-font-body)',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: '#3D2E1F',
+                  lineHeight: 1.5,
+                  margin: 0,
+                }}
+              >
+                {info.howItWorks}
+              </p>
+            </div>
+          )}
 
-          {/* Status strip — who has submitted */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            flexWrap: 'wrap',
-          }}>
-            {(eligiblePlayers || []).map((pid: string) => {
-              const didSubmit = submitted?.[pid] ?? false;
-              const player = roster[pid];
-              const initial = player?.personaName?.charAt(0)?.toUpperCase() || '?';
-              return (
-                <div
-                  key={pid}
-                  title={player?.personaName || pid}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: didSubmit ? 'rgba(45, 106, 79, 0.12)' : 'rgba(139, 115, 85, 0.08)',
-                    border: `1.5px solid ${didSubmit ? 'rgba(45, 106, 79, 0.3)' : 'rgba(139, 115, 85, 0.12)'}`,
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <span style={{
-                    fontSize: didSubmit ? 12 : 10,
-                    fontWeight: 700,
-                    fontFamily: 'var(--vivid-font-display)',
-                    color: didSubmit ? '#2D6A4F' : '#9B8E7E',
-                  }}>
-                    {didSubmit ? '\u{2713}' : initial}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Decision area */}
+          {/* Participation strip */}
           {phase === DilemmaPhases.COLLECTING && (
-            <>
-              {hasSubmitted ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: 12,
-                    background: 'rgba(45, 106, 79, 0.06)',
-                    border: '1px solid rgba(45, 106, 79, 0.15)',
-                    textAlign: 'center',
-                  }}
-                >
-                  <span style={{
-                    fontFamily: 'var(--vivid-font-display)',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: '#2D6A4F',
-                  }}>
-                    Decision locked in!
-                  </span>
-                  <span style={{
-                    display: 'block',
-                    fontFamily: 'var(--vivid-font-body)',
-                    fontSize: 11,
-                    color: '#9B8E7E',
-                    marginTop: 2,
-                  }}>
-                    Waiting for others...
-                  </span>
-                </motion.div>
-              ) : (
-                <DilemmaInput
-                  dilemmaType={dilemmaType}
-                  playerId={playerId}
-                  eligiblePlayers={eligiblePlayers || []}
-                  roster={roster}
-                  engine={engine}
-                />
-              )}
-            </>
+            <ParticipationStrip
+              eligiblePlayers={eligiblePlayers || []}
+              submitted={submitted || {}}
+              roster={roster}
+            />
+          )}
+
+          {/* Decision input — only show when not yet submitted */}
+          {phase === DilemmaPhases.COLLECTING && !hasSubmitted && (
+            <DilemmaInput
+              dilemmaType={dilemmaType}
+              playerId={playerId}
+              eligiblePlayers={eligiblePlayers || []}
+              roster={roster}
+              engine={engine}
+            />
           )}
 
           {/* Reveal area */}
@@ -259,17 +311,21 @@ function DilemmaInput({
       );
     default:
       return (
-        <div style={{
-          padding: '12px 16px',
-          borderRadius: 12,
-          background: 'rgba(139, 115, 85, 0.06)',
-          textAlign: 'center',
-        }}>
-          <span style={{
-            fontFamily: 'var(--vivid-font-mono, monospace)',
-            fontSize: 12,
-            color: '#9B8E7E',
-          }}>
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 12,
+            background: 'rgba(139, 115, 85, 0.06)',
+            textAlign: 'center',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'var(--vivid-font-mono, monospace)',
+              fontSize: 12,
+              color: '#9B8E7E',
+            }}
+          >
             Unknown dilemma type: {dilemmaType}
           </span>
         </div>

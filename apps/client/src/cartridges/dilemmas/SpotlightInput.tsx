@@ -15,18 +15,18 @@ interface SpotlightInputProps {
 }
 
 export default function SpotlightInput({ playerId, eligiblePlayers, roster, engine }: SpotlightInputProps) {
-  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
-  const targets = eligiblePlayers.filter(id => id !== playerId && roster[id]);
+  const targets = eligiblePlayers.filter((id) => id !== playerId && roster[id]);
 
   const handleConfirm = () => {
-    if (!selectedTarget || submitted) return;
+    if (!selectedId || submitted) return;
     setSubmitted(true);
-    engine.sendActivityAction(DilemmaEvents.SPOTLIGHT.SUBMIT, { targetId: selectedTarget });
+    engine.sendActivityAction(DilemmaEvents.SPOTLIGHT.SUBMIT, { targetId: selectedId });
   };
 
-  if (submitted && selectedTarget) {
+  if (submitted && selectedId) {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -40,13 +40,15 @@ export default function SpotlightInput({ playerId, eligiblePlayers, roster, engi
           textAlign: 'center',
         }}
       >
-        <span style={{
-          fontFamily: 'var(--vivid-font-display)',
-          fontSize: 13,
-          fontWeight: 700,
-          color: '#B8840A',
-        }}>
-          You chose {roster[selectedTarget]?.personaName || selectedTarget}
+        <span
+          style={{
+            fontFamily: 'var(--vivid-font-display)',
+            fontSize: 13,
+            fontWeight: 700,
+            color: '#B8840A',
+          }}
+        >
+          You chose {(roster[selectedId]?.personaName || selectedId).split(' ')[0]}
         </span>
       </motion.div>
     );
@@ -54,19 +56,22 @@ export default function SpotlightInput({ playerId, eligiblePlayers, roster, engi
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-        gap: 8,
-      }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+          gap: 8,
+        }}
+      >
         {targets.map((pid, i) => {
           const player = roster[pid];
           if (!player) return null;
-          const isSelected = selectedTarget === pid;
+          const isSelected = selectedId === pid;
+          const firstName = (player.personaName || pid).split(' ')[0];
           return (
             <motion.button
               key={pid}
-              onClick={() => setSelectedTarget(pid)}
+              onClick={() => setSelectedId(pid)}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...VIVID_SPRING.bouncy, delay: i * 0.03 }}
@@ -76,7 +81,7 @@ export default function SpotlightInput({ playerId, eligiblePlayers, roster, engi
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 6,
-                padding: '10px 8px',
+                padding: '10px 6px',
                 borderRadius: 12,
                 background: isSelected ? 'rgba(184, 132, 10, 0.1)' : 'rgba(139, 115, 85, 0.04)',
                 border: `1.5px solid ${isSelected ? '#B8840A' : 'rgba(139, 115, 85, 0.1)'}`,
@@ -87,28 +92,30 @@ export default function SpotlightInput({ playerId, eligiblePlayers, roster, engi
               <PersonaAvatar
                 avatarUrl={player.avatarUrl}
                 personaName={player.personaName}
-                size={40}
+                size={56}
               />
-              <span style={{
-                fontFamily: 'var(--vivid-font-body)',
-                fontSize: 11,
-                fontWeight: 600,
-                color: isSelected ? '#B8840A' : '#3D2E1F',
-                textAlign: 'center',
-                lineHeight: 1.2,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                maxWidth: '100%',
-              }}>
-                {player.personaName}
+              <span
+                style={{
+                  fontFamily: 'var(--vivid-font-body)',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: isSelected ? '#B8840A' : '#3D2E1F',
+                  textAlign: 'center',
+                  lineHeight: 1.2,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: '100%',
+                }}
+              >
+                {firstName}
               </span>
             </motion.button>
           );
         })}
       </div>
 
-      {selectedTarget && !submitted && (
+      {selectedId && !submitted && (
         <motion.button
           onClick={handleConfirm}
           initial={{ opacity: 0, y: 8 }}

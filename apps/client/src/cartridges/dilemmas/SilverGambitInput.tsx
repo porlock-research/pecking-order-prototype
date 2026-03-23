@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DilemmaEvents } from '@pecking-order/shared-types';
+import { HandMoney, Shield } from '@solar-icons/react';
 import { VIVID_SPRING, VIVID_TAP } from '../../shells/vivid/springs';
 
 interface SilverGambitInputProps {
@@ -32,12 +33,14 @@ export default function SilverGambitInput({ engine }: SilverGambitInputProps) {
           textAlign: 'center',
         }}
       >
-        <span style={{
-          fontFamily: 'var(--vivid-font-display)',
-          fontSize: 13,
-          fontWeight: 700,
-          color: chosen === 'DONATE' ? '#2D6A4F' : '#9D174D',
-        }}>
+        <span
+          style={{
+            fontFamily: 'var(--vivid-font-display)',
+            fontSize: 13,
+            fontWeight: 700,
+            color: chosen === 'DONATE' ? '#2D6A4F' : '#9D174D',
+          }}
+        >
           {chosen === 'DONATE' ? 'Donated! Fingers crossed...' : 'Keeping your silver safe.'}
         </span>
       </motion.div>
@@ -63,15 +66,17 @@ export default function SilverGambitInput({ engine }: SilverGambitInputProps) {
         whileTap={VIVID_TAP.button}
         transition={VIVID_SPRING.snappy}
       >
-        <span style={{ fontSize: 22 }}>{'🪙'}</span>
-        <span style={{
-          fontFamily: 'var(--vivid-font-display)',
-          fontSize: 12,
-          fontWeight: 700,
-          color: '#2D6A4F',
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-        }}>
+        <HandMoney size={22} weight="Bold" />
+        <span
+          style={{
+            fontFamily: 'var(--vivid-font-display)',
+            fontSize: 12,
+            fontWeight: 700,
+            color: '#2D6A4F',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+          }}
+        >
           Donate 5 Silver
         </span>
       </motion.button>
@@ -93,15 +98,17 @@ export default function SilverGambitInput({ engine }: SilverGambitInputProps) {
         whileTap={VIVID_TAP.button}
         transition={VIVID_SPRING.snappy}
       >
-        <span style={{ fontSize: 22 }}>{'🛡️'}</span>
-        <span style={{
-          fontFamily: 'var(--vivid-font-display)',
-          fontSize: 12,
-          fontWeight: 700,
-          color: '#9D174D',
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-        }}>
+        <Shield size={22} weight="Bold" />
+        <span
+          style={{
+            fontFamily: 'var(--vivid-font-display)',
+            fontSize: 12,
+            fontWeight: 700,
+            color: '#9D174D',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+          }}
+        >
           Keep My Silver
         </span>
       </motion.button>
