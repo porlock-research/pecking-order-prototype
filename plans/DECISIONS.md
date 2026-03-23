@@ -1668,3 +1668,17 @@ This document tracks significant architectural decisions, their context, and con
     *   Game Master supports dilemma resolution via `resolveDilemmaType()` with SEQUENCE/POOL/NONE modes.
     *   New dilemma types only require a config file + registry entry — no machine or L3 changes.
     *   Config-driven rewards via `Config.dilemma.*` in shared-types.
+
+## [ADR-113] Cartridge UX Overhaul — Voting Redesign, Dilemma GM Flow, Result Persistence
+*   **Date:** 2026-03-22
+*   **Status:** Accepted
+*   **Context:** Playtest 2 — low engagement from confusing voting UX (Bubble "vote" vs "save"), abrupt cartridge appearance/disappearance, no persistent results. Players couldn't understand mechanics despite splash screen explanations.
+*   **Decision:**
+    1.  **Voting redesign**: Extend `VOTE_TYPE_INFO` with `header`, `cta`, `oneLiner`, `confirmTemplate`, `actionVerb`. Extract shared components (`VotingHeader`, `VoterStrip`, `AvatarPicker`). All 8 mechanisms rewritten with two-step confirm (tap avatar → confirm button), action-specific language, hidden tallies during active voting, voter participation strip.
+    2.  **Dilemma GM flow**: Compact pinned card with GM narrative message from `DILEMMA_TYPE_INFO.howItWorks`. Solar Icons (no emoji). Participation strip. No server-side `DILEMMA_ANNOUNCED` fact — GM message rendered client-side from SYNC state. No push notification for dilemma (co-occurs with DAY_START).
+    3.  **Result persistence**: Schedule spotlight cards expand in-place with rich result data from `completedPhases`. Voting shows tallies + eliminated player. Dilemma shows outcome summary.
+*   **Consequences:**
+    *   All voting UX changes are client-only. `VOTE_TYPE_INFO` is single source of truth for voting UI text.
+    *   Shared components reduce duplication across 8 mechanism files.
+    *   E2E tests need update for two-step confirm flow (`vote-confirm-btn` data-testid).
+    *   START_DILEMMA fires at +1min offset (not +0) to avoid compound event race conditions (ADR-108).
