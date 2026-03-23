@@ -59,7 +59,7 @@ export default function ShowcaseAdminPanel({ playerId }: ShowcaseAdminPanelProps
     const payload: any = { type: eventType };
 
     if (dilemmaType === 'SILVER_GAMBIT') {
-      payload.choice = choice;
+      payload.action = choice;  // Machine expects { action: 'DONATE' | 'KEEP' }
     } else {
       // SPOTLIGHT and GIFT_OR_GRIEF require a targetId
       payload.targetId = choice;
