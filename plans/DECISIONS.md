@@ -1682,3 +1682,17 @@ This document tracks significant architectural decisions, their context, and con
     *   Shared components reduce duplication across 8 mechanism files.
     *   E2E tests need update for two-step confirm flow (`vote-confirm-btn` data-testid).
     *   START_DILEMMA fires at +1min offset (not +0) to avoid compound event race conditions (ADR-108).
+
+## [ADR-114] Voting Bug Fixes + Shared Voting Scenario Specs
+*   **Date:** 2026-03-22
+*   **Status:** Accepted
+*   **Context:** Pre-playtest testing revealed critical voting bugs: Bubble and Podium Sacrifice eliminated the most-saved player instead of least-saved (inverted logic). Executioner deadlocked on zero election votes. All mechanisms could return no elimination, violating the core game rule that someone must be eliminated every vote. These bugs existed because voting machines had zero unit tests — only integration tests which verified the pipeline, not the elimination logic.
+*   **Decision:**
+    1.  **Bug fixes**: Fix inverted logic in Bubble and Podium Sacrifice. Fix Executioner deadlock. Add lowest-silver fallback to ALL mechanisms so `eliminatedId` is never null.
+    2.  **Shared voting scenario specs**: Create per-mechanism scenario files in `__tests__/scenarios/` that define roster + votes + expected outcomes as data. Unit tests loop over these scenarios. Integration tests can import the same scenarios for end-to-end verification. Single source of truth for "given these inputs, expect this outcome."
+    3.  **Design rule**: Every voting mechanism must eliminate exactly one player, no exceptions. When no votes are cast, the eligible target with the lowest silver balance is eliminated.
+*   **Consequences:**
+    *   44 unit tests across all 8 voting mechanisms (was 0).
+    *   Scenarios are per-mechanism files — easy to extend by adding objects to an array.
+    *   Future voting mechanism changes require updating the scenario file, which automatically tests both unit and integration.
+    *   Integration test skill (`alarm-voting`) should be updated to consume shared scenarios instead of hardcoding expectations.
