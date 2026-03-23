@@ -1,79 +1,50 @@
+/**
+ * Showcase Admin Panel — overlay for testing features on real games.
+ *
+ * Uses the real GameServer admin API (INJECT_TIMELINE_EVENT, NEXT_STAGE).
+ * Renders when ?showcase=true is in the URL.
+ */
 import React, { useState, useCallback } from 'react';
 import { useGameStore } from '../store/useGameStore';
-import { DilemmaEvents } from '@pecking-order/shared-types';
-import type { DilemmaType } from '@pecking-order/shared-types';
 
 const GAME_SERVER_HOST = import.meta.env.VITE_GAME_SERVER_HOST || 'http://localhost:8787';
 
-async function postAdmin(action: any) {
+interface ShowcaseAdminPanelProps {
+  gameId: string;
+}
+
+// Admin secret from URL param ?_secret= or default local dev secret
+const ADMIN_SECRET = new URLSearchParams(window.location.search).get('_secret') || 'dev-secret-change-me';
+
+async function postAdmin(gameId: string, body: any) {
   const host = new URL(GAME_SERVER_HOST).host;
   const protocol = GAME_SERVER_HOST.startsWith('https') ? 'https' : 'http';
-  await fetch(`${protocol}://${host}/parties/showcase-server/SHOWCASE/admin`, {
+  const res = await fetch(`${protocol}://${host}/parties/game-server/${gameId}/admin`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(action),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ADMIN_SECRET}` },
+    body: JSON.stringify(body),
   });
+  if (!res.ok) console.error('[Admin] POST failed:', res.status, await res.text());
 }
 
-interface ShowcaseAdminPanelProps {
-  playerId: string;
-}
-
-const DILEMMA_LABELS: Record<string, string> = {
-  SILVER_GAMBIT: 'Silver Gambit',
-  SPOTLIGHT: 'Spotlight',
-  GIFT_OR_GRIEF: 'Gift or Grief',
-};
-
-export default function ShowcaseAdminPanel({ playerId }: ShowcaseAdminPanelProps) {
-  const showcaseData = useGameStore((s) => s.showcaseData);
-  const roster = useGameStore((s) => s.roster);
+export default function ShowcaseAdminPanel({ gameId }: ShowcaseAdminPanelProps) {
   const activeDilemma = useGameStore((s) => s.activeDilemma);
+  const roster = useGameStore((s) => s.roster);
+  const playerId = useGameStore((s) => s.playerId);
   const [collapsed, setCollapsed] = useState(false);
-  const [simulateTargets, setSimulateTargets] = useState<Record<string, string>>({});
 
-  const config = showcaseData?.config;
-  const showcaseState = showcaseData?.state ?? 'idle';
-  const hasFeatureDilemma = config?.features?.includes('dilemma');
-  const dilemmaTypes: DilemmaType[] = config?.dilemma?.types ?? [];
+  const myPersona = playerId ? roster[playerId] : null;
+  const dilemmaRunning = !!activeDilemma;
+  const dilemmaPhase = activeDilemma?.phase;
 
-  const myPersona = roster[playerId];
-  const otherPlayers = Object.entries(roster).filter(([id]) => id !== playerId);
+  // Timeline event injection
+  const inject = useCallback((action: string, payload?: any) => {
+    postAdmin(gameId, { type: 'INJECT_TIMELINE_EVENT', action, payload });
+  }, [gameId, token]);
 
-  const handleStartDilemma = useCallback(async (dilemmaType: DilemmaType) => {
-    await postAdmin({ type: 'ADMIN.START_DILEMMA', dilemmaType });
-  }, []);
-
-  const handleForceEnd = useCallback(async () => {
-    await postAdmin({ type: 'ADMIN.FORCE_END' });
-  }, []);
-
-  const handleReset = useCallback(async () => {
-    await postAdmin({ type: 'ADMIN.RESET' });
-  }, []);
-
-  const handleSimulate = useCallback(async (simPlayerId: string, dilemmaType: DilemmaType, choice: string) => {
-    const eventType = DilemmaEvents[dilemmaType]?.SUBMIT;
-    if (!eventType) return;
-
-    const payload: any = { type: eventType };
-
-    if (dilemmaType === 'SILVER_GAMBIT') {
-      payload.action = choice;  // Machine expects { action: 'DONATE' | 'KEEP' }
-    } else {
-      // SPOTLIGHT and GIFT_OR_GRIEF require a targetId
-      payload.targetId = choice;
-    }
-
-    await postAdmin({
-      type: 'ADMIN.SIMULATE',
-      playerId: simPlayerId,
-      event: payload,
-    });
-  }, []);
-
-  // Determine which dilemma type is currently running
-  const runningDilemmaType = activeDilemma?.dilemmaType as DilemmaType | undefined;
+  const nextStage = useCallback(() => {
+    postAdmin(gameId, { type: 'NEXT_STAGE' });
+  }, [gameId, token]);
 
   if (collapsed) {
     return (
@@ -88,155 +59,87 @@ export default function ShowcaseAdminPanel({ playerId }: ShowcaseAdminPanelProps
       {/* Header */}
       <div style={panelStyles.header}>
         <span style={panelStyles.headerTitle}>Showcase Admin</span>
-        <button style={panelStyles.collapseBtn} onClick={() => setCollapsed(true)}>
-          _
-        </button>
+        <button style={panelStyles.collapseBtn} onClick={() => setCollapsed(true)}>_</button>
       </div>
 
-      {/* Status */}
+      {/* Player Info */}
       <div style={panelStyles.section}>
-        <div style={panelStyles.sectionLabel}>Status</div>
-        <div style={panelStyles.statusRow}>
-          <span style={panelStyles.statusDot(showcaseState)} />
-          <span style={panelStyles.statusText}>{showcaseState.toUpperCase()}</span>
-        </div>
+        <div style={panelStyles.sectionLabel}>Player</div>
         {myPersona && (
           <div style={panelStyles.personaInfo}>
-            You are <strong>{myPersona.personaName}</strong> ({playerId})
+            {myPersona.personaName} ({playerId})
+          </div>
+        )}
+        <div style={panelStyles.personaInfo}>Game: {gameId}</div>
+      </div>
+
+      {/* Game Flow */}
+      <div style={panelStyles.section}>
+        <div style={panelStyles.sectionLabel}>Game Flow</div>
+        <div style={panelStyles.buttonGroup}>
+          <button style={panelStyles.actionBtn} onClick={nextStage}>
+            Next Stage
+          </button>
+          <button style={panelStyles.actionBtn} onClick={() => inject('OPEN_GROUP_CHAT')}>
+            Open Group Chat
+          </button>
+          <button style={panelStyles.actionBtn} onClick={() => inject('OPEN_DMS')}>
+            Open DMs
+          </button>
+        </div>
+      </div>
+
+      {/* Dilemma Controls */}
+      <div style={panelStyles.section}>
+        <div style={panelStyles.sectionLabel}>Dilemmas</div>
+        <div style={panelStyles.buttonGroup}>
+          <button
+            style={{ ...panelStyles.actionBtn, opacity: dilemmaRunning ? 0.4 : 1 }}
+            disabled={dilemmaRunning}
+            onClick={() => inject('START_DILEMMA')}
+          >
+            Start Dilemma (from manifest)
+          </button>
+          <button
+            style={{ ...panelStyles.actionBtn, opacity: !dilemmaRunning ? 0.4 : 1 }}
+            disabled={!dilemmaRunning}
+            onClick={() => inject('END_DILEMMA')}
+          >
+            End Dilemma
+          </button>
+        </div>
+        {dilemmaRunning && (
+          <div style={panelStyles.statusRow}>
+            <span style={panelStyles.statusDot('running')} />
+            <span style={panelStyles.statusText}>
+              {activeDilemma?.dilemmaType} — {dilemmaPhase}
+            </span>
           </div>
         )}
       </div>
 
-      {/* Dilemma Controls */}
-      {hasFeatureDilemma && (
-        <div style={panelStyles.section}>
-          <div style={panelStyles.sectionLabel}>Dilemma Controls</div>
-
-          {/* Start buttons */}
-          <div style={panelStyles.buttonGroup}>
-            {dilemmaTypes.map((dt) => (
-              <button
-                key={dt}
-                style={{
-                  ...panelStyles.actionBtn,
-                  opacity: showcaseState !== 'idle' && showcaseState !== 'results' ? 0.4 : 1,
-                  cursor: showcaseState !== 'idle' && showcaseState !== 'results' ? 'not-allowed' : 'pointer',
-                }}
-                disabled={showcaseState !== 'idle' && showcaseState !== 'results'}
-                onClick={() => handleStartDilemma(dt)}
-              >
-                Start: {DILEMMA_LABELS[dt] || dt}
-              </button>
-            ))}
-          </div>
-
-          {/* Simulate section (when running) */}
-          {showcaseState === 'running' && runningDilemmaType && (
-            <div style={panelStyles.simulateSection}>
-              <div style={panelStyles.sectionLabel}>Simulate Submissions</div>
-              {otherPlayers.map(([pid, player]) => (
-                <div key={pid} style={panelStyles.simulateRow}>
-                  <span style={panelStyles.playerName}>{player.personaName} ({pid})</span>
-                  {renderSimulateControls(
-                    pid,
-                    runningDilemmaType,
-                    otherPlayers,
-                    playerId,
-                    roster,
-                    simulateTargets,
-                    setSimulateTargets,
-                    handleSimulate,
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Force End (when running) */}
-          {showcaseState === 'running' && (
-            <button style={panelStyles.dangerBtn} onClick={handleForceEnd}>
-              Force End
-            </button>
-          )}
-
-          {/* Reset (when results) */}
-          {showcaseState === 'results' && (
-            <button style={panelStyles.actionBtn} onClick={handleReset}>
-              Reset
-            </button>
-          )}
+      {/* Voting Controls */}
+      <div style={panelStyles.section}>
+        <div style={panelStyles.sectionLabel}>Voting</div>
+        <div style={panelStyles.buttonGroup}>
+          <button style={panelStyles.actionBtn} onClick={() => inject('OPEN_VOTING')}>
+            Open Voting
+          </button>
+          <button style={panelStyles.actionBtn} onClick={() => inject('CLOSE_VOTING')}>
+            Close Voting
+          </button>
         </div>
-      )}
-
-      {/* Last Results */}
-      {showcaseData?.lastResults && (
-        <div style={panelStyles.section}>
-          <div style={panelStyles.sectionLabel}>Last Results</div>
-          <pre style={panelStyles.resultsPre}>
-            {JSON.stringify(showcaseData.lastResults, null, 2)}
-          </pre>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function renderSimulateControls(
-  pid: string,
-  dilemmaType: DilemmaType,
-  otherPlayers: [string, any][],
-  selfPlayerId: string,
-  roster: Record<string, any>,
-  simulateTargets: Record<string, string>,
-  setSimulateTargets: React.Dispatch<React.SetStateAction<Record<string, string>>>,
-  handleSimulate: (playerId: string, dilemmaType: DilemmaType, choice: string) => void,
-) {
-  if (dilemmaType === 'SILVER_GAMBIT') {
-    return (
-      <div style={panelStyles.controlRow}>
-        <button
-          style={panelStyles.smallBtn}
-          onClick={() => handleSimulate(pid, dilemmaType, 'DONATE')}
-        >
-          DONATE
-        </button>
-        <button
-          style={panelStyles.smallBtn}
-          onClick={() => handleSimulate(pid, dilemmaType, 'KEEP')}
-        >
-          KEEP
-        </button>
       </div>
-    );
-  }
 
-  // SPOTLIGHT and GIFT_OR_GRIEF: target picker
-  const allPlayers = Object.entries(roster);
-  const targets = allPlayers.filter(([id]) => id !== pid);
-  const targetKey = `${pid}-${dilemmaType}`;
-  const selectedTarget = simulateTargets[targetKey] || targets[0]?.[0] || '';
-
-  return (
-    <div style={panelStyles.controlRow}>
-      <select
-        style={panelStyles.select}
-        value={selectedTarget}
-        onChange={(e) =>
-          setSimulateTargets((prev) => ({ ...prev, [targetKey]: e.target.value }))
-        }
-      >
-        {targets.map(([id, p]) => (
-          <option key={id} value={id}>
-            {p.personaName}
-          </option>
-        ))}
-      </select>
-      <button
-        style={panelStyles.smallBtn}
-        onClick={() => handleSimulate(pid, dilemmaType, selectedTarget)}
-      >
-        Submit
-      </button>
+      {/* Day Controls */}
+      <div style={panelStyles.section}>
+        <div style={panelStyles.sectionLabel}>Day</div>
+        <div style={panelStyles.buttonGroup}>
+          <button style={panelStyles.dangerBtn} onClick={() => inject('END_DAY')}>
+            End Day
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -248,7 +151,7 @@ const panelStyles = {
     position: 'fixed' as const,
     bottom: 16,
     right: 16,
-    width: 320,
+    width: 300,
     maxHeight: 'calc(100vh - 32px)',
     overflowY: 'auto' as const,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
@@ -323,28 +226,26 @@ const panelStyles = {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
+    marginTop: 6,
   } as React.CSSProperties,
 
   statusDot: (state: string): React.CSSProperties => ({
     width: 8,
     height: 8,
     borderRadius: '50%',
-    backgroundColor:
-      state === 'running' ? '#4ADE80' :
-      state === 'results' ? '#60A5FA' :
-      '#9B8E7E',
+    backgroundColor: state === 'running' ? '#4ADE80' : '#9B8E7E',
     flexShrink: 0,
   }),
 
   statusText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 600,
   } as React.CSSProperties,
 
   personaInfo: {
-    marginTop: 4,
     fontSize: 12,
     color: '#9B8E7E',
+    marginBottom: 2,
   } as React.CSSProperties,
 
   buttonGroup: {
@@ -364,7 +265,6 @@ const panelStyles = {
     cursor: 'pointer',
     fontFamily: "'Quicksand', 'DM Sans', sans-serif",
     textAlign: 'center' as const,
-    transition: 'opacity 0.15s',
   } as React.CSSProperties,
 
   dangerBtn: {
@@ -378,69 +278,5 @@ const panelStyles = {
     cursor: 'pointer',
     fontFamily: "'Quicksand', 'DM Sans', sans-serif",
     width: '100%',
-    marginTop: 8,
-  } as React.CSSProperties,
-
-  simulateSection: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 8,
-  } as React.CSSProperties,
-
-  simulateRow: {
-    marginBottom: 8,
-  } as React.CSSProperties,
-
-  playerName: {
-    display: 'block',
-    fontSize: 12,
-    fontWeight: 600,
-    color: '#D4A574',
-    marginBottom: 4,
-  } as React.CSSProperties,
-
-  controlRow: {
-    display: 'flex',
-    gap: 6,
-    alignItems: 'center',
-  } as React.CSSProperties,
-
-  smallBtn: {
-    backgroundColor: 'rgba(212, 165, 116, 0.2)',
-    color: '#E8E0D4',
-    border: '1px solid rgba(212, 165, 116, 0.4)',
-    borderRadius: 6,
-    padding: '4px 10px',
-    fontSize: 11,
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: "'Quicksand', 'DM Sans', sans-serif",
-  } as React.CSSProperties,
-
-  select: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    color: '#E8E0D4',
-    border: '1px solid rgba(212, 165, 116, 0.3)',
-    borderRadius: 6,
-    padding: '4px 8px',
-    fontSize: 11,
-    fontFamily: "'Quicksand', 'DM Sans', sans-serif",
-    flex: 1,
-    minWidth: 0,
-  } as React.CSSProperties,
-
-  resultsPre: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 6,
-    padding: 8,
-    fontSize: 10,
-    color: '#9B8E7E',
-    overflowX: 'auto' as const,
-    maxHeight: 120,
-    overflowY: 'auto' as const,
-    margin: 0,
-    whiteSpace: 'pre-wrap' as const,
-    wordBreak: 'break-all' as const,
   } as React.CSSProperties,
 } as const;
