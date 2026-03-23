@@ -1,6 +1,11 @@
-import React from 'react';
-import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VoteEvents, VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import { VotingHeader } from './shared/VotingHeader';
+import { VoterStrip } from './shared/VoterStrip';
+
+const ACCENT = '#6b5b95';
+const TRUST_COLOR = '#2d6a4f';
+const BETRAY_COLOR = '#dc2626';
 
 interface TrustPairsVotingProps {
   cartridge: any;
@@ -22,6 +27,7 @@ export default function TrustPairsVoting({ cartridge, playerId, roster, engine }
     immunePlayerIds,
   } = cartridge;
 
+  const info = VOTE_TYPE_INFO[cartridge.voteType];
   const canVote = eligibleVoters.includes(playerId);
   const myTrust = trustPicks?.[playerId] ?? null;
   const myEliminate = votePicks?.[playerId] ?? null;
@@ -103,122 +109,305 @@ export default function TrustPairsVoting({ cartridge, playerId, roster, engine }
     );
   }
 
-  // VOTING phase -- two sections
+  // VOTING phase -- binary trust/betray choices
   const otherPlayers = eligibleTargets?.filter((id: string) => id !== playerId) ?? [];
+
+  // Build a combined votes object for VoterStrip: a voter has "voted" if they have both picks
+  const combinedVotes: Record<string, string> = {};
+  for (const voterId of eligibleVoters) {
+    if (trustPicks?.[voterId] && votePicks?.[voterId]) {
+      combinedVotes[voterId] = 'done';
+    }
+  }
 
   return (
     <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
       <div className="h-1 vote-strip-trust" />
       <div className="p-4 space-y-4">
-        <div className="flex items-center justify-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-skin-green pulse-live" />
-          <h3 className="text-sm font-mono font-bold text-skin-green uppercase tracking-widest">
-            TRUST PAIRS
-          </h3>
-        </div>
+        <VotingHeader
+          header={info.header}
+          cta={info.cta}
+          oneLiner={info.oneLiner}
+          howItWorks={info.howItWorks}
+          accentColor={ACCENT}
+        />
 
-        {/* Section 1: Trust */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-skin-green" />
-            <p className="text-xs font-mono font-bold text-skin-green uppercase text-center">
+        <VoterStrip
+          eligibleVoters={eligibleVoters}
+          votes={combinedVotes}
+          roster={roster}
+        />
+
+        {/* Section 1: Trust — pick one partner to trust */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: TRUST_COLOR }} />
+            <span
+              style={{
+                fontFamily: 'var(--vivid-font-mono)',
+                fontSize: 11,
+                fontWeight: 700,
+                color: TRUST_COLOR,
+                textTransform: 'uppercase',
+              }}
+            >
               Choose Your Trust Buddy
-            </p>
+            </span>
           </div>
-          {myTrust ? (
-            <p className="text-[10px] font-mono text-skin-green text-center uppercase">
+
+          {myTrust && (
+            <p
+              style={{
+                fontFamily: 'var(--vivid-font-mono)',
+                fontSize: 10,
+                color: TRUST_COLOR,
+                textAlign: 'center',
+                textTransform: 'uppercase',
+              }}
+            >
               Trusted: {roster[myTrust]?.personaName || myTrust}
             </p>
-          ) : !canVote ? (
-            <p className="text-[10px] font-mono text-skin-dim text-center uppercase">Not eligible</p>
-          ) : (
-            <p className="text-[10px] font-mono text-skin-dim text-center">Tap to trust</p>
           )}
-          <div className="grid grid-cols-3 gap-1.5">
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+            }}
+          >
             {otherPlayers.map((targetId: string) => {
               const player = roster[targetId];
               const isSelected = myTrust === targetId;
+              const isDisabled = !!myTrust || !canVote;
+              const isDimmed = isDisabled && !isSelected;
+              const firstName = player?.personaName?.split(' ')[0] ?? targetId;
+
               return (
-                <button
+                <div
                   key={`trust-${targetId}`}
-                  disabled={!!myTrust || !canVote}
-                  onClick={() => engine.sendVoteAction(VoteEvents.TRUST_PAIRS.TRUST, targetId)}
-                  className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border transition-all
-                    ${isSelected
-                      ? 'border-skin-green bg-skin-green/20 ring-2 ring-skin-green'
-                      : 'bg-skin-deep/40 border-white/[0.06] hover:border-white/20'
-                    }
-                    ${(!!myTrust || !canVote) && !isSelected ? 'opacity-40 grayscale' : ''}
-                  `}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 4,
+                    opacity: isDimmed ? 0.3 : 1,
+                    filter: isDimmed ? 'grayscale(40%)' : undefined,
+                    transition: 'opacity 0.2s, filter 0.2s',
+                  }}
                 >
-                  <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
-                  <span className="text-[10px] font-bold truncate w-full text-center text-skin-base">
-                    {player?.personaName || targetId}
+                  <button
+                    disabled={isDisabled}
+                    onClick={() => engine.sendVoteAction(VoteEvents.TRUST_PAIRS.TRUST, targetId)}
+                    style={{
+                      background: 'none',
+                      padding: 0,
+                      cursor: isDisabled ? 'default' : 'pointer',
+                      border: isSelected
+                        ? `3px solid ${TRUST_COLOR}`
+                        : '3px solid rgba(255,255,255,0.1)',
+                      borderRadius: '50%',
+                      boxShadow: isSelected ? `0 0 12px ${TRUST_COLOR}40` : undefined,
+                      transition: 'border 0.2s, box-shadow 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={48} />
+                  </button>
+                  <span
+                    style={{
+                      fontFamily: 'var(--vivid-font-body)',
+                      fontSize: 11,
+                      fontWeight: 500,
+                      color: isSelected ? TRUST_COLOR : '#f5f0e8',
+                      textAlign: 'center',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {firstName}
                   </span>
-                </button>
+                  {isSelected && (
+                    <span
+                      style={{
+                        fontFamily: 'var(--vivid-font-mono)',
+                        fontSize: 9,
+                        color: TRUST_COLOR,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Trusted
+                    </span>
+                  )}
+                </div>
               );
             })}
           </div>
         </div>
 
         {/* Divider */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 border-t border-white/10" />
-          <span className="text-[10px] font-mono text-skin-dim uppercase">vs</span>
-          <div className="flex-1 border-t border-white/10" />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <div style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.1)' }} />
+          <span
+            style={{
+              fontFamily: 'var(--vivid-font-mono)',
+              fontSize: 10,
+              color: '#9B8E7E',
+              textTransform: 'uppercase',
+            }}
+          >
+            vs
+          </span>
+          <div style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.1)' }} />
         </div>
 
-        {/* Section 2: Eliminate */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-skin-danger" />
-            <p className="text-xs font-mono font-bold text-skin-danger uppercase text-center">
+        {/* Section 2: Eliminate — pick one partner to betray */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: BETRAY_COLOR }} />
+            <span
+              style={{
+                fontFamily: 'var(--vivid-font-mono)',
+                fontSize: 11,
+                fontWeight: 700,
+                color: BETRAY_COLOR,
+                textTransform: 'uppercase',
+              }}
+            >
               Vote to Eliminate
-            </p>
+            </span>
           </div>
-          {myEliminate ? (
-            <p className="text-[10px] font-mono text-skin-danger text-center uppercase">
+
+          {myEliminate && (
+            <p
+              style={{
+                fontFamily: 'var(--vivid-font-mono)',
+                fontSize: 10,
+                color: BETRAY_COLOR,
+                textAlign: 'center',
+                textTransform: 'uppercase',
+              }}
+            >
               Targeting: {roster[myEliminate]?.personaName || myEliminate}
             </p>
-          ) : !canVote ? (
-            <p className="text-[10px] font-mono text-skin-dim text-center uppercase">Not eligible</p>
-          ) : (
-            <p className="text-[10px] font-mono text-skin-dim text-center">Tap to eliminate</p>
           )}
-          <div className="grid grid-cols-3 gap-1.5">
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+            }}
+          >
             {eligibleTargets?.map((targetId: string) => {
               const player = roster[targetId];
               const isSelected = myEliminate === targetId;
+              const isDisabled = !!myEliminate || !canVote;
+              const isDimmed = isDisabled && !isSelected;
+              const firstName = player?.personaName?.split(' ')[0] ?? targetId;
+
               return (
-                <button
+                <div
                   key={`elim-${targetId}`}
-                  disabled={!!myEliminate || !canVote}
-                  onClick={() => engine.sendVoteAction(VoteEvents.TRUST_PAIRS.ELIMINATE, targetId)}
-                  className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border transition-all
-                    ${isSelected
-                      ? 'border-skin-danger bg-skin-danger/20 ring-2 ring-skin-danger'
-                      : 'bg-skin-deep/40 border-white/[0.06] hover:border-white/20'
-                    }
-                    ${(!!myEliminate || !canVote) && !isSelected ? 'opacity-40 grayscale' : ''}
-                  `}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 4,
+                    opacity: isDimmed ? 0.3 : 1,
+                    filter: isDimmed ? 'grayscale(40%)' : undefined,
+                    transition: 'opacity 0.2s, filter 0.2s',
+                  }}
                 >
-                  <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
-                  <span className="text-[10px] font-bold truncate w-full text-center text-skin-base">
-                    {player?.personaName || targetId}
+                  <button
+                    disabled={isDisabled}
+                    onClick={() => engine.sendVoteAction(VoteEvents.TRUST_PAIRS.ELIMINATE, targetId)}
+                    style={{
+                      background: 'none',
+                      padding: 0,
+                      cursor: isDisabled ? 'default' : 'pointer',
+                      border: isSelected
+                        ? `3px solid ${BETRAY_COLOR}`
+                        : '3px solid rgba(255,255,255,0.1)',
+                      borderRadius: '50%',
+                      boxShadow: isSelected ? `0 0 12px ${BETRAY_COLOR}40` : undefined,
+                      transition: 'border 0.2s, box-shadow 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={48} />
+                  </button>
+                  <span
+                    style={{
+                      fontFamily: 'var(--vivid-font-body)',
+                      fontSize: 11,
+                      fontWeight: 500,
+                      color: isSelected ? BETRAY_COLOR : '#f5f0e8',
+                      textAlign: 'center',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {firstName}
                   </span>
-                </button>
+                  {isSelected && (
+                    <span
+                      style={{
+                        fontFamily: 'var(--vivid-font-mono)',
+                        fontSize: 9,
+                        color: BETRAY_COLOR,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Eliminated
+                    </span>
+                  )}
+                </div>
               );
             })}
           </div>
         </div>
 
         {/* Status summary */}
-        <div className="flex items-center justify-center gap-3 text-[10px] font-mono uppercase">
-          <span className={`px-2 py-0.5 rounded-full ${myTrust ? 'bg-skin-green/20 text-skin-green' : 'bg-white/5 text-skin-dim'}`}>
-            Trust {myTrust ? '/' : '--'}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 12,
+            fontFamily: 'var(--vivid-font-mono)',
+            fontSize: 10,
+            textTransform: 'uppercase',
+          }}
+        >
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 10,
+              background: myTrust ? 'rgba(45,106,79,0.15)' : 'rgba(255,255,255,0.04)',
+              color: myTrust ? TRUST_COLOR : '#9B8E7E',
+            }}
+          >
+            Trust {myTrust ? '\u2713' : '--'}
           </span>
-          <span className={`px-2 py-0.5 rounded-full ${myEliminate ? 'bg-skin-danger/20 text-skin-danger' : 'bg-white/5 text-skin-dim'}`}>
-            Eliminate {myEliminate ? '/' : '--'}
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 10,
+              background: myEliminate ? 'rgba(220,38,38,0.15)' : 'rgba(255,255,255,0.04)',
+              color: myEliminate ? BETRAY_COLOR : '#9B8E7E',
+            }}
+          >
+            Eliminate {myEliminate ? '\u2713' : '--'}
           </span>
         </div>
       </div>

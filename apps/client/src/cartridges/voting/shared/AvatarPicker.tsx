@@ -11,6 +11,8 @@ interface AvatarPickerProps {
   confirmLabel: string;
   actionVerb: string;
   onConfirm: (targetId: string) => void;
+  /** Optional prefix for data-testid attributes on each avatar button (e.g. "vote-btn") */
+  testIdPrefix?: string;
 }
 
 function getFirstName(personaName: string | undefined): string {
@@ -38,6 +40,7 @@ export function AvatarPicker({
   confirmLabel,
   actionVerb,
   onConfirm,
+  testIdPrefix,
 }: AvatarPickerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -129,6 +132,7 @@ export function AvatarPicker({
             <button
               onClick={() => handleTap(targetId)}
               disabled={!isInteractive}
+              {...(testIdPrefix ? { 'data-testid': `${testIdPrefix}-${targetId}` } : {})}
               style={{
                 background: 'none',
                 padding: 0,
@@ -205,6 +209,7 @@ export function AvatarPicker({
             {isSelected && (
               <button
                 onClick={handleConfirm}
+                data-testid="vote-confirm-btn"
                 style={{
                   background: accentColor,
                   color: '#ffffff',

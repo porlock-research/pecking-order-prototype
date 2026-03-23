@@ -1,6 +1,8 @@
-import React from 'react';
-import { SocialPlayer, VotingPhases } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import { VotingHeader } from './shared/VotingHeader';
+
+const ACCENT = '#9B8E7E';
 
 interface SecondToLastVotingProps {
   cartridge: any;
@@ -11,6 +13,7 @@ interface SecondToLastVotingProps {
 
 export default function SecondToLastVoting({ cartridge, playerId, roster }: SecondToLastVotingProps) {
   const { phase, results, silverRanking } = cartridge;
+  const info = VOTE_TYPE_INFO[cartridge.voteType];
   const ranking: Array<{ id: string; silver: number }> = results?.summary?.silverRanking ?? silverRanking ?? [];
   const eliminatedId: string | null = results?.eliminatedId ?? null;
   const maxSilver = ranking.length > 0 ? Math.max(...ranking.map(r => r.silver), 1) : 1;
@@ -31,11 +34,29 @@ export default function SecondToLastVoting({ cartridge, playerId, roster }: Seco
     <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
       <div className="h-1 vote-strip-second" />
       <div className="p-4 space-y-3">
-        <h3 className="text-sm font-mono font-bold text-skin-dim uppercase tracking-widest text-center">
-          {phase === VotingPhases.REVEAL ? 'SECOND TO LAST -- RESULTS' : 'SECOND TO LAST'}
-        </h3>
+        {phase === VotingPhases.REVEAL ? (
+          <h3 className="text-sm font-mono font-bold text-skin-dim uppercase tracking-widest text-center">
+            SECOND TO LAST -- RESULTS
+          </h3>
+        ) : (
+          <VotingHeader
+            header={info.header}
+            cta=""
+            oneLiner={info.oneLiner}
+            howItWorks={info.howItWorks}
+            accentColor={ACCENT}
+          />
+        )}
 
-        <p className="text-[10px] font-mono text-skin-dim text-center uppercase">
+        <p
+          style={{
+            fontFamily: 'var(--vivid-font-mono)',
+            fontSize: 10,
+            color: '#9B8E7E',
+            textAlign: 'center',
+            textTransform: 'uppercase',
+          }}
+        >
           No vote -- 2nd-to-last silver is automatically eliminated
         </p>
 

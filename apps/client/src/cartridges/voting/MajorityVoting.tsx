@@ -1,6 +1,10 @@
-import React from 'react';
-import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VoteEvents, VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import { VotingHeader } from './shared/VotingHeader';
+import { VoterStrip } from './shared/VoterStrip';
+import { AvatarPicker } from './shared/AvatarPicker';
+
+const ACCENT = '#e2b865';
 
 interface MajorityVotingProps {
   cartridge: any;
@@ -11,16 +15,15 @@ interface MajorityVotingProps {
 
 export default function MajorityVoting({ cartridge, playerId, roster, engine }: MajorityVotingProps) {
   const { phase, eligibleVoters, eligibleTargets, votes, results } = cartridge;
+  const info = VOTE_TYPE_INFO[cartridge.voteType];
   const canVote = eligibleVoters.includes(playerId);
   const myVote = votes[playerId] ?? null;
 
-  // Count votes per target
-  const tallies: Record<string, number> = {};
-  for (const targetId of Object.values(votes) as string[]) {
-    tallies[targetId] = (tallies[targetId] || 0) + 1;
-  }
-
   if (phase === VotingPhases.REVEAL) {
+    const tallies: Record<string, number> = {};
+    for (const targetId of Object.values(votes) as string[]) {
+      tallies[targetId] = (tallies[targetId] || 0) + 1;
+    }
     const revealTallies: Record<string, number> = results?.summary?.tallies ?? tallies;
     const eliminatedId: string | null = results?.eliminatedId ?? null;
 
@@ -75,62 +78,61 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
     <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
       <div className="h-1 vote-strip-majority" />
       <div className="p-4 space-y-3">
-        <div className="flex items-center justify-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-skin-gold pulse-live" />
-          <h3 className="text-sm font-mono font-bold text-skin-gold uppercase tracking-widest text-glow">
-            MAJORITY VOTE
-          </h3>
-        </div>
+        <VotingHeader
+          header={info.header}
+          cta={info.cta}
+          oneLiner={info.oneLiner}
+          howItWorks={info.howItWorks}
+          accentColor={ACCENT}
+        />
 
-        <p className="text-[10px] font-mono text-skin-dim text-center uppercase">Most votes = eliminated</p>
+        <VoterStrip
+          eligibleVoters={eligibleVoters}
+          votes={votes}
+          roster={roster}
+        />
 
-        {myVote ? (
-          <p data-testid="vote-confirmed" className="text-xs font-mono text-skin-pink text-center uppercase tracking-wider">
-            Vote cast!
-          </p>
-        ) : !canVote ? (
-          <p className="text-xs font-mono text-skin-dim text-center uppercase tracking-wider">
+        {!canVote && (
+          <p
+            style={{
+              fontFamily: 'var(--vivid-font-mono)',
+              fontSize: 11,
+              color: '#9B8E7E',
+              textAlign: 'center',
+              textTransform: 'uppercase',
+            }}
+          >
             You are not eligible to vote
-          </p>
-        ) : (
-          <p className="text-xs font-mono text-skin-dim text-center">
-            Tap a player to vote
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-2">
-          {eligibleTargets.map((targetId: string) => {
-            const player = roster[targetId];
-            const isSelected = myVote === targetId;
-            const voteCount = tallies[targetId] || 0;
+        {myVote && (
+          <p
+            data-testid="vote-confirmed"
+            style={{
+              fontFamily: 'var(--vivid-font-mono)',
+              fontSize: 9,
+              color: '#9B8E7E',
+              textAlign: 'center',
+              textTransform: 'uppercase',
+              margin: 0,
+            }}
+          >
+            Vote locked in
+          </p>
+        )}
 
-            return (
-              <button
-                key={targetId}
-                data-testid={`vote-btn-${targetId}`}
-                disabled={!!myVote || !canVote}
-                onClick={() => engine.sendVoteAction(VoteEvents.MAJORITY.CAST, targetId)}
-                className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left
-                  ${isSelected
-                    ? 'border-skin-gold bg-skin-gold/20 ring-2 ring-skin-gold'
-                    : 'bg-skin-deep/40 border-white/[0.06] hover:border-white/20'
-                  }
-                  ${(!!myVote || !canVote) && !isSelected ? 'opacity-40 grayscale' : ''}
-                `}
-              >
-                <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold truncate text-skin-base">
-                    {player?.personaName || targetId}
-                  </div>
-                </div>
-                {voteCount > 0 && (
-                  <span className="font-mono text-xs font-bold bg-skin-gold/20 rounded-full px-2 min-w-[24px] text-center text-skin-gold count-pop">{voteCount}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <AvatarPicker
+          eligibleTargets={eligibleTargets}
+          roster={roster}
+          disabled={!canVote}
+          confirmedId={myVote}
+          accentColor={ACCENT}
+          confirmLabel={info.confirmTemplate}
+          actionVerb={info.actionVerb}
+          onConfirm={(targetId) => engine.sendVoteAction(VoteEvents.MAJORITY.CAST, targetId)}
+          testIdPrefix="vote-btn"
+        />
       </div>
     </div>
   );

@@ -1,6 +1,10 @@
-import React from 'react';
-import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VoteEvents, VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import { VotingHeader } from './shared/VotingHeader';
+import { VoterStrip } from './shared/VoterStrip';
+import { AvatarPicker } from './shared/AvatarPicker';
+
+const ACCENT = '#3b82f6';
 
 interface BubbleVotingProps {
   cartridge: any;
@@ -11,15 +15,15 @@ interface BubbleVotingProps {
 
 export default function BubbleVoting({ cartridge, playerId, roster, engine }: BubbleVotingProps) {
   const { phase, eligibleVoters, eligibleTargets, votes, results, immunePlayerIds } = cartridge;
+  const info = VOTE_TYPE_INFO[cartridge.voteType];
   const canVote = eligibleVoters.includes(playerId);
   const myVote = votes[playerId] ?? null;
 
-  const tallies: Record<string, number> = {};
-  for (const targetId of Object.values(votes) as string[]) {
-    tallies[targetId] = (tallies[targetId] || 0) + 1;
-  }
-
   if (phase === VotingPhases.REVEAL) {
+    const tallies: Record<string, number> = {};
+    for (const targetId of Object.values(votes) as string[]) {
+      tallies[targetId] = (tallies[targetId] || 0) + 1;
+    }
     const revealTallies: Record<string, number> = results?.summary?.tallies ?? tallies;
     const eliminatedId: string | null = results?.eliminatedId ?? null;
     const immune: string[] = results?.summary?.immunePlayerIds ?? immunePlayerIds ?? [];
@@ -92,77 +96,90 @@ export default function BubbleVoting({ cartridge, playerId, roster, engine }: Bu
     <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
       <div className="h-1 vote-strip-bubble" />
       <div className="p-4 space-y-3">
-        <div className="flex items-center justify-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-skin-info pulse-live" />
-          <h3 className="text-sm font-mono font-bold text-skin-info uppercase tracking-widest">
-            THE BUBBLE
-          </h3>
-        </div>
+        <VotingHeader
+          header={info.header}
+          cta={info.cta}
+          oneLiner={info.oneLiner}
+          howItWorks={info.howItWorks}
+          accentColor={ACCENT}
+        />
 
-        <p className="text-[10px] font-mono text-skin-dim text-center uppercase">Top 3 silver holders are immune</p>
+        <VoterStrip
+          eligibleVoters={eligibleVoters}
+          votes={votes}
+          roster={roster}
+        />
 
+        {/* Immune player badges (Top 3 silver) — shown above the picker */}
         {immunePlayerIds?.length > 0 && (
-          <div className="space-y-1">
-            <div className="flex justify-center gap-2">
-              {immunePlayerIds.map((id: string) => {
-                const player = roster[id];
-                return (
-                  <div key={id} className="flex items-center gap-1 p-1.5 rounded-lg border border-skin-info/30 bg-skin-info/10 text-xs animate-badge-pop">
-                    <span className="font-mono text-skin-info text-[10px]">[*]</span>
-                    <span className="text-skin-info font-bold">{player?.personaName || id}</span>
-                  </div>
-                );
-              })}
-            </div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            {immunePlayerIds.map((id: string) => {
+              const player = roster[id];
+              return (
+                <div
+                  key={id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '4px 8px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(59,130,246,0.3)',
+                    background: 'rgba(59,130,246,0.08)',
+                    fontFamily: 'var(--vivid-font-body)',
+                    fontSize: 11,
+                  }}
+                >
+                  <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={18} />
+                  <span style={{ color: ACCENT, fontWeight: 600 }}>{player?.personaName || id}</span>
+                  <span
+                    style={{
+                      fontFamily: 'var(--vivid-font-mono)',
+                      fontSize: 9,
+                      color: ACCENT,
+                      textTransform: 'uppercase',
+                      opacity: 0.7,
+                    }}
+                  >
+                    immune
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {myVote ? (
-          <p className="text-xs font-mono text-skin-pink text-center uppercase tracking-wider">
-            Vote cast!
-          </p>
-        ) : !canVote ? (
-          <p className="text-xs font-mono text-skin-dim text-center uppercase tracking-wider">
+        {!canVote && (
+          <p
+            style={{
+              fontFamily: 'var(--vivid-font-mono)',
+              fontSize: 11,
+              color: '#9B8E7E',
+              textAlign: 'center',
+              textTransform: 'uppercase',
+            }}
+          >
             You are not eligible to vote
-          </p>
-        ) : (
-          <p className="text-xs font-mono text-skin-dim text-center">
-            Tap a player to vote (ranks 4+ only)
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-2">
-          {eligibleTargets.map((targetId: string) => {
-            const player = roster[targetId];
-            const isSelected = myVote === targetId;
-            const voteCount = tallies[targetId] || 0;
-
-            return (
-              <button
-                key={targetId}
-                disabled={!!myVote || !canVote}
-                onClick={() => engine.sendVoteAction(VoteEvents.BUBBLE.CAST, targetId)}
-                className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left
-                  ${isSelected
-                    ? 'border-skin-info bg-skin-info/20 ring-2 ring-skin-info'
-                    : 'bg-skin-deep/40 border-white/[0.06] hover:border-white/20'
-                  }
-                  ${(!!myVote || !canVote) && !isSelected ? 'opacity-40 grayscale' : ''}
-                `}
-              >
-                <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold truncate text-skin-base">
-                    {player?.personaName || targetId}
-                  </div>
-                </div>
-                {voteCount > 0 && (
-                  <span className="font-mono text-xs font-bold bg-skin-info/20 rounded-full px-2 min-w-[24px] text-center text-skin-info count-pop">{voteCount}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <AvatarPicker
+          eligibleTargets={eligibleTargets}
+          roster={roster}
+          disabled={!canVote}
+          confirmedId={myVote}
+          accentColor={ACCENT}
+          confirmLabel={info.confirmTemplate}
+          actionVerb={info.actionVerb}
+          onConfirm={(targetId) => engine.sendVoteAction(VoteEvents.BUBBLE.CAST, targetId)}
+        />
       </div>
     </div>
   );

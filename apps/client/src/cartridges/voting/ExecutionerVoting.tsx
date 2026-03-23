@@ -1,6 +1,11 @@
-import React from 'react';
-import { SocialPlayer, VotingPhases, VoteEvents } from '@pecking-order/shared-types';
+import { SocialPlayer, VotingPhases, VoteEvents, VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import { VotingHeader } from './shared/VotingHeader';
+import { VoterStrip } from './shared/VoterStrip';
+import { AvatarPicker } from './shared/AvatarPicker';
+
+const ACCENT_ELECT = '#9d174d';
+const ACCENT_PICK = '#9d174d';
 
 interface ExecutionerVotingProps {
   cartridge: any;
@@ -19,6 +24,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
     executionerId,
     electionTallies,
   } = cartridge;
+  const info = VOTE_TYPE_INFO[cartridge.voteType];
 
   // REVEAL phase
   if (phase === VotingPhases.REVEAL) {
@@ -84,55 +90,114 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
   if (phase === VotingPhases.EXECUTIONER_PICKING) {
     const isExecutioner = playerId === executionerId;
     const executioner = executionerId ? roster[executionerId] : null;
+    // For executioner pick, use the pick-specific fields
+    const pickHeader = info.executionerPickHeader ?? info.header;
+    const pickCta = info.executionerPickCta ?? info.cta;
+    const pickConfirm = info.executionerPickConfirm ?? info.confirmTemplate;
+    const pickVerb = info.executionerPickVerb ?? info.actionVerb;
 
     return (
       <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
         <div className="h-1 vote-strip-executioner" />
         <div className="p-4 space-y-3">
-          <div className="flex items-center justify-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-skin-danger pulse-live" />
-            <h3 className="text-sm font-mono font-bold text-skin-danger uppercase tracking-widest">
-              EXECUTIONER'S CHOICE
-            </h3>
-          </div>
+          <VotingHeader
+            header={pickHeader}
+            cta={isExecutioner ? pickCta : 'Waiting for the executioner...'}
+            oneLiner={info.oneLiner}
+            howItWorks={info.howItWorks}
+            accentColor={ACCENT_PICK}
+          />
 
+          {/* Executioner identity badge */}
           {executioner && (
-            <div className="flex items-center justify-center gap-2 text-sm">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
               <PersonaAvatar avatarUrl={executioner.avatarUrl} personaName={executioner.personaName} size={32} />
-              <span className="font-bold text-skin-base">{executioner.personaName}</span>
-              <span className="text-[10px] font-mono bg-skin-danger/20 text-skin-danger px-2 py-0.5 rounded-full uppercase">executioner</span>
+              <span
+                style={{
+                  fontFamily: 'var(--vivid-font-body)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: '#f5f0e8',
+                }}
+              >
+                {executioner.personaName}
+              </span>
+              <span
+                style={{
+                  fontFamily: 'var(--vivid-font-mono)',
+                  fontSize: 9,
+                  color: ACCENT_PICK,
+                  textTransform: 'uppercase',
+                  background: 'rgba(157,23,77,0.15)',
+                  padding: '2px 8px',
+                  borderRadius: 10,
+                }}
+              >
+                executioner
+              </span>
             </div>
           )}
 
           {isExecutioner ? (
-            <>
-              <p className="text-xs font-mono text-skin-danger text-center">
-                Choose who to eliminate
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {eligibleTargets.map((targetId: string) => {
-                  const player = roster[targetId];
-                  return (
-                    <button
-                      key={targetId}
-                      onClick={() => engine.sendVoteAction(VoteEvents.EXECUTIONER.PICK, targetId)}
-                      className="flex items-center gap-2 p-2 rounded-xl bg-skin-deep/40 border border-white/[0.06] hover:border-skin-danger hover:bg-skin-danger/10 transition-all text-left"
-                    >
-                      <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
-                      <div className="text-xs font-bold truncate text-skin-base">
-                        {player?.personaName || targetId}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
+            <AvatarPicker
+              eligibleTargets={eligibleTargets}
+              roster={roster}
+              disabled={false}
+              confirmedId={null}
+              accentColor={ACCENT_PICK}
+              confirmLabel={pickConfirm}
+              actionVerb={pickVerb}
+              onConfirm={(targetId) => engine.sendVoteAction(VoteEvents.EXECUTIONER.PICK, targetId)}
+            />
           ) : (
-            <div className="text-center space-y-2 py-4">
-              <div className="w-10 h-10 mx-auto rounded-full bg-skin-danger/10 border border-skin-danger/20 flex items-center justify-center glow-breathe">
-                <span className="font-mono text-skin-danger text-lg font-bold">?</span>
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '16px 0',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  background: 'rgba(157,23,77,0.1)',
+                  border: '1px solid rgba(157,23,77,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: 'var(--vivid-font-mono)',
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: ACCENT_PICK,
+                  }}
+                >
+                  ?
+                </span>
               </div>
-              <p className="text-xs font-mono text-skin-dim italic">
+              <p
+                style={{
+                  fontFamily: 'var(--vivid-font-mono)',
+                  fontSize: 11,
+                  color: '#9B8E7E',
+                  fontStyle: 'italic',
+                }}
+              >
                 The Executioner is choosing...
               </p>
             </div>
@@ -146,68 +211,48 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
   const canVote = eligibleVoters.includes(playerId);
   const myVote = votes[playerId] ?? null;
 
-  const tallies: Record<string, number> = {};
-  for (const targetId of Object.values(votes) as string[]) {
-    tallies[targetId] = (tallies[targetId] || 0) + 1;
-  }
-
   return (
     <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
-      <div className="h-1 vote-strip-majority" />
+      <div className="h-1 vote-strip-executioner" />
       <div className="p-4 space-y-3">
-        <div className="flex items-center justify-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-skin-gold pulse-live" />
-          <h3 className="text-sm font-mono font-bold text-skin-gold uppercase tracking-widest text-glow">
-            ELECT THE EXECUTIONER
-          </h3>
-        </div>
+        <VotingHeader
+          header={info.header}
+          cta={info.cta}
+          oneLiner={info.oneLiner}
+          howItWorks={info.howItWorks}
+          accentColor={ACCENT_ELECT}
+        />
 
-        {myVote ? (
-          <p className="text-xs font-mono text-skin-pink text-center uppercase tracking-wider">
-            Vote cast!
-          </p>
-        ) : !canVote ? (
-          <p className="text-xs font-mono text-skin-dim text-center uppercase tracking-wider">
+        <VoterStrip
+          eligibleVoters={eligibleVoters}
+          votes={votes}
+          roster={roster}
+        />
+
+        {!canVote && (
+          <p
+            style={{
+              fontFamily: 'var(--vivid-font-mono)',
+              fontSize: 11,
+              color: '#9B8E7E',
+              textAlign: 'center',
+              textTransform: 'uppercase',
+            }}
+          >
             You are not eligible to vote
-          </p>
-        ) : (
-          <p className="text-xs font-mono text-skin-dim text-center">
-            Tap a player to nominate as executioner
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-2">
-          {eligibleTargets.map((targetId: string) => {
-            const player = roster[targetId];
-            const isSelected = myVote === targetId;
-            const voteCount = tallies[targetId] || 0;
-
-            return (
-              <button
-                key={targetId}
-                disabled={!!myVote || !canVote}
-                onClick={() => engine.sendVoteAction(VoteEvents.EXECUTIONER.ELECT, targetId)}
-                className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left
-                  ${isSelected
-                    ? 'border-skin-gold bg-skin-gold/20 ring-2 ring-skin-gold'
-                    : 'bg-skin-deep/40 border-white/[0.06] hover:border-white/20'
-                  }
-                  ${(!!myVote || !canVote) && !isSelected ? 'opacity-40 grayscale' : ''}
-                `}
-              >
-                <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold truncate text-skin-base">
-                    {player?.personaName || targetId}
-                  </div>
-                </div>
-                {voteCount > 0 && (
-                  <span className="font-mono text-xs font-bold bg-skin-gold/20 rounded-full px-2 min-w-[24px] text-center text-skin-gold count-pop">{voteCount}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <AvatarPicker
+          eligibleTargets={eligibleTargets}
+          roster={roster}
+          disabled={!canVote}
+          confirmedId={myVote}
+          accentColor={ACCENT_ELECT}
+          confirmLabel={info.confirmTemplate}
+          actionVerb={info.actionVerb}
+          onConfirm={(targetId) => engine.sendVoteAction(VoteEvents.EXECUTIONER.ELECT, targetId)}
+        />
       </div>
     </div>
   );
