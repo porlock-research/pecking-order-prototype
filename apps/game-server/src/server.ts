@@ -15,6 +15,7 @@ import { buildActionOverrides, type ActionContext } from "./machine-actions";
 import { ensureSnapshotsTable, readSnapshot, readGoldCredited, parseSnapshot } from "./snapshot";
 
 export { DemoServer } from './demo/demo-server';
+export { ShowcaseServer } from './showcase/showcase-server';
 export type { Env } from "./types";
 import type { Env } from "./types";
 

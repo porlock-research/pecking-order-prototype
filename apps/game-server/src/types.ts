@@ -1,6 +1,7 @@
 export interface Env {
   GameServer: DurableObjectNamespace;
   DEMO_SERVER: DurableObjectNamespace;
+  SHOWCASE_SERVER: DurableObjectNamespace;
   DB: D1Database;
   AUTH_SECRET: string;
   AXIOM_DATASET: string;

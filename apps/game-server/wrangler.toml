@@ -12,6 +12,10 @@ new_sqlite_classes = ["GameServer"]
 tag = "v2"
 new_sqlite_classes = ["DemoServer"]
 
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["ShowcaseServer"]
+
 # ── Local Dev Bindings ────────────────────────────────────
 # Required for partyserver's routePartykitRequest to route
 # /parties/game-server/{id}/* to the GameServer DO.
@@ -22,6 +26,10 @@ class_name = "GameServer"
 [[durable_objects.bindings]]
 name = "DEMO_SERVER"
 class_name = "DemoServer"
+
+[[durable_objects.bindings]]
+name = "SHOWCASE_SERVER"
+class_name = "ShowcaseServer"
 
 [[d1_databases]]
 binding = "DB"
@@ -64,6 +72,10 @@ class_name = "GameServer"
 name = "DEMO_SERVER"
 class_name = "DemoServer"
 
+[[env.staging.durable_objects.bindings]]
+name = "SHOWCASE_SERVER"
+class_name = "ShowcaseServer"
+
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "pecking-order-journal-db-staging"
@@ -99,6 +111,10 @@ class_name = "GameServer"
 [[env.production.durable_objects.bindings]]
 name = "DEMO_SERVER"
 class_name = "DemoServer"
+
+[[env.production.durable_objects.bindings]]
+name = "SHOWCASE_SERVER"
+class_name = "ShowcaseServer"
 
 [[env.production.d1_databases]]
 binding = "DB"
