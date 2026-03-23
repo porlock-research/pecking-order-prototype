@@ -42,13 +42,17 @@ export const bubbleMachine = setup({
     }),
     calculateResults: assign({
       results: ({ context }) => {
+        // Count saves per target
         const tallies: Record<string, number> = {};
+        // Initialize all eligible targets with 0 (including those with no saves)
+        for (const targetId of context.eligibleTargets) {
+          tallies[targetId] = 0;
+        }
         for (const targetId of Object.values(context.votes)) {
           tallies[targetId] = (tallies[targetId] || 0) + 1;
         }
 
-        const maxVotes = Math.max(0, ...Object.values(tallies));
-        if (maxVotes === 0) {
+        if (context.eligibleTargets.length === 0) {
           return {
             eliminatedId: null,
             mechanism: 'BUBBLE' as const,
@@ -56,14 +60,17 @@ export const bubbleMachine = setup({
           };
         }
 
+        // Fewest saves = eliminated
+        const minSaves = Math.min(...Object.values(tallies));
         const tied = Object.entries(tallies)
-          .filter(([, count]) => count === maxVotes)
+          .filter(([, count]) => count === minSaves)
           .map(([id]) => id);
 
         let eliminatedId: string;
         if (tied.length === 1) {
           eliminatedId = tied[0];
         } else {
+          // Tie-break: lowest silver balance
           eliminatedId = tied.reduce((lowest, id) => {
             const lowestSilver = context.roster[lowest]?.silver ?? Infinity;
             const currentSilver = context.roster[id]?.silver ?? Infinity;

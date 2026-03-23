@@ -24,6 +24,7 @@ export const executionerMachine = setup({
       if (event.type !== VoteEvents.EXECUTIONER.PICK) return false;
       return event.senderId === context.executionerId;
     },
+    noExecutioner: ({ context }) => context.executionerId === null,
   },
   actions: {
     recordElectionVote: assign({
@@ -88,6 +89,18 @@ export const executionerMachine = setup({
         votes: {},
       };
     }),
+    setNoElectionResult: assign({
+      results: ({ context }) => ({
+        eliminatedId: null,
+        mechanism: 'EXECUTIONER' as const,
+        summary: {
+          executionerId: null,
+          electionTallies: context.electionTallies,
+          reason: 'no_election_votes',
+        },
+      }),
+      phase: VotingPhases.REVEAL,
+    }),
     recordPick: assign({
       results: ({ context, event }) => {
         if (event.type !== VoteEvents.EXECUTIONER.PICK) return context.results;
@@ -147,6 +160,11 @@ export const executionerMachine = setup({
       },
     },
     executionerPicking: {
+      always: {
+        guard: 'noExecutioner',
+        target: 'completed',
+        actions: 'setNoElectionResult',
+      },
       on: {
         [VoteEvents.EXECUTIONER.PICK]: {
           guard: 'isExecutioner',

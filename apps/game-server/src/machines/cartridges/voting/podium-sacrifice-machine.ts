@@ -42,13 +42,16 @@ export const podiumSacrificeMachine = setup({
     }),
     calculateResults: assign({
       results: ({ context }) => {
+        // Count saves per podium player (init all podium at 0)
         const tallies: Record<string, number> = {};
+        for (const podiumId of context.podiumPlayerIds) {
+          tallies[podiumId] = 0;
+        }
         for (const targetId of Object.values(context.votes)) {
           tallies[targetId] = (tallies[targetId] || 0) + 1;
         }
 
-        const maxVotes = Math.max(0, ...Object.values(tallies));
-        if (maxVotes === 0) {
+        if (context.podiumPlayerIds.length === 0) {
           return {
             eliminatedId: null,
             mechanism: 'PODIUM_SACRIFICE' as const,
@@ -56,14 +59,17 @@ export const podiumSacrificeMachine = setup({
           };
         }
 
+        // Fewest saves = eliminated (sacrifice the least-saved podium player)
+        const minSaves = Math.min(...Object.values(tallies));
         const tied = Object.entries(tallies)
-          .filter(([, count]) => count === maxVotes)
+          .filter(([, count]) => count === minSaves)
           .map(([id]) => id);
 
         let eliminatedId: string;
         if (tied.length === 1) {
           eliminatedId = tied[0];
         } else {
+          // Tie-break: lowest silver balance
           eliminatedId = tied.reduce((lowest, id) => {
             const lowestSilver = context.roster[lowest]?.silver ?? Infinity;
             const currentSilver = context.roster[id]?.silver ?? Infinity;
