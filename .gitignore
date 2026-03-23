@@ -53,6 +53,9 @@ skills-lock.json
 .agent/
 .agents/
 
+# Git worktrees
+.worktrees/
+
 # Playwright MCP logs
 .playwright-mcp/
 
