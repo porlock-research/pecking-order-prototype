@@ -57,11 +57,13 @@ export const shieldMachine = setup({
 
         let eliminatedId: string;
         if (tied.length === 0) {
-          return {
-            eliminatedId: null,
-            mechanism: 'SHIELD' as const,
-            summary: { saveCounts },
-          };
+          // Fallback: lowest silver among eligible targets
+          const fallbackId = context.eligibleTargets.reduce((lowest, id) => {
+            const lowestSilver = context.roster[lowest]?.silver ?? Infinity;
+            const currentSilver = context.roster[id]?.silver ?? Infinity;
+            return currentSilver < lowestSilver ? id : lowest;
+          }, context.eligibleTargets[0]);
+          eliminatedId = fallbackId;
         } else if (tied.length === 1) {
           eliminatedId = tied[0];
         } else {

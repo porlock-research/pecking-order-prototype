@@ -227,18 +227,20 @@ describe('Majority Machine', () => {
     expect(result.eliminatedId).toBe('p4');
   });
 
-  it('nobody votes => no elimination', () => {
+  it('nobody votes => fallback eliminates lowest silver', () => {
     const actor = createActor(stubMajority, { input: makeInput(roster5()) });
     actor.start();
 
     actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
     const result = doneOutput(actor);
-    expect(result.eliminatedId).toBeNull();
+    // No votes cast => fallback: lowest silver among eligible targets (all alive)
+    // p0=50, p1=45, p2=40, p3=35, p4=30 => p4 eliminated
+    expect(result.eliminatedId).toBe('p4');
   });
 
-  it('ineligible voter is rejected', () => {
-    // 5 total, 4 alive => p4 is eliminated
+  it('ineligible voter is rejected => fallback eliminates lowest silver', () => {
+    // 5 total, 4 alive => p4 is already eliminated status
     const actor = createActor(stubMajority, { input: makeInput(makeRoster(5, 4)) });
     actor.start();
 
@@ -247,7 +249,8 @@ describe('Majority Machine', () => {
     actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
     const result = doneOutput(actor);
-    expect(result.eliminatedId).toBeNull();
+    // No valid votes => fallback: lowest silver among alive (p0=50,p1=45,p2=40,p3=35) => p3
+    expect(result.eliminatedId).toBe('p3');
   });
 
   it('self-vote is counted (no self-vote prevention)', () => {
@@ -321,7 +324,7 @@ describe('Executioner Machine', () => {
     expect(snap.context.executionerId).toBe('p4');
   });
 
-  it('zero election votes => no deadlock, graceful no-elimination', () => {
+  it('zero election votes => fallback eliminates lowest silver among non-immune', () => {
     const actor = createActor(stubExecutioner, { input: makeInput(roster6()) });
     actor.start();
 
@@ -329,7 +332,9 @@ describe('Executioner Machine', () => {
     actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
     const result = doneOutput(actor);
-    expect(result.eliminatedId).toBeNull();
+    // No executioner elected => fallback: lowest silver among pick targets
+    // Top 3 immune: p0(50), p1(45), p2(40). Pick targets: p3(35), p4(30), p5(25) => p5 eliminated
+    expect(result.eliminatedId).toBe('p5');
     expect(result.summary.reason).toBe('no_election_votes');
   });
 
@@ -690,13 +695,14 @@ describe('Second To Last Machine', () => {
     expect(result.mechanism).toBe('SECOND_TO_LAST');
   });
 
-  it('only 1 player alive => no elimination', () => {
+  it('only 1 player alive => that player eliminated (fallback)', () => {
     const roster = makeRoster(3, 1);
     const actor = createActor(stubSecondToLast, { input: makeInput(roster) });
     actor.start();
 
     const result = doneOutput(actor);
-    expect(result.eliminatedId).toBeNull();
+    // Only p0 alive => fallback eliminates the sole remaining player
+    expect(result.eliminatedId).toBe('p0');
   });
 
   it('2 players alive => second-to-last is the top silver holder', () => {

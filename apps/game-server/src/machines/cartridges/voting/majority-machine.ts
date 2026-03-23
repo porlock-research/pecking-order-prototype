@@ -48,7 +48,13 @@ export const majorityMachine = setup({
 
         const maxVotes = Math.max(0, ...Object.values(tallies));
         if (maxVotes === 0) {
-          return { eliminatedId: null, mechanism: 'MAJORITY' as const, summary: { tallies } };
+          // Fallback: lowest silver among eligible targets
+          const fallbackId = context.eligibleTargets.reduce((lowest, id) => {
+            const lowestSilver = context.roster[lowest]?.silver ?? Infinity;
+            const currentSilver = context.roster[id]?.silver ?? Infinity;
+            return currentSilver < lowestSilver ? id : lowest;
+          }, context.eligibleTargets[0]);
+          return { eliminatedId: fallbackId, mechanism: 'MAJORITY' as const, summary: { tallies } };
         }
 
         const tied = Object.entries(tallies)

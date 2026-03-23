@@ -90,15 +90,29 @@ export const executionerMachine = setup({
       };
     }),
     setNoElectionResult: assign({
-      results: ({ context }) => ({
-        eliminatedId: null,
-        mechanism: 'EXECUTIONER' as const,
-        summary: {
-          executionerId: null,
-          electionTallies: context.electionTallies,
-          reason: 'no_election_votes',
-        },
-      }),
+      results: ({ context }) => {
+        // Fallback: lowest silver among eligible targets
+        const alive = Object.entries(context.roster)
+          .filter(([, p]) => p.status === 'ALIVE')
+          .map(([id]) => id);
+        const top3 = getTop3SilverIds(context.roster);
+        const pickTargets = alive.filter(id => !top3.includes(id));
+        const targets = pickTargets.length > 0 ? pickTargets : alive;
+        const fallbackId = targets.reduce((lowest, id) => {
+          const lowestSilver = context.roster[lowest]?.silver ?? Infinity;
+          const currentSilver = context.roster[id]?.silver ?? Infinity;
+          return currentSilver < lowestSilver ? id : lowest;
+        }, targets[0]);
+        return {
+          eliminatedId: fallbackId,
+          mechanism: 'EXECUTIONER' as const,
+          summary: {
+            executionerId: null,
+            electionTallies: context.electionTallies,
+            reason: 'no_election_votes',
+          },
+        };
+      },
       phase: VotingPhases.REVEAL,
     }),
     recordPick: assign({

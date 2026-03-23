@@ -52,8 +52,17 @@ export const podiumSacrificeMachine = setup({
         }
 
         if (context.podiumPlayerIds.length === 0) {
+          // Fallback: lowest silver among all alive players
+          const alive = Object.entries(context.roster)
+            .filter(([, p]) => p.status === 'ALIVE')
+            .map(([id]) => id);
+          const fallbackId = alive.reduce((lowest, id) => {
+            const lowestSilver = context.roster[lowest]?.silver ?? Infinity;
+            const currentSilver = context.roster[id]?.silver ?? Infinity;
+            return currentSilver < lowestSilver ? id : lowest;
+          }, alive[0]);
           return {
-            eliminatedId: null,
+            eliminatedId: fallbackId,
             mechanism: 'PODIUM_SACRIFICE' as const,
             summary: { tallies, podiumPlayerIds: context.podiumPlayerIds },
           };

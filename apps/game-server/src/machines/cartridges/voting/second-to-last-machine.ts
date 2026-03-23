@@ -22,8 +22,10 @@ export const secondToLastMachine = setup({
       results: ({ context }) => {
         const ranking = context.silverRanking;
         if (ranking.length < 2) {
+          // Fallback: eliminate the one remaining player if exists
+          const fallbackId = ranking.length === 1 ? ranking[0].id : null;
           return {
-            eliminatedId: null,
+            eliminatedId: fallbackId,
             mechanism: 'SECOND_TO_LAST' as const,
             summary: { silverRanking: ranking },
           };
