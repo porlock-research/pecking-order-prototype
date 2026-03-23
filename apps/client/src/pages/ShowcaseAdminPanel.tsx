@@ -40,11 +40,11 @@ export default function ShowcaseAdminPanel({ gameId }: ShowcaseAdminPanelProps) 
   // Timeline event injection
   const inject = useCallback((action: string, payload?: any) => {
     postAdmin(gameId, { type: 'INJECT_TIMELINE_EVENT', action, payload });
-  }, [gameId, token]);
+  }, [gameId]);
 
   const nextStage = useCallback(() => {
     postAdmin(gameId, { type: 'NEXT_STAGE' });
-  }, [gameId, token]);
+  }, [gameId]);
 
   if (collapsed) {
     return (
