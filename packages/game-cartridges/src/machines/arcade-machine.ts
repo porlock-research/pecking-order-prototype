@@ -3,8 +3,12 @@
  *
  * Generic lifecycle machine for async, per-player, client-rendered minigames.
  * The client renders the entire game and submits a final score payload.
- * The server tracks lifecycle (NOT_STARTED -> PLAYING -> COMPLETED),
+ * The server tracks lifecycle (NOT_STARTED -> PLAYING -> AWAITING_DECISION -> COMPLETED),
  * validates timing, computes rewards, and emits facts.
+ *
+ * Players can RETRY (return to PLAYING) or SUBMIT (finalize) after completing a run.
+ * On deadline (INTERNAL.END_GAME), AWAITING_DECISION players are auto-submitted
+ * and mid-retry PLAYING players fall back to their previousResult.
  *
  * Usage:
  *   const myGameMachine = createArcadeMachine({
@@ -33,10 +37,15 @@ export interface ArcadeGameConfig {
 // --- Per-Player State ---
 
 export interface ArcadePlayerState {
-  status: 'NOT_STARTED' | 'PLAYING' | 'COMPLETED';
+  status: 'NOT_STARTED' | 'PLAYING' | 'AWAITING_DECISION' | 'COMPLETED';
   startedAt: number;
   result: Record<string, number> | null;
   silverReward: number;
+  goldReward: number;
+  retryCount: number;
+  previousResult: Record<string, number> | null;
+  previousSilverReward: number;
+  previousGoldReward: number;
 }
 
 function createPlayerState(): ArcadePlayerState {
@@ -45,6 +54,11 @@ function createPlayerState(): ArcadePlayerState {
     startedAt: 0,
     result: null,
     silverReward: 0,
+    goldReward: 0,
+    retryCount: 0,
+    previousResult: null,
+    previousSilverReward: 0,
+    previousGoldReward: 0,
   };
 }
 
@@ -80,12 +94,14 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
     guards: {
       isStartEvent: ({ event }: any) => event.type === START_EVENT,
       isResultEvent: ({ event }: any) => event.type === RESULT_EVENT,
+      isSubmitEvent: ({ event }: any) => event.type === Events.Game.SUBMIT,
+      isRetryEvent: ({ event }: any) => event.type === Events.Game.RETRY,
     } as any,
     actions: {
       startPlayer: assign(({ context, event }: any) => {
         const senderId = event.senderId as string;
         const player = context.players[senderId];
-        if (!player || player.status !== ArcadePhases.NOT_STARTED) return {};
+        if (!player || (player.status !== ArcadePhases.NOT_STARTED && player.status !== ArcadePhases.PLAYING)) return {};
 
         return {
           players: {
@@ -126,22 +142,44 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
 
         const { silver, gold } = computeRewards(result, timeElapsed, defaultTimeLimit);
 
+        // Transition to AWAITING_DECISION — do NOT add gold to machine contribution yet
+        enqueue.assign({
+          players: {
+            ...context.players,
+            [senderId]: {
+              ...player,
+              status: ArcadePhases.AWAITING_DECISION,
+              result,
+              silverReward: silver,
+              goldReward: gold,
+            },
+          },
+        });
+
+        // Emit sync so clients see the updated state
+        enqueue.raise({ type: 'SYNC_AFTER_RESULT' } as any);
+      }),
+
+      submitPlayer: enqueueActions(({ enqueue, context, event }: any) => {
+        const senderId = event.senderId as string;
+        const player = context.players[senderId];
+        if (!player || player.status !== ArcadePhases.AWAITING_DECISION) return;
+
+        // Add player's gold to machine contribution and mark COMPLETED
         enqueue.assign({
           players: {
             ...context.players,
             [senderId]: {
               ...player,
               status: ArcadePhases.COMPLETED,
-              result,
-              silverReward: silver,
             },
           },
-          goldContribution: context.goldContribution + gold,
+          goldContribution: context.goldContribution + player.goldReward,
         });
 
-        enqueue.raise({ type: 'PLAYER_COMPLETED', playerId: senderId, silverReward: silver, goldContribution: gold } as any);
+        enqueue.raise({ type: 'PLAYER_COMPLETED', playerId: senderId, silverReward: player.silverReward, goldContribution: player.goldReward } as any);
 
-        // Check if all alive players are done
+        // Check if all alive players are now COMPLETED
         const allDone = context.alivePlayers.every((pid: string) =>
           pid === senderId ? true : context.players[pid]?.status === ArcadePhases.COMPLETED
         );
@@ -150,19 +188,69 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
         }
       }),
 
+      retryPlayer: assign(({ context, event }: any) => {
+        const senderId = event.senderId as string;
+        const player = context.players[senderId];
+        if (!player || player.status !== ArcadePhases.AWAITING_DECISION) return {};
+
+        return {
+          players: {
+            ...context.players,
+            [senderId]: {
+              ...player,
+              status: ArcadePhases.PLAYING,
+              previousResult: player.result,
+              previousSilverReward: player.silverReward,
+              previousGoldReward: player.goldReward,
+              retryCount: player.retryCount + 1,
+              result: null,
+              silverReward: 0,
+              goldReward: 0,
+              startedAt: 0,
+            },
+          },
+        };
+      }),
+
       finalizeResults: assign(({ context }: any) => {
         const updatedPlayers = { ...context.players };
+        let goldContribution = context.goldContribution;
+
         for (const [pid, player] of Object.entries(updatedPlayers) as [string, ArcadePlayerState][]) {
-          if (player.status !== ArcadePhases.COMPLETED) {
-            const { silver } = computeRewards(
-              player.result || {},
-              player.result?.timeElapsed || 0,
-              defaultTimeLimit,
-            );
-            updatedPlayers[pid] = { ...player, silverReward: silver };
+          if (player.status === ArcadePhases.AWAITING_DECISION) {
+            // Auto-submit: use current result/rewards
+            goldContribution += player.goldReward;
+            updatedPlayers[pid] = { ...player, status: ArcadePhases.COMPLETED };
+          } else if (player.status === ArcadePhases.PLAYING) {
+            if (player.previousResult) {
+              // Mid-retry: fall back to previous result
+              updatedPlayers[pid] = {
+                ...player,
+                result: player.previousResult,
+                silverReward: player.previousSilverReward,
+                goldReward: player.previousGoldReward,
+                status: ArcadePhases.COMPLETED,
+              };
+              goldContribution += player.previousGoldReward;
+            } else {
+              // First run, never completed: zero rewards
+              updatedPlayers[pid] = {
+                ...player,
+                silverReward: 0,
+                goldReward: 0,
+                status: ArcadePhases.COMPLETED,
+              };
+            }
+          } else if (player.status === ArcadePhases.NOT_STARTED) {
+            // Never started: zero rewards
+            updatedPlayers[pid] = {
+              ...player,
+              silverReward: 0,
+              goldReward: 0,
+            };
           }
         }
-        return { players: updatedPlayers };
+        return { players: updatedPlayers, goldContribution };
       }),
 
       reportResults: sendParent(({ context }: any): AnyEventObject => ({
@@ -232,12 +320,12 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
     initial: 'active',
     output: ({ context }: any) => {
       const silverRewards: Record<string, number> = {};
-      const players: Record<string, { silverReward: number; result: Record<string, number> | null }> = {};
+      const players: Record<string, { silverReward: number; goldReward: number; result: Record<string, number> | null }> = {};
       for (const [pid, player] of Object.entries(context.players) as [string, ArcadePlayerState][]) {
         if (player.status !== ArcadePhases.COMPLETED) {
           silverRewards[pid] = player.silverReward;
         }
-        players[pid] = { silverReward: player.silverReward, result: player.result };
+        players[pid] = { silverReward: player.silverReward, goldReward: player.goldReward, result: player.result };
       }
       return {
         gameType: context.gameType,
@@ -254,12 +342,15 @@ export function createArcadeMachine(config: ArcadeGameConfig) {
           '*': [
             { guard: 'isStartEvent', actions: 'startPlayer' },
             { guard: 'isResultEvent', actions: 'processResult' },
+            { guard: 'isSubmitEvent', actions: 'submitPlayer' },
+            { guard: 'isRetryEvent', actions: 'retryPlayer' },
           ],
           'PLAYER_COMPLETED': {
             actions: 'emitPlayerGameResult',
           },
           'ALL_COMPLETE': { target: 'completed' },
-          'INTERNAL.END_GAME': { target: 'completed' },
+          [Events.Internal.END_GAME]: { target: 'completed' },
+          'SYNC_AFTER_RESULT': { actions: 'emitSync' },
         },
       },
       completed: {

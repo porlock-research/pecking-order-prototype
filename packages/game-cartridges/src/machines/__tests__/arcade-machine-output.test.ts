@@ -67,6 +67,10 @@ describe('Arcade machine output (GH #57)', () => {
         timeElapsed: 10_000,
       } as any);
     }
+    // Submit all players to finalize (retry flow: RESULT → AWAITING_DECISION → SUBMIT → COMPLETED)
+    for (let i = 0; i < 4; i++) {
+      actor.send({ type: Events.Game.SUBMIT, senderId: `p${i}` } as any);
+    }
 
     const snap = actor.getSnapshot();
     expect(snap.status).toBe('done');
@@ -96,13 +100,13 @@ describe('Arcade machine output (GH #57)', () => {
     const actor = createActor(testMachine, { input: baseInput });
     actor.start();
 
-    // Only p0 and p1 complete
+    // Only p0 and p1 complete (RESULT only, no SUBMIT — still AWAITING_DECISION)
     actor.send({ type: Events.Game.start('TEST_GAME'), senderId: 'p0' } as any);
     actor.send({ type: Events.Game.result('TEST_GAME'), senderId: 'p0', correctAnswers: 10, timeElapsed: 8_000 } as any);
     actor.send({ type: Events.Game.start('TEST_GAME'), senderId: 'p1' } as any);
     actor.send({ type: Events.Game.result('TEST_GAME'), senderId: 'p1', correctAnswers: 5, timeElapsed: 12_000 } as any);
 
-    // Force end — p2 and p3 time out
+    // Force end — p0/p1 auto-submitted from AWAITING_DECISION, p2/p3 time out
     actor.send({ type: 'INTERNAL.END_GAME' } as any);
 
     const snap = actor.getSnapshot();
@@ -113,15 +117,15 @@ describe('Arcade machine output (GH #57)', () => {
     // All 4 alive players in summary.players
     expect(Object.keys(output.summary.players)).toHaveLength(4);
 
-    // Completed players have their earned rewards
+    // Auto-submitted players have their earned rewards
     expect(output.summary.players.p0.silverReward).toBe(10);
     expect(output.summary.players.p1.silverReward).toBe(5);
 
-    // Non-completed in silverRewards (economy — not yet credited)
+    // Non-started players in silverRewards (economy — not yet credited)
     expect(output.silverRewards).toHaveProperty('p2');
     expect(output.silverRewards).toHaveProperty('p3');
 
-    // Completed NOT in silverRewards (already credited mid-game)
+    // Auto-submitted (AWAITING_DECISION → COMPLETED) NOT in silverRewards
     expect(output.silverRewards).not.toHaveProperty('p0');
     expect(output.silverRewards).not.toHaveProperty('p1');
 
@@ -141,6 +145,10 @@ describe('Arcade machine output (GH #57)', () => {
         correctAnswers: 10,
         timeElapsed: 10_000,
       } as any);
+    }
+    // Submit all players to finalize (retry flow: RESULT → AWAITING_DECISION → SUBMIT → COMPLETED)
+    for (let i = 0; i < 3; i++) {
+      actor.send({ type: Events.Game.SUBMIT, senderId: `p${i}` } as any);
     }
 
     const snap = actor.getSnapshot();
