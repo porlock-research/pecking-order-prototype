@@ -91,22 +91,23 @@ export const showcaseMachine = setup({
         'ADMIN.START_DILEMMA': {
           target: 'running',
           guard: ({ event }: any) => event.dilemmaType in DILEMMA_REGISTRY,
-          actions: assign({
-            activeDilemmaCartridgeRef: ({ spawn, event, context }: any) =>
-              (spawn as any)(event.dilemmaType, {
-                id: 'activeDilemmaCartridge',
-                input: {
-                  dilemmaType: event.dilemmaType,
-                  roster: context.roster,
-                  dayIndex: 1,
-                },
-              }),
-            activeDilemmaType: ({ event }: any) => event.dilemmaType,
-          }),
+          actions: assign({ activeDilemmaType: ({ event }: any) => event.dilemmaType }),
         },
       },
     },
     running: {
+      // Spawn on entry (matching L3 pattern) — NOT in transition action
+      entry: assign({
+        activeDilemmaCartridgeRef: ({ spawn, context }: any) =>
+          (spawn as any)(context.activeDilemmaType, {
+            id: 'activeDilemmaCartridge',
+            input: {
+              dilemmaType: context.activeDilemmaType,
+              roster: context.roster,
+              dayIndex: 1,
+            },
+          }),
+      }),
       on: {
         'ADMIN.FORCE_END': {
           actions: sendTo('activeDilemmaCartridge', { type: 'INTERNAL.END_DILEMMA' }),
@@ -129,18 +130,7 @@ export const showcaseMachine = setup({
         'ADMIN.START_DILEMMA': {
           target: 'running',
           guard: ({ event }: any) => event.dilemmaType in DILEMMA_REGISTRY,
-          actions: assign({
-            activeDilemmaCartridgeRef: ({ spawn, event, context }: any) =>
-              (spawn as any)(event.dilemmaType, {
-                id: 'activeDilemmaCartridge',
-                input: {
-                  dilemmaType: event.dilemmaType,
-                  roster: context.roster,
-                  dayIndex: 1,
-                },
-              }),
-            activeDilemmaType: ({ event }: any) => event.dilemmaType,
-          }),
+          actions: assign({ activeDilemmaType: ({ event }: any) => event.dilemmaType }),
         },
       },
     },
