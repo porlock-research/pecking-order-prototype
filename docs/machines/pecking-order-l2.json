@@ -4,11 +4,13 @@
   "filePath": "src/machines/l2-orchestrator.ts",
   "stats": {
     "stateCount": 10,
-    "transitionCount": 42,
+    "transitionCount": 43,
     "eventTypes": [
       "*",
+      "ADMIN.ELIMINATE_PLAYER",
       "ADMIN.INJECT_TIMELINE_EVENT",
       "ADMIN.NEXT_STAGE",
+      "CARTRIDGE.DILEMMA_RESULT",
       "CARTRIDGE.GAME_RESULT",
       "CARTRIDGE.PLAYER_GAME_RESULT",
       "CARTRIDGE.PROMPT_RESULT",
@@ -23,10 +25,7 @@
       "PERK.RESULT",
       "PUSH.PHASE",
       "SILVER_TRANSFER.REJECTED",
-      "SOCIAL.CREATE_CHANNEL",
       "SOCIAL.SEND_MSG",
-      "SOCIAL.SEND_SILVER",
-      "SOCIAL.USE_PERK",
       "SYSTEM.INIT",
       "SYSTEM.PLAYER_JOINED",
       "SYSTEM.WAKEUP",
@@ -78,18 +77,16 @@
       "events": [
         "ADMIN.NEXT_STAGE",
         "FACT.RECORD",
-        "SOCIAL.SEND_MSG",
-        "SOCIAL.SEND_SILVER",
         "CARTRIDGE.VOTE_RESULT",
         "CARTRIDGE.GAME_RESULT",
         "CARTRIDGE.PLAYER_GAME_RESULT",
         "CARTRIDGE.PROMPT_RESULT",
+        "CARTRIDGE.DILEMMA_RESULT",
+        "ADMIN.ELIMINATE_PLAYER",
         "ECONOMY.CREDIT_SILVER",
         "ECONOMY.CONTRIBUTE_GOLD",
         "DM.REJECTED",
         "SILVER_TRANSFER.REJECTED",
-        "SOCIAL.USE_PERK",
-        "SOCIAL.CREATE_CHANNEL",
         "CHANNEL.REJECTED",
         "PERK.RESULT",
         "PERK.REJECTED",
@@ -126,6 +123,7 @@
         "SYSTEM.WAKEUP",
         "ADMIN.INJECT_TIMELINE_EVENT",
         "FACT.RECORD",
+        "ADMIN.ELIMINATE_PLAYER",
         "ECONOMY.CREDIT_SILVER",
         "ECONOMY.CONTRIBUTE_GOLD",
         "PUSH.PHASE"
@@ -184,16 +182,6 @@
     {
       "source": "dayLoop.activeSession",
       "target": "dayLoop.activeSession",
-      "event": "SOCIAL.SEND_MSG"
-    },
-    {
-      "source": "dayLoop.activeSession",
-      "target": "dayLoop.activeSession",
-      "event": "SOCIAL.SEND_SILVER"
-    },
-    {
-      "source": "dayLoop.activeSession",
-      "target": "dayLoop.activeSession",
       "event": "CARTRIDGE.VOTE_RESULT"
     },
     {
@@ -210,6 +198,16 @@
       "source": "dayLoop.activeSession",
       "target": "dayLoop.activeSession",
       "event": "CARTRIDGE.PROMPT_RESULT"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "CARTRIDGE.DILEMMA_RESULT"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "ADMIN.ELIMINATE_PLAYER"
     },
     {
       "source": "dayLoop.activeSession",
@@ -234,16 +232,6 @@
     {
       "source": "dayLoop.activeSession",
       "target": "dayLoop.activeSession",
-      "event": "SOCIAL.USE_PERK"
-    },
-    {
-      "source": "dayLoop.activeSession",
-      "target": "dayLoop.activeSession",
-      "event": "SOCIAL.CREATE_CHANNEL"
-    },
-    {
-      "source": "dayLoop.activeSession",
-      "target": "dayLoop.activeSession",
       "event": "CHANNEL.REJECTED"
     },
     {
@@ -260,6 +248,16 @@
       "source": "dayLoop.activeSession",
       "target": "dayLoop.activeSession",
       "event": "PUSH.PHASE"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "*"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "*"
     },
     {
       "source": "dayLoop.activeSession",
@@ -330,6 +328,11 @@
       "source": "dayLoop.nightSummary",
       "target": "dayLoop.nightSummary",
       "event": "FACT.RECORD"
+    },
+    {
+      "source": "dayLoop.nightSummary",
+      "target": "dayLoop.nightSummary",
+      "event": "ADMIN.ELIMINATE_PLAYER"
     },
     {
       "source": "dayLoop.nightSummary",

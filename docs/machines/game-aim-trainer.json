@@ -4,12 +4,13 @@
   "filePath": "packages/game-cartridges/src/machines/aim-trainer.ts",
   "stats": {
     "stateCount": 2,
-    "transitionCount": 5,
+    "transitionCount": 8,
     "eventTypes": [
       "*",
       "ALL_COMPLETE",
       "INTERNAL.END_GAME",
-      "PLAYER_COMPLETED"
+      "PLAYER_COMPLETED",
+      "SYNC_AFTER_RESULT"
     ],
     "hasParallelRegions": false,
     "hasFinalState": true
@@ -24,7 +25,8 @@
         "*",
         "PLAYER_COMPLETED",
         "ALL_COMPLETE",
-        "INTERNAL.END_GAME"
+        "INTERNAL.END_GAME",
+        "SYNC_AFTER_RESULT"
       ]
     },
     {
@@ -49,6 +51,16 @@
     {
       "source": "active",
       "target": "active",
+      "event": "*"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "*"
+    },
+    {
+      "source": "active",
+      "target": "active",
       "event": "PLAYER_COMPLETED"
     },
     {
@@ -60,6 +72,11 @@
       "source": "active",
       "target": "completed",
       "event": "INTERNAL.END_GAME"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "SYNC_AFTER_RESULT"
     }
   ]
 }

@@ -3,8 +3,8 @@
   "group": "Orchestration",
   "filePath": "src/machines/l3-session.ts",
   "stats": {
-    "stateCount": 12,
-    "transitionCount": 34,
+    "stateCount": 16,
+    "transitionCount": 45,
     "eventTypes": [
       "*",
       "CARTRIDGE.PLAYER_GAME_RESULT",
@@ -16,6 +16,7 @@
       "INTERNAL.CLOSE_VOTING",
       "INTERNAL.END_ACTIVITY",
       "INTERNAL.END_DAY",
+      "INTERNAL.END_DILEMMA",
       "INTERNAL.END_GAME",
       "INTERNAL.INJECT_PROMPT",
       "INTERNAL.OPEN_DMS",
@@ -23,11 +24,16 @@
       "INTERNAL.OPEN_VOTING",
       "INTERNAL.START_ACTIVITY",
       "INTERNAL.START_CARTRIDGE",
+      "INTERNAL.START_DILEMMA",
       "INTERNAL.START_GAME",
+      "SOCIAL.ACCEPT_DM",
+      "SOCIAL.ADD_MEMBER",
       "SOCIAL.CREATE_CHANNEL",
+      "SOCIAL.DECLINE_DM",
       "SOCIAL.SEND_MSG",
       "SOCIAL.SEND_SILVER",
       "SOCIAL.USE_PERK",
+      "xstate.done.actor.activeDilemmaCartridge",
       "xstate.done.actor.activeGameCartridge",
       "xstate.done.actor.activePromptCartridge",
       "xstate.done.actor.activeVotingCartridge"
@@ -64,6 +70,9 @@
         "SOCIAL.SEND_SILVER",
         "SOCIAL.USE_PERK",
         "SOCIAL.CREATE_CHANNEL",
+        "SOCIAL.ADD_MEMBER",
+        "SOCIAL.ACCEPT_DM",
+        "SOCIAL.DECLINE_DM",
         "INTERNAL.OPEN_DMS",
         "INTERNAL.CLOSE_DMS",
         "INTERNAL.OPEN_GROUP_CHAT",
@@ -151,6 +160,43 @@
       ]
     },
     {
+      "name": "dilemmaLayer",
+      "path": "running.dilemmaLayer",
+      "type": "compound",
+      "parent": "running",
+      "events": []
+    },
+    {
+      "name": "idle",
+      "path": "running.dilemmaLayer.idle",
+      "type": "atomic",
+      "parent": "running.dilemmaLayer",
+      "events": [
+        "INTERNAL.START_DILEMMA"
+      ]
+    },
+    {
+      "name": "playing",
+      "path": "running.dilemmaLayer.playing",
+      "type": "atomic",
+      "parent": "running.dilemmaLayer",
+      "events": [
+        "xstate.done.actor.activeDilemmaCartridge",
+        "INTERNAL.END_DILEMMA",
+        "*"
+      ]
+    },
+    {
+      "name": "completed",
+      "path": "running.dilemmaLayer.completed",
+      "type": "atomic",
+      "parent": "running.dilemmaLayer",
+      "events": [
+        "INTERNAL.END_DILEMMA",
+        "xstate.done.actor.activeDilemmaCartridge"
+      ]
+    },
+    {
       "name": "finishing",
       "path": "finishing",
       "type": "final",
@@ -218,6 +264,31 @@
       "source": "running.social.active",
       "target": "running.social.active",
       "event": "SOCIAL.CREATE_CHANNEL"
+    },
+    {
+      "source": "running.social.active",
+      "target": "running.social.active",
+      "event": "SOCIAL.ADD_MEMBER"
+    },
+    {
+      "source": "running.social.active",
+      "target": "running.social.active",
+      "event": "SOCIAL.ADD_MEMBER"
+    },
+    {
+      "source": "running.social.active",
+      "target": "running.social.active",
+      "event": "SOCIAL.ACCEPT_DM"
+    },
+    {
+      "source": "running.social.active",
+      "target": "running.social.active",
+      "event": "SOCIAL.ACCEPT_DM"
+    },
+    {
+      "source": "running.social.active",
+      "target": "running.social.active",
+      "event": "SOCIAL.DECLINE_DM"
     },
     {
       "source": "running.social.active",
@@ -328,6 +399,36 @@
       "source": "running.activityLayer.completed",
       "target": "running.activityLayer.idle",
       "event": "xstate.done.actor.activePromptCartridge"
+    },
+    {
+      "source": "running.dilemmaLayer.idle",
+      "target": "running.dilemmaLayer.playing",
+      "event": "INTERNAL.START_DILEMMA"
+    },
+    {
+      "source": "running.dilemmaLayer.playing",
+      "target": "running.dilemmaLayer.completed",
+      "event": "xstate.done.actor.activeDilemmaCartridge"
+    },
+    {
+      "source": "running.dilemmaLayer.playing",
+      "target": "running.dilemmaLayer.completed",
+      "event": "INTERNAL.END_DILEMMA"
+    },
+    {
+      "source": "running.dilemmaLayer.playing",
+      "target": "running.dilemmaLayer.playing",
+      "event": "*"
+    },
+    {
+      "source": "running.dilemmaLayer.completed",
+      "target": "running.dilemmaLayer.idle",
+      "event": "INTERNAL.END_DILEMMA"
+    },
+    {
+      "source": "running.dilemmaLayer.completed",
+      "target": "running.dilemmaLayer.idle",
+      "event": "xstate.done.actor.activeDilemmaCartridge"
     }
   ]
 }

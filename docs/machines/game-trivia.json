@@ -4,9 +4,11 @@
   "filePath": "packages/game-cartridges/src/machines/trivia.ts",
   "stats": {
     "stateCount": 3,
-    "transitionCount": 7,
+    "transitionCount": 9,
     "eventTypes": [
       "ALL_COMPLETE",
+      "GAME.RETRY",
+      "GAME.SUBMIT",
       "GAME.TRIVIA.ANSWER",
       "GAME.TRIVIA.START",
       "INTERNAL.END_GAME",
@@ -33,6 +35,8 @@
       "events": [
         "GAME.TRIVIA.START",
         "GAME.TRIVIA.ANSWER",
+        "GAME.SUBMIT",
+        "GAME.RETRY",
         "PLAYER_COMPLETED",
         "ALL_COMPLETE",
         "INTERNAL.END_GAME"
@@ -66,6 +70,16 @@
       "source": "active",
       "target": "active",
       "event": "GAME.TRIVIA.ANSWER"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "GAME.SUBMIT"
+    },
+    {
+      "source": "active",
+      "target": "active",
+      "event": "GAME.RETRY"
     },
     {
       "source": "active",

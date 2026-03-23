@@ -5,11 +5,13 @@
     "filePath": "src/machines/l2-orchestrator.ts",
     "stats": {
       "stateCount": 10,
-      "transitionCount": 42,
+      "transitionCount": 43,
       "eventTypes": [
         "*",
+        "ADMIN.ELIMINATE_PLAYER",
         "ADMIN.INJECT_TIMELINE_EVENT",
         "ADMIN.NEXT_STAGE",
+        "CARTRIDGE.DILEMMA_RESULT",
         "CARTRIDGE.GAME_RESULT",
         "CARTRIDGE.PLAYER_GAME_RESULT",
         "CARTRIDGE.PROMPT_RESULT",
@@ -24,10 +26,7 @@
         "PERK.RESULT",
         "PUSH.PHASE",
         "SILVER_TRANSFER.REJECTED",
-        "SOCIAL.CREATE_CHANNEL",
         "SOCIAL.SEND_MSG",
-        "SOCIAL.SEND_SILVER",
-        "SOCIAL.USE_PERK",
         "SYSTEM.INIT",
         "SYSTEM.PLAYER_JOINED",
         "SYSTEM.WAKEUP",
@@ -79,18 +78,16 @@
         "events": [
           "ADMIN.NEXT_STAGE",
           "FACT.RECORD",
-          "SOCIAL.SEND_MSG",
-          "SOCIAL.SEND_SILVER",
           "CARTRIDGE.VOTE_RESULT",
           "CARTRIDGE.GAME_RESULT",
           "CARTRIDGE.PLAYER_GAME_RESULT",
           "CARTRIDGE.PROMPT_RESULT",
+          "CARTRIDGE.DILEMMA_RESULT",
+          "ADMIN.ELIMINATE_PLAYER",
           "ECONOMY.CREDIT_SILVER",
           "ECONOMY.CONTRIBUTE_GOLD",
           "DM.REJECTED",
           "SILVER_TRANSFER.REJECTED",
-          "SOCIAL.USE_PERK",
-          "SOCIAL.CREATE_CHANNEL",
           "CHANNEL.REJECTED",
           "PERK.RESULT",
           "PERK.REJECTED",
@@ -127,6 +124,7 @@
           "SYSTEM.WAKEUP",
           "ADMIN.INJECT_TIMELINE_EVENT",
           "FACT.RECORD",
+          "ADMIN.ELIMINATE_PLAYER",
           "ECONOMY.CREDIT_SILVER",
           "ECONOMY.CONTRIBUTE_GOLD",
           "PUSH.PHASE"
@@ -185,16 +183,6 @@
       {
         "source": "dayLoop.activeSession",
         "target": "dayLoop.activeSession",
-        "event": "SOCIAL.SEND_MSG"
-      },
-      {
-        "source": "dayLoop.activeSession",
-        "target": "dayLoop.activeSession",
-        "event": "SOCIAL.SEND_SILVER"
-      },
-      {
-        "source": "dayLoop.activeSession",
-        "target": "dayLoop.activeSession",
         "event": "CARTRIDGE.VOTE_RESULT"
       },
       {
@@ -211,6 +199,16 @@
         "source": "dayLoop.activeSession",
         "target": "dayLoop.activeSession",
         "event": "CARTRIDGE.PROMPT_RESULT"
+      },
+      {
+        "source": "dayLoop.activeSession",
+        "target": "dayLoop.activeSession",
+        "event": "CARTRIDGE.DILEMMA_RESULT"
+      },
+      {
+        "source": "dayLoop.activeSession",
+        "target": "dayLoop.activeSession",
+        "event": "ADMIN.ELIMINATE_PLAYER"
       },
       {
         "source": "dayLoop.activeSession",
@@ -235,16 +233,6 @@
       {
         "source": "dayLoop.activeSession",
         "target": "dayLoop.activeSession",
-        "event": "SOCIAL.USE_PERK"
-      },
-      {
-        "source": "dayLoop.activeSession",
-        "target": "dayLoop.activeSession",
-        "event": "SOCIAL.CREATE_CHANNEL"
-      },
-      {
-        "source": "dayLoop.activeSession",
-        "target": "dayLoop.activeSession",
         "event": "CHANNEL.REJECTED"
       },
       {
@@ -261,6 +249,16 @@
         "source": "dayLoop.activeSession",
         "target": "dayLoop.activeSession",
         "event": "PUSH.PHASE"
+      },
+      {
+        "source": "dayLoop.activeSession",
+        "target": "dayLoop.activeSession",
+        "event": "*"
+      },
+      {
+        "source": "dayLoop.activeSession",
+        "target": "dayLoop.activeSession",
+        "event": "*"
       },
       {
         "source": "dayLoop.activeSession",
@@ -335,6 +333,11 @@
       {
         "source": "dayLoop.nightSummary",
         "target": "dayLoop.nightSummary",
+        "event": "ADMIN.ELIMINATE_PLAYER"
+      },
+      {
+        "source": "dayLoop.nightSummary",
+        "target": "dayLoop.nightSummary",
         "event": "ECONOMY.CREDIT_SILVER"
       },
       {
@@ -369,8 +372,8 @@
     "group": "Orchestration",
     "filePath": "src/machines/l3-session.ts",
     "stats": {
-      "stateCount": 12,
-      "transitionCount": 34,
+      "stateCount": 16,
+      "transitionCount": 45,
       "eventTypes": [
         "*",
         "CARTRIDGE.PLAYER_GAME_RESULT",
@@ -382,6 +385,7 @@
         "INTERNAL.CLOSE_VOTING",
         "INTERNAL.END_ACTIVITY",
         "INTERNAL.END_DAY",
+        "INTERNAL.END_DILEMMA",
         "INTERNAL.END_GAME",
         "INTERNAL.INJECT_PROMPT",
         "INTERNAL.OPEN_DMS",
@@ -389,11 +393,16 @@
         "INTERNAL.OPEN_VOTING",
         "INTERNAL.START_ACTIVITY",
         "INTERNAL.START_CARTRIDGE",
+        "INTERNAL.START_DILEMMA",
         "INTERNAL.START_GAME",
+        "SOCIAL.ACCEPT_DM",
+        "SOCIAL.ADD_MEMBER",
         "SOCIAL.CREATE_CHANNEL",
+        "SOCIAL.DECLINE_DM",
         "SOCIAL.SEND_MSG",
         "SOCIAL.SEND_SILVER",
         "SOCIAL.USE_PERK",
+        "xstate.done.actor.activeDilemmaCartridge",
         "xstate.done.actor.activeGameCartridge",
         "xstate.done.actor.activePromptCartridge",
         "xstate.done.actor.activeVotingCartridge"
@@ -430,6 +439,9 @@
           "SOCIAL.SEND_SILVER",
           "SOCIAL.USE_PERK",
           "SOCIAL.CREATE_CHANNEL",
+          "SOCIAL.ADD_MEMBER",
+          "SOCIAL.ACCEPT_DM",
+          "SOCIAL.DECLINE_DM",
           "INTERNAL.OPEN_DMS",
           "INTERNAL.CLOSE_DMS",
           "INTERNAL.OPEN_GROUP_CHAT",
@@ -517,6 +529,43 @@
         ]
       },
       {
+        "name": "dilemmaLayer",
+        "path": "running.dilemmaLayer",
+        "type": "compound",
+        "parent": "running",
+        "events": []
+      },
+      {
+        "name": "idle",
+        "path": "running.dilemmaLayer.idle",
+        "type": "atomic",
+        "parent": "running.dilemmaLayer",
+        "events": [
+          "INTERNAL.START_DILEMMA"
+        ]
+      },
+      {
+        "name": "playing",
+        "path": "running.dilemmaLayer.playing",
+        "type": "atomic",
+        "parent": "running.dilemmaLayer",
+        "events": [
+          "xstate.done.actor.activeDilemmaCartridge",
+          "INTERNAL.END_DILEMMA",
+          "*"
+        ]
+      },
+      {
+        "name": "completed",
+        "path": "running.dilemmaLayer.completed",
+        "type": "atomic",
+        "parent": "running.dilemmaLayer",
+        "events": [
+          "INTERNAL.END_DILEMMA",
+          "xstate.done.actor.activeDilemmaCartridge"
+        ]
+      },
+      {
         "name": "finishing",
         "path": "finishing",
         "type": "final",
@@ -584,6 +633,31 @@
         "source": "running.social.active",
         "target": "running.social.active",
         "event": "SOCIAL.CREATE_CHANNEL"
+      },
+      {
+        "source": "running.social.active",
+        "target": "running.social.active",
+        "event": "SOCIAL.ADD_MEMBER"
+      },
+      {
+        "source": "running.social.active",
+        "target": "running.social.active",
+        "event": "SOCIAL.ADD_MEMBER"
+      },
+      {
+        "source": "running.social.active",
+        "target": "running.social.active",
+        "event": "SOCIAL.ACCEPT_DM"
+      },
+      {
+        "source": "running.social.active",
+        "target": "running.social.active",
+        "event": "SOCIAL.ACCEPT_DM"
+      },
+      {
+        "source": "running.social.active",
+        "target": "running.social.active",
+        "event": "SOCIAL.DECLINE_DM"
       },
       {
         "source": "running.social.active",
@@ -694,6 +768,36 @@
         "source": "running.activityLayer.completed",
         "target": "running.activityLayer.idle",
         "event": "xstate.done.actor.activePromptCartridge"
+      },
+      {
+        "source": "running.dilemmaLayer.idle",
+        "target": "running.dilemmaLayer.playing",
+        "event": "INTERNAL.START_DILEMMA"
+      },
+      {
+        "source": "running.dilemmaLayer.playing",
+        "target": "running.dilemmaLayer.completed",
+        "event": "xstate.done.actor.activeDilemmaCartridge"
+      },
+      {
+        "source": "running.dilemmaLayer.playing",
+        "target": "running.dilemmaLayer.completed",
+        "event": "INTERNAL.END_DILEMMA"
+      },
+      {
+        "source": "running.dilemmaLayer.playing",
+        "target": "running.dilemmaLayer.playing",
+        "event": "*"
+      },
+      {
+        "source": "running.dilemmaLayer.completed",
+        "target": "running.dilemmaLayer.idle",
+        "event": "INTERNAL.END_DILEMMA"
+      },
+      {
+        "source": "running.dilemmaLayer.completed",
+        "target": "running.dilemmaLayer.idle",
+        "event": "xstate.done.actor.activeDilemmaCartridge"
       }
     ]
   },
@@ -1466,12 +1570,13 @@
     "filePath": "packages/game-cartridges/src/machines/gap-run.ts",
     "stats": {
       "stateCount": 2,
-      "transitionCount": 5,
+      "transitionCount": 8,
       "eventTypes": [
         "*",
         "ALL_COMPLETE",
         "INTERNAL.END_GAME",
-        "PLAYER_COMPLETED"
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
       ],
       "hasParallelRegions": false,
       "hasFinalState": true
@@ -1486,7 +1591,8 @@
           "*",
           "PLAYER_COMPLETED",
           "ALL_COMPLETE",
-          "INTERNAL.END_GAME"
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
         ]
       },
       {
@@ -1511,6 +1617,16 @@
       {
         "source": "active",
         "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
         "event": "PLAYER_COMPLETED"
       },
       {
@@ -1522,6 +1638,11 @@
         "source": "active",
         "target": "completed",
         "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
       }
     ]
   },
@@ -1531,12 +1652,13 @@
     "filePath": "packages/game-cartridges/src/machines/grid-push.ts",
     "stats": {
       "stateCount": 2,
-      "transitionCount": 5,
+      "transitionCount": 8,
       "eventTypes": [
         "*",
         "ALL_COMPLETE",
         "INTERNAL.END_GAME",
-        "PLAYER_COMPLETED"
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
       ],
       "hasParallelRegions": false,
       "hasFinalState": true
@@ -1551,7 +1673,8 @@
           "*",
           "PLAYER_COMPLETED",
           "ALL_COMPLETE",
-          "INTERNAL.END_GAME"
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
         ]
       },
       {
@@ -1576,6 +1699,16 @@
       {
         "source": "active",
         "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
         "event": "PLAYER_COMPLETED"
       },
       {
@@ -1587,6 +1720,11 @@
         "source": "active",
         "target": "completed",
         "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
       }
     ]
   },
@@ -1596,12 +1734,13 @@
     "filePath": "packages/game-cartridges/src/machines/sequence.ts",
     "stats": {
       "stateCount": 2,
-      "transitionCount": 5,
+      "transitionCount": 8,
       "eventTypes": [
         "*",
         "ALL_COMPLETE",
         "INTERNAL.END_GAME",
-        "PLAYER_COMPLETED"
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
       ],
       "hasParallelRegions": false,
       "hasFinalState": true
@@ -1616,7 +1755,8 @@
           "*",
           "PLAYER_COMPLETED",
           "ALL_COMPLETE",
-          "INTERNAL.END_GAME"
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
         ]
       },
       {
@@ -1641,6 +1781,16 @@
       {
         "source": "active",
         "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
         "event": "PLAYER_COMPLETED"
       },
       {
@@ -1652,6 +1802,11 @@
         "source": "active",
         "target": "completed",
         "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
       }
     ]
   },
@@ -1661,12 +1816,13 @@
     "filePath": "packages/game-cartridges/src/machines/reaction-time.ts",
     "stats": {
       "stateCount": 2,
-      "transitionCount": 5,
+      "transitionCount": 8,
       "eventTypes": [
         "*",
         "ALL_COMPLETE",
         "INTERNAL.END_GAME",
-        "PLAYER_COMPLETED"
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
       ],
       "hasParallelRegions": false,
       "hasFinalState": true
@@ -1681,7 +1837,8 @@
           "*",
           "PLAYER_COMPLETED",
           "ALL_COMPLETE",
-          "INTERNAL.END_GAME"
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
         ]
       },
       {
@@ -1706,6 +1863,16 @@
       {
         "source": "active",
         "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
         "event": "PLAYER_COMPLETED"
       },
       {
@@ -1717,6 +1884,11 @@
         "source": "active",
         "target": "completed",
         "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
       }
     ]
   },
@@ -1726,12 +1898,13 @@
     "filePath": "packages/game-cartridges/src/machines/color-match.ts",
     "stats": {
       "stateCount": 2,
-      "transitionCount": 5,
+      "transitionCount": 8,
       "eventTypes": [
         "*",
         "ALL_COMPLETE",
         "INTERNAL.END_GAME",
-        "PLAYER_COMPLETED"
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
       ],
       "hasParallelRegions": false,
       "hasFinalState": true
@@ -1746,7 +1919,8 @@
           "*",
           "PLAYER_COMPLETED",
           "ALL_COMPLETE",
-          "INTERNAL.END_GAME"
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
         ]
       },
       {
@@ -1771,6 +1945,16 @@
       {
         "source": "active",
         "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
         "event": "PLAYER_COMPLETED"
       },
       {
@@ -1782,6 +1966,11 @@
         "source": "active",
         "target": "completed",
         "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
       }
     ]
   },
@@ -1791,12 +1980,13 @@
     "filePath": "packages/game-cartridges/src/machines/stacker.ts",
     "stats": {
       "stateCount": 2,
-      "transitionCount": 5,
+      "transitionCount": 8,
       "eventTypes": [
         "*",
         "ALL_COMPLETE",
         "INTERNAL.END_GAME",
-        "PLAYER_COMPLETED"
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
       ],
       "hasParallelRegions": false,
       "hasFinalState": true
@@ -1811,7 +2001,8 @@
           "*",
           "PLAYER_COMPLETED",
           "ALL_COMPLETE",
-          "INTERNAL.END_GAME"
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
         ]
       },
       {
@@ -1836,6 +2027,16 @@
       {
         "source": "active",
         "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
         "event": "PLAYER_COMPLETED"
       },
       {
@@ -1847,6 +2048,11 @@
         "source": "active",
         "target": "completed",
         "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
       }
     ]
   },
@@ -1856,12 +2062,13 @@
     "filePath": "packages/game-cartridges/src/machines/quick-math.ts",
     "stats": {
       "stateCount": 2,
-      "transitionCount": 5,
+      "transitionCount": 8,
       "eventTypes": [
         "*",
         "ALL_COMPLETE",
         "INTERNAL.END_GAME",
-        "PLAYER_COMPLETED"
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
       ],
       "hasParallelRegions": false,
       "hasFinalState": true
@@ -1876,7 +2083,8 @@
           "*",
           "PLAYER_COMPLETED",
           "ALL_COMPLETE",
-          "INTERNAL.END_GAME"
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
         ]
       },
       {
@@ -1901,6 +2109,16 @@
       {
         "source": "active",
         "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
         "event": "PLAYER_COMPLETED"
       },
       {
@@ -1912,6 +2130,11 @@
         "source": "active",
         "target": "completed",
         "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
       }
     ]
   },
@@ -1921,12 +2144,13 @@
     "filePath": "packages/game-cartridges/src/machines/simon-says.ts",
     "stats": {
       "stateCount": 2,
-      "transitionCount": 5,
+      "transitionCount": 8,
       "eventTypes": [
         "*",
         "ALL_COMPLETE",
         "INTERNAL.END_GAME",
-        "PLAYER_COMPLETED"
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
       ],
       "hasParallelRegions": false,
       "hasFinalState": true
@@ -1941,7 +2165,8 @@
           "*",
           "PLAYER_COMPLETED",
           "ALL_COMPLETE",
-          "INTERNAL.END_GAME"
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
         ]
       },
       {
@@ -1966,6 +2191,16 @@
       {
         "source": "active",
         "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
         "event": "PLAYER_COMPLETED"
       },
       {
@@ -1977,6 +2212,11 @@
         "source": "active",
         "target": "completed",
         "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
       }
     ]
   },
@@ -1986,12 +2226,13 @@
     "filePath": "packages/game-cartridges/src/machines/aim-trainer.ts",
     "stats": {
       "stateCount": 2,
-      "transitionCount": 5,
+      "transitionCount": 8,
       "eventTypes": [
         "*",
         "ALL_COMPLETE",
         "INTERNAL.END_GAME",
-        "PLAYER_COMPLETED"
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
       ],
       "hasParallelRegions": false,
       "hasFinalState": true
@@ -2006,7 +2247,8 @@
           "*",
           "PLAYER_COMPLETED",
           "ALL_COMPLETE",
-          "INTERNAL.END_GAME"
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
         ]
       },
       {
@@ -2031,6 +2273,16 @@
       {
         "source": "active",
         "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
         "event": "PLAYER_COMPLETED"
       },
       {
@@ -2042,6 +2294,11 @@
         "source": "active",
         "target": "completed",
         "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
       }
     ]
   },
@@ -2154,9 +2411,11 @@
     "filePath": "packages/game-cartridges/src/machines/trivia.ts",
     "stats": {
       "stateCount": 3,
-      "transitionCount": 7,
+      "transitionCount": 9,
       "eventTypes": [
         "ALL_COMPLETE",
+        "GAME.RETRY",
+        "GAME.SUBMIT",
         "GAME.TRIVIA.ANSWER",
         "GAME.TRIVIA.START",
         "INTERNAL.END_GAME",
@@ -2183,6 +2442,8 @@
         "events": [
           "GAME.TRIVIA.START",
           "GAME.TRIVIA.ANSWER",
+          "GAME.SUBMIT",
+          "GAME.RETRY",
           "PLAYER_COMPLETED",
           "ALL_COMPLETE",
           "INTERNAL.END_GAME"
@@ -2216,6 +2477,16 @@
         "source": "active",
         "target": "active",
         "event": "GAME.TRIVIA.ANSWER"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "GAME.SUBMIT"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "GAME.RETRY"
       },
       {
         "source": "active",
