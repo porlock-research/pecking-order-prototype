@@ -84,6 +84,8 @@ export const Events = {
   },
   Game: {
     PREFIX: 'GAME.',
+    RETRY: 'GAME.RETRY',
+    SUBMIT: 'GAME.SUBMIT',
     CHANNEL_PREFIX: 'GAME.CHANNEL.',
     start: (gameType: string) => `GAME.${gameType}.START`,
     result: (gameType: string) => `GAME.${gameType}.RESULT`,
@@ -146,6 +148,7 @@ export const VotingPhases = {
 export const ArcadePhases = {
   NOT_STARTED: 'NOT_STARTED',
   PLAYING: 'PLAYING',
+  AWAITING_DECISION: 'AWAITING_DECISION',
   COMPLETED: 'COMPLETED',
 } as const;
 

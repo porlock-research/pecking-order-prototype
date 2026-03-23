@@ -687,14 +687,19 @@ export type GameClientEvent =
 export interface ArcadeGameProjection {
   gameType: string;
   ready?: boolean;
-  status: 'NOT_STARTED' | 'PLAYING' | 'COMPLETED';
+  status: 'NOT_STARTED' | 'PLAYING' | 'AWAITING_DECISION' | 'COMPLETED';
   startedAt: number;
   result: Record<string, number> | null;
   silverReward: number;
+  goldReward: number;
   goldContribution: number;
   seed: number;
   timeLimit: number;
   difficulty: number;
+  retryCount: number;
+  previousResult: Record<string, number> | null;
+  previousSilverReward: number;
+  previousGoldReward: number;
 }
 
 /**
@@ -714,7 +719,7 @@ export type GapRunProjection = ArcadeGameProjection & { gameType: 'GAP_RUN' };
 export interface TriviaProjection {
   gameType: 'TRIVIA';
   ready?: boolean;
-  status: 'NOT_STARTED' | 'PLAYING' | 'COMPLETED';
+  status: 'NOT_STARTED' | 'PLAYING' | 'AWAITING_DECISION' | 'COMPLETED';
   currentRound: number;
   totalRounds: number;
   currentQuestion: { question: string; options: string[]; category?: string; difficulty?: string } | null;
@@ -728,6 +733,10 @@ export interface TriviaProjection {
   correctCount: number;
   silverReward: number;
   goldContribution: number;
+  retryCount: number;
+  previousResult: Record<string, number> | null;
+  previousSilverReward: number;
+  previousGoldReward: number;
 }
 
 export interface RealtimeTriviaProjection {
