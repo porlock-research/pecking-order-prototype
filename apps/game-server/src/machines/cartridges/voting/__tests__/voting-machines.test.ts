@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createActor, type AnyActorRef } from 'xstate';
 import { VoteEvents } from '@pecking-order/shared-types';
-import type { SocialPlayer, VoteResult } from '@pecking-order/shared-types';
+import type { VoteResult } from '@pecking-order/shared-types';
 
 import { bubbleMachine } from '../bubble-machine';
 import { majorityMachine } from '../majority-machine';
@@ -12,32 +12,23 @@ import { finalsMachine } from '../finals-machine';
 import { trustPairsMachine } from '../trust-pairs-machine';
 import { secondToLastMachine } from '../second-to-last-machine';
 
+import {
+  buildRoster,
+  BUBBLE_SCENARIOS,
+  MAJORITY_SCENARIOS,
+  EXECUTIONER_SCENARIOS,
+  PODIUM_SACRIFICE_SCENARIOS,
+  SHIELD_SCENARIOS,
+  TRUST_PAIRS_SCENARIOS,
+  SECOND_TO_LAST_SCENARIOS,
+  FINALS_SCENARIOS,
+} from './voting-scenarios';
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeRoster(
-  count: number,
-  alive?: number,
-  silverOverrides?: Record<string, number>,
-): Record<string, SocialPlayer> {
-  const roster: Record<string, SocialPlayer> = {};
-  const aliveCount = alive ?? count;
-  for (let i = 0; i < count; i++) {
-    roster[`p${i}`] = {
-      id: `p${i}`,
-      personaName: `Player ${i}`,
-      avatarUrl: '',
-      status: i < aliveCount ? 'ALIVE' : 'ELIMINATED',
-      silver: silverOverrides?.[`p${i}`] ?? (50 - i * 5),
-      gold: 0,
-      realUserId: `u${i}`,
-    } as SocialPlayer;
-  }
-  return roster;
-}
-
-function makeInput(roster: Record<string, SocialPlayer>, dayIndex = 1) {
+function makeInput(roster: Record<string, any>, dayIndex = 1) {
   return { voteType: 'MAJORITY' as any, roster, dayIndex };
 }
 
@@ -89,78 +80,39 @@ const stubSecondToLast = secondToLastMachine.provide({
 // ---------------------------------------------------------------------------
 
 describe('Bubble Machine', () => {
-  // 6 alive players: p0(50), p1(45), p2(40), p3(35), p4(30), p5(25)
-  // Top 3 silver = p0, p1, p2 (immune) => eligible targets = p3, p4, p5
-  // Eligible voters = all alive
-  const roster6 = () => makeRoster(6);
+  for (const scenario of BUBBLE_SCENARIOS) {
+    it(scenario.name, () => {
+      const roster = buildRoster(scenario.roster);
+      const actor = createActor(stubBubble, { input: makeInput(roster) });
+      actor.start();
 
-  it('all vote to save same player => that player is safe, a 0-save player eliminated', () => {
-    const actor = createActor(stubBubble, { input: makeInput(roster6()) });
-    actor.start();
+      for (const [voterId, targetId] of Object.entries(scenario.votes ?? {})) {
+        actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: voterId, targetId });
+      }
+      actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
-    // All 6 alive voters save p3
-    for (let i = 0; i < 6; i++) {
-      actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: `p${i}`, targetId: 'p3' });
-    }
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
+      const result = doneOutput(actor);
+      expect(result.eliminatedId).toBe(scenario.expected.eliminatedId);
+      expect(result.mechanism).toBe('BUBBLE');
+      if (scenario.expected.immune) {
+        expect(result.summary.immunePlayerIds).toEqual(
+          expect.arrayContaining(scenario.expected.immune),
+        );
+      }
+    });
+  }
 
-    const result = doneOutput(actor);
-    // p3 has 6 saves, p4 and p5 have 0 saves => tie-break lowest silver => p5 (25) eliminated
-    expect(result.eliminatedId).not.toBe('p3');
-    expect(result.eliminatedId).toBe('p5');
-    expect(result.mechanism).toBe('BUBBLE');
-  });
-
-  it('split votes => player with fewest saves eliminated', () => {
-    const actor = createActor(stubBubble, { input: makeInput(roster6()) });
-    actor.start();
-
-    // p0,p1,p5 save p3 (3 saves), p2,p3 save p4 (2 saves), p4 saves p5 (1 save)
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p0', targetId: 'p3' });
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p1', targetId: 'p3' });
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p2', targetId: 'p4' });
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p3', targetId: 'p4' });
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p4', targetId: 'p5' });
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p5', targetId: 'p3' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // p3=3 saves, p4=2 saves, p5=1 save => p5 eliminated (fewest saves)
-    expect(result.eliminatedId).toBe('p5');
-  });
-
-  it('tie in fewest saves => lowest silver eliminated', () => {
-    const actor = createActor(stubBubble, { input: makeInput(roster6()) });
-    actor.start();
-
-    // p0-p4 save p3 (4 saves), p5 saves p5 (self, 1 save) => p4=0, p5=1 — not a tie
-    // Better: p0,p1,p2,p5 save p3 (4), p3 saves p4 (1), p4 saves p5 (1)
-    // tallies: p3=4, p4=1, p5=1 => tie between p4(30) and p5(25) => p5 eliminated
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p0', targetId: 'p3' });
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p1', targetId: 'p3' });
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p2', targetId: 'p3' });
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p3', targetId: 'p4' });
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p4', targetId: 'p5' });
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p5', targetId: 'p3' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    expect(result.eliminatedId).toBe('p5');
-  });
-
-  it('nobody votes => 0 saves each, tie-break by lowest silver', () => {
-    const actor = createActor(stubBubble, { input: makeInput(roster6()) });
-    actor.start();
-
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // All 3 targets (p3,p4,p5) have 0 saves => tie => lowest silver = p5
-    expect(result.eliminatedId).toBe('p5');
-  });
-
+  // Behavioral test: immune players cannot be voted for
   it('immune players (top 3 silver) excluded from targets', () => {
-    const actor = createActor(stubBubble, { input: makeInput(roster6()) });
+    const roster = buildRoster({
+      p0: { silver: 50, status: 'ALIVE' },
+      p1: { silver: 45, status: 'ALIVE' },
+      p2: { silver: 40, status: 'ALIVE' },
+      p3: { silver: 35, status: 'ALIVE' },
+      p4: { silver: 30, status: 'ALIVE' },
+      p5: { silver: 25, status: 'ALIVE' },
+    });
+    const actor = createActor(stubBubble, { input: makeInput(roster) });
     actor.start();
 
     // Try voting for immune player p0 — should be ignored
@@ -168,22 +120,7 @@ describe('Bubble Machine', () => {
     actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
     const snap = actor.getSnapshot();
-    // p0 should not appear in tallies vote count (vote was rejected)
     expect(snap.context.votes).toEqual({});
-  });
-
-  it('only 1 save on a player, others have 0 => a 0-save player eliminated, NOT the 1-save player', () => {
-    const actor = createActor(stubBubble, { input: makeInput(roster6()) });
-    actor.start();
-
-    // Only p0 votes, saves p4
-    actor.send({ type: VoteEvents.BUBBLE.CAST, senderId: 'p0', targetId: 'p4' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // p3=0, p4=1, p5=0 => tied at 0: p3(35) vs p5(25) => p5 eliminated
-    expect(result.eliminatedId).not.toBe('p4');
-    expect(result.eliminatedId).toBe('p5');
   });
 });
 
@@ -192,56 +129,33 @@ describe('Bubble Machine', () => {
 // ---------------------------------------------------------------------------
 
 describe('Majority Machine', () => {
-  const roster5 = () => makeRoster(5);
+  for (const scenario of MAJORITY_SCENARIOS) {
+    it(scenario.name, () => {
+      const roster = buildRoster(scenario.roster);
+      const actor = createActor(stubMajority, { input: makeInput(roster) });
+      actor.start();
 
-  it('clear majority => most-voted player eliminated', () => {
-    const actor = createActor(stubMajority, { input: makeInput(roster5()) });
-    actor.start();
+      for (const [voterId, targetId] of Object.entries(scenario.votes ?? {})) {
+        actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: voterId, targetId });
+      }
+      actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
-    actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: 'p0', targetId: 'p2' });
-    actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: 'p1', targetId: 'p2' });
-    actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: 'p2', targetId: 'p0' });
-    actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: 'p3', targetId: 'p2' });
-    actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: 'p4', targetId: 'p0' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
+      const result = doneOutput(actor);
+      expect(result.eliminatedId).toBe(scenario.expected.eliminatedId);
+      expect(result.mechanism).toBe('MAJORITY');
+    });
+  }
 
-    const result = doneOutput(actor);
-    expect(result.eliminatedId).toBe('p2');
-    expect(result.mechanism).toBe('MAJORITY');
-  });
-
-  it('tie => lowest silver eliminated', () => {
-    // p0=50, p1=45, p2=40, p3=35, p4=30
-    const actor = createActor(stubMajority, { input: makeInput(roster5()) });
-    actor.start();
-
-    // p0 and p4 each get 2 votes
-    actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: 'p1', targetId: 'p0' });
-    actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: 'p2', targetId: 'p0' });
-    actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: 'p0', targetId: 'p4' });
-    actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: 'p3', targetId: 'p4' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // p0=50 silver, p4=30 silver => p4 eliminated (lowest silver in tie)
-    expect(result.eliminatedId).toBe('p4');
-  });
-
-  it('nobody votes => fallback eliminates lowest silver', () => {
-    const actor = createActor(stubMajority, { input: makeInput(roster5()) });
-    actor.start();
-
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // No votes cast => fallback: lowest silver among eligible targets (all alive)
-    // p0=50, p1=45, p2=40, p3=35, p4=30 => p4 eliminated
-    expect(result.eliminatedId).toBe('p4');
-  });
-
-  it('ineligible voter is rejected => fallback eliminates lowest silver', () => {
-    // 5 total, 4 alive => p4 is already eliminated status
-    const actor = createActor(stubMajority, { input: makeInput(makeRoster(5, 4)) });
+  // Behavioral: ineligible voter is rejected
+  it('ineligible voter is rejected — fallback eliminates lowest silver', () => {
+    const roster = buildRoster({
+      p0: { silver: 50, status: 'ALIVE' },
+      p1: { silver: 45, status: 'ALIVE' },
+      p2: { silver: 40, status: 'ALIVE' },
+      p3: { silver: 35, status: 'ALIVE' },
+      p4: { silver: 30, status: 'ELIMINATED' },
+    });
+    const actor = createActor(stubMajority, { input: makeInput(roster) });
     actor.start();
 
     // p4 (eliminated) tries to vote — should be ignored
@@ -249,26 +163,20 @@ describe('Majority Machine', () => {
     actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
     const result = doneOutput(actor);
-    // No valid votes => fallback: lowest silver among alive (p0=50,p1=45,p2=40,p3=35) => p3
+    // No valid votes → fallback: lowest silver among alive (p3=35)
     expect(result.eliminatedId).toBe('p3');
   });
 
-  it('self-vote is counted (no self-vote prevention)', () => {
-    const actor = createActor(stubMajority, { input: makeInput(roster5()) });
-    actor.start();
-
-    // Everyone self-votes: each gets 1 vote, tie => lowest silver = p4
-    for (let i = 0; i < 5; i++) {
-      actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: `p${i}`, targetId: `p${i}` });
-    }
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    expect(result.eliminatedId).toBe('p4');
-  });
-
+  // Behavioral: last vote overrides previous
   it('last vote from same voter overrides previous vote', () => {
-    const actor = createActor(stubMajority, { input: makeInput(roster5()) });
+    const roster = buildRoster({
+      p0: { silver: 50, status: 'ALIVE' },
+      p1: { silver: 45, status: 'ALIVE' },
+      p2: { silver: 40, status: 'ALIVE' },
+      p3: { silver: 35, status: 'ALIVE' },
+      p4: { silver: 30, status: 'ALIVE' },
+    });
+    const actor = createActor(stubMajority, { input: makeInput(roster) });
     actor.start();
 
     actor.send({ type: VoteEvents.MAJORITY.CAST, senderId: 'p0', targetId: 'p1' });
@@ -285,61 +193,60 @@ describe('Majority Machine', () => {
 // ---------------------------------------------------------------------------
 
 describe('Executioner Machine', () => {
-  // 6 alive: p0(50), p1(45), p2(40), p3(35), p4(30), p5(25)
-  // Top 3 silver (immune from pick) = p0, p1, p2
-  const roster6 = () => makeRoster(6);
+  for (const scenario of EXECUTIONER_SCENARIOS) {
+    it(scenario.name, () => {
+      const roster = buildRoster(scenario.roster);
+      const actor = createActor(stubExecutioner, { input: makeInput(roster) });
+      actor.start();
 
-  it('election => most-voted becomes executioner => executioner picks target => target eliminated', () => {
-    const actor = createActor(stubExecutioner, { input: makeInput(roster6()) });
-    actor.start();
+      // Phase 1: election votes
+      for (const [voterId, targetId] of Object.entries(scenario.phase1Votes ?? {})) {
+        actor.send({ type: VoteEvents.EXECUTIONER.ELECT, senderId: voterId, targetId });
+      }
+      actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
-    // Election: p0,p1,p2 vote for p3 as executioner
-    actor.send({ type: VoteEvents.EXECUTIONER.ELECT, senderId: 'p0', targetId: 'p3' });
-    actor.send({ type: VoteEvents.EXECUTIONER.ELECT, senderId: 'p1', targetId: 'p3' });
-    actor.send({ type: VoteEvents.EXECUTIONER.ELECT, senderId: 'p2', targetId: 'p3' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
+      // If no executioner was elected, machine goes straight to completed
+      if (scenario.expected.executionerId === null) {
+        const result = doneOutput(actor);
+        expect(result.eliminatedId).toBe(scenario.expected.eliminatedId);
+        expect(result.mechanism).toBe('EXECUTIONER');
+        if (scenario.expected.reason) {
+          expect(result.summary.reason).toBe(scenario.expected.reason);
+        }
+        return;
+      }
 
-    let snap = actor.getSnapshot();
-    expect(snap.value).toBe('executionerPicking');
-    expect(snap.context.executionerId).toBe('p3');
+      // Verify executioner was elected correctly
+      const snap = actor.getSnapshot();
+      expect(snap.value).toBe('executionerPicking');
+      expect(snap.context.executionerId).toBe(scenario.expected.executionerId);
 
-    // Executioner picks p5
-    actor.send({ type: VoteEvents.EXECUTIONER.PICK, senderId: 'p3', targetId: 'p5' });
+      // Phase 2: executioner picks
+      if (scenario.phase2Action) {
+        actor.send({
+          type: VoteEvents.EXECUTIONER.PICK,
+          senderId: scenario.phase2Action.actorId,
+          targetId: scenario.phase2Action.targetId,
+        });
 
-    const result = doneOutput(actor);
-    expect(result.eliminatedId).toBe('p5');
-    expect(result.mechanism).toBe('EXECUTIONER');
-  });
+        const result = doneOutput(actor);
+        expect(result.eliminatedId).toBe(scenario.expected.eliminatedId);
+        expect(result.mechanism).toBe('EXECUTIONER');
+      }
+    });
+  }
 
-  it('election tie => lowest silver becomes executioner', () => {
-    const actor = createActor(stubExecutioner, { input: makeInput(roster6()) });
-    actor.start();
-
-    // p0 votes p3, p1 votes p4 => tie (1 each). p3(silver=35), p4(silver=30) => p4 wins tiebreak (lowest silver)
-    actor.send({ type: VoteEvents.EXECUTIONER.ELECT, senderId: 'p0', targetId: 'p3' });
-    actor.send({ type: VoteEvents.EXECUTIONER.ELECT, senderId: 'p1', targetId: 'p4' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const snap = actor.getSnapshot();
-    expect(snap.context.executionerId).toBe('p4');
-  });
-
-  it('zero election votes => fallback eliminates lowest silver among non-immune', () => {
-    const actor = createActor(stubExecutioner, { input: makeInput(roster6()) });
-    actor.start();
-
-    // Nobody votes in election
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // No executioner elected => fallback: lowest silver among pick targets
-    // Top 3 immune: p0(50), p1(45), p2(40). Pick targets: p3(35), p4(30), p5(25) => p5 eliminated
-    expect(result.eliminatedId).toBe('p5');
-    expect(result.summary.reason).toBe('no_election_votes');
-  });
-
+  // Behavioral: executioner can't pick immune players (top 3 silver)
   it("executioner can't pick immune players (top 3 silver)", () => {
-    const actor = createActor(stubExecutioner, { input: makeInput(roster6()) });
+    const roster = buildRoster({
+      p0: { silver: 50, status: 'ALIVE' },
+      p1: { silver: 45, status: 'ALIVE' },
+      p2: { silver: 40, status: 'ALIVE' },
+      p3: { silver: 35, status: 'ALIVE' },
+      p4: { silver: 30, status: 'ALIVE' },
+      p5: { silver: 25, status: 'ALIVE' },
+    });
+    const actor = createActor(stubExecutioner, { input: makeInput(roster) });
     actor.start();
 
     // Elect p3
@@ -357,8 +264,17 @@ describe('Executioner Machine', () => {
     expect(snap.context.eligibleTargets).toContain('p5');
   });
 
+  // Behavioral: non-executioner can't pick
   it("non-executioner can't pick", () => {
-    const actor = createActor(stubExecutioner, { input: makeInput(roster6()) });
+    const roster = buildRoster({
+      p0: { silver: 50, status: 'ALIVE' },
+      p1: { silver: 45, status: 'ALIVE' },
+      p2: { silver: 40, status: 'ALIVE' },
+      p3: { silver: 35, status: 'ALIVE' },
+      p4: { silver: 30, status: 'ALIVE' },
+      p5: { silver: 25, status: 'ALIVE' },
+    });
+    const actor = createActor(stubExecutioner, { input: makeInput(roster) });
     actor.start();
 
     actor.send({ type: VoteEvents.EXECUTIONER.ELECT, senderId: 'p0', targetId: 'p3' });
@@ -366,11 +282,11 @@ describe('Executioner Machine', () => {
 
     expect(actor.getSnapshot().value).toBe('executionerPicking');
 
-    // p0 (not executioner) tries to pick => guard rejects
+    // p0 (not executioner) tries to pick — guard rejects
     actor.send({ type: VoteEvents.EXECUTIONER.PICK, senderId: 'p0', targetId: 'p5' });
     expect(actor.getSnapshot().value).toBe('executionerPicking'); // still waiting
 
-    // p3 (executioner) picks => accepted
+    // p3 (executioner) picks — accepted
     actor.send({ type: VoteEvents.EXECUTIONER.PICK, senderId: 'p3', targetId: 'p5' });
     expect(actor.getSnapshot().status).toBe('done');
   });
@@ -381,55 +297,34 @@ describe('Executioner Machine', () => {
 // ---------------------------------------------------------------------------
 
 describe('Podium Sacrifice Machine', () => {
-  // 6 alive: p0(50), p1(45), p2(40), p3(35), p4(30), p5(25)
-  // Podium (top 3 silver) = p0, p1, p2 (targets)
-  // Voters = alive - podium = p3, p4, p5
-  const roster6 = () => makeRoster(6);
+  for (const scenario of PODIUM_SACRIFICE_SCENARIOS) {
+    it(scenario.name, () => {
+      const roster = buildRoster(scenario.roster);
+      const actor = createActor(stubPodiumSacrifice, { input: makeInput(roster) });
+      actor.start();
 
-  it('all voters save same podium player => other podium players have 0 saves => one eliminated', () => {
-    const actor = createActor(stubPodiumSacrifice, { input: makeInput(roster6()) });
-    actor.start();
+      for (const [voterId, targetId] of Object.entries(scenario.votes ?? {})) {
+        actor.send({ type: VoteEvents.PODIUM_SACRIFICE.CAST, senderId: voterId, targetId });
+      }
+      actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
-    // p3,p4,p5 all save p0
-    actor.send({ type: VoteEvents.PODIUM_SACRIFICE.CAST, senderId: 'p3', targetId: 'p0' });
-    actor.send({ type: VoteEvents.PODIUM_SACRIFICE.CAST, senderId: 'p4', targetId: 'p0' });
-    actor.send({ type: VoteEvents.PODIUM_SACRIFICE.CAST, senderId: 'p5', targetId: 'p0' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
+      const result = doneOutput(actor);
+      expect(result.eliminatedId).toBe(scenario.expected.eliminatedId);
+      expect(result.mechanism).toBe('PODIUM_SACRIFICE');
+    });
+  }
 
-    const result = doneOutput(actor);
-    // p0=3 saves, p1=0, p2=0 => tie at 0: p1(45) vs p2(40) => p2 eliminated (lowest silver)
-    expect(result.eliminatedId).toBe('p2');
-    expect(result.mechanism).toBe('PODIUM_SACRIFICE');
-  });
-
-  it('split saves => fewest-saved podium player eliminated', () => {
-    const actor = createActor(stubPodiumSacrifice, { input: makeInput(roster6()) });
-    actor.start();
-
-    // p3 saves p0, p4 saves p1, p5 saves p0
-    actor.send({ type: VoteEvents.PODIUM_SACRIFICE.CAST, senderId: 'p3', targetId: 'p0' });
-    actor.send({ type: VoteEvents.PODIUM_SACRIFICE.CAST, senderId: 'p4', targetId: 'p1' });
-    actor.send({ type: VoteEvents.PODIUM_SACRIFICE.CAST, senderId: 'p5', targetId: 'p0' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // p0=2, p1=1, p2=0 => p2 eliminated (fewest saves)
-    expect(result.eliminatedId).toBe('p2');
-  });
-
-  it('no votes cast => all podium tied at 0 saves => lowest silver eliminated', () => {
-    const actor = createActor(stubPodiumSacrifice, { input: makeInput(roster6()) });
-    actor.start();
-
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // p0=0, p1=0, p2=0 => 3-way tie, lowest silver = p2(40) eliminated
-    expect(result.eliminatedId).toBe('p2');
-  });
-
+  // Behavioral: podium correctly identified as top 3 silver
   it('podium is correctly top 3 silver holders', () => {
-    const actor = createActor(stubPodiumSacrifice, { input: makeInput(roster6()) });
+    const roster = buildRoster({
+      p0: { silver: 50, status: 'ALIVE' },
+      p1: { silver: 45, status: 'ALIVE' },
+      p2: { silver: 40, status: 'ALIVE' },
+      p3: { silver: 35, status: 'ALIVE' },
+      p4: { silver: 30, status: 'ALIVE' },
+      p5: { silver: 25, status: 'ALIVE' },
+    });
+    const actor = createActor(stubPodiumSacrifice, { input: makeInput(roster) });
     actor.start();
 
     const snap = actor.getSnapshot();
@@ -440,8 +335,17 @@ describe('Podium Sacrifice Machine', () => {
     expect(snap.context.eligibleVoters).not.toContain('p0');
   });
 
+  // Behavioral: non-podium player cannot be voted for
   it('non-podium player cannot be voted for', () => {
-    const actor = createActor(stubPodiumSacrifice, { input: makeInput(roster6()) });
+    const roster = buildRoster({
+      p0: { silver: 50, status: 'ALIVE' },
+      p1: { silver: 45, status: 'ALIVE' },
+      p2: { silver: 40, status: 'ALIVE' },
+      p3: { silver: 35, status: 'ALIVE' },
+      p4: { silver: 30, status: 'ALIVE' },
+      p5: { silver: 25, status: 'ALIVE' },
+    });
+    const actor = createActor(stubPodiumSacrifice, { input: makeInput(roster) });
     actor.start();
 
     // Try voting for p4 (not on podium) — should be ignored
@@ -457,66 +361,46 @@ describe('Podium Sacrifice Machine', () => {
 // ---------------------------------------------------------------------------
 
 describe('Shield Machine', () => {
-  const roster5 = () => makeRoster(5);
+  // Shield uses random tiebreaks — deterministic scenarios checked exactly,
+  // random scenarios checked for membership in the valid set.
 
-  it('one player gets no shields => eliminated', () => {
-    const actor = createActor(stubShield, { input: makeInput(roster5()) });
-    actor.start();
+  for (const scenario of SHIELD_SCENARIOS) {
+    it(scenario.name, () => {
+      const roster = buildRoster(scenario.roster);
+      const actor = createActor(stubShield, { input: makeInput(roster) });
+      actor.start();
 
-    // Everyone shields someone except nobody shields p4
-    actor.send({ type: VoteEvents.SHIELD.SAVE, senderId: 'p0', targetId: 'p0' });
-    actor.send({ type: VoteEvents.SHIELD.SAVE, senderId: 'p1', targetId: 'p0' });
-    actor.send({ type: VoteEvents.SHIELD.SAVE, senderId: 'p2', targetId: 'p1' });
-    actor.send({ type: VoteEvents.SHIELD.SAVE, senderId: 'p3', targetId: 'p2' });
-    actor.send({ type: VoteEvents.SHIELD.SAVE, senderId: 'p4', targetId: 'p3' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
+      for (const [voterId, targetId] of Object.entries(scenario.votes ?? {})) {
+        actor.send({ type: VoteEvents.SHIELD.SAVE, senderId: voterId, targetId });
+      }
+      actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
-    const result = doneOutput(actor);
-    // p0=2, p1=1, p2=1, p3=1, p4=0 => p4 eliminated
-    expect(result.eliminatedId).toBe('p4');
-    expect(result.mechanism).toBe('SHIELD');
-  });
+      const result = doneOutput(actor);
+      expect(result.mechanism).toBe('SHIELD');
 
-  it('tie in fewest shields => one of the tied is eliminated (random)', () => {
-    const actor = createActor(stubShield, { input: makeInput(roster5()) });
-    actor.start();
+      if (scenario.expected.reason === 'random_tiebreak') {
+        // For random tiebreak scenarios, check the eliminated player is from valid pool
+        const aliveIds = Object.entries(scenario.roster)
+          .filter(([, p]) => p.status === 'ALIVE')
+          .map(([id]) => id);
 
-    // p0->p0, p1->p1, p2->p2 (each 1 save), p3 and p4 have 0 saves
-    actor.send({ type: VoteEvents.SHIELD.SAVE, senderId: 'p0', targetId: 'p0' });
-    actor.send({ type: VoteEvents.SHIELD.SAVE, senderId: 'p1', targetId: 'p1' });
-    actor.send({ type: VoteEvents.SHIELD.SAVE, senderId: 'p2', targetId: 'p2' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
+        // Compute save counts to determine valid elimination candidates
+        const saveCounts: Record<string, number> = {};
+        for (const id of aliveIds) saveCounts[id] = 0;
+        for (const targetId of Object.values(scenario.votes ?? {})) {
+          saveCounts[targetId] = (saveCounts[targetId] || 0) + 1;
+        }
+        const minSaves = Math.min(...Object.values(saveCounts));
+        const tied = Object.entries(saveCounts)
+          .filter(([, count]) => count === minSaves)
+          .map(([id]) => id);
 
-    const result = doneOutput(actor);
-    // p0=1, p1=1, p2=1, p3=0, p4=0 => tie between p3 and p4 => random
-    expect(['p3', 'p4']).toContain(result.eliminatedId);
-  });
-
-  it('all shields to one player => someone with 0 is eliminated', () => {
-    const actor = createActor(stubShield, { input: makeInput(roster5()) });
-    actor.start();
-
-    for (let i = 0; i < 5; i++) {
-      actor.send({ type: VoteEvents.SHIELD.SAVE, senderId: `p${i}`, targetId: 'p0' });
-    }
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // p0=5, p1=0, p2=0, p3=0, p4=0 => tie among p1-p4 => random pick
-    expect(result.eliminatedId).not.toBe('p0');
-    expect(['p1', 'p2', 'p3', 'p4']).toContain(result.eliminatedId);
-  });
-
-  it('nobody votes => all have 0 shields => random elimination', () => {
-    const actor = createActor(stubShield, { input: makeInput(roster5()) });
-    actor.start();
-
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // All 5 at 0 => random
-    expect(['p0', 'p1', 'p2', 'p3', 'p4']).toContain(result.eliminatedId);
-  });
+        expect(tied).toContain(result.eliminatedId);
+      } else {
+        expect(result.eliminatedId).toBe(scenario.expected.eliminatedId);
+      }
+    });
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -524,53 +408,38 @@ describe('Shield Machine', () => {
 // ---------------------------------------------------------------------------
 
 describe('Finals Machine', () => {
-  // Finals: eliminated players vote for alive players to win
-  // 5 total, 3 alive (p0,p1,p2), 2 eliminated (p3,p4)
-  const roster5 = () => makeRoster(5, 3);
+  for (const scenario of FINALS_SCENARIOS) {
+    it(scenario.name, () => {
+      const roster = buildRoster(scenario.roster);
+      const actor = createActor(stubFinals, { input: makeInput(roster) });
+      actor.start();
 
-  it('most-voted alive player wins', () => {
-    const actor = createActor(stubFinals, { input: makeInput(roster5()) });
-    actor.start();
+      for (const [voterId, targetId] of Object.entries(scenario.votes ?? {})) {
+        actor.send({ type: VoteEvents.FINALS.CAST, senderId: voterId, targetId });
+      }
+      actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
-    // p3 and p4 (eliminated) vote for p1
-    actor.send({ type: VoteEvents.FINALS.CAST, senderId: 'p3', targetId: 'p1' });
-    actor.send({ type: VoteEvents.FINALS.CAST, senderId: 'p4', targetId: 'p1' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
+      const result = doneOutput(actor);
+      expect(result.mechanism).toBe('FINALS');
+      expect((result as any).winnerId).toBe(scenario.expected.winnerId);
+      // Finals eliminatedId = first loser (non-winner alive player)
+      expect(result.eliminatedId).toBe(scenario.expected.eliminatedId);
+      if (scenario.expected.reason) {
+        expect(result.summary.tieBreaker).toBe(scenario.expected.reason);
+      }
+    });
+  }
 
-    const result = doneOutput(actor);
-    expect((result as any).winnerId).toBe('p1');
-    expect(result.mechanism).toBe('FINALS');
-  });
-
-  it('tie => highest silver wins', () => {
-    const actor = createActor(stubFinals, { input: makeInput(roster5()) });
-    actor.start();
-
-    // p3 votes p0, p4 votes p1 => tie, p0(50) vs p1(45) => p0 wins (highest silver)
-    actor.send({ type: VoteEvents.FINALS.CAST, senderId: 'p3', targetId: 'p0' });
-    actor.send({ type: VoteEvents.FINALS.CAST, senderId: 'p4', targetId: 'p1' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    expect((result as any).winnerId).toBe('p0');
-  });
-
-  it('no eliminated voters => highest silver wins', () => {
-    // All alive — no eliminated players to vote
-    const roster = makeRoster(3, 3);
-    const actor = createActor(stubFinals, { input: makeInput(roster) });
-    actor.start();
-
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // No voters, so falls to highest silver among alive: p0(50)
-    expect((result as any).winnerId).toBe('p0');
-    expect(result.summary.tieBreaker).toBe('highest_silver_no_voters');
-  });
-
+  // Behavioral: alive players cannot vote (only eliminated can)
   it('alive players cannot vote (only eliminated can)', () => {
-    const actor = createActor(stubFinals, { input: makeInput(roster5()) });
+    const roster = buildRoster({
+      p0: { silver: 50, status: 'ALIVE' },
+      p1: { silver: 45, status: 'ALIVE' },
+      p2: { silver: 40, status: 'ALIVE' },
+      p3: { silver: 35, status: 'ELIMINATED' },
+      p4: { silver: 30, status: 'ELIMINATED' },
+    });
+    const actor = createActor(stubFinals, { input: makeInput(roster) });
     actor.start();
 
     // p0 (alive) tries to vote — should be rejected
@@ -588,71 +457,46 @@ describe('Finals Machine', () => {
 // ---------------------------------------------------------------------------
 
 describe('Trust Pairs Machine', () => {
-  // 5 alive players
-  const roster5 = () => makeRoster(5);
+  for (const scenario of TRUST_PAIRS_SCENARIOS) {
+    it(scenario.name, () => {
+      const roster = buildRoster(scenario.roster);
+      const actor = createActor(stubTrustPairs, { input: makeInput(roster) });
+      actor.start();
 
-  it('mutual trust => both immune from elimination votes', () => {
-    const actor = createActor(stubTrustPairs, { input: makeInput(roster5()) });
-    actor.start();
+      // Phase 1: trust picks
+      for (const [voterId, targetId] of Object.entries(scenario.trustPicks ?? {})) {
+        actor.send({ type: VoteEvents.TRUST_PAIRS.TRUST, senderId: voterId, targetId });
+      }
 
-    // p0 trusts p1, p1 trusts p0 => mutual pair
-    actor.send({ type: VoteEvents.TRUST_PAIRS.TRUST, senderId: 'p0', targetId: 'p1' });
-    actor.send({ type: VoteEvents.TRUST_PAIRS.TRUST, senderId: 'p1', targetId: 'p0' });
+      // Phase 2: elimination picks
+      for (const [voterId, targetId] of Object.entries(scenario.eliminatePicks ?? {})) {
+        actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: voterId, targetId });
+      }
 
-    // Everyone votes to eliminate p0
-    actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: 'p2', targetId: 'p0' });
-    actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: 'p3', targetId: 'p0' });
-    actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: 'p4', targetId: 'p0' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
+      actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
 
-    const result = doneOutput(actor);
-    // p0 is immune (mutual pair with p1), so votes against p0 don't count
-    // Fallback: lowest silver among non-immune targets (p4 has 30s, lowest)
-    expect(result.eliminatedId).not.toBe('p0');
-    expect(result.eliminatedId).not.toBe('p1');
-    expect(result.eliminatedId).toBe('p4');
-    expect(result.summary.mutualPairs).toEqual(expect.arrayContaining([expect.arrayContaining(['p0', 'p1'])]));
-  });
+      const result = doneOutput(actor);
+      expect(result.eliminatedId).toBe(scenario.expected.eliminatedId);
+      expect(result.mechanism).toBe('TRUST_PAIRS');
+      if (scenario.expected.immune) {
+        expect(result.summary.immunePlayerIds).toEqual(
+          expect.arrayContaining(scenario.expected.immune),
+        );
+        expect(result.summary.immunePlayerIds).toHaveLength(scenario.expected.immune.length);
+      }
+    });
+  }
 
-  it('one-sided trust => non-immune player can be eliminated', () => {
-    const actor = createActor(stubTrustPairs, { input: makeInput(roster5()) });
-    actor.start();
-
-    // p0 trusts p1, but p1 trusts p2 => no mutual pair for p0
-    actor.send({ type: VoteEvents.TRUST_PAIRS.TRUST, senderId: 'p0', targetId: 'p1' });
-    actor.send({ type: VoteEvents.TRUST_PAIRS.TRUST, senderId: 'p1', targetId: 'p2' });
-
-    // Vote to eliminate p0
-    actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: 'p2', targetId: 'p0' });
-    actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: 'p3', targetId: 'p0' });
-    actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: 'p4', targetId: 'p0' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    expect(result.eliminatedId).toBe('p0');
-  });
-
-  it('most elimination votes among non-immune => eliminated', () => {
-    const actor = createActor(stubTrustPairs, { input: makeInput(roster5()) });
-    actor.start();
-
-    // p0 & p1 mutual trust (immune)
-    actor.send({ type: VoteEvents.TRUST_PAIRS.TRUST, senderId: 'p0', targetId: 'p1' });
-    actor.send({ type: VoteEvents.TRUST_PAIRS.TRUST, senderId: 'p1', targetId: 'p0' });
-
-    // p2,p3 vote for p4; p4 votes for p2
-    actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: 'p2', targetId: 'p4' });
-    actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: 'p3', targetId: 'p4' });
-    actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: 'p4', targetId: 'p2' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    // p4 has 2 votes (non-immune), p2 has 1 vote (non-immune) => p4 eliminated
-    expect(result.eliminatedId).toBe('p4');
-  });
-
+  // Behavioral: can't trust self
   it("can't trust self", () => {
-    const actor = createActor(stubTrustPairs, { input: makeInput(roster5()) });
+    const roster = buildRoster({
+      p0: { silver: 50, status: 'ALIVE' },
+      p1: { silver: 45, status: 'ALIVE' },
+      p2: { silver: 40, status: 'ALIVE' },
+      p3: { silver: 35, status: 'ALIVE' },
+      p4: { silver: 30, status: 'ALIVE' },
+    });
+    const actor = createActor(stubTrustPairs, { input: makeInput(roster) });
     actor.start();
 
     actor.send({ type: VoteEvents.TRUST_PAIRS.TRUST, senderId: 'p0', targetId: 'p0' });
@@ -661,21 +505,6 @@ describe('Trust Pairs Machine', () => {
     const snap = actor.getSnapshot();
     expect(snap.context.trustPicks).toEqual({});
   });
-
-  it('elimination vote tie among non-immune => lowest silver eliminated', () => {
-    const actor = createActor(stubTrustPairs, { input: makeInput(roster5()) });
-    actor.start();
-
-    // No trust pairs => no immunity
-    // p0 votes p3, p1 votes p4 => tie at 1 vote each
-    // p3(silver=35) vs p4(silver=30) => p4 eliminated (lowest silver)
-    actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: 'p0', targetId: 'p3' });
-    actor.send({ type: VoteEvents.TRUST_PAIRS.ELIMINATE, senderId: 'p1', targetId: 'p4' });
-    actor.send({ type: 'INTERNAL.CLOSE_VOTING' });
-
-    const result = doneOutput(actor);
-    expect(result.eliminatedId).toBe('p4');
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -683,48 +512,15 @@ describe('Trust Pairs Machine', () => {
 // ---------------------------------------------------------------------------
 
 describe('Second To Last Machine', () => {
-  it('second-lowest silver eliminated (not lowest)', () => {
-    // p0=50, p1=45, p2=40, p3=35, p4=30
-    const roster = makeRoster(5);
-    const actor = createActor(stubSecondToLast, { input: makeInput(roster) });
-    actor.start();
+  for (const scenario of SECOND_TO_LAST_SCENARIOS) {
+    it(scenario.name, () => {
+      const roster = buildRoster(scenario.roster);
+      const actor = createActor(stubSecondToLast, { input: makeInput(roster) });
+      actor.start();
 
-    const result = doneOutput(actor);
-    // Ranking (high to low): p0(50), p1(45), p2(40), p3(35), p4(30)
-    // Second-to-last = p3 (index length-2)
-    expect(result.eliminatedId).toBe('p3');
-    expect(result.mechanism).toBe('SECOND_TO_LAST');
-  });
-
-  it('only 1 player alive => that player eliminated (fallback)', () => {
-    const roster = makeRoster(3, 1);
-    const actor = createActor(stubSecondToLast, { input: makeInput(roster) });
-    actor.start();
-
-    const result = doneOutput(actor);
-    // Only p0 alive => fallback eliminates the sole remaining player
-    expect(result.eliminatedId).toBe('p0');
-  });
-
-  it('2 players alive => second-to-last is the top silver holder', () => {
-    // Only p0(50) and p1(45) alive
-    const roster = makeRoster(3, 2);
-    const actor = createActor(stubSecondToLast, { input: makeInput(roster) });
-    actor.start();
-
-    const result = doneOutput(actor);
-    // Ranking: p0(50), p1(45) => second-to-last (index 0) = p0
-    expect(result.eliminatedId).toBe('p0');
-  });
-
-  it('custom silver values change elimination target', () => {
-    const roster = makeRoster(5, 5, { p0: 10, p1: 20, p2: 30, p3: 40, p4: 50 });
-    const actor = createActor(stubSecondToLast, { input: makeInput(roster) });
-    actor.start();
-
-    // Ranking (high to low): p4(50), p3(40), p2(30), p1(20), p0(10)
-    // Second-to-last = p1
-    const result = doneOutput(actor);
-    expect(result.eliminatedId).toBe('p1');
-  });
+      const result = doneOutput(actor);
+      expect(result.eliminatedId).toBe(scenario.expected.eliminatedId);
+      expect(result.mechanism).toBe('SECOND_TO_LAST');
+    });
+  }
 });
