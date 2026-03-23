@@ -38,7 +38,7 @@ function makeRoster(count: number): Record<string, SocialPlayer> {
   return roster;
 }
 
-const baseInput = { roster: makeRoster(2), dayIndex: 1, gameType: 'TEST_GAME' as const };
+const baseInput = { roster: makeRoster(2), dayIndex: 1, gameType: 'TEST_GAME' as const } as any;
 
 function createTestActor() {
   return createActor(testMachine, { input: baseInput });

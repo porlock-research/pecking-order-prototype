@@ -33,12 +33,12 @@ const testMachine = triviaMachine.provide({
         id: `q${i}`,
         question: `Question ${i}?`,
         options: ['A', 'B', 'C', 'D'],
-        correctIndex: 0,  // 'A' is always correct
+        correctIndex: 0,
         category: 'test',
-        difficulty: 'easy',
+        difficulty: 'easy' as const,
       }));
     }),
-  },
+  } as any,
   actions: {
     emitRoundSync: () => {},
     reportResults: () => {},
