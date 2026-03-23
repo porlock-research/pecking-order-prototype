@@ -10,6 +10,7 @@ initSentry();
 
 const GameDevHarness = lazy(() => import('./components/GameDevHarness'));
 const DemoPage = lazy(() => import('./pages/DemoPage'));
+const ShowcaseAdminPanel = lazy(() => import('./pages/ShowcaseAdminPanel'));
 
 const LOBBY_HOST = import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000';
 
@@ -321,6 +322,7 @@ export default function App() {
   // Capture path and hostname at mount time (before init can change it via replaceState)
   const [initialPath] = useState(() => window.location.pathname);
   const isDemo = initialPath === '/demo' || window.location.hostname.startsWith('demo');
+  const [isShowcase] = useState(() => new URLSearchParams(window.location.search).has('showcase'));
   const [gameId, setGameId] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -562,7 +564,16 @@ export default function App() {
     </div>
   );
 
-  return <ShellLoader gameId={gameId} playerId={playerId} token={token} />;
+  return (
+    <>
+      <ShellLoader gameId={gameId} playerId={playerId} token={token} />
+      {isShowcase && (
+        <Suspense fallback={null}>
+          <ShowcaseAdminPanel gameId={gameId} />
+        </Suspense>
+      )}
+    </>
+  );
 }
 
 /**

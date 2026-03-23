@@ -49,6 +49,9 @@ interface GameState {
   tickerMessages: TickerMessage[];
   debugTicker: string | null;
 
+  // Showcase extension (admin panel reads this)
+  showcaseData: { config: any; state: string; lastResults?: any } | null;
+
   // Dashboard / Notifications
   dashboardOpen: boolean;
   dashboardSeenForDay: number | null;
@@ -351,6 +354,7 @@ export const useGameStore = create<GameState>((set) => ({
   playerActivity: {},
   tickerMessages: [],
   debugTicker: null,
+  showcaseData: null,
   dashboardOpen: false,
   dashboardSeenForDay: null,
   welcomeSeen: false,
@@ -401,6 +405,7 @@ export const useGameStore = create<GameState>((set) => ({
       onlinePlayers: data.context?.onlinePlayers ?? state.onlinePlayers,
       playerActivity: data.context?.playerActivity ?? state.playerActivity,
       welcomeSeen: localStorage.getItem(`po-welcomeSeen-${data.context?.gameId || state.gameId}`) === 'true' || state.welcomeSeen,
+      showcaseData: data.context?.showcase ?? state.showcaseData,
     };
   }),
 
