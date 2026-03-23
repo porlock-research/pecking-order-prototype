@@ -56,14 +56,19 @@ export default function DilemmaReveal({ dilemmaType, decisions, results, roster,
         </span>
       </motion.div>
 
-      {/* Type-specific reveal */}
-      {dilemmaType === 'SILVER_GAMBIT' && (
+      {/* Timeout — universal participation not met */}
+      {summary.timedOut && (
+        <TimedOutReveal summary={summary} />
+      )}
+
+      {/* Type-specific reveal (only when not timed out) */}
+      {!summary.timedOut && dilemmaType === 'SILVER_GAMBIT' && (
         <SilverGambitReveal summary={summary} name={firstName} />
       )}
-      {dilemmaType === 'SPOTLIGHT' && (
+      {!summary.timedOut && dilemmaType === 'SPOTLIGHT' && (
         <SpotlightReveal summary={summary} name={firstName} />
       )}
-      {dilemmaType === 'GIFT_OR_GRIEF' && (
+      {!summary.timedOut && dilemmaType === 'GIFT_OR_GRIEF' && (
         <GiftOrGriefReveal summary={summary} name={firstName} roster={roster} />
       )}
 
@@ -104,6 +109,49 @@ export default function DilemmaReveal({ dilemmaType, decisions, results, roster,
           </span>
         </motion.div>
       )}
+    </motion.div>
+  );
+}
+
+/* -- Timed Out Reveal (universal participation not met) -- */
+
+function TimedOutReveal({ summary }: { summary: Record<string, any> }) {
+  return (
+    <motion.div
+      variants={staggerItem}
+      transition={VIVID_SPRING.bouncy}
+      style={{
+        textAlign: 'center',
+        padding: '14px 16px',
+        borderRadius: 12,
+        background: 'rgba(139, 115, 85, 0.06)',
+        border: '1px solid rgba(139, 115, 85, 0.12)',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
+        <Danger size={28} weight="Bold" />
+      </div>
+      <div
+        style={{
+          fontFamily: 'var(--vivid-font-display)',
+          fontSize: 14,
+          fontWeight: 700,
+          color: '#9B8E7E',
+          lineHeight: 1.4,
+        }}
+      >
+        Time's up
+      </div>
+      <div
+        style={{
+          fontFamily: 'var(--vivid-font-body)',
+          fontSize: 12,
+          color: '#9B8E7E',
+          marginTop: 4,
+        }}
+      >
+        Only {summary.submitted} of {summary.eligible} participated. Everyone must decide for rewards to apply.
+      </div>
     </motion.div>
   );
 }
