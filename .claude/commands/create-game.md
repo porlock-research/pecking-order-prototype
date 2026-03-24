@@ -183,10 +183,10 @@ async function main() {
   const inviteCode = Math.random().toString(36).slice(2,8).toUpperCase();
   const personas = shuffle([...PERSONA_POOL]).slice(0, PLAYER_COUNT);
 
-  // Build roster
+  // Build roster — player IDs are 1-indexed (p1, p2, ...) matching lobby's slot_index
   const roster = {};
-  for (let i = 0; i < PLAYER_COUNT; i++) {
-    const p = personas[i];
+  for (let i = 1; i <= PLAYER_COUNT; i++) {
+    const p = personas[i-1];
     roster['p'+i] = {
       realUserId:'u'+i, personaName:p.name,
       avatarUrl: ASSETS+'/personas/'+p.personaId+'/headshot.png',
@@ -232,10 +232,10 @@ async function main() {
     // DO NOT inject events — alarm pipeline handles it
   }
 
-  // Sign tokens + build output
+  // Sign tokens + build output — player IDs are 1-indexed (p1, p2, ...)
   const players = [];
-  for (let i = 0; i < PLAYER_COUNT; i++) {
-    const p = personas[i];
+  for (let i = 1; i <= PLAYER_COUNT; i++) {
+    const p = personas[i-1];
     const tok = await signGameToken({sub:'u'+i,gameId,playerId:'p'+i,personaName:p.name},SECRET);
     const url = CLIENT + '/game/' + inviteCode + '?_t=' + tok + '&shell=' + SHELL;
     players.push({ id:'p'+i, name:p.name, stereotype:p.stereotype, bio:p.bio, token:tok, url });

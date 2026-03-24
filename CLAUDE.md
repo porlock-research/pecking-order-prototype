@@ -63,7 +63,7 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
   - `Events.Fact.RECORD`, `Events.Presence.*`, `Events.Ticker.*`, `Events.Rejection.*`
 - **Event routing**: L1 injects `senderId`, sends to L2. L2 must EXPLICITLY forward to L3 via `sendTo('l3-session', ...)`. XState v5 does NOT auto-forward.
 - **Cartridge termination**: NEVER kill spawned children directly. Forward termination event → child calculates results → final state → `xstate.done.actor.*` → parent handles.
-- **Player IDs**: `p${slot_index}` (e.g., `p0`, `p1`)
+- **Player IDs**: `p${slot_index}` — **1-indexed** (e.g., `p1`, `p2`). Lobby creates slots starting at 1.
 - **DO persistence**: SQL `snapshots` table (key/value/updated_at). No KV for new features.
 - **Channel types**: MAIN, DM, GROUP_DM, GAME_DM, PRIVATE. PRIVATE channels use UUID IDs and mutable membership (DM invite flow, ADR-096).
 - **DM invite flow**: Config-driven via `requireDmInvite` on manifest. Per-recipient `PendingInvite` records. Slot tracking via `slotsUsedByPlayer`. Facts: `DM_INVITE_SENT`, `DM_INVITE_ACCEPTED`, `DM_INVITE_DECLINED`.
@@ -79,6 +79,8 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - **Entry action batching**: `enqueue.sendTo()` queues delivery until AFTER all entry actions complete. For synchronous reads, use direct `ref.send()` inside `assign()`.
 - **`invoke.src` with function**: Treated as callback actor, not key lookup. Use `spawn()` for dynamic dispatch.
 - **`enqueue.sendTo('child-id', event)`**: Cannot resolve invoked children. Use `enqueue.raise()` workaround.
+- **`spawn()` only in `assign()`**: `spawn()` is NOT available in `enqueueActions()`. If you need to spawn AND do other work, use separate actions: `assign()` for spawn, then another action for the rest.
+- **Parallel state name collisions**: Parallel regions (dilemmaLayer, activityLayer, votingLayer) should use unique state names. Using `playing` in multiple layers causes `resolveDayPhase()` to misidentify the phase. Use descriptive names like `dilemmaActive`, `voting`, `dailyGame`.
 
 ## Client Architecture
 
