@@ -179,7 +179,7 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
             gap: 8,
           }}
         >
-          <IconComponent size={18} weight="Bold" />
+          <IconComponent size={18} weight="Bold" color="#B8840A" />
           <span
             style={{
               fontFamily: 'var(--vivid-font-display)',
@@ -210,31 +210,6 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
 
         {/* Body */}
         <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* GM-style message box — only show when player hasn't submitted yet */}
-          {phase === DilemmaPhases.COLLECTING && !hasSubmitted && (
-            <div
-              style={{
-                borderLeft: '3px solid #e2b865',
-                background: 'rgba(226, 184, 101, 0.06)',
-                borderRadius: '0 8px 8px 0',
-                padding: '10px 12px',
-              }}
-            >
-              <p
-                style={{
-                  fontFamily: 'var(--vivid-font-body)',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: '#3D2E1F',
-                  lineHeight: 1.5,
-                  margin: 0,
-                }}
-              >
-                {info.howItWorks}
-              </p>
-            </div>
-          )}
-
           {/* Participation strip */}
           {phase === DilemmaPhases.COLLECTING && (
             <ParticipationStrip

@@ -66,7 +66,7 @@ export default function SilverGambitInput({ engine }: SilverGambitInputProps) {
         whileTap={VIVID_TAP.button}
         transition={VIVID_SPRING.snappy}
       >
-        <HandMoney size={22} weight="Bold" />
+        <HandMoney size={22} weight="Bold" color="#2D6A4F" />
         <span
           style={{
             fontFamily: 'var(--vivid-font-display)',
@@ -98,7 +98,7 @@ export default function SilverGambitInput({ engine }: SilverGambitInputProps) {
         whileTap={VIVID_TAP.button}
         transition={VIVID_SPRING.snappy}
       >
-        <Shield size={22} weight="Bold" />
+        <Shield size={22} weight="Bold" color="#9D174D" />
         <span
           style={{
             fontFamily: 'var(--vivid-font-display)',
