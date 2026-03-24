@@ -108,6 +108,7 @@ export function resolveDayPhase(snapshotValue: any, l3Value?: any): DayPhase {
     if (l3.includes('voting'))                                    return DayPhases.VOTING;
     if (l3.includes('dailyGame'))                                 return DayPhases.GAME;
     if (l3.includes('playing') || l3.includes('dailyActivity') || l3.includes('dailyPrompt')) return DayPhases.ACTIVITY;
+    // dilemmaActive does NOT change phase — dilemma overlays the social period
   }
 
   // Fallback: if we're in activeSession but L3 isn't available, default to SOCIAL

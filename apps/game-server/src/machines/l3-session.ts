@@ -293,10 +293,10 @@ export const dailySessionMachine = setup({
           states: {
             idle: {
               on: {
-                'INTERNAL.START_DILEMMA': { target: 'playing' }
+                'INTERNAL.START_DILEMMA': { target: 'dilemmaActive' }
               }
             },
-            playing: {
+            dilemmaActive: {
               entry: ['spawnDilemmaCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'DILEMMA' } as any)],
               on: {
                 'xstate.done.actor.activeDilemmaCartridge': {
