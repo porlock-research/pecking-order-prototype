@@ -118,6 +118,7 @@ describe('normalizeManifest', () => {
       startTime: '2026-03-10T09:00:00Z',
       ruleset: VALID_RULESET,
       schedulePreset: 'DEFAULT',
+      minPlayers: 3,
       maxPlayers: 6,
       days: [],
     };

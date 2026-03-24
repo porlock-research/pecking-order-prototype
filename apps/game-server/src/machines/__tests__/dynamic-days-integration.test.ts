@@ -39,6 +39,7 @@ function makeDynamicManifest(): DynamicManifest {
     startTime: new Date().toISOString(),
     ruleset: RULESET,
     schedulePreset: 'SMOKE_TEST',
+    minPlayers: 3,
     maxPlayers: 4,
     days: [],
   };
@@ -97,6 +98,7 @@ function makeDynamicManifestWithInactivity(thresholdDays = 1): DynamicManifest {
       inactivity: { enabled: true, thresholdDays, action: 'ELIMINATE' },
     },
     schedulePreset: 'SMOKE_TEST',
+    minPlayers: 3,
     maxPlayers: 5,
     days: [],
   };
