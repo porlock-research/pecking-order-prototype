@@ -297,7 +297,7 @@ export const dailySessionMachine = setup({
               }
             },
             dilemmaActive: {
-              entry: ['spawnDilemmaCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'DILEMMA' } as any)],
+              entry: ['spawnDilemmaCartridge', 'injectDilemmaGmMessage', sendParent({ type: 'PUSH.PHASE', trigger: 'DILEMMA' } as any)],
               on: {
                 'xstate.done.actor.activeDilemmaCartridge': {
                   target: 'completed',
