@@ -473,3 +473,231 @@ describe('resolveDay timeline generation', () => {
     actor.stop();
   });
 });
+
+describe('Game Master — Multi-day progression (resolveDay output shape)', () => {
+  // Simulates a real 6-player game using whitelist ruleset with games + activities.
+  // Each day: RESOLVE_DAY → verify manifest → DAY_ENDED → shrink roster → repeat.
+  const playTestRuleset: PeckingOrderRuleset = {
+    kind: 'PECKING_ORDER',
+    voting: {
+      allowed: ['MAJORITY', 'EXECUTIONER', 'SHIELD'],
+      constraints: [
+        { voteType: 'EXECUTIONER', minPlayers: 5 },
+        { voteType: 'SHIELD', minPlayers: 4 },
+      ],
+    },
+    games: { allowed: ['TRIVIA', 'GAP_RUN', 'STACKER'], avoidRepeat: true },
+    activities: { allowed: ['HOT_TAKE', 'CONFESSION'], avoidRepeat: true },
+    social: {
+      dmChars: { mode: 'FIXED', base: 1200 },
+      dmPartners: { mode: 'FIXED', base: 3 },
+      dmCost: 1,
+      groupDmEnabled: true,
+      requireDmInvite: false,
+      dmSlotsPerPlayer: 5,
+    },
+    inactivity: { enabled: false, thresholdDays: 2, action: 'ELIMINATE' },
+    dayCount: { mode: 'ACTIVE_PLAYERS_MINUS_ONE' },
+  };
+
+  function makeProgressionInput(playerCount: number): GameMasterInput {
+    return {
+      roster: makeRoster(playerCount),
+      ruleset: playTestRuleset,
+      schedulePreset: 'SMOKE_TEST',
+      startTime: '2026-03-24T10:00:00.000Z',
+      gameHistory: [],
+    };
+  }
+
+  it('resolves 5 days for 6 players with correct manifest shape each day', () => {
+    const input = makeProgressionInput(6);
+    const actor = createActor(createGameMasterMachine(), { input });
+    actor.start();
+
+    let roster = makeRoster(6);
+    let aliveCount = 6;
+    const seenVoteTypes: string[] = [];
+    const seenGameTypes: string[] = [];
+
+    for (let day = 1; aliveCount > 2; day++) {
+      actor.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex: day, roster });
+      const ctx = actor.getSnapshot().context;
+      const resolved = ctx.resolvedDay!;
+
+      // ── Manifest shape completeness ──
+      expect(resolved.dayIndex).toBe(day);
+      expect(resolved.theme).toBe(`Day ${day}`);
+      expect(resolved.voteType).toBeDefined();
+      expect(resolved.gameType).toBeDefined();
+      expect(resolved.timeline).toBeDefined();
+      expect(resolved.timeline.length).toBeGreaterThan(0);
+      expect(resolved.dmCharsPerPlayer).toBe(1200);
+      expect(resolved.dmPartnersPerPlayer).toBe(3);
+
+      // ── Timeline has required events ──
+      const actions = resolved.timeline.map((e: any) => e.action);
+      expect(actions).toContain('OPEN_GROUP_CHAT');
+      expect(actions).toContain('OPEN_VOTING');
+      expect(actions).toContain('CLOSE_VOTING');
+      expect(actions).toContain('END_DAY');
+      // Game events present when gameType is not NONE
+      if (resolved.gameType !== 'NONE') {
+        expect(actions).toContain('START_GAME');
+        expect(actions).toContain('END_GAME');
+      }
+
+      // ── Timeline timestamps are valid ISO and in order ──
+      for (let i = 1; i < resolved.timeline.length; i++) {
+        const prev = new Date(resolved.timeline[i - 1].time).getTime();
+        const curr = new Date(resolved.timeline[i].time).getTime();
+        expect(curr).toBeGreaterThanOrEqual(prev);
+      }
+
+      // ── Vote type respects minPlayers constraints ──
+      if (aliveCount < 5) {
+        expect(resolved.voteType).not.toBe('EXECUTIONER');
+      }
+      if (aliveCount < 4) {
+        expect(resolved.voteType).not.toBe('SHIELD');
+      }
+
+      // ── FINALS only when 2 alive ──
+      if (aliveCount > 2) {
+        expect(resolved.voteType).not.toBe('FINALS');
+        expect(resolved.nextDayStart).toBeDefined();
+      }
+
+      // ── avoidRepeat: game type shouldn't repeat consecutively ──
+      if (seenGameTypes.length > 0 && resolved.gameType !== 'NONE') {
+        expect(resolved.gameType).not.toBe(seenGameTypes[seenGameTypes.length - 1]);
+      }
+
+      seenVoteTypes.push(resolved.voteType);
+      if (resolved.gameType !== 'NONE') seenGameTypes.push(resolved.gameType);
+
+      // Simulate elimination: remove last alive player
+      actor.send({ type: 'GAME_MASTER.DAY_ENDED', dayIndex: day, roster });
+      const eliminatedId = Object.keys(roster).filter(id => roster[id].status === 'ALIVE').pop()!;
+      roster = {
+        ...roster,
+        [eliminatedId]: { ...roster[eliminatedId], status: 'ELIMINATED' } as SocialPlayer,
+      };
+      aliveCount--;
+    }
+
+    // Final day: 2 alive → FINALS
+    const finalDay = seenVoteTypes.length + 1;
+    actor.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex: finalDay, roster });
+    const finalCtx = actor.getSnapshot().context;
+    expect(finalCtx.resolvedDay!.voteType).toBe('FINALS');
+    expect(finalCtx.resolvedDay!.nextDayStart).toBeUndefined();
+
+    // Verify we played the right number of days
+    expect(seenVoteTypes.length).toBe(4); // 6→5→4→3 (4 non-FINALS days)
+    expect(finalDay).toBe(5); // Day 5 is FINALS
+
+    actor.stop();
+  });
+
+  it('cycles whitelist voting types across days, filtering by minPlayers', () => {
+    // Whitelist: ['MAJORITY', 'EXECUTIONER', 'SHIELD']
+    // Cycling: pool[(dayIndex-1) % pool.length] AFTER filtering by minPlayers
+    const input = makeProgressionInput(8);
+    const actor = createActor(createGameMasterMachine(), { input });
+    actor.start();
+
+    // Day 1: 8 alive → full pool, pool[0] = MAJORITY
+    actor.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex: 1, roster: makeRoster(8) });
+    expect(actor.getSnapshot().context.resolvedDay!.voteType).toBe('MAJORITY');
+
+    // Day 2: 7 alive → full pool, pool[1] = EXECUTIONER
+    actor.send({ type: 'GAME_MASTER.DAY_ENDED', dayIndex: 1, roster: makeRoster(8) });
+    actor.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex: 2, roster: makeRoster(8, 7) });
+    expect(actor.getSnapshot().context.resolvedDay!.voteType).toBe('EXECUTIONER');
+
+    // Day 3: 6 alive → full pool, pool[2] = SHIELD
+    actor.send({ type: 'GAME_MASTER.DAY_ENDED', dayIndex: 2, roster: makeRoster(8, 7) });
+    actor.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex: 3, roster: makeRoster(8, 6) });
+    expect(actor.getSnapshot().context.resolvedDay!.voteType).toBe('SHIELD');
+
+    // Day 4: 5 alive → full pool, pool[0] wraps = MAJORITY
+    actor.send({ type: 'GAME_MASTER.DAY_ENDED', dayIndex: 3, roster: makeRoster(8, 6) });
+    actor.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex: 4, roster: makeRoster(8, 5) });
+    expect(actor.getSnapshot().context.resolvedDay!.voteType).toBe('MAJORITY');
+
+    // Day 5: 4 alive → EXECUTIONER filtered (needs 5), pool = ['MAJORITY','SHIELD']
+    //   pool[(5-1) % 2] = pool[0] = MAJORITY
+    actor.send({ type: 'GAME_MASTER.DAY_ENDED', dayIndex: 4, roster: makeRoster(8, 5) });
+    actor.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex: 5, roster: makeRoster(8, 4) });
+    expect(actor.getSnapshot().context.resolvedDay!.voteType).toBe('MAJORITY');
+
+    actor.stop();
+  });
+
+  it('falls back when constraints eliminate all whitelist options', () => {
+    // 3 alive: EXECUTIONER needs 5, SHIELD needs 4 → both filtered out.
+    // Only MAJORITY left (always valid).
+    const input = makeProgressionInput(6);
+    input.ruleset = {
+      ...playTestRuleset,
+      voting: {
+        allowed: ['EXECUTIONER', 'SHIELD'],
+        constraints: [
+          { voteType: 'EXECUTIONER', minPlayers: 5 },
+          { voteType: 'SHIELD', minPlayers: 4 },
+        ],
+      },
+    };
+
+    const ctx = resolveAndGetContext(input, 1, makeRoster(6, 3));
+    // Both filtered by minPlayers, pool empty → fallback to MAJORITY
+    expect(ctx.resolvedDay?.voteType).toBe('MAJORITY');
+  });
+
+  it('resolveDay output includes game and activity types from whitelist with avoidRepeat', () => {
+    const input = makeProgressionInput(4);
+    const actor = createActor(createGameMasterMachine(), { input });
+    actor.start();
+
+    // Day 1
+    actor.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex: 1, roster: makeRoster(4) });
+    const day1 = actor.getSnapshot().context.resolvedDay!;
+    expect(['TRIVIA', 'GAP_RUN', 'STACKER']).toContain(day1.gameType);
+    expect(['HOT_TAKE', 'CONFESSION']).toContain(day1.activityType);
+
+    // Simulate day end with game history
+    actor.send({ type: 'GAME_MASTER.DAY_ENDED', dayIndex: 1, roster: makeRoster(4) });
+
+    // Day 2 — game type should differ from Day 1 (avoidRepeat)
+    input.gameHistory = [{ gameType: day1.gameType, dayIndex: 1, timestamp: Date.now(), silverRewards: {}, goldContribution: 0, summary: {} }];
+    const actor2 = createActor(createGameMasterMachine(), { input });
+    actor2.start();
+    actor2.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex: 2, roster: makeRoster(4, 3) });
+    const day2 = actor2.getSnapshot().context.resolvedDay!;
+    if (day1.gameType !== 'NONE' && day2.gameType !== 'NONE') {
+      expect(day2.gameType).not.toBe(day1.gameType);
+    }
+
+    actor.stop();
+    actor2.stop();
+  });
+
+  it('PER_ACTIVE_PLAYER social scaling multiplies by alive count', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      social: {
+        ...baseRuleset.social,
+        dmChars: { mode: 'PER_ACTIVE_PLAYER', base: 200 },
+      },
+    };
+    // 4 alive players → 200 * 4 = 800
+    const ctx = resolveAndGetContext(input, 1);
+    expect(ctx.resolvedDay?.dmCharsPerPlayer).toBe(800);
+
+    // 3 alive → 200 * 3 = 600
+    const ctx2 = resolveAndGetContext(input, 2, makeRoster(4, 3));
+    expect(ctx2.resolvedDay?.dmCharsPerPlayer).toBe(600);
+  });
+});
