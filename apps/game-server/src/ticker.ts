@@ -139,11 +139,31 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
       return null;
     }
     case FactTypes.DILEMMA_RESULT: {
-      const dilemmaRewards = fact.payload?.silverRewards;
-      const dilemmaPlayerIds = dilemmaRewards ? Object.keys(dilemmaRewards) : [];
+      const dilemmaRewards = fact.payload?.silverRewards || {};
+      const dilemmaPlayerIds = Object.keys(dilemmaRewards);
+      const dilemmaType = fact.payload?.dilemmaType;
+      const summary = fact.payload?.results?.summary || {};
+
+      let dilemmaText = 'Daily Dilemma resolved!';
+      if (summary.timedOut) {
+        dilemmaText = `Daily Dilemma expired — only ${summary.submitted} of ${summary.eligible} participated.`;
+      } else if (dilemmaType === 'SILVER_GAMBIT') {
+        dilemmaText = summary.allDonated
+          ? `Silver Gambit: Everyone donated! Jackpot of ${summary.jackpot} silver awarded.`
+          : `Silver Gambit: Someone kept their silver. No jackpot.`;
+      } else if (dilemmaType === 'SPOTLIGHT') {
+        dilemmaText = summary.unanimous
+          ? `Spotlight: Unanimous pick! +20 silver awarded.`
+          : `Spotlight: No consensus — picks were split.`;
+      } else if (dilemmaType === 'GIFT_OR_GRIEF') {
+        const gifted = (summary.giftedIds || []).length;
+        const grieved = (summary.grievedIds || []).length;
+        dilemmaText = `Gift or Grief: ${gifted} gifted, ${grieved} grieved.`;
+      }
+
       return {
         id: crypto.randomUUID(),
-        text: 'Daily Dilemma resolved!',
+        text: dilemmaText,
         category: TickerCategories.DILEMMA,
         timestamp: fact.timestamp,
         involvedPlayerIds: dilemmaPlayerIds,

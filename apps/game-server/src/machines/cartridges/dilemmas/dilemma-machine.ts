@@ -134,11 +134,11 @@ export function createDilemmaMachine<TDecision>(config: DilemmaConfig<TDecision>
         },
       },
       completed: {
-        entry: ['finalizeResults', 'emitResultFact'],
+        entry: ['finalizeResults'],
         type: 'final',
       },
       timedOut: {
-        entry: ['finalizeTimeout', 'emitResultFact'],
+        entry: ['finalizeTimeout'],
         type: 'final',
       },
     },
