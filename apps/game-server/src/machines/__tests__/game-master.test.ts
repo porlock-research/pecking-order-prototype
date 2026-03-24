@@ -391,6 +391,68 @@ describe('Game Master whitelist-based resolution', () => {
   });
 });
 
+describe('Game Master dilemma resolution', () => {
+  it('omits dilemmaType from resolvedDay when dilemmas is undefined on ruleset', () => {
+    // baseRuleset has no dilemmas field — resolveDay() omits it rather than setting 'NONE'
+    const ctx = resolveAndGetContext(makeInput(), 1);
+    expect(ctx.resolvedDay?.dilemmaType).toBeUndefined();
+  });
+
+  it('omits dilemmaType from resolvedDay when dilemmas.mode is NONE', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      dilemmas: { mode: 'NONE', avoidRepeat: false },
+    };
+    const ctx = resolveAndGetContext(input, 1);
+    expect(ctx.resolvedDay?.dilemmaType).toBeUndefined();
+  });
+
+  it('picks dilemma from allowed whitelist', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      dilemmas: { allowed: ['PRISONERS_DILEMMA', 'COMMONS_DILEMMA'], avoidRepeat: false },
+    };
+    const ctx = resolveAndGetContext(input, 1);
+    expect(['PRISONERS_DILEMMA', 'COMMONS_DILEMMA']).toContain(ctx.resolvedDay?.dilemmaType);
+  });
+
+  it('omits dilemmaType from resolvedDay when dilemmas.allowed is empty', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      dilemmas: { allowed: [], avoidRepeat: false },
+    };
+    const ctx = resolveAndGetContext(input, 1);
+    expect(ctx.resolvedDay?.dilemmaType).toBeUndefined();
+  });
+
+  it('avoids repeating dilemma type when avoidRepeat is true', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      dilemmas: { allowed: ['PRISONERS_DILEMMA', 'COMMONS_DILEMMA'], avoidRepeat: true },
+    };
+    const ctx1 = resolveAndGetContext(input, 1);
+    input.gameHistory = [{ dilemmaType: ctx1.resolvedDay?.dilemmaType } as any];
+    const ctx2 = resolveAndGetContext(input, 2);
+    expect(ctx2.resolvedDay?.dilemmaType).not.toBe(ctx1.resolvedDay?.dilemmaType);
+  });
+
+  it('resolves dilemma type from sequence mode', () => {
+    const input = makeInput();
+    input.ruleset = {
+      ...baseRuleset,
+      dilemmas: { mode: 'SEQUENCE', sequence: ['PRISONERS_DILEMMA', 'COMMONS_DILEMMA'], avoidRepeat: false },
+    };
+    const ctx1 = resolveAndGetContext(input, 1);
+    expect(ctx1.resolvedDay?.dilemmaType).toBe('PRISONERS_DILEMMA');
+    const ctx2 = resolveAndGetContext(input, 2);
+    expect(ctx2.resolvedDay?.dilemmaType).toBe('COMMONS_DILEMMA');
+  });
+});
+
 describe('resolveDay timeline generation', () => {
   it('generates timeline events from schedule preset', () => {
     const input: GameMasterInput = {
