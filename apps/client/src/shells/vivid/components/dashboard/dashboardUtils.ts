@@ -69,6 +69,8 @@ interface BuildDashboardEventsInput {
   completedCartridges: CompletedCartridge[];
   serverState: unknown;
   dayIndex: number;
+  /** Server-projected phase from SYNC (preferred over serverState string matching) */
+  phase?: string;
 }
 
 /**
@@ -76,10 +78,10 @@ interface BuildDashboardEventsInput {
  * Collapses paired events, determines card state, merges results.
  */
 export function buildDashboardEvents(input: BuildDashboardEventsInput): DashboardEvent[] {
-  const { timeline, completedCartridges, serverState, dayIndex } = input;
+  const { timeline, completedCartridges, serverState, dayIndex, phase } = input;
 
-  // Determine what phase is currently active from serverState
-  const activePhase = getActivePhase(serverState);
+  // Prefer the reliable server-projected phase; fall back to string matching
+  const activePhase = phase ? phaseToCategory(phase) : getActivePhase(serverState);
 
   // Build a set of completed categories for this day
   const completedByKind: Record<string, CompletedCartridge['snapshot']> = {};
@@ -148,7 +150,19 @@ export function buildDashboardEvents(input: BuildDashboardEventsInput): Dashboar
   return events;
 }
 
-/** Infer which phase is active from the server state value */
+/** Map a DayPhase value to a dashboard category */
+function phaseToCategory(phase: string): string | null {
+  switch (phase) {
+    case 'voting':
+    case 'elimination': return 'voting';
+    case 'game': return 'game';
+    case 'activity': return 'prompt';
+    case 'social': return 'social';
+    default: return null;
+  }
+}
+
+/** Infer which phase is active from the server state value (fallback) */
 function getActivePhase(serverState: unknown): string | null {
   if (!serverState) return null;
   // XState value can be string or nested object — flatten to string

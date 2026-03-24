@@ -19,6 +19,7 @@ export type { ActionInfo } from './action-info';
 export { WELCOME_MESSAGES } from './welcome-content';
 export { buildPhaseInfo } from './phase-info';
 export type { PhaseInfo } from './phase-info';
+export { buildDayBriefingMessages } from './gm-briefings';
 export { getChannelHints } from './channel-hints';
 export { DilemmaTypeSchema, type DilemmaType, type DilemmaCartridgeInput, type DilemmaOutput } from './dilemma-types';
 import { DilemmaTypeSchema } from './dilemma-types';

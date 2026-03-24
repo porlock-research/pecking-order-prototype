@@ -81,6 +81,11 @@ export function setupActorSubscription(
     const currentStateStr = JSON.stringify(snapshot.value) + l3StateJson;
     if (currentStateStr !== state.lastBroadcastState) {
       if (!isRestoreFire) {
+        // Flush ticker history on new day so previous-day messages don't carry over
+        if (currentStateStr.includes('morningBriefing') && !state.lastBroadcastState.includes('morningBriefing')) {
+          state.tickerHistory = [];
+        }
+
         const tickerMsg = stateToTicker(currentStateStr, snapshot.context);
         if (tickerMsg) {
           state.tickerHistory = broadcastTicker(tickerMsg, state.tickerHistory, deps.getConnections);

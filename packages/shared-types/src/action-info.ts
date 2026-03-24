@@ -66,6 +66,16 @@ export const ACTION_INFO: Record<string, ActionInfo> = {
     description: 'The activity has ended.',
     howItWorks: 'Check the results to see what everyone said.',
   },
+  START_DILEMMA: {
+    name: 'Daily Dilemma',
+    description: 'A social dilemma has been posed.',
+    howItWorks: 'Make your choice before time runs out. The outcome depends on everyone.',
+  },
+  END_DILEMMA: {
+    name: 'Dilemma Ends',
+    description: 'The dilemma has been resolved.',
+    howItWorks: 'See how the group decided.',
+  },
   END_DAY: {
     name: 'Day Ends',
     description: 'The day is over.',
