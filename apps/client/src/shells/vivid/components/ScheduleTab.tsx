@@ -219,17 +219,19 @@ function DilemmaResult({ snapshot, roster }: { snapshot: any; roster: Record<str
 
   let summaryText = '';
 
-  if (dilemmaType === 'SILVER_GAMBIT') {
+  if (summary.timedOut) {
+    summaryText = `Time's up — only ${summary.submitted ?? 0} of ${summary.eligible ?? '?'} participated. No rewards.`;
+  } else if (dilemmaType === 'SILVER_GAMBIT') {
     if (summary.allDonated) {
       summaryText = `Everyone donated! ${getName(summary.winnerId)} won +${summary.jackpot} silver`;
     } else {
-      summaryText = `Someone defected. ${summary.donorCount ?? 0} donated, ${summary.keeperCount ?? 0} kept`;
+      summaryText = `Someone kept their silver. No jackpot.`;
     }
   } else if (dilemmaType === 'SPOTLIGHT') {
     if (summary.unanimous) {
       summaryText = `Unanimous! ${getName(summary.targetId)} gets +20 silver`;
     } else {
-      summaryText = 'No consensus reached';
+      summaryText = 'No consensus — picks were split.';
     }
   } else if (dilemmaType === 'GIFT_OR_GRIEF') {
     const gifted = (summary.giftedIds ?? []).map(getName).join(', ');
