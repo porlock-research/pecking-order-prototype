@@ -6,21 +6,20 @@ export const NewsTicker: React.FC = () => {
   const tickerMessages = useGameStore(s => s.tickerMessages);
   const debugTicker = useGameStore(s => s.debugTicker);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const prevLengthRef = React.useRef(tickerMessages.length);
 
-  // Cycle through messages every 4 seconds
+  // Jump to latest when new messages arrive, then cycle every 4s
   useEffect(() => {
+    if (tickerMessages.length > prevLengthRef.current && tickerMessages.length > 0) {
+      setCurrentIndex(tickerMessages.length - 1);
+    }
+    prevLengthRef.current = tickerMessages.length;
+
     if (tickerMessages.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % tickerMessages.length);
     }, 4000);
     return () => clearInterval(timer);
-  }, [tickerMessages.length]);
-
-  // Reset index when new messages arrive (show latest)
-  useEffect(() => {
-    if (tickerMessages.length > 0) {
-      setCurrentIndex(tickerMessages.length - 1);
-    }
   }, [tickerMessages.length]);
 
   const currentMessage = tickerMessages[currentIndex];

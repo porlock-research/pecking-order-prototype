@@ -359,7 +359,7 @@ export const dailySessionMachine = setup({
             }
 
             enqueue.assign({ chatLog: appendToChatLog(context.chatLog, msg) });
-            // Emit DM_SENT fact for targeted messages so push notifications fire
+            // Emit facts so push notifications fire
             if (targetId) {
               enqueue.raise({
                 type: Events.Fact.RECORD,
@@ -367,6 +367,17 @@ export const dailySessionMachine = setup({
                   type: FactTypes.DM_SENT,
                   actorId: GAME_MASTER_ID,
                   targetId,
+                  payload: { content: text, channelId },
+                  timestamp: Date.now(),
+                },
+              });
+            } else {
+              // GM group chat message — emit CHAT_MSG so push notifications fire
+              enqueue.raise({
+                type: Events.Fact.RECORD,
+                fact: {
+                  type: FactTypes.CHAT_MSG,
+                  actorId: GAME_MASTER_ID,
                   payload: { content: text, channelId },
                   timestamp: Date.now(),
                 },

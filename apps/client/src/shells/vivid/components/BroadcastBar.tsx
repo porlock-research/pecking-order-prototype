@@ -78,10 +78,8 @@ export function BroadcastBar({ onClick }: { onClick?: () => void }) {
     return items;
   }, [phaseLabel, groupCountdown, dmCountdown, pregameCountdown, tickerMessages]);
 
-  // Dynamic speed: longer content scrolls faster
-  const marqueeSpeed = useMemo(() => {
-    return Math.max(30, Math.min(60, tickerItems.length * 8));
-  }, [tickerItems]);
+  // Fixed speed to prevent marquee stutter when tickerItems changes
+  const marqueeSpeed = 40;
 
   return (
     <div

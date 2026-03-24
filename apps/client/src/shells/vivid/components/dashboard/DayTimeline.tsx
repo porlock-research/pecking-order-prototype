@@ -9,6 +9,7 @@ import { TimelineEventCard } from './TimelineEventCard';
 export function DayTimeline() {
   const completedCartridges = useGameStore(s => s.completedCartridges);
   const serverState = useGameStore(s => s.serverState);
+  const phase = useGameStore(s => s.phase);
   const dayIndex = useGameStore(s => s.dayIndex);
   const manifest = useGameStore(s => s.manifest);
   const roster = useGameStore(s => s.roster);
@@ -21,7 +22,7 @@ export function DayTimeline() {
 
   // Enrich event labels with specific mechanic names
   const events = useMemo(() => {
-    const base = buildDashboardEvents({ timeline, completedCartridges, serverState, dayIndex });
+    const base = buildDashboardEvents({ timeline, completedCartridges, serverState, dayIndex, phase });
     return base.map(event => {
       if (event.category === 'voting' && voteType) {
         const info = VOTE_TYPE_INFO[voteType as keyof typeof VOTE_TYPE_INFO];
@@ -37,7 +38,7 @@ export function DayTimeline() {
       }
       return event;
     });
-  }, [timeline, completedCartridges, serverState, dayIndex, voteType, gameType, promptType]);
+  }, [timeline, completedCartridges, serverState, phase, dayIndex, voteType, gameType, promptType]);
 
   if (events.length === 0) {
     return (
