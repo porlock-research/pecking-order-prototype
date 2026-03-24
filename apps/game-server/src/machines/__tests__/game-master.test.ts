@@ -412,17 +412,17 @@ describe('Game Master dilemma resolution', () => {
     const input = makeInput();
     input.ruleset = {
       ...baseRuleset,
-      dilemmas: { allowed: ['PRISONERS_DILEMMA', 'COMMONS_DILEMMA'], avoidRepeat: false },
+      dilemmas: { mode: 'POOL', allowed: ['SILVER_GAMBIT', 'SPOTLIGHT'], avoidRepeat: false },
     };
     const ctx = resolveAndGetContext(input, 1);
-    expect(['PRISONERS_DILEMMA', 'COMMONS_DILEMMA']).toContain(ctx.resolvedDay?.dilemmaType);
+    expect(['SILVER_GAMBIT', 'SPOTLIGHT']).toContain(ctx.resolvedDay?.dilemmaType);
   });
 
   it('omits dilemmaType from resolvedDay when dilemmas.allowed is empty', () => {
     const input = makeInput();
     input.ruleset = {
       ...baseRuleset,
-      dilemmas: { allowed: [], avoidRepeat: false },
+      dilemmas: { mode: 'POOL', allowed: [], avoidRepeat: false },
     };
     const ctx = resolveAndGetContext(input, 1);
     expect(ctx.resolvedDay?.dilemmaType).toBeUndefined();
@@ -432,7 +432,7 @@ describe('Game Master dilemma resolution', () => {
     const input = makeInput();
     input.ruleset = {
       ...baseRuleset,
-      dilemmas: { allowed: ['PRISONERS_DILEMMA', 'COMMONS_DILEMMA'], avoidRepeat: true },
+      dilemmas: { mode: 'POOL', allowed: ['SILVER_GAMBIT', 'SPOTLIGHT'], avoidRepeat: true },
     };
     const ctx1 = resolveAndGetContext(input, 1);
     input.gameHistory = [{ dilemmaType: ctx1.resolvedDay?.dilemmaType } as any];
@@ -444,12 +444,12 @@ describe('Game Master dilemma resolution', () => {
     const input = makeInput();
     input.ruleset = {
       ...baseRuleset,
-      dilemmas: { mode: 'SEQUENCE', sequence: ['PRISONERS_DILEMMA', 'COMMONS_DILEMMA'], avoidRepeat: false },
+      dilemmas: { mode: 'SEQUENCE', sequence: ['SILVER_GAMBIT', 'SPOTLIGHT'], avoidRepeat: false },
     };
     const ctx1 = resolveAndGetContext(input, 1);
-    expect(ctx1.resolvedDay?.dilemmaType).toBe('PRISONERS_DILEMMA');
+    expect(ctx1.resolvedDay?.dilemmaType).toBe('SILVER_GAMBIT');
     const ctx2 = resolveAndGetContext(input, 2);
-    expect(ctx2.resolvedDay?.dilemmaType).toBe('COMMONS_DILEMMA');
+    expect(ctx2.resolvedDay?.dilemmaType).toBe('SPOTLIGHT');
   });
 });
 

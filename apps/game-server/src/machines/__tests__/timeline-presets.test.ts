@@ -205,7 +205,7 @@ describe('generateDayTimeline', () => {
       const events = generateDayTimeline('SPEED_RUN', 1, '2026-03-10T14:00:00.000Z', {
         gameType: 'TRIVIA',
         activityType: 'PLAYER_PICK',
-        dilemmaType: 'PRISONERS_DILEMMA',
+        dilemmaType: 'SILVER_GAMBIT',
       });
       const actions = events.map(e => e.action);
       expect(actions).toContain('START_DILEMMA');
@@ -227,7 +227,7 @@ describe('generateDayTimeline', () => {
       const events = generateDayTimeline('PLAYTEST', 1, '2026-03-10T00:00:00.000Z', {
         gameType: 'NONE',
         activityType: 'NONE',
-        dilemmaType: 'PRISONERS_DILEMMA',
+        dilemmaType: 'SILVER_GAMBIT',
       });
       const actions = events.map(e => e.action);
       expect(actions).toContain('START_DILEMMA');
