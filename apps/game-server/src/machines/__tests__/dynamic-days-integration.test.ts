@@ -459,3 +459,103 @@ describe('Dynamic Days — Inactivity + voting interaction', () => {
     expect(countAlive(actor)).toBe(2); // p1, p2 — floor respected
   });
 });
+
+describe('Dynamic Days — Realistic PLAYER_JOINED flow (empty roster init)', () => {
+  let actor: ReturnType<typeof createActor>;
+
+  afterEach(() => { actor?.stop(); });
+
+  function sendPlayerJoined(a: ReturnType<typeof createActor>, id: string, name: string, silver: number) {
+    a.send({
+      type: Events.System.PLAYER_JOINED,
+      player: { id, realUserId: `u-${id}`, personaName: name, avatarUrl: '', bio: '', silver, gold: 0 },
+    } as any);
+  }
+
+  it('players join one by one in preGame, game starts and resolves Day 1 correctly', () => {
+    actor = createActor(orchestratorMachine);
+    actor.start();
+
+    // Init with EMPTY roster (realistic DYNAMIC flow — lobby sends empty roster)
+    actor.send({
+      type: Events.System.INIT,
+      gameId: 'test-dynamic-join',
+      inviteCode: 'JOIN1',
+      payload: { roster: {}, manifest: makeDynamicManifest() },
+    } as any);
+
+    expect(getStateValue(actor)).toBe('preGame');
+    expect(Object.keys(getCtx(actor).roster)).toHaveLength(0);
+
+    // Players join one by one
+    sendPlayerJoined(actor, 'p1', 'Alice', 100);
+    expect(Object.keys(getCtx(actor).roster)).toHaveLength(1);
+    expect(getCtx(actor).roster.p1.personaName).toBe('Alice');
+
+    sendPlayerJoined(actor, 'p2', 'Bob', 80);
+    sendPlayerJoined(actor, 'p3', 'Carol', 60);
+    sendPlayerJoined(actor, 'p4', 'Dave', 40);
+    expect(Object.keys(getCtx(actor).roster)).toHaveLength(4);
+    expect(getStateValue(actor)).toBe('preGame'); // still in preGame
+
+    // WAKEUP → dayLoop → morningBriefing → GM resolves Day 1
+    actor.send({ type: Events.System.WAKEUP });
+
+    let ctx = getCtx(actor);
+    expect(ctx.dayIndex).toBe(1);
+    expect(ctx.manifest.days).toHaveLength(1);
+    expect(ctx.manifest.days[0].voteType).toBe('MAJORITY');
+    expect(ctx.manifest.days[0].timeline.length).toBeGreaterThan(0);
+
+    // Verify all 4 players are in the roster
+    expect(Object.keys(ctx.roster)).toHaveLength(4);
+    expect(countAlive(actor)).toBe(4);
+
+    // Day 1 voting works normally
+    runMajorityVoting(actor, [
+      { senderId: 'p1', targetId: 'p4' },
+      { senderId: 'p2', targetId: 'p4' },
+      { senderId: 'p3', targetId: 'p4' },
+    ]);
+
+    ctx = getCtx(actor);
+    expect(ctx.pendingElimination).not.toBeNull();
+    expect(ctx.pendingElimination.eliminatedId).toBe('p4');
+
+    endDay(actor);
+    expect(getCtx(actor).roster.p4.status).toBe(PlayerStatuses.ELIMINATED);
+    expect(countAlive(actor)).toBe(3);
+
+    // Day 2 resolves correctly from the updated roster
+    startNextDay(actor);
+    ctx = getCtx(actor);
+    expect(ctx.dayIndex).toBe(2);
+    expect(ctx.manifest.days).toHaveLength(2);
+    expect(ctx.manifest.days[1].voteType).toBe('MAJORITY'); // 3 alive, not FINALS yet
+  });
+
+  it('Game Master receives current roster at RESOLVE_DAY, not stale init roster', () => {
+    actor = createActor(orchestratorMachine);
+    actor.start();
+
+    // Init with empty roster
+    actor.send({
+      type: Events.System.INIT,
+      gameId: 'test-dynamic-join-2',
+      inviteCode: 'JOIN2',
+      payload: { roster: {}, manifest: makeDynamicManifest() },
+    } as any);
+
+    // Only 2 players join → should get FINALS immediately
+    sendPlayerJoined(actor, 'p1', 'Alice', 100);
+    sendPlayerJoined(actor, 'p2', 'Bob', 80);
+
+    actor.send({ type: Events.System.WAKEUP });
+
+    const ctx = getCtx(actor);
+    expect(ctx.dayIndex).toBe(1);
+    // With 2 alive players, FINALS should trigger (alive <= 2)
+    expect(ctx.manifest.days[0].voteType).toBe('FINALS');
+    expect(ctx.manifest.days[0].nextDayStart).toBeUndefined(); // last day
+  });
+});
