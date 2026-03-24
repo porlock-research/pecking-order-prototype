@@ -112,14 +112,26 @@ export function VotingResultDetail({ result, roster }: VotingResultDetailProps) 
   const winnerId: string | null = result.winnerId ?? null;
   const maxVotes = Math.max(1, ...Object.values(tally));
 
-  const sorted = Object.entries(tally).sort(([, a], [, b]) => b - a);
+  // Build full player list: tallied players + immune players from roster
+  const immunePlayerIds: string[] = (result.summary as any)?.immunePlayerIds ?? [];
+  const allPlayers: [string, number][] = Object.entries(tally);
+  // Add immune players not in tallies (they had 0 votes but are safe)
+  if (roster) {
+    for (const pid of Object.keys(roster)) {
+      if (!tally[pid] && tally[pid] !== 0 && (roster[pid]?.status === 'ALIVE' || immunePlayerIds.includes(pid))) {
+        allPlayers.push([pid, 0]);
+      }
+    }
+  }
+  const sorted = allPlayers.sort(([, a], [, b]) => b - a);
 
   // Determine self placement
-  const selfVotes = playerId ? tally[playerId] : undefined;
+  const selfVotes = playerId ? (tally[playerId] ?? (immunePlayerIds.includes(playerId) ? 0 : undefined)) : undefined;
   const selfRank = playerId
     ? sorted.findIndex(([pid]) => pid === playerId) + 1
     : 0;
   const selfEliminated = playerId === eliminatedId;
+  const selfImmune = playerId ? immunePlayerIds.includes(playerId) : false;
 
   // Determine which mechanism uses "safe" semantics (save-style votes)
   const isSaveMechanism = mechanism === 'BUBBLE' || mechanism === 'PODIUM_SACRIFICE' || mechanism === 'SHIELD';
@@ -184,7 +196,10 @@ export function VotingResultDetail({ result, roster }: VotingResultDetailProps) 
             </span>
             {isElim && <SemanticLabel text="Eliminated" color="#D04A35" />}
             {isWinner && !isElim && <SemanticLabel text="Winner" color="#B8840A" />}
-            {isSaveMechanism && !isElim && !isWinner && sorted.indexOf(sorted.find(([p]) => p === pid)!) === 0 && (
+            {immunePlayerIds.includes(pid) && !isElim && !isWinner && (
+              <SemanticLabel text="Immune" color="#8B6CC1" />
+            )}
+            {isSaveMechanism && !isElim && !isWinner && !immunePlayerIds.includes(pid) && sorted.indexOf(sorted.find(([p]) => p === pid)!) === 0 && (
               <SemanticLabel text="Safe" color="#4A9B5A" />
             )}
             <VoteBar votes={votes} maxVotes={maxVotes} color={VOTING_COLOR} />
@@ -253,6 +268,10 @@ export function VotingResultDetail({ result, roster }: VotingResultDetailProps) 
           {selfEliminated ? (
             <>
               <SelfHighlightLabel>You were eliminated</SelfHighlightLabel> with {selfVotes} vote{selfVotes !== 1 ? 's' : ''}.
+            </>
+          ) : selfImmune ? (
+            <>
+              <SelfHighlightLabel>You were immune</SelfHighlightLabel> (top 3 silver).
             </>
           ) : (
             <>
