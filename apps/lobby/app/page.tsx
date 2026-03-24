@@ -463,7 +463,7 @@ export default function LobbyRoot() {
         kind: 'DYNAMIC',
         ruleset: rulesetFromConfig,
         schedulePreset: dynamicConfig.schedulePreset,
-        maxPlayers: 8,
+        minPlayers: dynamicConfig.minPlayers,
         startTime: dynamicConfig.startTime,
       });
 
@@ -1023,6 +1023,23 @@ export default function LobbyRoot() {
                     config={dynamicConfig}
                     onChange={setDynamicConfig}
                   />
+                  <div className="flex items-center justify-between border border-skin-base rounded-lg bg-skin-input/40 p-3">
+                    <div>
+                      <span className="text-xs font-bold text-skin-dim uppercase tracking-widest font-display">
+                        Min Players to Start
+                      </span>
+                      <span className="block text-[10px] font-mono text-skin-dim/40 mt-0.5">
+                        Game won't start until this many players join
+                      </span>
+                    </div>
+                    <input
+                      type="number"
+                      min={2}
+                      value={dynamicConfig.minPlayers}
+                      onChange={e => setDynamicConfig(prev => ({ ...prev, minPlayers: Math.max(2, parseInt(e.target.value) || 2) }))}
+                      className="w-16 bg-skin-input text-skin-base border border-skin-base rounded-lg px-2 py-1.5 text-center font-mono text-sm focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all"
+                    />
+                  </div>
                 </div>
               )}
 

@@ -31,6 +31,8 @@ export interface DynamicRulesetConfig {
   schedulePreset: 'DEFAULT' | 'COMPACT' | 'SPEED_RUN';
   // Start time
   startTime: string;  // datetime-local format: "YYYY-MM-DDTHH:MM"
+  // Min players to start
+  minPlayers: number;
 }
 
 export function createDefaultDynamicConfig(): DynamicRulesetConfig {
@@ -59,6 +61,7 @@ export function createDefaultDynamicConfig(): DynamicRulesetConfig {
     },
     schedulePreset: 'DEFAULT',
     startTime: `${dateStr}T09:00`,
+    minPlayers: 3,
   };
 }
 
