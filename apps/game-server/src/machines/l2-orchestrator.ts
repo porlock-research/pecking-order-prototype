@@ -2,7 +2,7 @@ import { setup, assign, sendTo, raise } from 'xstate';
 import type { AnyActorRef } from 'xstate';
 import { dailySessionMachine } from './l3-session';
 import { postGameMachine } from './l4-post-game';
-import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, DailyManifest, Events, type DilemmaOutput } from '@pecking-order/shared-types';
+import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, DailyManifest, Events, QaEntry, type DilemmaOutput } from '@pecking-order/shared-types';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from './cartridges/prompts/_contract';
 
@@ -41,7 +41,7 @@ export interface GameContext {
 
 export type GameEvent =
   | { type: 'SYSTEM.INIT'; payload: { roster: Roster; manifest: GameManifest }; gameId: string; inviteCode: string }
-  | { type: 'SYSTEM.PLAYER_JOINED'; player: { id: string; realUserId: string; personaName: string; avatarUrl: string; bio: string; silver: number; gold: number; qaAnswers?: { question: string; answer: string }[] } }
+  | { type: 'SYSTEM.PLAYER_JOINED'; player: { id: string; realUserId: string; personaName: string; avatarUrl: string; bio: string; silver: number; gold: number; qaAnswers?: QaEntry[] } }
   | { type: 'SYSTEM.WAKEUP' }
   | { type: 'SYSTEM.PAUSE' }
   | { type: 'ADMIN.NEXT_STAGE' }
