@@ -61,6 +61,16 @@ export const l3ActivityActions = {
     // Include rich results but strip sensitive author mappings
     const results = ctx?.results ? { ...ctx.results } : null;
     if (results) delete results.indexToAuthor;
+    // Capture per-player responses for attribution-safe prompt types
+    // CONFESSION/GUESS_WHO: playerResponses stays null (anonymous only)
+    let playerResponses: Record<string, string> | null = null;
+    if (ctx?.responses) {
+      playerResponses = ctx.responses;
+    } else if (ctx?.stances) {
+      playerResponses = ctx.stances;
+    } else if (ctx?.choices) {
+      playerResponses = ctx.choices;
+    }
     return {
       type: Events.Cartridge.PROMPT_RESULT,
       result: (event as any).output as PromptOutput,
@@ -68,6 +78,7 @@ export const l3ActivityActions = {
       promptText: ctx?.promptText || '',
       participantCount: Object.keys(ctx?.responses || ctx?.stances || ctx?.choices || {}).length,
       results,
+      playerResponses,
     };
   }),
   forwardToPromptChild: sendTo('activePromptCartridge', ({ event }: any) => event),
