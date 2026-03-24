@@ -63,7 +63,10 @@ function resolveVoteType(
   rules: PeckingOrderRuleset['voting'],
   alivePlayers: number,
 ): VoteType {
-  if (dayIndex >= totalDays) return 'FINALS';
+  // FINALS when exactly 2 players remain — based on actual alive count,
+  // not dayIndex vs totalDays (totalDays recalculates each morning as
+  // players are eliminated, causing premature FINALS).
+  if (alivePlayers <= 2) return 'FINALS';
 
   // Whitelist mode (dynamic): pick from allowed pool
   if (rules.allowed && rules.allowed.length > 0) {
@@ -264,7 +267,7 @@ function resolveDay(
     dilemmaType,
   });
 
-  const isLastDay = dayIndex >= totalDays;
+  const isLastDay = alive <= 2;
   const nextDayStart = isLastDay
     ? undefined
     : computeNextDayStart(schedulePreset, dayIndex, startTime);

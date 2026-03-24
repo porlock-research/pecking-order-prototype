@@ -88,8 +88,9 @@ describe('Game Master day resolution (via RESOLVE_DAY event)', () => {
     expect(ctx.resolvedDay?.voteType).toBe('BUBBLE');
   });
 
-  it('always uses FINALS for the last day', () => {
-    const ctx = resolveAndGetContext(makeInput(), 3);
+  it('always uses FINALS when 2 players remain', () => {
+    const input = makeInput({ roster: makeRoster(4, 2) });
+    const ctx = resolveAndGetContext(input, 3, makeRoster(4, 2));
     expect(ctx.resolvedDay?.voteType).toBe('FINALS');
   });
 
@@ -313,13 +314,13 @@ describe('Game Master whitelist-based resolution', () => {
     expect(['EXECUTIONER', 'SHIELD', 'BUBBLE']).toContain(ctx.resolvedDay?.voteType);
   });
 
-  it('always uses FINALS on last day even with whitelist', () => {
-    const input = makeInput();
+  it('always uses FINALS when 2 alive even with whitelist', () => {
+    const input = makeInput({ roster: makeRoster(4, 2) });
     input.ruleset = {
       ...baseRuleset,
       voting: { allowed: ['EXECUTIONER', 'SHIELD'] },
     };
-    const ctx = resolveAndGetContext(input, 3); // 4 players = 3 days, day 3 = last
+    const ctx = resolveAndGetContext(input, 3, makeRoster(4, 2));
     expect(ctx.resolvedDay?.voteType).toBe('FINALS');
   });
 

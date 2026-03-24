@@ -147,6 +147,17 @@ export const l2DayResolutionActions = {
 
     const rosterUpdate = { ...context.roster };
     let rosterChanged = false;
+
+    // XState v5 entry action batching: processNightSummary's enqueue.assign
+    // hasn't been applied yet, so context.roster still has the voted-out player
+    // as ALIVE. Pre-apply the pending voting elimination to our local copy so
+    // we count alive correctly and don't overwrite the voting elimination.
+    const pendingId = context.pendingElimination?.eliminatedId;
+    if (pendingId && rosterUpdate[pendingId]?.status === PlayerStatuses.ALIVE) {
+      rosterUpdate[pendingId] = { ...rosterUpdate[pendingId], status: PlayerStatuses.ELIMINATED };
+      rosterChanged = true;
+    }
+
     const aliveCount = Object.values(rosterUpdate).filter((p: any) => p.status === PlayerStatuses.ALIVE).length;
     let remaining = aliveCount;
 

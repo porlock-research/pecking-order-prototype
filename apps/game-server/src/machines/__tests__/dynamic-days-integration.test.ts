@@ -12,7 +12,6 @@ function makeRoster() {
     p2: { personaName: 'Bob',   avatarUrl: '', bio: '', isAlive: true, isSpectator: false, silver: 80,  gold: 0, realUserId: 'u2', destinyId: 'd2' },
     p3: { personaName: 'Carol', avatarUrl: '', bio: '', isAlive: true, isSpectator: false, silver: 60,  gold: 0, realUserId: 'u3', destinyId: 'd3' },
     p4: { personaName: 'Dave',  avatarUrl: '', bio: '', isAlive: true, isSpectator: false, silver: 40,  gold: 0, realUserId: 'u4', destinyId: 'd4' },
-    p5: { personaName: 'Eve',   avatarUrl: '', bio: '', isAlive: true, isSpectator: false, silver: 20,  gold: 0, realUserId: 'u5', destinyId: 'd5' },
   };
 }
 
@@ -40,7 +39,7 @@ function makeDynamicManifest(): DynamicManifest {
     startTime: new Date().toISOString(),
     ruleset: RULESET,
     schedulePreset: 'SMOKE_TEST',
-    maxPlayers: 5,
+    maxPlayers: 4,
     days: [],
   };
 }
@@ -53,11 +52,10 @@ function initAndStartDay1(actor: ReturnType<typeof createActor>) {
     inviteCode: 'TEST',
     payload: { roster: makeRoster(), manifest: makeDynamicManifest() },
   } as any);
-  // WAKEUP → dayLoop → morningBriefing → activeSession
   actor.send({ type: Events.System.WAKEUP });
 }
 
-/** Open voting, cast majority votes, close voting. Returns after cartridge completes. */
+/** Open voting, cast majority votes, close voting. */
 function runMajorityVoting(actor: ReturnType<typeof createActor>, voters: Array<{ senderId: string; targetId: string }>) {
   actor.send({ type: Events.Admin.INJECT_TIMELINE_EVENT, payload: { action: 'OPEN_VOTING' } } as any);
   for (const { senderId, targetId } of voters) {
@@ -97,11 +95,9 @@ describe('Dynamic Days — Multi-day tournament', () => {
 
   afterEach(() => { actor?.stop(); });
 
-  it('drives a 5-player dynamic game through 3 days to completion', () => {
-    // With ACTIVE_PLAYERS_MINUS_ONE, totalDays is recalculated each day from alive count:
-    //   Day 1: 5 alive → totalDays=4, dayIndex=1 < 4 → MAJORITY. Eliminate → 4 alive.
-    //   Day 2: 4 alive → totalDays=3, dayIndex=2 < 3 → MAJORITY. Eliminate → 3 alive.
-    //   Day 3: 3 alive → totalDays=2, dayIndex=3 >= 2 → FINALS.
+  it('drives a 4-player dynamic game through 3 days to completion', () => {
+    // FINALS triggers when alive <= 2, not based on dayIndex vs totalDays.
+    // 4 players: Day 1 → eliminate → 3 alive, Day 2 → eliminate → 2 alive, Day 3 → FINALS.
     actor = createActor(orchestratorMachine);
     actor.start();
 
@@ -123,31 +119,30 @@ describe('Dynamic Days — Multi-day tournament', () => {
     expect(ctx.manifest.days[0].activityType).toBeUndefined();
     expect(ctx.manifest.days[0].dilemmaType).toBeUndefined();
 
-    // ── Day 1 voting: eliminate p5 ──
+    // ── Day 1 voting: eliminate p4 ──
     runMajorityVoting(actor, [
-      { senderId: 'p1', targetId: 'p5' },
-      { senderId: 'p2', targetId: 'p5' },
-      { senderId: 'p3', targetId: 'p5' },
-      { senderId: 'p4', targetId: 'p5' },
+      { senderId: 'p1', targetId: 'p4' },
+      { senderId: 'p2', targetId: 'p4' },
+      { senderId: 'p3', targetId: 'p4' },
     ]);
 
     ctx = getCtx(actor);
     expect(ctx.pendingElimination).not.toBeNull();
-    expect(ctx.pendingElimination.eliminatedId).toBe('p5');
+    expect(ctx.pendingElimination.eliminatedId).toBe('p4');
     expect(ctx.pendingElimination.mechanism).toBe('MAJORITY');
 
     endDay(actor);
 
     ctx = getCtx(actor);
-    expect(ctx.roster.p5.status).toBe(PlayerStatuses.ELIMINATED);
+    expect(ctx.roster.p4.status).toBe(PlayerStatuses.ELIMINATED);
     expect(ctx.pendingElimination).toBeNull();
-    expect(countAlive(actor)).toBe(4);
+    expect(countAlive(actor)).toBe(3);
     expect(ctx.completedPhases).toHaveLength(1);
     expect(ctx.completedPhases[0].kind).toBe('voting');
     expect(ctx.completedPhases[0].mechanism).toBe('MAJORITY');
-    expect(ctx.completedPhases[0].eliminatedId).toBe('p5');
+    expect(ctx.completedPhases[0].eliminatedId).toBe('p4');
 
-    // ── Day 2 ──
+    // ── Day 2: 3 alive → MAJORITY (not FINALS yet) ──
     startNextDay(actor);
 
     ctx = getCtx(actor);
@@ -159,25 +154,24 @@ describe('Dynamic Days — Multi-day tournament', () => {
     const dayIndices = ctx.manifest.days.map((d: any) => d.dayIndex);
     expect(new Set(dayIndices).size).toBe(dayIndices.length);
 
-    // ── Day 2 voting: eliminate p4 ──
+    // ── Day 2 voting: eliminate p3 ──
     runMajorityVoting(actor, [
-      { senderId: 'p1', targetId: 'p4' },
-      { senderId: 'p2', targetId: 'p4' },
-      { senderId: 'p3', targetId: 'p4' },
+      { senderId: 'p1', targetId: 'p3' },
+      { senderId: 'p2', targetId: 'p3' },
     ]);
 
     ctx = getCtx(actor);
     expect(ctx.pendingElimination).not.toBeNull();
-    expect(ctx.pendingElimination.eliminatedId).toBe('p4');
+    expect(ctx.pendingElimination.eliminatedId).toBe('p3');
 
     endDay(actor);
 
     ctx = getCtx(actor);
-    expect(ctx.roster.p4.status).toBe(PlayerStatuses.ELIMINATED);
-    expect(countAlive(actor)).toBe(3);
+    expect(ctx.roster.p3.status).toBe(PlayerStatuses.ELIMINATED);
+    expect(countAlive(actor)).toBe(2);
     expect(ctx.completedPhases).toHaveLength(2);
 
-    // ── Day 3 (FINALS) ──
+    // ── Day 3: 2 alive → FINALS ──
     startNextDay(actor);
 
     ctx = getCtx(actor);
@@ -185,19 +179,23 @@ describe('Dynamic Days — Multi-day tournament', () => {
     expect(ctx.manifest.days).toHaveLength(3);
     expect(ctx.manifest.days[2].dayIndex).toBe(3);
     expect(ctx.manifest.days[2].voteType).toBe('FINALS');
+    // Last day: nextDayStart should be undefined
     expect(ctx.manifest.days[2].nextDayStart).toBeUndefined();
 
     // ── Day 3 voting: FINALS — eliminated players vote ──
     actor.send({ type: Events.Admin.INJECT_TIMELINE_EVENT, payload: { action: 'OPEN_VOTING' } } as any);
+    // Eliminated players (p3, p4) vote for p1 as winner
+    actor.send({ type: VoteEvents.FINALS.CAST, senderId: 'p3', targetId: 'p1' } as any);
     actor.send({ type: VoteEvents.FINALS.CAST, senderId: 'p4', targetId: 'p1' } as any);
-    actor.send({ type: VoteEvents.FINALS.CAST, senderId: 'p5', targetId: 'p1' } as any);
     actor.send({ type: Events.Admin.INJECT_TIMELINE_EVENT, payload: { action: 'CLOSE_VOTING' } } as any);
 
     ctx = getCtx(actor);
     expect(ctx.pendingElimination).not.toBeNull();
     expect(ctx.pendingElimination.winnerId).toBe('p1');
+    expect(ctx.pendingElimination.eliminatedId).toBe('p2');
     expect(ctx.pendingElimination.mechanism).toBe('FINALS');
 
+    // End Day 3 → nightSummary → isGameComplete → gameSummary
     endDay(actor);
 
     ctx = getCtx(actor);
@@ -220,10 +218,9 @@ describe('Dynamic Days — Multi-day tournament', () => {
     expect(ctx.manifest.kind).toBe('DYNAMIC');
 
     runMajorityVoting(actor, [
-      { senderId: 'p1', targetId: 'p5' },
-      { senderId: 'p2', targetId: 'p5' },
-      { senderId: 'p3', targetId: 'p5' },
-      { senderId: 'p4', targetId: 'p5' },
+      { senderId: 'p1', targetId: 'p4' },
+      { senderId: 'p2', targetId: 'p4' },
+      { senderId: 'p3', targetId: 'p4' },
     ]);
     endDay(actor);
 
@@ -245,10 +242,9 @@ describe('Dynamic Days — Multi-day tournament', () => {
     initAndStartDay1(actor);
 
     runMajorityVoting(actor, [
-      { senderId: 'p1', targetId: 'p5' },
-      { senderId: 'p2', targetId: 'p5' },
-      { senderId: 'p3', targetId: 'p5' },
-      { senderId: 'p4', targetId: 'p5' },
+      { senderId: 'p1', targetId: 'p4' },
+      { senderId: 'p2', targetId: 'p4' },
+      { senderId: 'p3', targetId: 'p4' },
     ]);
     endDay(actor);
 
@@ -271,10 +267,9 @@ describe('Dynamic Days — Multi-day tournament', () => {
     expect((state as any).dayLoop).not.toBe('gameSummary');
 
     runMajorityVoting(actor, [
-      { senderId: 'p1', targetId: 'p5' },
-      { senderId: 'p2', targetId: 'p5' },
-      { senderId: 'p3', targetId: 'p5' },
-      { senderId: 'p4', targetId: 'p5' },
+      { senderId: 'p1', targetId: 'p4' },
+      { senderId: 'p2', targetId: 'p4' },
+      { senderId: 'p3', targetId: 'p4' },
     ]);
     endDay(actor);
 
