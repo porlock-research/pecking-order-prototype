@@ -471,7 +471,10 @@ export default function LobbyRoot() {
         ruleset: rulesetFromConfig,
         schedulePreset: dynamicConfig.schedulePreset,
         minPlayers: dynamicConfig.minPlayers,
-        startTime: dynamicConfig.startTime,
+        // datetime-local gives "YYYY-MM-DDTHH:MM" without timezone.
+        // Convert to ISO string in the browser (which knows local timezone)
+        // so the server action receives a proper UTC timestamp.
+        startTime: new Date(dynamicConfig.startTime).toISOString(),
       });
 
       setIsLoading(false);
