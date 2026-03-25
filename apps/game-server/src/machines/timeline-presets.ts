@@ -161,13 +161,16 @@ function meetsCondition(condition: string | undefined, opts: DayOptions): boolea
   return true;
 }
 
-function computeCalendarDayBase(startTime: string, dayIndex: number): string {
-  // Extract date from startTime, add (dayIndex - 1) calendar days
-  const base = new Date(startTime);
-  base.setUTCDate(base.getUTCDate() + (dayIndex - 1));
-  return base.toISOString().slice(0, 10); // "YYYY-MM-DD"
+/**
+ * Compute the minute offset between a clockTime (e.g. '10:00') and the
+ * preset's firstEventTime. Used to anchor calendar events relative to
+ * startTime rather than to midnight UTC.
+ */
+function clockTimeOffsetMin(clockTime: string, firstEventTime: string): number {
+  const [ch, cm] = clockTime.split(':').map(Number);
+  const [fh, fm] = firstEventTime.split(':').map(Number);
+  return (ch * 60 + cm) - (fh * 60 + fm);
 }
-
 
 function computeOffsetDayBase(startTime: string, dayIndex: number, config: OffsetPresetConfig): number {
   const base = new Date(startTime).getTime();
@@ -179,9 +182,10 @@ function computeOffsetDayBase(startTime: string, dayIndex: number, config: Offse
 /**
  * Generate concrete timeline events (with ISO timestamps) for a given day.
  *
- * - Calendar presets (DEFAULT, COMPACT): `startTime` determines the date.
- *   Day 1 uses that date, Day 2 uses date+1, etc.
- *   Events use fixed UTC clock times on each date.
+ * - Calendar presets (DEFAULT, COMPACT, PLAYTEST): clockTimes are treated
+ *   as offsets from `firstEventTime`. `startTime` anchors Day 1's first
+ *   event; Day N starts 24h * (N-1) later. This avoids timezone bugs —
+ *   the browser's UTC-converted startTime implicitly carries the offset.
  * - Offset preset (SPEED_RUN): `startTime` is the exact start moment.
  *   Events use minute offsets. Day N base = startTime + (N-1) * (dayDuration + gap).
  * - Conditional events: game events only if gameType !== 'NONE',
@@ -196,12 +200,13 @@ export function generateDayTimeline(
   const config = PRESET_CONFIGS[preset];
 
   if (config.type === 'calendar') {
-    const dateStr = computeCalendarDayBase(startTime, dayIndex);
+    const startMs = new Date(startTime).getTime();
+    const dayOffsetMs = (dayIndex - 1) * 24 * 60 * 60_000;
     return config.events
       .filter(e => meetsCondition(e.condition, opts))
       .map(e => ({
         action: e.action,
-        time: new Date(`${dateStr}T${e.clockTime}:00.000Z`).toISOString(),
+        time: new Date(startMs + dayOffsetMs + clockTimeOffsetMin(e.clockTime, config.firstEventTime) * 60_000).toISOString(),
       }));
   }
 
@@ -218,7 +223,7 @@ export function generateDayTimeline(
 /**
  * Compute when the next day starts.
  *
- * - Calendar presets: returns next calendar day at firstEventTime.
+ * - Calendar presets: startTime + dayIndex * 24h (consistent 24h gap).
  * - Offset preset: returns base + dayDuration + gap.
  */
 export function computeNextDayStart(
@@ -229,8 +234,8 @@ export function computeNextDayStart(
   const config = PRESET_CONFIGS[preset];
 
   if (config.type === 'calendar') {
-    const nextDateStr = computeCalendarDayBase(startTime, dayIndex + 1);
-    return new Date(`${nextDateStr}T${config.firstEventTime}:00.000Z`).toISOString();
+    const startMs = new Date(startTime).getTime();
+    return new Date(startMs + dayIndex * 24 * 60 * 60_000).toISOString();
   }
 
   // Offset-based

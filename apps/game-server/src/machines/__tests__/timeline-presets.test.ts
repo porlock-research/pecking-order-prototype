@@ -67,23 +67,24 @@ describe('generateDayTimeline', () => {
   });
 
   describe('DEFAULT preset', () => {
-    const startTime = '2026-03-10T00:00:00.000Z';
+    // startTime at 09:00 UTC = firstEventTime for DEFAULT
+    const startTime = '2026-03-10T09:00:00.000Z';
 
-    it('uses clock times on the start date for Day 1', () => {
+    it('anchors events relative to startTime for Day 1', () => {
       const events = generateDayTimeline('DEFAULT', 1, startTime, {
         gameType: 'TRIVIA',
         activityType: 'PLAYER_PICK',
         dilemmaType: 'NONE',
       });
-      // First event: OPEN_GROUP_CHAT at 09:00 on March 10
+      // First event: OPEN_GROUP_CHAT at startTime + 0 offset
       expect(events[0].action).toBe('OPEN_GROUP_CHAT');
       expect(events[0].time).toBe('2026-03-10T09:00:00.000Z');
-      // Last event: END_DAY at 23:59
+      // Last event: END_DAY at startTime + (23:59 - 09:00) = +14h59m
       const endDay = events.find(e => e.action === 'END_DAY');
       expect(endDay?.time).toBe('2026-03-10T23:59:00.000Z');
     });
 
-    it('advances to next calendar day for Day 2', () => {
+    it('advances to next day (24h later) for Day 2', () => {
       const events = generateDayTimeline('DEFAULT', 2, startTime, {
         gameType: 'TRIVIA',
         activityType: 'PLAYER_PICK',
@@ -94,7 +95,7 @@ describe('generateDayTimeline', () => {
   });
 
   describe('COMPACT preset', () => {
-    const startTime = '2026-03-10T00:00:00.000Z';
+    const startTime = '2026-03-10T09:00:00.000Z';
 
     it('uses compressed clock times', () => {
       const events = generateDayTimeline('COMPACT', 1, startTime, {
@@ -109,9 +110,10 @@ describe('generateDayTimeline', () => {
   });
 
   describe('PLAYTEST preset', () => {
-    const startTime = '2026-03-10T00:00:00.000Z';
+    // startTime at 10:00 UTC = firstEventTime for PLAYTEST
+    const startTime = '2026-03-10T10:00:00.000Z';
 
-    it('generates calendar-based events from 10:00 to 17:00', () => {
+    it('generates events anchored to startTime', () => {
       const events = generateDayTimeline('PLAYTEST', 1, startTime, {
         gameType: 'TRIVIA',
         activityType: 'PLAYER_PICK',
@@ -123,7 +125,7 @@ describe('generateDayTimeline', () => {
       expect(endDay?.time).toBe('2026-03-10T17:00:00.000Z');
     });
 
-    it('advances to next calendar day for Day 2', () => {
+    it('advances to next day (24h later) for Day 2', () => {
       const events = generateDayTimeline('PLAYTEST', 2, startTime, {
         gameType: 'TRIVIA',
         activityType: 'PLAYER_PICK',
@@ -132,7 +134,7 @@ describe('generateDayTimeline', () => {
       expect(events[0].time).toBe('2026-03-11T10:00:00.000Z');
     });
 
-    it('has two OPEN_GROUP_CHAT events (re-opens at 15:01)', () => {
+    it('has two OPEN_GROUP_CHAT events (re-opens at +5h01m)', () => {
       const events = generateDayTimeline('PLAYTEST', 1, startTime, {
         gameType: 'TRIVIA',
         activityType: 'PLAYER_PICK',
@@ -224,7 +226,7 @@ describe('generateDayTimeline', () => {
     });
 
     it('includes START_DILEMMA/END_DILEMMA when dilemmaType is not NONE (PLAYTEST)', () => {
-      const events = generateDayTimeline('PLAYTEST', 1, '2026-03-10T00:00:00.000Z', {
+      const events = generateDayTimeline('PLAYTEST', 1, '2026-03-10T10:00:00.000Z', {
         gameType: 'NONE',
         activityType: 'NONE',
         dilemmaType: 'SILVER_GAMBIT',
@@ -238,11 +240,78 @@ describe('generateDayTimeline', () => {
       expect(end?.time).toBe('2026-03-10T14:59:00.000Z');
     });
   });
+
+  describe('timezone regression (non-midnight startTime)', () => {
+    // Simulates PDT user: browser converts "10:00 AM local" to 17:00 UTC
+    const pdtStartTime = '2026-03-25T17:00:00.000Z';
+
+    it('PLAYTEST: anchors Day 1 events to startTime, not midnight UTC', () => {
+      const events = generateDayTimeline('PLAYTEST', 1, pdtStartTime, {
+        gameType: 'TRIVIA',
+        activityType: 'PLAYER_PICK',
+        dilemmaType: 'SILVER_GAMBIT',
+      });
+      // First event at startTime (17:00 UTC = 10:00 AM PDT)
+      expect(events[0].action).toBe('OPEN_GROUP_CHAT');
+      expect(events[0].time).toBe('2026-03-25T17:00:00.000Z');
+      // START_GAME at +121min from firstEventTime (12:01 - 10:00 = 2h01m)
+      const startGame = events.find(e => e.action === 'START_GAME');
+      expect(startGame?.time).toBe('2026-03-25T19:01:00.000Z'); // 12:01 PM PDT
+      // END_DAY at +420min (17:00 - 10:00 = 7h)
+      const endDay = events.find(e => e.action === 'END_DAY');
+      expect(endDay?.time).toBe('2026-03-26T00:00:00.000Z'); // 5:00 PM PDT
+    });
+
+    it('PLAYTEST: Day 2 starts exactly 24h after Day 1', () => {
+      const day2Events = generateDayTimeline('PLAYTEST', 2, pdtStartTime, {
+        gameType: 'TRIVIA',
+        activityType: 'PLAYER_PICK',
+        dilemmaType: 'NONE',
+      });
+      // Day 2 first event at startTime + 24h
+      expect(day2Events[0].time).toBe('2026-03-26T17:00:00.000Z');
+    });
+
+    it('DEFAULT: non-UTC startTime produces correct event spacing', () => {
+      // User in UTC+5:30 (IST) picks 9:00 AM local → 03:30 UTC
+      const istStartTime = '2026-03-10T03:30:00.000Z';
+      const events = generateDayTimeline('DEFAULT', 1, istStartTime, {
+        gameType: 'TRIVIA',
+        activityType: 'PLAYER_PICK',
+        dilemmaType: 'NONE',
+      });
+      // First event at startTime
+      expect(events[0].time).toBe('2026-03-10T03:30:00.000Z');
+      // END_DAY at startTime + (23:59 - 09:00) = +14h59m
+      const endDay = events.find(e => e.action === 'END_DAY');
+      expect(endDay?.time).toBe('2026-03-10T18:29:00.000Z');
+    });
+
+    it('event spacing matches clockTime offsets regardless of startTime', () => {
+      // Same preset, two different startTimes — event GAPS should be identical
+      const utcEvents = generateDayTimeline('PLAYTEST', 1, '2026-03-10T10:00:00.000Z', {
+        gameType: 'TRIVIA', activityType: 'PLAYER_PICK', dilemmaType: 'NONE',
+      });
+      const pdtEvents = generateDayTimeline('PLAYTEST', 1, pdtStartTime, {
+        gameType: 'TRIVIA', activityType: 'PLAYER_PICK', dilemmaType: 'NONE',
+      });
+
+      // Same number of events
+      expect(pdtEvents.length).toBe(utcEvents.length);
+
+      // Same gaps between consecutive events
+      for (let i = 1; i < utcEvents.length; i++) {
+        const utcGap = new Date(utcEvents[i].time).getTime() - new Date(utcEvents[i - 1].time).getTime();
+        const pdtGap = new Date(pdtEvents[i].time).getTime() - new Date(pdtEvents[i - 1].time).getTime();
+        expect(pdtGap).toBe(utcGap);
+      }
+    });
+  });
 });
 
 describe('computeNextDayStart', () => {
-  it('returns next calendar day at first event time for DEFAULT', () => {
-    const next = computeNextDayStart('DEFAULT', 1, '2026-03-10T00:00:00.000Z');
+  it('returns startTime + 24h for DEFAULT', () => {
+    const next = computeNextDayStart('DEFAULT', 1, '2026-03-10T09:00:00.000Z');
     expect(next).toBe('2026-03-11T09:00:00.000Z');
   });
 
@@ -254,8 +323,8 @@ describe('computeNextDayStart', () => {
     expect(next).toBe(expected);
   });
 
-  it('returns next calendar day at 10:00 for PLAYTEST', () => {
-    const next = computeNextDayStart('PLAYTEST', 1, '2026-03-10T00:00:00.000Z');
+  it('returns startTime + 24h for PLAYTEST', () => {
+    const next = computeNextDayStart('PLAYTEST', 1, '2026-03-10T10:00:00.000Z');
     expect(next).toBe('2026-03-11T10:00:00.000Z');
   });
 
@@ -264,5 +333,11 @@ describe('computeNextDayStart', () => {
     const next = computeNextDayStart('SMOKE_TEST', 1, startTime);
     const expected = new Date(new Date(startTime).getTime() + 6 * 60_000).toISOString();
     expect(next).toBe(expected);
+  });
+
+  it('preserves timezone offset for non-UTC calendar presets', () => {
+    // PDT: 10 AM local = 17:00 UTC
+    const next = computeNextDayStart('PLAYTEST', 1, '2026-03-25T17:00:00.000Z');
+    expect(next).toBe('2026-03-26T17:00:00.000Z'); // same time next day
   });
 });

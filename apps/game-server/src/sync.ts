@@ -165,9 +165,9 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
   const overrides = perkOverrides[playerId] || { extraPartners: 0, extraChars: 0 };
   const dmStats = {
     charsUsed: (l3Context.dmCharsByPlayer || {})[playerId] || 0,
-    charsLimit: 1200 + overrides.extraChars,
+    charsLimit: (l3Context.dmCharsLimit ?? 1200) + overrides.extraChars,
     partnersUsed: ((l3Context.dmPartnersByPlayer || {})[playerId] || []).length,
-    partnersLimit: 3 + overrides.extraPartners,
+    partnersLimit: (l3Context.dmPartnersLimit ?? 3) + overrides.extraPartners,
     groupsUsed: ((l3Context.dmGroupsByPlayer || {})[playerId] || []).length,
     groupsLimit: 3,
     slotsUsed: (l3Context.slotsUsedByPlayer || {})[playerId] || 0,

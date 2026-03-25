@@ -188,7 +188,7 @@ export async function createGame(
           id: `manifest-${gameId}`,
           gameMode: 'CONFIGURABLE_CYCLE', // legacy compat
           scheduling: 'PRE_SCHEDULED' as const,
-          startTime: new Date(dynamicManifestOverride.startTime).toISOString(),
+          startTime: dynamicManifestOverride.startTime, // Already ISO string from client
           ruleset: dynamicManifestOverride.ruleset,
           schedulePreset: dynamicManifestOverride.schedulePreset,
           ...(dynamicManifestOverride.maxPlayers ? { maxPlayers: dynamicManifestOverride.maxPlayers } : {}),

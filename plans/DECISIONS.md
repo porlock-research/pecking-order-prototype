@@ -1777,3 +1777,18 @@ This document tracks significant architectural decisions, their context, and con
     *   Future LLM-generated narration can replace templates at game-start time (Claude API call) for fully custom prose.
     *   Future "Confession Hour" cartridge can use remaining ~15 questions as in-game content.
 
+## [ADR-117] Calendar Preset Timezone Fix — Anchor to startTime
+*   **Date:** 2026-03-25
+*   **Status:** Accepted
+*   **Context:** PLAYTEST preset (first calendar preset used with dynamic games) scheduled all events at UTC clock times instead of the user's local timezone. A PDT user setting "10:00 AM start" got events at 10:00 UTC (3 AM PDT). Root cause: `generateDayTimeline` extracted only the date from `startTime`, discarded the time portion, then appended preset clockTimes with `Z` suffix — treating local-intent times as UTC. Bug was latent in all calendar presets but never triggered: prior playtests used manual time-picker UI (bypassed `generateDayTimeline`), and speed runs used offset presets (no clockTimes). Tests passed because all calendar preset tests used midnight UTC startTimes, hiding the bug. Discovered during Playtest 3 (game MPXGBY) — Day 1 events compressed into a single instant at alarm fire time.
+*   **Decision:**
+    1.  **Compute calendar event times as offsets from `startTime`**, not from midnight UTC. Each clockTime's offset from `firstEventTime` is calculated and applied to `startTime`. Day N starts at `startTime + (N-1) * 24h`.
+    2.  **No new manifest fields needed.** `startTime` (already correctly UTC-converted by the browser) implicitly carries the timezone offset.
+    3.  **`computeNextDayStart` simplified** to `startTime + dayIndex * 24h` for calendar presets.
+    4.  **Regression tests added** using non-midnight-UTC startTimes (e.g., `17:00Z` for PDT) and cross-timezone gap consistency checks.
+    5.  **Reverted wrong earlier fix** that moved UTC conversion from browser to server action (would have made it worse — Cloudflare Workers interpret naive timestamps as UTC).
+*   **Consequences:**
+    *   Fixes existing live game (MPXGBY): Day 3+ will auto-generate correct times after deploy since Game Master calls `generateDayTimeline` fresh each morning with correct `manifest.startTime`.
+    *   Calendar presets now behave identically to offset presets semantically — all times are relative to `startTime`.
+    *   DST transitions during multi-day games result in consistent 24h gaps (events shift by 1h in local wall-clock time). Acceptable trade-off for game fairness.
+
