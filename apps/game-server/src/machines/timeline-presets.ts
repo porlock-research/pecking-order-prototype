@@ -168,6 +168,7 @@ function computeCalendarDayBase(startTime: string, dayIndex: number): string {
   return base.toISOString().slice(0, 10); // "YYYY-MM-DD"
 }
 
+
 function computeOffsetDayBase(startTime: string, dayIndex: number, config: OffsetPresetConfig): number {
   const base = new Date(startTime).getTime();
   return base + (dayIndex - 1) * (config.dayDurationMin + config.interDayGapMin) * 60_000;
