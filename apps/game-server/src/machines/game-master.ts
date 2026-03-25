@@ -11,6 +11,7 @@ import type {
   GameHistoryEntry,
   GameMasterAction,
 } from '@pecking-order/shared-types';
+import { VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { generateDayTimeline, computeNextDayStart } from './timeline-presets';
 import { createInactivityModule, type InactivityState } from './observations/inactivity';
 
@@ -266,6 +267,21 @@ function resolveDay(
     activityType,
     dilemmaType,
   });
+
+  // Prepend GM briefing message as INJECT_PROMPT before the first timeline event.
+  // Static games get this from the lobby's buildManifestDays; dynamic games need
+  // the Game Master to generate it since days are resolved at runtime.
+  const voteInfo = VOTE_TYPE_INFO[voteType as keyof typeof VOTE_TYPE_INFO];
+  const briefingMsg = `Welcome to Day ${dayIndex} of Pecking Order! Tonight's vote: ${voteInfo?.name || voteType}. ${voteInfo?.howItWorks || ''}`;
+  if (timeline.length > 0) {
+    // Insert INJECT_PROMPT 1 second before the first event (OPEN_GROUP_CHAT)
+    const firstEventTime = new Date(timeline[0].time).getTime();
+    timeline.unshift({
+      action: 'INJECT_PROMPT',
+      time: new Date(firstEventTime - 1000).toISOString(),
+      payload: { msg: briefingMsg },
+    });
+  }
 
   const isLastDay = alive <= 2;
   const nextDayStart = isLastDay

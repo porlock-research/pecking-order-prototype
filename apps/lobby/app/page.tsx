@@ -444,6 +444,13 @@ export default function LobbyRoot() {
           allowed: dynamicConfig.allowedActivityTypes,
           avoidRepeat: true,
         },
+        ...(dynamicConfig.allowedDilemmaTypes.length > 0 ? {
+          dilemmas: {
+            mode: 'POOL' as const,
+            allowed: dynamicConfig.allowedDilemmaTypes,
+            avoidRepeat: true,
+          },
+        } : {}),
         social: {
           dmChars: { mode: 'PER_ACTIVE_PLAYER' as const, base: dynamicConfig.social.dmCharsPerPlayer },
           dmPartners: { mode: 'FIXED' as const, base: dynamicConfig.social.dmPartners },

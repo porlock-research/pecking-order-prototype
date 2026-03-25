@@ -9,6 +9,7 @@ export interface DynamicRulesetConfig {
   allowedVoteTypes: string[];
   allowedGameTypes: string[];
   allowedActivityTypes: string[];
+  allowedDilemmaTypes: string[];
   // Social
   social: {
     dmCharsPerPlayer: number;       // chars per active player (total = this × alive)
@@ -44,6 +45,7 @@ export function createDefaultDynamicConfig(): DynamicRulesetConfig {
     allowedVoteTypes: ['MAJORITY', 'EXECUTIONER', 'BUBBLE', 'SECOND_TO_LAST', 'PODIUM_SACRIFICE', 'SHIELD', 'TRUST_PAIRS'],
     allowedGameTypes: ['TRIVIA', 'GAP_RUN', 'GRID_PUSH', 'SEQUENCE', 'REACTION_TIME', 'COLOR_MATCH', 'STACKER', 'QUICK_MATH', 'SIMON_SAYS', 'AIM_TRAINER', 'BET_BET_BET', 'BLIND_AUCTION', 'KINGS_RANSOM', 'THE_SPLIT', 'TOUCH_SCREEN', 'REALTIME_TRIVIA'],
     allowedActivityTypes: ['PLAYER_PICK', 'PREDICTION', 'WOULD_YOU_RATHER', 'HOT_TAKE', 'CONFESSION', 'GUESS_WHO'],
+    allowedDilemmaTypes: ['SILVER_GAMBIT', 'SPOTLIGHT', 'GIFT_OR_GRIEF'],
     social: {
       dmCharsPerPlayer: 300,
       dmPartners: 3,
