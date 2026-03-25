@@ -359,6 +359,7 @@ export function normalizeManifest(raw: any): GameManifest {
 export const QaEntrySchema = z.object({
   question: z.string(),
   answer: z.string(),
+  narratorIntro: z.string().optional(),
 });
 
 export type QaEntry = z.infer<typeof QaEntrySchema>;

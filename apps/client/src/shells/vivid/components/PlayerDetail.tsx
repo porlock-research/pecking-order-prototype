@@ -5,6 +5,7 @@ import { useGameStore } from '../../../store/useGameStore';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import { resolveAvatarUrl, resolvePersonaVariant } from '../../../utils/personaImage';
 import { PlayerStatuses, ChannelTypes } from '@pecking-order/shared-types';
+import type { QaEntry } from '@pecking-order/shared-types';
 import { AnimatedCounter } from './AnimatedCounter';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
@@ -304,52 +305,91 @@ export function PlayerDetail({
               </p>
             )}
 
-            {/* Q&A Section */}
+            {/* Game Master's Notes — narrator-styled Q&A */}
             {target.qaAnswers && target.qaAnswers.length > 0 && (
-              <div style={{
-                marginTop: 16,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-                maxWidth: 300,
-                marginLeft: 'auto',
-                marginRight: 'auto',
-              }}>
-                {target.qaAnswers.map((qa: { question: string; answer: string }, i: number) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 + i * 0.05, ...VIVID_SPRING.gentle }}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: 10,
-                      background: 'rgba(44, 0, 62, 0.5)',
-                      backdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(250, 243, 232, 0.08)',
-                    }}
-                  >
-                    <div style={{
-                      fontFamily: 'var(--vivid-font-body)',
-                      fontSize: 11,
-                      color: 'rgba(250, 243, 232, 0.35)',
-                      marginBottom: 2,
-                      lineHeight: 1.3,
-                    }}>
-                      {qa.question}
-                    </div>
-                    <div style={{
-                      fontFamily: 'var(--vivid-font-body)',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: '#D4A853',
-                      lineHeight: 1.4,
-                    }}>
-                      {qa.answer}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35, ...VIVID_SPRING.gentle }}
+                style={{
+                  marginTop: 20,
+                  maxWidth: 320,
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                  width: '100%',
+                }}
+              >
+                {/* Section header */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginBottom: 12,
+                  justifyContent: 'center',
+                }}>
+                  <span style={{
+                    fontSize: 16,
+                    lineHeight: 1,
+                  }}>
+                    {/* Crown icon — inline SVG since @solar-icons/react has no crown glyph */}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#D4A853" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M2 17L3.5 9.5L7.5 13L12 6L16.5 13L20.5 9.5L22 17H2Z" />
+                      <rect x="2" y="18" width="20" height="2" rx="1" />
+                    </svg>
+                  </span>
+                  <span style={{
+                    fontFamily: 'var(--vivid-font-display)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#D4A853',
+                    textTransform: 'uppercase' as const,
+                    letterSpacing: '0.12em',
+                  }}>
+                    Game Master's Notes
+                  </span>
+                </div>
+
+                {/* Narrator entries */}
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
+                  {target.qaAnswers.map((qa: QaEntry, i: number) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 + i * 0.1, ...VIVID_SPRING.gentle }}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: 12,
+                        background: 'rgba(44, 0, 62, 0.45)',
+                        backdropFilter: 'blur(8px)',
+                        border: '1px solid rgba(212, 168, 83, 0.12)',
+                      }}
+                    >
+                      {/* Narrator intro or fallback to raw question */}
+                      <div style={{
+                        fontFamily: 'var(--vivid-font-body)',
+                        fontSize: 12,
+                        fontStyle: 'italic' as const,
+                        color: 'rgba(250, 243, 232, 0.5)',
+                        lineHeight: 1.5,
+                        marginBottom: 6,
+                      }}>
+                        {qa.narratorIntro || qa.question}
+                      </div>
+                      {/* Player's answer */}
+                      <div style={{
+                        fontFamily: 'var(--vivid-font-body)',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: '#D4A853',
+                        lineHeight: 1.4,
+                      }}>
+                        &ldquo;{qa.answer}&rdquo;
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
             )}
           </motion.div>
 
