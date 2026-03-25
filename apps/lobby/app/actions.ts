@@ -126,7 +126,8 @@ export async function createGame(
     kind: 'DYNAMIC';
     ruleset: any;
     schedulePreset: string;
-    maxPlayers: number;
+    maxPlayers?: number;
+    minPlayers?: number;
     startTime: string;
     pushConfig?: Record<string, boolean>;
   }
@@ -158,16 +159,18 @@ export async function createGame(
     )
     .run();
 
-  // Create invite slots
-  const stmts = [];
-  for (let i = 1; i <= playerCount; i++) {
-    stmts.push(
-      db
-        .prepare('INSERT INTO Invites (game_id, slot_index, created_at) VALUES (?, ?, ?)')
-        .bind(gameId, i, now)
-    );
+  // Create invite slots (DYNAMIC games create slots on-the-fly at join time)
+  if (!dynamicManifestOverride) {
+    const stmts = [];
+    for (let i = 1; i <= playerCount; i++) {
+      stmts.push(
+        db
+          .prepare('INSERT INTO Invites (game_id, slot_index, created_at) VALUES (?, ?, ?)')
+          .bind(gameId, i, now)
+      );
+    }
+    await db.batch(stmts);
   }
-  await db.batch(stmts);
 
   // For DYNAMIC mode: init DO with a DynamicManifest (empty days[], GM resolves at runtime)
   if (dynamicManifestOverride) {
@@ -188,7 +191,8 @@ export async function createGame(
           startTime: new Date(dynamicManifestOverride.startTime).toISOString(),
           ruleset: dynamicManifestOverride.ruleset,
           schedulePreset: dynamicManifestOverride.schedulePreset,
-          maxPlayers: dynamicManifestOverride.maxPlayers,
+          ...(dynamicManifestOverride.maxPlayers ? { maxPlayers: dynamicManifestOverride.maxPlayers } : {}),
+          minPlayers: dynamicManifestOverride.minPlayers ?? 3,
           days: [],
           pushConfig: dynamicManifestOverride.pushConfig,
         },
@@ -532,13 +536,32 @@ export async function acceptInvite(
     return { success: false, error: 'This character has already been picked' };
   }
 
-  // Find first unclaimed slot
-  const slot = await db
+  // Find first unclaimed slot (STATIC games have pre-created slots)
+  let slot = await db
     .prepare(
       'SELECT id, slot_index FROM Invites WHERE game_id = ? AND accepted_by IS NULL ORDER BY slot_index LIMIT 1'
     )
     .bind(game.id)
     .first<{ id: number; slot_index: number }>();
+
+  // DYNAMIC games: no pre-created slots — create one on the fly
+  if (!slot && game.mode === 'CONFIGURABLE_CYCLE') {
+    const maxSlot = await db
+      .prepare('SELECT MAX(slot_index) as max_slot FROM Invites WHERE game_id = ?')
+      .bind(game.id)
+      .first<{ max_slot: number | null }>();
+    const nextSlot = (maxSlot?.max_slot ?? 0) + 1;
+
+    await db
+      .prepare('INSERT INTO Invites (game_id, slot_index, created_at) VALUES (?, ?, ?)')
+      .bind(game.id, nextSlot, now)
+      .run();
+
+    slot = await db
+      .prepare('SELECT id, slot_index FROM Invites WHERE game_id = ? AND slot_index = ?')
+      .bind(game.id, nextSlot)
+      .first<{ id: number; slot_index: number }>();
+  }
 
   if (!slot) {
     return { success: false, error: 'No available slots' };
@@ -609,20 +632,19 @@ export async function acceptInvite(
     }
   }
 
-  // Check if all slots are filled
-  const { count } = await db
-    .prepare('SELECT COUNT(*) as count FROM Invites WHERE game_id = ? AND accepted_by IS NULL')
-    .bind(game.id)
-    .first<{ count: number }>() || { count: 1 };
+  // Check if all slots are filled (only for STATIC games with pre-created slots)
+  if (game.mode !== 'CONFIGURABLE_CYCLE') {
+    const { count } = await db
+      .prepare('SELECT COUNT(*) as count FROM Invites WHERE game_id = ? AND accepted_by IS NULL')
+      .bind(game.id)
+      .first<{ count: number }>() || { count: 1 };
 
-  if (count === 0) {
-    // CONFIGURABLE_CYCLE: set to STARTED (DO is already running)
-    // Other modes: set to READY (waiting for host to launch)
-    const newStatus = game.mode === 'CONFIGURABLE_CYCLE' ? 'STARTED' : 'READY';
-    await db
-      .prepare(`UPDATE GameSessions SET status = ? WHERE id = ?`)
-      .bind(newStatus, game.id)
-      .run();
+    if (count === 0) {
+      await db
+        .prepare(`UPDATE GameSessions SET status = 'READY' WHERE id = ?`)
+        .bind(game.id)
+        .run();
+    }
   }
 
   return { success: true };

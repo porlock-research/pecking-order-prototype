@@ -1697,7 +1697,72 @@ This document tracks significant architectural decisions, their context, and con
     *   Future voting mechanism changes require updating the scenario file, which automatically tests both unit and integration.
     *   Integration test skill (`alarm-voting`) should be updated to consume shared scenarios instead of hardcoding expectations.
 
-## [ADR-115] Bio Narrator & Lobby Q&A Trim
+
+## [ADR-115] FINALS Trigger Based on Alive Count, Not Day Index
+*   **Date:** 2026-03-24
+*   **Status:** Accepted
+*   **Context:** `resolveVoteType` used `dayIndex >= totalDays` to trigger FINALS, but `totalDays` was recalculated from current alive count each morning. After Day 1 elimination in a 4-player game, `totalDays` shrinks to 2 while `dayIndex` is 2, causing premature FINALS on Day 2 instead of Day 3.
+*   **Decision:** FINALS triggers when `alivePlayers <= 2`, regardless of dayIndex or totalDays. Same for `isLastDay` (controls `nextDayStart`). `totalDays` is still computed for social scaling but no longer gates FINALS.
+*   **Consequences:**
+    *   A 4-player game correctly runs 3 days (was 2).
+    *   Handles mid-game inactivity eliminations gracefully — FINALS triggers when 2 remain regardless of how they got there.
+    *   `totalDays` remains useful for DM character scaling (DIMINISHING mode) but is no longer authoritative for game length.
+
+## [ADR-116] XState v5 Entry Action Batching — Stale Roster Fix
+*   **Date:** 2026-03-24
+*   **Status:** Accepted
+*   **Context:** nightSummary entry actions run in order: `processNightSummary` (queues voting elimination) → `processGameMasterActions` (queues inactivity eliminations). XState v5 `enqueue.assign()` queues assignments until ALL entry actions finish. `processGameMasterActions` reads the pre-elimination roster and its assign overwrites the voting elimination.
+*   **Decision:** `processGameMasterActions` pre-applies `pendingElimination.eliminatedId` to its local roster copy before counting alive players or processing inactivity. This ensures both voting and inactivity eliminations are preserved.
+*   **Consequences:**
+    *   Both voting + inactivity eliminations applied correctly in same nightSummary.
+    *   The `remaining <= 2` safety guard correctly accounts for the voting elimination.
+    *   Pattern documented for any future actions that read roster in nightSummary entry batch.
+
+## [ADR-117] Fresh Snapshot After WAKEUP for Alarm Re-Scheduling
+*   **Date:** 2026-03-24
+*   **Status:** Accepted
+*   **Context:** `onAlarm()` captured the manifest snapshot BEFORE sending WAKEUP. After WAKEUP, the actor transitions through morningBriefing which resolves the day and appends to `manifest.days[]`. But `scheduleManifestAlarms` was called with the stale pre-WAKEUP snapshot (`days: []`), so Day 1's timeline events were never scheduled as alarms. Dynamic games would start Day 1 but never progress through it.
+*   **Decision:** Read a fresh snapshot AFTER `this.actor.send({ type: Events.System.WAKEUP })` to get the resolved day's timeline events for scheduling.
+*   **Consequences:**
+    *   Dynamic game alarms fire correctly for all timeline events within a day.
+    *   Day transitions work end-to-end (verified with 18-minute 3-day e2e test).
+    *   Static games unaffected (days are pre-populated at init time).
+
+## [ADR-118] Truly Dynamic Player Counts
+*   **Date:** 2026-03-24
+*   **Status:** Accepted
+*   **Context:** Dynamic games hardcoded `maxPlayers: 8` and pre-allocated invite slots, forcing the host to decide player count upfront. The Game Master already handles variable roster sizes.
+*   **Decision:**
+    1.  `maxPlayers` optional on `DynamicManifest`. `minPlayers` added (min 2, default 3).
+    2.  Lobby skips slot pre-creation for DYNAMIC games. Slots created on-the-fly in `acceptInvite`.
+    3.  Game starts at `startTime` if `>= minPlayers` joined; host can start early.
+    4.  preGame WAKEUP guard in `onAlarm()` suppresses start if below `minPlayers`.
+*   **Consequences:**
+    *   Players join freely — no fixed slot count.
+    *   Game adapts to any roster size. FINALS when 2 alive, regardless of starting count.
+    *   Lobby waiting room shows players as they join (real D1 records via acceptInvite).
+
+## [ADR-119] GM Briefing Messages for Dynamic Games
+*   **Date:** 2026-03-24
+*   **Status:** Accepted
+*   **Context:** Static games included `INJECT_PROMPT` in the lobby's `buildManifestDays` (first event in `TIMELINE_EVENT_KEYS`). Dynamic games bypass `buildManifestDays` entirely — the Game Master's `resolveDay` generates the timeline via `generateDayTimeline` which had no `INJECT_PROMPT`. Result: no GM welcome message appeared in chat on Day 1 for dynamic games.
+*   **Decision:** `resolveDay` in the Game Master now prepends an `INJECT_PROMPT` event to the timeline, 1 second before the first event, with a briefing message sourced from `VOTE_TYPE_INFO`. The message includes day number, vote mechanism name, and how-it-works explanation.
+*   **Consequences:**
+    *   Dynamic games show GM briefing in group chat just like static games.
+    *   Message content is context-aware (adapts to resolved vote type each day).
+    *   Static games unaffected (they still use the lobby-generated INJECT_PROMPT).
+
+## [ADR-120] Inactivity Module — Late Joiner Hydration
+*   **Date:** 2026-03-24
+*   **Status:** Accepted
+*   **Context:** Game Master spawned in preGame with empty roster (dynamic games). Inactivity module's `init()` built `playerActivity` from this empty roster. Players joining via `PLAYER_JOINED` were never added to `playerActivity`, making them invisible to inactivity tracking.
+*   **Decision:** `onResolveDay` hydrates missing players from the event roster before evaluating thresholds. Any alive player not in `playerActivity` gets a fresh entry with 0 consecutive inactive days.
+*   **Consequences:**
+    *   All players tracked for inactivity regardless of when they joined.
+    *   Day 1 still skips inactivity evaluation (no data yet).
+    *   Existing games with pre-populated rosters at init time unaffected.
+
+## [ADR-116] Bio Narrator & Lobby Q&A Trim
 *   **Date:** 2026-03-24
 *   **Status:** Accepted
 *   **Context:** Lobby join flow required answering 10 Q&A questions — too much friction. Player bios in the client displayed raw question/answer pairs with no personality. The game's reality-TV-flavored Game Master narrator voice was underutilized.
@@ -1711,3 +1776,4 @@ This document tracks significant architectural decisions, their context, and con
     *   Player profiles feel more immersive — GM narrator voice adds character flavor.
     *   Future LLM-generated narration can replace templates at game-start time (Claude API call) for fully custom prose.
     *   Future "Confession Hour" cartridge can use remaining ~15 questions as in-game content.
+

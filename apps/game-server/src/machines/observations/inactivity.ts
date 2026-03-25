@@ -37,11 +37,21 @@ export function createInactivityModule(): ObservationModule<InactivityState> {
     onResolveDay(state, dayIndex, roster, ruleset) {
       const actions: GameMasterAction[] = [];
 
+      // Hydrate players who joined after GM was spawned (DYNAMIC games
+      // init with empty roster, players arrive via PLAYER_JOINED)
+      const updatedActivity = { ...state.playerActivity };
+      for (const [id, player] of Object.entries(roster)) {
+        if (player.status === PlayerStatuses.ALIVE && !updatedActivity[id]) {
+          updatedActivity[id] = { lastActiveDayIndex: 0, consecutiveInactiveDays: 0 };
+        }
+      }
+      const updatedState = { ...state, playerActivity: updatedActivity };
+
       // No eliminations on day 1 — no data yet
-      if (dayIndex <= 1) return { state, actions };
+      if (dayIndex <= 1) return { state: updatedState, actions };
 
       // Skip if inactivity rules are disabled
-      if (!ruleset.inactivity.enabled) return { state, actions };
+      if (!ruleset.inactivity.enabled) return { state: updatedState, actions };
 
       const threshold = ruleset.inactivity.thresholdDays;
       const aliveIds = Object.entries(roster)
@@ -53,7 +63,7 @@ export function createInactivityModule(): ObservationModule<InactivityState> {
       for (const playerId of aliveIds) {
         if (aliveCount <= MIN_ALIVE_PLAYERS) break;
 
-        const activity = state.playerActivity[playerId];
+        const activity = updatedActivity[playerId];
         if (!activity) continue;
 
         if (activity.consecutiveInactiveDays >= threshold) {
@@ -66,7 +76,7 @@ export function createInactivityModule(): ObservationModule<InactivityState> {
         }
       }
 
-      return { state, actions };
+      return { state: updatedState, actions };
     },
 
     onFact(state, fact) {

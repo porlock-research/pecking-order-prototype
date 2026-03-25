@@ -227,13 +227,32 @@ export class GameServer extends Server<Env> {
     // Deliver WAKEUP to the actor. The actor is guaranteed to exist here
     // because PartyServer calls onStart() before onAlarm().
     if (this.actor) {
-      this.actor.send({ type: Events.System.WAKEUP });
-
-      // Re-schedule for dynamic manifests — picks up newly resolved day's events
       const snap = this.actor.getSnapshot();
       const manifest = snap?.context?.manifest;
-      if (manifest?.kind === 'DYNAMIC') {
-        await scheduleManifestAlarms(this.scheduler, manifest);
+
+      // For DYNAMIC games in preGame: check minPlayers before starting
+      if (snap?.value === 'preGame' && manifest?.kind === 'DYNAMIC') {
+        const rosterCount = Object.keys(snap.context.roster || {}).length;
+        const minPlayers = manifest.minPlayers ?? 3;
+        if (rosterCount < minPlayers) {
+          log('info', 'L1', 'Suppressing WAKEUP: not enough players', {
+            rosterCount,
+            minPlayers,
+          });
+          return;
+        }
+      }
+
+      this.actor.send({ type: Events.System.WAKEUP });
+
+      // Re-schedule for dynamic manifests — picks up newly resolved day's events.
+      // MUST read a fresh snapshot AFTER WAKEUP: the actor transitions through
+      // morningBriefing synchronously, resolving the day and appending to manifest.days[].
+      // The pre-WAKEUP snapshot has stale (empty) days[].
+      const freshSnap = this.actor.getSnapshot();
+      const freshManifest = freshSnap?.context?.manifest;
+      if (freshManifest?.kind === 'DYNAMIC') {
+        await scheduleManifestAlarms(this.scheduler, freshManifest);
       }
     }
   }

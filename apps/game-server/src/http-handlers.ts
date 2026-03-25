@@ -392,6 +392,15 @@ async function handleAdmin(ctx: HandlerContext, req: Request): Promise<Response>
           });
         }
       }
+    } else if (body.type === "SEND_PLAYER_EVENT") {
+      // Simulate a player sending an event (for playtest automation).
+      // Same as WS handleMessage but via HTTP — injects senderId.
+      const { senderId, event } = body;
+      if (!senderId || !event?.type) {
+        return new Response(JSON.stringify({ error: 'senderId and event.type required' }), { status: 400 });
+      }
+      log('info', 'L1', 'Admin sending player event', { senderId, eventType: event.type });
+      ctx.actor.send({ ...event, senderId });
     } else {
       return new Response("Unknown Admin Command", { status: 400 });
     }

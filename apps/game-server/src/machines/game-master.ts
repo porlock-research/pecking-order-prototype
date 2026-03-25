@@ -11,6 +11,7 @@ import type {
   GameHistoryEntry,
   GameMasterAction,
 } from '@pecking-order/shared-types';
+import { VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { generateDayTimeline, computeNextDayStart } from './timeline-presets';
 import { createInactivityModule, type InactivityState } from './observations/inactivity';
 
@@ -63,7 +64,10 @@ function resolveVoteType(
   rules: PeckingOrderRuleset['voting'],
   alivePlayers: number,
 ): VoteType {
-  if (dayIndex >= totalDays) return 'FINALS';
+  // FINALS when exactly 2 players remain — based on actual alive count,
+  // not dayIndex vs totalDays (totalDays recalculates each morning as
+  // players are eliminated, causing premature FINALS).
+  if (alivePlayers <= 2) return 'FINALS';
 
   // Whitelist mode (dynamic): pick from allowed pool
   if (rules.allowed && rules.allowed.length > 0) {
@@ -264,7 +268,22 @@ function resolveDay(
     dilemmaType,
   });
 
-  const isLastDay = dayIndex >= totalDays;
+  // Prepend GM briefing message as INJECT_PROMPT before the first timeline event.
+  // Static games get this from the lobby's buildManifestDays; dynamic games need
+  // the Game Master to generate it since days are resolved at runtime.
+  const voteInfo = VOTE_TYPE_INFO[voteType as keyof typeof VOTE_TYPE_INFO];
+  const briefingMsg = `Welcome to Day ${dayIndex} of Pecking Order! Tonight's vote: ${voteInfo?.name || voteType}. ${voteInfo?.howItWorks || ''}`;
+  if (timeline.length > 0) {
+    // Insert INJECT_PROMPT 1 second before the first event (OPEN_GROUP_CHAT)
+    const firstEventTime = new Date(timeline[0].time).getTime();
+    timeline.unshift({
+      action: 'INJECT_PROMPT',
+      time: new Date(firstEventTime - 1000).toISOString(),
+      payload: { msg: briefingMsg },
+    });
+  }
+
+  const isLastDay = alive <= 2;
   const nextDayStart = isLastDay
     ? undefined
     : computeNextDayStart(schedulePreset, dayIndex, startTime);
