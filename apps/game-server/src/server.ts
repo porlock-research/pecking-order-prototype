@@ -245,9 +245,14 @@ export class GameServer extends Server<Env> {
 
       this.actor.send({ type: Events.System.WAKEUP });
 
-      // Re-schedule for dynamic manifests — picks up newly resolved day's events
-      if (manifest?.kind === 'DYNAMIC') {
-        await scheduleManifestAlarms(this.scheduler, manifest);
+      // Re-schedule for dynamic manifests — picks up newly resolved day's events.
+      // MUST read a fresh snapshot AFTER WAKEUP: the actor transitions through
+      // morningBriefing synchronously, resolving the day and appending to manifest.days[].
+      // The pre-WAKEUP snapshot has stale (empty) days[].
+      const freshSnap = this.actor.getSnapshot();
+      const freshManifest = freshSnap?.context?.manifest;
+      if (freshManifest?.kind === 'DYNAMIC') {
+        await scheduleManifestAlarms(this.scheduler, freshManifest);
       }
     }
   }
