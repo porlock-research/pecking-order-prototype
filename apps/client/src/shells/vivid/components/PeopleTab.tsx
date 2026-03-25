@@ -94,7 +94,8 @@ function PeopleList({
   onViewProfile,
   onNewGroup,
 }: PeopleListProps) {
-  const { playerId, roster } = useGameStore();
+  const playerId = useGameStore(s => s.playerId);
+  const roster = useGameStore(s => s.roster);
   const onlinePlayers = useGameStore(s => s.onlinePlayers);
   const chatLog = useGameStore(s => s.chatLog);
   const channels = useGameStore(s => s.channels);

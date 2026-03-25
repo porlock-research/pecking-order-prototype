@@ -11,7 +11,7 @@ import type {
   GameHistoryEntry,
   GameMasterAction,
 } from '@pecking-order/shared-types';
-import { VOTE_TYPE_INFO } from '@pecking-order/shared-types';
+import { VOTE_TYPE_INFO, ACTIVITY_TYPE_INFO } from '@pecking-order/shared-types';
 import { generateDayTimeline, computeNextDayStart } from './timeline-presets';
 import { createInactivityModule, type InactivityState } from './observations/inactivity';
 
@@ -232,7 +232,7 @@ function resolveSocialParams(
   totalDays: number,
   alivePlayers: number,
   rules: PeckingOrderRuleset['social'],
-): { dmCharsPerPlayer: number; dmPartnersPerPlayer: number } {
+): { dmCharsPerPlayer: number; dmPartnersPerPlayer: number; requireDmInvite: boolean; dmSlotsPerPlayer: number } {
   let dmChars = scaleValue(dayIndex, totalDays, rules.dmChars);
   // PER_ACTIVE_PLAYER: base is per-player, multiply by alive count
   if (rules.dmChars.mode === 'PER_ACTIVE_PLAYER') {
@@ -241,6 +241,8 @@ function resolveSocialParams(
   return {
     dmCharsPerPlayer: dmChars,
     dmPartnersPerPlayer: scaleValue(dayIndex, totalDays, rules.dmPartners),
+    requireDmInvite: rules.requireDmInvite ?? false,
+    dmSlotsPerPlayer: rules.dmSlotsPerPlayer ?? 5,
   };
 }
 
@@ -267,6 +269,22 @@ function resolveDay(
     activityType,
     dilemmaType,
   });
+
+  // Attach activity payload to START_ACTIVITY event (same data the lobby sets for static games).
+  // Without this, spawnPromptCartridge falls back to generic DEFAULT_PROMPT_TEXT.
+  if (activityType !== 'NONE') {
+    const actInfo = ACTIVITY_TYPE_INFO[activityType as PromptType];
+    if (actInfo) {
+      const startActivity = timeline.find(e => e.action === 'START_ACTIVITY');
+      if (startActivity) {
+        startActivity.payload = {
+          promptType: activityType,
+          promptText: actInfo.promptText,
+          ...(actInfo.options || {}),
+        };
+      }
+    }
+  }
 
   // Prepend GM briefing message as INJECT_PROMPT before the first timeline event.
   // Static games get this from the lobby's buildManifestDays; dynamic games need

@@ -305,6 +305,10 @@ export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }
   const pausedRef = useRef(false);
   const resultSentRef = useRef(false);
 
+  // Stable ref for onResult — prevents game loop effect from re-running on parent re-renders
+  const onResultRef = useRef(onResult);
+  onResultRef.current = onResult;
+
   const handleJump = useCallback(() => {
     const gs = gameStateRef.current;
     if (!gs || !gs.alive || !gs.onGround) return;
@@ -315,16 +319,6 @@ export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }
       jumps: gs.jumps + 1,
     };
   }, []);
-
-  const sendResult = useCallback((gs: GameState) => {
-    if (resultSentRef.current) return;
-    resultSentRef.current = true;
-    onResult({
-      distance: Math.floor(gs.distance),
-      jumps: gs.jumps,
-      timeElapsed: Math.floor(gs.elapsed),
-    });
-  }, [onResult]);
 
   // Initialize game loop on mount
   useEffect(() => {
@@ -358,7 +352,14 @@ export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }
       }
 
       if (!updated.alive) {
-        sendResult(updated);
+        if (!resultSentRef.current) {
+          resultSentRef.current = true;
+          onResultRef.current({
+            distance: Math.floor(updated.distance),
+            jumps: updated.jumps,
+            timeElapsed: Math.floor(updated.elapsed),
+          });
+        }
         return;
       }
 
@@ -370,7 +371,7 @@ export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [seed, difficulty, timeLimit, sendResult]);
+  }, [seed, difficulty, timeLimit]);
 
   // Input handlers
   useEffect(() => {

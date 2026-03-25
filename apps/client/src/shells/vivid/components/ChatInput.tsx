@@ -273,7 +273,8 @@ export function ChatInput({
   const [stashedInput, setStashedInput] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { playerId, roster } = useGameStore();
+  const playerId = useGameStore(s => s.playerId);
+  const roster = useGameStore(s => s.roster);
   const typingPlayers = useGameStore((s) => s.typingPlayers);
   const groupChatOpen = useGameStore((s) => s.groupChatOpen);
   const dmsOpen = useGameStore((s) => s.dmsOpen);
