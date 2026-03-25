@@ -411,32 +411,131 @@ function ConversationList({
           );
         })}
 
-        {/* Empty state */}
-        {isEmpty && (
-          <div
-            style={{
+        {/* Empty state — conversation starters from player bios */}
+        {isEmpty && (() => {
+          const starters = Object.entries(roster)
+            .filter(([id, p]) =>
+              id !== playerId &&
+              id !== GAME_MASTER_ID &&
+              p.status === 'ALIVE' &&
+              p.qaAnswers &&
+              p.qaAnswers.length > 0
+            )
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 3);
+
+          return (
+            <div style={{
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
               flex: 1,
-              gap: 12,
-              padding: 32,
-            }}
-          >
-            <span
-              style={{
-                fontFamily: 'var(--vivid-font-display)',
-                fontSize: 16,
-                fontWeight: 600,
-                color: 'var(--vivid-text-dim)',
-                fontStyle: 'italic',
-              }}
-            >
-              No whispers yet...
-            </span>
-          </div>
-        )}
+              padding: '24px 16px',
+              gap: 16,
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  fontFamily: 'var(--vivid-font-display)',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: '#D4A853',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  marginBottom: 4,
+                }}>
+                  Get to know your rivals
+                </div>
+                <div style={{
+                  fontFamily: 'var(--vivid-font-body)',
+                  fontSize: 12,
+                  color: 'rgba(250, 243, 232, 0.4)',
+                }}>
+                  Tap to start a conversation
+                </div>
+              </div>
+
+              {starters.length === 0 && (
+                <div style={{
+                  textAlign: 'center',
+                  fontFamily: 'var(--vivid-font-display)',
+                  fontSize: 14,
+                  fontStyle: 'italic',
+                  color: 'var(--vivid-text-dim)',
+                  paddingTop: 24,
+                }}>
+                  No whispers yet...
+                </div>
+              )}
+
+              {starters.map(([id, player], i) => {
+                const qa = player.qaAnswers![Math.floor(Math.random() * player.qaAnswers!.length)];
+                const color = playerColorMap[id] || '#3BA99C';
+                return (
+                  <motion.button
+                    key={id}
+                    onClick={() => onSelectDm(id)}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.08, ...VIVID_SPRING.gentle }}
+                    whileTap={VIVID_TAP.button}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '14px 16px',
+                      borderRadius: 14,
+                      background: 'rgba(44, 0, 62, 0.4)',
+                      backdropFilter: 'blur(8px)',
+                      border: `1px solid ${color}20`,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      gap: 12,
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <div style={{ flexShrink: 0, paddingTop: 2 }}>
+                      <PersonaAvatar
+                        avatarUrl={player.avatarUrl}
+                        personaName={player.personaName}
+                        size={36}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontFamily: 'var(--vivid-font-display)',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: '#FAF3E8',
+                        marginBottom: 4,
+                      }}>
+                        {player.personaName}
+                      </div>
+                      {qa.narratorIntro && (
+                        <div style={{
+                          fontFamily: 'var(--vivid-font-body)',
+                          fontSize: 11,
+                          fontStyle: 'italic',
+                          color: 'rgba(250, 243, 232, 0.4)',
+                          lineHeight: 1.4,
+                          marginBottom: 4,
+                        }}>
+                          {qa.narratorIntro}
+                        </div>
+                      )}
+                      <div style={{
+                        fontFamily: 'var(--vivid-font-body)',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: '#D4A853',
+                        lineHeight: 1.4,
+                      }}>
+                        &ldquo;{qa.answer}&rdquo;
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
