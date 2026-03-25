@@ -1697,6 +1697,7 @@ This document tracks significant architectural decisions, their context, and con
     *   Future voting mechanism changes require updating the scenario file, which automatically tests both unit and integration.
     *   Integration test skill (`alarm-voting`) should be updated to consume shared scenarios instead of hardcoding expectations.
 
+
 ## [ADR-115] FINALS Trigger Based on Alive Count, Not Day Index
 *   **Date:** 2026-03-24
 *   **Status:** Accepted
@@ -1760,3 +1761,19 @@ This document tracks significant architectural decisions, their context, and con
     *   All players tracked for inactivity regardless of when they joined.
     *   Day 1 still skips inactivity evaluation (no data yet).
     *   Existing games with pre-populated rosters at init time unaffected.
+
+## [ADR-116] Bio Narrator & Lobby Q&A Trim
+*   **Date:** 2026-03-24
+*   **Status:** Accepted
+*   **Context:** Lobby join flow required answering 10 Q&A questions — too much friction. Player bios in the client displayed raw question/answer pairs with no personality. The game's reality-TV-flavored Game Master narrator voice was underutilized.
+*   **Decision:**
+    1.  **Reduce lobby Q&A from 10 to 3 questions.** Selection priority unchanged: 1 persona-specific (if available), fill remainder from generic pool. Remaining questions earmarked for future in-game "Confession Hour" cartridge.
+    2.  **Add GM narrator intros.** Each `QuestionDef` gets a `narratorIntro` template string with `{name}`, `{stereotype}`, `{description}` placeholders. Resolved at lobby join time using persona metadata from PersonaPool. Baked into `QaEntry` JSON and flows through existing roster pipeline untouched (no server changes).
+    3.  **Restyle PlayerDetail bio.** Q&A section becomes "Game Master's Notes" — crown icon header, italic narrator intros, bold gold quoted answers. Falls back to raw question text for games without narrator intros.
+    4.  **`QaEntrySchema` extended.** Added optional `narratorIntro: z.string().optional()` field. Backward compatible — existing games without narrator intros render fine.
+*   **Consequences:**
+    *   Lobby join is faster (3 questions vs 10).
+    *   Player profiles feel more immersive — GM narrator voice adds character flavor.
+    *   Future LLM-generated narration can replace templates at game-start time (Claude API call) for fully custom prose.
+    *   Future "Confession Hour" cartridge can use remaining ~15 questions as in-game content.
+

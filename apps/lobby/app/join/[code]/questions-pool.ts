@@ -1,3 +1,5 @@
+import type { QaEntry } from '@pecking-order/shared-types';
+
 // ── Types ──
 
 export interface QuestionDef {
@@ -9,6 +11,8 @@ export interface QuestionDef {
   defaultAnswers: string[];
   /** Persona-specific answer overrides (personaId -> up to 3 answers) */
   personaAnswers?: Record<string, string[]>;
+  /** GM narrator lead-in template. Placeholders: {name}, {stereotype}, {description} */
+  narratorIntro: string;
 }
 
 export interface QuestionWithOptions {
@@ -33,6 +37,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-morning-routine',
     text: "What's your morning routine?",
+    narratorIntro: `'{name} — {stereotype}. {description} The Game Master wanted to know: what do they do when the sun comes up?'`,
     defaultAnswers: ['5am alarm, no snooze', 'Coffee first, existence second', 'What morning? I wake up at noon'],
     personaAnswers: {
       'persona-05': ['50 pushups before the alarm', 'Protein shake and a mirror pep talk', 'Shadow boxing my reflection'],
@@ -44,6 +49,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-allergies',
     text: 'Do you have any allergies?',
+    narratorIntro: `'The Game Master had a medical concern. {name}, {stereotype} — {description} So... any allergies?'`,
     defaultAnswers: ['Dust', 'Responsibility', 'Morning people'],
     personaAnswers: {
       'persona-22': ['Sunlight', 'Happiness', 'Optimism'],
@@ -54,6 +60,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-hidden-talent',
     text: "What's your hidden talent?",
+    narratorIntro: `'Every player hides something. {name}, {stereotype}, is no exception. {description} But what is their hidden talent?'`,
     defaultAnswers: ['Sleeping anywhere', 'Remembering useless facts', 'Accidentally starting drama'],
     personaAnswers: {
       'persona-12': ['Painting with non-traditional fluids', 'Communicating with houseplants', 'Crying in exactly 7 art styles'],
@@ -64,6 +71,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-biggest-red-flag',
     text: "What's your biggest red flag?",
+    narratorIntro: `'The Game Master pressed {name} for their biggest red flag. {stereotype} — {description} The answer did not disappoint.'`,
     defaultAnswers: ['I never text back', 'I always think I am right', 'I google people before meeting them'],
     personaAnswers: {
       'persona-04': ['I enjoy betraying people', 'I keep a mental file on everyone', 'My compliments are always tactical'],
@@ -74,6 +82,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-comfort-food',
     text: "What's your comfort food?",
+    narratorIntro: `'{description} But even {name}, {stereotype}, needs comfort sometimes. The Game Master asked about their go-to comfort food.'`,
     defaultAnswers: ['Pizza at 2am', 'Whatever is closest', 'I do not eat for comfort, I eat for fuel'],
     personaAnswers: {
       'persona-20': ['My award-winning brisket', 'Anything off my grill', 'Whatever I can cook better than you'],
@@ -84,6 +93,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-theme-song',
     text: "What's your theme song?",
+    narratorIntro: `'If {name} had a theme song, what would it be? {stereotype} — {description} The Game Master had to ask.'`,
     defaultAnswers: ['Something with a beat drop', 'Elevator music ironically', 'I walk in silence'],
     personaAnswers: {
       'persona-23': ['"Eye of the Tiger" obviously', 'My own show intro theme', 'Something with explosions'],
@@ -94,6 +104,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-exit-speech',
     text: 'If you were eliminated first, what would your exit speech be?',
+    narratorIntro: `'Nobody wants to go home first. The Game Master asked {name} — {stereotype} — to prepare an exit speech. {description} Here is what they said.'`,
     defaultAnswers: ['No speech, just a slow clap', 'You will all regret this', 'Honestly? Fair enough'],
     personaAnswers: {
       'persona-23': ['"You have not seen the last of me"', '"Check my highlight reel"', '"I have survived 3 shows, I will survive this"'],
@@ -104,6 +115,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-alliance-contribution',
     text: 'What do you bring to an alliance?',
+    narratorIntro: `'Alliances win games. The Game Master asked {name} what they bring to the table. {stereotype} — {description}'`,
     defaultAnswers: ['Undying loyalty', 'Strategic genius', 'Comic relief'],
     personaAnswers: {
       'persona-04': ['Information from every side', 'A list of who to backstab next', 'A smile that hides everything'],
@@ -114,6 +126,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-first-notice',
     text: "What's the first thing you notice about other players?",
+    narratorIntro: `'{name}, {stereotype}, walks into a room and immediately notices one thing. {description} What catches their eye first?'`,
     defaultAnswers: ['Their vibe', 'Whether they seem trustworthy', 'Their shoes, weirdly'],
     personaAnswers: {
       'persona-15': ['Their tells', 'Whether they are lying', 'How easily manipulated they are'],
@@ -124,6 +137,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-keeps-up-at-night',
     text: 'What keeps you up at night?',
+    narratorIntro: `'{description} But what keeps {name}, {stereotype}, up at night? The Game Master wanted to know.'`,
     defaultAnswers: ['My phone', 'Overthinking everything I said today', 'Nothing, I sleep like a rock'],
     personaAnswers: {
       'persona-06': ['Theorizing who is really in charge', 'The hidden cameras I have not found yet', 'Shadow government stuff'],
@@ -134,6 +148,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-million-silver',
     text: 'What would you spend a million silver on?',
+    narratorIntro: `'A million silver. The Game Master asked {name} — {stereotype} — how they would spend it. {description}'`,
     defaultAnswers: ["Buy everyone's loyalty", 'Disappear forever', 'Invest it and triple it'],
     personaAnswers: {
       'persona-21': ['That is a rounding error for me', 'A hostile takeover of the game', 'Tip the staff generously'],
@@ -144,6 +159,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-party-trick',
     text: "What's your party trick?",
+    narratorIntro: `'Every player needs a party trick. {name}, {stereotype} — {description} What is theirs?'`,
     defaultAnswers: ['Disappearing without saying goodbye', 'Knowing all the lyrics', 'Starting a conga line'],
     personaAnswers: {
       'persona-19': ['I AM the party trick', 'Drinking anything from anything', 'Making strangers best friends in 5 minutes'],
@@ -154,6 +170,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-dealbreaker',
     text: "What's your dealbreaker in an alliance partner?",
+    narratorIntro: `'The Game Master got personal. What is a dealbreaker for {name}, {stereotype}, in an alliance partner? {description}'`,
     defaultAnswers: ['Being boring', 'Being too honest', 'Being too sneaky'],
     personaAnswers: {
       'persona-11': ['Lack of discipline', 'Showing up late', 'Questioning the chain of command'],
@@ -164,6 +181,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-strategy',
     text: "What's your strategy for winning?",
+    narratorIntro: `'{name} is here to win. {stereotype} — {description} The Game Master asked about their strategy.'`,
     defaultAnswers: ["Be everyone's best friend", 'Fly under the radar', 'Win every competition'],
     personaAnswers: {
       'persona-04': ['Make them trust me, then strike', 'Information is currency', 'Everyone is a pawn'],
@@ -174,6 +192,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-movie-genre',
     text: 'If this game were a movie, what genre would it be?',
+    narratorIntro: `'If this game were a movie, what genre would it be? The Game Master turned to {name}, {stereotype}. {description}'`,
     defaultAnswers: ['Psychological thriller', 'Dark comedy', 'A documentary no one asked for'],
     personaAnswers: {
       'persona-07': ['A tearjerker, obviously', 'Tragedy', 'A drama where I am the main character'],
@@ -184,6 +203,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-under-bed',
     text: "What's hiding under your bed?",
+    narratorIntro: `'What is hiding under the bed of {name}, {stereotype}? {description} The Game Master dared to ask.'`,
     defaultAnswers: ['Dust bunnies with attitude', 'Snacks I forgot about', 'My dignity from last year'],
     personaAnswers: {
       'persona-06': ['Government listening devices', 'My backup tin foil hat', 'A portal to the shadow dimension'],
@@ -194,6 +214,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-remembered-for',
     text: 'What will people remember about you after the game?',
+    narratorIntro: `'When the game ends, what will people remember about {name}? {stereotype} — {description}'`,
     defaultAnswers: ['My chaos energy', 'That I was underestimated', 'Absolutely nothing'],
     personaAnswers: {
       'persona-18': ['The wisdom I bestowed', 'That I was right about everything', 'My devastating one-liners'],
@@ -204,6 +225,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-guilty-pleasure',
     text: "What's your guilty pleasure?",
+    narratorIntro: `'{description} But {name}, {stereotype}, has a guilty pleasure. The Game Master uncovered it.'`,
     defaultAnswers: ['Reality TV (ironic, right?)', 'Singing in the shower', 'Judging people silently'],
     personaAnswers: {
       'persona-22': ['Pop music, but never in public', 'Warm cookies with milk', 'Sometimes I smile and it terrifies me'],
@@ -216,6 +238,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-p22-art',
     text: 'What kind of art are you working on?',
+    narratorIntro: `'The Game Master asked {name} about their art. {stereotype} — {description} What are they working on?'`,
     forPersonaId: 'persona-22',
     defaultAnswers: [],
     personaAnswers: {
@@ -225,6 +248,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-p05-real-sport',
     text: 'What counts as a real sport?',
+    narratorIntro: `'{name}, {stereotype}. {description} The Game Master made the mistake of asking what counts as a real sport.'`,
     forPersonaId: 'persona-05',
     defaultAnswers: [],
     personaAnswers: {
@@ -234,6 +258,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-p21-cover',
     text: 'How do you hide your wealth from the other players?',
+    narratorIntro: `'{description} The Game Master asked {name}, {stereotype}, how they keep up the act.'`,
     forPersonaId: 'persona-21',
     defaultAnswers: [],
     personaAnswers: {
@@ -243,6 +268,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-p06-conspiracy',
     text: 'What conspiracy are the producers hiding?',
+    narratorIntro: `'The Game Master should not have asked. But they did. {name}, {stereotype} — {description} What conspiracy are they hiding?'`,
     forPersonaId: 'persona-06',
     defaultAnswers: [],
     personaAnswers: {
@@ -252,6 +278,7 @@ export const QUESTION_POOL: QuestionDef[] = [
   {
     id: 'q-p03-clipboard',
     text: "What's on your clipboard right now?",
+    narratorIntro: `'{name}, {stereotype}. {description} The Game Master peeked at their clipboard.'`,
     forPersonaId: 'persona-03',
     defaultAnswers: [],
     personaAnswers: {
@@ -263,7 +290,7 @@ export const QUESTION_POOL: QuestionDef[] = [
 // ── Selection Logic ──
 
 /**
- * Select 10 questions for a persona. Picks all available persona-specific
+ * Select 3 questions for a persona. Picks all available persona-specific
  * questions first, then fills the rest from the generic pool. Shuffled.
  */
 export function selectQuestionsForPersona(
@@ -277,11 +304,11 @@ export function selectQuestionsForPersona(
   const personaSpecific = QUESTION_POOL.filter(q => q.forPersonaId === personaId);
   const generic = QUESTION_POOL.filter(q => !q.forPersonaId);
 
-  // Take all persona-specific (up to 5), fill rest from generic
-  const maxPersonaSpecific = Math.min(personaSpecific.length, 5);
+  // Take up to 1 persona-specific, fill rest from generic (3 total)
+  const maxPersonaSpecific = Math.min(personaSpecific.length, 1);
   const selected: QuestionDef[] = [
     ...shuffle(personaSpecific, rng).slice(0, maxPersonaSpecific),
-    ...shuffle(generic, rng).slice(0, 10 - maxPersonaSpecific),
+    ...shuffle(generic, rng).slice(0, 3 - maxPersonaSpecific),
   ];
 
   // Build answer options for each
@@ -323,14 +350,14 @@ function buildAnswerOptions(
  */
 export function resolveAnswers(
   questions: QuestionWithOptions[],
-  submissions: QaSubmission[]
-): { question: string; answer: string }[] {
+  submissions: QaSubmission[],
+  persona: { name: string; stereotype: string; description: string },
+): QaEntry[] {
   return questions.map((q) => {
     const sub = submissions.find(s => s.questionId === q.id);
     let answer: string;
 
     if (!sub) {
-      // Default: first option
       answer = q.options[0] ?? '';
     } else if (sub.selectedIndex === 3 && sub.customAnswer) {
       answer = sub.customAnswer.trim().slice(0, 140);
@@ -338,7 +365,15 @@ export function resolveAnswers(
       answer = q.options[sub.selectedIndex] ?? q.options[0] ?? '';
     }
 
-    return { question: q.text, answer };
+    // Look up narrator intro template from QUESTION_POOL
+    const def = QUESTION_POOL.find(d => d.id === q.id);
+    const desc = persona.description.replace(/\.$/, ''); // strip trailing period
+    const narratorIntro = (def?.narratorIntro ?? q.text)
+      .replace(/\{name\}/g, persona.name)
+      .replace(/\{stereotype\}/g, persona.stereotype)
+      .replace(/\{description\}/g, desc);
+
+    return { question: q.text, answer, narratorIntro };
   });
 }
 

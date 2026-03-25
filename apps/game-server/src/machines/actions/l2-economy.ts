@@ -243,6 +243,7 @@ export const l2EconomyActions = {
         silverRewards: result.silverRewards || {},
         participantCount: event.participantCount || 0,
         results: event.results || null,
+        playerResponses: event.playerResponses || null,
       }];
     },
   }),

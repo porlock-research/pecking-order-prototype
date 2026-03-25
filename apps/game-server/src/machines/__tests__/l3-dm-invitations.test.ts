@@ -226,6 +226,7 @@ describe('unified DM channels', () => {
     it('rejects when DMs are closed', () => {
       const actor = createL3Actor();
       // DMs start closed — do NOT open them
+      const initialChatLogLength = actor.getL3Context().chatLog.length;
 
       actor.send({
         type: Events.Social.SEND_MSG,
@@ -236,7 +237,7 @@ describe('unified DM channels', () => {
 
       const ctx = actor.getL3Context();
       expect(findDmChannels(ctx)).toHaveLength(0);
-      expect(ctx.chatLog).toHaveLength(0);
+      expect(ctx.chatLog).toHaveLength(initialChatLogLength);
     });
 
     it('rejects DM to self', () => {

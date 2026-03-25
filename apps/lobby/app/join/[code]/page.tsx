@@ -539,7 +539,11 @@ export default function InvitePage() {
                       questions={questions}
                       personaName={selectedPersona.name}
                       onComplete={(subs) => {
-                        const resolved = resolveAnswers(questions, subs);
+                        const resolved = resolveAnswers(questions, subs, {
+                          name: selectedPersona!.name,
+                          stereotype: selectedPersona!.stereotype,
+                          description: selectedPersona!.description,
+                        });
                         setQaAnswersJson(JSON.stringify(resolved));
                         setStep(4);
                       }}
@@ -548,7 +552,11 @@ export default function InvitePage() {
                           questionId: q.id,
                           selectedIndex: 0,
                         }));
-                        const resolved = resolveAnswers(questions, defaultSubs);
+                        const resolved = resolveAnswers(questions, defaultSubs, {
+                          name: selectedPersona!.name,
+                          stereotype: selectedPersona!.stereotype,
+                          description: selectedPersona!.description,
+                        });
                         setQaAnswersJson(JSON.stringify(resolved));
                         setStep(4);
                       }}

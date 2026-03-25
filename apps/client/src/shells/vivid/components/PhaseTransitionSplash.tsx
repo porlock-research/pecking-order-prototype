@@ -38,6 +38,7 @@ function buildPhaseConfig(
   manifest: any,
   dayIndex: number,
   roster: Record<string, any>,
+  dmsOpen?: boolean,
 ): PhaseConfig | null {
   const currentDay = manifest?.days?.[dayIndex - 1];
   // Static manifests: days pre-populated. Dynamic FIXED: use fixedCount/value.
@@ -55,6 +56,7 @@ function buildPhaseConfig(
     voteType: currentDay?.voteType,
     gameType: currentDay?.gameType,
     activityType: currentDay?.activityType,
+    dmsOpen,
   });
 
   if (!info) return null;
@@ -78,6 +80,7 @@ export function PhaseTransitionSplash() {
   const manifest = useGameStore(s => s.manifest);
   const dayIndex = useGameStore(s => s.dayIndex);
   const roster = useGameStore(s => s.roster);
+  const dmsOpen = useGameStore(s => s.dmsOpen);
   const [visible, setVisible] = useState(false);
   const [config, setConfig] = useState<PhaseConfig | null>(null);
   const prevPhaseRef = useRef<DayPhase>(phase);
@@ -92,7 +95,7 @@ export function PhaseTransitionSplash() {
 
     if (phase !== prevPhaseRef.current) {
       prevPhaseRef.current = phase;
-      const c = buildPhaseConfig(phase, manifest, dayIndex, roster);
+      const c = buildPhaseConfig(phase, manifest, dayIndex, roster, dmsOpen);
       if (c) {
         setConfig(c);
         setVisible(true);

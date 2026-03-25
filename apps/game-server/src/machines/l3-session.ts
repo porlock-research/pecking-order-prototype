@@ -1,5 +1,5 @@
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
-import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, Events, FactTypes, GAME_MASTER_ID, DM_MAX_CHARS_PER_DAY, DM_MAX_PARTNERS_PER_DAY } from '@pecking-order/shared-types';
+import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, Events, FactTypes, GAME_MASTER_ID, DM_MAX_CHARS_PER_DAY, DM_MAX_PARTNERS_PER_DAY, buildDayBriefingMessages } from '@pecking-order/shared-types';
 import { VOTE_REGISTRY } from './cartridges/voting/_registry';
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 import { PROMPT_REGISTRY } from './cartridges/prompts/_registry';
@@ -69,9 +69,28 @@ export type DailyEvent =
 
 /** Extracted so tests can verify context initialization without XState entry actions. */
 export function buildL3Context(input: { dayIndex: number; roster: Record<string, SocialPlayer>; manifest?: DailyManifest; initialChatLog?: ChatMessage[] }): DailyContext {
+  // Generate GM briefing messages for this day (skip on snapshot restore)
+  const isRestore = (input.initialChatLog?.length ?? 0) > 0;
+  let briefingMessages: ChatMessage[] = [];
+  if (!isRestore && input.manifest) {
+    const alive = Object.values(input.roster || {}).filter((p: any) => p.status === 'ALIVE').length;
+    const texts = buildDayBriefingMessages({
+      dayIndex: input.dayIndex,
+      voteType: input.manifest.voteType,
+      gameType: (input.manifest as any).gameType,
+      activityType: (input.manifest as any).activityType,
+      dilemmaType: (input.manifest as any).dilemmaType,
+    }, alive);
+    const now = Date.now();
+    briefingMessages = texts.map((text: string, i: number) => ({
+      ...buildChatMessage(GAME_MASTER_ID, text, 'MAIN'),
+      timestamp: now + i * 100,
+    }));
+  }
+
   return {
     dayIndex: input.dayIndex || 0,
-    chatLog: input.initialChatLog || [],
+    chatLog: [...briefingMessages, ...(input.initialChatLog || [])],
     roster: input.roster || {},
     manifest: input.manifest,
     activeVotingCartridgeRef: null,
@@ -359,7 +378,7 @@ export const dailySessionMachine = setup({
             }
 
             enqueue.assign({ chatLog: appendToChatLog(context.chatLog, msg) });
-            // Emit DM_SENT fact for targeted messages so push notifications fire
+            // Emit facts so push notifications fire
             if (targetId) {
               enqueue.raise({
                 type: Events.Fact.RECORD,
@@ -367,6 +386,17 @@ export const dailySessionMachine = setup({
                   type: FactTypes.DM_SENT,
                   actorId: GAME_MASTER_ID,
                   targetId,
+                  payload: { content: text, channelId },
+                  timestamp: Date.now(),
+                },
+              });
+            } else {
+              // GM group chat message — emit CHAT_MSG so push notifications fire
+              enqueue.raise({
+                type: Events.Fact.RECORD,
+                fact: {
+                  type: FactTypes.CHAT_MSG,
+                  actorId: GAME_MASTER_ID,
                   payload: { content: text, channelId },
                   timestamp: Date.now(),
                 },

@@ -26,6 +26,7 @@ export function buildPhaseInfo(
     voteType?: string;
     gameType?: string;
     activityType?: string;
+    dmsOpen?: boolean;
   },
 ): PhaseInfo | null {
   const dayIndex = params?.dayIndex ?? 1;
@@ -56,8 +57,10 @@ export function buildPhaseInfo(
     case DayPhases.SOCIAL:
       return {
         title: 'Social Hour',
-        subtitle: 'DMs are now open',
-        body: 'Send private messages, form alliances, and gather information. Your DM slots are limited \u2014 choose wisely.',
+        subtitle: params?.dmsOpen ? 'DMs are now open' : 'Chat and strategize',
+        body: params?.dmsOpen
+          ? 'Send private messages, form alliances, and gather information. Your DM slots are limited \u2014 choose wisely.'
+          : 'Talk in the group chat, check the schedule, and prepare for what\u2019s ahead.',
       };
 
     case DayPhases.GAME: {
