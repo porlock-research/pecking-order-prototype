@@ -701,3 +701,196 @@ describe('Game Master — Multi-day progression (resolveDay output shape)', () =
     expect(ctx2.resolvedDay?.dmCharsPerPlayer).toBe(600);
   });
 });
+
+describe('Game Master — 10-player full tournament day resolution', () => {
+  // Mirrors a real playtest ruleset: diverse voting, games, activities, dilemmas.
+  // Drives a full 10→2 player tournament through the GM, verifying each day's
+  // manifest is valid and the ruleset is respected.
+  const fullRuleset: PeckingOrderRuleset = {
+    kind: 'PECKING_ORDER',
+    voting: {
+      allowed: ['MAJORITY', 'EXECUTIONER', 'BUBBLE', 'PODIUM_SACRIFICE', 'SHIELD', 'TRUST_PAIRS'],
+      constraints: [
+        { voteType: 'BUBBLE', minPlayers: 6 },
+        { voteType: 'TRUST_PAIRS', minPlayers: 5 },
+        { voteType: 'PODIUM_SACRIFICE', minPlayers: 5 },
+        { voteType: 'EXECUTIONER', minPlayers: 5 },
+        { voteType: 'SHIELD', minPlayers: 4 },
+      ],
+    },
+    games: { allowed: ['TRIVIA', 'GAP_RUN', 'SEQUENCE', 'STACKER', 'REACTION_TIME'], avoidRepeat: true },
+    activities: { allowed: ['HOT_TAKE', 'CONFESSION', 'PLAYER_PICK', 'WOULD_YOU_RATHER'], avoidRepeat: true },
+    dilemmas: { mode: 'POOL', allowed: ['SILVER_GAMBIT', 'SPOTLIGHT', 'GIFT_OR_GRIEF'], avoidRepeat: true },
+    social: {
+      dmChars: { mode: 'DIMINISHING', base: 1200, floor: 400 },
+      dmPartners: { mode: 'FIXED', base: 3 },
+      dmCost: 1,
+      groupDmEnabled: true,
+      requireDmInvite: false,
+      dmSlotsPerPlayer: 5,
+    },
+    inactivity: { enabled: false, thresholdDays: 2, action: 'ELIMINATE' },
+    dayCount: { mode: 'ACTIVE_PLAYERS_MINUS_ONE' },
+  };
+
+  it('resolves 9 days for 10 players — correct mechanisms each day, FINALS last', () => {
+    const input: GameMasterInput = {
+      roster: makeRoster(10),
+      ruleset: fullRuleset,
+      schedulePreset: 'SMOKE_TEST',
+      startTime: '2026-03-24T10:00:00.000Z',
+      gameHistory: [],
+    };
+    const actor = createActor(createGameMasterMachine(), { input });
+    actor.start();
+
+    let roster = makeRoster(10);
+    let alive = 10;
+
+    const dayLog: Array<{
+      day: number;
+      alive: number;
+      voteType: string;
+      gameType: string;
+      activityType: string;
+      dilemmaType: string;
+      dmChars: number;
+      timelineEvents: number;
+      hasInjectPrompt: boolean;
+      hasNextDayStart: boolean;
+    }> = [];
+
+    const allVoteTypes = fullRuleset.voting.allowed!;
+    const allGameTypes = fullRuleset.games.allowed!;
+    const allActivityTypes = fullRuleset.activities.allowed!;
+    const allDilemmaTypes = fullRuleset.dilemmas!.allowed!;
+
+    // Play through until FINALS
+    while (alive > 2) {
+      const dayIndex = dayLog.length + 1;
+      actor.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex, roster });
+      const ctx = actor.getSnapshot().context;
+      const day = ctx.resolvedDay!;
+
+      const entry = {
+        day: dayIndex,
+        alive,
+        voteType: day.voteType,
+        gameType: day.gameType,
+        activityType: day.activityType || 'NONE',
+        dilemmaType: day.dilemmaType || 'NONE',
+        dmChars: day.dmCharsPerPlayer!,
+        timelineEvents: day.timeline.length,
+        hasInjectPrompt: day.timeline.some((e: any) => e.action === 'INJECT_PROMPT'),
+        hasNextDayStart: !!day.nextDayStart,
+      };
+      dayLog.push(entry);
+
+      // ── Assertions per day ──
+
+      // Vote type must be from the allowed list (or FINALS)
+      expect([...allVoteTypes, 'FINALS']).toContain(day.voteType);
+
+      // Vote type respects minPlayers constraints
+      const constraints = fullRuleset.voting.constraints || [];
+      for (const c of constraints) {
+        if (day.voteType === c.voteType) {
+          expect(alive).toBeGreaterThanOrEqual(c.minPlayers);
+        }
+      }
+
+      // Not FINALS yet (alive > 2)
+      expect(day.voteType).not.toBe('FINALS');
+
+      // Game type from allowed list
+      expect([...allGameTypes, 'NONE']).toContain(day.gameType);
+
+      // Activity type from allowed list
+      expect([...allActivityTypes, 'NONE']).toContain(day.activityType || 'NONE');
+
+      // Dilemma type from allowed list
+      expect([...allDilemmaTypes, 'NONE']).toContain(day.dilemmaType || 'NONE');
+
+      // Timeline has events
+      expect(day.timeline.length).toBeGreaterThan(0);
+
+      // GM briefing message present
+      expect(entry.hasInjectPrompt).toBe(true);
+
+      // nextDayStart present (not last day)
+      expect(day.nextDayStart).toBeDefined();
+
+      // DM chars should be between floor and base (DIMINISHING mode)
+      expect(entry.dmChars).toBeGreaterThanOrEqual(400);
+      expect(entry.dmChars).toBeLessThanOrEqual(1200);
+
+      // avoidRepeat: game type shouldn't repeat consecutively
+      if (dayLog.length >= 2) {
+        const prev = dayLog[dayLog.length - 2];
+        if (prev.gameType !== 'NONE' && entry.gameType !== 'NONE') {
+          expect(entry.gameType).not.toBe(prev.gameType);
+        }
+        if (prev.activityType !== 'NONE' && entry.activityType !== 'NONE') {
+          expect(entry.activityType).not.toBe(prev.activityType);
+        }
+        if (prev.dilemmaType !== 'NONE' && entry.dilemmaType !== 'NONE') {
+          expect(entry.dilemmaType).not.toBe(prev.dilemmaType);
+        }
+      }
+
+      // Simulate elimination: remove last alive player
+      actor.send({ type: 'GAME_MASTER.DAY_ENDED', dayIndex, roster });
+      const eliminatedId = Object.keys(roster).filter(id => roster[id].status === 'ALIVE').pop()!;
+      roster = { ...roster, [eliminatedId]: { ...roster[eliminatedId], status: 'ELIMINATED' } as SocialPlayer };
+      alive--;
+    }
+
+    // ── FINALS day ──
+    const finalsDay = dayLog.length + 1;
+    actor.send({ type: 'GAME_MASTER.RESOLVE_DAY', dayIndex: finalsDay, roster });
+    const finalsCtx = actor.getSnapshot().context;
+    const finals = finalsCtx.resolvedDay!;
+
+    expect(finals.voteType).toBe('FINALS');
+    expect(finals.nextDayStart).toBeUndefined();
+    expect(finals.timeline.some((e: any) => e.action === 'INJECT_PROMPT')).toBe(true);
+
+    dayLog.push({
+      day: finalsDay,
+      alive: 2,
+      voteType: 'FINALS',
+      gameType: finals.gameType,
+      activityType: finals.activityType || 'NONE',
+      dilemmaType: finals.dilemmaType || 'NONE',
+      dmChars: finals.dmCharsPerPlayer!,
+      timelineEvents: finals.timeline.length,
+      hasInjectPrompt: true,
+      hasNextDayStart: false,
+    });
+
+    // ── Summary assertions ──
+    expect(dayLog).toHaveLength(9); // 10 players → 9 days (8 regular + FINALS)
+    expect(dayLog[dayLog.length - 1].voteType).toBe('FINALS');
+
+    // Every day resolved something
+    for (const d of dayLog) {
+      expect(d.timelineEvents).toBeGreaterThan(0);
+      expect(d.hasInjectPrompt).toBe(true);
+    }
+
+    // DM chars should decrease over time (DIMINISHING)
+    expect(dayLog[0].dmChars).toBeGreaterThan(dayLog[dayLog.length - 2].dmChars);
+
+    // Print the day log for inspection
+    console.log('\n=== 10-Player Tournament Day Log ===');
+    console.log('Day | Alive | Vote           | Game           | Activity         | Dilemma        | DM Chars | Events');
+    console.log('----|-------|----------------|----------------|------------------|----------------|----------|-------');
+    for (const d of dayLog) {
+      console.log(
+        `  ${d.day} |   ${String(d.alive).padStart(2)} | ${d.voteType.padEnd(14)} | ${d.gameType.padEnd(14)} | ${d.activityType.padEnd(16)} | ${d.dilemmaType.padEnd(14)} | ${String(d.dmChars).padStart(8)} | ${d.timelineEvents}`
+      );
+    }
+
+    actor.stop();
+  });
+});
