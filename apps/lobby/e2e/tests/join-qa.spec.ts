@@ -48,8 +48,9 @@ test.describe('Join Wizard + Q&A @join', () => {
     // Wait for step transition animation to complete
     await page.waitForTimeout(500);
     const progressDots = page.locator('.flex.justify-center.gap-1\\.5 button');
-    await expect(progressDots).toHaveCount(10, { timeout: 5_000 });
+    await expect(progressDots).toHaveCount(3, { timeout: 5_000 });
 
+    // Answer all 3 questions (auto-advances between questions)
     for (let i = 0; i < 3; i++) {
       const optionA = page.locator('button:has-text("A.")').first();
       await expect(optionA).toBeVisible({ timeout: 3_000 });
@@ -57,14 +58,9 @@ test.describe('Join Wizard + Q&A @join', () => {
       await page.waitForTimeout(500);
     }
 
-    await progressDots.last().click();
-    await page.waitForTimeout(300);
-    const optionB = page.locator('button:has-text("B.")').first();
-    await expect(optionB).toBeVisible({ timeout: 3_000 });
-    await optionB.click();
-
     await page.screenshot({ path: 'e2e/test-results/screenshots/join-step3-qa.png' });
 
+    // After answering all 3, "Continue" button appears on the last question
     const continueBtn = page.locator('button:has-text("Continue")');
     await expect(continueBtn).toBeVisible({ timeout: 3_000 });
     await continueBtn.click();
