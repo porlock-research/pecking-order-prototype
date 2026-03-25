@@ -2,6 +2,19 @@ import { create } from 'zustand';
 import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes, DayPhases } from '@pecking-order/shared-types';
 import type { DayPhase } from '@pecking-order/shared-types';
 
+/**
+ * Keep the previous reference if the new value is structurally identical.
+ * Prevents Zustand subscribers from re-rendering when SYNC sends the same data.
+ */
+function stableRef<T>(prev: T, next: T): T {
+  if (prev === next) return prev;
+  if (prev == null || next == null) return next;
+  try {
+    if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+  } catch { /* non-serializable — use next */ }
+  return next;
+}
+
 interface DmThread {
   partnerId: string;
   channelId: string;
@@ -382,30 +395,37 @@ export const useGameStore = create<GameState>((set) => ({
       };
     });
 
+    // Use stableRef to preserve old references when data hasn't changed.
+    // This prevents cascading re-renders across the entire component tree
+    // when a SYNC arrives but the player-visible data is identical.
+    const nextRoster = data.context?.roster || {};
+    const nextChatLog = data.context?.chatLog?.length ? data.context.chatLog : state.chatLog;
+    const nextChannels = data.context?.channels ?? state.channels;
+
     return {
       gameId: data.context?.gameId || state.gameId,
       dayIndex: data.context?.dayIndex || 0,
-      roster: data.context?.roster || {},
-      chatLog: data.context?.chatLog?.length ? data.context.chatLog : state.chatLog,
-      channels: data.context?.channels ?? state.channels,
+      roster: stableRef(state.roster, nextRoster),
+      chatLog: nextChatLog.length === state.chatLog.length ? state.chatLog : nextChatLog,
+      channels: stableRef(state.channels, nextChannels),
       groupChatOpen: data.context?.groupChatOpen ?? state.groupChatOpen,
       dmsOpen: data.context?.dmsOpen ?? state.dmsOpen,
-      manifest: data.context?.manifest || null,
-      serverState: data.state || null,
+      manifest: stableRef(state.manifest, data.context?.manifest || null),
+      serverState: stableRef(state.serverState, data.state || null),
       phase: data.phase ?? state.phase,
-      activeVotingCartridge: data.context?.activeVotingCartridge ?? null,
-      activeGameCartridge: data.context?.activeGameCartridge ?? null,
-      activePromptCartridge: data.context?.activePromptCartridge ?? null,
-      activeDilemma: data.context?.activeDilemmaCartridge ?? null,
-      completedCartridges,
-      winner: data.context?.winner ?? null,
+      activeVotingCartridge: stableRef(state.activeVotingCartridge, data.context?.activeVotingCartridge ?? null),
+      activeGameCartridge: stableRef(state.activeGameCartridge, data.context?.activeGameCartridge ?? null),
+      activePromptCartridge: stableRef(state.activePromptCartridge, data.context?.activePromptCartridge ?? null),
+      activeDilemma: stableRef(state.activeDilemma, data.context?.activeDilemmaCartridge ?? null),
+      completedCartridges: stableRef(state.completedCartridges, completedCartridges),
+      winner: stableRef(state.winner, data.context?.winner ?? null),
       goldPool: data.context?.goldPool ?? state.goldPool,
-      gameHistory: data.context?.gameHistory ?? state.gameHistory,
-      dmStats: data.context?.dmStats ?? null,
-      onlinePlayers: data.context?.onlinePlayers ?? state.onlinePlayers,
-      playerActivity: data.context?.playerActivity ?? state.playerActivity,
+      gameHistory: stableRef(state.gameHistory, data.context?.gameHistory ?? state.gameHistory),
+      dmStats: stableRef(state.dmStats, data.context?.dmStats ?? null),
+      onlinePlayers: stableRef(state.onlinePlayers, data.context?.onlinePlayers ?? state.onlinePlayers),
+      playerActivity: stableRef(state.playerActivity, data.context?.playerActivity ?? state.playerActivity),
       welcomeSeen: localStorage.getItem(`po-welcomeSeen-${data.context?.gameId || state.gameId}`) === 'true' || state.welcomeSeen,
-      showcaseData: data.context?.showcase ?? state.showcaseData,
+      showcaseData: stableRef(state.showcaseData, data.context?.showcase ?? state.showcaseData),
     };
   }),
 

@@ -115,7 +115,8 @@ function ConversationList({
   onSelectGroup,
   onNew,
 }: ConversationListProps) {
-  const { playerId, roster } = useGameStore();
+  const playerId = useGameStore(s => s.playerId);
+  const roster = useGameStore(s => s.roster);
   const chatLog = useGameStore(s => s.chatLog);
   const channels = useGameStore(s => s.channels);
   const requireDmInvite = useGameStore(selectRequireDmInvite);

@@ -1,17 +1,8 @@
 import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
 import type { PromptOutput } from '../cartridges/prompts/_contract';
 import { PROMPT_REGISTRY } from '../cartridges/prompts/_registry';
-import { Events } from '@pecking-order/shared-types';
+import { Events, ACTIVITY_TYPE_INFO } from '@pecking-order/shared-types';
 import { log } from '../../log';
-
-const DEFAULT_PROMPT_TEXT: Record<string, string> = {
-  PLAYER_PICK: 'Pick a player',
-  PREDICTION: 'What do you think will happen next?',
-  WOULD_YOU_RATHER: 'Would you rather...',
-  HOT_TAKE: 'The best strategy is to trust no one',
-  CONFESSION: 'Share something nobody here knows about you',
-  GUESS_WHO: 'Who said it?',
-};
 
 export const l3ActivityActions = {
   spawnPromptCartridge: assign({
@@ -30,11 +21,11 @@ export const l3ActivityActions = {
         id: 'activePromptCartridge',
         input: {
           promptType,
-          promptText: payload?.promptText || DEFAULT_PROMPT_TEXT[promptType] || 'Share your thoughts',
+          promptText: payload?.promptText || (ACTIVITY_TYPE_INFO as any)[promptType]?.promptText || 'Share your thoughts',
           roster: context.roster,
           dayIndex: context.dayIndex,
-          optionA: payload?.optionA,
-          optionB: payload?.optionB,
+          optionA: payload?.optionA || (ACTIVITY_TYPE_INFO as any)[promptType]?.options?.optionA,
+          optionB: payload?.optionB || (ACTIVITY_TYPE_INFO as any)[promptType]?.options?.optionB,
         },
       });
     },

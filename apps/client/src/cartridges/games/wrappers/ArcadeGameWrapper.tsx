@@ -1,4 +1,4 @@
-import React, { useState, useEffect, type ReactNode } from 'react';
+import React, { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { ArcadePhases, Events } from '@pecking-order/shared-types';
 import type { ArcadeGameProjection, ArcadeRendererProps, SocialPlayer } from '@pecking-order/shared-types';
 import {
@@ -44,28 +44,37 @@ export default function ArcadeGameWrapper({
     cartridge.result || {}
   );
 
-  const handleStart = () => {
-    engine.sendGameAction(Events.Game.start(gameType));
-    setGamePhase('PLAYING');
-    setGameDeadline(Date.now() + timeLimit);
-  };
+  // Stable refs — keeps callbacks referentially stable across SYNC re-renders
+  // so child Renderers' game loops never re-initialize mid-play
+  const engineRef = useRef(engine);
+  engineRef.current = engine;
+  const gameTypeRef = useRef(gameType);
+  gameTypeRef.current = gameType;
+  const timeLimitRef = useRef(timeLimit);
+  timeLimitRef.current = timeLimit;
 
-  const handleResult = (result: Record<string, number>) => {
+  const handleStart = useCallback(() => {
+    engineRef.current.sendGameAction(Events.Game.start(gameTypeRef.current));
+    setGamePhase('PLAYING');
+    setGameDeadline(Date.now() + timeLimitRef.current);
+  }, []);
+
+  const handleResult = useCallback((result: Record<string, number>) => {
     setFinalResult(result);
     setGamePhase('DEAD');
-    engine.sendGameAction(Events.Game.result(gameType), result);
-  };
+    engineRef.current.sendGameAction(Events.Game.result(gameTypeRef.current), result);
+  }, []);
 
-  const handleSubmit = () => {
-    engine.sendGameAction(Events.Game.SUBMIT);
+  const handleSubmit = useCallback(() => {
+    engineRef.current.sendGameAction(Events.Game.SUBMIT);
     setGamePhase('COMPLETED');
-  };
+  }, []);
 
-  const handleRetry = () => {
-    engine.sendGameAction(Events.Game.RETRY);
+  const handleRetry = useCallback(() => {
+    engineRef.current.sendGameAction(Events.Game.RETRY);
     setGamePhase('NOT_STARTED');
     setGameDeadline(null);
-  };
+  }, []);
 
   // Transition from DEAD -> AWAITING_DECISION or COMPLETED when server confirms
   useEffect(() => {

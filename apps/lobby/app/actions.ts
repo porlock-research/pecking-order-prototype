@@ -1,6 +1,6 @@
 'use server';
 
-import { InitPayloadSchema, Roster } from '@pecking-order/shared-types';
+import { InitPayloadSchema, Roster, ACTIVITY_TYPE_INFO } from '@pecking-order/shared-types';
 import { signGameToken } from '@pecking-order/auth';
 import { getDB, getEnv } from '@/lib/db';
 import { requireAuth, getSession, generateId, generateInviteCode, generateToken } from '@/lib/auth';
@@ -983,19 +983,8 @@ const EVENT_MESSAGES: Record<string, string> = {
   END_DAY: 'Day has ended.',
 };
 
-const ACTIVITY_PROMPTS: Record<string, string> = {
-  PLAYER_PICK: 'Pick your bestie',
-  PREDICTION: 'Who do you think will be eliminated tonight?',
-  WOULD_YOU_RATHER: 'Would you rather...',
-  HOT_TAKE: 'Pineapple belongs on pizza',
-  CONFESSION: 'Confess something about your game strategy',
-  GUESS_WHO: 'What is your biggest fear in this game?',
-  NONE: '',
-};
-
-const ACTIVITY_OPTIONS: Record<string, { optionA: string; optionB: string }> = {
-  WOULD_YOU_RATHER: { optionA: 'Have immunity for one round', optionB: 'Get 50 bonus silver' },
-};
+// Activity prompts and options are sourced from ACTIVITY_TYPE_INFO in shared-types.
+// This keeps lobby (static games) and game-master (dynamic games) consistent.
 
 const TIMELINE_EVENT_KEYS = [
   'INJECT_PROMPT', 'OPEN_GROUP_CHAT', 'START_ACTIVITY', 'END_ACTIVITY', 'OPEN_DMS',
@@ -1013,11 +1002,12 @@ function buildEventPayload(eventKey: string, activityType: string, dayIndex: num
     ? `Welcome to Day ${dayIndex} of Pecking Order`
     : EVENT_MESSAGES[eventKey];
   if (eventKey === 'START_ACTIVITY') {
+    const actInfo = (ACTIVITY_TYPE_INFO as Record<string, any>)[activityType];
     return {
       msg,
       promptType: activityType,
-      promptText: ACTIVITY_PROMPTS[activityType] || 'Pick a player',
-      ...(ACTIVITY_OPTIONS[activityType] || {}),
+      promptText: actInfo?.promptText || 'Pick a player',
+      ...(actInfo?.options || {}),
     };
   }
   return { msg };

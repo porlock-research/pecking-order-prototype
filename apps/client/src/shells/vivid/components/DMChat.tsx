@@ -59,7 +59,8 @@ export function DMChat({
   playerColorMap,
   onTapAvatar,
 }: DMChatProps) {
-  const { playerId, roster } = useGameStore();
+  const playerId = useGameStore(s => s.playerId);
+  const roster = useGameStore(s => s.roster);
   const chatLog = useGameStore((s) => s.chatLog);
   const channels = useGameStore((s) => s.channels);
   const onlinePlayers = useGameStore((s) => s.onlinePlayers);

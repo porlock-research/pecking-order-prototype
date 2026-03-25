@@ -41,7 +41,10 @@ function markSeen(gameId: string, reveal: Reveal) {
 }
 
 export function DramaticReveal() {
-  const { roster, winner, gameId, playerId } = useGameStore();
+  const roster = useGameStore(s => s.roster);
+  const winner = useGameStore(s => s.winner);
+  const gameId = useGameStore(s => s.gameId);
+  const playerId = useGameStore(s => s.playerId);
   const [queue, setQueue] = useState<Reveal[]>([]);
   const [current, setCurrent] = useState<Reveal | null>(null);
 

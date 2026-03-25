@@ -119,7 +119,8 @@ function PregameEmptyState() {
 /* ------------------------------------------------------------------ */
 
 export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProps) {
-  const { playerId, roster } = useGameStore();
+  const playerId = useGameStore(s => s.playerId);
+  const roster = useGameStore(s => s.roster);
   const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
   const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
   const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
