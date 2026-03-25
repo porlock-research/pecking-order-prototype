@@ -29,7 +29,7 @@ export interface DynamicRulesetConfig {
     maxDays: number;
   };
   // Schedule preset
-  schedulePreset: 'DEFAULT' | 'COMPACT' | 'SPEED_RUN';
+  schedulePreset: 'DEFAULT' | 'COMPACT' | 'PLAYTEST' | 'SPEED_RUN';
   // Start time
   startTime: string;  // datetime-local format: "YYYY-MM-DDTHH:MM"
   // Min players to start
@@ -117,7 +117,7 @@ interface PresetTimelineEvent {
 }
 
 const SCHEDULE_PRESETS: {
-  value: 'DEFAULT' | 'COMPACT' | 'SPEED_RUN';
+  value: 'DEFAULT' | 'COMPACT' | 'PLAYTEST' | 'SPEED_RUN';
   label: string;
   desc: string;
   dayLength: string;
@@ -159,6 +159,27 @@ const SCHEDULE_PRESETS: {
       { action: 'CLOSE_VOTING', label: 'Voting Closes', time: '17:00' },
       { action: 'CLOSE_DMS', label: 'DMs Close', time: '17:00' },
       { action: 'END_DAY', label: 'Day Ends', time: '17:30' },
+    ],
+  },
+  {
+    value: 'PLAYTEST',
+    label: 'Playtest',
+    desc: 'Compressed day — events 10am to 5pm',
+    dayLength: '~7 hours',
+    events: [
+      { action: 'OPEN_GROUP_CHAT', label: 'Group Chat', time: '10:00' },
+      { action: 'OPEN_DMS', label: 'DMs Open', time: '11:00' },
+      { action: 'CLOSE_GROUP_CHAT', label: 'Group Chat Closes', time: '12:00' },
+      { action: 'START_GAME', label: 'Game Starts', time: '12:01', condition: 'hasGame' },
+      { action: 'START_ACTIVITY', label: 'Activity Starts', time: '12:02', condition: 'hasActivity' },
+      { action: 'END_GAME', label: 'Game Ends', time: '14:00', condition: 'hasGame' },
+      { action: 'END_ACTIVITY', label: 'Activity Ends', time: '15:00', condition: 'hasActivity' },
+      { action: 'OPEN_GROUP_CHAT', label: 'Group Chat Re-opens', time: '15:01' },
+      { action: 'OPEN_VOTING', label: 'Voting Opens', time: '15:02' },
+      { action: 'CLOSE_DMS', label: 'DMs Close', time: '16:00' },
+      { action: 'CLOSE_GROUP_CHAT', label: 'Group Chat Closes', time: '16:01' },
+      { action: 'CLOSE_VOTING', label: 'Voting Closes', time: '16:59' },
+      { action: 'END_DAY', label: 'Day Ends', time: '17:00' },
     ],
   },
   {
