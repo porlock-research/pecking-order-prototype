@@ -342,6 +342,14 @@ async function handleAdmin(ctx: HandlerContext, req: Request): Promise<Response>
 
     if (body.type === "NEXT_STAGE") {
       ctx.actor.send({ type: Events.Admin.NEXT_STAGE });
+      // Re-schedule alarms for dynamic manifests — same pattern as onAlarm().
+      // NEXT_STAGE may transition through morningBriefing, resolving a new day.
+      // Without this, the new day's timeline events would have no PartyWhen alarms.
+      const freshSnap = ctx.actor.getSnapshot();
+      const freshManifest = freshSnap?.context?.manifest;
+      if (freshManifest?.kind === 'DYNAMIC') {
+        await ctx.scheduleManifestAlarms(freshManifest);
+      }
     } else if (body.type === "INJECT_TIMELINE_EVENT") {
       ctx.actor.send({
         type: Events.Admin.INJECT_TIMELINE_EVENT,
