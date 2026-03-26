@@ -260,6 +260,25 @@ async function handleScheduledTasks(ctx: HandlerContext, req: Request): Promise<
     return new Response('Unauthorized', { status: 401 });
   }
   try {
+    if (req.method === 'PUT') {
+      // Insert a single alarm task: { "id": "custom-wake", "time": 1743094800 }
+      const body = await req.json() as any;
+      if (!body.id || !body.time) {
+        return new Response(JSON.stringify({ error: 'id and time (unix seconds) required' }), { status: 400 });
+      }
+      const callback = JSON.stringify({ type: "self", function: "wakeUpL2" });
+      (ctx.scheduler as any).querySql([{
+        sql: `INSERT OR REPLACE INTO tasks (id, description, payload, callback, type, time)
+              VALUES (?, ?, ?, ?, 'scheduled', ?)`,
+        params: [body.id, null, null, callback, Math.floor(body.time)]
+      }]);
+      await (ctx.scheduler as any).scheduleNextAlarm();
+      log('info', 'L1', 'Alarm task inserted', { id: body.id, time: body.time });
+      return new Response(JSON.stringify({ ok: true, id: body.id, time: body.time }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+      });
+    }
     if (req.method === 'POST') {
       (ctx.scheduler as any).querySql([{ sql: "DELETE FROM tasks", params: [] }]);
       await (ctx.scheduler as any).scheduleNextAlarm();
