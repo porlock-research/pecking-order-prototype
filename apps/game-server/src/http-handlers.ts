@@ -56,7 +56,7 @@ export async function routeRequest(ctx: HandlerContext, req: Request): Promise<R
   if (req.method === "POST" && path.endsWith("/flush-tasks")) {
     return handleFlushTasks(ctx, req);
   }
-  if ((req.method === "GET" || req.method === "POST") && path.endsWith("/scheduled-tasks")) {
+  if ((req.method === "GET" || req.method === "POST" || req.method === "PUT") && path.endsWith("/scheduled-tasks")) {
     return handleScheduledTasks(ctx, req);
   }
   if (req.method === "POST" && path.endsWith("/cleanup")) {
