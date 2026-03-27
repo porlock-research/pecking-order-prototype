@@ -264,7 +264,11 @@ function resolveDay(
   const dilemmaType = resolveDilemmaType(dayIndex, ruleset.dilemmas, gameHistory);
   const social = resolveSocialParams(dayIndex, totalDays, alive, ruleset.social);
 
-  const timeline = generateDayTimeline(schedulePreset, dayIndex, startTime, {
+  // Anchor timeline to the current moment, not the fixed startTime calendar.
+  // Dynamic games resolve days at runtime — events should play out from "now,"
+  // not from startTime + (dayIndex-1) * 24h. dayIndex=1 because "now" IS this day's start.
+  const effectiveStart = new Date().toISOString();
+  const timeline = generateDayTimeline(schedulePreset, 1, effectiveStart, {
     gameType,
     activityType,
     dilemmaType,
@@ -304,7 +308,7 @@ function resolveDay(
   const isLastDay = alive <= 2;
   const nextDayStart = isLastDay
     ? undefined
-    : computeNextDayStart(schedulePreset, dayIndex, startTime);
+    : computeNextDayStart(schedulePreset, 1, effectiveStart);
 
   return {
     resolvedDay: {
