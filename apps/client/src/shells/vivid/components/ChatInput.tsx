@@ -591,6 +591,7 @@ export function ChatInput({
                       <input
                         ref={inputRef}
                         data-testid="chat-input"
+                        aria-label="Chat message"
                         type="text"
                         value={isDisabled && countdown
                           ? `${context === 'main' ? 'Group chat' : 'DMs'} open${countdown ? ` in ${countdown}` : ''}`
@@ -835,6 +836,7 @@ export function ChatInput({
               <motion.button
                 data-testid="chat-send"
                 type="submit"
+                aria-label="Send message"
                 disabled={!canSend || isDisabled}
                 style={{
                   flexShrink: 0,
