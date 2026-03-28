@@ -55,6 +55,7 @@ export const TimelineInput: React.FC<TimelineInputProps> = ({
       )}
       <form className="flex gap-2 items-center max-w-3xl mx-auto" onSubmit={onSend}>
         <input
+          aria-label="Chat message"
           type="text"
           value={inputValue}
           onChange={(e) => {
