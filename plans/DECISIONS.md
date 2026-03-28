@@ -1801,7 +1801,7 @@ This document tracks significant architectural decisions, their context, and con
     2.  **Immutable cache headers** (`public/_headers`): Set `max-age=31536000, immutable` on `/assets/*` and `/icons/*`. Content-hashed filenames make this safe. Service worker (`sw.js`) keeps `max-age=0, must-revalidate` to ensure updates propagate.
     3.  **Manual chunks** (`vite.config.ts`): Split `vendor` (react, react-dom, zustand), `motion` (framer-motion), and `xstate` into separate chunks. These rarely change, so they cache independently. Cartridges and shells already lazy-loaded — no further splitting needed.
     4.  **Font dedup** (`vivid.css`): Removed JetBrains Mono from Vivid shell's Google Fonts import — already loaded by `ui-kit/theme.css`. Saves one duplicate font download.
-    5.  **Accessibility** (#103): Added `aria-label` to chat input and send button in both Vivid and Immersive shells.
+    5.  **Accessibility** (#103): Added `aria-label` to chat input and send button in all three shells (Vivid, Immersive, Classic).
     6.  **robots.txt** (#104): Added `public/robots.txt` so Vite SPA stops serving `index.html` for `/robots.txt`.
 *   **Consequences:**
     *   Repeat visits faster (immutable caching eliminates revalidation for hashed assets).
