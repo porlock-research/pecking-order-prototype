@@ -7,6 +7,15 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 export default defineConfig({
   build: {
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'zustand'],
+          motion: ['framer-motion'],
+          xstate: ['xstate'],
+        },
+      },
+    },
   },
   plugins: [
     react(),

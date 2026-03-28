@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /game/
+Allow: /
+
+Sitemap: https://play.peckingorder.ca/sitemap.xml

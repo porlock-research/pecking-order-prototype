@@ -122,6 +122,7 @@ export function FloatingInput({ engine, replyTarget, onClearReply }: FloatingInp
         <form className="flex gap-2 items-center" onSubmit={handleSend}>
           <input
             data-testid="chat-input"
+            aria-label="Chat message"
             type="text"
             value={inputValue}
             onChange={(e) => {
@@ -136,6 +137,7 @@ export function FloatingInput({ engine, replyTarget, onClearReply }: FloatingInp
           <motion.button
             data-testid="chat-send"
             type="submit"
+            aria-label="Send message"
             disabled={!inputValue.trim() || !groupChatOpen}
             className="shrink-0 w-12 h-12 rounded-full bg-skin-pink text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed shadow-btn"
             whileTap={TAP.fab}

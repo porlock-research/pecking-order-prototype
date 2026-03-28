@@ -1792,3 +1792,20 @@ This document tracks significant architectural decisions, their context, and con
     *   Calendar presets now behave identically to offset presets semantically — all times are relative to `startTime`.
     *   DST transitions during multi-day games result in consistent 24h gaps (events shift by 1h in local wall-clock time). Acceptable trade-off for game fairness.
 
+## [ADR-121] Client Performance Audit — Quick Wins
+*   **Date:** 2026-03-28
+*   **Status:** Accepted
+*   **Context:** Chrome DevTools performance trace on staging (MPXGBY game) revealed: LCP 952ms (good), CLS 0.09 (borderline — font swap), TTFB 41ms (excellent). Six issues identified (GH #99–#104). Persona headshot PNGs are 1.6MB each (~9.6MB total, #99) — deferred to separate R2 pipeline effort. This ADR covers the low-risk, high-impact fixes implemented together.
+*   **Decision:**
+    1.  **Preconnect hints** (`index.html`): Added `<link rel="preconnect">` for `fonts.googleapis.com` and `fonts.gstatic.com`. Saves ~400ms on font discovery, reduces CLS. Also added `<meta name="description">` for SEO (#104).
+    2.  **Immutable cache headers** (`public/_headers`): Set `max-age=31536000, immutable` on `/assets/*` and `/icons/*`. Content-hashed filenames make this safe. Service worker (`sw.js`) keeps `max-age=0, must-revalidate` to ensure updates propagate.
+    3.  **Manual chunks** (`vite.config.ts`): Split `vendor` (react, react-dom, zustand), `motion` (framer-motion), and `xstate` into separate chunks. These rarely change, so they cache independently. Cartridges and shells already lazy-loaded — no further splitting needed.
+    4.  **Font dedup** (`vivid.css`): Removed JetBrains Mono from Vivid shell's Google Fonts import — already loaded by `ui-kit/theme.css`. Saves one duplicate font download.
+    5.  **Accessibility** (#103): Added `aria-label` to chat input and send button in both Vivid and Immersive shells.
+    6.  **robots.txt** (#104): Added `public/robots.txt` so Vite SPA stops serving `index.html` for `/robots.txt`.
+*   **Consequences:**
+    *   Repeat visits faster (immutable caching eliminates revalidation for hashed assets).
+    *   CLS should drop below 0.05 (preconnect removes ~400ms from font chain).
+    *   Lighthouse a11y score improves (button names, input labels).
+    *   No breaking changes — all additive or config-only.
+
