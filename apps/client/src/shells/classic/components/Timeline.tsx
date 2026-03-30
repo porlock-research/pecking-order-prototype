@@ -4,7 +4,7 @@ import { useGameStore } from '../../../store/useGameStore';
 import { useTimeline } from '../../../hooks/useTimeline';
 import { TimelineChatBubble } from './TimelineChatBubble';
 import { TimelineSystemEvent } from './TimelineSystemEvent';
-import { TimelineCartridgeCard, CompletedCartridgeCard } from './TimelineCartridgeCard';
+import { CompletedCartridgeCard } from './TimelineCartridgeCard';
 import { TimelineInput } from './TimelineInput';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { ArrowDown } from 'lucide-react';
@@ -129,19 +129,6 @@ export const Timeline: React.FC<TimelineProps> = ({ engine }) => {
               );
             case 'system':
               return <TimelineSystemEvent key={entry.key} message={entry.data} />;
-            case 'voting':
-            case 'game':
-            case 'prompt':
-              return (
-                <motion.div
-                  key={entry.key}
-                  initial={{ opacity: 0, y: 16, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  <TimelineCartridgeCard entry={entry} engine={engine} />
-                </motion.div>
-              );
             case 'completed-cartridge':
               return (
                 <motion.div

@@ -5,14 +5,9 @@ import { useTimeline } from '../../../hooks/useTimeline';
 import { ChatBubble } from './ChatBubble';
 import { SystemEvent } from './SystemEvent';
 import { FloatingInput } from './FloatingInput';
-import { CartridgeWrapper } from './CartridgeWrapper';
-import VotingPanel from '../../../components/panels/VotingPanel';
-import GamePanel from '../../../components/panels/GamePanel';
-import PromptPanel from '../../../components/panels/PromptPanel';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
-import { ArrowDown, Vote, Gamepad2, MessageSquare } from 'lucide-react';
-import { SPRING, TAP } from '../springs';
+import { ArrowDown } from 'lucide-react';
 
 interface TimelineProps {
   engine: any;
@@ -23,9 +18,6 @@ const SCROLL_THRESHOLD = 100;
 
 export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
   const { playerId, roster } = useGameStore();
-  const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
-  const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
-  const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
   const onlinePlayers = useGameStore(s => s.onlinePlayers);
   const entries = useTimeline();
   const chatLog = useGameStore(s => s.chatLog);
