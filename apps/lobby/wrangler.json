@@ -40,7 +40,7 @@
         "LOBBY_HOST": "https://staging-lobby.peckingorder.ca",
         "SESSION_COOKIE_NAME": "po_session_stg",
         "PLAYTEST_URL": "https://staging-playtest.peckingorder.ca",
-        "TURNSTILE_SITE_KEY": ""
+        "TURNSTILE_SITE_KEY": "0x4AAAAAACyKQ25EgAbM9RSm"
       },
       "r2_buckets": [
         { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets-staging" }
@@ -70,7 +70,7 @@
         "LOBBY_HOST": "https://lobby.peckingorder.ca",
         "SESSION_COOKIE_NAME": "po_session",
         "PLAYTEST_URL": "https://playtest.peckingorder.ca",
-        "TURNSTILE_SITE_KEY": ""
+        "TURNSTILE_SITE_KEY": "0x4AAAAAACyKQ25EgAbM9RSm"
       },
       "r2_buckets": [
         { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets" }
