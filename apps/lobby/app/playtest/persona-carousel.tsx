@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useSwipeable } from 'react-swipeable';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Persona {
   id: string;
@@ -143,21 +142,6 @@ export function PersonaCarousel({
         ))}
       </div>
 
-      {/* Arrow overlays */}
-      <button
-        onClick={prev}
-        aria-label="Previous persona"
-        className="absolute left-0 top-20 md:top-24 w-9 h-9 rounded-full bg-skin-deep/60 backdrop-blur-sm flex items-center justify-center text-skin-dim hover:text-skin-gold transition-colors"
-      >
-        <ChevronLeft size={18} />
-      </button>
-      <button
-        onClick={next}
-        aria-label="Next persona"
-        className="absolute right-0 top-20 md:top-24 w-9 h-9 rounded-full bg-skin-deep/60 backdrop-blur-sm flex items-center justify-center text-skin-dim hover:text-skin-gold transition-colors"
-      >
-        <ChevronRight size={18} />
-      </button>
     </div>
   );
 }
