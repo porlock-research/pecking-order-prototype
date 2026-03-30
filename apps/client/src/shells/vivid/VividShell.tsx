@@ -20,6 +20,7 @@ import { PhaseTransitionSplash } from './components/PhaseTransitionSplash';
 import { DramaticReveal } from './components/DramaticReveal';
 import { DashboardOverlay } from './components/dashboard/DashboardOverlay';
 import { SilverHUD } from './components/SilverHUD';
+import { CartridgeTakeover } from './components/today/CartridgeTakeover';
 import { VIVID_SPRING } from './springs';
 
 /* ------------------------------------------------------------------ */
@@ -55,6 +56,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const [dmChannelId, setDmChannelId] = useState<string | null>(null);
   const [detailPlayerId, setDetailPlayerId] = useState<string | null>(null);
   const [showNewConversation, setShowNewConversation] = useState(false);
+  const [takeoverCartridge, setTakeoverCartridge] = useState<{ kind: string; cartridge: any } | null>(null);
 
   const roster = useGameStore(s => s.roster);
   const phase = useGameStore(s => s.phase);
@@ -178,7 +180,10 @@ function VividShell({ playerId, engine, token }: ShellProps) {
     >
       {/* Broadcast bar — top (swipe down to open notifications) */}
       <div {...bindDashboardPull()} style={{ touchAction: 'pan-x' }}>
-        <BroadcastBar onClick={toggleDashboard} />
+        <BroadcastBar
+          onBellClick={toggleDashboard}
+          onStripClick={() => setActiveTab('today')}
+        />
       </div>
 
       {/* Main content — tab panels with swipe */}
@@ -226,7 +231,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
               style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
               transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <TodayTab onOpenCartridge={(kind, cartridge) => console.log('open', kind, cartridge)} />
+              <TodayTab onOpenCartridge={(kind, cartridge) => setTakeoverCartridge({ kind, cartridge })} />
             </motion.div>
           )}
 
@@ -293,6 +298,18 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             onOpenSpotlight={(pid) => setDetailPlayerId(pid)}
             playerColorMap={playerColorMap}
             onTapAvatar={(pid) => setDetailPlayerId(pid)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Cartridge takeover — fullscreen overlay */}
+      <AnimatePresence>
+        {takeoverCartridge && (
+          <CartridgeTakeover
+            kind={takeoverCartridge.kind}
+            cartridge={takeoverCartridge.cartridge}
+            engine={engine}
+            onDismiss={() => setTakeoverCartridge(null)}
           />
         )}
       </AnimatePresence>
