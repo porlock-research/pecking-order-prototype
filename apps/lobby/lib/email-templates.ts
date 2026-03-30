@@ -111,3 +111,24 @@ export function buildLoginEmailHtml(opts: {
     ${footer('If you didn\'t request this, you can ignore it.')}
   `);
 }
+
+export function buildPlaytestConfirmationHtml(opts: {
+  assetsUrl: string;
+  lobbyUrl: string;
+  playtestUrl: string;
+}): string {
+  return wrap(`
+    ${logo(opts.assetsUrl, opts.lobbyUrl)}
+    ${card(`
+      <p style="margin:0 0 6px;font-size:20px;font-weight:bold;color:${GOLD};text-align:center;">
+        You're on the list!
+      </p>
+      <p style="margin:0 0 24px;font-size:14px;color:${DIM};text-align:center;line-height:1.6;">
+        We'll email you when the next playtest is scheduled.<br>
+        In the meantime, help us find more players:
+      </p>
+      ${button('Share With Friends', opts.playtestUrl)}
+    `)}
+    ${footer('Pecking Order — A social game of alliances, betrayal & strategy')}
+  `);
+}
