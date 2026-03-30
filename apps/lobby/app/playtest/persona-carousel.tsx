@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSwipeable } from 'react-swipeable';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Persona {
   id: string;
@@ -25,7 +26,7 @@ function PersonaCard({
 
   return (
     <div
-      className={`relative overflow-hidden flex-shrink-0 transition-all duration-300 ${
+      className={`relative overflow-hidden flex-shrink-0 ${
         featured
           ? 'w-40 h-56 md:w-48 md:h-64 rounded-2xl shadow-[0_0_40px_rgba(251,191,36,0.2)] z-10'
           : 'w-28 h-40 md:w-32 md:h-44 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)]'
@@ -66,6 +67,7 @@ export function PersonaCarousel({
   assetsUrl: string;
 }) {
   const [activeIndex, setActiveIndex] = useState(Math.floor(personas.length / 2));
+  const [direction, setDirection] = useState(0);
 
   const handlers = useSwipeable({
     onSwipedLeft: () => next(),
@@ -75,10 +77,12 @@ export function PersonaCarousel({
   });
 
   function prev() {
+    setDirection(-1);
     setActiveIndex((i) => (i === 0 ? personas.length - 1 : i - 1));
   }
 
   function next() {
+    setDirection(1);
     setActiveIndex((i) => (i === personas.length - 1 ? 0 : i + 1));
   }
 
@@ -97,41 +101,63 @@ export function PersonaCarousel({
       {/* Hand of cards */}
       <div className="flex justify-center items-end gap-0 mb-6">
         {/* Left card */}
-        <button
+        <motion.button
+          key={`left-${leftPersona.id}`}
           onClick={prev}
-          className="-rotate-6 translate-y-4 -mr-4 hover:-translate-y-0 transition-all duration-300 cursor-pointer"
+          initial={{ opacity: 0, x: direction < 0 ? -40 : 40, rotate: 0 }}
+          animate={{ opacity: 1, x: 0, rotate: -6, y: 16 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          className="-mr-4 cursor-pointer"
         >
           <PersonaCard persona={leftPersona} assetsUrl={assetsUrl} />
-        </button>
+        </motion.button>
 
         {/* Center (featured) card */}
-        <div className="transition-all duration-300">
+        <motion.div
+          key={`center-${centerPersona.id}`}
+          initial={{ opacity: 0, scale: 0.85, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+        >
           <PersonaCard persona={centerPersona} assetsUrl={assetsUrl} featured />
-        </div>
+        </motion.div>
 
         {/* Right card */}
-        <button
+        <motion.button
+          key={`right-${rightPersona.id}`}
           onClick={next}
-          className="rotate-6 translate-y-4 -ml-4 hover:-translate-y-0 transition-all duration-300 cursor-pointer"
+          initial={{ opacity: 0, x: direction > 0 ? 40 : -40, rotate: 0 }}
+          animate={{ opacity: 1, x: 0, rotate: 6, y: 16 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          className="-ml-4 cursor-pointer"
         >
           <PersonaCard persona={rightPersona} assetsUrl={assetsUrl} />
-        </button>
+        </motion.button>
       </div>
 
       {/* Bio */}
-      <p
-        key={centerPersona.id}
-        className="text-skin-dim text-sm text-center max-w-xs mx-auto font-display leading-relaxed"
-      >
-        &ldquo;{centerPersona.description}&rdquo;
-      </p>
+      <AnimatePresence mode="wait">
+        <motion.p
+          key={centerPersona.id}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2 }}
+          className="text-skin-dim text-sm text-center max-w-xs mx-auto font-display leading-relaxed"
+        >
+          &ldquo;{centerPersona.description}&rdquo;
+        </motion.p>
+      </AnimatePresence>
 
       {/* Dots */}
       <div className="flex gap-1.5 mt-4 justify-center">
         {personas.map((p, i) => (
           <button
             key={p.id}
-            onClick={() => setActiveIndex(i)}
+            onClick={() => {
+              setDirection(i > activeIndex ? 1 : -1);
+              setActiveIndex(i);
+            }}
             aria-label={`View ${p.name}`}
             className={`rounded-full transition-all duration-300 ${
               i === activeIndex
@@ -141,7 +167,6 @@ export function PersonaCarousel({
           />
         ))}
       </div>
-
     </div>
   );
 }
