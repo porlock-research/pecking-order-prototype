@@ -83,7 +83,7 @@ export function CartridgeTakeover({ kind, cartridge, engine, onDismiss }: Cartri
           <svg width={20} height={20} viewBox="0 0 20 20" fill="none">
             <path
               d="M5 5l10 10M15 5L5 15"
-              stroke="rgba(255,255,255,0.5)"
+              stroke="rgba(61,46,31,0.5)"
               strokeWidth={2}
               strokeLinecap="round"
             />

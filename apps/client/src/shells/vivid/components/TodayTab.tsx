@@ -225,7 +225,8 @@ export function TodayTab({ onOpenCartridge }: TodayTabProps) {
     return result;
   }, [
     completedCartridges, dayIndex, activeVotingCartridge, activeGameCartridge,
-    activePromptCartridge, activeDilemma, currentDay, roster, now, phase,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    activePromptCartridge, activeDilemma, currentDay, roster, phase,
   ]);
 
   const activityCount = cards.length;

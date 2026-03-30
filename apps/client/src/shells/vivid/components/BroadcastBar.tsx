@@ -87,7 +87,7 @@ function useNextUpHint(): string | null {
 
   return useMemo(() => {
     if (!manifest?.days) return null;
-    const currentDay = manifest.days[dayIndex]; // selectDayTimeline uses dayIndex directly
+    const currentDay = manifest.days[dayIndex - 1]; // dayIndex is 1-indexed, array is 0-indexed
     if (!currentDay?.timeline) return null;
 
     const now = Date.now();
