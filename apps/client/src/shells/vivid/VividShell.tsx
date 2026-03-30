@@ -10,7 +10,7 @@ import type { DayPhase } from '@pecking-order/shared-types';
 import { BroadcastBar } from './components/BroadcastBar';
 import { StageChat } from './components/StageChat';
 import { PeopleTab } from './components/PeopleTab';
-import { ScheduleTab } from './components/ScheduleTab';
+import { TodayTab } from './components/TodayTab';
 import { DMChat } from './components/DMChat';
 import { TabBar, type VividTab } from './components/TabBar';
 import { NewConversationPicker } from './components/NewConversationPicker';
@@ -226,7 +226,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
               style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
               transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <ScheduleTab />
+              <TodayTab onOpenCartridge={(kind, cartridge) => console.log('open', kind, cartridge)} />
             </motion.div>
           )}
 
