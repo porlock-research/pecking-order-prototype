@@ -95,24 +95,27 @@ function classifyPlayer(
   return 'JOINED_NO_APP';
 }
 
-// --- Brand Email Template (matches lobby/lib/email-templates.ts) ---
+// --- Brand Email Template (matches lobby/lib/email-templates.ts "Dark Court") ---
 
 const FROM_ADDRESS = 'Pecking Order <noreply@peckingorder.ca>';
 
-const DEEP = '#2c003e';
-const PANEL = '#4c1d95';
-const GOLD = '#fbbf24';
-const PINK = '#ec4899';
-const DIM = '#d8b4fe';
-const BASE = '#ffffff';
+const BG = '#0e0014';
+const CARD_BG = '#1a0a28';
+const CARD_BORDER = '#3a1a55';
+const GOLD = '#f0c040';
+const GOLD_DIM = '#b8922e';
+const CTA = '#d946ef';
+const TEXT = '#ede0f5';
+const DIM = '#a888c0';
+const FAINT = '#604878';
 
 function wrap(inner: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background-color:${DEEP};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${DEEP};">
-    <tr><td align="center" style="padding:40px 16px;">
+<body style="margin:0;padding:0;background-color:${BG};font-family:Georgia,'Times New Roman',Times,serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BG};">
+    <tr><td align="center" style="padding:48px 16px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;">
         ${inner}
       </table>
@@ -123,17 +126,24 @@ function wrap(inner: string): string {
 }
 
 function logo(assetsUrl: string, lobbyUrl: string): string {
-  return `<tr><td align="center" style="padding-bottom:32px;">
+  return `<tr><td align="center" style="padding-bottom:12px;">
     <a href="${lobbyUrl}" target="_blank" style="text-decoration:none;">
-      <img src="${assetsUrl}/branding/email-logo.png" alt="PECKING ORDER" width="320" style="display:block;max-width:100%;height:auto;border:0;" />
+      <img src="${assetsUrl}/branding/email-logo.png" alt="PECKING ORDER" width="280" style="display:block;max-width:100%;height:auto;border:0;" />
     </a>
+  </td></tr>
+  <tr><td align="center" style="padding-bottom:36px;">
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+      <td style="width:60px;border-bottom:1px solid ${GOLD_DIM};"></td>
+      <td style="padding:0 14px;font-size:11px;color:${GOLD_DIM};letter-spacing:3px;">&#9670;</td>
+      <td style="width:60px;border-bottom:1px solid ${GOLD_DIM};"></td>
+    </tr></table>
   </td></tr>`;
 }
 
 function card(inner: string): string {
   return `<tr><td>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${PANEL};border-radius:16px;border:1px solid rgba(255,255,255,0.1);">
-      <tr><td style="padding:32px 28px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CARD_BG};border-radius:12px;border:1px solid ${CARD_BORDER};">
+      <tr><td style="padding:36px 32px;">
         ${inner}
       </td></tr>
     </table>
@@ -142,27 +152,46 @@ function card(inner: string): string {
 
 function button(label: string, href: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-    <tr><td align="center" style="border-radius:12px;background-color:${PINK};">
-      <a href="${href}" target="_blank" style="display:inline-block;padding:16px 40px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:${BASE};text-decoration:none;">
+    <tr><td align="center" style="border-radius:10px;background-color:${CTA};">
+      <a href="${href}" target="_blank" style="display:inline-block;padding:16px 44px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;font-weight:bold;letter-spacing:2.5px;text-transform:uppercase;color:#ffffff;text-decoration:none;">
         ${label}
       </a>
     </td></tr>
   </table>`;
 }
 
+function divider(): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0;">
+    <tr>
+      <td style="border-bottom:1px solid ${GOLD_DIM};"></td>
+      <td style="padding:0 12px;font-size:9px;color:${GOLD_DIM};letter-spacing:3px;">&#9670;</td>
+      <td style="border-bottom:1px solid ${GOLD_DIM};"></td>
+    </tr>
+  </table>`;
+}
+
 function inviteCode(code: string): string {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;border-top:1px solid rgba(255,255,255,0.08);">
-    <tr><td style="padding-top:20px;" align="center">
-      <span style="font-family:'Courier New',Courier,monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${DIM};opacity:0.6;">Invite Code</span>
+  return `${divider()}
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr><td align="center">
+      <span style="font-family:'Courier New',Courier,monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${FAINT};">Invite Code</span>
       <br>
-      <span style="font-family:'Courier New',Courier,monospace;font-size:22px;font-weight:bold;letter-spacing:4px;color:${GOLD};">${code}</span>
+      <span style="font-family:'Courier New',Courier,monospace;font-size:24px;font-weight:bold;letter-spacing:5px;color:${GOLD};">${code}</span>
     </td></tr>
   </table>`;
 }
 
+function hero(lobbyUrl: string): string {
+  return `<tr><td align="center" style="padding-bottom:28px;">
+    <img src="${lobbyUrl}/email-hero.png" alt="Pecking Order personas" width="320" style="display:block;max-width:80%;height:auto;border:0;" />
+  </td></tr>`;
+}
+
 function footer(text: string): string {
-  return `<tr><td align="center" style="padding-top:24px;">
-    <span style="font-family:'Courier New',Courier,monospace;font-size:11px;color:${DIM};opacity:0.5;">${text}</span>
+  return `<tr><td align="center" style="padding-top:32px;">
+    <span style="font-size:10px;color:${FAINT};letter-spacing:4px;">&#9670; &#9670; &#9670;</span>
+    <br><br>
+    <span style="font-family:Georgia,'Times New Roman',Times,serif;font-size:12px;font-style:italic;color:${FAINT};line-height:1.5;">${text}</span>
   </td></tr>`;
 }
 
@@ -180,15 +209,16 @@ function buildNudgeEmail(target: NudgeTarget, day1Start: Date, lobbyHost: string
   switch (target.stage) {
     case 'NEVER_CLICKED':
       return {
-        subject: "Pecking Order starts soon — don't miss Day 1!",
+        subject: "Pecking Order starts soon \u2014 don't miss Day 1!",
         html: wrap(`
           ${logo(assetsUrl, lobbyHost)}
+          ${hero(lobbyHost)}
           ${card(`
-            <p style="margin:0 0 6px;font-size:15px;color:${DIM};text-align:center;">
-              You've been summoned.
+            <p style="margin:0 0 8px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${DIM};text-align:center;">
+              You have been summoned
             </p>
-            <p style="margin:0 0 28px;font-size:16px;color:${BASE};text-align:center;">
-              Day 1 begins at <strong style="color:${GOLD};">${day1Time} today</strong>. Pick your character and jump in before it's too late.
+            <p style="margin:0 0 28px;font-size:17px;color:${TEXT};text-align:center;line-height:1.5;">
+              Day 1 begins at <strong style="color:${GOLD};">${day1Time} today</strong>. Pick your character and join before the gates close.
             </p>
             ${button('Join the Game', joinUrl)}
             ${inviteCode(target.inviteCode)}
@@ -199,15 +229,16 @@ function buildNudgeEmail(target: NudgeTarget, day1Start: Date, lobbyHost: string
 
     case 'CLICKED_NO_JOIN':
       return {
-        subject: "You're almost in — finish joining Pecking Order!",
+        subject: "You're almost in \u2014 finish joining Pecking Order!",
         html: wrap(`
           ${logo(assetsUrl, lobbyHost)}
+          ${hero(lobbyHost)}
           ${card(`
-            <p style="margin:0 0 6px;font-size:15px;color:${DIM};text-align:center;">
-              You're almost in.
+            <p style="margin:0 0 8px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${DIM};text-align:center;">
+              Your seat awaits
             </p>
-            <p style="margin:0 0 28px;font-size:16px;color:${BASE};text-align:center;">
-              Day 1 begins at <strong style="color:${GOLD};">${day1Time} today</strong>. Pick a persona, write your bio, and get in the game.
+            <p style="margin:0 0 28px;font-size:17px;color:${TEXT};text-align:center;line-height:1.5;">
+              Day 1 begins at <strong style="color:${GOLD};">${day1Time} today</strong>. Pick a persona, write your bio, and claim your place.
             </p>
             ${button('Pick Your Character', joinUrl)}
             ${inviteCode(target.inviteCode)}
@@ -218,15 +249,16 @@ function buildNudgeEmail(target: NudgeTarget, day1Start: Date, lobbyHost: string
 
     case 'JOINED_NO_APP':
       return {
-        subject: `Day 1 has begun — ${target.personaName || 'your character'} is waiting!`,
+        subject: `Day 1 has begun \u2014 ${target.personaName || 'your character'} is waiting!`,
         html: wrap(`
           ${logo(assetsUrl, lobbyHost)}
+          ${hero(lobbyHost)}
           ${card(`
-            <p style="margin:0 0 6px;font-size:15px;color:${DIM};text-align:center;">
-              Day 1 is live!
+            <p style="margin:0 0 8px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${DIM};text-align:center;">
+              The game is live
             </p>
-            <p style="margin:0 0 28px;font-size:16px;color:${BASE};text-align:center;">
-              You've picked your character${target.personaName ? ` <strong style="color:${GOLD};">${target.personaName}</strong>` : ''} — now enter the game to start playing.
+            <p style="margin:0 0 28px;font-size:17px;color:${TEXT};text-align:center;line-height:1.5;">
+              You&rsquo;ve chosen your character${target.personaName ? ` <strong style="color:${GOLD};">${target.personaName}</strong>` : ''} &mdash; now enter the court and begin playing.
             </p>
             ${button('Enter the Game', `${lobbyHost}/play/${target.inviteCode}`)}
             ${inviteCode(target.inviteCode)}

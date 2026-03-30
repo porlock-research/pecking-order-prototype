@@ -1841,3 +1841,22 @@ This document tracks significant architectural decisions, their context, and con
     *   Dilemma game theory is slightly softened — strategic no-shows become less powerful as a sabotage vector.
     *   If the "allow 1" threshold needs tuning later, the `eligiblePlayers` parameter makes it easy to adjust per-dilemma-type.
 
+## [ADR-124] Email Template Redesign — "The Dark Court"
+*   **Date:** 2026-03-30
+*   **Status:** Accepted
+*   **Context:** The original email templates (invite, login, playtest confirmation, nudge) used a basic purple card style (`#4c1d95` on `#2c003e`) with Helvetica body text. They were functional but visually generic — they didn't convey the game's atmosphere of intrigue and strategy. The playtest signup confirmation email was particularly sparse (just "You're on the list!" and a share button).
+*   **Decision:**
+    1.  **New palette "The Dark Court"**: Near-black plum background (`#0e0014`), dark amethyst cards (`#1a0a28`), warmer gold (`#f0c040`), vivid fuchsia CTA (`#d946ef`), lavender-white text (`#ede0f5`).
+    2.  **Georgia/serif body font** for a refined "sealed letter" feel. Sans-serif reserved for labels, buttons, and uppercase section headers.
+    3.  **Gold ornamental dividers** using diamond HTML entity (◆) flanked by `GOLD_DIM` (`#b8922e`) ruled lines. Triple-diamond ornament in footer.
+    4.  **Persona card-deck hero image** (`email-hero.png`): cropped from the OG social image to show just the fanned persona cards. Background recolored to match email BG for seamless blending. Used in ALL email types (playtest, invite, login, nudge).
+    5.  **Playtest confirmation overhaul**: Bold "CONFIRMED / You're In" header, "What to expect" section with 3 star-marked bullet points (pick persona, play on phone, form alliances), "recruit your allies" share CTA.
+    6.  **Game-world voice** across all templates: "You have been summoned", "This passage expires", "your seat awaits", "enter the court".
+    7.  **Nudge worker templates synced** to the same Dark Court palette, helpers, and hero image.
+    8.  **Preview tool** (`/email-preview.html`) with desktop/mobile viewport toggle and email type tabs for local development.
+*   **Consequences:**
+    *   All emails share a cohesive visual identity that matches the game's atmosphere.
+    *   The `email-hero.png` asset must be deployed to the lobby's public directory (alongside the existing `og-playtest.png`).
+    *   The nudge worker still duplicates template helpers from `lobby/lib/email-templates.ts` — a future refactor could extract shared email components into `packages/`.
+    *   The preview file (`email-preview.html`) is a dev-only tool in `public/` and should be excluded from production builds or removed before launch.
+

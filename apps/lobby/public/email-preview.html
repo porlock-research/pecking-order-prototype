@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Email Preview</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#111; font-family:system-ui,sans-serif; color:#ccc; }
+.toolbar { position:sticky; top:0; z-index:10; background:#1a1a2e; border-bottom:1px solid #2a1a40; padding:16px 24px; display:flex; align-items:center; gap:16px; }
+.toolbar h1 { font-size:14px; color:#f0c040; letter-spacing:3px; }
+.toolbar button { background:#2a1a40; border:1px solid #3a1a55; color:#a888c0; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:12px; letter-spacing:1px; }
+.toolbar button.active { background:#d946ef; color:#fff; border-color:#d946ef; }
+.viewport { display:flex; justify-content:center; padding:32px 16px; min-height:calc(100vh - 60px); background:#222; }
+.frame { transition:width 0.3s ease; overflow:hidden; background:#0e0014; box-shadow:0 0 60px rgba(0,0,0,0.5); }
+.frame.desktop { width:600px; }
+.frame.mobile { width:375px; }
+.tabs { display:flex; gap:0; margin-left:auto; }
+.tabs button { border-radius:0; border-right:0; }
+.tabs button:first-child { border-radius:6px 0 0 6px; }
+.tabs button:last-child { border-radius:0 6px 6px 0; border-right:1px solid #3a1a55; }
+.email-tabs { display:flex; gap:0; }
+.email-tabs button { border-radius:0; border-right:0; }
+.email-tabs button:first-child { border-radius:6px 0 0 6px; }
+.email-tabs button:last-child { border-radius:0 6px 6px 0; border-right:1px solid #3a1a55; }
+iframe { width:100%; border:0; background:#0e0014; }
+iframe.hidden { display:none; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <h1>EMAIL PREVIEW</h1>
+  <div class="email-tabs">
+    <button class="active" onclick="showEmail('playtest',this)">Playtest</button>
+    <button onclick="showEmail('invite',this)">Invite</button>
+    <button onclick="showEmail('login',this)">Login</button>
+  </div>
+  <div class="tabs">
+    <button class="active" onclick="setViewport('desktop',this)">Desktop</button>
+    <button onclick="setViewport('mobile',this)">Mobile</button>
+  </div>
+</div>
+<div class="viewport">
+  <div class="frame desktop" id="frame">
+    <iframe id="email-playtest" height="1050" srcdoc='<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#0e0014;font-family:Georgia,Times New Roman,Times,serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0e0014;">
+    <tr><td align="center" style="padding:48px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;">
+        <tr><td align="center" style="padding-bottom:12px;">
+          <img src="/branding/email-logo.png" alt="PECKING ORDER" width="280" style="display:block;max-width:100%;height:auto;border:0;" />
+        </td></tr>
+        <tr><td align="center" style="padding-bottom:36px;">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="width:60px;border-bottom:1px solid #b8922e;"></td>
+            <td style="padding:0 14px;font-size:11px;color:#b8922e;letter-spacing:3px;">&#9670;</td>
+            <td style="width:60px;border-bottom:1px solid #b8922e;"></td>
+          </tr></table>
+        </td></tr>
+        <tr><td align="center" style="padding-bottom:28px;">
+          <img src="/email-hero.png" alt="Pecking Order personas" width="320" style="display:block;max-width:80%;height:auto;border:0;" />
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#1a0a28;border-radius:12px;border:1px solid #3a1a55;">
+            <tr><td style="padding:36px 32px;">
+              <p style="margin:0 0 4px;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:#a888c0;text-align:center;">Confirmed</p>
+              <p style="margin:0 0 24px;font-size:28px;font-weight:bold;color:#f0c040;text-align:center;letter-spacing:1px;">You&#8217;re In</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0;">
+                <tr>
+                  <td style="border-bottom:1px solid #b8922e;"></td>
+                  <td style="padding:0 12px;font-size:9px;color:#b8922e;letter-spacing:3px;">&#9670;</td>
+                  <td style="border-bottom:1px solid #b8922e;"></td>
+                </tr>
+              </table>
+              <p style="margin:0 0 6px;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#604878;text-align:center;">What to expect</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr><td style="padding:10px 0;border-bottom:1px solid #3a1a55;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                    <td width="32" valign="top" style="font-size:14px;color:#f0c040;padding-top:1px;">&#9733;</td>
+                    <td style="font-size:14px;color:#ede0f5;line-height:1.5;"><strong>Pick a persona</strong> <span style="color:#a888c0;">&#8212; choose a character with a unique identity and backstory</span></td>
+                  </tr></table>
+                </td></tr>
+                <tr><td style="padding:10px 0;border-bottom:1px solid #3a1a55;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                    <td width="32" valign="top" style="font-size:14px;color:#f0c040;padding-top:1px;">&#9733;</td>
+                    <td style="font-size:14px;color:#ede0f5;line-height:1.5;"><strong>Play on your phone</strong> <span style="color:#a888c0;">&#8212; games unfold over multiple days with scheduled events</span></td>
+                  </tr></table>
+                </td></tr>
+                <tr><td style="padding:10px 0;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                    <td width="32" valign="top" style="font-size:14px;color:#f0c040;padding-top:1px;">&#9733;</td>
+                    <td style="font-size:14px;color:#ede0f5;line-height:1.5;"><strong>Form alliances, vote, survive</strong> <span style="color:#a888c0;">&#8212; outwit others to be the last one standing</span></td>
+                  </tr></table>
+                </td></tr>
+              </table>
+              <p style="margin:0 0 20px;font-size:14px;color:#a888c0;text-align:center;line-height:1.5;">We&#8217;ll email you when the next playtest is ready.<br>Until then &#8212; recruit your allies:</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr><td align="center" style="border-radius:10px;background-color:#d946ef;">
+                  <a href="#" style="display:inline-block;padding:16px 44px;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;font-size:13px;font-weight:bold;letter-spacing:2.5px;text-transform:uppercase;color:#ffffff;text-decoration:none;">Share With Friends</a>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td align="center" style="padding-top:32px;">
+          <span style="font-size:10px;color:#604878;letter-spacing:4px;">&#9670; &#9670; &#9670;</span><br><br>
+          <span style="font-family:Georgia,Times New Roman,Times,serif;font-size:12px;font-style:italic;color:#604878;line-height:1.5;">A social game of alliances, betrayal &amp; strategy</span>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>'></iframe>
+
+    <iframe id="email-invite" class="hidden" height="900" srcdoc='<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#0e0014;font-family:Georgia,Times New Roman,Times,serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0e0014;">
+    <tr><td align="center" style="padding:48px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;">
+        <tr><td align="center" style="padding-bottom:12px;">
+          <img src="/branding/email-logo.png" alt="PECKING ORDER" width="280" style="display:block;max-width:100%;height:auto;border:0;" />
+        </td></tr>
+        <tr><td align="center" style="padding-bottom:36px;">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="width:60px;border-bottom:1px solid #b8922e;"></td>
+            <td style="padding:0 14px;font-size:11px;color:#b8922e;letter-spacing:3px;">&#9670;</td>
+            <td style="width:60px;border-bottom:1px solid #b8922e;"></td>
+          </tr></table>
+        </td></tr>
+        <tr><td align="center" style="padding-bottom:28px;">
+          <img src="/email-hero.png" alt="Pecking Order personas" width="320" style="display:block;max-width:80%;height:auto;border:0;" />
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#1a0a28;border-radius:12px;border:1px solid #3a1a55;">
+            <tr><td style="padding:36px 32px;">
+              <p style="margin:0 0 8px;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#a888c0;text-align:center;">You have been summoned</p>
+              <p style="margin:0 0 28px;font-size:18px;color:#ede0f5;text-align:center;line-height:1.5;"><strong style="color:#f0c040;">Captain Whiskers</strong> has invited you to join a game of alliances, betrayal, and strategy.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr><td align="center" style="border-radius:10px;background-color:#d946ef;">
+                  <a href="#" style="display:inline-block;padding:16px 44px;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;font-size:13px;font-weight:bold;letter-spacing:2.5px;text-transform:uppercase;color:#ffffff;text-decoration:none;">Join the Game</a>
+                </td></tr>
+              </table>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0;">
+                <tr>
+                  <td style="border-bottom:1px solid #b8922e;"></td>
+                  <td style="padding:0 12px;font-size:9px;color:#b8922e;letter-spacing:3px;">&#9670;</td>
+                  <td style="border-bottom:1px solid #b8922e;"></td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr><td align="center">
+                  <span style="font-family:Courier New,Courier,monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#604878;">Invite Code</span><br>
+                  <span style="font-family:Courier New,Courier,monospace;font-size:24px;font-weight:bold;letter-spacing:5px;color:#f0c040;">ABCD12</span>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td align="center" style="padding-top:32px;">
+          <span style="font-size:10px;color:#604878;letter-spacing:4px;">&#9670; &#9670; &#9670;</span><br><br>
+          <span style="font-family:Georgia,Times New Roman,Times,serif;font-size:12px;font-style:italic;color:#604878;line-height:1.5;">Choose wisely. Trust no one.</span>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>'></iframe>
+
+    <iframe id="email-login" class="hidden" height="700" srcdoc='<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#0e0014;font-family:Georgia,Times New Roman,Times,serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0e0014;">
+    <tr><td align="center" style="padding:48px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;">
+        <tr><td align="center" style="padding-bottom:12px;">
+          <img src="/branding/email-logo.png" alt="PECKING ORDER" width="280" style="display:block;max-width:100%;height:auto;border:0;" />
+        </td></tr>
+        <tr><td align="center" style="padding-bottom:36px;">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="width:60px;border-bottom:1px solid #b8922e;"></td>
+            <td style="padding:0 14px;font-size:11px;color:#b8922e;letter-spacing:3px;">&#9670;</td>
+            <td style="width:60px;border-bottom:1px solid #b8922e;"></td>
+          </tr></table>
+        </td></tr>
+        <tr><td align="center" style="padding-bottom:28px;">
+          <img src="/email-hero.png" alt="Pecking Order personas" width="320" style="display:block;max-width:80%;height:auto;border:0;" />
+        </td></tr>
+        <tr><td>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#1a0a28;border-radius:12px;border:1px solid #3a1a55;">
+            <tr><td style="padding:36px 32px;">
+              <p style="margin:0 0 24px;font-size:16px;color:#ede0f5;text-align:center;line-height:1.5;">Tap below to enter. This passage expires in <strong style="color:#f0c040;">5 minutes</strong>.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr><td align="center" style="border-radius:10px;background-color:#d946ef;">
+                  <a href="#" style="display:inline-block;padding:16px 44px;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;font-size:13px;font-weight:bold;letter-spacing:2.5px;text-transform:uppercase;color:#ffffff;text-decoration:none;">Sign In</a>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td align="center" style="padding-top:32px;">
+          <span style="font-size:10px;color:#604878;letter-spacing:4px;">&#9670; &#9670; &#9670;</span><br><br>
+          <span style="font-family:Georgia,Times New Roman,Times,serif;font-size:12px;font-style:italic;color:#604878;line-height:1.5;">If you didn&#8217;t request this, you can safely ignore it.</span>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>'></iframe>
+  </div>
+</div>
+
+<script>
+function showEmail(type, btn) {
+  document.querySelectorAll('#frame iframe').forEach(function(f) { f.classList.add('hidden'); });
+  document.getElementById('email-' + type).classList.remove('hidden');
+  document.querySelectorAll('.email-tabs button').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+function setViewport(size, btn) {
+  var frame = document.getElementById('frame');
+  frame.classList.remove('desktop', 'mobile');
+  frame.classList.add(size);
+  document.querySelectorAll('.tabs button').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

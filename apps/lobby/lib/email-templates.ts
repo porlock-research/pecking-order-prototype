@@ -1,22 +1,29 @@
-// ── Brand-consistent email templates ─────────────────────────────────────
+// ── Email templates — "The Dark Court" ───────────────────────────────────
 // Inline CSS only (email clients strip <style> blocks).
-// Colors match packages/ui-kit/src/theme.css default theme.
+// Design: sealed missives from a shadowy court — deep plum, warm gold,
+// ornamental dividers, Georgia body text, game-world voice.
 
-const DEEP = '#2c003e';
-const PANEL = '#4c1d95';
-const GOLD = '#fbbf24';
-const PINK = '#ec4899';
-const DIM = '#d8b4fe';
-const BASE = '#ffffff';
+// ── Palette ──────────────────────────────────────────────────────────────
+const BG = '#0e0014';          // near-black plum
+const CARD_BG = '#1a0a28';     // dark amethyst
+const CARD_BORDER = '#3a1a55'; // muted purple border
+const GOLD = '#f0c040';        // warm rich gold
+const GOLD_DIM = '#b8922e';    // subdued gold for rules/dividers
+const CTA = '#d946ef';         // vivid fuchsia
+const TEXT = '#ede0f5';        // lavender white
+const DIM = '#a888c0';         // muted lilac
+const FAINT = '#604878';       // barely-there purple
 
-/** Shared outer wrapper — dark background, centered column, safe fonts */
+// ── Shared building blocks ───────────────────────────────────────────────
+
+/** Full-page dark wrapper — centered 480px column */
 function wrap(inner: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background-color:${DEEP};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${DEEP};">
-    <tr><td align="center" style="padding:40px 16px;">
+<body style="margin:0;padding:0;background-color:${BG};font-family:Georgia,'Times New Roman',Times,serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BG};">
+    <tr><td align="center" style="padding:48px 16px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;">
         ${inner}
       </table>
@@ -26,41 +33,68 @@ function wrap(inner: string): string {
 </html>`;
 }
 
-/** Logo image header — served from R2 via assets CDN */
+/** Logo image — served from R2 assets CDN */
 function logo(assetsUrl: string, lobbyUrl: string): string {
-  return `<tr><td align="center" style="padding-bottom:32px;">
+  return `<tr><td align="center" style="padding-bottom:12px;">
     <a href="${lobbyUrl}" target="_blank" style="text-decoration:none;">
-      <img src="${assetsUrl}/branding/email-logo.png" alt="PECKING ORDER" width="320" style="display:block;max-width:100%;height:auto;border:0;" />
+      <img src="${assetsUrl}/branding/email-logo.png" alt="PECKING ORDER" width="280" style="display:block;max-width:100%;height:auto;border:0;" />
     </a>
+  </td></tr>
+  <tr><td align="center" style="padding-bottom:36px;">
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+      <td style="width:60px;border-bottom:1px solid ${GOLD_DIM};"></td>
+      <td style="padding:0 14px;font-size:11px;color:${GOLD_DIM};letter-spacing:3px;">&#9670;</td>
+      <td style="width:60px;border-bottom:1px solid ${GOLD_DIM};"></td>
+    </tr></table>
   </td></tr>`;
 }
 
-/** Glass-style card container */
+/** Card — dark panel with gold-tinted border */
 function card(inner: string): string {
   return `<tr><td>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${PANEL};border-radius:16px;border:1px solid rgba(255,255,255,0.1);">
-      <tr><td style="padding:32px 28px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CARD_BG};border-radius:12px;border:1px solid ${CARD_BORDER};">
+      <tr><td style="padding:36px 32px;">
         ${inner}
       </td></tr>
     </table>
   </td></tr>`;
 }
 
-/** Pink CTA button */
+/** Gold-bordered CTA button */
 function button(label: string, href: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-    <tr><td align="center" style="border-radius:12px;background-color:${PINK};">
-      <a href="${href}" target="_blank" style="display:inline-block;padding:16px 40px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:14px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:${BASE};text-decoration:none;">
+    <tr><td align="center" style="border-radius:10px;background-color:${CTA};">
+      <a href="${href}" target="_blank" style="display:inline-block;padding:16px 44px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;font-weight:bold;letter-spacing:2.5px;text-transform:uppercase;color:#ffffff;text-decoration:none;">
         ${label}
       </a>
     </td></tr>
   </table>`;
 }
 
-/** Dim footer text */
+/** Gold ornamental divider — horizontal rule with diamond */
+function divider(): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0;">
+    <tr>
+      <td style="border-bottom:1px solid ${GOLD_DIM};"></td>
+      <td style="padding:0 12px;font-size:9px;color:${GOLD_DIM};letter-spacing:3px;">&#9670;</td>
+      <td style="border-bottom:1px solid ${GOLD_DIM};"></td>
+    </tr>
+  </table>`;
+}
+
+/** Persona card-deck hero image */
+function hero(lobbyUrl: string): string {
+  return `<tr><td align="center" style="padding-bottom:28px;">
+    <img src="${lobbyUrl}/email-hero.png" alt="Pecking Order personas" width="320" style="display:block;max-width:80%;height:auto;border:0;" />
+  </td></tr>`;
+}
+
+/** Atmospheric footer with ornament */
 function footer(text: string): string {
-  return `<tr><td align="center" style="padding-top:24px;">
-    <span style="font-family:'Courier New',Courier,monospace;font-size:11px;color:${DIM};opacity:0.5;">${text}</span>
+  return `<tr><td align="center" style="padding-top:32px;">
+    <span style="font-size:10px;color:${FAINT};letter-spacing:4px;">&#9670; &#9670; &#9670;</span>
+    <br><br>
+    <span style="font-family:Georgia,'Times New Roman',Times,serif;font-size:12px;font-style:italic;color:${FAINT};line-height:1.5;">${text}</span>
   </td></tr>`;
 }
 
@@ -75,19 +109,21 @@ export function buildInviteEmailHtml(opts: {
 }): string {
   return wrap(`
     ${logo(opts.assetsUrl, opts.lobbyUrl)}
+    ${hero(opts.lobbyUrl)}
     ${card(`
-      <p style="margin:0 0 6px;font-size:15px;color:${DIM};text-align:center;">
-        You've been summoned.
+      <p style="margin:0 0 8px;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:${DIM};text-align:center;">
+        You have been summoned
       </p>
-      <p style="margin:0 0 28px;font-size:16px;color:${BASE};text-align:center;">
-        <strong style="color:${GOLD};">${opts.senderName}</strong> invited you to play.
+      <p style="margin:0 0 28px;font-size:18px;color:${TEXT};text-align:center;line-height:1.5;">
+        <strong style="color:${GOLD};">${opts.senderName}</strong> has invited you to join a game of alliances, betrayal, and strategy.
       </p>
       ${button('Join the Game', opts.inviteLink)}
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;border-top:1px solid rgba(255,255,255,0.08);">
-        <tr><td style="padding-top:20px;" align="center">
-          <span style="font-family:'Courier New',Courier,monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${DIM};opacity:0.6;">Invite Code</span>
+      ${divider()}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr><td align="center">
+          <span style="font-family:'Courier New',Courier,monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${FAINT};">Invite Code</span>
           <br>
-          <span style="font-family:'Courier New',Courier,monospace;font-size:22px;font-weight:bold;letter-spacing:4px;color:${GOLD};">${opts.inviteCode}</span>
+          <span style="font-family:'Courier New',Courier,monospace;font-size:24px;font-weight:bold;letter-spacing:5px;color:${GOLD};">${opts.inviteCode}</span>
         </td></tr>
       </table>
     `)}
@@ -102,13 +138,14 @@ export function buildLoginEmailHtml(opts: {
 }): string {
   return wrap(`
     ${logo(opts.assetsUrl, opts.lobbyUrl)}
+    ${hero(opts.lobbyUrl)}
     ${card(`
-      <p style="margin:0 0 24px;font-size:15px;color:${DIM};text-align:center;">
-        Tap below to sign in. This link expires in 5 minutes.
+      <p style="margin:0 0 24px;font-size:16px;color:${TEXT};text-align:center;line-height:1.5;">
+        Tap below to enter. This passage expires in <strong style="color:${GOLD};">5 minutes</strong>.
       </p>
       ${button('Sign In', opts.loginLink)}
     `)}
-    ${footer('If you didn\'t request this, you can ignore it.')}
+    ${footer('If you didn&rsquo;t request this, you can safely ignore it.')}
   `);
 }
 
@@ -119,16 +156,57 @@ export function buildPlaytestConfirmationHtml(opts: {
 }): string {
   return wrap(`
     ${logo(opts.assetsUrl, opts.lobbyUrl)}
+    ${hero(opts.lobbyUrl)}
     ${card(`
-      <p style="margin:0 0 6px;font-size:20px;font-weight:bold;color:${GOLD};text-align:center;">
-        You're on the list!
+      <p style="margin:0 0 4px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:4px;text-transform:uppercase;color:${DIM};text-align:center;">
+        Confirmed
       </p>
-      <p style="margin:0 0 24px;font-size:14px;color:${DIM};text-align:center;line-height:1.6;">
-        We'll email you when the next playtest is scheduled.<br>
-        In the meantime, help us find more players:
+      <p style="margin:0 0 24px;font-size:28px;font-weight:bold;color:${GOLD};text-align:center;letter-spacing:1px;">
+        You&rsquo;re In
+      </p>
+
+      ${divider()}
+
+      <p style="margin:0 0 6px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:${FAINT};text-align:center;">
+        What to expect
+      </p>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+        <tr><td style="padding:10px 0;border-bottom:1px solid ${CARD_BORDER};">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td width="32" valign="top" style="font-size:14px;color:${GOLD};padding-top:1px;">&#9733;</td>
+            <td style="font-size:14px;color:${TEXT};line-height:1.5;">
+              <strong style="color:${TEXT};">Pick a persona</strong>
+              <span style="color:${DIM};"> &mdash; choose a character with a unique identity and backstory</span>
+            </td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:10px 0;border-bottom:1px solid ${CARD_BORDER};">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td width="32" valign="top" style="font-size:14px;color:${GOLD};padding-top:1px;">&#9733;</td>
+            <td style="font-size:14px;color:${TEXT};line-height:1.5;">
+              <strong style="color:${TEXT};">Play on your phone</strong>
+              <span style="color:${DIM};"> &mdash; games unfold over multiple days with scheduled events</span>
+            </td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:10px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td width="32" valign="top" style="font-size:14px;color:${GOLD};padding-top:1px;">&#9733;</td>
+            <td style="font-size:14px;color:${TEXT};line-height:1.5;">
+              <strong style="color:${TEXT};">Form alliances, vote, survive</strong>
+              <span style="color:${DIM};"> &mdash; outwit others to be the last one standing</span>
+            </td>
+          </tr></table>
+        </td></tr>
+      </table>
+
+      <p style="margin:0 0 20px;font-size:14px;color:${DIM};text-align:center;line-height:1.5;">
+        We&rsquo;ll email you when the next playtest is ready.<br>
+        Until then &mdash; recruit your allies:
       </p>
       ${button('Share With Friends', opts.playtestUrl)}
     `)}
-    ${footer('Pecking Order — A social game of alliances, betrayal & strategy')}
+    ${footer('A social game of alliances, betrayal &amp; strategy')}
   `);
 }
