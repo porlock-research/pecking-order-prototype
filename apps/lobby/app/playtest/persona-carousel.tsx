@@ -104,7 +104,7 @@ export function PersonaCarousel({
         <motion.button
           key={`left-${leftPersona.id}`}
           onClick={prev}
-          initial={{ opacity: 0, x: direction < 0 ? -40 : 40, rotate: 0 }}
+          initial={{ opacity: 0, x: direction * -60, rotate: 0 }}
           animate={{ opacity: 1, x: 0, rotate: -6, y: 16 }}
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           className="-mr-4 cursor-pointer"
@@ -115,8 +115,8 @@ export function PersonaCarousel({
         {/* Center (featured) card */}
         <motion.div
           key={`center-${centerPersona.id}`}
-          initial={{ opacity: 0, scale: 0.85, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
+          initial={{ opacity: 0, x: direction * 80, scale: 0.85 }}
+          animate={{ opacity: 1, x: 0, scale: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
         >
           <PersonaCard persona={centerPersona} assetsUrl={assetsUrl} featured />
@@ -126,7 +126,7 @@ export function PersonaCarousel({
         <motion.button
           key={`right-${rightPersona.id}`}
           onClick={next}
-          initial={{ opacity: 0, x: direction > 0 ? 40 : -40, rotate: 0 }}
+          initial={{ opacity: 0, x: direction * 60, rotate: 0 }}
           animate={{ opacity: 1, x: 0, rotate: 6, y: 16 }}
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           className="-ml-4 cursor-pointer"
@@ -150,7 +150,7 @@ export function PersonaCarousel({
       </AnimatePresence>
 
       {/* Dots */}
-      <div className="flex gap-1.5 mt-4 justify-center">
+      <div className="flex gap-2 mt-5 justify-center items-center">
         {personas.map((p, i) => (
           <button
             key={p.id}
@@ -159,11 +159,12 @@ export function PersonaCarousel({
               setActiveIndex(i);
             }}
             aria-label={`View ${p.name}`}
-            className={`rounded-full transition-all duration-300 ${
-              i === activeIndex
-                ? 'w-5 h-1.5 bg-skin-gold'
-                : 'w-1.5 h-1.5 bg-skin-dim/30 hover:bg-skin-dim/50'
-            }`}
+            className="rounded-full transition-all duration-300"
+            style={{
+              width: i === activeIndex ? 24 : 8,
+              height: 8,
+              backgroundColor: i === activeIndex ? '#fbbf24' : 'rgba(251, 191, 36, 0.35)',
+            }}
           />
         ))}
       </div>
