@@ -26,7 +26,7 @@ import { VIVID_SPRING } from './springs';
 /*  Tab ordering for swipe gestures                                    */
 /* ------------------------------------------------------------------ */
 
-const TAB_ORDER: VividTab[] = ['chat', 'schedule', 'people'];
+const TAB_ORDER: VividTab[] = ['chat', 'today', 'people'];
 
 /* ------------------------------------------------------------------ */
 /*  Phase class resolver                                               */
@@ -215,9 +215,9 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             </motion.div>
           )}
 
-          {activeTab === 'schedule' && (
+          {activeTab === 'today' && (
             <motion.div
-              key="schedule"
+              key="today"
               custom={tabDirection.current}
               variants={tabVariants}
               initial="enter"
