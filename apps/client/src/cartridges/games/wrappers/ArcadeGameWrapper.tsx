@@ -7,6 +7,7 @@ import {
   CartridgeHeader,
   CelebrationSequence,
   RetryDecisionScreen,
+  Leaderboard,
 } from '../shared';
 
 interface ArcadeGameWrapperProps {
@@ -25,6 +26,7 @@ interface ArcadeGameWrapperProps {
 
 export default function ArcadeGameWrapper({
   cartridge,
+  playerId,
   engine,
   onDismiss,
   title,
@@ -156,15 +158,23 @@ export default function ArcadeGameWrapper({
         />
       )}
 
-      {/* COMPLETED: Celebration */}
+      {/* COMPLETED: Celebration + Leaderboard */}
       {gamePhase === 'COMPLETED' && (
-        <CelebrationSequence
-          title={`${title} Complete`}
-          silverEarned={silverReward}
-          goldContribution={goldContribution}
-          onDismiss={onDismiss}
-          breakdown={renderBreakdown?.(finalResult, silverReward)}
-        />
+        <>
+          <CelebrationSequence
+            title={`${title} Complete`}
+            silverEarned={silverReward}
+            goldContribution={goldContribution}
+            onDismiss={onDismiss}
+            breakdown={renderBreakdown?.(finalResult, silverReward)}
+          />
+          {cartridge.allPlayerResults && (
+            <Leaderboard
+              allPlayerResults={cartridge.allPlayerResults}
+              currentPlayerId={playerId}
+            />
+          )}
+        </>
       )}
     </CartridgeContainer>
   );
