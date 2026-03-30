@@ -1841,3 +1841,21 @@ This document tracks significant architectural decisions, their context, and con
     *   Dilemma game theory is slightly softened — strategic no-shows become less powerful as a sabotage vector.
     *   If the "allow 1" threshold needs tuning later, the `eligiblePlayers` parameter makes it easy to adjust per-dilemma-type.
 
+## [ADR-124] Today Tab — Cartridge Relocation & Result Hold
+*   **Date:** 2026-03-30
+*   **Status:** Accepted
+*   **Context:** Two problems: (1) cartridges render inline in the chat timeline, cluttering the group chat on mobile and competing with messages; (2) when a cartridge completes, the server immediately stops the child actor and nulls the ref, so the next SYNC delivers `null` — results never render on the client (GH #113, #72). The schedule tab duplicates information already visible in chat (#6). Overlapping cartridge phases cause label confusion (#83).
+*   **Decision:**
+    1.  **Rename "Schedule" tab → "Today"** — all cartridge rendering moves here as a card stack.
+    2.  **Card states:** Upcoming (client-only, from manifest timeline), Live (CTA → fullscreen takeover), Completed (tap → fullscreen results via cartridge's own results mode).
+    3.  **Server result hold:** Remove `cleanupXxxCartridge` from `xstate.done.actor` transitions in L3. Cartridge actors stay alive in their final state. Cleanup triggers: (a) day ends (XState auto-stops children on final state), (b) new same-type cartridge spawns (stop previous first).
+    4.  **BroadcastBar → Activity Status Strip:** Replace scrolling marquee with compact pills showing live cartridge status. Bell icon opens notifications; tapping elsewhere navigates to Today tab.
+    5.  **Chat timeline:** Remove cartridge entries from `useTimeline()`. Inject lightweight system messages for cartridge events.
+    6.  **Fullscreen takeover:** Cartridge components render in a fullscreen overlay (same components as today). Tab bar hidden during takeover. Dismiss via X or swipe down.
+    7.  **Arcade leaderboards:** Add all-player ranking to the 9 arcade games that only show individual scores. Use `allPlayerResults` field added to game projection after completion.
+*   **Consequences:**
+    *   Chat tab becomes a clean messaging surface — no cartridge clutter.
+    *   Results persist visually until the day ends — fixes #113, #72.
+    *   Addresses or partially resolves: #2, #6, #16, #24, #32, #34, #36, #58, #70, #83, #86, #88, #89, #90.
+    *   Snapshot size increases slightly (completed cartridge actors remain serialized) — bounded at 4 actors max per day.
+    *   Vivid shell only — Classic and Immersive shells unchanged for now.
