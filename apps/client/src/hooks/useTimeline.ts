@@ -3,15 +3,11 @@ import { useGameStore } from '../store/useGameStore';
 import type { TimelineEntry } from '../types/timeline';
 
 /**
- * Main chat timeline: only chat messages + active cartridges.
- * System/ticker events live in the notifications feed, not here.
+ * Main chat timeline: only chat messages.
+ * Cartridges are now rendered in the Today tab (ADR-124).
  */
 export function useTimeline(): TimelineEntry[] {
   const chatLog = useGameStore(s => s.chatLog);
-  const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
-  const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
-  const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
-  const activeDilemma = useGameStore(s => s.activeDilemma);
 
   return useMemo(() => {
     const entries: TimelineEntry[] = [];
@@ -24,20 +20,6 @@ export function useTimeline(): TimelineEntry[] {
     // Sort chronologically
     entries.sort((a, b) => a.timestamp - b.timestamp);
 
-    // Append active cartridges at the end (always last)
-    if (activeVotingCartridge) {
-      entries.push({ kind: 'voting', key: 'active-voting', timestamp: Number.MAX_SAFE_INTEGER });
-    }
-    if (activeGameCartridge) {
-      entries.push({ kind: 'game', key: 'active-game', timestamp: Number.MAX_SAFE_INTEGER });
-    }
-    if (activePromptCartridge) {
-      entries.push({ kind: 'prompt', key: 'active-prompt', timestamp: Number.MAX_SAFE_INTEGER });
-    }
-    if (activeDilemma) {
-      entries.push({ kind: 'dilemma', key: 'active-dilemma', timestamp: Number.MAX_SAFE_INTEGER });
-    }
-
     return entries;
-  }, [chatLog, activeVotingCartridge, activeGameCartridge, activePromptCartridge, activeDilemma]);
+  }, [chatLog]);
 }

@@ -4,14 +4,10 @@ import { useGameStore } from '../../../store/useGameStore';
 import { useTimeline } from '../../../hooks/useTimeline';
 import { MessageCard } from './MessageCard';
 import { ChatInput } from './ChatInput';
-import VotingPanel from '../../../components/panels/VotingPanel';
-import GamePanel from '../../../components/panels/GamePanel';
-import PromptPanel from '../../../components/panels/PromptPanel';
-import DilemmaPanel from '../../../components/panels/DilemmaPanel';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
-import { AltArrowDown, Scale, Gamepad, ChatDots, Crown, HandMoney } from '@solar-icons/react';
+import { AltArrowDown, Crown } from '@solar-icons/react';
 import { WELCOME_MESSAGES } from '@pecking-order/shared-types';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 import { CompactProgressBar } from './dashboard/CompactProgressBar';
@@ -121,10 +117,6 @@ function PregameEmptyState() {
 export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProps) {
   const playerId = useGameStore(s => s.playerId);
   const roster = useGameStore(s => s.roster);
-  const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
-  const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
-  const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
-  const activeDilemma = useGameStore(s => s.activeDilemma);
   const entries = useTimeline();
   const chatLog = useGameStore(s => s.chatLog);
   const onlinePlayers = useGameStore(s => s.onlinePlayers);
@@ -140,14 +132,9 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const cartridgeRef = useRef<HTMLDivElement>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [replyTarget, setReplyTarget] = useState<ChatMessage | null>(null);
-
-  /* -- Active cartridge state -------------------------------------- */
-
-  const hasActiveCartridge = !!(activeVotingCartridge || activeGameCartridge || activePromptCartridge || activeDilemma);
 
   /* -- Scroll management ------------------------------------------- */
 
@@ -167,10 +154,6 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     setUserScrolledUp(false);
-  }, []);
-
-  const scrollToCartridge = useCallback(() => {
-    cartridgeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
   /* -- Optimistic messages ----------------------------------------- */
@@ -228,26 +211,6 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
   const handleTapReply = useCallback((message: ChatMessage) => {
     setReplyTarget(message);
   }, []);
-
-  /* -- Return-to-action pill --------------------------------------- */
-
-  const returnPillLabel = activeVotingCartridge
-    ? 'Return to Vote'
-    : activeGameCartridge
-      ? 'Return to Game'
-      : activePromptCartridge
-        ? 'Return to Activity'
-        : activeDilemma
-          ? 'Return to Dilemma'
-          : null;
-
-  const ReturnPillIcon = activeVotingCartridge
-    ? Scale
-    : activeGameCartridge
-      ? Gamepad
-      : activeDilemma
-        ? HandMoney
-        : ChatDots;
 
   /* ---------------------------------------------------------------- */
   /*  Render                                                           */
@@ -411,31 +374,21 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
                   </div>
                 );
 
-              case 'voting':
+              case 'system':
                 return (
-                  <div key={entry.key} ref={cartridgeRef} style={{ marginTop }}>
-                    <VotingPanel engine={engine} />
-                  </div>
-                );
-
-              case 'game':
-                return (
-                  <div key={entry.key} ref={cartridgeRef} style={{ marginTop }}>
-                    <GamePanel engine={engine} />
-                  </div>
-                );
-
-              case 'prompt':
-                return (
-                  <div key={entry.key} ref={cartridgeRef} style={{ marginTop }}>
-                    <PromptPanel engine={engine} />
-                  </div>
-                );
-
-              case 'dilemma':
-                return (
-                  <div key={entry.key} ref={cartridgeRef} style={{ marginTop }}>
-                    <DilemmaPanel engine={engine} />
+                  <div key={entry.key} style={{
+                    textAlign: 'center',
+                    padding: '8px 16px',
+                    marginTop,
+                  }}>
+                    <span style={{
+                      fontSize: 11,
+                      fontFamily: 'var(--vivid-font-mono)',
+                      color: 'rgba(255,255,255,0.35)',
+                      letterSpacing: '0.03em',
+                    }}>
+                      {entry.data.text}
+                    </span>
                   </div>
                 );
 
@@ -461,65 +414,9 @@ export function StageChat({ engine, playerColorMap, onTapAvatar }: StageChatProp
           <div ref={bottomRef} />
         </div>
 
-        {/* Return-to-action pill */}
+        {/* Jump to latest pill */}
         <AnimatePresence>
-          {hasActiveCartridge && userScrolledUp && returnPillLabel && (
-            <motion.div
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                display: 'flex',
-                justifyContent: 'center',
-                padding: '12px 16px',
-                background: 'rgba(253, 248, 240, 0.9)',
-                borderTop: '1px solid rgba(139, 115, 85, 0.08)',
-                zIndex: 10,
-              }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={VIVID_SPRING.snappy}
-            >
-              <motion.button
-                onClick={scrollToCartridge}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '10px 20px',
-                  borderRadius: 9999,
-                  background: activeVotingCartridge
-                    ? '#E89B3A'
-                    : activeGameCartridge
-                      ? '#3BA99C'
-                      : activeDilemma
-                        ? '#B8840A'
-                        : '#8B6CC1',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  fontFamily: 'var(--vivid-font-display)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  cursor: 'pointer',
-                  boxShadow: '0 3px 12px rgba(139, 115, 85, 0.2)',
-                }}
-                whileTap={VIVID_TAP.button}
-                transition={VIVID_SPRING.bouncy}
-              >
-                <ReturnPillIcon size={16} weight="Bold" />
-                {returnPillLabel}
-              </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Jump to latest pill (when no active cartridge pill) */}
-        <AnimatePresence>
-          {userScrolledUp && !hasActiveCartridge && (
+          {userScrolledUp && (
             <motion.button
               onClick={scrollToBottom}
               style={{
