@@ -31,7 +31,8 @@
         "logs": { "invocation_logs": true, "head_sampling_rate": 1, "destinations": ["axiom-logs-staging"] }
       },
       "routes": [
-        { "pattern": "staging-lobby.peckingorder.ca", "custom_domain": true }
+        { "pattern": "staging-lobby.peckingorder.ca", "custom_domain": true },
+        { "pattern": "staging-playtest.peckingorder.ca", "custom_domain": true }
       ],
       "vars": {
         "GAME_SERVER_HOST": "https://staging-api.peckingorder.ca",
@@ -61,7 +62,8 @@
         "logs": { "invocation_logs": true, "head_sampling_rate": 1, "destinations": ["axiom-logs-production"] }
       },
       "routes": [
-        { "pattern": "lobby.peckingorder.ca", "custom_domain": true }
+        { "pattern": "lobby.peckingorder.ca", "custom_domain": true },
+        { "pattern": "playtest.peckingorder.ca", "custom_domain": true }
       ],
       "vars": {
         "GAME_SERVER_HOST": "https://api.peckingorder.ca",
