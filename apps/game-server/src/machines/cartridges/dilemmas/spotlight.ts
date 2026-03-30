@@ -1,11 +1,12 @@
 /**
  * SPOTLIGHT Dilemma
  *
- * Blind unanimous pick — each player names another player.
+ * Blind near-unanimous pick — each player names another player.
  *
  * Decision: { targetId: string } (must be another alive player, not self)
  *
- * If ALL pick the same person: target gets unanimousReward (20 silver).
+ * "Nearly unanimous" — if all submitted picks match AND at most 1 eligible
+ * player didn't submit, target gets unanimousReward (20 silver).
  * No participation silver — only the unanimous bonus matters.
  */
 import { Config, PlayerStatuses } from '@pecking-order/shared-types';
@@ -35,19 +36,24 @@ function calculateResults(
   decisions: Record<string, SpotlightDecision>,
   _roster: Record<string, SocialPlayer>,
   _dayIndex: number,
+  eligiblePlayers: string[],
 ): DilemmaResults {
   const playerIds = Object.keys(decisions);
+  const submitted = playerIds.length;
+  const eligible = eligiblePlayers.length;
   const silverRewards: Record<string, number> = {};
 
-  if (playerIds.length === 0) {
+  if (submitted === 0) {
     return { silverRewards, summary: { unanimous: false, targetId: null } };
   }
 
-  // Check if all picks are the same
+  // "Nearly unanimous" — all submitted picks are the same,
+  // and at most 1 eligible player didn't submit
   const targets = playerIds.map((pid) => decisions[pid].targetId);
   const allSame = targets.every((t) => t === targets[0]);
+  const nearUnanimous = allSame && submitted > 0 && submitted >= eligible - 1;
 
-  if (allSame) {
+  if (nearUnanimous) {
     const targetId = targets[0];
     silverRewards[targetId] = Config.dilemma.spotlight.unanimousReward;
     return {

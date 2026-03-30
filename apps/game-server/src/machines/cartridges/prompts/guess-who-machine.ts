@@ -182,7 +182,7 @@ export const guessWhoMachine = setup({
         ],
         'INTERNAL.END_ACTIVITY': {
           target: 'completed',
-          actions: 'calculateResults',
+          actions: ['buildAnonymousAnswers', 'calculateResults'],
         },
       },
     },

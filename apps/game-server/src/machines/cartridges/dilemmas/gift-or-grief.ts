@@ -39,6 +39,7 @@ function calculateResults(
   decisions: Record<string, GiftOrGriefDecision>,
   _roster: Record<string, SocialPlayer>,
   _dayIndex: number,
+  _eligiblePlayers: string[],
 ): DilemmaResults {
   const playerIds = Object.keys(decisions);
   const silverRewards: Record<string, number> = {};

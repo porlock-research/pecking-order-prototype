@@ -1809,3 +1809,35 @@ This document tracks significant architectural decisions, their context, and con
     *   Lighthouse a11y score improves (button names, input labels).
     *   No breaking changes — all additive or config-only.
 
+## [ADR-122] Fix Empty Results on Prompt Early Termination
+*   **Date:** 2026-03-28
+*   **Status:** Accepted
+*   **Context:** CONFESSION and GUESS_WHO are two-phase prompt cartridges (collect → vote/guess). When `INTERNAL.END_ACTIVITY` fired during the first collection phase (timer expired before all players submitted), `buildAnonymousConfessions`/`buildAnonymousAnswers` was never called. `calculateResults` then operated on empty `anonymousConfessions: []` and `votes: {}`, producing blank results — no confessions shown, no winner, no author reveal. Reported as GH #112.
+*   **Decision:**
+    1.  **Add missing build action** to the `collecting` → `INTERNAL.END_ACTIVITY` transition in `confession-machine.ts`: `actions: ['buildAnonymousConfessions', 'calculateResults']`.
+    2.  **Same fix** for `guess-who-machine.ts`: `actions: ['buildAnonymousAnswers', 'calculateResults']` on the `answering` → `INTERNAL.END_ACTIVITY` transition.
+    3.  **Single-phase prompts** (HOT_TAKE, WYR, PLAYER_PICK, PREDICTION) verified as already correct — their `calculateResults` operates directly on response data without an intermediary build step.
+    4.  **8 new tests** covering partial submissions, zero submissions, happy path, and duplicate rejection for both two-phase and single-phase prompts.
+*   **Consequences:**
+    *   Participants who submitted before the timer see their contributions in results and receive silver rewards.
+    *   Non-submitters are simply absent from results — not penalized, not rewarded.
+    *   Results are still recorded as facts and flow to `completedPhases`/game history correctly.
+    *   Note: results visibility to clients is still limited by the cartridge cleanup timing (GH #113 / #70).
+
+## [ADR-123] Dilemma "Nearly Everybody" Threshold
+*   **Date:** 2026-03-28
+*   **Status:** Accepted
+*   **Context:** All three dilemma types (SILVER_GAMBIT, SPOTLIGHT, GIFT_OR_GRIEF) required 100% participation. On timeout, `finalizeTimeout` discarded all submitted decisions and returned `silverRewards: {}`. In an async game, one absent player would void the entire dilemma for everyone who participated. Game designer note: "we probably want 'nearly everybody' not 100% for people who no-show. Shame to disappoint all cause of one bad player."
+*   **Decision:**
+    1.  **Extended `DilemmaConfig.calculateResults` signature** to include `eligiblePlayers: string[]`, allowing each dilemma to apply participation thresholds.
+    2.  **SPOTLIGHT**: Changed from strict "all same" to "nearly unanimous" — rewards if all submitted picks match AND `submitted >= eligible - 1` (at most 1 no-show).
+    3.  **SILVER_GAMBIT**: Same threshold — jackpot awarded if all submitted are DONATE and at most 1 no-show. Jackpot scales with submitter count (fair: absent players didn't donate).
+    4.  **GIFT_OR_GRIEF**: Signature update only. Nominations-based logic already handles partial data naturally. Now timeout runs real `calculateResults` instead of discarding nominations.
+    5.  **`finalizeTimeout` unified** — calls real `calculateResults` and merges `{ timedOut: true, submitted, eligible }` into the summary. Eliminates drift between `finalizeResults` and `finalizeTimeout`.
+    6.  **3 new test scenarios** for near-unanimous timeout paths + updated existing timeout expectations.
+*   **Consequences:**
+    *   One no-show no longer voids the entire dilemma. Participating players see meaningful results.
+    *   The `timedOut` flag is preserved in the summary for client UI differentiation.
+    *   Dilemma game theory is slightly softened — strategic no-shows become less powerful as a sabotage vector.
+    *   If the "allow 1" threshold needs tuning later, the `eligiblePlayers` parameter makes it easy to adjust per-dilemma-type.
+

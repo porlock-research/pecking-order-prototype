@@ -11,6 +11,7 @@ import { alive3, alive4 } from './helpers';
 // If max === min nominations: everyone gets gift, nobody gets grief.
 // Players with 0 nominations are unaffected.
 // No participation silver — only gift/grief from nominations.
+// On timeout: partial submissions are still calculated (nominations-based).
 
 const GIFT = Config.dilemma.giftOrGrief.giftAmount;
 const GRIEF = Config.dilemma.giftOrGrief.griefAmount;
@@ -97,7 +98,7 @@ export const GIFT_OR_GRIEF_SCENARIOS: DilemmaScenario[] = [
   // --- TIMEOUT / PARTIAL SUBMISSION EDGE CASES ---
 
   {
-    name: 'zero submissions + timeout — no reward (universal participation required)',
+    name: 'zero submissions + timeout — no reward',
     dilemmaType: 'GIFT_OR_GRIEF',
     roster: alive4(),
     decisions: {},
@@ -108,11 +109,13 @@ export const GIFT_OR_GRIEF_SCENARIOS: DilemmaScenario[] = [
         timedOut: true,
         submitted: 0,
         eligible: 4,
+        giftedIds: [],
+        grievedIds: [],
       },
     },
   },
   {
-    name: 'single submission + timeout — no reward (universal participation required)',
+    name: 'single nomination + timeout — nominee gets gift (partial results honored)',
     dilemmaType: 'GIFT_OR_GRIEF',
     roster: alive4(),
     decisions: {
@@ -120,16 +123,20 @@ export const GIFT_OR_GRIEF_SCENARIOS: DilemmaScenario[] = [
     },
     allSubmit: false,
     expected: {
-      silverRewards: {},
+      silverRewards: {
+        p1: GIFT, // only nominee, gets gift (max===min, no grief)
+      },
       summary: {
         timedOut: true,
         submitted: 1,
         eligible: 4,
+        giftedIds: ['p1'],
+        grievedIds: [],
       },
     },
   },
   {
-    name: '2 of 4 submit + timeout — no reward (universal participation required)',
+    name: '2 of 4 nominate same target + timeout — target gets gift',
     dilemmaType: 'GIFT_OR_GRIEF',
     roster: alive4(),
     decisions: {
@@ -138,11 +145,15 @@ export const GIFT_OR_GRIEF_SCENARIOS: DilemmaScenario[] = [
     },
     allSubmit: false,
     expected: {
-      silverRewards: {},
+      silverRewards: {
+        p2: GIFT, // only nominee (2 nominations), max===min, gift
+      },
       summary: {
         timedOut: true,
         submitted: 2,
         eligible: 4,
+        giftedIds: ['p2'],
+        grievedIds: [],
       },
     },
   },

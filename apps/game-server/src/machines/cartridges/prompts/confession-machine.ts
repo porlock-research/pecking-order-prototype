@@ -181,7 +181,7 @@ export const confessionMachine = setup({
         ],
         'INTERNAL.END_ACTIVITY': {
           target: 'completed',
-          actions: 'calculateResults',
+          actions: ['buildAnonymousConfessions', 'calculateResults'],
         },
       },
     },

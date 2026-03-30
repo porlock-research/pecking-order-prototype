@@ -21,6 +21,7 @@ export interface DilemmaConfig<TDecision> {
     decisions: Record<string, TDecision>,
     roster: Record<string, SocialPlayer>,
     dayIndex: number,
+    eligiblePlayers: string[],
   ) => DilemmaResults;
 }
 
@@ -63,13 +64,19 @@ export function createDilemmaMachine<TDecision>(config: DilemmaConfig<TDecision>
         return { decisions: { ...context.decisions, [senderId]: decision as TDecision } };
       }),
       finalizeResults: assign(({ context }: any) => {
-        const results = calculateResults(context.decisions, context.roster, context.dayIndex);
+        const results = calculateResults(context.decisions, context.roster, context.dayIndex, context.eligiblePlayers);
         return { results, phase: DilemmaPhases.REVEAL };
       }),
-      finalizeTimeout: assign(({ context }: any) => ({
-        results: { silverRewards: {}, summary: { timedOut: true, submitted: Object.keys(context.decisions).length, eligible: context.eligiblePlayers.length } },
-        phase: DilemmaPhases.REVEAL,
-      })),
+      finalizeTimeout: assign(({ context }: any) => {
+        const results = calculateResults(context.decisions, context.roster, context.dayIndex, context.eligiblePlayers);
+        return {
+          results: {
+            ...results,
+            summary: { ...results.summary, timedOut: true, submitted: Object.keys(context.decisions).length, eligible: context.eligiblePlayers.length },
+          },
+          phase: DilemmaPhases.REVEAL,
+        };
+      }),
       emitResultFact: sendParent(({ context }: any): AnyEventObject => ({
         type: Events.Fact.RECORD,
         fact: {
