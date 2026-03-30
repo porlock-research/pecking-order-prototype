@@ -1860,3 +1860,19 @@ This document tracks significant architectural decisions, their context, and con
     *   The nudge worker still duplicates template helpers from `lobby/lib/email-templates.ts` — a future refactor could extract shared email components into `packages/`.
     *   The preview file (`email-preview.html`) is a dev-only tool in `public/` and should be excluded from production builds or removed before launch.
 
+## [ADR-125] Playtest Referral Code System
+*   **Date:** 2026-03-30
+*   **Status:** Accepted
+*   **Context:** The game designer wanted to track which specific individuals are driving playtest signups — not just the channel (Reddit, Twitter, etc.), but the actual person. This enables identifying "superfans" who recruit the most players. Privacy and friction are key concerns: no emails in URLs, no extra steps for the person signing up.
+*   **Decision:**
+    1.  **Referral codes**: A unique 6-char alphanumeric code (A-Z, 2-9, no ambiguous chars I/O/0/1) generated at signup via `crypto.getRandomValues()`. Stored in `PlaytestSignups.referral_code` (UNIQUE constraint). Migration `0010_playtest_referral_codes.sql`.
+    2.  **Share link attribution**: Share buttons embed the code as `?ref=CODE` in the playtest URL. When someone signs up via that link, `referred_by` stores the referrer's code.
+    3.  **localStorage for returning users**: After signup, `{ referralCode }` is stored in `pecking-order-playtest` localStorage key. Returning visitors see the share screen immediately (with their code + share buttons) instead of the signup form — no re-submission, no muddied analytics.
+    4.  **Dedicated share page** (`/playtest/share/[code]`): The playtest confirmation email links to this page, which shows just the referral code + share buttons. Also sets localStorage for future visits. Vanity domain routing: `playtest.peckingorder.ca/share/CODE` → `/playtest/share/CODE`.
+    5.  **Email template updated**: Playtest confirmation email now shows the referral code and links to the share page instead of the generic playtest URL.
+*   **Consequences:**
+    *   Referrer attribution is precise (code → email in DB) without exposing PII in URLs.
+    *   Superfan identification: `SELECT referred_by, COUNT(*) FROM PlaytestSignups GROUP BY referred_by ORDER BY 2 DESC`.
+    *   The `?ref=` query param may be stripped by some platforms (Instagram bio links), but the code is also displayed in the email and on the success screen for verbal/manual sharing.
+    *   localStorage-based returning user detection breaks on device/browser switch, but the signup form gracefully handles re-submission (UNIQUE constraint returns existing code).
+

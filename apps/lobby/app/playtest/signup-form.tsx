@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { handlePlaytestSignup } from './actions';
 import { REFERRAL_SOURCES, REFERRAL_LABELS } from './constants';
 import { ShareButtons } from './share-buttons';
+
+const STORAGE_KEY = 'pecking-order-playtest';
 
 export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
   const [email, setEmail] = useState('');
@@ -12,9 +14,24 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
   const [referralDetail, setReferralDetail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referredBy, setReferredBy] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileInstance>(null);
   const [turnstileToken, setTurnstileToken] = useState('');
+
+  // Check localStorage for returning users + read ?ref= param
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const { referralCode: code } = JSON.parse(stored);
+        if (code) setReferralCode(code);
+      }
+    } catch { /* ignore parse errors */ }
+
+    const ref = new URLSearchParams(window.location.search).get('ref');
+    if (ref) setReferredBy(ref.toUpperCase().slice(0, 10));
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,6 +47,7 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
       email,
       referralSource,
       referralDetail: referralSource === 'OTHER' ? referralDetail : undefined,
+      referredBy: referredBy || undefined,
       turnstileToken,
     });
     setIsLoading(false);
@@ -38,12 +56,16 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
       setError(result.error);
       turnstileRef.current?.reset();
       setTurnstileToken('');
-    } else {
-      setSuccess(true);
+    } else if (result.referralCode) {
+      setReferralCode(result.referralCode);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ referralCode: result.referralCode }));
+      } catch { /* storage full or blocked */ }
     }
   }
 
-  if (success) {
+  // Returning user or just signed up — show share screen
+  if (referralCode) {
     return (
       <div className="space-y-6">
         <div className="text-center space-y-3">
@@ -55,13 +77,23 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
           <h2 className="font-display font-bold text-xl text-skin-green">
             You're In!
           </h2>
-          <p className="text-skin-dim text-sm">Check your inbox for a confirmation.</p>
-          <p className="text-skin-dim/60 text-xs">
+          <p className="text-skin-dim text-sm">
             We'll reach out when the next playtest is ready.
           </p>
         </div>
+
+        {/* Referral code display */}
+        <div className="text-center py-3 bg-skin-deep/40 rounded-xl border border-skin-gold/15">
+          <p className="text-[10px] font-bold text-skin-dim uppercase tracking-[0.2em] mb-1.5 font-display">
+            Your Referral Code
+          </p>
+          <p className="text-2xl font-mono font-bold text-skin-gold tracking-[0.3em]">
+            {referralCode}
+          </p>
+        </div>
+
         <div className="pt-2 border-t border-skin-base/20">
-          <ShareButtons emphasis />
+          <ShareButtons emphasis referralCode={referralCode} />
         </div>
       </div>
     );

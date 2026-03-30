@@ -153,7 +153,12 @@ export function buildPlaytestConfirmationHtml(opts: {
   assetsUrl: string;
   lobbyUrl: string;
   playtestUrl: string;
+  referralCode?: string;
 }): string {
+  const shareUrl = opts.referralCode
+    ? `${opts.playtestUrl}/share/${opts.referralCode}`
+    : opts.playtestUrl;
+
   return wrap(`
     ${logo(opts.assetsUrl, opts.lobbyUrl)}
     ${hero(opts.lobbyUrl)}
@@ -205,7 +210,16 @@ export function buildPlaytestConfirmationHtml(opts: {
         We&rsquo;ll email you when the next playtest is ready.<br>
         Until then &mdash; recruit your allies:
       </p>
-      ${button('Share With Friends', opts.playtestUrl)}
+      ${button('Share Your Link', shareUrl)}
+      ${opts.referralCode ? `
+      ${divider()}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr><td align="center">
+          <span style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${FAINT};">Your Referral Code</span>
+          <br>
+          <span style="font-family:'Courier New',Courier,monospace;font-size:24px;font-weight:bold;letter-spacing:5px;color:${GOLD};">${opts.referralCode}</span>
+        </td></tr>
+      </table>` : ''}
     `)}
     ${footer('A social game of alliances, betrayal &amp; strategy')}
   `);

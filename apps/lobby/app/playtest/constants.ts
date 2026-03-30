@@ -36,6 +36,11 @@ export const signupSchema = z.object({
     .max(200, 'Maximum 200 characters')
     .transform((s) => s.replace(/<[^>]*>/g, '').trim())
     .optional(),
+  referredBy: z
+    .string()
+    .max(10)
+    .regex(/^[A-Z0-9]*$/, 'Invalid referral code')
+    .optional(),
   turnstileToken: z.string().min(1, 'Please complete the verification'),
 });
 

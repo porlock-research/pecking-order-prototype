@@ -10,12 +10,23 @@ import { Resend } from 'resend';
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_HOURS = 1;
 
+/** Generate a 6-char uppercase alphanumeric referral code */
+function generateReferralCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1 to avoid ambiguity
+  let code = '';
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  for (const b of bytes) code += chars[b % chars.length];
+  return code;
+}
+
 export async function handlePlaytestSignup(data: {
   email: string;
   referralSource: string;
   referralDetail?: string;
+  referredBy?: string;
   turnstileToken: string;
-}): Promise<{ success?: boolean; error?: string }> {
+}): Promise<{ success?: boolean; referralCode?: string; error?: string }> {
   const headersList = await headers();
   const ip =
     headersList.get('cf-connecting-ip') ||
@@ -29,10 +40,11 @@ async function submitPlaytestSignup(
     email: string;
     referralSource: string;
     referralDetail?: string;
+    referredBy?: string;
     turnstileToken: string;
   },
   ipAddress: string | null,
-): Promise<{ success?: boolean; error?: string }> {
+): Promise<{ success?: boolean; referralCode?: string; error?: string }> {
   // 1. Validate input
   const parsed = signupSchema.safeParse(data);
   if (!parsed.success) {
@@ -82,11 +94,14 @@ async function submitPlaytestSignup(
     }
 
     // 4. Insert into D1 (UNIQUE constraint handles dupes)
+    const referralCode = generateReferralCode();
+    const referredBy = data.referredBy?.trim().toUpperCase() || null;
+
     try {
       await db
         .prepare(
-          `INSERT INTO PlaytestSignups (email, referral_source, referral_detail, ip_address, turnstile_token)
-           VALUES (?, ?, ?, ?, ?)`,
+          `INSERT INTO PlaytestSignups (email, referral_source, referral_detail, ip_address, turnstile_token, referral_code, referred_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           email.toLowerCase(),
@@ -94,12 +109,19 @@ async function submitPlaytestSignup(
           referralDetail || null,
           ipAddress,
           turnstileToken,
+          referralCode,
+          referredBy,
         )
         .run();
     } catch (err: any) {
       // UNIQUE constraint violation = already signed up
       if (err?.message?.includes('UNIQUE')) {
-        return { success: true }; // Don't leak that email exists
+        // Fetch their existing referral code so localStorage can be populated
+        const existing = await db
+          .prepare('SELECT referral_code FROM PlaytestSignups WHERE email = ?')
+          .bind(email.toLowerCase())
+          .first<{ referral_code: string }>();
+        return { success: true, referralCode: existing?.referral_code || undefined };
       }
       throw err;
     }
@@ -111,7 +133,7 @@ async function submitPlaytestSignup(
       const lobbyUrl = (env.LOBBY_HOST as string) || '';
       const playtestUrl = (env.PLAYTEST_URL as string) || 'https://playtest.peckingorder.ca';
 
-      const html = buildPlaytestConfirmationHtml({ assetsUrl, lobbyUrl, playtestUrl });
+      const html = buildPlaytestConfirmationHtml({ assetsUrl, lobbyUrl, playtestUrl, referralCode });
       await sendEmail(email, "You're on the list!", html, resendApiKey);
 
       // 6. Upsert to Resend Contacts (with segment + properties for segmentation)
@@ -133,7 +155,7 @@ async function submitPlaytestSignup(
       }
     }
 
-    return { success: true };
+    return { success: true, referralCode };
   } catch (err: any) {
     console.error('[Playtest] Signup error:', err);
     return { error: 'Something went wrong. Please try again.' };

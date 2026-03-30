@@ -47,34 +47,36 @@ function LinkIcon() {
   );
 }
 
-export function ShareButtons({ emphasis = false }: { emphasis?: boolean }) {
+export function ShareButtons({ emphasis = false, referralCode }: { emphasis?: boolean; referralCode?: string }) {
   const [copiedBtn, setCopiedBtn] = useState<'discord' | 'link' | null>(null);
 
+  const shareUrl = referralCode ? `${PLAYTEST_URL}?ref=${referralCode}` : PLAYTEST_URL;
+
   function shareTwitter() {
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(SHARE_TEXT)}&url=${encodeURIComponent(PLAYTEST_URL)}`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(SHARE_TEXT)}&url=${encodeURIComponent(shareUrl)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   function shareWhatsApp() {
-    const url = `https://wa.me/?text=${encodeURIComponent(`${SHARE_TEXT}\n${PLAYTEST_URL}`)}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(`${SHARE_TEXT}\n${shareUrl}`)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   function shareReddit() {
-    const url = `https://reddit.com/submit?url=${encodeURIComponent(PLAYTEST_URL)}&title=${encodeURIComponent('Pecking Order — A social game of alliances, betrayal & strategy')}`;
+    const url = `https://reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent('Pecking Order — A social game of alliances, betrayal & strategy')}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   function shareDiscord() {
     navigator.clipboard.writeText(
-      `**Pecking Order** — A social game of alliances, betrayal & strategy\nSign up for the next playtest:\n${PLAYTEST_URL}`,
+      `**Pecking Order** — A social game of alliances, betrayal & strategy\nSign up for the next playtest:\n${shareUrl}`,
     );
     setCopiedBtn('discord');
     setTimeout(() => setCopiedBtn(null), 2000);
   }
 
   function copyLink() {
-    navigator.clipboard.writeText(PLAYTEST_URL);
+    navigator.clipboard.writeText(shareUrl);
     setCopiedBtn('link');
     setTimeout(() => setCopiedBtn(null), 2000);
   }
