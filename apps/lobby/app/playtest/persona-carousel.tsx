@@ -11,6 +11,54 @@ interface Persona {
   description: string;
 }
 
+function PersonaCard({
+  persona,
+  assetsUrl,
+  featured = false,
+}: {
+  persona: Persona;
+  assetsUrl: string;
+  featured?: boolean;
+}) {
+  const imgSrc = assetsUrl
+    ? `${assetsUrl}/personas/${persona.id}/medium.png`
+    : `/api/persona-image/${persona.id}/medium.png`;
+
+  return (
+    <div
+      className={`relative overflow-hidden flex-shrink-0 transition-all duration-300 ${
+        featured
+          ? 'w-40 h-56 md:w-48 md:h-64 rounded-2xl shadow-[0_0_40px_rgba(251,191,36,0.2)] z-10'
+          : 'w-28 h-40 md:w-32 md:h-44 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)]'
+      }`}
+    >
+      <img
+        src={imgSrc}
+        alt={persona.name}
+        width={featured ? 192 : 128}
+        height={featured ? 256 : 176}
+        className="absolute inset-0 w-full h-full object-cover object-top"
+        loading="eager"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 via-50% to-transparent" />
+      <div className="absolute bottom-3 left-3 right-3">
+        <p
+          className={`font-display font-bold text-white leading-tight drop-shadow-lg ${
+            featured ? 'text-base' : 'text-sm'
+          }`}
+        >
+          {persona.name}
+        </p>
+        {featured && (
+          <p className="text-skin-gold text-[11px] font-bold uppercase tracking-wider mt-0.5 drop-shadow">
+            {persona.stereotype}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PersonaCarousel({
   personas,
   assetsUrl,
@@ -21,9 +69,8 @@ export function PersonaCarousel({
   const [activeIndex, setActiveIndex] = useState(Math.floor(personas.length / 2));
 
   const handlers = useSwipeable({
-    onSwipedLeft: () =>
-      setActiveIndex((i) => Math.min(i + 1, personas.length - 1)),
-    onSwipedRight: () => setActiveIndex((i) => Math.max(i - 1, 0)),
+    onSwipedLeft: () => next(),
+    onSwipedRight: () => prev(),
     trackMouse: true,
     preventScrollOnSwipe: true,
   });
@@ -36,74 +83,80 @@ export function PersonaCarousel({
     setActiveIndex((i) => (i === personas.length - 1 ? 0 : i + 1));
   }
 
-  const active = personas[activeIndex];
-  if (!active) return null;
+  function getIndex(offset: number) {
+    return (activeIndex + offset + personas.length) % personas.length;
+  }
 
-  const imgSrc = assetsUrl
-    ? `${assetsUrl}/personas/${active.id}/medium.png`
-    : `/api/persona-image/${active.id}/medium.png`;
+  const leftPersona = personas[getIndex(-1)];
+  const centerPersona = personas[activeIndex];
+  const rightPersona = personas[getIndex(1)];
+
+  if (!centerPersona) return null;
 
   return (
     <div {...handlers} className="relative select-none">
-      {/* Main card */}
-      <div className="flex flex-col items-center">
-        <div className="relative w-48 h-64 md:w-56 md:h-72 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(251,191,36,0.2)] mx-auto">
-          <img
-            key={active.id}
-            src={imgSrc}
-            alt={active.name}
-            width={224}
-            height={288}
-            className="absolute inset-0 w-full h-full object-cover object-top"
-            loading="eager"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 via-50% to-transparent" />
-          <div className="absolute bottom-4 left-4 right-4">
-            <p className="font-display font-bold text-white text-lg leading-tight drop-shadow-lg">
-              {active.name}
-            </p>
-            <p className="text-skin-gold text-xs font-bold uppercase tracking-wider mt-0.5 drop-shadow">
-              {active.stereotype}
-            </p>
-          </div>
+      {/* Hand of cards */}
+      <div className="flex justify-center items-end gap-0 mb-6">
+        {/* Left card */}
+        <button
+          onClick={prev}
+          className="-rotate-6 translate-y-4 -mr-4 hover:-translate-y-0 transition-all duration-300 cursor-pointer"
+        >
+          <PersonaCard persona={leftPersona} assetsUrl={assetsUrl} />
+        </button>
+
+        {/* Center (featured) card */}
+        <div className="transition-all duration-300">
+          <PersonaCard persona={centerPersona} assetsUrl={assetsUrl} featured />
         </div>
 
-        {/* Bio */}
-        <p className="text-skin-dim text-sm text-center mt-4 max-w-xs font-display leading-relaxed px-2">
-          &ldquo;{active.description}&rdquo;
-        </p>
-
-        {/* Dots */}
-        <div className="flex gap-2 mt-5 justify-center">
-          {personas.map((p, i) => (
-            <button
-              key={p.id}
-              onClick={() => setActiveIndex(i)}
-              aria-label={`View ${p.name}`}
-              className={`rounded-full transition-all duration-300 ${
-                i === activeIndex
-                  ? 'w-6 h-2 bg-skin-gold'
-                  : 'w-2 h-2 bg-skin-dim/30 hover:bg-skin-dim/50'
-              }`}
-            />
-          ))}
-        </div>
+        {/* Right card */}
+        <button
+          onClick={next}
+          className="rotate-6 translate-y-4 -ml-4 hover:-translate-y-0 transition-all duration-300 cursor-pointer"
+        >
+          <PersonaCard persona={rightPersona} assetsUrl={assetsUrl} />
+        </button>
       </div>
 
-      {/* Navigation arrows */}
+      {/* Bio */}
+      <p
+        key={centerPersona.id}
+        className="text-skin-dim text-sm text-center max-w-xs mx-auto font-display leading-relaxed"
+      >
+        &ldquo;{centerPersona.description}&rdquo;
+      </p>
+
+      {/* Dots */}
+      <div className="flex gap-1.5 mt-4 justify-center">
+        {personas.map((p, i) => (
+          <button
+            key={p.id}
+            onClick={() => setActiveIndex(i)}
+            aria-label={`View ${p.name}`}
+            className={`rounded-full transition-all duration-300 ${
+              i === activeIndex
+                ? 'w-5 h-1.5 bg-skin-gold'
+                : 'w-1.5 h-1.5 bg-skin-dim/30 hover:bg-skin-dim/50'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* Arrow overlays */}
       <button
         onClick={prev}
         aria-label="Previous persona"
-        className="absolute left-0 top-28 md:top-32 -translate-x-2 md:-translate-x-6 w-10 h-10 rounded-full bg-skin-deep/80 backdrop-blur-sm flex items-center justify-center text-skin-dim hover:text-skin-gold transition-colors"
+        className="absolute left-0 top-20 md:top-24 w-9 h-9 rounded-full bg-skin-deep/60 backdrop-blur-sm flex items-center justify-center text-skin-dim hover:text-skin-gold transition-colors"
       >
-        <ChevronLeft size={20} />
+        <ChevronLeft size={18} />
       </button>
       <button
         onClick={next}
         aria-label="Next persona"
-        className="absolute right-0 top-28 md:top-32 translate-x-2 md:translate-x-6 w-10 h-10 rounded-full bg-skin-deep/80 backdrop-blur-sm flex items-center justify-center text-skin-dim hover:text-skin-gold transition-colors"
+        className="absolute right-0 top-20 md:top-24 w-9 h-9 rounded-full bg-skin-deep/60 backdrop-blur-sm flex items-center justify-center text-skin-dim hover:text-skin-gold transition-colors"
       >
-        <ChevronRight size={20} />
+        <ChevronRight size={18} />
       </button>
     </div>
   );
