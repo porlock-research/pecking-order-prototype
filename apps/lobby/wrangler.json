@@ -38,7 +38,9 @@
         "GAME_CLIENT_HOST": "https://staging-play.peckingorder.ca",
         "PERSONA_ASSETS_URL": "https://staging-assets.peckingorder.ca",
         "LOBBY_HOST": "https://staging-lobby.peckingorder.ca",
-        "SESSION_COOKIE_NAME": "po_session_stg"
+        "SESSION_COOKIE_NAME": "po_session_stg",
+        "PLAYTEST_URL": "https://staging-playtest.peckingorder.ca",
+        "TURNSTILE_SITE_KEY": ""
       },
       "r2_buckets": [
         { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets-staging" }
@@ -66,7 +68,9 @@
         "GAME_CLIENT_HOST": "https://play.peckingorder.ca",
         "PERSONA_ASSETS_URL": "https://assets.peckingorder.ca",
         "LOBBY_HOST": "https://lobby.peckingorder.ca",
-        "SESSION_COOKIE_NAME": "po_session"
+        "SESSION_COOKIE_NAME": "po_session",
+        "PLAYTEST_URL": "https://playtest.peckingorder.ca",
+        "TURNSTILE_SITE_KEY": ""
       },
       "r2_buckets": [
         { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets" }
