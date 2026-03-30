@@ -7,7 +7,8 @@ CREATE TABLE PlaytestSignups (
   referral_source TEXT NOT NULL,
   referral_detail TEXT,
   signed_up_at TEXT NOT NULL DEFAULT (datetime('now')),
-  ip_address TEXT
+  ip_address TEXT,
+  turnstile_token TEXT
 );
 
 CREATE INDEX idx_playtest_signups_email ON PlaytestSignups(email);

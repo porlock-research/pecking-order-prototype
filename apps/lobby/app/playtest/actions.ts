@@ -85,14 +85,15 @@ async function submitPlaytestSignup(
     try {
       await db
         .prepare(
-          `INSERT INTO PlaytestSignups (email, referral_source, referral_detail, ip_address)
-           VALUES (?, ?, ?, ?)`,
+          `INSERT INTO PlaytestSignups (email, referral_source, referral_detail, ip_address, turnstile_token)
+           VALUES (?, ?, ?, ?, ?)`,
         )
         .bind(
           email.toLowerCase(),
           referralSource,
           referralDetail || null,
           ipAddress,
+          turnstileToken,
         )
         .run();
     } catch (err: any) {
@@ -113,17 +114,21 @@ async function submitPlaytestSignup(
       const html = buildPlaytestConfirmationHtml({ assetsUrl, lobbyUrl, playtestUrl });
       await sendEmail(email, "You're on the list!", html, resendApiKey);
 
-      // 6. Upsert to Resend Audience
-      const audienceId = env.RESEND_PLAYTEST_AUDIENCE_ID as string | undefined;
-      if (audienceId) {
+      // 6. Upsert to Resend Contacts (with segment + properties for segmentation)
+      const segmentId = env.RESEND_PLAYTEST_SEGMENT_ID as string | undefined;
+      if (segmentId) {
         const resend = new Resend(resendApiKey);
         await resend.contacts.create({
           email: email.toLowerCase(),
-          audienceId,
           unsubscribed: false,
+          segments: [{ id: segmentId }],
+          properties: {
+            referral_source: referralSource,
+            signed_up_at: new Date().toISOString(),
+          },
         }).catch((err) => {
           // Non-critical — log but don't fail the signup
-          console.error('[Playtest] Audience upsert failed:', err);
+          console.error('[Playtest] Contact upsert failed:', err);
         });
       }
     }

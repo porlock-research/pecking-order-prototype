@@ -32,7 +32,7 @@ function LinkIcon() {
 }
 
 export function ShareButtons({ emphasis = false }: { emphasis?: boolean }) {
-  const [copied, setCopied] = useState(false);
+  const [copiedBtn, setCopiedBtn] = useState<'discord' | 'link' | null>(null);
 
   function shareTwitter() {
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(SHARE_TEXT)}&url=${encodeURIComponent(PLAYTEST_URL)}`;
@@ -41,14 +41,14 @@ export function ShareButtons({ emphasis = false }: { emphasis?: boolean }) {
 
   function shareDiscord() {
     navigator.clipboard.writeText(`${SHARE_TEXT}\n${PLAYTEST_URL}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedBtn('discord');
+    setTimeout(() => setCopiedBtn(null), 2000);
   }
 
   function copyLink() {
     navigator.clipboard.writeText(PLAYTEST_URL);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedBtn('link');
+    setTimeout(() => setCopiedBtn(null), 2000);
   }
 
   const btnBase = emphasis
@@ -82,14 +82,14 @@ export function ShareButtons({ emphasis = false }: { emphasis?: boolean }) {
           className={`${btnBase} bg-[#5865F2] text-white hover:brightness-110 transition-all flex items-center gap-2`}
         >
           <DiscordIcon />
-          Discord
+          {copiedBtn === 'discord' ? 'Copied!' : 'Discord'}
         </button>
         <button
           onClick={copyLink}
           className={`${btnBase} bg-skin-input text-skin-dim hover:text-skin-base transition-colors flex items-center gap-2`}
         >
           <LinkIcon />
-          {copied ? 'Copied!' : 'Copy'}
+          {copiedBtn === 'link' ? 'Copied!' : 'Copy'}
         </button>
       </div>
     </div>

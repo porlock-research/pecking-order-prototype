@@ -156,7 +156,7 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
           ${
             isLoading
               ? 'bg-skin-input text-skin-dim/40 cursor-wait'
-              : 'bg-gradient-to-r from-skin-gold to-yellow-500 text-skin-deep shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
+              : 'bg-skin-gold text-skin-deep shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
           }`}
       >
         {isLoading ? (
