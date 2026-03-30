@@ -41,7 +41,7 @@ function TeaserBadge({ Icon, label }: { Icon: typeof Vote; label: string }) {
 
 export default async function PlaytestPage() {
   const [personas, env] = await Promise.all([
-    getRandomPersonas(7),
+    getRandomPersonas(10),
     getEnv(),
   ]);
 
