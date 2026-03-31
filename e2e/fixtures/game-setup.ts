@@ -3,9 +3,9 @@ import { signGameToken } from '@pecking-order/auth';
 
 // ── Constants ────────────────────────────────────────────────────────────
 
-const GAME_SERVER = 'http://localhost:8787';
-const CLIENT_URL = 'http://localhost:5173';
-const AUTH_SECRET = 'dev-secret-change-me';
+const GAME_SERVER = process.env.GAME_SERVER || 'http://localhost:8787';
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const AUTH_SECRET = process.env.AUTH_SECRET || 'dev-secret-change-me';
 
 const PERSONA_NAMES = ['Viper', 'Phoenix', 'Shadow', 'Ember', 'Raven', 'Storm', 'Nyx', 'Blaze'];
 

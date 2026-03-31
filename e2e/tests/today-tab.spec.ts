@@ -13,7 +13,7 @@ import {
 
 test.describe('Today Tab', () => {
   test('Today tab shows tab with correct label', async ({ browser }) => {
-    const game = await createTestGame(3, 1);
+    const game = await createTestGame(3, 2);
     await advanceGameState(game.gameId);
     await new Promise(r => setTimeout(r, 500));
 
@@ -34,7 +34,7 @@ test.describe('Today Tab', () => {
   });
 
   test('Today tab shows empty state when no cartridges active', async ({ browser }) => {
-    const game = await createTestGame(3, 1);
+    const game = await createTestGame(3, 2);
     await advanceGameState(game.gameId);
     await new Promise(r => setTimeout(r, 500));
 
@@ -56,7 +56,7 @@ test.describe('Today Tab', () => {
 
       // Verify empty or zero activities text
       await expect(
-        page.getByText(/0 activit|No activit/)
+        page.getByText('0 activities')
       ).toBeVisible({ timeout: 5000 });
     } finally {
       await ctx.close();
@@ -64,7 +64,7 @@ test.describe('Today Tab', () => {
   });
 
   test('Live voting card appears on Today tab', async ({ browser }) => {
-    const game = await createTestGame(3, 1);
+    const game = await createTestGame(3, 2);
     await advanceGameState(game.gameId);
     await new Promise(r => setTimeout(r, 500));
 
@@ -94,7 +94,7 @@ test.describe('Today Tab', () => {
   });
 
   test('Fullscreen takeover opens from live card CTA', async ({ browser }) => {
-    const game = await createTestGame(3, 1);
+    const game = await createTestGame(3, 2);
     await advanceGameState(game.gameId);
     await new Promise(r => setTimeout(r, 500));
 
@@ -126,7 +126,7 @@ test.describe('Today Tab', () => {
   });
 
   test('Vote can be cast inside fullscreen takeover', async ({ browser }) => {
-    const game = await createTestGame(3, 1);
+    const game = await createTestGame(3, 2);
     await advanceGameState(game.gameId);
     await new Promise(r => setTimeout(r, 500));
 
@@ -170,7 +170,7 @@ test.describe('Today Tab', () => {
   });
 
   test('Result hold -- completed voting card persists after CLOSE_VOTING', async ({ browser }) => {
-    const game = await createTestGame(3, 1);
+    const game = await createTestGame(3, 2);
     await advanceGameState(game.gameId);
     await new Promise(r => setTimeout(r, 500));
 
@@ -239,7 +239,7 @@ test.describe('Today Tab', () => {
   });
 
   test('Fullscreen takeover shows vote results for completed card', async ({ browser }) => {
-    const game = await createTestGame(3, 1);
+    const game = await createTestGame(3, 2);
     await advanceGameState(game.gameId);
     await new Promise(r => setTimeout(r, 500));
 
@@ -283,7 +283,10 @@ test.describe('Today Tab', () => {
 
       // Close voting
       await injectTimelineEvent(game.gameId, 'CLOSE_VOTING');
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 1500));
+
+      // Dismiss any splash overlay that appeared after phase change
+      await dismissSplash(page1);
 
       // Wait for completed card to appear on page1
       await expect(page1.getByText('Done')).toBeVisible({ timeout: 10_000 });
@@ -296,10 +299,10 @@ test.describe('Today Tab', () => {
       await expect(page1.getByText('VOTE RESULTS')).toBeVisible({ timeout: 5000 });
 
       // Player 3 (p3) should show 2 votes in the tally
-      await expect(page1.getByText('2')).toBeVisible({ timeout: 5000 });
+      await expect(page1.getByText('2').first()).toBeVisible({ timeout: 5000 });
 
-      // "ELIMINATED" badge should be visible
-      await expect(page1.getByText('ELIMINATED')).toBeVisible({ timeout: 5000 });
+      // "ELIMINATED" badge should be visible inside the voting panel
+      await expect(page1.locator('[data-testid="voting-panel"]').getByText('ELIMINATED')).toBeVisible({ timeout: 5000 });
     } finally {
       await ctx1.close();
       await ctx2.close();
@@ -307,7 +310,7 @@ test.describe('Today Tab', () => {
   });
 
   test('BroadcastBar shows live pill during voting', async ({ browser }) => {
-    const game = await createTestGame(3, 1);
+    const game = await createTestGame(3, 2);
     await advanceGameState(game.gameId);
     await new Promise(r => setTimeout(r, 500));
 
@@ -325,14 +328,14 @@ test.describe('Today Tab', () => {
       await dismissSplash(page);
 
       // The BroadcastBar at the top should contain a "Voting" live pill
-      await expect(page.getByText('Voting')).toBeVisible({ timeout: 5000 });
+      await expect(page.getByText('Voting').first()).toBeVisible({ timeout: 5000 });
     } finally {
       await ctx.close();
     }
   });
 
   test('System messages appear in chat for cartridge events', async ({ browser }) => {
-    const game = await createTestGame(3, 1);
+    const game = await createTestGame(3, 2);
     await advanceGameState(game.gameId);
     await new Promise(r => setTimeout(r, 500));
 
@@ -350,6 +353,7 @@ test.describe('Today Tab', () => {
       // Inject voting while the player is connected (so useTimeline detects the transition)
       await injectTimelineEvent(game.gameId, 'OPEN_VOTING');
       await page.waitForTimeout(1000);
+      await dismissSplash(page);
 
       // Chat tab should show "Voting has started" system message
       // Make sure we're on chat tab (default)
@@ -360,6 +364,7 @@ test.describe('Today Tab', () => {
       // Close voting
       await injectTimelineEvent(game.gameId, 'CLOSE_VOTING');
       await page.waitForTimeout(1000);
+      await dismissSplash(page);
 
       // Chat should now contain "Voting complete" system message
       await expect(page.getByText(/Voting complete/)).toBeVisible({ timeout: 10_000 });
