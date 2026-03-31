@@ -56,16 +56,21 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
       setError(result.error);
       turnstileRef.current?.reset();
       setTurnstileToken('');
-    } else if (result.referralCode) {
-      setReferralCode(result.referralCode);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ referralCode: result.referralCode }));
-      } catch { /* storage full or blocked */ }
+    } else if (result.success) {
+      if (result.referralCode) {
+        setReferralCode(result.referralCode);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ referralCode: result.referralCode }));
+        } catch { /* storage full or blocked */ }
+      } else {
+        // Fallback: success without code (shouldn't happen, but show success anyway)
+        setReferralCode('');
+      }
     }
   }
 
   // Returning user or just signed up — show share screen
-  if (referralCode) {
+  if (referralCode !== null) {
     return (
       <div className="space-y-6">
         <div className="text-center space-y-3">
@@ -83,17 +88,19 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
         </div>
 
         {/* Referral code display */}
-        <div className="text-center py-3 bg-skin-deep/40 rounded-xl border border-skin-gold/15">
-          <p className="text-[10px] font-bold text-skin-dim uppercase tracking-[0.2em] mb-1.5 font-display">
-            Your Referral Code
-          </p>
-          <p className="text-2xl font-mono font-bold text-skin-gold tracking-[0.3em]">
-            {referralCode}
-          </p>
-        </div>
+        {referralCode && (
+          <div className="text-center py-3 bg-skin-deep/40 rounded-xl border border-skin-gold/15">
+            <p className="text-[10px] font-bold text-skin-dim uppercase tracking-[0.2em] mb-1.5 font-display">
+              Your Referral Code
+            </p>
+            <p className="text-2xl font-mono font-bold text-skin-gold tracking-[0.3em]">
+              {referralCode}
+            </p>
+          </div>
+        )}
 
         <div className="pt-2 border-t border-skin-base/20">
-          <ShareButtons emphasis referralCode={referralCode} />
+          <ShareButtons emphasis referralCode={referralCode || undefined} />
         </div>
       </div>
     );

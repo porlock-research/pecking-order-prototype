@@ -116,12 +116,22 @@ async function submitPlaytestSignup(
     } catch (err: any) {
       // UNIQUE constraint violation = already signed up
       if (err?.message?.includes('UNIQUE')) {
-        // Fetch their existing referral code so localStorage can be populated
+        // Fetch their existing referral code (may be null for pre-migration signups)
         const existing = await db
           .prepare('SELECT referral_code FROM PlaytestSignups WHERE email = ?')
           .bind(email.toLowerCase())
-          .first<{ referral_code: string }>();
-        return { success: true, referralCode: existing?.referral_code || undefined };
+          .first<{ referral_code: string | null }>();
+
+        let code = existing?.referral_code;
+        if (!code) {
+          // Backfill referral code for pre-migration signups
+          code = referralCode;
+          await db
+            .prepare('UPDATE PlaytestSignups SET referral_code = ? WHERE email = ?')
+            .bind(code, email.toLowerCase())
+            .run();
+        }
+        return { success: true, referralCode: code };
       }
       throw err;
     }
