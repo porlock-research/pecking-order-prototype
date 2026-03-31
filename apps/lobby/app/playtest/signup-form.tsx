@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { handlePlaytestSignup } from './actions';
-import { REFERRAL_SOURCES, REFERRAL_LABELS } from './constants';
+import { REFERRAL_SOURCES, REFERRAL_LABELS, MESSAGING_APPS, MESSAGING_LABELS } from './constants';
 import { ShareButtons } from './share-buttons';
 
 const STORAGE_KEY = 'pecking-order-playtest';
@@ -12,6 +12,8 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
   const [email, setEmail] = useState('');
   const [referralSource, setReferralSource] = useState('FRIEND');
   const [referralDetail, setReferralDetail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [messagingApp, setMessagingApp] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
@@ -42,6 +44,8 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
       email,
       referralSource,
       referralDetail: (referralSource === 'OTHER' || (referralSource === 'FRIEND' && !referredBy)) ? referralDetail : undefined,
+      phone: phone || undefined,
+      messagingApp: messagingApp || undefined,
       referredBy: referredBy || undefined,
       turnstileToken,
     });
@@ -119,6 +123,48 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
           required
           className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-dim/30"
         />
+      </div>
+
+      <div className="space-y-1.5">
+        <label
+          htmlFor="signup-phone"
+          className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display"
+        >
+          Phone
+          <span className="normal-case tracking-normal font-normal text-skin-dim/50 ml-1">optional</span>
+        </label>
+        <input
+          id="signup-phone"
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="+1 (555) 123-4567"
+          maxLength={20}
+          className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-dim/30"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <label
+          htmlFor="signup-messaging"
+          className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display"
+        >
+          Preferred Messaging App
+          <span className="normal-case tracking-normal font-normal text-skin-dim/50 ml-1">optional</span>
+        </label>
+        <select
+          id="signup-messaging"
+          value={messagingApp}
+          onChange={(e) => setMessagingApp(e.target.value)}
+          className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm appearance-none"
+        >
+          <option value="">Select one...</option>
+          {MESSAGING_APPS.map((app) => (
+            <option key={app} value={app}>
+              {MESSAGING_LABELS[app]}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="space-y-1.5">

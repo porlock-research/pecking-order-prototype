@@ -24,6 +24,8 @@ export async function handlePlaytestSignup(data: {
   email: string;
   referralSource: string;
   referralDetail?: string;
+  phone?: string;
+  messagingApp?: string;
   referredBy?: string;
   turnstileToken: string;
 }): Promise<{ success?: boolean; referralCode?: string; error?: string }> {
@@ -40,6 +42,8 @@ async function submitPlaytestSignup(
     email: string;
     referralSource: string;
     referralDetail?: string;
+    phone?: string;
+    messagingApp?: string;
     referredBy?: string;
     turnstileToken: string;
   },
@@ -52,7 +56,7 @@ async function submitPlaytestSignup(
     return { error: firstError };
   }
 
-  const { email, referralSource, referralDetail, turnstileToken } = parsed.data;
+  const { email, referralSource, referralDetail, phone, messagingApp, turnstileToken } = parsed.data;
 
   try {
     const env = await getEnv();
@@ -100,13 +104,15 @@ async function submitPlaytestSignup(
     try {
       await db
         .prepare(
-          `INSERT INTO PlaytestSignups (email, referral_source, referral_detail, ip_address, turnstile_token, referral_code, referred_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO PlaytestSignups (email, referral_source, referral_detail, phone, messaging_app, ip_address, turnstile_token, referral_code, referred_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           email.toLowerCase(),
           referralSource,
           referralDetail || null,
+          phone || null,
+          messagingApp || null,
           ipAddress,
           turnstileToken,
           referralCode,
