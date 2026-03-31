@@ -8,7 +8,7 @@ import { ShareButtons } from './share-buttons';
 
 const STORAGE_KEY = 'pecking-order-playtest';
 
-export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
+export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey: string; playtestUrl: string }) {
   const [email, setEmail] = useState('');
   const [referralSource, setReferralSource] = useState('FRIEND');
   const [referralDetail, setReferralDetail] = useState('');
@@ -100,7 +100,7 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
         )}
 
         <div className="pt-2 border-t border-skin-base/20">
-          <ShareButtons emphasis referralCode={referralCode || undefined} />
+          <ShareButtons emphasis referralCode={referralCode || undefined} playtestUrl={playtestUrl} />
         </div>
       </div>
     );

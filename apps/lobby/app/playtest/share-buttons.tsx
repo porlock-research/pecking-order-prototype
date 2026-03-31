@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 
-const PLAYTEST_URL = 'https://playtest.peckingorder.ca';
 const SHARE_TEXT =
   'Check out Pecking Order — a social game of alliances, betrayal & strategy. Sign up for the next playtest!';
 
@@ -38,6 +37,15 @@ function RedditIcon() {
   );
 }
 
+function EmailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </svg>
+  );
+}
+
 function LinkIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -47,10 +55,10 @@ function LinkIcon() {
   );
 }
 
-export function ShareButtons({ emphasis = false, referralCode }: { emphasis?: boolean; referralCode?: string }) {
+export function ShareButtons({ emphasis = false, referralCode, playtestUrl }: { emphasis?: boolean; referralCode?: string; playtestUrl: string }) {
   const [copiedBtn, setCopiedBtn] = useState<'discord' | 'link' | null>(null);
 
-  const shareUrl = referralCode ? `${PLAYTEST_URL}?ref=${referralCode}` : PLAYTEST_URL;
+  const shareUrl = referralCode ? `${playtestUrl}?ref=${referralCode}` : playtestUrl;
 
   function shareTwitter() {
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(SHARE_TEXT)}&url=${encodeURIComponent(shareUrl)}`;
@@ -73,6 +81,12 @@ export function ShareButtons({ emphasis = false, referralCode }: { emphasis?: bo
     );
     setCopiedBtn('discord');
     setTimeout(() => setCopiedBtn(null), 2000);
+  }
+
+  function shareEmail() {
+    const subject = encodeURIComponent('Check out Pecking Order');
+    const body = encodeURIComponent(`${SHARE_TEXT}\n\n${shareUrl}`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
   }
 
   function copyLink() {
@@ -131,6 +145,13 @@ export function ShareButtons({ emphasis = false, referralCode }: { emphasis?: bo
           className={`${circleSize} rounded-full bg-[#FF4500] text-white hover:brightness-110 transition-all flex items-center justify-center hover:scale-110`}
         >
           <RedditIcon />
+        </button>
+        <button
+          onClick={shareEmail}
+          aria-label="Share via email"
+          className={`${circleSize} rounded-full bg-skin-panel/60 text-skin-dim hover:text-white hover:bg-skin-base/20 transition-all flex items-center justify-center hover:scale-110`}
+        >
+          <EmailIcon />
         </button>
         <button
           onClick={copyLink}

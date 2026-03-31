@@ -47,6 +47,8 @@ export default async function PlaytestPage() {
 
   const assetsUrl = (env.PERSONA_ASSETS_URL as string) || '';
   const turnstileSiteKey = (env.TURNSTILE_SITE_KEY as string) || '';
+  const lobbyHost = (env.LOBBY_HOST as string) || '';
+  const playtestUrl = (env.PLAYTEST_URL as string) || `${lobbyHost}/playtest`;
 
   return (
     <div className="min-h-screen bg-skin-deep bg-grid-pattern font-body text-skin-base selection:bg-skin-gold/30 relative overflow-hidden">
@@ -84,7 +86,7 @@ export default async function PlaytestPage() {
               Be the first to know when we're ready for you.
             </p>
           </div>
-          <SignupForm turnstileSiteKey={turnstileSiteKey} />
+          <SignupForm turnstileSiteKey={turnstileSiteKey} playtestUrl={playtestUrl} />
         </div>
       </main>
 
@@ -103,7 +105,7 @@ export default async function PlaytestPage() {
 
       {/* Share */}
       <section className="relative py-8 px-6">
-        <ShareButtons />
+        <ShareButtons playtestUrl={playtestUrl} />
       </section>
 
       {/* Footer */}
