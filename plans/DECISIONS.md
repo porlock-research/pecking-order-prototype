@@ -1859,3 +1859,17 @@ This document tracks significant architectural decisions, their context, and con
     *   Addresses or partially resolves: #2, #6, #16, #24, #32, #34, #36, #58, #70, #83, #86, #88, #89, #90.
     *   Snapshot size increases slightly (completed cartridge actors remain serialized) — bounded at 4 actors max per day.
     *   Vivid shell only — Classic and Immersive shells unchanged for now.
+
+## [ADR-125] E2E Test Fixture: 1-Indexed Player IDs
+*   **Date:** 2026-03-30
+*   **Status:** Accepted
+*   **Context:** The E2E test fixture (`e2e/fixtures/game-setup.ts`) created players with 0-indexed IDs (`p0`, `p1`, `p2`), while the lobby and game server use 1-indexed IDs (`p1`, `p2`, `p3`). This mismatch was harmless when the fixture was self-contained, but caused confusion when writing tests that reference player IDs in assertions (e.g., checking roster state, vote targets). The CLAUDE.md convention is explicit: "Player IDs: `p${slot_index}` — **1-indexed** (e.g., `p1`, `p2`)."
+*   **Decision:**
+    1.  **`buildRoster()`** now generates 1-indexed IDs: `p1`, `p2`, `p3`, etc.
+    2.  **`createTestGame()`** signs tokens with 1-indexed player IDs.
+    3.  **All existing E2E tests** updated to use `players[0].id === 'p1'` (not `'p0'`).
+    4.  **`game-setup.ts` constants** now support `GAME_SERVER` and `CLIENT_URL` env var overrides for worktree testing.
+*   **Consequences:**
+    *   E2E player IDs match production convention — less cognitive overhead when writing tests.
+    *   Existing tests (`voting.spec.ts`, `game-lifecycle.spec.ts`, `stale-game.spec.ts`) updated in the same commit.
+    *   Future tests should use `game.players[0].id` (which is `'p1'`) rather than hardcoding player IDs.
