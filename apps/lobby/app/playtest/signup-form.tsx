@@ -10,7 +10,7 @@ const STORAGE_KEY = 'pecking-order-playtest';
 
 export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
   const [email, setEmail] = useState('');
-  const [referralSource, setReferralSource] = useState('');
+  const [referralSource, setReferralSource] = useState('FRIEND');
   const [referralDetail, setReferralDetail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -140,7 +140,7 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
           required
           className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm appearance-none"
         >
-          <option value="" disabled>
+          <option value="" disabled hidden>
             Select one...
           </option>
           {REFERRAL_SOURCES.map((src) => (
@@ -165,7 +165,7 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
             type="text"
             value={referralDetail}
             onChange={(e) => setReferralDetail(e.target.value)}
-            placeholder="Their name or referral code"
+            placeholder="Their name or email"
             maxLength={200}
             className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-dim/30"
           />
