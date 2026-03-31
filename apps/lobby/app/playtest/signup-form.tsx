@@ -46,7 +46,7 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
     const result = await handlePlaytestSignup({
       email,
       referralSource,
-      referralDetail: referralSource === 'OTHER' ? referralDetail : undefined,
+      referralDetail: (referralSource === 'OTHER' || (referralSource === 'FRIEND' && !referredBy)) ? referralDetail : undefined,
       referredBy: referredBy || undefined,
       turnstileToken,
     });
@@ -151,16 +151,37 @@ export function SignupForm({ turnstileSiteKey }: { turnstileSiteKey: string }) {
         </select>
       </div>
 
-      {referralSource === 'OTHER' && (
+      {referralSource === 'FRIEND' && !referredBy && (
         <div className="space-y-1.5">
           <label
             htmlFor="signup-referral-detail"
             className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display"
           >
-            Tell us more
+            Who referred you?
+            <span className="normal-case tracking-normal font-normal text-skin-dim/50 ml-1">optional</span>
           </label>
           <input
             id="signup-referral-detail"
+            type="text"
+            value={referralDetail}
+            onChange={(e) => setReferralDetail(e.target.value)}
+            placeholder="Their name or referral code"
+            maxLength={200}
+            className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-dim/30"
+          />
+        </div>
+      )}
+
+      {referralSource === 'OTHER' && (
+        <div className="space-y-1.5">
+          <label
+            htmlFor="signup-referral-detail-other"
+            className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display"
+          >
+            Tell us more
+          </label>
+          <input
+            id="signup-referral-detail-other"
             type="text"
             value={referralDetail}
             onChange={(e) => setReferralDetail(e.target.value)}
