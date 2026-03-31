@@ -37,11 +37,6 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
     e.preventDefault();
     setError(null);
 
-    if (!turnstileToken && turnstileSiteKey) {
-      setError('Please wait for verification to complete.');
-      return;
-    }
-
     setIsLoading(true);
     const result = await handlePlaytestSignup({
       email,
@@ -211,7 +206,7 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
 
       <button
         type="submit"
-        disabled={isLoading || !email || !referralSource}
+        disabled={isLoading || !email || !referralSource || (!!turnstileSiteKey && !turnstileToken)}
         className={`w-full py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl transition-all flex items-center justify-center gap-3
           ${
             isLoading
