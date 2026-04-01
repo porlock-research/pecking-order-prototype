@@ -64,7 +64,7 @@ function buildLivePills(
   if (activeVoting && activeVoting.phase !== VotingPhases.REVEAL && activeVoting.phase !== VotingPhases.WINNER) {
     pills.push({ label: 'Voting', key: 'voting' });
   }
-  if (activeGame && activeGame.status !== ArcadePhases.COMPLETED) {
+  if (activeGame && activeGame.status !== ArcadePhases.COMPLETED && !activeGame.allPlayerResults) {
     // Also check sync-decision reveal states
     const p = activeGame.phase;
     if (p !== 'REVEAL' && p !== 'SCOREBOARD') {

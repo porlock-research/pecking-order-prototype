@@ -4,6 +4,7 @@ import type { CompletedCartridge } from '../../../store/useGameStore';
 import {
   DayPhases,
   VotingPhases, ArcadePhases, PromptPhases, DilemmaPhases,
+  VOTE_TYPE_INFO, GAME_TYPE_INFO, ACTIVITY_TYPE_INFO, DILEMMA_TYPE_INFO,
 } from '@pecking-order/shared-types';
 import type { VoteType, GameType, PromptType } from '@pecking-order/shared-types';
 import type { DilemmaType } from '@pecking-order/shared-types';
@@ -360,24 +361,47 @@ function resolveTimelineTypeKey(
   }
 }
 
+function getTypeName(kind: CompletedCartridge['kind'], snapshot: any): string {
+  switch (kind) {
+    case 'voting':
+      return VOTE_TYPE_INFO[snapshot.mechanism as VoteType]?.name ?? 'Vote';
+    case 'game':
+      return GAME_TYPE_INFO[snapshot.gameType as Exclude<GameType, 'NONE'>]?.name ?? 'Game';
+    case 'prompt':
+      return ACTIVITY_TYPE_INFO[snapshot.promptType as PromptType]?.name ?? 'Activity';
+    case 'dilemma':
+      return DILEMMA_TYPE_INFO[snapshot.dilemmaType as DilemmaType]?.name ?? 'Dilemma';
+  }
+}
+
 function buildSummaryLine(c: CompletedCartridge, roster: Record<string, any>): string {
+  const typeName = getTypeName(c.kind, c.snapshot);
+  let detail: string;
+
   switch (c.kind) {
     case 'voting':
-      return buildVotingSummary(c.snapshot, roster);
+      detail = buildVotingSummary(c.snapshot, roster);
+      break;
     case 'game': {
       const rewards = c.snapshot.silverRewards ?? {};
       const topEntry = Object.entries(rewards).sort(([, a], [, b]) => (b as number) - (a as number))[0];
       if (topEntry) {
         const name = roster[topEntry[0]]?.personaName ?? topEntry[0];
-        return `${name} won`;
+        detail = `${name} won`;
+      } else {
+        detail = 'completed';
       }
-      return 'Game completed';
+      break;
     }
     case 'prompt':
-      return `${c.snapshot.participantCount ?? 0} responses`;
+      detail = `${c.snapshot.participantCount ?? 0} responses`;
+      break;
     case 'dilemma':
-      return c.snapshot.summary?.timedOut ? "Time's up" : 'Dilemma resolved';
+      detail = c.snapshot.summary?.timedOut ? "time's up" : 'resolved';
+      break;
   }
+
+  return `${typeName} — ${detail}`;
 }
 
 function buildVotingSummary(snapshot: any, roster: Record<string, any>): string {

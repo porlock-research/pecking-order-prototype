@@ -1,5 +1,8 @@
 import React, { Suspense } from 'react';
 import { motion } from 'framer-motion';
+import {
+  VOTE_TYPE_INFO, GAME_TYPE_INFO, ACTIVITY_TYPE_INFO, DILEMMA_TYPE_INFO,
+} from '@pecking-order/shared-types';
 import { VIVID_SPRING } from '../../springs';
 
 /* ------------------------------------------------------------------ */
@@ -12,15 +15,30 @@ const PromptPanel = React.lazy(() => import('../../../../components/panels/Promp
 const DilemmaPanel = React.lazy(() => import('../../../../components/panels/DilemmaPanel'));
 
 /* ------------------------------------------------------------------ */
-/*  Kind labels                                                        */
+/*  Cartridge name resolution                                          */
 /* ------------------------------------------------------------------ */
 
-const KIND_LABELS: Record<string, string> = {
-  voting: 'Voting',
+const KIND_FALLBACKS: Record<string, string> = {
+  voting: 'Vote',
   game: 'Game',
   prompt: 'Activity',
   dilemma: 'Dilemma',
 };
+
+function getCartridgeName(kind: string, cartridge: any): string {
+  switch (kind) {
+    case 'voting':
+      return VOTE_TYPE_INFO[cartridge?.voteType]?.name ?? 'Vote';
+    case 'game':
+      return GAME_TYPE_INFO[cartridge?.gameType]?.name ?? 'Game';
+    case 'prompt':
+      return ACTIVITY_TYPE_INFO[cartridge?.promptType]?.name ?? 'Activity';
+    case 'dilemma':
+      return DILEMMA_TYPE_INFO[cartridge?.dilemmaType]?.name ?? 'Dilemma';
+    default:
+      return KIND_FALLBACKS[kind] ?? kind;
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  Props                                                              */
@@ -47,8 +65,8 @@ export function CartridgeTakeover({ kind, cartridge, engine, onDismiss }: Cartri
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 100,
-        background: 'var(--vivid-bg)',
+        zIndex: 9999,
+        background: 'var(--vivid-bg, #FAF6EF)',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -98,7 +116,7 @@ export function CartridgeTakeover({ kind, cartridge, engine, onDismiss }: Cartri
             letterSpacing: '0.02em',
           }}
         >
-          {KIND_LABELS[kind] ?? kind}
+          {getCartridgeName(kind, cartridge)}
         </span>
       </div>
 
