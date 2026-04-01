@@ -196,6 +196,9 @@ export function TodayTab({ onOpenCartridge }: TodayTabProps) {
     }
 
     // --- Upcoming from timeline ---
+    // Show all scheduled activities that don't have an active/completed cartridge yet.
+    // Past events are still shown (the activity hasn't started, or is pending injection
+    // in ADMIN mode). Future events show a countdown.
     if (currentDay?.timeline) {
       let upcomingIdx = 0;
       for (const event of currentDay.timeline) {
@@ -205,14 +208,13 @@ export function TodayTab({ onOpenCartridge }: TodayTabProps) {
 
         const eventTime = new Date(event.time).getTime();
         const ms = eventTime - now;
-        if (ms <= 0) continue; // already past
 
         const typeKey = resolveTimelineTypeKey(kind, event, currentDay);
         result.push({
           kind,
           typeKey,
           state: 'upcoming',
-          countdown: formatCountdown(ms),
+          countdown: ms > 0 ? formatCountdown(ms) : undefined,
           sortKey: 2 + upcomingIdx,
         });
         seenKinds.add(kind);
