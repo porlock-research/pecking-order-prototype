@@ -117,7 +117,7 @@ function BellIcon({ hasUnread }: { hasUnread: boolean }) {
       height={18}
       viewBox="0 0 24 24"
       fill="none"
-      stroke={hasUnread ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.3)'}
+      stroke={hasUnread ? 'rgba(61,46,31,0.6)' : 'rgba(61,46,31,0.35)'}
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
