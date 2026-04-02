@@ -1,6 +1,7 @@
 import React from 'react';
 import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
 import { Scale } from 'lucide-react';
+import { PersonaAvatar } from '../../components/PersonaAvatar';
 
 interface WyrCartridge {
   promptType: 'WOULD_YOU_RATHER';
@@ -141,6 +142,35 @@ export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engi
                 </>
               );
             })()}
+          </div>
+
+          {/* Individual choices */}
+          <div className="space-y-1 pt-1">
+            <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
+              Who chose what
+            </p>
+            {Object.entries(choices).map(([pid, choice]) => {
+              const player = roster[pid];
+              const isMe = pid === playerId;
+              return (
+                <div
+                  key={pid}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${isMe ? 'bg-skin-gold/5 border border-skin-gold/15' : ''}`}
+                >
+                  <PersonaAvatar
+                    avatarUrl={player?.avatarUrl}
+                    personaName={player?.personaName}
+                    size={20}
+                  />
+                  <span className={`text-xs flex-1 ${isMe ? 'font-bold text-skin-gold' : 'text-skin-dim'}`}>
+                    {isMe ? 'You' : (player?.personaName || pid)}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-skin-pink">
+                    {choice === 'A' ? results.optionA : results.optionB}
+                  </span>
+                </div>
+              );
+            })}
           </div>
 
           {results.silverRewards[playerId] != null && (
