@@ -1,61 +1,23 @@
 import React, { Suspense } from 'react';
 import { motion } from 'framer-motion';
-import {
-  VOTE_TYPE_INFO, GAME_TYPE_INFO, ACTIVITY_TYPE_INFO, DILEMMA_TYPE_INFO,
-} from '@pecking-order/shared-types';
+import { GAME_TYPE_INFO } from '@pecking-order/shared-types';
 import { VIVID_SPRING } from '../../springs';
 
-/* ------------------------------------------------------------------ */
-/*  Lazy-loaded panel components                                       */
-/* ------------------------------------------------------------------ */
-
-const VotingPanel = React.lazy(() => import('../../../../components/panels/VotingPanel'));
 const GamePanel = React.lazy(() => import('../../../../components/panels/GamePanel'));
-const PromptPanel = React.lazy(() => import('../../../../components/panels/PromptPanel'));
-const DilemmaPanel = React.lazy(() => import('../../../../components/panels/DilemmaPanel'));
 
-/* ------------------------------------------------------------------ */
-/*  Cartridge name resolution                                          */
-/* ------------------------------------------------------------------ */
-
-const KIND_FALLBACKS: Record<string, string> = {
-  voting: 'Vote',
-  game: 'Game',
-  prompt: 'Activity',
-  dilemma: 'Dilemma',
-};
-
-function getCartridgeName(kind: string, cartridge: any): string {
-  switch (kind) {
-    case 'voting':
-      return VOTE_TYPE_INFO[cartridge?.voteType]?.name ?? 'Vote';
-    case 'game':
-      return GAME_TYPE_INFO[cartridge?.gameType]?.name ?? 'Game';
-    case 'prompt':
-      return ACTIVITY_TYPE_INFO[cartridge?.promptType]?.name ?? 'Activity';
-    case 'dilemma':
-      return DILEMMA_TYPE_INFO[cartridge?.dilemmaType]?.name ?? 'Dilemma';
-    default:
-      return KIND_FALLBACKS[kind] ?? kind;
-  }
+function getGameName(cartridge: any): string {
+  if (!cartridge?.gameType) return 'Game';
+  const info = (GAME_TYPE_INFO as Record<string, { name: string }>)[cartridge.gameType];
+  return info?.name || cartridge.gameType;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Props                                                              */
-/* ------------------------------------------------------------------ */
-
 interface CartridgeTakeoverProps {
-  kind: string;
   cartridge: any;
   engine: any;
   onDismiss: () => void;
 }
 
-/* ------------------------------------------------------------------ */
-/*  CartridgeTakeover                                                  */
-/* ------------------------------------------------------------------ */
-
-export function CartridgeTakeover({ kind, cartridge, engine, onDismiss }: CartridgeTakeoverProps) {
+export function CartridgeTakeover({ cartridge, engine, onDismiss }: CartridgeTakeoverProps) {
   return (
     <motion.div
       initial={{ y: '100%' }}
@@ -66,25 +28,23 @@ export function CartridgeTakeover({ kind, cartridge, engine, onDismiss }: Cartri
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: 'var(--vivid-bg, #FAF6EF)',
         display: 'flex',
         flexDirection: 'column',
+        background: 'var(--vivid-bg)',
       }}
     >
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)',
-          paddingBottom: 12,
-          paddingLeft: 16,
-          paddingRight: 16,
-          background: 'var(--vivid-bg-warm)',
-          borderBottom: '2px solid var(--vivid-phase-accent)',
-        }}
-      >
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+        paddingBottom: 12,
+        paddingLeft: 16,
+        paddingRight: 16,
+        background: 'var(--vivid-bg-warm)',
+        borderBottom: '2px solid var(--vivid-phase-accent)',
+      }}>
         <button
           onClick={onDismiss}
           aria-label="Close"
@@ -107,26 +67,20 @@ export function CartridgeTakeover({ kind, cartridge, engine, onDismiss }: Cartri
             />
           </svg>
         </button>
-
-        <span
-          style={{
-            fontSize: 15,
-            fontWeight: 600,
-            color: 'var(--vivid-text)',
-            letterSpacing: '0.02em',
-          }}
-        >
-          {getCartridgeName(kind, cartridge)}
+        <span style={{
+          fontSize: 15,
+          fontWeight: 600,
+          color: 'var(--vivid-text)',
+          letterSpacing: '0.02em',
+        }}>
+          {getGameName(cartridge)}
         </span>
       </div>
 
-      {/* Body — scrollable panel area */}
+      {/* Game panel */}
       <div style={{ flex: 1, overflow: 'auto' }}>
         <Suspense fallback={null}>
-          {kind === 'voting' && <VotingPanel engine={engine} />}
-          {kind === 'game' && <GamePanel engine={engine} />}
-          {kind === 'prompt' && <PromptPanel engine={engine} />}
-          {kind === 'dilemma' && <DilemmaPanel engine={engine} />}
+          <GamePanel engine={engine} />
         </Suspense>
       </div>
     </motion.div>

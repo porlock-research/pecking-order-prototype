@@ -56,7 +56,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const [dmChannelId, setDmChannelId] = useState<string | null>(null);
   const [detailPlayerId, setDetailPlayerId] = useState<string | null>(null);
   const [showNewConversation, setShowNewConversation] = useState(false);
-  const [takeoverCartridge, setTakeoverCartridge] = useState<{ kind: string; cartridge: any } | null>(null);
+  const [takeoverGame, setTakeoverGame] = useState<any>(null);
 
   const roster = useGameStore(s => s.roster);
   const phase = useGameStore(s => s.phase);
@@ -231,7 +231,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
               style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
               transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <TodayTab onOpenCartridge={(kind, cartridge) => setTakeoverCartridge({ kind, cartridge })} />
+              <TodayTab engine={engine} onPlayGame={(cartridge) => setTakeoverGame(cartridge)} />
             </motion.div>
           )}
 
@@ -302,14 +302,13 @@ function VividShell({ playerId, engine, token }: ShellProps) {
         )}
       </AnimatePresence>
 
-      {/* Cartridge takeover — fullscreen overlay */}
+      {/* Cartridge takeover — fullscreen overlay (games only) */}
       <AnimatePresence>
-        {takeoverCartridge && (
+        {takeoverGame && (
           <CartridgeTakeover
-            kind={takeoverCartridge.kind}
-            cartridge={takeoverCartridge.cartridge}
+            cartridge={takeoverGame}
             engine={engine}
-            onDismiss={() => setTakeoverCartridge(null)}
+            onDismiss={() => setTakeoverGame(null)}
           />
         )}
       </AnimatePresence>
