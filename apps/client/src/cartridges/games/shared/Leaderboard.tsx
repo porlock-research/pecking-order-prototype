@@ -1,3 +1,4 @@
+import { GameTypes } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../store/useGameStore';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 
@@ -8,16 +9,16 @@ interface PlayerResult {
 }
 
 const GAME_STAT_CONFIG: Record<string, { key: string; label: string; format?: (v: number) => string }> = {
-  GAP_RUN: { key: 'distance', label: 'Distance' },
-  GRID_PUSH: { key: 'bankedTotal', label: 'Score' },
-  SEQUENCE: { key: 'correctRounds', label: 'Rounds' },
-  REACTION_TIME: { key: 'avgReactionMs', label: 'Avg', format: v => `${v}ms` },
-  COLOR_MATCH: { key: 'correctAnswers', label: 'Correct' },
-  STACKER: { key: 'height', label: 'Height' },
-  QUICK_MATH: { key: 'correctAnswers', label: 'Correct' },
-  SIMON_SAYS: { key: 'roundsCompleted', label: 'Rounds' },
-  AIM_TRAINER: { key: 'score', label: 'Score' },
-  TRIVIA: { key: 'correctCount', label: 'Correct' },
+  [GameTypes.GAP_RUN]: { key: 'distance', label: 'Distance' },
+  [GameTypes.GRID_PUSH]: { key: 'bankedTotal', label: 'Score' },
+  [GameTypes.SEQUENCE]: { key: 'correctRounds', label: 'Rounds' },
+  [GameTypes.REACTION_TIME]: { key: 'avgReactionMs', label: 'Avg', format: v => `${v}ms` },
+  [GameTypes.COLOR_MATCH]: { key: 'correctAnswers', label: 'Correct' },
+  [GameTypes.STACKER]: { key: 'height', label: 'Height' },
+  [GameTypes.QUICK_MATH]: { key: 'correctAnswers', label: 'Correct' },
+  [GameTypes.SIMON_SAYS]: { key: 'roundsCompleted', label: 'Rounds' },
+  [GameTypes.AIM_TRAINER]: { key: 'score', label: 'Score' },
+  [GameTypes.TRIVIA]: { key: 'correctCount', label: 'Correct' },
 };
 
 interface LeaderboardProps {
