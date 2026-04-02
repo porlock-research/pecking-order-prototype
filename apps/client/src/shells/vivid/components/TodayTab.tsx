@@ -276,7 +276,8 @@ export function TodayTab({ engine, onPlayGame }: TodayTabProps) {
         const kind = ACTION_TO_KIND[event.action];
         if (!kind || seenKinds.has(kind)) continue;
         const typeKey = resolveTimelineTypeKey(kind, event, currentDay);
-        entries.push({ kind, typeKey, state: 'upcoming', startsAt: event.time, sortKey: 2 + upIdx });
+        const startsAt = typeof event.time === 'number' ? event.time : new Date(event.time).getTime();
+        entries.push({ kind, typeKey, state: 'upcoming', startsAt, sortKey: 2 + upIdx });
         seenKinds.add(kind);
         upIdx++;
       }

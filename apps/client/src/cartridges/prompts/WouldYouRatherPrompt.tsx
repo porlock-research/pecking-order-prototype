@@ -179,7 +179,7 @@ export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engi
                 </div>
               );
             })}
-          </div>}
+          </div>
 
           {results.silverRewards[playerId] != null && (
             <div className="text-center py-2">

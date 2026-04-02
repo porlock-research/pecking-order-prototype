@@ -30,7 +30,7 @@ export function CartridgeTakeover({ cartridge, engine, onDismiss }: CartridgeTak
         zIndex: 9999,
         display: 'flex',
         flexDirection: 'column',
-        background: 'var(--vivid-bg)',
+        background: 'var(--vivid-bg, #FAF6EF)',
       }}
     >
       {/* Header */}
@@ -61,7 +61,7 @@ export function CartridgeTakeover({ cartridge, engine, onDismiss }: CartridgeTak
           <svg width={20} height={20} viewBox="0 0 20 20" fill="none">
             <path
               d="M5 5l10 10M15 5L5 15"
-              stroke="rgba(61,46,31,0.5)"
+              stroke="rgba(61,46,31,0.85)"
               strokeWidth={2}
               strokeLinecap="round"
             />

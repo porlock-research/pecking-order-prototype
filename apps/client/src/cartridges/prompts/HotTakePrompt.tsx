@@ -177,7 +177,7 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
                 </div>
               );
             })}
-          </div>}
+          </div>
 
           {results.silverRewards[playerId] != null && (
             <div className="text-center py-2">
