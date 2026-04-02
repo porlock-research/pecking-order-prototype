@@ -7,12 +7,27 @@ interface PlayerResult {
   result?: Record<string, number>;
 }
 
+const GAME_STAT_CONFIG: Record<string, { key: string; label: string; format?: (v: number) => string }> = {
+  GAP_RUN: { key: 'distance', label: 'Distance' },
+  GRID_PUSH: { key: 'bankedTotal', label: 'Score' },
+  SEQUENCE: { key: 'correctRounds', label: 'Rounds' },
+  REACTION_TIME: { key: 'avgReactionMs', label: 'Avg', format: v => `${v}ms` },
+  COLOR_MATCH: { key: 'correctAnswers', label: 'Correct' },
+  STACKER: { key: 'height', label: 'Height' },
+  QUICK_MATH: { key: 'correctAnswers', label: 'Correct' },
+  SIMON_SAYS: { key: 'roundsCompleted', label: 'Rounds' },
+  AIM_TRAINER: { key: 'score', label: 'Score' },
+  TRIVIA: { key: 'correctCount', label: 'Correct' },
+};
+
 interface LeaderboardProps {
   allPlayerResults: PlayerResult[];
   currentPlayerId: string;
+  gameType?: string;
 }
 
-export function Leaderboard({ allPlayerResults, currentPlayerId }: LeaderboardProps) {
+export function Leaderboard({ allPlayerResults, currentPlayerId, gameType }: LeaderboardProps) {
+  const statConfig = gameType ? GAME_STAT_CONFIG[gameType] : undefined;
   const roster = useGameStore(s => s.roster);
 
   if (!allPlayerResults || allPlayerResults.length === 0) return null;
@@ -70,6 +85,21 @@ export function Leaderboard({ allPlayerResults, currentPlayerId }: LeaderboardPr
               }}>
                 {isMe ? 'You' : (player?.personaName || entry.playerId)}
               </span>
+
+              {statConfig && entry.result?.[statConfig.key] != null && (
+                <span style={{
+                  fontSize: 11, fontWeight: 600,
+                  color: 'rgba(255,255,255,0.5)',
+                  fontFamily: 'var(--vivid-font-mono)',
+                }}>
+                  {statConfig.format
+                    ? statConfig.format(entry.result[statConfig.key])
+                    : entry.result[statConfig.key]}{' '}
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
+                    {statConfig.label}
+                  </span>
+                </span>
+              )}
 
               <span style={{
                 fontSize: 11, fontWeight: 700,

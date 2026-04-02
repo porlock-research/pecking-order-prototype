@@ -172,6 +172,7 @@ export default function ArcadeGameWrapper({
             <Leaderboard
               allPlayerResults={cartridge.allPlayerResults}
               currentPlayerId={playerId}
+              gameType={gameType}
             />
           )}
         </>
