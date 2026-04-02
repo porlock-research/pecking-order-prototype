@@ -407,7 +407,7 @@ function CompletedSummary({ kind, snapshot }: { kind: string; snapshot: any }) {
   if (kind === 'voting') {
     const eliminatedId = snapshot.eliminatedId ?? snapshot.results?.eliminatedId;
     const winnerId = snapshot.winnerId ?? snapshot.results?.winnerId;
-    const tallies = snapshot.tallies ?? snapshot.results?.tallies ?? {};
+    const tallies = snapshot.summary?.tallies ?? snapshot.tallies ?? {};
     const sorted = Object.entries(tallies).sort(([, a], [, b]) => (b as number) - (a as number));
     content = (
       <>
@@ -450,7 +450,7 @@ function CompletedSummary({ kind, snapshot }: { kind: string; snapshot: any }) {
       </div>
     ) : <CompletedLabel text="Completed" />;
   } else if (kind === 'prompt') {
-    const count = snapshot.participantCount ?? snapshot.responses ? Object.keys(snapshot.responses ?? {}).length : 0;
+    const count = snapshot.participantCount || (snapshot.playerResponses ? Object.keys(snapshot.playerResponses).length : 0);
     content = <CompletedLabel text={`${count} response${count === 1 ? '' : 's'}`} />;
   } else if (kind === 'dilemma') {
     const timedOut = snapshot.summary?.timedOut;
