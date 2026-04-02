@@ -96,6 +96,16 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
       {/* Results Phase */}
       {phase === PromptPhases.RESULTS && results && (
         <div className="p-4 space-y-4 animate-fade-in">
+          {/* Show the prompt text in results too */}
+          <div className="flex items-start gap-3 pb-1">
+            <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
+              <Flame size={14} className="text-skin-pink" />
+            </div>
+            <p className="text-sm font-bold text-skin-base leading-relaxed pt-1 italic">
+              "{results.statement || promptText}"
+            </p>
+          </div>
+
           <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
             Results
           </p>
@@ -138,6 +148,7 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
           </div>
 
           {/* Individual stances */}
+          {Object.keys(stances).length > 0 && (
           <div className="space-y-1 pt-1">
             <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
               Who said what
@@ -165,6 +176,7 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
               );
             })}
           </div>
+          )}
 
           {results.silverRewards[playerId] != null && (
             <div className="text-center py-2">

@@ -102,6 +102,11 @@ export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engi
       {/* Results Phase */}
       {phase === PromptPhases.RESULTS && results && (
         <div className="p-4 space-y-4 animate-fade-in">
+          {/* Show the question in results */}
+          <p className="text-center text-sm font-bold text-skin-base italic leading-relaxed">
+            Would you rather...
+          </p>
+
           <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
             Results
           </p>
@@ -145,6 +150,7 @@ export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engi
           </div>
 
           {/* Individual choices */}
+          {Object.keys(choices).length > 0 && (
           <div className="space-y-1 pt-1">
             <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
               Who chose what
@@ -172,6 +178,7 @@ export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engi
               );
             })}
           </div>
+          )}
 
           {results.silverRewards[playerId] != null && (
             <div className="text-center py-2">
