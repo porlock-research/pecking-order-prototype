@@ -28,6 +28,10 @@ interface ActivityEntry {
   state: 'upcoming' | 'live' | 'completed';
   startsAt?: number;
   sortKey: number;
+  /** true when data lives in an active cartridge slot (panels can render) */
+  hasActiveData?: boolean;
+  /** snapshot from completedCartridges (fallback when active slot is empty) */
+  snapshot?: any;
 }
 
 /* ── constants ─────────────────────────────────────── */
@@ -236,22 +240,22 @@ export function TodayTab({ engine, onPlayGame }: TodayTabProps) {
     // 1. Active cartridges (live or completed-but-held via result hold)
     if (activeVotingCartridge) {
       const state = resolveVotingState(activeVotingCartridge);
-      entries.push({ kind: 'voting', typeKey: activeVotingCartridge.voteType, state, sortKey: state === 'completed' ? 0 : 1 });
+      entries.push({ kind: 'voting', typeKey: activeVotingCartridge.voteType, state, sortKey: state === 'completed' ? 0 : 1, hasActiveData: true });
       seenKinds.add('voting');
     }
     if (activeGameCartridge) {
       const state = resolveGameState(activeGameCartridge);
-      entries.push({ kind: 'game', typeKey: activeGameCartridge.gameType, state, sortKey: state === 'completed' ? 0 : 1 });
+      entries.push({ kind: 'game', typeKey: activeGameCartridge.gameType, state, sortKey: state === 'completed' ? 0 : 1, hasActiveData: true });
       seenKinds.add('game');
     }
     if (activePromptCartridge) {
       const state = resolvePromptState(activePromptCartridge);
-      entries.push({ kind: 'prompt', typeKey: activePromptCartridge.promptType, state, sortKey: state === 'completed' ? 0 : 1 });
+      entries.push({ kind: 'prompt', typeKey: activePromptCartridge.promptType, state, sortKey: state === 'completed' ? 0 : 1, hasActiveData: true });
       seenKinds.add('prompt');
     }
     if (activeDilemma) {
       const state = resolveDilemmaState(activeDilemma);
-      entries.push({ kind: 'dilemma', typeKey: activeDilemma.dilemmaType, state, sortKey: state === 'completed' ? 0 : 1 });
+      entries.push({ kind: 'dilemma', typeKey: activeDilemma.dilemmaType, state, sortKey: state === 'completed' ? 0 : 1, hasActiveData: true });
       seenKinds.add('dilemma');
     }
 
@@ -260,7 +264,7 @@ export function TodayTab({ engine, onPlayGame }: TodayTabProps) {
       if (c.snapshot?.dayIndex !== dayIndex) continue;
       if (seenKinds.has(c.kind)) continue;
       const typeKey = c.snapshot?.mechanism || c.snapshot?.gameType || c.snapshot?.promptType || c.snapshot?.dilemmaType || 'UNKNOWN';
-      entries.push({ kind: c.kind, typeKey, state: 'completed', sortKey: 0 });
+      entries.push({ kind: c.kind, typeKey, state: 'completed', sortKey: 0, hasActiveData: false, snapshot: c.snapshot });
       seenKinds.add(c.kind);
     }
 
@@ -328,7 +332,7 @@ function ActivitySection({ activity, engine, onPlayGame }: {
   engine: any;
   onPlayGame: (cartridge: any) => void;
 }) {
-  const { kind, typeKey, state } = activity;
+  const { kind, typeKey, state, hasActiveData, snapshot } = activity;
   const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
   const color = KIND_COLORS[kind] || '#888';
 
@@ -347,7 +351,27 @@ function ActivitySection({ activity, engine, onPlayGame }: {
     );
   }
 
-  // Live or completed: render the actual cartridge panel inline
+  // Completed but active slot cleaned up — render compact summary from snapshot
+  if (state === 'completed' && !hasActiveData) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={VIVID_SPRING.gentle}
+        style={{
+          background: 'var(--vivid-bg-surface)',
+          borderRadius: 14,
+          overflow: 'hidden',
+          border: '1px solid var(--vivid-border)',
+        }}
+      >
+        <SectionHeader kind={kind} typeKey={typeKey} state={state} />
+        {snapshot && <CompletedSummary kind={kind} snapshot={snapshot} />}
+      </motion.div>
+    );
+  }
+
+  // Live or completed with active data: render the actual cartridge panel inline
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -368,5 +392,82 @@ function ActivitySection({ activity, engine, onPlayGame }: {
         {kind === 'dilemma' && <DilemmaPanel engine={engine} />}
       </Suspense>
     </motion.div>
+  );
+}
+
+/* ── compact summary for completed cartridges without active data ── */
+
+function CompletedSummary({ kind, snapshot }: { kind: string; snapshot: any }) {
+  const roster = useGameStore(s => s.roster);
+
+  const name = (id: string) => roster[id]?.personaName || id;
+
+  let content: React.ReactNode = null;
+
+  if (kind === 'voting') {
+    const eliminatedId = snapshot.eliminatedId ?? snapshot.results?.eliminatedId;
+    const winnerId = snapshot.winnerId ?? snapshot.results?.winnerId;
+    const tallies = snapshot.tallies ?? snapshot.results?.tallies ?? {};
+    const sorted = Object.entries(tallies).sort(([, a], [, b]) => (b as number) - (a as number));
+    content = (
+      <>
+        {eliminatedId && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(157,23,77,0.06)', border: '1px solid rgba(157,23,77,0.15)' }}>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#9D174D', fontFamily: 'var(--vivid-font-body)' }}>{name(eliminatedId)}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9D174D', fontFamily: 'var(--vivid-font-mono)' }}>Eliminated</span>
+          </div>
+        )}
+        {winnerId && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(184,132,10,0.06)', border: '1px solid rgba(184,132,10,0.15)' }}>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#B8840A', fontFamily: 'var(--vivid-font-body)' }}>{name(winnerId)}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#B8840A', fontFamily: 'var(--vivid-font-mono)' }}>Winner</span>
+          </div>
+        )}
+        {sorted.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
+            {sorted.map(([pid, count]) => (
+              <div key={pid} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px' }}>
+                <span style={{ flex: 1, fontSize: 12, color: pid === eliminatedId ? '#9D174D' : 'var(--vivid-text-base)', fontFamily: 'var(--vivid-font-body)' }}>{name(pid)}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--vivid-text-muted)', fontFamily: 'var(--vivid-font-mono)' }}>{count as number}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    );
+  } else if (kind === 'game') {
+    const rewards = snapshot.silverRewards ?? {};
+    const sorted = Object.entries(rewards).sort(([, a], [, b]) => (b as number) - (a as number));
+    content = sorted.length > 0 ? (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {sorted.map(([pid, silver], i) => (
+          <div key={pid} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px' }}>
+            <span style={{ width: 18, fontSize: 11, fontWeight: 700, color: i === 0 ? '#B8840A' : 'var(--vivid-text-muted)', fontFamily: 'var(--vivid-font-mono)' }}>{i + 1}</span>
+            <span style={{ flex: 1, fontSize: 12, fontWeight: i === 0 ? 700 : 400, color: 'var(--vivid-text-base)', fontFamily: 'var(--vivid-font-body)' }}>{name(pid)}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#B8840A', fontFamily: 'var(--vivid-font-mono)' }}>+{silver as number}</span>
+          </div>
+        ))}
+      </div>
+    ) : <CompletedLabel text="Completed" />;
+  } else if (kind === 'prompt') {
+    const count = snapshot.participantCount ?? snapshot.responses ? Object.keys(snapshot.responses ?? {}).length : 0;
+    content = <CompletedLabel text={`${count} response${count === 1 ? '' : 's'}`} />;
+  } else if (kind === 'dilemma') {
+    const timedOut = snapshot.summary?.timedOut;
+    content = <CompletedLabel text={timedOut ? "Time's up" : 'Resolved'} />;
+  }
+
+  return (
+    <div style={{ padding: '10px 14px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {content}
+    </div>
+  );
+}
+
+function CompletedLabel({ text }: { text: string }) {
+  return (
+    <div style={{ fontSize: 12, color: 'var(--vivid-text-muted)', fontFamily: 'var(--vivid-font-body)', textAlign: 'center', padding: '8px 0' }}>
+      {text}
+    </div>
   );
 }
