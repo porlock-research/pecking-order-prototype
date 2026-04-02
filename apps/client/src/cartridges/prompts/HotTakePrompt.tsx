@@ -148,11 +148,13 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
           </div>
 
           {/* Individual stances */}
-          {Object.keys(stances).length > 0 && (
           <div className="space-y-1 pt-1">
             <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
               Who said what
             </p>
+            {Object.keys(stances).length === 0 && (
+              <p className="text-xs text-skin-dim/40 text-center py-2 font-mono">No responses</p>
+            )}
             {Object.entries(stances).map(([pid, stance]) => {
               const player = roster[pid];
               const isMe = pid === playerId;
@@ -175,8 +177,7 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
                 </div>
               );
             })}
-          </div>
-          )}
+          </div>}
 
           {results.silverRewards[playerId] != null && (
             <div className="text-center py-2">

@@ -150,11 +150,13 @@ export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engi
           </div>
 
           {/* Individual choices */}
-          {Object.keys(choices).length > 0 && (
           <div className="space-y-1 pt-1">
             <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
               Who chose what
             </p>
+            {Object.keys(choices).length === 0 && (
+              <p className="text-xs text-skin-dim/40 text-center py-2 font-mono">No responses</p>
+            )}
             {Object.entries(choices).map(([pid, choice]) => {
               const player = roster[pid];
               const isMe = pid === playerId;
@@ -177,8 +179,7 @@ export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engi
                 </div>
               );
             })}
-          </div>
-          )}
+          </div>}
 
           {results.silverRewards[playerId] != null && (
             <div className="text-center py-2">
