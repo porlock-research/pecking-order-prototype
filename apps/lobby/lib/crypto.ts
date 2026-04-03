@@ -7,7 +7,7 @@ export interface DerivedKeys {
 }
 
 export async function deriveKeys(masterHex: string): Promise<DerivedKeys> {
-  const masterBytes = hexToBytes(masterHex);
+  const masterBytes = hexToBytes(masterHex).buffer as ArrayBuffer;
   const baseKey = await crypto.subtle.importKey(
     'raw',
     masterBytes,
@@ -67,8 +67,8 @@ export async function decrypt(
   if (!encoded.startsWith('enc:')) return encoded;
   const parts = encoded.slice(4).split(':');
   if (parts.length !== 2) throw new Error('Invalid encrypted value format');
-  const iv = base64ToBytes(parts[0]);
-  const ciphertext = base64ToBytes(parts[1]);
+  const iv = base64ToBytes(parts[0]).buffer as ArrayBuffer;
+  const ciphertext = base64ToBytes(parts[1]).buffer as ArrayBuffer;
   const plaintext = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv },
     key,

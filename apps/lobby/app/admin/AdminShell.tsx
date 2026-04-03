@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 const NAV_ITEMS = [
   { href: '/admin', label: 'Games', icon: '🎮' },
   { href: '/admin/personas', label: 'Personas', icon: '🎭' },
+  { href: '/admin/signups', label: 'Signups', icon: '📋' },
   { href: '/admin/tools', label: 'Tools', icon: '🔧' },
 ];
 
@@ -25,6 +26,7 @@ function Breadcrumbs() {
     const label = seg === 'admin' ? 'Admin'
       : seg === 'games' ? 'Games'
       : seg === 'personas' ? 'Personas'
+      : seg === 'signups' ? 'Signups'
       : seg === 'tools' ? 'Tools'
       : seg === 'inspector' ? 'Inspector'
       : seg;
