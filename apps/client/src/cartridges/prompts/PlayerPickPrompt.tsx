@@ -151,6 +151,42 @@ export default function PlayerPickPrompt({ cartridge, playerId, roster, engine }
             </div>
           )}
 
+          {/* All picks */}
+          <div className="space-y-1 pt-1">
+            <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
+              All picks
+            </p>
+            {Object.entries(responses).map(([pickerId, targetId]) => {
+              const picker = roster[pickerId];
+              const target = roster[targetId];
+              const isMe = pickerId === playerId;
+              return (
+                <div
+                  key={pickerId}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${isMe ? 'bg-skin-gold/5 border border-skin-gold/15' : ''}`}
+                >
+                  <PersonaAvatar
+                    avatarUrl={picker?.avatarUrl}
+                    personaName={picker?.personaName}
+                    size={20}
+                  />
+                  <span className={`text-xs ${isMe ? 'font-bold text-skin-gold' : 'text-skin-dim'}`}>
+                    {isMe ? 'You' : (picker?.personaName || pickerId)}
+                  </span>
+                  <span className="text-xs text-skin-dim/40 mx-1">&rarr;</span>
+                  <PersonaAvatar
+                    avatarUrl={target?.avatarUrl}
+                    personaName={target?.personaName}
+                    size={20}
+                  />
+                  <span className="text-xs text-skin-dim">
+                    {target?.personaName || targetId}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
           {/* Your Silver */}
           {results.silverRewards[playerId] != null && (
             <div className="text-center py-2">

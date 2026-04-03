@@ -246,7 +246,7 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
           onSuccess={setTurnstileToken}
           onError={() => setTurnstileToken('')}
           onExpire={() => setTurnstileToken('')}
-          options={{ size: 'invisible' }}
+          options={{ size: 'flexible' }}
         />
       )}
 

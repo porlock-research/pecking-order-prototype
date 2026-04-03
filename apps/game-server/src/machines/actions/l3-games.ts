@@ -61,6 +61,33 @@ export const l3GameActions = {
     result: (event as any).output as GameOutput,
   })),
   forwardToGameChild: sendTo('activeGameCartridge', ({ event }: any) => event),
+  stopPreviousGameCartridge: enqueueActions(({ context, enqueue }: any) => {
+    if (context.activeGameCartridgeRef) {
+      enqueue.stopChild('activeGameCartridge');
+      const channels = { ...context.channels };
+      let hasGameChannels = false;
+      for (const [id, ch] of Object.entries(channels)) {
+        if ((ch as any).type === 'GAME_DM') { delete channels[id]; hasGameChannels = true; }
+      }
+      if (hasGameChannels) {
+        const chatLog = context.chatLog.filter((msg: any) => !msg.channelId || !msg.channelId.startsWith('game-dm:'));
+        enqueue.assign({ activeGameCartridgeRef: null, channels, chatLog });
+      } else {
+        enqueue.assign({ activeGameCartridgeRef: null });
+      }
+    }
+  }),
+  cleanupGameChannels: enqueueActions(({ context, enqueue }: any) => {
+    const channels = { ...context.channels };
+    let hasGameChannels = false;
+    for (const [id, ch] of Object.entries(channels)) {
+      if ((ch as any).type === 'GAME_DM') { delete channels[id]; hasGameChannels = true; }
+    }
+    if (hasGameChannels) {
+      const chatLog = context.chatLog.filter((msg: any) => !msg.channelId || !msg.channelId.startsWith('game-dm:'));
+      enqueue.assign({ channels, chatLog });
+    }
+  }),
   applyPlayerGameRewardLocally: assign({
     roster: ({ context, event }: any) => {
       const { playerId, silverReward } = event as any;

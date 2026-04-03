@@ -120,7 +120,7 @@ export function PhaseTransitionSplash() {
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 60,
+            zIndex: 70,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',

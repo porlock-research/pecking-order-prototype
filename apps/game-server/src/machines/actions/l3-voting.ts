@@ -27,4 +27,10 @@ export const l3VotingActions = {
     enqueue.stopChild('activeVotingCartridge');
     enqueue.assign({ activeVotingCartridgeRef: null });
   }),
+  stopPreviousVotingCartridge: enqueueActions(({ context, enqueue }: any) => {
+    if (context.activeVotingCartridgeRef) {
+      enqueue.stopChild('activeVotingCartridge');
+      enqueue.assign({ activeVotingCartridgeRef: null });
+    }
+  }),
 };

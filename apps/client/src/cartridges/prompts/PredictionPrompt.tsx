@@ -136,6 +136,42 @@ export default function PredictionPrompt({ cartridge, playerId, roster, engine }
             </div>
           )}
 
+          {/* All predictions */}
+          <div className="space-y-1 pt-1">
+            <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
+              All predictions
+            </p>
+            {Object.entries(responses).map(([voterId, targetId]) => {
+              const voter = roster[voterId];
+              const target = roster[targetId];
+              const isMe = voterId === playerId;
+              return (
+                <div
+                  key={voterId}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${isMe ? 'bg-skin-gold/5 border border-skin-gold/15' : ''}`}
+                >
+                  <PersonaAvatar
+                    avatarUrl={voter?.avatarUrl}
+                    personaName={voter?.personaName}
+                    size={20}
+                  />
+                  <span className={`text-xs ${isMe ? 'font-bold text-skin-gold' : 'text-skin-dim'}`}>
+                    {isMe ? 'You' : (voter?.personaName || voterId)}
+                  </span>
+                  <span className="text-xs text-skin-dim/40 mx-1">&rarr;</span>
+                  <PersonaAvatar
+                    avatarUrl={target?.avatarUrl}
+                    personaName={target?.personaName}
+                    size={20}
+                  />
+                  <span className="text-xs text-skin-dim">
+                    {target?.personaName || targetId}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
           {results.silverRewards[playerId] != null && (
             <div className="text-center py-2">
               <p className="text-xs font-mono text-skin-dim uppercase tracking-widest mb-1">You Earned</p>

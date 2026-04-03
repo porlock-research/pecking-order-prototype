@@ -25,9 +25,10 @@ interface GamePanelProps {
   engine: {
     sendGameAction: (type: string, payload?: Record<string, any>) => void;
   };
+  inline?: boolean;
 }
 
-export default function GamePanel({ engine }: GamePanelProps) {
+export default function GamePanel({ engine, inline }: GamePanelProps) {
   const activeGameCartridge = useGameStore((s) => s.activeGameCartridge);
   const playerId = useGameStore((s) => s.playerId);
   const roster = useGameStore((s) => s.roster);
@@ -36,9 +37,9 @@ export default function GamePanel({ engine }: GamePanelProps) {
   // Reset dismiss when a new game starts
   useEffect(() => { setDismissed(false); }, [activeGameCartridge?.gameType]);
 
-  if (!activeGameCartridge || dismissed) return null;
+  if (!activeGameCartridge || (!inline && dismissed)) return null;
 
-  const onDismiss = () => setDismissed(true);
+  const onDismiss = inline ? undefined : () => setDismissed(true);
   const common = { cartridge: activeGameCartridge, playerId: playerId!, roster, engine, onDismiss };
   const Component = GAME_COMPONENTS[activeGameCartridge.gameType];
 

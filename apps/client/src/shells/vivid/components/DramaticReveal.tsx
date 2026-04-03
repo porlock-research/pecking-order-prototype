@@ -139,7 +139,7 @@ export function DramaticReveal() {
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 70,
+            zIndex: 60,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

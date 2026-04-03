@@ -32,7 +32,7 @@ test.describe('Stale Game — Redirect to Launcher', () => {
     const gameCode = 'STALE1';
     const fakeGameId = 'nonexistent-game-id';
     const jwt = await signGameToken(
-      { sub: 'e2e-stale-user', gameId: fakeGameId, playerId: 'p0', personaName: 'Ghost' },
+      { sub: 'e2e-stale-user', gameId: fakeGameId, playerId: 'p1', personaName: 'Ghost' },
       AUTH_SECRET,
     );
 

@@ -1,167 +1,365 @@
 import React, { useMemo } from 'react';
-import Marquee from 'react-fast-marquee';
 import { useGameStore, selectUnreadFeedCount } from '../../../store/useGameStore';
-import { useCountdown } from '../../../hooks/useCountdown';
-import { DayPhases } from '@pecking-order/shared-types';
+import { DayPhases, VotingPhases, ArcadePhases, PromptPhases, DilemmaPhases } from '@pecking-order/shared-types';
 import type { DayPhase } from '@pecking-order/shared-types';
 
+/* ------------------------------------------------------------------ */
+/*  Phase label map                                                    */
+/* ------------------------------------------------------------------ */
+
 const PHASE_LABELS: Record<string, string> = {
-  [DayPhases.PREGAME]: 'PRE-GAME',
-  [DayPhases.MORNING]: 'MORNING',
-  [DayPhases.SOCIAL]: 'SOCIAL HOUR',
-  [DayPhases.GAME]: 'GAME TIME',
-  [DayPhases.ACTIVITY]: 'ACTIVITY',
-  [DayPhases.VOTING]: 'VOTING',
-  [DayPhases.ELIMINATION]: 'ELIMINATION',
-  [DayPhases.FINALE]: 'FINALE',
-  [DayPhases.GAME_OVER]: 'FINALE',
+  [DayPhases.PREGAME]: 'Pre-Game',
+  [DayPhases.MORNING]: 'Morning',
+  [DayPhases.SOCIAL]: 'Social Hour',
+  [DayPhases.GAME]: 'Game Time',
+  [DayPhases.ACTIVITY]: 'Activity',
+  [DayPhases.VOTING]: 'Voting',
+  [DayPhases.ELIMINATION]: 'Elimination',
+  [DayPhases.FINALE]: 'Finale',
+  [DayPhases.GAME_OVER]: 'Finale',
 };
 
-function getPhaseLabel(phase: DayPhase, dayIndex: number): string {
-  const label = PHASE_LABELS[phase];
-  if (!label) return 'WAITING';
-  if (phase === DayPhases.PREGAME || phase === DayPhases.FINALE || phase === DayPhases.GAME_OVER) return label;
-  return `DAY ${dayIndex} — ${label}`;
+/* ------------------------------------------------------------------ */
+/*  Timeline action → human label                                      */
+/* ------------------------------------------------------------------ */
+
+const ACTION_LABELS: Record<string, string> = {
+  OPEN_VOTING: 'Voting',
+  START_GAME: 'Game',
+  START_ACTIVITY: 'Activity',
+  START_DILEMMA: 'Dilemma',
+  INJECT_PROMPT: 'Prompt',
+  END_DAY: 'Day End',
+  CLOSE_DMS: 'DMs Close',
+  OPEN_DMS: 'DMs Open',
+  OPEN_GROUP_CHAT: 'Chat Opens',
+};
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function formatTimeUntil(ms: number): string {
+  if (ms <= 0) return 'now';
+  const totalMin = Math.ceil(ms / 60000);
+  if (totalMin < 60) return `${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function usePregameCountdown(): string | null {
+interface LivePill {
+  label: string;
+  key: string;
+}
+
+function isVotingLive(c: any): boolean {
+  return c && c.phase !== VotingPhases.REVEAL && c.phase !== VotingPhases.WINNER;
+}
+
+function isGameLive(c: any): boolean {
+  if (!c) return false;
+  if (c.status === ArcadePhases.COMPLETED) return false;
+  if (c.allPlayerResults) return false;
+  if (c.phase === 'REVEAL' || c.phase === 'SCOREBOARD') return false;
+  // Sync-decision machines set winner when done
+  if (c.winner !== undefined) return false;
+  return true;
+}
+
+function isPromptLive(c: any): boolean {
+  return c && c.phase !== PromptPhases.RESULTS;
+}
+
+function isDilemmaLive(c: any): boolean {
+  return c && c.phase !== DilemmaPhases.REVEAL;
+}
+
+function buildLivePills(
+  activeVoting: any,
+  activeGame: any,
+  activePrompt: any,
+  activeDilemma: any,
+): LivePill[] {
+  const pills: LivePill[] = [];
+
+  if (isVotingLive(activeVoting)) {
+    pills.push({ label: 'Voting', key: 'voting' });
+  }
+  if (isGameLive(activeGame)) {
+    pills.push({ label: 'Game', key: 'game' });
+  }
+  if (isPromptLive(activePrompt)) {
+    pills.push({ label: 'Prompt', key: 'prompt' });
+  }
+  if (isDilemmaLive(activeDilemma)) {
+    pills.push({ label: 'Dilemma', key: 'dilemma' });
+  }
+
+  return pills;
+}
+
+function useNextUpHint(): string | null {
   const manifest = useGameStore(s => s.manifest);
-  const phase = useGameStore(s => s.phase);
-  const [label, setLabel] = React.useState<string | null>(null);
+  const dayIndex = useGameStore(s => s.dayIndex);
 
-  React.useEffect(() => {
-    if (phase !== DayPhases.PREGAME || !manifest?.startTime) {
-      setLabel(null);
-      return;
+  return useMemo(() => {
+    if (!manifest?.days) return null;
+    const currentDay = manifest.days[dayIndex - 1]; // dayIndex is 1-indexed, array is 0-indexed
+    if (!currentDay?.timeline) return null;
+
+    const now = Date.now();
+    for (const event of currentDay.timeline) {
+      const eventTime = new Date(event.time).getTime();
+      if (eventTime <= now) continue;
+
+      const label = ACTION_LABELS[event.action];
+      if (!label) continue;
+
+      const diff = eventTime - now;
+      return `${label} in ${formatTimeUntil(diff)}`;
     }
-    const update = () => {
-      const diff = new Date(manifest.startTime).getTime() - Date.now();
-      if (diff <= 0) { setLabel('Starting now...'); return; }
-      const m = Math.floor(diff / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setLabel(`Game starts in ${m}:${String(s).padStart(2, '0')}`);
-    };
-    update();
-    const id = setInterval(update, 1000);
-    return () => clearInterval(id);
-  }, [phase, manifest?.startTime]);
 
-  return label;
+    return null;
+  }, [manifest, dayIndex]);
 }
 
-export function BroadcastBar({ onClick }: { onClick?: () => void }) {
+/* ------------------------------------------------------------------ */
+/*  Bell icon SVG                                                      */
+/* ------------------------------------------------------------------ */
+
+function BellIcon({ hasUnread }: { hasUnread: boolean }) {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={hasUnread ? 'rgba(61,46,31,0.6)' : 'rgba(61,46,31,0.35)'}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  BroadcastBar (Activity Status Strip)                               */
+/* ------------------------------------------------------------------ */
+
+interface BroadcastBarProps {
+  onBellClick?: () => void;
+  onStripClick?: () => void;
+}
+
+export function BroadcastBar({ onBellClick, onStripClick }: BroadcastBarProps) {
   const dayIndex = useGameStore(s => s.dayIndex);
   const phase = useGameStore(s => s.phase);
-  const tickerMessages = useGameStore(s => s.tickerMessages);
   const unreadCount = useGameStore(selectUnreadFeedCount);
+  const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
+  const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
+  const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
+  const activeDilemma = useGameStore(s => s.activeDilemma);
 
-  const phaseLabel = getPhaseLabel(phase, dayIndex);
-  const groupCountdown = useCountdown('group');
-  const dmCountdown = useCountdown('dm');
-  const pregameCountdown = usePregameCountdown();
+  const livePills = useMemo(
+    () => buildLivePills(activeVotingCartridge, activeGameCartridge, activePromptCartridge, activeDilemma),
+    [activeVotingCartridge, activeGameCartridge, activePromptCartridge, activeDilemma],
+  );
 
-  // Build ticker items: phase label first, countdowns, then recent ticker messages
-  const tickerItems = useMemo(() => {
-    const items: string[] = [];
-    if (pregameCountdown) {
-      items.push(pregameCountdown);
-    } else {
-      items.push(phaseLabel);
-    }
-    if (groupCountdown) items.push(`Chat opens in ${groupCountdown}`);
-    if (dmCountdown) items.push(`DMs open in ${dmCountdown}`);
-    // Show the last 20 ticker messages in the scrolling ticker
-    const recent = tickerMessages.slice(-20);
-    for (const msg of recent) {
-      items.push(msg.text);
-    }
-    return items;
-  }, [phaseLabel, groupCountdown, dmCountdown, pregameCountdown, tickerMessages]);
-
-  // Fixed speed to prevent marquee stutter when tickerItems changes
-  const marqueeSpeed = 40;
+  const nextUpHint = useNextUpHint();
+  // When the L3 state says GAME/VOTING/ACTIVITY but no cartridge is actually live,
+  // the phase is stale — fall back to Social Hour instead of showing a misleading label.
+  const cartridgePhases: Set<string> = new Set([DayPhases.GAME, DayPhases.VOTING, DayPhases.ACTIVITY]);
+  const rawLabel = PHASE_LABELS[phase] || 'Waiting';
+  const phaseLabel = (livePills.length === 0 && cartridgePhases.has(phase as DayPhase))
+    ? 'Social Hour'
+    : rawLabel;
 
   return (
     <div
-      onClick={onClick}
       style={{
         display: 'flex',
         alignItems: 'center',
-        padding: '10px 0',
-        paddingTop: 'max(10px, env(safe-area-inset-top, 10px))',
-        paddingLeft: 16,
+        padding: '8px 12px',
+        paddingTop: 'max(8px, env(safe-area-inset-top, 8px))',
         background: 'var(--vivid-bg-surface)',
         borderBottom: '2px solid rgba(139, 115, 85, 0.08)',
         flexShrink: 0,
         zIndex: 20,
-        overflow: 'hidden',
         gap: 10,
-        cursor: onClick ? 'pointer' : undefined,
       }}
     >
-      {/* Left: LIVE dot */}
-      <div className="vivid-live-dot" style={{ flexShrink: 0 }} />
-
-      {/* Scrolling ticker — seamless loop via react-fast-marquee */}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
-        <Marquee speed={marqueeSpeed} gradient gradientColor="var(--vivid-bg-surface)" gradientWidth={40}>
-          {tickerItems.map((item, i) => (
-            <span
-              key={i}
-              style={{
-                fontFamily: 'var(--vivid-font-display)',
-                fontWeight: 800,
-                fontSize: 14,
-                letterSpacing: '0.04em',
-                color: 'var(--vivid-phase-accent)',
-                textTransform: 'uppercase',
-                paddingRight: 12,
-              }}
-            >
-              {item}
-              <span style={{ padding: '0 12px', opacity: 0.4 }}>&bull;</span>
-            </span>
-          ))}
-        </Marquee>
-      </div>
-
-      {/* Right: unread badge + chevron hint */}
+      {/* Bell icon — tap opens dashboard */}
       <div
+        onClick={(e) => {
+          e.stopPropagation();
+          onBellClick?.();
+        }}
         style={{
+          position: 'relative',
           flexShrink: 0,
-          paddingRight: 14,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
+          cursor: onBellClick ? 'pointer' : undefined,
+          padding: 2,
         }}
       >
+        <BellIcon hasUnread={unreadCount > 0} />
         {unreadCount > 0 && (
-          <div style={{
-            minWidth: 18,
-            height: 18,
-            borderRadius: 9,
-            background: 'var(--vivid-coral)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0 5px',
-          }}>
-            <span style={{
-              fontFamily: 'var(--vivid-font-mono)',
-              fontSize: 10,
-              fontWeight: 700,
-              color: '#FFFFFF',
-              lineHeight: 1,
-            }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: -2,
+              right: -4,
+              minWidth: 16,
+              height: 16,
+              borderRadius: 8,
+              background: '#e85a4f',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 4px',
+            }}
+          >
+            <span
+              style={{
+                fontFamily: 'var(--vivid-font-mono)',
+                fontSize: 9,
+                fontWeight: 700,
+                color: '#FFFFFF',
+                lineHeight: 1,
+              }}
+            >
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           </div>
         )}
-        <div style={{ opacity: 0.4 }}>
-          <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
-            <path d="M1 1L7 7L1 13" stroke="var(--vivid-phase-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
+      </div>
+
+      {/* Separator */}
+      <div
+        style={{
+          width: 1,
+          height: 16,
+          background: 'rgba(139, 115, 85, 0.15)',
+          flexShrink: 0,
+        }}
+      />
+
+      {/* Strip content — tap navigates to Today */}
+      <div
+        onClick={onStripClick}
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          overflow: 'hidden',
+          cursor: onStripClick ? 'pointer' : undefined,
+          minWidth: 0,
+        }}
+      >
+        {/* Day label */}
+        {dayIndex > 0 && (
+          <span
+            style={{
+              fontFamily: 'var(--vivid-font-mono)',
+              fontSize: 11,
+              fontWeight: 600,
+              color: 'rgba(255, 255, 255, 0.35)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            DAY {dayIndex}
+          </span>
+        )}
+
+        {/* Live pills OR phase label fallback */}
+        {livePills.length > 0 ? (
+          livePills.map((pill) => (
+            <div
+              key={pill.key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(196, 166, 106, 0.15)',
+                border: '1px solid rgba(196, 166, 106, 0.3)',
+                borderRadius: 20,
+                padding: '4px 10px',
+                flexShrink: 0,
+              }}
+            >
+              <div className="vivid-live-dot" style={{ width: 6, height: 6 }} />
+              <span
+                style={{
+                  fontFamily: 'var(--vivid-font-display)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: 'var(--vivid-phase-accent)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  lineHeight: 1,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {pill.label}
+              </span>
+            </div>
+          ))
+        ) : (
+          <span
+            style={{
+              fontFamily: 'var(--vivid-font-display)',
+              fontSize: 12,
+              fontWeight: 700,
+              color: 'var(--vivid-phase-accent)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {phaseLabel}
+          </span>
+        )}
+
+        {/* Next up hint */}
+        {nextUpHint && (
+          <span
+            style={{
+              fontFamily: 'var(--vivid-font-mono)',
+              fontSize: 10,
+              fontWeight: 500,
+              color: 'rgba(255, 255, 255, 0.3)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              flexShrink: 1,
+              minWidth: 0,
+            }}
+          >
+            {nextUpHint}
+          </span>
+        )}
+
+        {/* Chevron */}
+        <span
+          style={{
+            fontFamily: 'var(--vivid-font-display)',
+            fontSize: 14,
+            color: 'rgba(255, 255, 255, 0.25)',
+            flexShrink: 0,
+            marginLeft: 'auto',
+          }}
+        >
+          &#8250;
+        </span>
       </div>
     </div>
   );
