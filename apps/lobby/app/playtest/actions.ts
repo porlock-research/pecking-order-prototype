@@ -1,14 +1,11 @@
 'use server';
 
-import { headers } from 'next/headers';
 import { getDB, getEnv } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { buildPlaytestConfirmationHtml } from '@/lib/email-templates';
+import { deriveKeys, encrypt, hmac } from '@/lib/crypto';
 import { signupSchema } from './constants';
 import { Resend } from 'resend';
-
-const RATE_LIMIT_MAX = 5;
-const RATE_LIMIT_WINDOW_HOURS = 1;
 
 /** Generate a 6-char uppercase alphanumeric referral code */
 function generateReferralCode(): string {
@@ -29,12 +26,7 @@ export async function handlePlaytestSignup(data: {
   referredBy?: string;
   turnstileToken: string;
 }): Promise<{ success?: boolean; referralCode?: string; error?: string }> {
-  const headersList = await headers();
-  const ip =
-    headersList.get('cf-connecting-ip') ||
-    headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    null;
-  return submitPlaytestSignup(data, ip);
+  return submitPlaytestSignup(data);
 }
 
 async function submitPlaytestSignup(
@@ -47,7 +39,6 @@ async function submitPlaytestSignup(
     referredBy?: string;
     turnstileToken: string;
   },
-  ipAddress: string | null,
 ): Promise<{ success?: boolean; referralCode?: string; error?: string }> {
   // 1. Validate input
   const parsed = signupSchema.safeParse(data);
@@ -81,20 +72,22 @@ async function submitPlaytestSignup(
       }
     }
 
-    // 3. Rate limit by IP
+    // 3. Encrypt PII if key is available (graceful degradation)
     const db = await getDB();
-    if (ipAddress) {
-      const { results: recentSignups } = await db
-        .prepare(
-          `SELECT COUNT(*) as count FROM PlaytestSignups
-           WHERE ip_address = ? AND signed_up_at > datetime('now', ?)`,
-        )
-        .bind(ipAddress, `-${RATE_LIMIT_WINDOW_HOURS} hours`)
-        .all<{ count: number }>();
+    const piiKey = env.PII_ENCRYPTION_KEY as string | undefined;
+    let emailEncrypted: string | null = null;
+    let phoneEncrypted: string | null = null;
+    let emailHash: string | null = null;
 
-      if (recentSignups[0] && recentSignups[0].count >= RATE_LIMIT_MAX) {
-        return { error: 'Slow down — try again in a bit.' };
+    if (piiKey) {
+      const keys = await deriveKeys(piiKey);
+      emailHash = await hmac(email.toLowerCase(), keys.hmacKey);
+      emailEncrypted = await encrypt(email.toLowerCase(), keys.encKey);
+      if (phone) {
+        phoneEncrypted = await encrypt(phone, keys.encKey);
       }
+    } else {
+      console.warn('[Playtest] PII_ENCRYPTION_KEY not set — writing plaintext only');
     }
 
     // 4. Insert into D1 (UNIQUE constraint handles dupes)
@@ -104,8 +97,8 @@ async function submitPlaytestSignup(
     try {
       await db
         .prepare(
-          `INSERT INTO PlaytestSignups (email, referral_source, referral_detail, phone, messaging_app, ip_address, turnstile_token, referral_code, referred_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO PlaytestSignups (email, referral_source, referral_detail, phone, messaging_app, referral_code, referred_by, email_encrypted, phone_encrypted, email_hash)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           email.toLowerCase(),
@@ -113,29 +106,42 @@ async function submitPlaytestSignup(
           referralDetail || null,
           phone || null,
           messagingApp || null,
-          ipAddress,
-          turnstileToken,
           referralCode,
           referredBy,
+          emailEncrypted,
+          phoneEncrypted,
+          emailHash,
         )
         .run();
     } catch (err: any) {
       // UNIQUE constraint violation = already signed up
       if (err?.message?.includes('UNIQUE')) {
-        // Fetch their existing referral code (may be null for pre-migration signups)
-        const existing = await db
-          .prepare('SELECT referral_code FROM PlaytestSignups WHERE email = ?')
-          .bind(email.toLowerCase())
-          .first<{ referral_code: string | null }>();
+        // Look up by email_hash (preferred) or fall back to plaintext email
+        const existing = emailHash
+          ? await db
+              .prepare('SELECT referral_code FROM PlaytestSignups WHERE email_hash = ?')
+              .bind(emailHash)
+              .first<{ referral_code: string | null }>()
+          : await db
+              .prepare('SELECT referral_code FROM PlaytestSignups WHERE email = ?')
+              .bind(email.toLowerCase())
+              .first<{ referral_code: string | null }>();
 
         let code = existing?.referral_code;
         if (!code) {
           // Backfill referral code for pre-migration signups
           code = referralCode;
-          await db
-            .prepare('UPDATE PlaytestSignups SET referral_code = ? WHERE email = ?')
-            .bind(code, email.toLowerCase())
-            .run();
+          if (emailHash) {
+            await db
+              .prepare('UPDATE PlaytestSignups SET referral_code = ? WHERE email_hash = ?')
+              .bind(code, emailHash)
+              .run();
+          } else {
+            await db
+              .prepare('UPDATE PlaytestSignups SET referral_code = ? WHERE email = ?')
+              .bind(code, email.toLowerCase())
+              .run();
+          }
         }
         return { success: true, referralCode: code };
       }
