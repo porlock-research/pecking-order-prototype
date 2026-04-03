@@ -3,16 +3,16 @@ import { signGameToken } from '@pecking-order/auth';
 
 // ── Constants ────────────────────────────────────────────────────────────
 
-const GAME_SERVER = 'http://localhost:8787';
-const CLIENT_URL = 'http://localhost:5173';
-const AUTH_SECRET = 'dev-secret-change-me';
+const GAME_SERVER = process.env.GAME_SERVER || 'http://localhost:8787';
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const AUTH_SECRET = process.env.AUTH_SECRET || 'dev-secret-change-me';
 
 const PERSONA_NAMES = ['Viper', 'Phoenix', 'Shadow', 'Ember', 'Raven', 'Storm', 'Nyx', 'Blaze'];
 
 // ── Types ────────────────────────────────────────────────────────────────
 
 interface TestPlayer {
-  id: string;        // "p0", "p1", etc.
+  id: string;        // "p1", "p2", etc. (1-indexed, matches lobby convention)
   token: string;     // signed JWT
   personaName: string;
   realUserId: string;
@@ -62,16 +62,17 @@ function buildManifest(gameId: string, dayCount: number) {
 
 /**
  * Build a roster of N players.
+ * Uses 1-indexed IDs (p1, p2, ...) to match lobby convention.
  */
 function buildRoster(playerCount: number) {
   const roster: Record<string, any> = {};
   for (let i = 0; i < playerCount; i++) {
-    const id = `p${i}`;
+    const id = `p${i + 1}`;
     roster[id] = {
       realUserId: `e2e-user-${id}`,
-      personaName: PERSONA_NAMES[i] || `Player${i}`,
+      personaName: PERSONA_NAMES[i] || `Player${i + 1}`,
       avatarUrl: '',
-      bio: `E2E test player ${i}`,
+      bio: `E2E test player ${i + 1}`,
       isAlive: true,
       isSpectator: false,
       silver: 50,
@@ -109,10 +110,10 @@ export async function createTestGame(playerCount = 3, dayCount = 2): Promise<Tes
     throw new Error(`Failed to create test game: ${res.status} ${text}`);
   }
 
-  // Sign JWTs for each player
+  // Sign JWTs for each player (1-indexed to match lobby convention)
   const players: TestPlayer[] = [];
   for (let i = 0; i < playerCount; i++) {
-    const id = `p${i}`;
+    const id = `p${i + 1}`;
     const token = await signGameToken(
       {
         sub: `e2e-user-${id}`,
@@ -251,4 +252,23 @@ export async function dismissReveal(page: Page): Promise<void> {
  */
 export async function waitForPhase(page: Page, phaseText: string, timeout = 15_000): Promise<void> {
   await page.waitForSelector(`[data-testid="phase-label"]:has-text("${phaseText}")`, { timeout });
+}
+
+/**
+ * Click the Today tab and wait for it to settle.
+ */
+export async function switchToTodayTab(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Today' }).click();
+  await page.waitForTimeout(300);
+}
+
+/**
+ * Dismiss any phase transition splash overlay if present.
+ */
+export async function dismissSplash(page: Page): Promise<void> {
+  const splash = page.getByText('Tap anywhere to continue');
+  if (await splash.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await splash.click();
+    await page.waitForTimeout(500);
+  }
 }

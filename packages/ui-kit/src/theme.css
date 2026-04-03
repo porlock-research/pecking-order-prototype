@@ -20,6 +20,7 @@
   --po-bg-bubble: #3b1a7e;
   --po-bg-glass: rgba(255, 255, 255, 0.08);
   --po-bg-glass-elevated: rgba(255, 255, 255, 0.14);
+  --po-bg-cartridge: rgba(44, 0, 62, 0.92);
 
   /* Text */
   --po-text: #ffffff;
@@ -73,6 +74,7 @@
   --po-bg-bubble: #0f3460;
   --po-bg-glass: rgba(255, 255, 255, 0.05);
   --po-bg-glass-elevated: rgba(255, 255, 255, 0.10);
+  --po-bg-cartridge: rgba(10, 10, 15, 0.92);
 
   /* Text */
   --po-text: #e0e0e0;

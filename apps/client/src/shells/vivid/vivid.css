@@ -52,6 +52,7 @@
   --po-bg-bubble: var(--vivid-bg-surface);
   --po-bg-glass: rgba(245, 237, 224, 0.7);
   --po-bg-glass-elevated: rgba(245, 237, 224, 0.9);
+  --po-bg-cartridge: rgba(44, 30, 20, 0.92);
   --po-text: var(--vivid-text);
   --po-text-dim: var(--vivid-text-dim);
   --po-text-inverted: #ffffff;

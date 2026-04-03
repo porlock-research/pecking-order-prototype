@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ChatRoundDots, CalendarMinimalistic, UsersGroupRounded } from '@solar-icons/react';
 import { VIVID_TAP, VIVID_SPRING } from '../springs';
 
-export type VividTab = 'chat' | 'schedule' | 'people';
+export type VividTab = 'chat' | 'today' | 'people';
 
 interface TabBarProps {
   activeTab: VividTab;
@@ -13,7 +13,7 @@ interface TabBarProps {
 
 const TABS: Array<{ id: VividTab; label: string; Icon: React.ComponentType<any> }> = [
   { id: 'chat', label: 'Chat', Icon: ChatRoundDots },
-  { id: 'schedule', label: 'Schedule', Icon: CalendarMinimalistic },
+  { id: 'today', label: 'Today', Icon: CalendarMinimalistic },
   { id: 'people', label: 'People', Icon: UsersGroupRounded },
 ];
 

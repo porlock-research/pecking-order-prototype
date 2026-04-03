@@ -28,6 +28,7 @@ export function PlayerQuickSheet({
   const roster = useGameStore(s => s.roster);
   const [showSilverPicker, setShowSilverPicker] = useState(false);
   const [silverAmount, setSilverAmount] = useState(1);
+  const [silverInputValue, setSilverInputValue] = useState('1');
 
   const player = targetPlayerId ? roster[targetPlayerId] : undefined;
   const accentColor = targetPlayerId ? (playerColorMap[targetPlayerId] || '#9B8E7E') : '#9B8E7E';
@@ -37,16 +38,26 @@ export function PlayerQuickSheet({
   const me = playerId ? roster[playerId] : undefined;
   const mySilver = me?.silver ?? 0;
 
+  function clampSilver(val: number) {
+    return Math.max(1, Math.min(mySilver, Math.floor(val)));
+  }
+
+  function updateSilver(val: number) {
+    const clamped = clampSilver(val);
+    setSilverAmount(clamped);
+    setSilverInputValue(String(clamped));
+  }
+
   function handleSendSilver() {
     if (!targetPlayerId || silverAmount < 1 || silverAmount > mySilver) return;
     engine.sendSilver(silverAmount, targetPlayerId);
     setShowSilverPicker(false);
-    setSilverAmount(1);
+    updateSilver(1);
   }
 
   function handleClose() {
     setShowSilverPicker(false);
-    setSilverAmount(1);
+    updateSilver(1);
     onClose();
   }
 
@@ -308,26 +319,78 @@ export function PlayerQuickSheet({
                       boxShadow: '0 1px 3px rgba(139, 115, 85, 0.08)',
                     }}
                   >
-                    <input
-                      type="number"
-                      min={1}
-                      max={mySilver}
-                      value={silverAmount}
-                      onChange={e => setSilverAmount(Math.max(1, Math.min(mySilver, Number(e.target.value) || 1)))}
-                      style={{
-                        width: 80,
-                        padding: '6px 8px',
-                        borderRadius: 10,
-                        border: '2px solid rgba(139, 115, 85, 0.12)',
-                        background: '#FDF8F0',
-                        color: '#3D2E1F',
-                        fontFamily: "'Quicksand', sans-serif",
-                        fontWeight: 700,
-                        fontSize: 14,
-                        textAlign: 'center',
-                        outline: 'none',
-                      }}
-                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <button
+                        onClick={() => updateSilver(silverAmount - 1)}
+                        disabled={silverAmount <= 1}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          border: '2px solid rgba(139, 115, 85, 0.12)',
+                          background: '#FDF8F0',
+                          color: silverAmount <= 1 ? 'rgba(139, 115, 85, 0.3)' : '#3D2E1F',
+                          fontFamily: "'Quicksand', sans-serif",
+                          fontWeight: 700,
+                          fontSize: 16,
+                          cursor: silverAmount <= 1 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={mySilver}
+                        value={silverInputValue}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          setSilverInputValue(raw);
+                          const n = parseInt(raw, 10);
+                          if (!isNaN(n)) setSilverAmount(n);
+                        }}
+                        onBlur={() => updateSilver(silverAmount)}
+                        style={{
+                          width: 52,
+                          padding: '6px 4px',
+                          borderRadius: 10,
+                          border: '2px solid rgba(139, 115, 85, 0.12)',
+                          background: '#FDF8F0',
+                          color: '#3D2E1F',
+                          fontFamily: "'Quicksand', sans-serif",
+                          fontWeight: 700,
+                          fontSize: 14,
+                          textAlign: 'center',
+                          outline: 'none',
+                          MozAppearance: 'textfield',
+                        }}
+                      />
+                      <button
+                        onClick={() => updateSilver(silverAmount + 1)}
+                        disabled={silverAmount >= mySilver}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          border: '2px solid rgba(139, 115, 85, 0.12)',
+                          background: '#FDF8F0',
+                          color: silverAmount >= mySilver ? 'rgba(139, 115, 85, 0.3)' : '#3D2E1F',
+                          fontFamily: "'Quicksand', sans-serif",
+                          fontWeight: 700,
+                          fontSize: 16,
+                          cursor: silverAmount >= mySilver ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
                     <button
                       onClick={handleSendSilver}
                       disabled={mySilver < 1}
@@ -346,7 +409,7 @@ export function PlayerQuickSheet({
                       Send
                     </button>
                     <button
-                      onClick={() => { setShowSilverPicker(false); setSilverAmount(1); }}
+                      onClick={() => { setShowSilverPicker(false); updateSilver(1); }}
                       style={{
                         padding: '6px 10px',
                         borderRadius: 9999,

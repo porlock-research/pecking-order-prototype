@@ -10,7 +10,7 @@ import type { DayPhase } from '@pecking-order/shared-types';
 import { BroadcastBar } from './components/BroadcastBar';
 import { StageChat } from './components/StageChat';
 import { PeopleTab } from './components/PeopleTab';
-import { ScheduleTab } from './components/ScheduleTab';
+import { TodayTab } from './components/TodayTab';
 import { DMChat } from './components/DMChat';
 import { TabBar, type VividTab } from './components/TabBar';
 import { NewConversationPicker } from './components/NewConversationPicker';
@@ -20,13 +20,14 @@ import { PhaseTransitionSplash } from './components/PhaseTransitionSplash';
 import { DramaticReveal } from './components/DramaticReveal';
 import { DashboardOverlay } from './components/dashboard/DashboardOverlay';
 import { SilverHUD } from './components/SilverHUD';
+import { CartridgeTakeover } from './components/today/CartridgeTakeover';
 import { VIVID_SPRING } from './springs';
 
 /* ------------------------------------------------------------------ */
 /*  Tab ordering for swipe gestures                                    */
 /* ------------------------------------------------------------------ */
 
-const TAB_ORDER: VividTab[] = ['chat', 'schedule', 'people'];
+const TAB_ORDER: VividTab[] = ['chat', 'today', 'people'];
 
 /* ------------------------------------------------------------------ */
 /*  Phase class resolver                                               */
@@ -55,6 +56,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
   const [dmChannelId, setDmChannelId] = useState<string | null>(null);
   const [detailPlayerId, setDetailPlayerId] = useState<string | null>(null);
   const [showNewConversation, setShowNewConversation] = useState(false);
+  const [takeoverGame, setTakeoverGame] = useState<any>(null);
 
   const roster = useGameStore(s => s.roster);
   const phase = useGameStore(s => s.phase);
@@ -178,7 +180,10 @@ function VividShell({ playerId, engine, token }: ShellProps) {
     >
       {/* Broadcast bar — top (swipe down to open notifications) */}
       <div {...bindDashboardPull()} style={{ touchAction: 'pan-x' }}>
-        <BroadcastBar onClick={toggleDashboard} />
+        <BroadcastBar
+          onBellClick={toggleDashboard}
+          onStripClick={() => setActiveTab('today')}
+        />
       </div>
 
       {/* Main content — tab panels with swipe */}
@@ -215,9 +220,9 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             </motion.div>
           )}
 
-          {activeTab === 'schedule' && (
+          {activeTab === 'today' && (
             <motion.div
-              key="schedule"
+              key="today"
               custom={tabDirection.current}
               variants={tabVariants}
               initial="enter"
@@ -226,7 +231,7 @@ function VividShell({ playerId, engine, token }: ShellProps) {
               style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}
               transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <ScheduleTab />
+              <TodayTab engine={engine} onPlayGame={(cartridge) => setTakeoverGame(cartridge)} />
             </motion.div>
           )}
 
@@ -293,6 +298,17 @@ function VividShell({ playerId, engine, token }: ShellProps) {
             onOpenSpotlight={(pid) => setDetailPlayerId(pid)}
             playerColorMap={playerColorMap}
             onTapAvatar={(pid) => setDetailPlayerId(pid)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Cartridge takeover — fullscreen overlay (games only) */}
+      <AnimatePresence>
+        {takeoverGame && (
+          <CartridgeTakeover
+            cartridge={takeoverGame}
+            engine={engine}
+            onDismiss={() => setTakeoverGame(null)}
           />
         )}
       </AnimatePresence>

@@ -545,8 +545,8 @@
         ]
       },
       {
-        "name": "playing",
-        "path": "running.dilemmaLayer.playing",
+        "name": "dilemmaActive",
+        "path": "running.dilemmaLayer.dilemmaActive",
         "type": "atomic",
         "parent": "running.dilemmaLayer",
         "events": [
@@ -771,22 +771,22 @@
       },
       {
         "source": "running.dilemmaLayer.idle",
-        "target": "running.dilemmaLayer.playing",
+        "target": "running.dilemmaLayer.dilemmaActive",
         "event": "INTERNAL.START_DILEMMA"
       },
       {
-        "source": "running.dilemmaLayer.playing",
+        "source": "running.dilemmaLayer.dilemmaActive",
         "target": "running.dilemmaLayer.completed",
         "event": "xstate.done.actor.activeDilemmaCartridge"
       },
       {
-        "source": "running.dilemmaLayer.playing",
+        "source": "running.dilemmaLayer.dilemmaActive",
         "target": "running.dilemmaLayer.completed",
         "event": "INTERNAL.END_DILEMMA"
       },
       {
-        "source": "running.dilemmaLayer.playing",
-        "target": "running.dilemmaLayer.playing",
+        "source": "running.dilemmaLayer.dilemmaActive",
+        "target": "running.dilemmaLayer.dilemmaActive",
         "event": "*"
       },
       {
