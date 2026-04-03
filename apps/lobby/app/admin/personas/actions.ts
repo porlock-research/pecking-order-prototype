@@ -1,6 +1,7 @@
 'use server';
 
 import { getDB, getEnv } from '@/lib/db';
+import { requireSuperAdmin } from '@/lib/super-admin';
 import type { Persona } from '../../actions';
 
 export interface PersonaWithImage extends Persona {
@@ -12,6 +13,7 @@ function personaImageUrl(id: string, variant: 'headshot' | 'medium' | 'full'): s
 }
 
 export async function listPersonas(theme?: string): Promise<PersonaWithImage[]> {
+  await requireSuperAdmin();
   const db = await getDB();
 
   const query = theme
@@ -28,6 +30,7 @@ export async function listPersonas(theme?: string): Promise<PersonaWithImage[]> 
 }
 
 export async function createPersona(formData: FormData): Promise<{ success: boolean; error?: string }> {
+  await requireSuperAdmin();
   const name = (formData.get('name') as string)?.trim();
   const stereotype = (formData.get('stereotype') as string)?.trim();
   const description = (formData.get('description') as string)?.trim();
@@ -94,6 +97,7 @@ export async function createPersona(formData: FormData): Promise<{ success: bool
 }
 
 export async function deletePersona(id: string): Promise<{ success: boolean; error?: string }> {
+  await requireSuperAdmin();
   const db = await getDB();
   const env = await getEnv();
   const bucket = env.PERSONA_BUCKET as any;
