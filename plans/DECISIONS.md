@@ -1841,6 +1841,56 @@ This document tracks significant architectural decisions, their context, and con
     *   Dilemma game theory is slightly softened — strategic no-shows become less powerful as a sabotage vector.
     *   If the "allow 1" threshold needs tuning later, the `eligiblePlayers` parameter makes it easy to adjust per-dilemma-type.
 
+## [ADR-126] Today Tab — Cartridge Relocation & Result Hold
+*   **Date:** 2026-03-30
+*   **Status:** Accepted
+*   **Context:** Two problems: (1) cartridges render inline in the chat timeline, cluttering the group chat on mobile and competing with messages; (2) when a cartridge completes, the server immediately stops the child actor and nulls the ref, so the next SYNC delivers `null` — results never render on the client (GH #113, #72). The schedule tab duplicates information already visible in chat (#6). Overlapping cartridge phases cause label confusion (#83).
+*   **Decision:**
+    1.  **Rename "Schedule" tab → "Today"** — all cartridge rendering moves here as a card stack.
+    2.  **Card states:** Upcoming (client-only, from manifest timeline), Live (CTA → fullscreen takeover), Completed (tap → fullscreen results via cartridge's own results mode).
+    3.  **Server result hold:** Remove `cleanupXxxCartridge` from `xstate.done.actor` transitions in L3. Cartridge actors stay alive in their final state. Cleanup triggers: (a) day ends (XState auto-stops children on final state), (b) new same-type cartridge spawns (stop previous first).
+    4.  **BroadcastBar → Activity Status Strip:** Replace scrolling marquee with compact pills showing live cartridge status. Bell icon opens notifications; tapping elsewhere navigates to Today tab.
+    5.  **Chat timeline:** Remove cartridge entries from `useTimeline()`. Inject lightweight system messages for cartridge events.
+    6.  **Fullscreen takeover:** Cartridge components render in a fullscreen overlay (same components as today). Tab bar hidden during takeover. Dismiss via X or swipe down.
+    7.  **Arcade leaderboards:** Add all-player ranking to the 9 arcade games that only show individual scores. Use `allPlayerResults` field added to game projection after completion.
+*   **Consequences:**
+    *   Chat tab becomes a clean messaging surface — no cartridge clutter.
+    *   Results persist visually until the day ends — fixes #113, #72.
+    *   Addresses or partially resolves: #2, #6, #16, #24, #32, #34, #36, #58, #70, #83, #86, #88, #89, #90.
+    *   Snapshot size increases slightly (completed cartridge actors remain serialized) — bounded at 4 actors max per day.
+    *   Vivid shell only — Classic and Immersive shells unchanged for now.
+
+## [ADR-127] E2E Test Fixture: 1-Indexed Player IDs
+*   **Date:** 2026-03-30
+*   **Status:** Accepted
+*   **Context:** The E2E test fixture (`e2e/fixtures/game-setup.ts`) created players with 0-indexed IDs (`p0`, `p1`, `p2`), while the lobby and game server use 1-indexed IDs (`p1`, `p2`, `p3`). This mismatch was harmless when the fixture was self-contained, but caused confusion when writing tests that reference player IDs in assertions (e.g., checking roster state, vote targets). The CLAUDE.md convention is explicit: "Player IDs: `p${slot_index}` — **1-indexed** (e.g., `p1`, `p2`)."
+*   **Decision:**
+    1.  **`buildRoster()`** now generates 1-indexed IDs: `p1`, `p2`, `p3`, etc.
+    2.  **`createTestGame()`** signs tokens with 1-indexed player IDs.
+    3.  **All existing E2E tests** updated to use `players[0].id === 'p1'` (not `'p0'`).
+    4.  **`game-setup.ts` constants** now support `GAME_SERVER` and `CLIENT_URL` env var overrides for worktree testing.
+*   **Consequences:**
+    *   E2E player IDs match production convention — less cognitive overhead when writing tests.
+    *   Existing tests (`voting.spec.ts`, `game-lifecycle.spec.ts`, `stale-game.spec.ts`) updated in the same commit.
+    *   Future tests should use `game.players[0].id` (which is `'p1'`) rather than hardcoding player IDs.
+
+## [ADR-128] Today Tab Bug Fixes: Overlay Stacking, Stale Phase Pills, Arcade Start Design
+*   **Date:** 2026-04-02
+*   **Status:** Accepted
+*   **Context:** Visual testing of the Today Tab card redesign (ADR-126) revealed several overlay and state synchronization issues: (1) PhaseTransitionSplash and DramaticReveal rendered at the same z-index tier, causing text overlap during elimination. (2) BroadcastBar showed stale "GAME TIME" label after game cartridges completed because L3 phase lagged behind cartridge state. (3) CartridgeTakeover (fullscreen game overlay) didn't cover the viewport — `position: fixed` inside VividShell's own `position: fixed; overflow: hidden` context behaved unexpectedly. (4) The branch introduced a regression in ArcadeGameWrapper where `status === PLAYING` on the server auto-started the local game, bypassing the player's readiness moment for timed games. (5) Transient SYNC gap where L3 enters a game/voting state but the spawned child actor hasn't initialized yet, causing TodayTab to show activities as UPCOMING when they're actually starting.
+*   **Decision:**
+    1.  **Z-index ordering:** PhaseTransitionSplash raised to `z-index: 70`, DramaticReveal lowered to `z-index: 60`. Phase announcement renders on top; player taps to dismiss it, then sees the personal DramaticReveal underneath.
+    2.  **Stale phase pills:** BroadcastBar's `buildLivePills` refactored into `isGameLive()`, `isVotingLive()`, etc. with additional `winner` check for sync-decision games. Fallback label shows "Social Hour" when the L3 phase is a cartridge phase (GAME/VOTING/ACTIVITY) but no live pills exist.
+    3.  **CartridgeTakeover portal:** Rendered via `createPortal(_, document.body)` to escape VividShell's stacking context. Explicit hex color fallbacks since portal renders outside the CSS variable tree. `className="vivid-shell"` added for skin variable inheritance.
+    4.  **Arcade start design:** Reverted `PLAYING` auto-start detection in ArcadeGameWrapper. Arcade games are client-timed — the server tracks completion, not individual game start. The Start button is intentional (player readiness gate). Trivia is unaffected (reads server status directly for server-managed rounds).
+    5.  **Defensive SYNC gap state:** TodayTab's `activities` memo checks the L3 `phase` — when it implies a kind is active but no cartridge data exists, that entry renders as "Starting..." with a spinner instead of UPCOMING.
+*   **Consequences:**
+    *   Elimination sequence is now: phase splash → tap → personal reveal → tap → back to game. No text overlap.
+    *   BroadcastBar never shows stale cartridge phase labels when all cartridges are done.
+    *   CartridgeTakeover reliably covers the full viewport on all browsers.
+    *   Timed arcade games always present a Start button regardless of server status.
+    *   Brief "Starting..." state visible during the ~100ms SYNC gap when cartridges are initializing.
+
 ## [ADR-124] Email Template Redesign — "The Dark Court"
 *   **Date:** 2026-03-30
 *   **Status:** Accepted

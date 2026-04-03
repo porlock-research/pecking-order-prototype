@@ -222,12 +222,11 @@ export const dailySessionMachine = setup({
               }
             },
             dailyGame: {
-              entry: ['spawnGameCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'DAILY_GAME' } as any)],
-              exit: 'cleanupGameCartridge',
+              entry: ['stopPreviousGameCartridge', 'spawnGameCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'DAILY_GAME' } as any)],
               on: {
                 'xstate.done.actor.activeGameCartridge': {
                   target: 'groupChat',
-                  actions: ['applyGameRewardsLocally', 'forwardGameResultToL2']
+                  actions: ['applyGameRewardsLocally', 'forwardGameResultToL2', 'cleanupGameChannels']
                 },
                 'CARTRIDGE.PLAYER_GAME_RESULT': {
                   actions: ['applyPlayerGameRewardLocally', 'forwardPlayerGameResultToL2']
@@ -242,8 +241,7 @@ export const dailySessionMachine = setup({
               }
             },
             voting: {
-              entry: ['spawnVotingCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'VOTING' } as any)],
-              exit: 'cleanupVotingCartridge',
+              entry: ['stopPreviousVotingCartridge', 'spawnVotingCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'VOTING' } as any)],
               on: {
                 'xstate.done.actor.activeVotingCartridge': {
                   target: 'groupChat',
@@ -270,7 +268,7 @@ export const dailySessionMachine = setup({
               }
             },
             playing: {
-              entry: ['spawnPromptCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'ACTIVITY' } as any)],
+              entry: ['stopPreviousPromptCartridge', 'spawnPromptCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'ACTIVITY' } as any)],
               on: {
                 // Natural completion: all players responded → child reaches final state
                 'xstate.done.actor.activePromptCartridge': {
@@ -292,15 +290,14 @@ export const dailySessionMachine = setup({
             },
             completed: {
               on: {
-                // Natural path: child completed during playing, END_ACTIVITY cleans up
+                // Natural path: child completed during playing, END_ACTIVITY transitions to idle
                 'INTERNAL.END_ACTIVITY': {
                   target: 'idle',
-                  actions: 'cleanupPromptCartridge',
                 },
                 // Forced path: child finishes after END_ACTIVITY pushed us here
                 'xstate.done.actor.activePromptCartridge': {
                   target: 'idle',
-                  actions: ['applyPromptRewardsLocally', 'forwardPromptResultToL2', 'cleanupPromptCartridge'],
+                  actions: ['applyPromptRewardsLocally', 'forwardPromptResultToL2'],
                 }
               }
             }
@@ -316,7 +313,7 @@ export const dailySessionMachine = setup({
               }
             },
             dilemmaActive: {
-              entry: ['spawnDilemmaCartridge', 'injectDilemmaGmMessage', sendParent({ type: 'PUSH.PHASE', trigger: 'DILEMMA' } as any)],
+              entry: ['stopPreviousDilemmaCartridge', 'spawnDilemmaCartridge', 'injectDilemmaGmMessage', sendParent({ type: 'PUSH.PHASE', trigger: 'DILEMMA' } as any)],
               on: {
                 'xstate.done.actor.activeDilemmaCartridge': {
                   target: 'completed',
@@ -334,10 +331,10 @@ export const dailySessionMachine = setup({
             },
             completed: {
               on: {
-                'INTERNAL.END_DILEMMA': { target: 'idle', actions: 'cleanupDilemmaCartridge' },
+                'INTERNAL.END_DILEMMA': { target: 'idle' },
                 'xstate.done.actor.activeDilemmaCartridge': {
                   target: 'idle',
-                  actions: ['applyDilemmaRewardsLocally', 'forwardDilemmaResultToL2', 'cleanupDilemmaCartridge'],
+                  actions: ['applyDilemmaRewardsLocally', 'forwardDilemmaResultToL2'],
                 }
               }
             }

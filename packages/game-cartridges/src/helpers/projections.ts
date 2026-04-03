@@ -92,6 +92,33 @@ export function projectGameCartridge(gameCtx: any, playerId: string): any {
     // Strip server-only fields (questions, questionPool, etc.)
     const { questions, questionPool, ...safeState } = playerState as any;
 
+    const isCompleted = playerState?.status === 'COMPLETED' || playerState?.status === 'AWAITING_DECISION';
+
+    if (isCompleted) {
+      const allPlayerResults = Object.entries(gameCtx.players)
+        .filter(([_, ps]: [string, any]) => ps.status === 'COMPLETED' || ps.status === 'AWAITING_DECISION')
+        .map(([pid, ps]: [string, any]) => ({
+          playerId: pid,
+          silverReward: ps.silverReward ?? 0,
+          result: ps.result ?? {},
+        }))
+        .sort((a, b) => b.silverReward - a.silverReward);
+
+      return {
+        gameType: gameCtx.gameType,
+        ready: gameCtx.ready ?? true,
+        seed: gameCtx.seed,
+        timeLimit: gameCtx.timeLimit,
+        difficulty: gameCtx.difficulty,
+        ...safeState,
+        roundDeadline: safeState.questionStartedAt
+          ? safeState.questionStartedAt + 15_000
+          : safeState.roundDeadline ?? null,
+        goldContribution: gameCtx.goldContribution,
+        allPlayerResults,
+      };
+    }
+
     return {
       gameType: gameCtx.gameType,
       ready: gameCtx.ready ?? true,

@@ -7,6 +7,8 @@ import {
   gotoGame,
   waitForGameShell,
   dismissReveal,
+  switchToTodayTab,
+  dismissSplash,
 } from '../fixtures/game-setup';
 
 test.describe('Game Lifecycle — Full Multi-Day Game', () => {
@@ -41,13 +43,27 @@ test.describe('Game Lifecycle — Full Multi-Day Game', () => {
       await waitForGameShell(page0);
       await waitForGameShell(page1);
       await waitForGameShell(page2);
+      await dismissSplash(page0);
+      await dismissSplash(page1);
 
-      // ── Day 1: Vote to eliminate p2 ──
+      // ── Day 1: Vote to eliminate p3 (players[2]) ──
+      const eliminationTarget = game.players[2].id; // p3
+
+      // Navigate to Today tab and open the fullscreen takeover to access voting
+      await switchToTodayTab(page0);
+      await page0.getByText('Cast Your Vote').click();
+      await page0.waitForTimeout(500);
       await expect(page0.locator('[data-testid="voting-panel"]')).toBeVisible({ timeout: 10_000 });
 
-      // p0 and p1 vote for p2
-      await page0.locator('[data-testid="vote-btn-p2"]').click();
-      await page1.locator('[data-testid="vote-btn-p2"]').click();
+      await switchToTodayTab(page1);
+      await page1.getByText('Cast Your Vote').click();
+      await page1.waitForTimeout(500);
+
+      // p1 and p2 vote for p3
+      await page0.locator(`[data-testid="vote-btn-${eliminationTarget}"]`).click();
+      await page0.locator('[data-testid="vote-confirm-btn"]').click();
+      await page1.locator(`[data-testid="vote-btn-${eliminationTarget}"]`).click();
+      await page1.locator('[data-testid="vote-confirm-btn"]').click();
       await expect(page0.locator('[data-testid="vote-confirmed"]')).toBeVisible();
 
       // Close voting + advance to nightSummary
@@ -56,14 +72,19 @@ test.describe('Game Lifecycle — Full Multi-Day Game', () => {
       await advanceGameState(game.gameId); // activeSession → nightSummary
       await new Promise(r => setTimeout(r, 1000));
 
-      // Verify p2 eliminated in game state
+      // Verify p3 eliminated in game state
       let state = await getGameState(game.gameId);
-      expect(state.roster?.p2?.status).toBe('ELIMINATED');
+      expect(state.roster?.[eliminationTarget]?.status).toBe('ELIMINATED');
 
-      // Dismiss elimination reveals on all pages
-      await dismissReveal(page0);
-      await dismissReveal(page1);
-      await dismissReveal(page2);
+      // Close takeovers if still open, then dismiss elimination reveals on all pages
+      for (const pg of [page0, page1, page2]) {
+        const closeBtn = pg.getByRole('button', { name: 'Close' });
+        if (await closeBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+          await closeBtn.click();
+          await pg.waitForTimeout(300);
+        }
+        await dismissReveal(pg);
+      }
 
       // ── Transition to Day 2 (FINALS) ──
       await advanceGameState(game.gameId);
@@ -76,10 +97,16 @@ test.describe('Game Lifecycle — Full Multi-Day Game', () => {
       await new Promise(r => setTimeout(r, 500));
 
       // ── Day 2: FINALS vote ──
-      // In FINALS, eliminated players (p2) vote for an alive candidate.
-      // p2 should see the voting panel with vote buttons for alive players.
+      // In FINALS, eliminated players (p3) vote for an alive candidate.
+      // p3 should see the voting panel with vote buttons for alive players.
+      await dismissSplash(page2);
+      await switchToTodayTab(page2);
+      await page2.getByText('Cast Your Vote').click();
+      await page2.waitForTimeout(500);
       await expect(page2.locator('[data-testid="voting-panel"]')).toBeVisible({ timeout: 10_000 });
-      await page2.locator('[data-testid="vote-btn-p0"]').click();
+      const finalsTarget = game.players[0].id; // p1
+      await page2.locator(`[data-testid="vote-btn-${finalsTarget}"]`).click();
+      await page2.locator('[data-testid="vote-confirm-btn"]').click();
       await expect(page2.locator('[data-testid="vote-confirmed"]')).toBeVisible({ timeout: 5000 });
 
       // Close voting + end day

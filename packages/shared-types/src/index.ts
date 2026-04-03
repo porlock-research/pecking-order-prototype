@@ -703,6 +703,8 @@ export interface ArcadeGameProjection {
   previousResult: Record<string, number> | null;
   previousSilverReward: number;
   previousGoldReward: number;
+  /** All players' results, sorted by silverReward descending. Present once status=COMPLETED. */
+  allPlayerResults?: Array<{ playerId: string; silverReward: number; result?: Record<string, number> }>;
 }
 
 /**

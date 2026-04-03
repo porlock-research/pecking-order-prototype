@@ -1,6 +1,7 @@
 import React from 'react';
 import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
 import { Flame } from 'lucide-react';
+import { PersonaAvatar } from '../../components/PersonaAvatar';
 
 interface HotTakeCartridge {
   promptType: 'HOT_TAKE';
@@ -95,6 +96,16 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
       {/* Results Phase */}
       {phase === PromptPhases.RESULTS && results && (
         <div className="p-4 space-y-4 animate-fade-in">
+          {/* Show the prompt text in results too */}
+          <div className="flex items-start gap-3 pb-1">
+            <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
+              <Flame size={14} className="text-skin-pink" />
+            </div>
+            <p className="text-sm font-bold text-skin-base leading-relaxed pt-1 italic">
+              "{results.statement || promptText}"
+            </p>
+          </div>
+
           <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
             Results
           </p>
@@ -134,6 +145,38 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
                 </>
               );
             })()}
+          </div>
+
+          {/* Individual stances */}
+          <div className="space-y-1 pt-1">
+            <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
+              Who said what
+            </p>
+            {Object.keys(stances).length === 0 && (
+              <p className="text-xs text-skin-dim/40 text-center py-2 font-mono">No responses</p>
+            )}
+            {Object.entries(stances).map(([pid, stance]) => {
+              const player = roster[pid];
+              const isMe = pid === playerId;
+              return (
+                <div
+                  key={pid}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${isMe ? 'bg-skin-gold/5 border border-skin-gold/15' : ''}`}
+                >
+                  <PersonaAvatar
+                    avatarUrl={player?.avatarUrl}
+                    personaName={player?.personaName}
+                    size={20}
+                  />
+                  <span className={`text-xs flex-1 ${isMe ? 'font-bold text-skin-gold' : 'text-skin-dim'}`}>
+                    {isMe ? 'You' : (player?.personaName || pid)}
+                  </span>
+                  <span className={`text-xs font-mono font-bold ${stance === 'AGREE' ? 'text-skin-green' : 'text-skin-pink'}`}>
+                    {stance}
+                  </span>
+                </div>
+              );
+            })}
           </div>
 
           {results.silverRewards[playerId] != null && (

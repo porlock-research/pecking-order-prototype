@@ -73,4 +73,10 @@ export const l3ActivityActions = {
     };
   }),
   forwardToPromptChild: sendTo('activePromptCartridge', ({ event }: any) => event),
+  stopPreviousPromptCartridge: enqueueActions(({ context, enqueue }: any) => {
+    if (context.activePromptCartridgeRef) {
+      enqueue.stopChild('activePromptCartridge');
+      enqueue.assign({ activePromptCartridgeRef: null });
+    }
+  }),
 };

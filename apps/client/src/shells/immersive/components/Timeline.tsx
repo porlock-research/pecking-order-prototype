@@ -1,18 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../store/useGameStore';
 import { useTimeline } from '../../../hooks/useTimeline';
 import { ChatBubble } from './ChatBubble';
 import { SystemEvent } from './SystemEvent';
 import { FloatingInput } from './FloatingInput';
-import { CartridgeWrapper } from './CartridgeWrapper';
-import VotingPanel from '../../../components/panels/VotingPanel';
-import GamePanel from '../../../components/panels/GamePanel';
-import PromptPanel from '../../../components/panels/PromptPanel';
 import type { ChatMessage } from '@pecking-order/shared-types';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
-import { ArrowDown, Vote, Gamepad2, MessageSquare } from 'lucide-react';
-import { SPRING, TAP } from '../springs';
+import { ArrowDown } from 'lucide-react';
 
 interface TimelineProps {
   engine: any;
@@ -23,16 +17,12 @@ const SCROLL_THRESHOLD = 100;
 
 export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
   const { playerId, roster } = useGameStore();
-  const activeVotingCartridge = useGameStore(s => s.activeVotingCartridge);
-  const activeGameCartridge = useGameStore(s => s.activeGameCartridge);
-  const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
   const onlinePlayers = useGameStore(s => s.onlinePlayers);
   const entries = useTimeline();
   const chatLog = useGameStore(s => s.chatLog);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const cartridgeRef = useRef<HTMLDivElement>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   const [replyTarget, setReplyTarget] = useState<ChatMessage | null>(null);
@@ -48,8 +38,6 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
     });
     return map;
   }, [roster]);
-
-  const hasActiveCartridge = !!(activeVotingCartridge || activeGameCartridge || activePromptCartridge);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -67,10 +55,6 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     setUserScrolledUp(false);
-  }, []);
-
-  const scrollToCartridge = useCallback(() => {
-    cartridgeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
   const handleOptimisticSend = useCallback((content: string) => {
@@ -126,11 +110,6 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
     setReplyTarget(message);
   }, []);
 
-  // Determine return-to-action pill label + accent colors
-  const returnPillLabel = activeVotingCartridge ? 'Return to Vote' : activeGameCartridge ? 'Return to Game' : activePromptCartridge ? 'Return to Activity' : null;
-  const returnPillIcon = activeVotingCartridge ? Vote : activeGameCartridge ? Gamepad2 : MessageSquare;
-  const returnPillBg = activeVotingCartridge ? 'bg-skin-gold' : activeGameCartridge ? 'bg-skin-green' : 'bg-skin-pink';
-
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="relative flex-1 overflow-hidden">
@@ -173,30 +152,6 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
               );
             case 'system':
               return <div key={entry.key} className={spacing}><SystemEvent message={entry.data} /></div>;
-            case 'voting':
-              return (
-                <div key={entry.key} ref={cartridgeRef} className={spacing}>
-                  <CartridgeWrapper kind="voting">
-                    <VotingPanel engine={engine} />
-                  </CartridgeWrapper>
-                </div>
-              );
-            case 'game':
-              return (
-                <div key={entry.key} ref={cartridgeRef} className={spacing}>
-                  <CartridgeWrapper kind="game">
-                    <GamePanel engine={engine} />
-                  </CartridgeWrapper>
-                </div>
-              );
-            case 'prompt':
-              return (
-                <div key={entry.key} ref={cartridgeRef} className={spacing}>
-                  <CartridgeWrapper kind="prompt">
-                    <PromptPanel engine={engine} />
-                  </CartridgeWrapper>
-                </div>
-              );
             case 'completed-cartridge':
               return null;
           }
@@ -217,31 +172,8 @@ export function Timeline({ engine, onLongPressBubble }: TimelineProps) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Return to action pill — overlays bottom of scroll area */}
-      <AnimatePresence>
-        {hasActiveCartridge && userScrolledUp && returnPillLabel && (
-          <motion.div
-            className="absolute bottom-0 inset-x-0 flex justify-center px-4 py-3 backdrop-blur-md bg-white/[0.05] border-t border-white/[0.06] z-10"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={SPRING.snappy}
-          >
-            <motion.button
-              onClick={scrollToCartridge}
-              className={`flex items-center gap-2.5 px-6 py-3 rounded-full ${returnPillBg} text-white shadow-btn font-bold text-sm uppercase tracking-wider`}
-              whileTap={TAP.button}
-              transition={SPRING.button}
-            >
-              {React.createElement(returnPillIcon, { size: 16 })}
-              {returnPillLabel}
-            </motion.button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Jump to latest (only when no active cartridge pill) */}
-      {userScrolledUp && !hasActiveCartridge && (
+      {/* Jump to latest */}
+      {userScrolledUp && (
         <button
           onClick={scrollToBottom}
           className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-4 py-2 rounded-full bg-skin-panel/95 border border-white/[0.1] text-xs font-mono text-skin-gold shadow-card backdrop-blur-md hover:border-skin-gold/30 transition-all animate-fade-in z-10"

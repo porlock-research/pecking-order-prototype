@@ -7,6 +7,8 @@ import {
   gotoGame,
   waitForGameShell,
   dismissReveal,
+  switchToTodayTab,
+  dismissSplash,
 } from '../fixtures/game-setup';
 
 test.describe('Voting — Majority Vote & Elimination', () => {
@@ -40,16 +42,31 @@ test.describe('Voting — Majority Vote & Elimination', () => {
       await waitForGameShell(page2);
       await waitForGameShell(page3);
 
-      // All players should see the voting panel
+      // Dismiss any phase splash overlays
+      await dismissSplash(page1);
+      await dismissSplash(page2);
+
+      // Navigate to Today tab and open the fullscreen takeover to access voting
+      await switchToTodayTab(page1);
+      await page1.getByText('Cast Your Vote').click();
+      await page1.waitForTimeout(500);
+
+      await switchToTodayTab(page2);
+      await page2.getByText('Cast Your Vote').click();
+      await page2.waitForTimeout(500);
+
+      // Both players should see the voting panel inside the takeover
       await expect(page1.locator('[data-testid="voting-panel"]')).toBeVisible({ timeout: 10_000 });
       await expect(page2.locator('[data-testid="voting-panel"]')).toBeVisible({ timeout: 10_000 });
 
-      // Player 0 and Player 1 both vote for Player 2 (p2)
-      const target = game.players[2].id; // p2
+      // Player 1 and Player 2 both vote for Player 3 (p3)
+      const target = game.players[2].id; // p3
       await page1.locator(`[data-testid="vote-btn-${target}"]`).click();
+      await page1.locator('[data-testid="vote-confirm-btn"]').click();
       await page2.locator(`[data-testid="vote-btn-${target}"]`).click();
+      await page2.locator('[data-testid="vote-confirm-btn"]').click();
 
-      // Both voters should see "Vote cast!" confirmation
+      // Both voters should see "Vote locked in" confirmation
       await expect(page1.locator('[data-testid="vote-confirmed"]')).toBeVisible({ timeout: 5000 });
       await expect(page2.locator('[data-testid="vote-confirmed"]')).toBeVisible({ timeout: 5000 });
 
@@ -61,11 +78,16 @@ test.describe('Voting — Majority Vote & Elimination', () => {
       await advanceGameState(game.gameId);
       await new Promise(r => setTimeout(r, 1000));
 
-      // Check game state to verify elimination
+      // Check game state to verify elimination (p3 = players[2])
       const state = await getGameState(game.gameId);
-      expect(state.roster?.p2?.status).toBe('ELIMINATED');
+      expect(state.roster?.[target]?.status).toBe('ELIMINATED');
 
-      // Dismiss elimination reveal overlay before interacting further
+      // Close takeover if still open, then dismiss elimination reveal
+      const closeBtn = page1.getByRole('button', { name: 'Close' });
+      if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await closeBtn.click();
+        await page1.waitForTimeout(300);
+      }
       await dismissReveal(page1);
 
       // Expand header on player 1's page to check alive count

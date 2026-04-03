@@ -1,27 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import VotingPanel from '../../../components/panels/VotingPanel';
-import GamePanel from '../../../components/panels/GamePanel';
-import PromptPanel from '../../../components/panels/PromptPanel';
 import { useGameStore } from '../../../store/useGameStore';
 import { Vote, Gamepad2, MessageSquare, Skull, Trophy, Coins, ChevronRight } from 'lucide-react';
 import type { TimelineEntry } from '../../../types/timeline';
-
-interface TimelineCartridgeCardProps {
-  entry: Extract<TimelineEntry, { kind: 'voting' | 'game' | 'prompt' }>;
-  engine: any;
-}
-
-export const TimelineCartridgeCard: React.FC<TimelineCartridgeCardProps> = ({ entry, engine }) => {
-  switch (entry.kind) {
-    case 'voting':
-      return <VotingPanel engine={engine} />;
-    case 'game':
-      return <GamePanel engine={engine} />;
-    case 'prompt':
-      return <PromptPanel engine={engine} />;
-  }
-};
 
 // --- Completed cartridge summary ---
 
