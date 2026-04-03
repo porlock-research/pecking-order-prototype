@@ -1,0 +1,50 @@
+import type { Metadata } from 'next';
+import { getEnv } from '@/lib/db';
+
+const FALLBACK_TITLE = 'Pecking Order — Join the Playtest';
+const FALLBACK_DESCRIPTION =
+  'A social game of alliances, betrayal & strategy. Sign up to play.';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const env = await getEnv();
+  const lobbyHost = (env.LOBBY_HOST as string) || '';
+  const playtestUrl = (env.PLAYTEST_URL as string) || `${lobbyHost}/playtest`;
+  const ogImage = `${lobbyHost}/og-playtest.png`;
+
+  return {
+    title: FALLBACK_TITLE,
+    description: FALLBACK_DESCRIPTION,
+    openGraph: {
+      title: FALLBACK_TITLE,
+      description: FALLBACK_DESCRIPTION,
+      url: playtestUrl,
+      siteName: 'Pecking Order',
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: 'Pecking Order — Join the Playtest',
+        },
+      ],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: FALLBACK_TITLE,
+      description: FALLBACK_DESCRIPTION,
+      images: [ogImage],
+    },
+    other: {
+      'theme-color': '#2c003e',
+    },
+  };
+}
+
+export default function PlaytestLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
+}

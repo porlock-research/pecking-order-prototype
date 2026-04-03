@@ -12,6 +12,7 @@
     "test:e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui"
   },
   "dependencies": {
+    "@marsidev/react-turnstile": "^1.5.0",
     "@opennextjs/cloudflare": "^1.17.1",
     "@pecking-order/auth": "*",
     "@pecking-order/shared-types": "*",
@@ -31,7 +32,8 @@
     "react-swipeable": "^7.0.2",
     "resend": "^6.9.2",
     "tailwind-merge": "^3.5.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

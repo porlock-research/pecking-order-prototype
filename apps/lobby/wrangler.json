@@ -31,14 +31,17 @@
         "logs": { "invocation_logs": true, "head_sampling_rate": 1, "destinations": ["axiom-logs-staging"] }
       },
       "routes": [
-        { "pattern": "staging-lobby.peckingorder.ca", "custom_domain": true }
+        { "pattern": "staging-lobby.peckingorder.ca", "custom_domain": true },
+        { "pattern": "staging-playtest.peckingorder.ca", "custom_domain": true }
       ],
       "vars": {
         "GAME_SERVER_HOST": "https://staging-api.peckingorder.ca",
         "GAME_CLIENT_HOST": "https://staging-play.peckingorder.ca",
         "PERSONA_ASSETS_URL": "https://staging-assets.peckingorder.ca",
         "LOBBY_HOST": "https://staging-lobby.peckingorder.ca",
-        "SESSION_COOKIE_NAME": "po_session_stg"
+        "SESSION_COOKIE_NAME": "po_session_stg",
+        "PLAYTEST_URL": "https://staging-playtest.peckingorder.ca",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAACyKQ25EgAbM9RSm"
       },
       "r2_buckets": [
         { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets-staging" }
@@ -59,14 +62,17 @@
         "logs": { "invocation_logs": true, "head_sampling_rate": 1, "destinations": ["axiom-logs-production"] }
       },
       "routes": [
-        { "pattern": "lobby.peckingorder.ca", "custom_domain": true }
+        { "pattern": "lobby.peckingorder.ca", "custom_domain": true },
+        { "pattern": "playtest.peckingorder.ca", "custom_domain": true }
       ],
       "vars": {
         "GAME_SERVER_HOST": "https://api.peckingorder.ca",
         "GAME_CLIENT_HOST": "https://play.peckingorder.ca",
         "PERSONA_ASSETS_URL": "https://assets.peckingorder.ca",
         "LOBBY_HOST": "https://lobby.peckingorder.ca",
-        "SESSION_COOKIE_NAME": "po_session"
+        "SESSION_COOKIE_NAME": "po_session",
+        "PLAYTEST_URL": "https://playtest.peckingorder.ca",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAACyKQ25EgAbM9RSm"
       },
       "r2_buckets": [
         { "binding": "PERSONA_BUCKET", "bucket_name": "pecking-order-assets" }

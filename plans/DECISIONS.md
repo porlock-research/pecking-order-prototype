@@ -1841,7 +1841,7 @@ This document tracks significant architectural decisions, their context, and con
     *   Dilemma game theory is slightly softened — strategic no-shows become less powerful as a sabotage vector.
     *   If the "allow 1" threshold needs tuning later, the `eligiblePlayers` parameter makes it easy to adjust per-dilemma-type.
 
-## [ADR-124] Today Tab — Cartridge Relocation & Result Hold
+## [ADR-126] Today Tab — Cartridge Relocation & Result Hold
 *   **Date:** 2026-03-30
 *   **Status:** Accepted
 *   **Context:** Two problems: (1) cartridges render inline in the chat timeline, cluttering the group chat on mobile and competing with messages; (2) when a cartridge completes, the server immediately stops the child actor and nulls the ref, so the next SYNC delivers `null` — results never render on the client (GH #113, #72). The schedule tab duplicates information already visible in chat (#6). Overlapping cartridge phases cause label confusion (#83).
@@ -1860,7 +1860,7 @@ This document tracks significant architectural decisions, their context, and con
     *   Snapshot size increases slightly (completed cartridge actors remain serialized) — bounded at 4 actors max per day.
     *   Vivid shell only — Classic and Immersive shells unchanged for now.
 
-## [ADR-125] E2E Test Fixture: 1-Indexed Player IDs
+## [ADR-127] E2E Test Fixture: 1-Indexed Player IDs
 *   **Date:** 2026-03-30
 *   **Status:** Accepted
 *   **Context:** The E2E test fixture (`e2e/fixtures/game-setup.ts`) created players with 0-indexed IDs (`p0`, `p1`, `p2`), while the lobby and game server use 1-indexed IDs (`p1`, `p2`, `p3`). This mismatch was harmless when the fixture was self-contained, but caused confusion when writing tests that reference player IDs in assertions (e.g., checking roster state, vote targets). The CLAUDE.md convention is explicit: "Player IDs: `p${slot_index}` — **1-indexed** (e.g., `p1`, `p2`)."
@@ -1874,10 +1874,10 @@ This document tracks significant architectural decisions, their context, and con
     *   Existing tests (`voting.spec.ts`, `game-lifecycle.spec.ts`, `stale-game.spec.ts`) updated in the same commit.
     *   Future tests should use `game.players[0].id` (which is `'p1'`) rather than hardcoding player IDs.
 
-## [ADR-126] Today Tab Bug Fixes: Overlay Stacking, Stale Phase Pills, Arcade Start Design
+## [ADR-128] Today Tab Bug Fixes: Overlay Stacking, Stale Phase Pills, Arcade Start Design
 *   **Date:** 2026-04-02
 *   **Status:** Accepted
-*   **Context:** Visual testing of the Today Tab card redesign (ADR-124) revealed several overlay and state synchronization issues: (1) PhaseTransitionSplash and DramaticReveal rendered at the same z-index tier, causing text overlap during elimination. (2) BroadcastBar showed stale "GAME TIME" label after game cartridges completed because L3 phase lagged behind cartridge state. (3) CartridgeTakeover (fullscreen game overlay) didn't cover the viewport — `position: fixed` inside VividShell's own `position: fixed; overflow: hidden` context behaved unexpectedly. (4) The branch introduced a regression in ArcadeGameWrapper where `status === PLAYING` on the server auto-started the local game, bypassing the player's readiness moment for timed games. (5) Transient SYNC gap where L3 enters a game/voting state but the spawned child actor hasn't initialized yet, causing TodayTab to show activities as UPCOMING when they're actually starting.
+*   **Context:** Visual testing of the Today Tab card redesign (ADR-126) revealed several overlay and state synchronization issues: (1) PhaseTransitionSplash and DramaticReveal rendered at the same z-index tier, causing text overlap during elimination. (2) BroadcastBar showed stale "GAME TIME" label after game cartridges completed because L3 phase lagged behind cartridge state. (3) CartridgeTakeover (fullscreen game overlay) didn't cover the viewport — `position: fixed` inside VividShell's own `position: fixed; overflow: hidden` context behaved unexpectedly. (4) The branch introduced a regression in ArcadeGameWrapper where `status === PLAYING` on the server auto-started the local game, bypassing the player's readiness moment for timed games. (5) Transient SYNC gap where L3 enters a game/voting state but the spawned child actor hasn't initialized yet, causing TodayTab to show activities as UPCOMING when they're actually starting.
 *   **Decision:**
     1.  **Z-index ordering:** PhaseTransitionSplash raised to `z-index: 70`, DramaticReveal lowered to `z-index: 60`. Phase announcement renders on top; player taps to dismiss it, then sees the personal DramaticReveal underneath.
     2.  **Stale phase pills:** BroadcastBar's `buildLivePills` refactored into `isGameLive()`, `isVotingLive()`, etc. with additional `winner` check for sync-decision games. Fallback label shows "Social Hour" when the L3 phase is a cartridge phase (GAME/VOTING/ACTIVITY) but no live pills exist.
@@ -1890,3 +1890,39 @@ This document tracks significant architectural decisions, their context, and con
     *   CartridgeTakeover reliably covers the full viewport on all browsers.
     *   Timed arcade games always present a Start button regardless of server status.
     *   Brief "Starting..." state visible during the ~100ms SYNC gap when cartridges are initializing.
+
+## [ADR-124] Email Template Redesign — "The Dark Court"
+*   **Date:** 2026-03-30
+*   **Status:** Accepted
+*   **Context:** The original email templates (invite, login, playtest confirmation, nudge) used a basic purple card style (`#4c1d95` on `#2c003e`) with Helvetica body text. They were functional but visually generic — they didn't convey the game's atmosphere of intrigue and strategy. The playtest signup confirmation email was particularly sparse (just "You're on the list!" and a share button).
+*   **Decision:**
+    1.  **New palette "The Dark Court"**: Near-black plum background (`#0e0014`), dark amethyst cards (`#1a0a28`), warmer gold (`#f0c040`), vivid fuchsia CTA (`#d946ef`), lavender-white text (`#ede0f5`).
+    2.  **Georgia/serif body font** for a refined "sealed letter" feel. Sans-serif reserved for labels, buttons, and uppercase section headers.
+    3.  **Gold ornamental dividers** using diamond HTML entity (◆) flanked by `GOLD_DIM` (`#b8922e`) ruled lines. Triple-diamond ornament in footer.
+    4.  **Persona card-deck hero image** (`email-hero.png`): cropped from the OG social image to show just the fanned persona cards. Background recolored to match email BG for seamless blending. Used in ALL email types (playtest, invite, login, nudge).
+    5.  **Playtest confirmation overhaul**: Bold "CONFIRMED / You're In" header, "What to expect" section with 3 star-marked bullet points (pick persona, play on phone, form alliances), "recruit your allies" share CTA.
+    6.  **Game-world voice** across all templates: "You have been summoned", "This passage expires", "your seat awaits", "enter the court".
+    7.  **Nudge worker templates synced** to the same Dark Court palette, helpers, and hero image.
+    8.  **Preview tool** (`/email-preview.html`) with desktop/mobile viewport toggle and email type tabs for local development.
+*   **Consequences:**
+    *   All emails share a cohesive visual identity that matches the game's atmosphere.
+    *   The `email-hero.png` asset must be deployed to the lobby's public directory (alongside the existing `og-playtest.png`).
+    *   The nudge worker still duplicates template helpers from `lobby/lib/email-templates.ts` — a future refactor could extract shared email components into `packages/`.
+    *   The preview file (`email-preview.html`) is a dev-only tool in `public/` and should be excluded from production builds or removed before launch.
+
+## [ADR-125] Playtest Referral Code System
+*   **Date:** 2026-03-30
+*   **Status:** Accepted
+*   **Context:** The game designer wanted to track which specific individuals are driving playtest signups — not just the channel (Reddit, Twitter, etc.), but the actual person. This enables identifying "superfans" who recruit the most players. Privacy and friction are key concerns: no emails in URLs, no extra steps for the person signing up.
+*   **Decision:**
+    1.  **Referral codes**: A unique 6-char alphanumeric code (A-Z, 2-9, no ambiguous chars I/O/0/1) generated at signup via `crypto.getRandomValues()`. Stored in `PlaytestSignups.referral_code` (UNIQUE constraint). Migration `0010_playtest_referral_codes.sql`.
+    2.  **Share link attribution**: Share buttons embed the code as `?ref=CODE` in the playtest URL. When someone signs up via that link, `referred_by` stores the referrer's code.
+    3.  **localStorage for returning users**: After signup, `{ referralCode }` is stored in `pecking-order-playtest` localStorage key. Returning visitors see the share screen immediately (with their code + share buttons) instead of the signup form — no re-submission, no muddied analytics.
+    4.  **Dedicated share page** (`/playtest/share/[code]`): The playtest confirmation email links to this page, which shows just the referral code + share buttons. Also sets localStorage for future visits. Vanity domain routing: `playtest.peckingorder.ca/share/CODE` → `/playtest/share/CODE`.
+    5.  **Email template updated**: Playtest confirmation email now shows the referral code and links to the share page instead of the generic playtest URL.
+*   **Consequences:**
+    *   Referrer attribution is precise (code → email in DB) without exposing PII in URLs.
+    *   Superfan identification: `SELECT referred_by, COUNT(*) FROM PlaytestSignups GROUP BY referred_by ORDER BY 2 DESC`.
+    *   The `?ref=` query param may be stripped by some platforms (Instagram bio links), but the code is also displayed in the email and on the success screen for verbal/manual sharing.
+    *   localStorage-based returning user detection breaks on device/browser switch, but the signup form gracefully handles re-submission (UNIQUE constraint returns existing code).
+
