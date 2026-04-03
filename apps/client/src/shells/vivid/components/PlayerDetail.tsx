@@ -34,6 +34,7 @@ export function PlayerDetail({
 
   const [showSilverPicker, setShowSilverPicker] = useState(false);
   const [silverAmount, setSilverAmount] = useState(1);
+  const [silverInputValue, setSilverInputValue] = useState('1');
   const [silverSent, setSilverSent] = useState(false);
   const [mediumLoaded, setMediumLoaded] = useState(false);
 
@@ -60,12 +61,22 @@ export function PlayerDetail({
     }).length;
   }, [chatLog, channels, targetPlayerId, playerId]);
 
+  function clampSilver(val: number) {
+    return Math.max(1, Math.min(mySilver, Math.floor(val)));
+  }
+
+  function updateSilver(val: number) {
+    const clamped = clampSilver(val);
+    setSilverAmount(clamped);
+    setSilverInputValue(String(clamped));
+  }
+
   function handleSendSilver() {
     if (silverAmount < 1 || silverAmount > mySilver) return;
     engine.sendSilver(silverAmount, targetPlayerId);
     setSilverSent(true);
     setShowSilverPicker(false);
-    setSilverAmount(1);
+    updateSilver(1);
     setTimeout(() => setSilverSent(false), 2000);
   }
 
@@ -365,7 +376,7 @@ export function PlayerDetail({
                         border: '1px solid rgba(212, 168, 83, 0.12)',
                       }}
                     >
-                      {/* Narrator intro or fallback to raw question */}
+                      {/* Question */}
                       <div style={{
                         fontFamily: 'var(--vivid-font-body)',
                         fontSize: 12,
@@ -374,7 +385,7 @@ export function PlayerDetail({
                         lineHeight: 1.5,
                         marginBottom: 6,
                       }}>
-                        {qa.narratorIntro || qa.question}
+                        {qa.question}
                       </div>
                       {/* Player's answer */}
                       <div style={{
@@ -666,26 +677,80 @@ export function PlayerDetail({
                     border: '1px solid rgba(255, 255, 255, 0.08)',
                   }}
                 >
-                  <input
-                    type="number"
-                    min={1}
-                    max={mySilver}
-                    value={silverAmount}
-                    onChange={e => setSilverAmount(Math.max(1, Math.min(mySilver, Number(e.target.value) || 1)))}
-                    style={{
-                      width: 64,
-                      padding: '8px 10px',
-                      borderRadius: 10,
-                      border: '1px solid rgba(212, 150, 10, 0.2)',
-                      background: 'rgba(212, 150, 10, 0.06)',
-                      color: '#D4960A',
-                      fontFamily: 'var(--vivid-font-display)',
-                      fontWeight: 700,
-                      fontSize: 16,
-                      textAlign: 'center',
-                      outline: 'none',
-                    }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <motion.button
+                      onClick={() => updateSilver(silverAmount - 1)}
+                      disabled={silverAmount <= 1}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        border: '1px solid rgba(212, 150, 10, 0.2)',
+                        background: 'rgba(212, 150, 10, 0.06)',
+                        color: silverAmount <= 1 ? 'rgba(212, 150, 10, 0.3)' : '#D4960A',
+                        fontFamily: 'var(--vivid-font-display)',
+                        fontWeight: 700,
+                        fontSize: 18,
+                        cursor: silverAmount <= 1 ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      whileTap={silverAmount > 1 ? VIVID_TAP.button : undefined}
+                    >
+                      -
+                    </motion.button>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={mySilver}
+                      value={silverInputValue}
+                      onChange={e => {
+                        const raw = e.target.value;
+                        setSilverInputValue(raw);
+                        const n = parseInt(raw, 10);
+                        if (!isNaN(n)) setSilverAmount(n);
+                      }}
+                      onBlur={() => updateSilver(silverAmount)}
+                      style={{
+                        width: 52,
+                        padding: '6px 4px',
+                        borderRadius: 10,
+                        border: '1px solid rgba(212, 150, 10, 0.2)',
+                        background: 'rgba(212, 150, 10, 0.06)',
+                        color: '#D4960A',
+                        fontFamily: 'var(--vivid-font-display)',
+                        fontWeight: 700,
+                        fontSize: 16,
+                        textAlign: 'center',
+                        outline: 'none',
+                        MozAppearance: 'textfield',
+                      }}
+                    />
+                    <motion.button
+                      onClick={() => updateSilver(silverAmount + 1)}
+                      disabled={silverAmount >= mySilver}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        border: '1px solid rgba(212, 150, 10, 0.2)',
+                        background: 'rgba(212, 150, 10, 0.06)',
+                        color: silverAmount >= mySilver ? 'rgba(212, 150, 10, 0.3)' : '#D4960A',
+                        fontFamily: 'var(--vivid-font-display)',
+                        fontWeight: 700,
+                        fontSize: 18,
+                        cursor: silverAmount >= mySilver ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      whileTap={silverAmount < mySilver ? VIVID_TAP.button : undefined}
+                    >
+                      +
+                    </motion.button>
+                  </div>
                   <motion.button
                     onClick={handleSendSilver}
                     disabled={mySilver < 1}
@@ -707,7 +772,7 @@ export function PlayerDetail({
                     Confirm
                   </motion.button>
                   <motion.button
-                    onClick={() => { setShowSilverPicker(false); setSilverAmount(1); }}
+                    onClick={() => { setShowSilverPicker(false); updateSilver(1); }}
                     style={{
                       padding: '10px',
                       borderRadius: 10,

@@ -509,18 +509,16 @@ function ConversationList({
                       }}>
                         {player.personaName}
                       </div>
-                      {qa.narratorIntro && (
-                        <div style={{
-                          fontFamily: 'var(--vivid-font-body)',
-                          fontSize: 11,
-                          fontStyle: 'italic',
-                          color: 'rgba(250, 243, 232, 0.4)',
-                          lineHeight: 1.4,
-                          marginBottom: 4,
-                        }}>
-                          {qa.narratorIntro}
-                        </div>
-                      )}
+                      <div style={{
+                        fontFamily: 'var(--vivid-font-body)',
+                        fontSize: 11,
+                        fontStyle: 'italic',
+                        color: 'rgba(250, 243, 232, 0.4)',
+                        lineHeight: 1.4,
+                        marginBottom: 4,
+                      }}>
+                        {qa.question}
+                      </div>
                       <div style={{
                         fontFamily: 'var(--vivid-font-body)',
                         fontSize: 13,

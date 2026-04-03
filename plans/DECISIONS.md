@@ -1876,3 +1876,39 @@ This document tracks significant architectural decisions, their context, and con
     *   The `?ref=` query param may be stripped by some platforms (Instagram bio links), but the code is also displayed in the email and on the success screen for verbal/manual sharing.
     *   localStorage-based returning user detection breaks on device/browser switch, but the signup form gracefully handles re-submission (UNIQUE constraint returns existing code).
 
+## [ADR-126] Silver Input Stepper + Clamp-on-Blur
+*   **Date:** 2026-04-02
+*   **Status:** Accepted
+*   **Context:** Playtest feedback (GH #5): the silver gift `<input type="number">` was unusable on mobile. The `onChange` handler clamped immediately via `Math.max(1, Math.min(mySilver, Number(e.target.value) || 1))`, so clearing the field to type a new number snapped it back to 1. Multi-digit amounts were impossible to enter.
+*   **Decision:**
+    1.  Keep `type="number"` with `inputMode="numeric"` for proper mobile keyboard.
+    2.  Use a string display state (`silverInputValue`) for the input, and a numeric state (`silverAmount`) for logic. Parse on change, clamp on blur — not on every keystroke.
+    3.  Add `-` / `+` stepper buttons flanking the input for tap-friendly increment/decrement. Steppers disable at min (1) and max (player's silver balance) with visual feedback.
+    4.  Applied to both `PlayerDetail.tsx` and `PlayerQuickSheet.tsx`.
+*   **Consequences:**
+    *   Users can clear the field, type multi-digit amounts, and tap steppers — all work on mobile.
+    *   Validation still enforced: clamped on blur and guarded on submit.
+
+## [ADR-127] Drop Narrator Intro from Q&A Display
+*   **Date:** 2026-04-02
+*   **Status:** Accepted
+*   **Context:** ADR-116 added `narratorIntro` templates to each Q&A entry — e.g., "{name} — {stereotype}. {description} The Game Master wanted to know: ...". In practice these were too long and repetitive: every entry restated the persona name, stereotype, and description before rephrasing the question. Players saw the same persona info 3 times per profile.
+*   **Decision:** Display the raw `qa.question` instead of `qa.narratorIntro` in `PlayerDetail.tsx` and `WhispersTab.tsx`. The `narratorIntro` field remains in the data schema (no migration needed) — it's simply ignored on the client. The "Game Master's Notes" section header is retained for flavor.
+*   **Consequences:**
+    *   Q&A entries are concise: short question + player's answer.
+    *   If LLM-generated narration is added later (as ADR-116 noted as future work), the display can switch back to using a new narrated field without schema changes.
+
+## [ADR-128] Cartridge Container Dark Background Token
+*   **Date:** 2026-04-02
+*   **Status:** Accepted
+*   **Context:** All 16 arcade/game renderers use `bg-white/[0.06]` for interactive elements (tiles, buttons, cards), designed for a dark background. The Vivid shell is light-themed (`--po-bg-glass: rgba(245, 237, 224, 0.7)`), making these elements invisible — white on near-white (GH #81). The problem affected every game, not just Grid Push.
+*   **Decision:**
+    1.  Add `--po-bg-cartridge` CSS variable to the skin contract — a dark, near-opaque background for game card surfaces.
+    2.  Set per-shell: reality-tv `rgba(44, 0, 62, 0.92)`, cyberpunk `rgba(10, 10, 15, 0.92)`, vivid `rgba(44, 30, 20, 0.92)`.
+    3.  Register as `skin.cartridge` in the Tailwind preset (`var(--po-bg-cartridge)`).
+    4.  Apply in `CartridgeContainer.tsx` (`bg-skin-cartridge text-white`) — the single shared wrapper all games render inside.
+*   **Consequences:**
+    *   All 16 games get proper contrast on all shells with zero renderer changes.
+    *   On dark shells, game cards look nearly identical (dark on dark). On Vivid, game cards are dark floating cards on the light background — clear visual separation.
+    *   Future games automatically inherit the correct background by using `CartridgeContainer`.
+
