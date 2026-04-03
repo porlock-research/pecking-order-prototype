@@ -5,21 +5,11 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 import '@khmyznikov/pwa-install';
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
     interface IntrinsicElements {
-      'pwa-install': React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
-        HTMLElement
-      > & {
-        'manifest-url'?: string;
-        name?: string;
-        description?: string;
-        icon?: string;
-        'install-description'?: string;
-        'disable-close'?: boolean;
-        'manual-apple'?: boolean;
-        'manual-chrome'?: boolean;
-      };
+      // @ts-ignore — conflicts with @khmyznikov/pwa-install's own JSX declaration
+      'pwa-install': any;
     }
   }
 }
@@ -212,6 +202,7 @@ function InstallGate({ onDefer }: { onDefer: () => void }) {
 
   return (
     <>
+      {/* @ts-ignore — pwa-install library types conflict with boolean attrs */}
       <pwa-install
         ref={pwaRef}
         name="Pecking Order"

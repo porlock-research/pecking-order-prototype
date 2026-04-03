@@ -14,7 +14,7 @@ import DilemmaReveal from './DilemmaReveal';
 /*  Icon map                                                           */
 /* ------------------------------------------------------------------ */
 
-const DILEMMA_ICON: Record<string, React.ComponentType<{ size?: number; weight?: string }>> = {
+const DILEMMA_ICON: Record<string, React.ComponentType<any>> = {
   SILVER_GAMBIT: HandMoney,
   SPOTLIGHT: UsersGroupRounded,
   GIFT_OR_GRIEF: Gift,

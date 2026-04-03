@@ -15,7 +15,7 @@ interface PodiumSacrificeVotingProps {
 
 export default function PodiumSacrificeVoting({ cartridge, playerId, roster, engine }: PodiumSacrificeVotingProps) {
   const { phase, eligibleVoters, eligibleTargets, votes, results, podiumPlayerIds } = cartridge;
-  const info = VOTE_TYPE_INFO[cartridge.voteType];
+  const info = (VOTE_TYPE_INFO as Record<string, any>)[cartridge.voteType];
   const canVote = eligibleVoters.includes(playerId);
   const isOnPodium = podiumPlayerIds?.includes(playerId);
   const myVote = votes[playerId] ?? null;

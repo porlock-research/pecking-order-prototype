@@ -11,7 +11,8 @@ ReactDOM.createRoot(document.getElementById('root')!, {
   onUncaughtError: Sentry.reactErrorHandler(),
   onCaughtError: Sentry.reactErrorHandler(),
   onRecoverableError: Sentry.reactErrorHandler(),
-}).render(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any).render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />

@@ -13,7 +13,7 @@ interface SecondToLastVotingProps {
 
 export default function SecondToLastVoting({ cartridge, playerId, roster }: SecondToLastVotingProps) {
   const { phase, results, silverRanking } = cartridge;
-  const info = VOTE_TYPE_INFO[cartridge.voteType];
+  const info = (VOTE_TYPE_INFO as Record<string, any>)[cartridge.voteType];
   const ranking: Array<{ id: string; silver: number }> = results?.summary?.silverRanking ?? silverRanking ?? [];
   const eliminatedId: string | null = results?.eliminatedId ?? null;
   const maxSilver = ranking.length > 0 ? Math.max(...ranking.map(r => r.silver), 1) : 1;
