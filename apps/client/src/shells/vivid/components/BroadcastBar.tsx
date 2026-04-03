@@ -48,6 +48,10 @@ function formatTimeUntil(ms: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+// Phases that imply a cartridge is active — when no live pills exist but the
+// phase is one of these, the label is stale. Show "Social Hour" instead.
+const CARTRIDGE_PHASES: Set<string> = new Set([DayPhases.GAME, DayPhases.VOTING, DayPhases.ACTIVITY]);
+
 interface LivePill {
   label: string;
   key: string;
@@ -170,11 +174,8 @@ export function BroadcastBar({ onBellClick, onStripClick }: BroadcastBarProps) {
   );
 
   const nextUpHint = useNextUpHint();
-  // When the L3 state says GAME/VOTING/ACTIVITY but no cartridge is actually live,
-  // the phase is stale — fall back to Social Hour instead of showing a misleading label.
-  const cartridgePhases: Set<string> = new Set([DayPhases.GAME, DayPhases.VOTING, DayPhases.ACTIVITY]);
   const rawLabel = PHASE_LABELS[phase] || 'Waiting';
-  const phaseLabel = (livePills.length === 0 && cartridgePhases.has(phase as DayPhase))
+  const phaseLabel = (livePills.length === 0 && CARTRIDGE_PHASES.has(phase))
     ? 'Social Hour'
     : rawLabel;
 

@@ -16,7 +16,7 @@ interface FinalsVotingProps {
 
 export default function FinalsVoting({ cartridge, playerId, roster, engine }: FinalsVotingProps) {
   const { phase, eligibleVoters, eligibleTargets, votes, results } = cartridge;
-  const info = (VOTE_TYPE_INFO as Record<string, any>)[cartridge.voteType];
+  const info = VOTE_TYPE_INFO[cartridge.voteType as keyof typeof VOTE_TYPE_INFO];
   const canVote = eligibleVoters.includes(playerId);
   const isFinalist = eligibleTargets.includes(playerId);
   const myVote = votes[playerId] ?? null;

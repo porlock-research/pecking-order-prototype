@@ -15,7 +15,7 @@ interface BubbleVotingProps {
 
 export default function BubbleVoting({ cartridge, playerId, roster, engine }: BubbleVotingProps) {
   const { phase, eligibleVoters, eligibleTargets, votes, results, immunePlayerIds } = cartridge;
-  const info = (VOTE_TYPE_INFO as Record<string, any>)[cartridge.voteType];
+  const info = VOTE_TYPE_INFO[cartridge.voteType as keyof typeof VOTE_TYPE_INFO];
   const canVote = eligibleVoters.includes(playerId);
   const myVote = votes[playerId] ?? null;
 

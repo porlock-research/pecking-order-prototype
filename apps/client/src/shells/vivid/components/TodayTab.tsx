@@ -56,6 +56,15 @@ const KIND_COLORS: Record<string, string> = {
   voting: '#E89B3A', game: '#3BA99C', prompt: '#8B6CC1', dilemma: '#CF864B',
 };
 
+// Map L3 phase to the kind(s) it implies are active — used to detect the brief
+// SYNC gap where phase says GAME but activeGameCartridge hasn't populated yet.
+// ACTIVITY phase can imply either 'prompt' or 'dilemma' (both are sub-types).
+const PHASE_IMPLIED_KINDS: Record<string, ActivityEntry['kind'][]> = {
+  [DayPhases.GAME]: ['game'],
+  [DayPhases.VOTING]: ['voting'],
+  [DayPhases.ACTIVITY]: ['prompt', 'dilemma'],
+};
+
 /* ── helpers ───────────────────────────────────────── */
 
 function getKindIcon(kind: string, typeKey?: string) {
@@ -233,14 +242,6 @@ export function TodayTab({ engine, onPlayGame }: TodayTabProps) {
   const completedCartridges = useGameStore(s => s.completedCartridges);
   const phase = useGameStore(s => s.phase);
 
-  // Map L3 phase to the kind it implies is active — used to detect the brief
-  // SYNC gap where phase says GAME but activeGameCartridge hasn't populated yet.
-  const phaseImpliesKind: Record<string, ActivityEntry['kind']> = {
-    [DayPhases.GAME]: 'game',
-    [DayPhases.VOTING]: 'voting',
-    [DayPhases.ACTIVITY]: 'prompt',
-  };
-
   const activities = useMemo(() => {
     const entries: ActivityEntry[] = [];
     const seenKinds = new Set<string>();
@@ -280,7 +281,7 @@ export function TodayTab({ engine, onPlayGame }: TodayTabProps) {
     // 3. Upcoming from timeline
     // When the phase implies a kind is active but no cartridge data exists yet
     // (transient SYNC gap), show that entry as "live" instead of "upcoming".
-    const impliedKind = phaseImpliesKind[phase];
+    const impliedKinds = PHASE_IMPLIED_KINDS[phase] || [];
     if (currentDay?.timeline) {
       let upIdx = 0;
       for (const event of currentDay.timeline) {
@@ -289,7 +290,7 @@ export function TodayTab({ engine, onPlayGame }: TodayTabProps) {
         if (!kind || seenKinds.has(kind)) continue;
         const typeKey = resolveTimelineTypeKey(kind, event, currentDay);
         const startsAt = typeof event.time === 'number' ? event.time : new Date(event.time).getTime();
-        const isPhaseActive = kind === impliedKind;
+        const isPhaseActive = impliedKinds.includes(kind);
         entries.push({
           kind, typeKey,
           state: isPhaseActive ? 'live' : 'upcoming',

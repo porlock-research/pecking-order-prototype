@@ -27,7 +27,7 @@ export default function TrustPairsVoting({ cartridge, playerId, roster, engine }
     immunePlayerIds,
   } = cartridge;
 
-  const info = (VOTE_TYPE_INFO as Record<string, any>)[cartridge.voteType];
+  const info = VOTE_TYPE_INFO[cartridge.voteType as keyof typeof VOTE_TYPE_INFO];
   const canVote = eligibleVoters.includes(playerId);
   const myTrust = trustPicks?.[playerId] ?? null;
   const myEliminate = votePicks?.[playerId] ?? null;

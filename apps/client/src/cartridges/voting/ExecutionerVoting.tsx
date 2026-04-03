@@ -24,7 +24,7 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
     executionerId,
     electionTallies,
   } = cartridge;
-  const info = (VOTE_TYPE_INFO as Record<string, any>)[cartridge.voteType];
+  const info = VOTE_TYPE_INFO[cartridge.voteType as keyof typeof VOTE_TYPE_INFO];
 
   // REVEAL phase
   if (phase === VotingPhases.REVEAL) {

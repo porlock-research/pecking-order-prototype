@@ -15,7 +15,7 @@ interface MajorityVotingProps {
 
 export default function MajorityVoting({ cartridge, playerId, roster, engine }: MajorityVotingProps) {
   const { phase, eligibleVoters, eligibleTargets, votes, results } = cartridge;
-  const info = (VOTE_TYPE_INFO as Record<string, any>)[cartridge.voteType];
+  const info = VOTE_TYPE_INFO[cartridge.voteType as keyof typeof VOTE_TYPE_INFO];
   const canVote = eligibleVoters.includes(playerId);
   const myVote = votes[playerId] ?? null;
 
