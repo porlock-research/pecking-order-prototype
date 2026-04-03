@@ -53,6 +53,28 @@ interface LivePill {
   key: string;
 }
 
+function isVotingLive(c: any): boolean {
+  return c && c.phase !== VotingPhases.REVEAL && c.phase !== VotingPhases.WINNER;
+}
+
+function isGameLive(c: any): boolean {
+  if (!c) return false;
+  if (c.status === ArcadePhases.COMPLETED) return false;
+  if (c.allPlayerResults) return false;
+  if (c.phase === 'REVEAL' || c.phase === 'SCOREBOARD') return false;
+  // Sync-decision machines set winner when done
+  if (c.winner !== undefined) return false;
+  return true;
+}
+
+function isPromptLive(c: any): boolean {
+  return c && c.phase !== PromptPhases.RESULTS;
+}
+
+function isDilemmaLive(c: any): boolean {
+  return c && c.phase !== DilemmaPhases.REVEAL;
+}
+
 function buildLivePills(
   activeVoting: any,
   activeGame: any,
@@ -61,20 +83,16 @@ function buildLivePills(
 ): LivePill[] {
   const pills: LivePill[] = [];
 
-  if (activeVoting && activeVoting.phase !== VotingPhases.REVEAL && activeVoting.phase !== VotingPhases.WINNER) {
+  if (isVotingLive(activeVoting)) {
     pills.push({ label: 'Voting', key: 'voting' });
   }
-  if (activeGame && activeGame.status !== ArcadePhases.COMPLETED && !activeGame.allPlayerResults) {
-    // Also check sync-decision reveal states
-    const p = activeGame.phase;
-    if (p !== 'REVEAL' && p !== 'SCOREBOARD') {
-      pills.push({ label: 'Game', key: 'game' });
-    }
+  if (isGameLive(activeGame)) {
+    pills.push({ label: 'Game', key: 'game' });
   }
-  if (activePrompt && activePrompt.phase !== PromptPhases.RESULTS) {
+  if (isPromptLive(activePrompt)) {
     pills.push({ label: 'Prompt', key: 'prompt' });
   }
-  if (activeDilemma && activeDilemma.phase !== DilemmaPhases.REVEAL) {
+  if (isDilemmaLive(activeDilemma)) {
     pills.push({ label: 'Dilemma', key: 'dilemma' });
   }
 
@@ -152,7 +170,13 @@ export function BroadcastBar({ onBellClick, onStripClick }: BroadcastBarProps) {
   );
 
   const nextUpHint = useNextUpHint();
-  const phaseLabel = PHASE_LABELS[phase] || 'Waiting';
+  // When the L3 state says GAME/VOTING/ACTIVITY but no cartridge is actually live,
+  // the phase is stale — fall back to Social Hour instead of showing a misleading label.
+  const cartridgePhases: Set<string> = new Set([DayPhases.GAME, DayPhases.VOTING, DayPhases.ACTIVITY]);
+  const rawLabel = PHASE_LABELS[phase] || 'Waiting';
+  const phaseLabel = (livePills.length === 0 && cartridgePhases.has(phase as DayPhase))
+    ? 'Social Hour'
+    : rawLabel;
 
   return (
     <div

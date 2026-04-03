@@ -1873,3 +1873,20 @@ This document tracks significant architectural decisions, their context, and con
     *   E2E player IDs match production convention — less cognitive overhead when writing tests.
     *   Existing tests (`voting.spec.ts`, `game-lifecycle.spec.ts`, `stale-game.spec.ts`) updated in the same commit.
     *   Future tests should use `game.players[0].id` (which is `'p1'`) rather than hardcoding player IDs.
+
+## [ADR-126] Today Tab Bug Fixes: Overlay Stacking, Stale Phase Pills, Arcade Start Design
+*   **Date:** 2026-04-02
+*   **Status:** Accepted
+*   **Context:** Visual testing of the Today Tab card redesign (ADR-124) revealed several overlay and state synchronization issues: (1) PhaseTransitionSplash and DramaticReveal rendered at the same z-index tier, causing text overlap during elimination. (2) BroadcastBar showed stale "GAME TIME" label after game cartridges completed because L3 phase lagged behind cartridge state. (3) CartridgeTakeover (fullscreen game overlay) didn't cover the viewport — `position: fixed` inside VividShell's own `position: fixed; overflow: hidden` context behaved unexpectedly. (4) The branch introduced a regression in ArcadeGameWrapper where `status === PLAYING` on the server auto-started the local game, bypassing the player's readiness moment for timed games. (5) Transient SYNC gap where L3 enters a game/voting state but the spawned child actor hasn't initialized yet, causing TodayTab to show activities as UPCOMING when they're actually starting.
+*   **Decision:**
+    1.  **Z-index ordering:** PhaseTransitionSplash raised to `z-index: 70`, DramaticReveal lowered to `z-index: 60`. Phase announcement renders on top; player taps to dismiss it, then sees the personal DramaticReveal underneath.
+    2.  **Stale phase pills:** BroadcastBar's `buildLivePills` refactored into `isGameLive()`, `isVotingLive()`, etc. with additional `winner` check for sync-decision games. Fallback label shows "Social Hour" when the L3 phase is a cartridge phase (GAME/VOTING/ACTIVITY) but no live pills exist.
+    3.  **CartridgeTakeover portal:** Rendered via `createPortal(_, document.body)` to escape VividShell's stacking context. Explicit hex color fallbacks since portal renders outside the CSS variable tree. `className="vivid-shell"` added for skin variable inheritance.
+    4.  **Arcade start design:** Reverted `PLAYING` auto-start detection in ArcadeGameWrapper. Arcade games are client-timed — the server tracks completion, not individual game start. The Start button is intentional (player readiness gate). Trivia is unaffected (reads server status directly for server-managed rounds).
+    5.  **Defensive SYNC gap state:** TodayTab's `activities` memo checks the L3 `phase` — when it implies a kind is active but no cartridge data exists, that entry renders as "Starting..." with a spinner instead of UPCOMING.
+*   **Consequences:**
+    *   Elimination sequence is now: phase splash → tap → personal reveal → tap → back to game. No text overlap.
+    *   BroadcastBar never shows stale cartridge phase labels when all cartridges are done.
+    *   CartridgeTakeover reliably covers the full viewport on all browsers.
+    *   Timed arcade games always present a Start button regardless of server status.
+    *   Brief "Starting..." state visible during the ~100ms SYNC gap when cartridges are initializing.

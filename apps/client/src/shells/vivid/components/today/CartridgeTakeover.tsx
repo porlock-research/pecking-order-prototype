@@ -1,4 +1,5 @@
 import React, { Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { GAME_TYPE_INFO } from '@pecking-order/shared-types';
 import { VIVID_SPRING } from '../../springs';
@@ -18,19 +19,22 @@ interface CartridgeTakeoverProps {
 }
 
 export function CartridgeTakeover({ cartridge, engine, onDismiss }: CartridgeTakeoverProps) {
-  return (
+  // Portal to document.body to escape VividShell's position:fixed + overflow:hidden
+  // stacking context, which prevents nested position:fixed from covering the viewport.
+  return createPortal(
     <motion.div
       initial={{ y: '100%' }}
       animate={{ y: 0 }}
       exit={{ y: '100%' }}
       transition={VIVID_SPRING.page}
+      className="vivid-shell"
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
         display: 'flex',
         flexDirection: 'column',
-        background: 'var(--vivid-bg, #FAF6EF)',
+        background: '#FAF6EF',
       }}
     >
       {/* Header */}
@@ -42,8 +46,8 @@ export function CartridgeTakeover({ cartridge, engine, onDismiss }: CartridgeTak
         paddingBottom: 12,
         paddingLeft: 16,
         paddingRight: 16,
-        background: 'var(--vivid-bg-warm)',
-        borderBottom: '2px solid var(--vivid-phase-accent)',
+        background: '#F5EDE0',
+        borderBottom: '2px solid var(--vivid-phase-accent, #3BA99C)',
       }}>
         <button
           onClick={onDismiss}
@@ -70,7 +74,7 @@ export function CartridgeTakeover({ cartridge, engine, onDismiss }: CartridgeTak
         <span style={{
           fontSize: 15,
           fontWeight: 600,
-          color: 'var(--vivid-text)',
+          color: '#3D2E1F',
           letterSpacing: '0.02em',
         }}>
           {getGameName(cartridge)}
@@ -83,6 +87,7 @@ export function CartridgeTakeover({ cartridge, engine, onDismiss }: CartridgeTak
           <GamePanel engine={engine} />
         </Suspense>
       </div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }

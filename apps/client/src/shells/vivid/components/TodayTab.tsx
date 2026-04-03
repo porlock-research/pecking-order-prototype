@@ -2,7 +2,7 @@ import React, { useMemo, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../../../store/useGameStore';
 import {
-  VotingPhases, ArcadePhases, PromptPhases, DilemmaPhases,
+  VotingPhases, ArcadePhases, PromptPhases, DilemmaPhases, DayPhases,
   VOTE_TYPE_INFO, GAME_TYPE_INFO, ACTIVITY_TYPE_INFO, DILEMMA_TYPE_INFO,
 } from '@pecking-order/shared-types';
 import { UpcomingPreview } from './today/UpcomingPreview';
@@ -231,6 +231,15 @@ export function TodayTab({ engine, onPlayGame }: TodayTabProps) {
   const activePromptCartridge = useGameStore(s => s.activePromptCartridge);
   const activeDilemma = useGameStore(s => s.activeDilemma);
   const completedCartridges = useGameStore(s => s.completedCartridges);
+  const phase = useGameStore(s => s.phase);
+
+  // Map L3 phase to the kind it implies is active — used to detect the brief
+  // SYNC gap where phase says GAME but activeGameCartridge hasn't populated yet.
+  const phaseImpliesKind: Record<string, ActivityEntry['kind']> = {
+    [DayPhases.GAME]: 'game',
+    [DayPhases.VOTING]: 'voting',
+    [DayPhases.ACTIVITY]: 'prompt',
+  };
 
   const activities = useMemo(() => {
     const entries: ActivityEntry[] = [];
@@ -269,6 +278,9 @@ export function TodayTab({ engine, onPlayGame }: TodayTabProps) {
     }
 
     // 3. Upcoming from timeline
+    // When the phase implies a kind is active but no cartridge data exists yet
+    // (transient SYNC gap), show that entry as "live" instead of "upcoming".
+    const impliedKind = phaseImpliesKind[phase];
     if (currentDay?.timeline) {
       let upIdx = 0;
       for (const event of currentDay.timeline) {
@@ -277,14 +289,21 @@ export function TodayTab({ engine, onPlayGame }: TodayTabProps) {
         if (!kind || seenKinds.has(kind)) continue;
         const typeKey = resolveTimelineTypeKey(kind, event, currentDay);
         const startsAt = typeof event.time === 'number' ? event.time : new Date(event.time).getTime();
-        entries.push({ kind, typeKey, state: 'upcoming', startsAt, sortKey: 2 + upIdx });
+        const isPhaseActive = kind === impliedKind;
+        entries.push({
+          kind, typeKey,
+          state: isPhaseActive ? 'live' : 'upcoming',
+          startsAt: isPhaseActive ? undefined : startsAt,
+          sortKey: isPhaseActive ? 1 : 2 + upIdx,
+          hasActiveData: false,
+        });
         seenKinds.add(kind);
         upIdx++;
       }
     }
 
     return entries.sort((a, b) => a.sortKey - b.sortKey);
-  }, [manifest, dayIndex, activeVotingCartridge, activeGameCartridge, activePromptCartridge, activeDilemma, completedCartridges]);
+  }, [manifest, dayIndex, activeVotingCartridge, activeGameCartridge, activePromptCartridge, activeDilemma, completedCartridges, phase]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -340,6 +359,38 @@ function ActivitySection({ activity, engine, onPlayGame }: {
   // Upcoming: render preview card (no panel exists yet)
   if (state === 'upcoming') {
     return <UpcomingPreview kind={kind} typeKey={typeKey} startsAt={activity.startsAt} />;
+  }
+
+  // Live but no cartridge data yet (transient SYNC gap) — show "Starting..." placeholder
+  if (state === 'live' && !hasActiveData) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={VIVID_SPRING.gentle}
+        style={{
+          background: 'var(--vivid-bg-surface)',
+          borderRadius: 14,
+          overflow: 'hidden',
+          border: `2px solid ${color}`,
+        }}
+      >
+        <SectionHeader kind={kind} typeKey={typeKey} state={state} />
+        <div style={{ padding: '20px 14px', textAlign: 'center' }}>
+          <span style={{
+            display: 'inline-block', width: 16, height: 16,
+            border: `2px solid ${color}`, borderTopColor: 'transparent',
+            borderRadius: '50%', animation: 'spin 0.8s linear infinite',
+          }} />
+          <div style={{
+            marginTop: 8, fontSize: 12, color: 'var(--vivid-text-muted)',
+            fontFamily: 'var(--vivid-font-mono)',
+          }}>
+            Starting...
+          </div>
+        </div>
+      </motion.div>
+    );
   }
 
   // Live game: render "Play Now" card (games need fullscreen canvas)
