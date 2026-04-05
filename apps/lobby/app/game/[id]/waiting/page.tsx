@@ -292,8 +292,8 @@ export default function WaitingRoom() {
             </motion.div>
           )}
 
-          {/* Invite Players Section */}
-          {!isStarted && !isLoading && emptySlots.length > 0 && (
+          {/* Invite Players Section — show when slots are unfilled OR dynamic (no predefined slots) */}
+          {!isStarted && !isLoading && (emptySlots.length > 0 || totalSlots === 0) && (
             <div className="mt-4">
               <button
                 onClick={() => setShowInviteSection(!showInviteSection)}
