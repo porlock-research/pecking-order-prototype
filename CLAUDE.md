@@ -25,7 +25,7 @@ L2 states: `uninitialized` → `preGame` → `dayLoop` (invokes L3) → `nightSu
 Server modules (L1 is a thin shell): `http-handlers.ts`, `ws-handlers.ts`, `subscription.ts`, `machine-actions.ts`, `scheduling.ts`, `snapshot.ts`, `sync.ts`, `global-routes.ts`, `log.ts`
 
 - **Specs**: `spec/spec_master_technical_spec.md` and `spec/spec_implementation_guidance.md` are the source of truth
-- **ADR log**: `plans/DECISIONS.md` (ADR-001 through ADR-096)
+- **ADR log**: `plans/DECISIONS.md` (ADR-001 through ADR-129+)
 - **Cartridge registries**: Voting (`cartridges/voting/_registry.ts`), Prompts (`cartridges/prompts/_registry.ts`), Games (`packages/game-cartridges/src/machines/index.ts`)
 
 ## Commands
@@ -48,6 +48,7 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 
 - **Always run `npm run build` before committing/pushing** in affected apps
 - **Always ask before merging or pushing**. Never merge to main or push without explicit approval
+- **Always merge main INTO feature branch first** before merging to main. The branch safety hook blocks edits on main — if conflicts arise during merge-to-main, you're stuck. Resolve on the feature branch first.
 - **Clean up plans after implementation** — move finished `docs/plans/` files to `docs/plans/archive/` to avoid stale plans confusing future sessions. **Never bulk-delete `~/.claude/plans/`** — that directory is shared across all projects. Only delete plans you can confirm belong to this project and are completed
 - **After changes to L2/L3 machines, SYNC payload shape, manifest types, or cartridge registries** — check if `DemoServer` (`apps/game-server/src/demo/`) needs updating
 
@@ -69,6 +70,31 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - **DM invite flow**: Config-driven via `requireDmInvite` on manifest. Per-recipient `PendingInvite` records. Slot tracking via `slotsUsedByPlayer`. Facts: `DM_INVITE_SENT`, `DM_INVITE_ACCEPTED`, `DM_INVITE_DECLINED`.
 - **Presence**: Ephemeral in L1 (`connectedPlayers`), NOT in XState context.
 - **Logging**: `log(level, component, event, data?)` — structured JSON output (Axiom + Workers Logs)
+- **Lobby PII**: PlaytestSignups stores encrypted PII only (`email_encrypted`, `phone_encrypted`, `email_hash`). Plaintext `email`/`phone` columns were dropped (migration 0014). `PII_ENCRYPTION_KEY` env var is required. Crypto helpers in `apps/lobby/lib/crypto.ts`.
+- **PartyWhen scheduler**: Manages the alarm task queue in DO SQLite (`tasks` table). We access internals via `(scheduler as any).querySql(...)` because the public API is limited. The `wakeUpL2` callback is a no-op by design — actual WAKEUP delivery happens in `onAlarm()`.
+
+## Manifest & Scheduling Glossary
+
+- **STATIC manifest**: All days pre-computed at game creation. Timeline events have fixed ISO timestamps.
+- **DYNAMIC manifest**: Days resolved at runtime by the Game Master actor. Timeline anchored to `Date.now()` on each day start.
+- **ADMIN scheduling**: No alarms — game master advances manually via `NEXT_STAGE`. Timeline timestamps are cosmetic only.
+- **PRE_SCHEDULED scheduling**: Real PartyWhen alarms fire timeline events automatically.
+- **Common trap**: A STATIC/ADMIN game with timestamps in its timeline = timestamps never fire. Use DYNAMIC/PRE_SCHEDULED for real alarms.
+- **Schedule presets**: `SMOKE_TEST` (5min days), `SPEED_RUN` (23min), `PLAYTEST` (4h), `COMPACT` (6h), `DEFAULT` (24h). See `timeline-presets.ts`.
+- **"Use now" anchoring**: Dynamic timelines use `dayIndex` for WHAT content plays (vote type, game type) and `Date.now()` for WHEN events fire. Never anchor to `startTime + dayOffset`.
+- **Timezone rule**: Calendar preset `clockTimes` are offsets from `startTime`, not absolute UTC. Always test with non-midnight startTimes to catch timezone bugs.
+
+## Game Design Rules
+
+These rules come from playtesting. Violating them causes game-breaking bugs or UX regressions.
+
+- **Voting always eliminates**: Every voting mechanism must eliminate exactly one player. `eliminatedId` must NEVER be null. If no one votes, eliminate lowest silver. If tied, use lowest silver. Only exception: FINALS picks a winner.
+- **Results shown immediately**: Show voting/game/prompt results as soon as the phase closes. Never delay results to night summary — this is an async game, players shouldn't wait hours.
+- **No emoji in UI**: Use `@solar-icons/react` (vivid shell) or lucide-react (classic). Emoji look inconsistent across platforms.
+- **Persona avatars always visible**: Never replace player avatars with status icons. Use overlay indicators (badges, borders, opacity) on the avatar instead.
+- **Results inline, not fullscreen**: Completed activity results render inline in the Today tab. Fullscreen takeover ONLY for arcade games (they need the canvas).
+- **Explain mechanics to players**: Every cartridge should have an explanation. Game Master messages in chat are the preferred approach.
+- **All voting result summaries must show**: vote tallies per player, who voted for whom, and the elimination outcome. Each mechanism stores tallies under different keys — see `CompletedSummary.tsx`.
 
 ## XState v5 Rules
 
@@ -100,6 +126,7 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - **Playwright E2E**: `e2e/tests/` (chat, game-lifecycle, smoke, stale-game, voting). Chrome only, sequential, 60s timeout.
 - **Fixtures**: `e2e/fixtures/game-setup.ts` — `createTestGame()`, `advanceGameState()`, `injectTimelineEvent()`
 - **Constants**: `GAME_SERVER=http://localhost:8787`, `AUTH_SECRET=dev-secret-change-me`
+- **`GET /state` limitation**: Only returns L2 state/context (state value, dayIndex, manifest, roster). Does NOT include L3 context (channels, chatLog, cartridge state, day phase). L3 data lives in `snapshot.children['l3-session']` and is only accessible via WebSocket SYNC or the inspector (`INSPECT.SUBSCRIBE`). Use `extractL3Context()`/`extractCartridges()` from `sync.ts` if extending.
 
 ## Environment
 
@@ -108,12 +135,14 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - **Production**: `{api,play,lobby}.peckingorder.ca`. Manual `workflow_dispatch` only.
 - **Wrangler envs**: `--env staging` / `--env production`. Bare deploy is `-dev` (safe).
 - **Wrangler bindings**: GameServer DO, D1 (`pecking-order-journal-db-*`), Axiom logging.
+- **Timezones**: All times stored/transmitted as UTC ISO strings. Lobby UI converts local→UTC via `new Date(datetimeLocal).toISOString()` before sending. Dynamic games anchor day timelines to `Date.now()` (UTC), not stored `startTime`.
 
 ## Key Documentation
 
+- `ARCHITECTURE.md` — Non-obvious data flows, module relationships, implicit contracts (read alongside this file)
 - `spec/spec_master_technical_spec.md` — Technical requirements (source of truth)
 - `spec/spec_implementation_guidance.md` — Implementation patterns (source of truth)
-- `plans/DECISIONS.md` — ADR log (ADR-001 through ADR-095)
+- `plans/DECISIONS.md` — ADR log (ADR-001 through ADR-129+)
 - `plans/architecture/server-refactor-and-dynamic-days.md` — Phased refactor plan
 - `plans/architecture/feature-dynamic-days.md` — Dynamic days design
 - `docs/plans/` — Design docs and implementation plans (active work)

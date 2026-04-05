@@ -122,20 +122,47 @@ function VotingCompleted({ snapshot, roster, playerId }: { snapshot: any; roster
 
   const eliminatedId: string | null = snapshot.eliminatedId ?? snapshot.results?.eliminatedId ?? null;
   const winnerId: string | null = snapshot.winnerId ?? snapshot.results?.winnerId ?? null;
-  const rawTallies: Record<string, number> = snapshot.summary?.tallies ?? snapshot.tallies ?? {};
-  const votes: Record<string, string> | undefined = snapshot.summary?.votes;
+  const mechanism: string | undefined = snapshot.mechanism;
   const immunePlayerIds: string[] = snapshot.summary?.immunePlayerIds ?? [];
+  const votes: Record<string, string> | undefined = snapshot.summary?.votes;
 
-  // Build full tally including 0-vote players from roster
+  // Each mechanism stores tallies under a different key:
+  // MAJORITY/BUBBLE/PODIUM_SACRIFICE/TRUST_PAIRS → tallies
+  // FINALS → voteCounts, SHIELD → saveCounts, EXECUTIONER → electionTallies
+  // SECOND_TO_LAST → no tallies (silver-based, no voting)
+  const isSecondToLast = mechanism === 'SECOND_TO_LAST';
+  const isShield = mechanism === 'SHIELD';
+  const isExecutioner = mechanism === 'EXECUTIONER';
+  const rawTallies: Record<string, number> =
+    snapshot.summary?.tallies ??
+    snapshot.summary?.voteCounts ??
+    snapshot.summary?.saveCounts ??
+    snapshot.summary?.electionTallies ??
+    snapshot.tallies ?? {};
+  const tallyLabel = isShield ? 'shield' : 'vote';
+
+  // SECOND_TO_LAST: show silver ranking instead of vote tallies
+  const silverRanking: Array<{ id: string; silver: number }> = isSecondToLast
+    ? (snapshot.summary?.silverRanking ?? [])
+    : [];
+
+  // EXECUTIONER: show who the executioner picked
+  const executionerId: string | null = isExecutioner ? (snapshot.summary?.executionerId ?? null) : null;
+
+  // Build full tally including 0-count players from roster (skip for SECOND_TO_LAST)
   const tallies = { ...rawTallies };
-  for (const pid of Object.keys(roster)) {
-    if (!(pid in tallies) && roster[pid]?.status !== 'ELIMINATED') {
-      tallies[pid] = 0;
+  if (!isSecondToLast) {
+    for (const pid of Object.keys(roster)) {
+      if (!(pid in tallies) && roster[pid]?.status !== 'ELIMINATED') {
+        tallies[pid] = 0;
+      }
     }
   }
   const maxVotes = Math.max(1, ...Object.values(tallies));
 
-  const sorted = Object.entries(tallies).sort(([, a], [, b]) => b - a);
+  const sorted = isSecondToLast
+    ? silverRanking.map(r => [r.id, r.silver] as [string, number])
+    : Object.entries(tallies).sort(([, a], [, b]) => b - a);
 
   // Self info
   const selfVotes = playerId ? tallies[playerId] : undefined;
@@ -155,8 +182,9 @@ function VotingCompleted({ snapshot, roster, playerId }: { snapshot: any; roster
   // Detect abstainers — anyone who was eligible (alive at vote time) but didn't vote.
   // Players eliminated by THIS vote were alive during voting, so include them.
   // Players eliminated in previous days (status=ELIMINATED, not this vote's target) are excluded.
+  // SECOND_TO_LAST has no voting, so skip abstainers.
   const abstainers: string[] = [];
-  if (votes) {
+  if (votes && !isSecondToLast) {
     for (const pid of Object.keys(roster)) {
       const wasEliminatedBefore = roster[pid]?.status === 'ELIMINATED' && pid !== eliminatedId;
       if (!wasEliminatedBefore && !allVoterIds.has(pid)) {
@@ -164,8 +192,6 @@ function VotingCompleted({ snapshot, roster, playerId }: { snapshot: any; roster
       }
     }
   }
-
-  const mechanism = snapshot.mechanism;
   const mechanicInfo = mechanism ? (VOTE_TYPE_INFO as Record<string, { oneLiner?: string }>)[mechanism] : null;
 
   return (
@@ -213,6 +239,22 @@ function VotingCompleted({ snapshot, roster, playerId }: { snapshot: any; roster
           </span>
         </div>
       )}
+      {executionerId && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 12px', borderRadius: 10,
+          background: 'rgba(139, 108, 193, 0.06)', border: '1px solid rgba(139, 108, 193, 0.12)',
+        }}>
+          <PersonaAvatar avatarUrl={getAvatar(executionerId)} personaName={getName(executionerId)} size={24} />
+          <span style={{
+            fontFamily: 'var(--vivid-font-display)', fontSize: 13,
+            fontWeight: 700, color: '#8B6CC1', flex: 1,
+          }}>
+            {getName(executionerId)}
+          </span>
+          <SemanticLabel text="Executioner" color="#8B6CC1" />
+        </div>
+      )}
 
       {/* Tally rows with avatars, vote bars, semantic labels */}
       {sorted.length > 0 && (
@@ -246,7 +288,16 @@ function VotingCompleted({ snapshot, roster, playerId }: { snapshot: any; roster
                   {isElim && <SemanticLabel text="Eliminated" color="#D04A35" />}
                   {isWinner && !isElim && <SemanticLabel text="Winner" color="#B8840A" />}
                   {isImmune && !isElim && !isWinner && <SemanticLabel text="Immune" color="#8B6CC1" />}
-                  <VoteBar votes={count} maxVotes={maxVotes} color={VOTING_COLOR} />
+                  {isSecondToLast ? (
+                    <span style={{
+                      fontFamily: 'var(--vivid-font-display)', fontSize: 11,
+                      fontWeight: 600, color: '#9B8E7E', minWidth: 50, textAlign: 'right',
+                    }}>
+                      {count} silver
+                    </span>
+                  ) : (
+                    <VoteBar votes={count} maxVotes={maxVotes} color={VOTING_COLOR} />
+                  )}
                 </div>
                 {/* Who voted for this player */}
                 {voters && voters.length > 0 && (
@@ -258,7 +309,7 @@ function VotingCompleted({ snapshot, roster, playerId }: { snapshot: any; roster
                       fontFamily: 'var(--vivid-font-body)', fontSize: 10,
                       color: '#9B8E7E',
                     }}>
-                      from
+                      {isShield ? 'shielded by' : 'from'}
                     </span>
                     <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                       {voters.map(vid => (
@@ -307,19 +358,33 @@ function VotingCompleted({ snapshot, roster, playerId }: { snapshot: any; roster
       )}
 
       {/* Self-highlight */}
-      {playerId && selfVotes !== undefined && (
+      {playerId && (isSecondToLast ? selfRank > 0 : selfVotes !== undefined) && (
         <SelfHighlight>
           {playerId === eliminatedId ? (
-            <>
-              <SelfHighlightLabel>You were eliminated</SelfHighlightLabel> with {selfVotes} vote{selfVotes !== 1 ? 's' : ''}.
-            </>
+            isSecondToLast ? (
+              <>
+                <SelfHighlightLabel>You were eliminated</SelfHighlightLabel> — second-lowest silver.
+              </>
+            ) : (
+              <>
+                <SelfHighlightLabel>You were eliminated</SelfHighlightLabel> with {selfVotes} {tallyLabel}{selfVotes !== 1 ? 's' : ''}.
+              </>
+            )
           ) : immunePlayerIds.includes(playerId) ? (
             <>
               <SelfHighlightLabel>You were immune</SelfHighlightLabel>.
             </>
+          ) : playerId === executionerId ? (
+            <>
+              <SelfHighlightLabel>You were the Executioner</SelfHighlightLabel>.
+            </>
+          ) : isSecondToLast ? (
+            <>
+              You placed <SelfHighlightLabel>{ordinal(selfRank)}</SelfHighlightLabel> by silver balance.
+            </>
           ) : (
             <>
-              You received <SelfHighlightLabel>{selfVotes} vote{selfVotes !== 1 ? 's' : ''}</SelfHighlightLabel> — {ordinal(selfRank)} place.
+              You received <SelfHighlightLabel>{selfVotes} {tallyLabel}{selfVotes !== 1 ? 's' : ''}</SelfHighlightLabel> — {ordinal(selfRank)} place.
             </>
           )}
         </SelfHighlight>

@@ -36,11 +36,16 @@ export async function listSignups(page = 1): Promise<SignupsResult> {
 
   const offset = (page - 1) * PAGE_SIZE;
 
+  if (!piiKey) {
+    throw new Error('PII_ENCRYPTION_KEY is required');
+  }
+  const keys = await deriveKeys(piiKey);
+
   const [countResult, dataResult] = await Promise.all([
     db.prepare('SELECT COUNT(*) as total FROM PlaytestSignups').first<{ total: number }>(),
     db
       .prepare(
-        `SELECT id, email, email_encrypted, phone, phone_encrypted, messaging_app,
+        `SELECT id, email_encrypted, phone_encrypted, messaging_app,
                 referral_source, referral_detail, referred_by, referral_code, signed_up_at
          FROM PlaytestSignups
          ORDER BY id DESC
@@ -49,9 +54,7 @@ export async function listSignups(page = 1): Promise<SignupsResult> {
       .bind(PAGE_SIZE, offset)
       .all<{
         id: number;
-        email: string | null;
         email_encrypted: string | null;
-        phone: string | null;
         phone_encrypted: string | null;
         messaging_app: string | null;
         referral_source: string;
@@ -63,21 +66,11 @@ export async function listSignups(page = 1): Promise<SignupsResult> {
   ]);
 
   const total = countResult?.total ?? 0;
-  const keys = piiKey ? await deriveKeys(piiKey) : null;
 
   const rows: SignupRow[] = await Promise.all(
     dataResult.results.map(async (r) => {
-      let email = r.email;
-      let phone = r.phone;
-
-      if (keys) {
-        if (r.email_encrypted) {
-          email = await decrypt(r.email_encrypted, keys.encKey);
-        }
-        if (r.phone_encrypted) {
-          phone = await decrypt(r.phone_encrypted, keys.encKey);
-        }
-      }
+      const email = r.email_encrypted ? await decrypt(r.email_encrypted, keys.encKey) : null;
+      const phone = r.phone_encrypted ? await decrypt(r.phone_encrypted, keys.encKey) : null;
 
       return {
         id: r.id,

@@ -72,39 +72,31 @@ async function submitPlaytestSignup(
       }
     }
 
-    // 3. Encrypt PII if key is available (graceful degradation)
+    // 3. Encrypt PII (required post-Phase-2)
     const db = await getDB();
     const piiKey = env.PII_ENCRYPTION_KEY as string | undefined;
-    let emailEncrypted: string | null = null;
-    let phoneEncrypted: string | null = null;
-    let emailHash: string | null = null;
-
-    if (piiKey) {
-      const keys = await deriveKeys(piiKey);
-      emailHash = await hmac(email.toLowerCase(), keys.hmacKey);
-      emailEncrypted = await encrypt(email.toLowerCase(), keys.encKey);
-      if (phone) {
-        phoneEncrypted = await encrypt(phone, keys.encKey);
-      }
-    } else {
-      console.warn('[Playtest] PII_ENCRYPTION_KEY not set — writing plaintext only');
+    if (!piiKey) {
+      throw new Error('PII_ENCRYPTION_KEY is required');
     }
 
-    // 4. Insert into D1 (UNIQUE constraint handles dupes)
+    const keys = await deriveKeys(piiKey);
+    const emailHash = await hmac(email.toLowerCase(), keys.hmacKey);
+    const emailEncrypted = await encrypt(email.toLowerCase(), keys.encKey);
+    const phoneEncrypted = phone ? await encrypt(phone, keys.encKey) : null;
+
+    // 4. Insert into D1 (UNIQUE constraint on email_hash handles dupes)
     const referralCode = generateReferralCode();
     const referredBy = data.referredBy?.trim().toUpperCase() || null;
 
     try {
       await db
         .prepare(
-          `INSERT INTO PlaytestSignups (email, referral_source, referral_detail, phone, messaging_app, referral_code, referred_by, email_encrypted, phone_encrypted, email_hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO PlaytestSignups (referral_source, referral_detail, messaging_app, referral_code, referred_by, email_encrypted, phone_encrypted, email_hash)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
-          email.toLowerCase(),
           referralSource,
           referralDetail || null,
-          phone || null,
           messagingApp || null,
           referralCode,
           referredBy,
@@ -116,32 +108,18 @@ async function submitPlaytestSignup(
     } catch (err: any) {
       // UNIQUE constraint violation = already signed up
       if (err?.message?.includes('UNIQUE')) {
-        // Look up by email_hash (preferred) or fall back to plaintext email
-        const existing = emailHash
-          ? await db
-              .prepare('SELECT referral_code FROM PlaytestSignups WHERE email_hash = ?')
-              .bind(emailHash)
-              .first<{ referral_code: string | null }>()
-          : await db
-              .prepare('SELECT referral_code FROM PlaytestSignups WHERE email = ?')
-              .bind(email.toLowerCase())
-              .first<{ referral_code: string | null }>();
+        const existing = await db
+          .prepare('SELECT referral_code FROM PlaytestSignups WHERE email_hash = ?')
+          .bind(emailHash)
+          .first<{ referral_code: string | null }>();
 
         let code = existing?.referral_code;
         if (!code) {
-          // Backfill referral code for pre-migration signups
           code = referralCode;
-          if (emailHash) {
-            await db
-              .prepare('UPDATE PlaytestSignups SET referral_code = ? WHERE email_hash = ?')
-              .bind(code, emailHash)
-              .run();
-          } else {
-            await db
-              .prepare('UPDATE PlaytestSignups SET referral_code = ? WHERE email = ?')
-              .bind(code, email.toLowerCase())
-              .run();
-          }
+          await db
+            .prepare('UPDATE PlaytestSignups SET referral_code = ? WHERE email_hash = ?')
+            .bind(code, emailHash)
+            .run();
         }
         return { success: true, referralCode: code };
       }
@@ -158,22 +136,18 @@ async function submitPlaytestSignup(
       const html = buildPlaytestConfirmationHtml({ assetsUrl, lobbyUrl, playtestUrl, referralCode });
       await sendEmail(email, "You're on the list!", html, resendApiKey);
 
-      // 6. Upsert to Resend Contacts (with segment + properties for segmentation)
+      // 6. Upsert to Resend Contacts (with segment for segmentation)
       const segmentId = env.RESEND_PLAYTEST_SEGMENT_ID as string | undefined;
       if (segmentId) {
         const resend = new Resend(resendApiKey);
-        await resend.contacts.create({
+        const { error: contactErr } = await resend.contacts.create({
           email: email.toLowerCase(),
           unsubscribed: false,
           segments: [{ id: segmentId }],
-          properties: {
-            referral_source: referralSource,
-            signed_up_at: new Date().toISOString(),
-          },
-        }).catch((err) => {
-          // Non-critical — log but don't fail the signup
-          console.error('[Playtest] Contact upsert failed:', err);
         });
+        if (contactErr) {
+          console.error('[Playtest] Contact upsert failed:', contactErr);
+        }
       }
     }
 
