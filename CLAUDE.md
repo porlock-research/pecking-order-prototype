@@ -80,9 +80,10 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - **ADMIN scheduling**: No alarms — game master advances manually via `NEXT_STAGE`. Timeline timestamps are cosmetic only.
 - **PRE_SCHEDULED scheduling**: Real PartyWhen alarms fire timeline events automatically.
 - **Common trap**: A STATIC/ADMIN game with timestamps in its timeline = timestamps never fire. Use DYNAMIC/PRE_SCHEDULED for real alarms.
-- **Schedule presets**: `SMOKE_TEST` (5min days), `SPEED_RUN` (23min), `PLAYTEST` (4h), `COMPACT` (6h), `DEFAULT` (24h). See `timeline-presets.ts`.
+- **Schedule presets**: `SMOKE_TEST` (5min days), `SPEED_RUN` (23min), `PLAYTEST` (4h), `PLAYTEST_SHORT` (5h, 3–8pm), `COMPACT` (6h), `DEFAULT` (24h). See `timeline-presets.ts`.
 - **"Use now" anchoring**: Dynamic timelines use `dayIndex` for WHAT content plays (vote type, game type) and `Date.now()` for WHEN events fire. Never anchor to `startTime + dayOffset`.
-- **Timezone rule**: Calendar preset `clockTimes` are offsets from `startTime`, not absolute UTC. Always test with non-midnight startTimes to catch timezone bugs.
+- **Calendar preset day cycle**: `computeNextDayStart` for calendar presets always returns `now + 24h`. This means one game day per real calendar day regardless of the event window length. For faster day cycles, use an offset-based preset.
+- **Timezone rule**: Calendar preset `clockTimes` are offsets from `firstEventTime`, not absolute UTC. Always test with non-midnight startTimes to catch timezone bugs.
 
 ## Game Design Rules
 
