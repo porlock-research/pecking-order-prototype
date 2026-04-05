@@ -135,7 +135,7 @@ export const trustPairsMachine = setup({
         results: {
           eliminatedId,
           mechanism: 'TRUST_PAIRS' as const,
-          summary: { tallies, mutualPairs, immunePlayerIds },
+          summary: { tallies, mutualPairs, immunePlayerIds, votes: context.votes, trustPicks: context.trustPicks },
         },
         phase: VotingPhases.REVEAL,
       };

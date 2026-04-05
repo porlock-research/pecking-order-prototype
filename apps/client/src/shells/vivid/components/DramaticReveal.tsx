@@ -45,6 +45,7 @@ export function DramaticReveal() {
   const winner = useGameStore(s => s.winner);
   const gameId = useGameStore(s => s.gameId);
   const playerId = useGameStore(s => s.playerId);
+  const splashVisible = useGameStore(s => s.splashVisible);
   const [queue, setQueue] = useState<Reveal[]>([]);
   const [current, setCurrent] = useState<Reveal | null>(null);
 
@@ -92,13 +93,13 @@ export function DramaticReveal() {
     }
   }, [eliminatedIds, winner, gameId, playerId, roster]);
 
-  // Dequeue reveals
+  // Dequeue reveals — wait for PhaseTransitionSplash to be dismissed first
   useEffect(() => {
-    if (current || queue.length === 0) return;
+    if (current || queue.length === 0 || splashVisible) return;
     const [next, ...rest] = queue;
     setCurrent(next);
     setQueue(rest);
-  }, [queue, current]);
+  }, [queue, current, splashVisible]);
 
   const dismiss = useCallback(() => {
     if (current && gameId) {
@@ -156,8 +157,8 @@ export function DramaticReveal() {
               position: 'absolute',
               inset: 0,
               background: current.kind === 'elimination'
-                ? 'radial-gradient(circle, rgba(255,46,99,0.15) 0%, rgba(0,0,0,0.9) 70%)'
-                : 'radial-gradient(circle, rgba(255,217,61,0.2) 0%, rgba(0,0,0,0.9) 70%)',
+                ? 'radial-gradient(circle, rgba(255,46,99,0.2) 0%, rgba(0,0,0,0.95) 60%)'
+                : 'radial-gradient(circle, rgba(255,217,61,0.25) 0%, rgba(0,0,0,0.95) 60%)',
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -225,12 +226,13 @@ export function DramaticReveal() {
               <motion.p
                 style={{
                   fontFamily: 'var(--vivid-font-display)',
-                  color: 'var(--vivid-pink)',
+                  color: '#FF5C8A',
                   fontWeight: 700,
                   letterSpacing: '0.1em',
                   fontSize: 14,
                   textTransform: 'uppercase',
                   margin: 0,
+                  textShadow: '0 0 20px rgba(255,46,99,0.6)',
                 }}
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -240,7 +242,7 @@ export function DramaticReveal() {
               </motion.p>
 
               <motion.p
-                style={{ color: 'var(--vivid-text-dim)', fontSize: 12, margin: '8px 0 0' }}
+                style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, margin: '8px 0 0' }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1 }}
@@ -347,7 +349,7 @@ export function DramaticReveal() {
               )}
 
               <motion.p
-                style={{ color: 'var(--vivid-text-dim)', fontSize: 12, margin: '16px 0 0' }}
+                style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, margin: '16px 0 0' }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.5 }}

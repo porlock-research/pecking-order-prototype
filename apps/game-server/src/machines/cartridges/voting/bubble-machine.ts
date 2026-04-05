@@ -65,7 +65,7 @@ export const bubbleMachine = setup({
           return {
             eliminatedId: fallbackId,
             mechanism: 'BUBBLE' as const,
-            summary: { tallies, immunePlayerIds: context.immunePlayerIds },
+            summary: { tallies, immunePlayerIds: context.immunePlayerIds, votes: context.votes },
           };
         }
 
@@ -90,7 +90,7 @@ export const bubbleMachine = setup({
         return {
           eliminatedId,
           mechanism: 'BUBBLE' as const,
-          summary: { tallies, immunePlayerIds: context.immunePlayerIds },
+          summary: { tallies, immunePlayerIds: context.immunePlayerIds, votes: context.votes },
         };
       },
       phase: VotingPhases.REVEAL,

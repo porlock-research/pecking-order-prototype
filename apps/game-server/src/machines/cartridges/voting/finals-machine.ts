@@ -55,7 +55,7 @@ export const finalsMachine = setup({
             eliminatedId: losers[0] ?? null,
             winnerId,
             mechanism: 'FINALS' as const,
-            summary: { voteCounts: {}, tieBreaker: 'highest_silver_no_voters' },
+            summary: { voteCounts: {}, tieBreaker: 'highest_silver_no_voters', votes: context.votes },
           };
         }
 
@@ -99,7 +99,7 @@ export const finalsMachine = setup({
           eliminatedId: losers[0] ?? null,
           winnerId,
           mechanism: 'FINALS' as const,
-          summary: { voteCounts, ...(tieBreaker && { tieBreaker }) },
+          summary: { voteCounts, ...(tieBreaker && { tieBreaker }), votes: context.votes },
         };
       },
       winnerId: ({ context }) => {

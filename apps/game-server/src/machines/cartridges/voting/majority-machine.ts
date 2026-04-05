@@ -54,7 +54,7 @@ export const majorityMachine = setup({
             const currentSilver = context.roster[id]?.silver ?? Infinity;
             return currentSilver < lowestSilver ? id : lowest;
           }, context.eligibleTargets[0]);
-          return { eliminatedId: fallbackId, mechanism: 'MAJORITY' as const, summary: { tallies } };
+          return { eliminatedId: fallbackId, mechanism: 'MAJORITY' as const, summary: { tallies, votes: context.votes } };
         }
 
         const tied = Object.entries(tallies)
@@ -72,7 +72,7 @@ export const majorityMachine = setup({
           });
         }
 
-        return { eliminatedId, mechanism: 'MAJORITY' as const, summary: { tallies } };
+        return { eliminatedId, mechanism: 'MAJORITY' as const, summary: { tallies, votes: context.votes } };
       },
       phase: VotingPhases.REVEAL,
     }),

@@ -1962,3 +1962,20 @@ This document tracks significant architectural decisions, their context, and con
     *   On dark shells, game cards look nearly identical (dark on dark). On Vivid, game cards are dark floating cards on the light background — clear visual separation.
     *   Future games automatically inherit the correct background by using `CartridgeContainer`.
 
+## [ADR-129] Today Tab Rich Cards, Overlay Sequencing, Voting Snapshots
+*   **Date:** 2026-04-04
+*   **Status:** Accepted
+*   **Context:** After ADR-126/128, the Today Tab had three gaps: (1) CompletedSummary cards were text-only after the day ended — no avatars, tallies, or voter attribution. (2) PhaseTransitionSplash and DramaticReveal fired simultaneously (GH #89). (3) Voting machine results only included `tallies` — no `votes` map for who-voted-for-whom. Additionally, ADR-128's dark `CartridgeContainer` background caused dark-on-dark text because child `text-skin-*` classes still resolved to Vivid's light-theme browns.
+*   **Decision:**
+    1.  Extract `today/CompletedSummary.tsx` — rich cards for all four cartridge types: voting (tallies + vote bars + voter attribution + immune/abstainer badges), game (ranked leaderboard with avatars + scores), prompt (prompt text + stance bars + attributed responses), dilemma (type-specific outcome boxes).
+    2.  Add `splashVisible` Zustand flag. PhaseTransitionSplash sets on show/clears on dismiss. DramaticReveal defers dequeuing while flag is true. Fixes GH #89.
+    3.  All 7 voting machines now include `votes` map in their result summary (majority, bubble, executioner, podium-sacrifice, shield, trust-pairs, finals). Executioner also includes `electionVotes` + `executionerPick`. Trust-pairs includes `trustPicks`.
+    4.  `CartridgeContainer` overrides `--po-text`, `--po-text-dim`, `--po-text-inverted` via inline style — scoped CSS variable reset for dark context. Extends ADR-128.
+    5.  DramaticReveal: brighter elimination text (`#FF5C8A` + glow), opaque backdrop (0.95), light "Tap to dismiss" text.
+    6.  DMChat: `height: 100dvh` + `minHeight: 0` on messages area for reliable layout on all viewport sizes.
+*   **Consequences:**
+    *   Completed activities show full results inline — no separate dashboard needed for post-day review.
+    *   Overlay sequencing is cinematic: splash → dismiss → reveal queues behind it.
+    *   Vote attribution visible in completed cards across all voting mechanics.
+    *   Cartridge text is readable on dark backgrounds without touching individual game renderers.
+

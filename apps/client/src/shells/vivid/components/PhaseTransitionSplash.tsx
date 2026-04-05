@@ -81,6 +81,7 @@ export function PhaseTransitionSplash() {
   const dayIndex = useGameStore(s => s.dayIndex);
   const roster = useGameStore(s => s.roster);
   const dmsOpen = useGameStore(s => s.dmsOpen);
+  const setSplashVisible = useGameStore(s => s.setSplashVisible);
   const [visible, setVisible] = useState(false);
   const [config, setConfig] = useState<PhaseConfig | null>(null);
   const prevPhaseRef = useRef<DayPhase>(phase);
@@ -99,13 +100,15 @@ export function PhaseTransitionSplash() {
       if (c) {
         setConfig(c);
         setVisible(true);
+        setSplashVisible(true);
       }
     }
   }, [phase, manifest, dayIndex, roster]);
 
   const dismiss = useCallback(() => {
     setVisible(false);
-  }, []);
+    setSplashVisible(false);
+  }, [setSplashVisible]);
 
   const handleExitComplete = () => {
     // Schedule now lives in its own tab — no need to auto-open

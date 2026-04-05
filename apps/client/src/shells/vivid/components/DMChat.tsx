@@ -262,6 +262,7 @@ export function DMChat({
         flexDirection: 'column',
         background: '#1A1410',
         overflow: 'hidden',
+        height: '100dvh',
       }}
       initial={{ opacity: 0, x: '30%' }}
       animate={{ opacity: 1, x: 0 }}
@@ -438,7 +439,7 @@ export function DMChat({
       </header>
 
       {/* ---- Messages area (dark-themed via CSS var overrides) ------- */}
-      <div style={{ flex: 1, position: 'relative', zIndex: 5, overflow: 'hidden', ...darkMessageVars }}>
+      <div style={{ flex: 1, minHeight: 0, position: 'relative', zIndex: 5, overflow: 'hidden', ...darkMessageVars }}>
         <div
           ref={scrollRef}
           style={{

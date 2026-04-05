@@ -64,7 +64,7 @@ export const podiumSacrificeMachine = setup({
           return {
             eliminatedId: fallbackId,
             mechanism: 'PODIUM_SACRIFICE' as const,
-            summary: { tallies, podiumPlayerIds: context.podiumPlayerIds },
+            summary: { tallies, podiumPlayerIds: context.podiumPlayerIds, votes: context.votes },
           };
         }
 
@@ -89,7 +89,7 @@ export const podiumSacrificeMachine = setup({
         return {
           eliminatedId,
           mechanism: 'PODIUM_SACRIFICE' as const,
-          summary: { tallies, podiumPlayerIds: context.podiumPlayerIds },
+          summary: { tallies, podiumPlayerIds: context.podiumPlayerIds, votes: context.votes },
         };
       },
       phase: VotingPhases.REVEAL,

@@ -6,6 +6,7 @@ import {
   VOTE_TYPE_INFO, GAME_TYPE_INFO, ACTIVITY_TYPE_INFO, DILEMMA_TYPE_INFO,
 } from '@pecking-order/shared-types';
 import { UpcomingPreview } from './today/UpcomingPreview';
+import { CompletedSummary } from './today/CompletedSummary';
 import { Scale, Gamepad, MagicStick3, HandMoney, CupStar, PlayCircle, CheckCircle } from '@solar-icons/react';
 import { VIVID_SPRING, VIVID_TAP } from '../springs';
 
@@ -448,79 +449,4 @@ function ActivitySection({ activity, engine, onPlayGame }: {
   );
 }
 
-/* ── compact summary for completed cartridges without active data ── */
-
-function CompletedSummary({ kind, snapshot }: { kind: string; snapshot: any }) {
-  const roster = useGameStore(s => s.roster);
-
-  const name = (id: string) => roster[id]?.personaName || id;
-
-  let content: React.ReactNode = null;
-
-  if (kind === 'voting') {
-    const eliminatedId = snapshot.eliminatedId ?? snapshot.results?.eliminatedId;
-    const winnerId = snapshot.winnerId ?? snapshot.results?.winnerId;
-    const tallies = snapshot.summary?.tallies ?? snapshot.tallies ?? {};
-    const sorted = Object.entries(tallies).sort(([, a], [, b]) => (b as number) - (a as number));
-    content = (
-      <>
-        {eliminatedId && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(157,23,77,0.06)', border: '1px solid rgba(157,23,77,0.15)' }}>
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#9D174D', fontFamily: 'var(--vivid-font-body)' }}>{name(eliminatedId)}</span>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#9D174D', fontFamily: 'var(--vivid-font-mono)' }}>Eliminated</span>
-          </div>
-        )}
-        {winnerId && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(184,132,10,0.06)', border: '1px solid rgba(184,132,10,0.15)' }}>
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#B8840A', fontFamily: 'var(--vivid-font-body)' }}>{name(winnerId)}</span>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#B8840A', fontFamily: 'var(--vivid-font-mono)' }}>Winner</span>
-          </div>
-        )}
-        {sorted.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
-            {sorted.map(([pid, count]) => (
-              <div key={pid} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px' }}>
-                <span style={{ flex: 1, fontSize: 12, color: pid === eliminatedId ? '#9D174D' : 'var(--vivid-text-base)', fontFamily: 'var(--vivid-font-body)' }}>{name(pid)}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--vivid-text-muted)', fontFamily: 'var(--vivid-font-mono)' }}>{count as number}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </>
-    );
-  } else if (kind === 'game') {
-    const rewards = snapshot.silverRewards ?? {};
-    const sorted = Object.entries(rewards).sort(([, a], [, b]) => (b as number) - (a as number));
-    content = sorted.length > 0 ? (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {sorted.map(([pid, silver], i) => (
-          <div key={pid} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 12px' }}>
-            <span style={{ width: 18, fontSize: 11, fontWeight: 700, color: i === 0 ? '#B8840A' : 'var(--vivid-text-muted)', fontFamily: 'var(--vivid-font-mono)' }}>{i + 1}</span>
-            <span style={{ flex: 1, fontSize: 12, fontWeight: i === 0 ? 700 : 400, color: 'var(--vivid-text-base)', fontFamily: 'var(--vivid-font-body)' }}>{name(pid)}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#B8840A', fontFamily: 'var(--vivid-font-mono)' }}>+{silver as number}</span>
-          </div>
-        ))}
-      </div>
-    ) : <CompletedLabel text="Completed" />;
-  } else if (kind === 'prompt') {
-    const count = snapshot.participantCount || (snapshot.playerResponses ? Object.keys(snapshot.playerResponses).length : 0);
-    content = <CompletedLabel text={`${count} response${count === 1 ? '' : 's'}`} />;
-  } else if (kind === 'dilemma') {
-    const timedOut = snapshot.summary?.timedOut;
-    content = <CompletedLabel text={timedOut ? "Time's up" : 'Resolved'} />;
-  }
-
-  return (
-    <div style={{ padding: '10px 14px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {content}
-    </div>
-  );
-}
-
-function CompletedLabel({ text }: { text: string }) {
-  return (
-    <div style={{ fontSize: 12, color: 'var(--vivid-text-muted)', fontFamily: 'var(--vivid-font-body)', textAlign: 'center', padding: '8px 0' }}>
-      {text}
-    </div>
-  );
-}
+/* CompletedSummary — imported from ./today/CompletedSummary */

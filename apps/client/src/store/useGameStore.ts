@@ -65,6 +65,9 @@ interface GameState {
   // Showcase extension (admin panel reads this)
   showcaseData: { config: any; state: string; lastResults?: any } | null;
 
+  // Overlay coordination
+  splashVisible: boolean;
+
   // Dashboard / Notifications
   dashboardOpen: boolean;
   dashboardSeenForDay: number | null;
@@ -96,6 +99,7 @@ interface GameState {
   markFeedSeen: () => void;
   requestNavigation: (tab: string) => void;
   clearNavigation: () => void;
+  setSplashVisible: (v: boolean) => void;
 }
 
 // Selectors
@@ -368,6 +372,7 @@ export const useGameStore = create<GameState>((set) => ({
   tickerMessages: [],
   debugTicker: null,
   showcaseData: null,
+  splashVisible: false,
   dashboardOpen: false,
   dashboardSeenForDay: null,
   welcomeSeen: false,
@@ -476,4 +481,5 @@ export const useGameStore = create<GameState>((set) => ({
   },
   requestNavigation: (tab) => set({ requestedTab: tab }),
   clearNavigation: () => set({ requestedTab: null }),
+  setSplashVisible: (v) => set({ splashVisible: v }),
 }));

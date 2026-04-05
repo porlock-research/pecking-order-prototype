@@ -109,6 +109,7 @@ export const executionerMachine = setup({
           summary: {
             executionerId: null,
             electionTallies: context.electionTallies,
+            electionVotes: context.electionVotes,
             reason: 'no_election_votes',
           },
         };
@@ -124,6 +125,8 @@ export const executionerMachine = setup({
           summary: {
             executionerId: context.executionerId,
             electionTallies: context.electionTallies,
+            electionVotes: context.electionVotes,
+            executionerPick: event.targetId!,
           },
         };
       },

@@ -74,7 +74,7 @@ export const shieldMachine = setup({
         return {
           eliminatedId,
           mechanism: 'SHIELD' as const,
-          summary: { saveCounts },
+          summary: { saveCounts, votes: context.votes },
         };
       },
       phase: VotingPhases.REVEAL,
