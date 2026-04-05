@@ -292,8 +292,9 @@ export default function WaitingRoom() {
             </motion.div>
           )}
 
-          {/* Invite Players Section — show when slots are unfilled OR dynamic (no predefined slots) */}
-          {!isStarted && !isLoading && (emptySlots.length > 0 || totalSlots === 0) && (
+          {/* Invite Players Section — show when slots are unfilled OR dynamic (no predefined slots).
+              For dynamic/CONFIGURABLE_CYCLE games, show even after STARTED since players can join during preGame. */}
+          {!isLoading && (emptySlots.length > 0 || totalSlots === 0 || isConfigurableCycle) && (
             <div className="mt-4">
               <button
                 onClick={() => setShowInviteSection(!showInviteSection)}
