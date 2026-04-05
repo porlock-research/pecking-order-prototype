@@ -1365,15 +1365,16 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
   clientHost?: string;
   myPersonaId?: string;
   mode?: string;
+  isHost?: boolean;
 }> {
   const session = await requireAuth();
   const db = await getDB();
   const env = await getEnv();
 
   const game = await db
-    .prepare('SELECT id, status, invite_code, day_count, mode FROM GameSessions WHERE invite_code = ?')
+    .prepare('SELECT id, status, invite_code, day_count, mode, host_user_id FROM GameSessions WHERE invite_code = ?')
     .bind(inviteCode.toUpperCase())
-    .first<{ id: string; status: string; invite_code: string; day_count: number; mode: string }>();
+    .first<{ id: string; status: string; invite_code: string; day_count: number; mode: string; host_user_id: string }>();
 
   if (!game) {
     return { status: 'NOT_FOUND', slots: [] };
@@ -1434,7 +1435,8 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
   const myPersonaId = myInviteForBg?.persona_id ?? undefined;
 
   const clientHost = (env.GAME_CLIENT_HOST as string) || 'http://localhost:5173';
-  return { status: game.status, slots, tokens, inviteCode: game.invite_code, clientHost, myPersonaId, mode: game.mode };
+  const isHost = game.host_user_id === session.userId;
+  return { status: game.status, slots, tokens, inviteCode: game.invite_code, clientHost, myPersonaId, mode: game.mode, isHost };
 }
 
 // ── Push Game Entry ──────────────────────────────────────────────────────
@@ -1572,15 +1574,18 @@ export async function sendEmailInvite(
 export async function getGameInvites(
   inviteCode: string,
 ): Promise<{ invites: SentInvite[] }> {
-  await requireAuth();
+  const session = await requireAuth();
   const db = await getDB();
 
   const game = await db
-    .prepare('SELECT id FROM GameSessions WHERE invite_code = ?')
+    .prepare('SELECT id, host_user_id FROM GameSessions WHERE invite_code = ?')
     .bind(inviteCode.toUpperCase())
-    .first<{ id: string }>();
+    .first<{ id: string; host_user_id: string }>();
 
   if (!game) return { invites: [] };
+
+  // Only the host can see sent invites (emails are PII)
+  if (game.host_user_id !== session.userId) return { invites: [] };
 
   const { results } = await db
     .prepare(

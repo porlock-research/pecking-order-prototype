@@ -36,6 +36,7 @@ export default function WaitingRoom() {
   const [showInviteSection, setShowInviteSection] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pushSent, setPushSent] = useState<boolean | null>(null);
+  const [isHost, setIsHost] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -47,10 +48,13 @@ export default function WaitingRoom() {
         if (result.clientHost) setClientHost(result.clientHost);
         if (result.mode) setMode(result.mode);
         if (result.myPersonaId) setMyPersonaId(result.myPersonaId);
+        if (result.isHost) setIsHost(true);
 
-        // Load sent invites
-        const invitesResult = await getGameInvites(code);
-        setSentInvites(invitesResult.invites);
+        // Load sent invites (only returned for host)
+        if (result.isHost) {
+          const invitesResult = await getGameInvites(code);
+          setSentInvites(invitesResult.invites);
+        }
       } catch {
         setError('Failed to fetch game status');
       }
@@ -294,7 +298,7 @@ export default function WaitingRoom() {
 
           {/* Invite Players Section — show when slots are unfilled OR dynamic (no predefined slots).
               For dynamic/CONFIGURABLE_CYCLE games, show even after STARTED since players can join during preGame. */}
-          {!isLoading && (emptySlots.length > 0 || totalSlots === 0 || isConfigurableCycle) && (
+          {isHost && !isLoading && (emptySlots.length > 0 || totalSlots === 0 || isConfigurableCycle) && (
             <div className="mt-4">
               <button
                 onClick={() => setShowInviteSection(!showInviteSection)}
