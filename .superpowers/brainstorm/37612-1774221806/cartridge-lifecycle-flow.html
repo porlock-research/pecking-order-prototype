@@ -1,0 +1,117 @@
+<h2>Cartridge Lifecycle: Where do results live?</h2>
+<p class="subtitle">The core problem: cartridges vanish after completion. Players never see rich results.<br>Two places need to show cartridge state — the <strong>chat view</strong> (live) and the <strong>schedule view</strong> (persistent).</p>
+
+<div class="section">
+  <h3>Proposed Flow</h3>
+  <div class="mockup">
+    <div class="mockup-header">Cartridge Lifecycle (applies to Voting, Game, Activity, Dilemma)</div>
+    <div class="mockup-body" style="padding: 24px; font-family: system-ui;">
+      <div style="display: flex; gap: 12px; align-items: stretch;">
+
+        <!-- Phase 1: Announcement -->
+        <div style="flex: 1; background: #1a1a2e; border-radius: 12px; padding: 16px; border: 2px solid #e2b865;">
+          <div style="color: #e2b865; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Phase 1: Announce</div>
+          <div style="color: #f5f0e8; font-size: 13px; margin-bottom: 12px;">GM message appears in chat explaining the mechanic</div>
+          <div style="background: #2a2a3e; border-radius: 8px; padding: 12px; border-left: 3px solid #e2b865;">
+            <div style="color: #e2b865; font-size: 11px; font-weight: 700;">🎭 Game Master</div>
+            <div style="color: #c5c0b8; font-size: 12px; margin-top: 4px;">"Time for the <strong style="color:#f5f0e8">Silver Gambit</strong>! Each player must decide: donate 5 silver to the pot, or keep it. If everyone donates, one lucky player wins the jackpot..."</div>
+          </div>
+          <div style="color: #9b8e7e; font-size: 11px; margin-top: 8px; font-style: italic;">Source: DILEMMA_TYPE_INFO.howItWorks</div>
+        </div>
+
+        <!-- Phase 2: Active -->
+        <div style="flex: 1; background: #1a1a2e; border-radius: 12px; padding: 16px; border: 2px solid #2d6a4f;">
+          <div style="color: #2d6a4f; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Phase 2: Active</div>
+          <div style="color: #f5f0e8; font-size: 13px; margin-bottom: 12px;">Pinned summary in chat + full cartridge UI on tap</div>
+          <div style="background: #2a2a3e; border-radius: 8px; padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Silver Gambit</div>
+              <div style="color: #2d6a4f; font-size: 11px;">2/4 decided</div>
+            </div>
+            <div style="display: flex; gap: 6px; margin-top: 8px;">
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: #3d5a3d; border: 2px solid #2d6a4f; display: flex; align-items: center; justify-content: center; color: #2d6a4f; font-size: 10px;">✓</div>
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: #3d5a3d; border: 2px solid #2d6a4f; display: flex; align-items: center; justify-content: center; color: #2d6a4f; font-size: 10px;">✓</div>
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: #3a3a4e; border: 2px solid #555; display: flex; align-items: center; justify-content: center; color: #888; font-size: 10px;">?</div>
+              <div style="width: 28px; height: 28px; border-radius: 50%; background: #3a3a4e; border: 2px solid #555; display: flex; align-items: center; justify-content: center; color: #888; font-size: 10px;">?</div>
+            </div>
+          </div>
+          <div style="color: #9b8e7e; font-size: 11px; margin-top: 8px; font-style: italic;">Compact card — tap to expand full decision UI</div>
+        </div>
+
+        <!-- Phase 3: Results -->
+        <div style="flex: 1; background: #1a1a2e; border-radius: 12px; padding: 16px; border: 2px solid #b8840a;">
+          <div style="color: #b8840a; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Phase 3: Results (Chat)</div>
+          <div style="color: #f5f0e8; font-size: 13px; margin-bottom: 12px;">GM message with rich result detail</div>
+          <div style="background: #2a2a3e; border-radius: 8px; padding: 12px; border-left: 3px solid #b8840a;">
+            <div style="color: #e2b865; font-size: 11px; font-weight: 700;">🎭 Game Master</div>
+            <div style="color: #c5c0b8; font-size: 12px; margin-top: 4px;">
+              <strong style="color:#2d6a4f">Everyone donated!</strong><br>
+              Viper donated 5 · Phoenix donated 5 · Shadow donated 5 · Ember donated 5<br>
+              <strong style="color:#e2b865">Phoenix wins the jackpot: +60 silver!</strong>
+            </div>
+          </div>
+          <div style="color: #9b8e7e; font-size: 11px; margin-top: 8px; font-style: italic;">Scrolls with chat — always visible in history</div>
+        </div>
+
+        <!-- Phase 4: Persist -->
+        <div style="flex: 1; background: #1a1a2e; border-radius: 12px; padding: 16px; border: 2px solid #6b5b95;">
+          <div style="color: #6b5b95; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Phase 4: Schedule View</div>
+          <div style="color: #f5f0e8; font-size: 13px; margin-bottom: 12px;">Rich result snapshot in Today's Lineup</div>
+          <div style="background: #2a2a3e; border-radius: 8px; padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Silver Gambit</div>
+              <div style="background: #2d6a4f; color: white; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 700;">COMPLETE</div>
+            </div>
+            <div style="color: #c5c0b8; font-size: 11px;">
+              All 4 players donated<br>
+              <span style="color: #e2b865; font-weight: 700;">Phoenix won +60 silver</span>
+            </div>
+          </div>
+          <div style="color: #9b8e7e; font-size: 11px; margin-top: 8px; font-style: italic;">From completedPhases — persists all game</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>Which rendering approach for the chat view?</h3>
+<p class="subtitle">The active cartridge and result announcement need to live in the chat timeline</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>GM Messages Only</h3>
+      <p>Cartridge interactions appear as Game Master chat messages. Announcement = GM message. Active state = pinned GM card with inline buttons. Results = GM message with detail. No separate cartridge panel — everything lives in chat.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Natural chat flow</li><li>No mode switching</li><li>Results persist in chat history</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Complex cartridges (arcade games) may not fit in chat</li><li>Pinning gets complex</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>GM Announce + Cartridge Panel + GM Results</h3>
+      <p>GM message announces the mechanic. Active cartridge uses existing panel system (full UI). When complete, GM message announces results with rich detail. Best of both: narrative framing + full interactivity.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Rich cartridge UIs preserved</li><li>Narrative bookends (GM intro + GM results)</li><li>Minimal change to existing panels</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Mode switch still exists (chat → panel → chat)</li><li>Need to coordinate GM messages with panel lifecycle</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid: Simple in chat, complex in panel</h3>
+      <p>Dilemmas and voting (simple decisions) render inline in chat as GM cards. Arcade games and complex cartridges use panels. Results always appear as GM messages regardless.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Right tool for the job</li><li>Simple mechanics feel lightweight</li><li>Complex mechanics get full UI</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Two rendering paths to maintain</li><li>Inconsistent UX between cartridge types</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

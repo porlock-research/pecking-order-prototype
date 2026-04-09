@@ -1,0 +1,179 @@
+<h2>Voting UX Redesign — Proposed Design</h2>
+<p class="subtitle">5 changes: action language, rules banner, voter strip, hidden tallies, result persistence</p>
+
+<div class="section">
+  <h3>Bubble Vote — Before & After</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">BEFORE (current)</div>
+      <div class="mockup-body" style="background: #1a1a2e; padding: 16px; font-family: system-ui;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;"></div>
+          <div style="color: #3b82f6; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; font-family: ui-monospace;">THE BUBBLE</div>
+        </div>
+        <div style="color: #9b8e7e; font-size: 10px; text-transform: uppercase; text-align: center; margin-bottom: 6px;">Top 3 silver holders are immune</div>
+        <div style="color: #9b8e7e; font-size: 11px; text-align: center; margin-bottom: 10px;">Tap a player to vote (ranks 4+ only)</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #4a3a2e;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Shadow</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #4a3a4e;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Ember</div>
+            <div style="background: rgba(59,130,246,0.2); color: #3b82f6; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 12px;">2</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">AFTER (proposed)</div>
+      <div class="mockup-body" style="background: #1a1a2e; padding: 16px; font-family: system-ui;">
+
+        <!-- Rules banner (collapsible, expanded by default) -->
+        <div style="background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="color: #3b82f6; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;">How it works</div>
+            <div style="color: #9b8e7e; font-size: 9px;">tap to collapse</div>
+          </div>
+          <div style="color: #c5c0b8; font-size: 11px; margin-top: 6px; line-height: 1.5;">Each player votes to <strong style="color:#3b82f6">save</strong> one person. The player with the <strong style="color:#d9534f">fewest saves</strong> is eliminated. Top 3 silver holders are immune.</div>
+        </div>
+
+        <!-- Header -->
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;"></div>
+          <div style="color: #3b82f6; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; font-family: ui-monospace;">THE BUBBLE</div>
+        </div>
+
+        <!-- Voter participation strip -->
+        <div style="display: flex; justify-content: center; gap: 4px; margin-bottom: 10px;">
+          <div style="width: 26px; height: 26px; border-radius: 50%; background: #4a3a2e; border: 2px solid #2d6a4f; position: relative;">
+            <div style="position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; background: #2d6a4f; display: flex; align-items: center; justify-content: center; font-size: 7px; color: white;">✓</div>
+          </div>
+          <div style="width: 26px; height: 26px; border-radius: 50%; background: #3a4a3e; border: 2px solid #2d6a4f; position: relative;">
+            <div style="position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; background: #2d6a4f; display: flex; align-items: center; justify-content: center; font-size: 7px; color: white;">✓</div>
+          </div>
+          <div style="width: 26px; height: 26px; border-radius: 50%; background: #2e3a4a; border: 2px solid #555; opacity: 0.5;"></div>
+          <div style="width: 26px; height: 26px; border-radius: 50%; background: #4a3a4e; border: 2px solid #555; opacity: 0.5;"></div>
+        </div>
+        <div style="color: #9b8e7e; font-size: 10px; text-align: center; margin-bottom: 10px;">2 of 4 have voted</div>
+
+        <!-- Action instruction — SAVE not vote -->
+        <div style="color: #3b82f6; font-size: 12px; text-align: center; margin-bottom: 10px; font-weight: 600;">Save a player from elimination</div>
+
+        <!-- Player grid — NO tallies during active voting -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #4a3a2e;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Shadow</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #4a3a4e;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Ember</div>
+          </div>
+        </div>
+
+        <!-- Post-vote confirmation -->
+        <div style="margin-top: 10px; text-align: center;">
+          <div style="color: #3b82f6; font-size: 11px; font-weight: 600;">You saved Ember!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Schedule View — Result Persistence (All Cartridge Types)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Today's Lineup — Spotlight cards with completed results</div>
+    <div class="mockup-body" style="background: #1a1a2e; padding: 20px; font-family: system-ui;">
+      <div style="color: #9b8e7e; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; font-weight: 700;">Today's Lineup</div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+
+        <!-- Dilemma: completed with result -->
+        <div style="background: #2a2a3e; border-radius: 12px; padding: 14px; border-left: 3px solid #e2b865;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="color: #e2b865; font-size: 14px;">⚖</div>
+              <div>
+                <div style="color: #f5f0e8; font-size: 13px; font-weight: 700;">Silver Gambit</div>
+                <div style="color: #9b8e7e; font-size: 10px;">Daily Dilemma</div>
+              </div>
+            </div>
+            <div style="background: #2d6a4f; color: white; font-size: 9px; padding: 3px 8px; border-radius: 6px; font-weight: 700;">COMPLETE</div>
+          </div>
+          <!-- Expanded result -->
+          <div style="background: rgba(226,184,101,0.06); border-radius: 8px; padding: 10px; margin-top: 4px;">
+            <div style="color: #2d6a4f; font-size: 11px; font-weight: 600;">Everyone donated!</div>
+            <div style="color: #e2b865; font-size: 12px; font-weight: 700; margin-top: 4px;">Phoenix won +60 silver</div>
+          </div>
+        </div>
+
+        <!-- Voting: completed with result -->
+        <div style="background: #2a2a3e; border-radius: 12px; padding: 14px; border-left: 3px solid #d9534f;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="color: #d9534f; font-size: 14px;">⚖</div>
+              <div>
+                <div style="color: #f5f0e8; font-size: 13px; font-weight: 700;">Bubble Vote</div>
+                <div style="color: #9b8e7e; font-size: 10px;">Voting</div>
+              </div>
+            </div>
+            <div style="background: #d9534f; color: white; font-size: 9px; padding: 3px 8px; border-radius: 6px; font-weight: 700;">ELIMINATED</div>
+          </div>
+          <!-- Expanded result -->
+          <div style="background: rgba(217,83,79,0.06); border-radius: 8px; padding: 10px; margin-top: 4px;">
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: #4a3a2e; border: 2px solid #d9534f; filter: grayscale(50%);"></div>
+                <div>
+                  <div style="color: #d9534f; font-size: 11px; font-weight: 700;">Shadow</div>
+                  <div style="color: #9b8e7e; font-size: 9px;">0 saves — eliminated</div>
+                </div>
+              </div>
+              <div style="flex: 1; color: #9b8e7e; font-size: 10px; text-align: right;">
+                Ember: 3 saves · Phoenix: 1 save
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Game: upcoming -->
+        <div style="background: #2a2a3e; border-radius: 12px; padding: 14px; border-left: 3px solid #555; opacity: 0.6;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="color: #9b8e7e; font-size: 14px;">🎮</div>
+              <div>
+                <div style="color: #f5f0e8; font-size: 13px; font-weight: 700;">Quick Math</div>
+                <div style="color: #9b8e7e; font-size: 10px;">Mini-Game</div>
+              </div>
+            </div>
+            <div style="background: #555; color: #9b8e7e; font-size: 9px; padding: 3px 8px; border-radius: 6px; font-weight: 700;">UPCOMING</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>Does this design look right?</h3>
+<p class="subtitle">Confirm or suggest changes before we implement</p>
+
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Looks good — proceed to implementation</h3>
+      <p>Write the spec and plan for these 5 changes (action language, rules banner, voter strip, hidden tallies, result persistence in schedule).</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>Needs changes — tell me what to adjust</h3>
+      <p>I'll revise the mockup before proceeding.</p>
+    </div>
+  </div>
+</div>

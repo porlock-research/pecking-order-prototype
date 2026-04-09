@@ -1,0 +1,103 @@
+<h2>Voting UX: Current Problems</h2>
+<p class="subtitle">Based on playtest feedback — players confused by mechanics despite explanations</p>
+
+<div class="section">
+  <h3>Current Flow</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Phase Splash (appears briefly)</div>
+      <div class="mockup-body" style="background: #1a1a2e; padding: 24px; text-align: center;">
+        <div style="color: #e2b865; font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em;">Voting</div>
+        <div style="color: #f5f0e8; font-size: 14px; margin-top: 8px;">Bubble Vote</div>
+        <div style="color: #9b8e7e; font-size: 12px; margin-top: 4px;">The player with the fewest saves is eliminated.</div>
+        <div style="background: #2a2a3e; border-radius: 8px; padding: 12px; margin-top: 12px; text-align: left;">
+          <div style="color: #e2b865; font-size: 10px; font-weight: 700; text-transform: uppercase;">How it works</div>
+          <div style="color: #c5c0b8; font-size: 11px; margin-top: 4px;">Each player votes to SAVE one person. The player with the fewest saves is eliminated. You cannot save yourself.</div>
+        </div>
+        <div style="color: #9b8e7e; font-size: 10px; margin-top: 12px; font-style: italic;">Problem: This disappears after a few seconds. Players forget the rules.</div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">Voting Panel (what players see)</div>
+      <div class="mockup-body" style="background: #1a1a2e; padding: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="color: #e2b865; font-size: 14px; font-weight: 800; text-transform: uppercase;">BUBBLE VOTE</div>
+          <div style="color: #9b8e7e; font-size: 11px;">Tap a player to vote</div>
+        </div>
+        <!-- Player buttons -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #4a3a2e;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Viper</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #3a4a3e;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Phoenix</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #2e3a4a;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Shadow</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(226,184,101,0.2); border-radius: 12px; border: 2px solid #e2b865;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #4a3a4e;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Ember</div>
+            <div style="color: #e2b865; font-size: 11px; font-weight: 700; margin-left: auto;">1</div>
+          </div>
+        </div>
+        <div style="color: #d9534f; font-size: 10px; margin-top: 12px; padding: 8px; background: rgba(217,83,79,0.1); border-radius: 8px; text-align: center;">
+          <strong>Problems:</strong><br>
+          1. "Tap a player to vote" — vote to ELIMINATE or SAVE? Bubble = save, but UI says "vote"<br>
+          2. Tally badge shows "1" — is that saves or eliminate votes?<br>
+          3. No reminder of rules after splash disappears<br>
+          4. Can't tell which players are eligible targets vs voters<br>
+          5. After voting, card vanishes — never see who got eliminated or why
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>What should change?</h3>
+<p class="subtitle">Pick the areas that matter most for tomorrow's playtest</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="persistent-rules" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>Persistent Rules Reminder</h3>
+      <p>Collapsible rules section at the top of the voting panel — always accessible, not just in the splash. Shows mechanism name, action verb ("SAVE one player" not just "vote"), and what happens (fewest saves = eliminated). Expanded by default first time, collapsed after.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="action-clarity" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>Action-Specific Language</h3>
+      <p>Replace generic "vote" with the actual action: "SAVE a player" (Bubble/Shield), "ELIMINATE a player" (Majority), "ELECT an executioner" (Executioner phase 1), "Pick your target" (Executioner phase 2). Button labels match: "Save Viper" not "Vote for Viper".</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="visual-redesign" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content">
+      <h3>Full Visual Redesign (frontend-design skill)</h3>
+      <p>Redesign the voting panels from scratch using the frontend-design skill for high design quality. New layout, better visual hierarchy, mechanism-specific theming (Bubble feels different from Executioner), clear status indicators, and polished animations.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="result-reveal" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content">
+      <h3>Rich Result Reveal</h3>
+      <p>When voting ends: dramatic reveal showing full tally (who voted for whom), the eliminated player highlighted, and the result persisting until the next phase. Currently the reveal is a brief flash that vanishes.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="live-status" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content">
+      <h3>Live Voter Status</h3>
+      <p>Show who has voted vs who hasn't (persona avatars with checkmark overlays). Players can see participation in real-time. Currently you only see tallies on targets, not whether specific voters have acted.</p>
+    </div>
+  </div>
+</div>

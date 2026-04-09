@@ -1,0 +1,218 @@
+<h2>Playtest Signup Page — Layout v2</h2>
+<p class="subtitle">Form moved up, share buttons persistent + on success state</p>
+
+<div style="display:flex;gap:32px;justify-content:center;flex-wrap:wrap;padding:20px 0;">
+
+  <!-- MAIN PAGE STATE -->
+  <div style="flex:0 0 auto;">
+    <div class="label" style="text-align:center;margin-bottom:8px;">Default State</div>
+    <div style="width:375px;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.4);font-family:'Inter',system-ui,sans-serif;">
+
+      <!-- STATUS BAR -->
+      <div style="background:#1a0028;padding:8px 20px;display:flex;justify-content:space-between;color:#d8b4fe;font-size:11px;">
+        <span>9:41</span>
+        <span>&#9679; &#9679; &#9679;</span>
+      </div>
+
+      <!-- HERO (compact) -->
+      <div style="background:linear-gradient(180deg,#2c003e 0%,#4c1d95 100%);position:relative;padding:32px 24px 24px;text-align:center;overflow:hidden;">
+        <!-- Persona silhouettes row -->
+        <div style="display:flex;justify-content:center;gap:6px;margin-bottom:20px;opacity:0.85;">
+          <div style="width:64px;height:80px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#ec4899);display:flex;align-items:center;justify-content:center;font-size:28px;transform:rotate(-5deg);">🦊</div>
+          <div style="width:64px;height:80px;border-radius:10px;background:linear-gradient(135deg,#fbbf24,#f97316);display:flex;align-items:center;justify-content:center;font-size:28px;transform:translateY(-8px);">👾</div>
+          <div style="width:64px;height:80px;border-radius:10px;background:linear-gradient(135deg,#ec4899,#be185d);display:flex;align-items:center;justify-content:center;font-size:28px;transform:rotate(5deg);">🐝</div>
+        </div>
+
+        <h1 style="font-family:'Poppins',sans-serif;font-weight:900;font-size:28px;color:#fbbf24;text-transform:uppercase;letter-spacing:2px;margin:0 0 4px;text-shadow:0 2px 12px rgba(251,191,36,0.3);">Pecking Order</h1>
+        <p style="color:#d8b4fe;font-size:13px;margin:0 0 12px;font-weight:500;">A social game of alliances, betrayal & strategy</p>
+        <div style="display:inline-block;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);border-radius:30px;padding:5px 14px;">
+          <span style="color:#fbbf24;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Playtesting Now</span>
+        </div>
+      </div>
+
+      <!-- FORM SECTION (moved up) -->
+      <div style="background:#2c003e;padding:28px 24px 24px;">
+        <h2 style="font-family:'Poppins',sans-serif;font-weight:700;font-size:18px;color:#ffffff;margin:0 0 6px;text-align:center;">Join the Next Playtest</h2>
+        <p style="color:#d8b4fe;font-size:12px;margin:0 0 20px;text-align:center;">Be the first to know when we're ready for you.</p>
+
+        <label style="display:block;color:#d8b4fe;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Email</label>
+        <div style="background:#5b21b6;border:1px solid rgba(251,191,36,0.2);border-radius:12px;padding:12px 14px;margin-bottom:16px;">
+          <span style="color:#a78bfa;font-size:14px;">you@example.com</span>
+        </div>
+
+        <label style="display:block;color:#d8b4fe;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">How did you hear about us?</label>
+        <div style="background:#5b21b6;border:1px solid rgba(251,191,36,0.2);border-radius:12px;padding:12px 14px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:#a78bfa;font-size:14px;">Select one...</span>
+          <span style="color:#a78bfa;font-size:10px;">&#9660;</span>
+        </div>
+
+        <button style="width:100%;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#2c003e;font-family:'Poppins',sans-serif;font-weight:700;font-size:15px;border:none;border-radius:12px;padding:14px;cursor:pointer;text-transform:uppercase;letter-spacing:1px;box-shadow:0 4px 0 #b45309,0 6px 20px rgba(251,191,36,0.3);">
+          Sign Me Up
+        </button>
+      </div>
+
+      <!-- TEASER STRIP (moved below form) -->
+      <div style="background:#3b0764;padding:20px 24px;">
+        <div style="display:flex;gap:16px;justify-content:center;">
+          <div style="text-align:center;">
+            <div style="font-size:20px;margin-bottom:4px;">&#x1F5F3;&#xFE0F;</div>
+            <div style="color:#d8b4fe;font-size:11px;font-weight:500;">Vote</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:20px;margin-bottom:4px;">&#x1F91D;</div>
+            <div style="color:#d8b4fe;font-size:11px;font-weight:500;">Ally</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:20px;margin-bottom:4px;">&#x1F5E1;&#xFE0F;</div>
+            <div style="color:#d8b4fe;font-size:11px;font-weight:500;">Betray</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:20px;margin-bottom:4px;">&#x1F451;</div>
+            <div style="color:#d8b4fe;font-size:11px;font-weight:500;">Survive</div>
+          </div>
+        </div>
+        <p style="color:#7c3aed;font-size:11px;text-align:center;margin:12px 0 0;">Play from your phone. Games run over multiple days.</p>
+      </div>
+
+      <!-- SHARE BUTTONS (always visible) -->
+      <div style="background:#2c003e;padding:20px 24px;text-align:center;border-top:1px solid rgba(124,58,237,0.3);">
+        <p style="color:#d8b4fe;font-size:12px;margin:0 0 12px;font-weight:500;">Know someone who'd play?</p>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <div style="background:#5b21b6;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span style="font-size:14px;">&#x1D54F;</span>
+            <span style="color:#d8b4fe;font-size:12px;font-weight:600;">Twitter</span>
+          </div>
+          <div style="background:#5865F2;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span style="font-size:14px;">&#x1F4AC;</span>
+            <span style="color:#ffffff;font-size:12px;font-weight:600;">Discord</span>
+          </div>
+          <div style="background:#5b21b6;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span style="font-size:14px;">&#x1F517;</span>
+            <span style="color:#d8b4fe;font-size:12px;font-weight:600;">Copy</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <div style="background:#1a0028;padding:16px 24px;text-align:center;">
+        <p style="color:#7c3aed;font-size:11px;margin:0;">peckingorder.ca</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUCCESS STATE -->
+  <div style="flex:0 0 auto;">
+    <div class="label" style="text-align:center;margin-bottom:8px;">After Signup</div>
+    <div style="width:375px;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.4);font-family:'Inter',system-ui,sans-serif;">
+
+      <!-- STATUS BAR -->
+      <div style="background:#1a0028;padding:8px 20px;display:flex;justify-content:space-between;color:#d8b4fe;font-size:11px;">
+        <span>9:41</span>
+        <span>&#9679; &#9679; &#9679;</span>
+      </div>
+
+      <!-- HERO (same) -->
+      <div style="background:linear-gradient(180deg,#2c003e 0%,#4c1d95 100%);position:relative;padding:32px 24px 24px;text-align:center;overflow:hidden;">
+        <div style="display:flex;justify-content:center;gap:6px;margin-bottom:20px;opacity:0.85;">
+          <div style="width:64px;height:80px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#ec4899);display:flex;align-items:center;justify-content:center;font-size:28px;transform:rotate(-5deg);">🦊</div>
+          <div style="width:64px;height:80px;border-radius:10px;background:linear-gradient(135deg,#fbbf24,#f97316);display:flex;align-items:center;justify-content:center;font-size:28px;transform:translateY(-8px);">👾</div>
+          <div style="width:64px;height:80px;border-radius:10px;background:linear-gradient(135deg,#ec4899,#be185d);display:flex;align-items:center;justify-content:center;font-size:28px;transform:rotate(5deg);">🐝</div>
+        </div>
+        <h1 style="font-family:'Poppins',sans-serif;font-weight:900;font-size:28px;color:#fbbf24;text-transform:uppercase;letter-spacing:2px;margin:0 0 4px;text-shadow:0 2px 12px rgba(251,191,36,0.3);">Pecking Order</h1>
+        <p style="color:#d8b4fe;font-size:13px;margin:0 0 12px;font-weight:500;">A social game of alliances, betrayal & strategy</p>
+        <div style="display:inline-block;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);border-radius:30px;padding:5px 14px;">
+          <span style="color:#fbbf24;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Playtesting Now</span>
+        </div>
+      </div>
+
+      <!-- SUCCESS MESSAGE (replaces form) -->
+      <div style="background:#2c003e;padding:32px 24px;text-align:center;">
+        <div style="width:64px;height:64px;background:rgba(16,185,129,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+          <span style="font-size:32px;">&#x2713;</span>
+        </div>
+        <h2 style="font-family:'Poppins',sans-serif;font-weight:700;font-size:20px;color:#10b981;margin:0 0 8px;">You're In!</h2>
+        <p style="color:#d8b4fe;font-size:13px;margin:0 0 4px;">Check your inbox for a confirmation.</p>
+        <p style="color:#7c3aed;font-size:12px;margin:0;">We'll reach out when the next playtest is ready.</p>
+      </div>
+
+      <!-- SHARE BUTTONS (emphasized on success) -->
+      <div style="background:#3b0764;padding:24px 24px;text-align:center;">
+        <p style="color:#fbbf24;font-size:14px;margin:0 0 4px;font-family:'Poppins',sans-serif;font-weight:700;">Help us find more players!</p>
+        <p style="color:#d8b4fe;font-size:12px;margin:0 0 16px;">The more players, the better the game.</p>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <div style="background:#5b21b6;border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span style="font-size:14px;">&#x1D54F;</span>
+            <span style="color:#d8b4fe;font-size:12px;font-weight:600;">Twitter</span>
+          </div>
+          <div style="background:#5865F2;border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span style="font-size:14px;">&#x1F4AC;</span>
+            <span style="color:#ffffff;font-size:12px;font-weight:600;">Discord</span>
+          </div>
+          <div style="background:#5b21b6;border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span style="font-size:14px;">&#x1F517;</span>
+            <span style="color:#d8b4fe;font-size:12px;font-weight:600;">Copy</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TEASER STRIP -->
+      <div style="background:#2c003e;padding:20px 24px;">
+        <div style="display:flex;gap:16px;justify-content:center;">
+          <div style="text-align:center;">
+            <div style="font-size:20px;margin-bottom:4px;">&#x1F5F3;&#xFE0F;</div>
+            <div style="color:#d8b4fe;font-size:11px;font-weight:500;">Vote</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:20px;margin-bottom:4px;">&#x1F91D;</div>
+            <div style="color:#d8b4fe;font-size:11px;font-weight:500;">Ally</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:20px;margin-bottom:4px;">&#x1F5E1;&#xFE0F;</div>
+            <div style="color:#d8b4fe;font-size:11px;font-weight:500;">Betray</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:20px;margin-bottom:4px;">&#x1F451;</div>
+            <div style="color:#d8b4fe;font-size:11px;font-weight:500;">Survive</div>
+          </div>
+        </div>
+        <p style="color:#7c3aed;font-size:11px;text-align:center;margin:12px 0 0;">Play from your phone. Games run over multiple days.</p>
+      </div>
+
+      <!-- SHARE (still at bottom too) -->
+      <div style="background:#2c003e;padding:16px 24px;text-align:center;border-top:1px solid rgba(124,58,237,0.3);">
+        <p style="color:#d8b4fe;font-size:12px;margin:0 0 10px;font-weight:500;">Know someone who'd play?</p>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <div style="background:#5b21b6;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span style="font-size:14px;">&#x1D54F;</span>
+            <span style="color:#d8b4fe;font-size:12px;font-weight:600;">Twitter</span>
+          </div>
+          <div style="background:#5865F2;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span style="font-size:14px;">&#x1F4AC;</span>
+            <span style="color:#ffffff;font-size:12px;font-weight:600;">Discord</span>
+          </div>
+          <div style="background:#5b21b6;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <span style="font-size:14px;">&#x1F517;</span>
+            <span style="color:#d8b4fe;font-size:12px;font-weight:600;">Copy</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#1a0028;padding:16px 24px;text-align:center;">
+        <p style="color:#7c3aed;font-size:11px;margin:0;">peckingorder.ca</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:24px;padding:16px;background:rgba(255,255,255,0.03);border-radius:8px;">
+  <h3 style="margin:0 0 8px;">Changes from v1</h3>
+  <ul style="color:#aaa;font-size:13px;line-height:1.8;margin:0;padding-left:20px;">
+    <li><strong>Form moved up</strong> — immediately after hero, above the fold on most phones</li>
+    <li><strong>Teaser strip moved below form</strong> — supporting content, not blocking the CTA</li>
+    <li><strong>Share buttons always visible</strong> — bottom of page in both states</li>
+    <li><strong>Success state share buttons emphasized</strong> — bigger, gold headline, "help us find more players" copy</li>
+    <li><strong>Share targets</strong>: Twitter/X (pre-filled tweet), Discord (copy-friendly), Copy Link</li>
+    <li><strong>Security (not shown)</strong>: Cloudflare Turnstile, server-side rate limit, Zod validation, dupe email handling</li>
+  </ul>
+</div>

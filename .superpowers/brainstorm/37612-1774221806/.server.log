@@ -1,0 +1,18 @@
+{"type":"server-started","port":60564,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:60564","screen_dir":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/37612-1774221806"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/37612-1774221806/cartridge-lifecycle-flow.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/37612-1774221806/waiting.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/37612-1774221806/voting-ux-problems.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/37612-1774221806/voting-ux-accurate.html"}
+{"source":"user-event","type":"click","text":"5\n    \n      Result persistence (systemic — benefits all cartridges)\n      When voting/game/activity/dilemma completes, the result snapshot stays visible in Today's Lineup (Schedule tab). Spotlight card expands in-place to show rich results. Uses existing completedPhases data. Server-side: no changes. Client-side: enhanced TimelineEventCard rendering.","choice":"result-persist","id":null,"timestamp":1774223105824}
+{"source":"user-event","type":"click","text":"1\n    \n      Fix action language per mechanism\n      Bubble: \"Save a player\" not \"vote\". Tally label: \"2 saves\" not just \"2\". Confirmation: \"You saved Ember!\" not \"Vote cast!\". Majority stays as-is (it's already clear). Low effort, high clarity impact.","choice":"save-language","id":null,"timestamp":1774223113538}
+{"source":"user-event","type":"click","text":"3\n    \n      Voter participation strip\n      Row of persona avatars at the top showing all eligible voters. Green ring = voted, dim = pending. Players can see participation in real-time. Creates social pressure to vote.","choice":"voter-status","id":null,"timestamp":1774223122839}
+{"source":"user-event","type":"click","text":"2\n    \n      Collapsible rules banner at top of panel\n      Slim bar showing mechanism summary from VOTE_TYPE_INFO.howItWorks. Expanded by default, collapsible. Always accessible — no more forgetting rules after splash.","choice":"persistent-rules","id":null,"timestamp":1774223128990}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/37612-1774221806/voting-ux-design.html"}
+{"source":"user-event","type":"click","text":"✎\n    \n      Needs changes — tell me what to adjust\n      I'll revise the mockup before proceeding.","choice":"revise","id":null,"timestamp":1774223309981}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/37612-1774221806/voting-language.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/37612-1774221806/voting-avatar-input.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/37612-1774221806/voting-medium-persona.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/37612-1774221806/voting-final-design.html"}
+{"source":"user-event","type":"click","text":"✓\n    \n      Approved — write spec and plan\n      Large headshot avatars, two-step confirm, action-specific language, voter strip, hidden tallies, collapsible rules, result persistence in schedule. Apply to all voting mechanisms.","choice":"approve","id":null,"timestamp":1774224264400}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/37612-1774221806/waiting-2.html"}
+{"type":"server-stopped","reason":"idle timeout"}

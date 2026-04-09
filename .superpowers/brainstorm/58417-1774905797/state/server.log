@@ -1,0 +1,5 @@
+{"type":"server-started","port":58549,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:58549","screen_dir":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/58417-1774905797/content","state_dir":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/58417-1774905797/state"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/58417-1774905797/content/social-unfurl.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/58417-1774905797/content/social-unfurl-v2.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/58417-1774905797/content/social-unfurl-v3.html"}
+{"type":"server-stopped","reason":"idle timeout"}

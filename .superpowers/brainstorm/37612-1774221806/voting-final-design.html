@@ -1,0 +1,185 @@
+<h2>Voting: Final Design — Large Avatars, Two-Step Confirm</h2>
+<p class="subtitle">Headshot avatars at 56-64px, compact vertical footprint, tap-to-select then confirm. No scroll-within-scroll.</p>
+
+<div class="section">
+  <h3>Complete Voting Panel — Mobile (375px)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Bubble Vote — full panel in mobile viewport</div>
+    <div class="mockup-body" style="background: #1a1a2e; padding: 12px; font-family: system-ui; max-width: 375px; margin: 0 auto;">
+
+      <!-- Rules (collapsed, one line) -->
+      <div style="background: rgba(59,130,246,0.06); border-radius: 8px; padding: 5px 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="color: #9b8e7e; font-size: 10px;">Fewest saves = eliminated · Top 3 silver immune</div>
+        <div style="color: #555; font-size: 9px;">ⓘ</div>
+      </div>
+
+      <!-- Header + CTA -->
+      <div style="text-align: center; margin-bottom: 10px;">
+        <div style="color: #3b82f6; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-family: ui-monospace;">Bubble: Save a Player</div>
+        <div style="color: #f5f0e8; font-size: 12px; margin-top: 3px;">Who do you want to save?</div>
+      </div>
+
+      <!-- Voter strip (tiny headshots) -->
+      <div style="display: flex; justify-content: center; gap: 3px; margin-bottom: 10px;">
+        <div style="width: 20px; height: 20px; border-radius: 50%; background: #4a3a2e; border: 2px solid #2d6a4f; position: relative;">
+          <div style="position: absolute; bottom: -1px; right: -1px; width: 8px; height: 8px; border-radius: 50%; background: #2d6a4f; font-size: 5px; color: white; display: flex; align-items: center; justify-content: center;">✓</div>
+        </div>
+        <div style="width: 20px; height: 20px; border-radius: 50%; background: #3a4a3e; border: 2px solid #2d6a4f; position: relative;">
+          <div style="position: absolute; bottom: -1px; right: -1px; width: 8px; height: 8px; border-radius: 50%; background: #2d6a4f; font-size: 5px; color: white; display: flex; align-items: center; justify-content: center;">✓</div>
+        </div>
+        <div style="width: 20px; height: 20px; border-radius: 50%; background: #2e3a4a; border: 2px solid #555; opacity: 0.5;"></div>
+        <div style="width: 20px; height: 20px; border-radius: 50%; background: #4a3a4e; border: 2px solid #555; opacity: 0.5;"></div>
+      </div>
+
+      <!-- Avatar grid: 3 targets, idle state -->
+      <div style="display: flex; justify-content: center; gap: 16px;">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;">
+          <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #4a3a2e, #6b5b4e); border: 3px solid rgba(255,255,255,0.1);"></div>
+          <div style="color: #f5f0e8; font-size: 11px; font-weight: 600;">Shadow</div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;">
+          <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #4a3a4e, #6b5b6e); border: 3px solid rgba(255,255,255,0.1);"></div>
+          <div style="color: #f5f0e8; font-size: 11px; font-weight: 600;">Ember</div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;">
+          <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #3a4a3e, #5b6b5e); border: 3px solid rgba(255,255,255,0.1);"></div>
+          <div style="color: #f5f0e8; font-size: 11px; font-weight: 600;">Phoenix</div>
+        </div>
+      </div>
+
+      <div style="color: #9b8e7e; font-size: 9px; text-align: center; margin-top: 6px;">~180px total height · no vertical scroll needed</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Two-Step Flow: Select → Confirm</h3>
+  <div class="mockup">
+    <div class="mockup-header">Step 1: Tap avatar → Step 2: Confirm action</div>
+    <div class="mockup-body" style="background: #1a1a2e; padding: 16px; font-family: system-ui; max-width: 375px; margin: 0 auto;">
+
+      <div style="display: flex; justify-content: center; gap: 40px; align-items: flex-start;">
+
+        <!-- Step 1: Selected -->
+        <div style="text-align: center;">
+          <div style="color: #9b8e7e; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px;">1. Tap</div>
+          <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #4a3a4e, #6b5b6e); border: 3px solid #3b82f6; box-shadow: 0 0 12px rgba(59,130,246,0.3); margin: 0 auto; transform: scale(1.08);"></div>
+          <div style="color: #3b82f6; font-size: 11px; font-weight: 700; margin-top: 5px;">Ember</div>
+        </div>
+
+        <!-- Arrow -->
+        <div style="color: #555; font-size: 20px; margin-top: 28px;">→</div>
+
+        <!-- Step 2: Confirm button appears -->
+        <div style="text-align: center;">
+          <div style="color: #3b82f6; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px;">2. Confirm</div>
+          <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #4a3a4e, #6b5b6e); border: 3px solid #3b82f6; box-shadow: 0 0 12px rgba(59,130,246,0.3); margin: 0 auto;"></div>
+          <div style="color: #3b82f6; font-size: 11px; font-weight: 700; margin-top: 5px;">Ember</div>
+          <div style="margin-top: 6px; background: #3b82f6; color: white; font-size: 10px; font-weight: 700; padding: 5px 14px; border-radius: 8px; display: inline-block; cursor: pointer;">Save Ember?</div>
+        </div>
+
+      </div>
+
+      <div style="margin-top: 16px; background: rgba(45,106,79,0.08); border-radius: 8px; padding: 8px; text-align: center;">
+        <div style="color: #2d6a4f; font-size: 10px; font-weight: 600;">Safety net: tapping a different avatar deselects the current one. Only the confirm button sends the vote.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>After Confirmation — Locked In</h3>
+  <div class="mockup">
+    <div class="mockup-header">Confirmed state — compact, stays in chat flow</div>
+    <div class="mockup-body" style="background: #1a1a2e; padding: 12px; font-family: system-ui; max-width: 375px; margin: 0 auto;">
+
+      <div style="text-align: center; margin-bottom: 8px;">
+        <div style="color: #3b82f6; font-size: 13px; font-weight: 800; text-transform: uppercase; font-family: ui-monospace;">Bubble: Save a Player</div>
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 16px;">
+        <!-- Dimmed -->
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0.3; filter: grayscale(40%);">
+          <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #4a3a2e, #6b5b4e); border: 3px solid rgba(255,255,255,0.04);"></div>
+          <div style="color: #555; font-size: 11px; font-weight: 600;">Shadow</div>
+        </div>
+        <!-- Confirmed -->
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative;">
+          <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #4a3a4e, #6b5b6e); border: 3px solid #2d6a4f; box-shadow: 0 0 8px rgba(45,106,79,0.2); position: relative;">
+            <div style="position: absolute; bottom: -2px; right: -2px; width: 18px; height: 18px; border-radius: 50%; background: #2d6a4f; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; border: 2px solid #1a1a2e;">✓</div>
+          </div>
+          <div style="color: #2d6a4f; font-size: 11px; font-weight: 700;">Ember</div>
+          <div style="color: #2d6a4f; font-size: 9px;">Saved!</div>
+        </div>
+        <!-- Dimmed -->
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0.3; filter: grayscale(40%);">
+          <div style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #3a4a3e, #5b6b5e); border: 3px solid rgba(255,255,255,0.04);"></div>
+          <div style="color: #555; font-size: 11px; font-weight: 600;">Phoenix</div>
+        </div>
+      </div>
+
+      <!-- Voter strip updates -->
+      <div style="display: flex; justify-content: center; gap: 3px; margin-top: 8px;">
+        <div style="width: 20px; height: 20px; border-radius: 50%; background: #4a3a2e; border: 2px solid #2d6a4f; position: relative;">
+          <div style="position: absolute; bottom: -1px; right: -1px; width: 8px; height: 8px; border-radius: 50%; background: #2d6a4f; font-size: 5px; color: white; display: flex; align-items: center; justify-content: center;">✓</div>
+        </div>
+        <div style="width: 20px; height: 20px; border-radius: 50%; background: #3a4a3e; border: 2px solid #2d6a4f; position: relative;">
+          <div style="position: absolute; bottom: -1px; right: -1px; width: 8px; height: 8px; border-radius: 50%; background: #2d6a4f; font-size: 5px; color: white; display: flex; align-items: center; justify-content: center;">✓</div>
+        </div>
+        <div style="width: 20px; height: 20px; border-radius: 50%; background: #2e3a4a; border: 2px solid #2d6a4f; position: relative;">
+          <div style="position: absolute; bottom: -1px; right: -1px; width: 8px; height: 8px; border-radius: 50%; background: #2d6a4f; font-size: 5px; color: white; display: flex; align-items: center; justify-content: center;">✓</div>
+        </div>
+        <div style="width: 20px; height: 20px; border-radius: 50%; background: #4a3a4e; border: 2px solid #555; opacity: 0.5;"></div>
+      </div>
+      <div style="color: #9b8e7e; font-size: 9px; text-align: center; margin-top: 4px;">Waiting for 1 more...</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Adaptive Grid Sizing</h3>
+  <div class="mockup">
+    <div class="mockup-header">Avatar size + layout adapts to target count</div>
+    <div class="mockup-body" style="background: #1a1a2e; padding: 16px; font-family: system-ui;">
+      <table style="width: 100%; color: #c5c0b8; font-size: 11px; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #333;">
+          <td style="padding: 6px; color: #9b8e7e; font-weight: 700;">Targets</td>
+          <td style="padding: 6px; color: #9b8e7e; font-weight: 700;">Layout</td>
+          <td style="padding: 6px; color: #9b8e7e; font-weight: 700;">Avatar Size</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;">
+          <td style="padding: 6px;">2-3</td>
+          <td style="padding: 6px;">Single row, centered</td>
+          <td style="padding: 6px;">64px</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #2a2a3e;">
+          <td style="padding: 6px;">4-5</td>
+          <td style="padding: 6px;">Single row, tighter gap</td>
+          <td style="padding: 6px;">56px</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px;">6-8</td>
+          <td style="padding: 6px;">Two rows (4+rest)</td>
+          <td style="padding: 6px;">48px</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<h3>Ready to write the spec?</h3>
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Approved — write spec and plan</h3>
+      <p>Large headshot avatars, two-step confirm, action-specific language, voter strip, hidden tallies, collapsible rules, result persistence in schedule. Apply to all voting mechanisms.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>Needs tweaks</h3>
+    </div>
+  </div>
+</div>

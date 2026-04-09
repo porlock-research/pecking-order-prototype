@@ -1,0 +1,145 @@
+<h2>Voting UX: Accurate Current State + Proposed Fixes</h2>
+<p class="subtitle">Based on actual BubbleVoting.tsx and MajorityVoting.tsx code</p>
+
+<div class="section">
+  <h3>Bubble Vote — Current vs Proposed</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Current Bubble Vote UI</div>
+      <div class="mockup-body" style="background: #1a1a2e; padding: 16px; font-family: ui-monospace, monospace;">
+        <!-- Header -->
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; animation: pulse 2s infinite;"></div>
+          <div style="color: #3b82f6; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">THE BUBBLE</div>
+        </div>
+
+        <!-- Immune notice -->
+        <div style="color: #9b8e7e; font-size: 10px; text-transform: uppercase; text-align: center; margin-bottom: 8px;">Top 3 silver holders are immune</div>
+
+        <!-- Immune badges -->
+        <div style="display: flex; justify-content: center; gap: 6px; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(59,130,246,0.3); background: rgba(59,130,246,0.1); font-size: 11px;">
+            <span style="color: #3b82f6; font-size: 10px;">[*]</span>
+            <span style="color: #3b82f6; font-weight: 700;">Viper</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(59,130,246,0.3); background: rgba(59,130,246,0.1); font-size: 11px;">
+            <span style="color: #3b82f6; font-size: 10px;">[*]</span>
+            <span style="color: #3b82f6; font-weight: 700;">Phoenix</span>
+          </div>
+        </div>
+
+        <!-- Instruction -->
+        <div style="color: #9b8e7e; font-size: 11px; text-align: center; margin-bottom: 12px;">Tap a player to vote (ranks 4+ only)</div>
+
+        <!-- Player grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #4a3a2e;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700; flex: 1;">Shadow</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #4a3a4e;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700; flex: 1;">Ember</div>
+            <div style="background: rgba(59,130,246,0.2); color: #3b82f6; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 12px;">2</div>
+          </div>
+        </div>
+
+        <!-- Issues -->
+        <div style="margin-top: 16px; padding: 10px; background: rgba(217,83,79,0.08); border-radius: 8px; border: 1px solid rgba(217,83,79,0.2);">
+          <div style="color: #d9534f; font-size: 10px; font-weight: 700; margin-bottom: 6px;">UX ISSUES:</div>
+          <div style="color: #c5c0b8; font-size: 10px; line-height: 1.6;">
+            1. <span style="color:#d9534f">"Tap a player to vote"</span> — vote to save or eliminate? Says "vote" not "save"<br>
+            2. Tally badge <span style="color:#3b82f6; font-weight:700;">2</span> — 2 saves? 2 votes against? No label<br>
+            3. After voting: <span style="color:#d9534f">"Vote cast!"</span> — doesn't confirm who you saved<br>
+            4. No persistent rules — "fewest saves = eliminated" only shown in splash<br>
+            5. No voter status — can't see who has/hasn't voted yet
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">Majority Vote — Same Issues</div>
+      <div class="mockup-body" style="background: #1a1a2e; padding: 16px; font-family: ui-monospace, monospace;">
+        <!-- Header -->
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #e2b865;"></div>
+          <div style="color: #e2b865; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">MAJORITY VOTE</div>
+        </div>
+
+        <div style="color: #9b8e7e; font-size: 10px; text-transform: uppercase; text-align: center; margin-bottom: 8px;">Most votes = eliminated</div>
+        <div style="color: #9b8e7e; font-size: 11px; text-align: center; margin-bottom: 12px;">Tap a player to vote</div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(226,184,101,0.2); border-radius: 12px; border: 2px solid #e2b865;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #4a3a2e;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700; flex: 1;">Shadow</div>
+            <div style="background: rgba(226,184,101,0.2); color: #e2b865; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 12px;">3</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #3a4a3e;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700; flex: 1;">Ember</div>
+            <div style="background: rgba(226,184,101,0.2); color: #e2b865; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 12px;">1</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; padding: 10px; background: rgba(45,106,79,0.08); border-radius: 8px; border: 1px solid rgba(45,106,79,0.2);">
+          <div style="color: #2d6a4f; font-size: 10px; font-weight: 700; margin-bottom: 6px;">WHAT WORKS:</div>
+          <div style="color: #c5c0b8; font-size: 10px; line-height: 1.6;">
+            ✓ "Most votes = eliminated" — clear one-liner<br>
+            ✓ Gold tally badge is unambiguous (votes = bad)<br>
+            ✓ "Tap a player to vote" makes sense for majority<br><br>
+            <span style="color: #d9534f;">✗ Still no voter status</span><br>
+            <span style="color: #d9534f;">✗ Still no result persistence</span><br>
+            <span style="color: #d9534f;">✗ No "who voted for whom" detail in reveal</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>Which improvements matter most for tomorrow?</h3>
+<p class="subtitle">Multi-select — click all that apply</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="save-language" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>Fix action language per mechanism</h3>
+      <p>Bubble: "Save a player" not "vote". Tally label: "2 saves" not just "2". Confirmation: "You saved Ember!" not "Vote cast!". Majority stays as-is (it's already clear). Low effort, high clarity impact.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="persistent-rules" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>Collapsible rules banner at top of panel</h3>
+      <p>Slim bar showing mechanism summary from VOTE_TYPE_INFO.howItWorks. Expanded by default, collapsible. Always accessible — no more forgetting rules after splash.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="voter-status" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content">
+      <h3>Voter participation strip</h3>
+      <p>Row of persona avatars at the top showing all eligible voters. Green ring = voted, dim = pending. Players can see participation in real-time. Creates social pressure to vote.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="full-redesign" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content">
+      <h3>Full visual redesign via frontend-design skill</h3>
+      <p>Complete redesign of voting panels with better hierarchy, mechanism-specific theming, polished animations, and modern mobile-first layout. Biggest effort, biggest impact.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="result-persist" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content">
+      <h3>Result persistence (systemic — benefits all cartridges)</h3>
+      <p>When voting/game/activity/dilemma completes, the result snapshot stays visible in Today's Lineup (Schedule tab). Spotlight card expands in-place to show rich results. Uses existing completedPhases data. Server-side: no changes. Client-side: enhanced TimelineEventCard rendering.</p>
+    </div>
+  </div>
+</div>

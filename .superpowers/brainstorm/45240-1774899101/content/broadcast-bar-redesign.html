@@ -1,0 +1,107 @@
+<h2>BroadcastBar → Activity Status Strip</h2>
+<p class="subtitle">Replace scrolling marquee with compact cartridge status pills. Tapping switches to Today tab.</p>
+
+<div style="display: flex; flex-direction: column; gap: 24px; align-items: center;">
+
+  <!-- Current BroadcastBar -->
+  <div style="text-align: center; width: 100%; max-width: 390px;">
+    <div style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4); margin-bottom: 8px; letter-spacing: 0.05em;">CURRENT — SCROLLING MARQUEE</div>
+    <div style="background: #221f1a; border-radius: 12px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+      <div style="display: flex; align-items: center; padding: 10px 16px; gap: 10px;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: #e85a4f; flex-shrink: 0; animation: blink 1.5s infinite;"></div>
+        <div style="flex: 1; overflow: hidden; white-space: nowrap;">
+          <span style="font-size: 13px; font-weight: 800; color: #c4a66a; letter-spacing: 0.04em;">DAY 3 — VOTING &bull; Chat opens in 2:30 &bull; Marcus sent silver to Jake &bull; Sarah used SPY_DMS &bull;</span>
+        </div>
+        <div style="flex-shrink: 0; display: flex; align-items: center; gap: 6px;">
+          <div style="min-width: 18px; height: 18px; border-radius: 9px; background: #e85a4f; display: flex; align-items: center; justify-content: center;"><span style="font-size: 10px; font-weight: 700; color: #fff;">3</span></div>
+          <span style="opacity: 0.4; font-size: 12px; color: #c4a66a;">›</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 10px; color: rgba(255,255,255,0.25); margin-top: 4px;">Low signal, hard to scan, ticker messages often missed</div>
+  </div>
+
+  <!-- Arrow -->
+  <div style="font-size: 20px; color: rgba(255,255,255,0.2);">↓</div>
+
+  <!-- New: Activity Status Strip — scenario 1: one live -->
+  <div style="text-align: center; width: 100%; max-width: 390px;">
+    <div style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4); margin-bottom: 8px; letter-spacing: 0.05em;">NEW — ONE LIVE CARTRIDGE</div>
+    <div style="background: #221f1a; border-radius: 12px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; cursor: pointer;">
+      <div style="display: flex; align-items: center; padding: 8px 12px; gap: 8px;">
+        <!-- Phase label -->
+        <span style="font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.35); letter-spacing: 0.05em; flex-shrink: 0;">DAY 3</span>
+        <div style="width: 1px; height: 16px; background: rgba(139,115,85,0.15); flex-shrink: 0;"></div>
+        <!-- Live pill -->
+        <div style="display: flex; align-items: center; gap: 5px; background: rgba(196,166,106,0.15); border: 1px solid rgba(196,166,106,0.3); border-radius: 20px; padding: 4px 10px; flex-shrink: 0;">
+          <div style="width: 6px; height: 6px; border-radius: 50%; background: #e85a4f; animation: blink 1.5s infinite;"></div>
+          <span style="font-size: 11px; font-weight: 700; color: #c4a66a;">Voting</span>
+          <span style="font-size: 10px; color: rgba(255,255,255,0.4);">4:32</span>
+        </div>
+        <!-- Spacer -->
+        <div style="flex: 1;"></div>
+        <!-- Next up hint -->
+        <span style="font-size: 10px; color: rgba(255,255,255,0.25); flex-shrink: 0;">Sequence in 1h</span>
+        <span style="opacity: 0.3; font-size: 12px; color: #c4a66a;">›</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- New: Activity Status Strip — scenario 2: two live (parallel) -->
+  <div style="text-align: center; width: 100%; max-width: 390px;">
+    <div style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4); margin-bottom: 8px; letter-spacing: 0.05em;">NEW — TWO LIVE CARTRIDGES (PARALLEL)</div>
+    <div style="background: #221f1a; border-radius: 12px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; cursor: pointer;">
+      <div style="display: flex; align-items: center; padding: 8px 12px; gap: 8px;">
+        <span style="font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.35); letter-spacing: 0.05em; flex-shrink: 0;">DAY 3</span>
+        <div style="width: 1px; height: 16px; background: rgba(139,115,85,0.15); flex-shrink: 0;"></div>
+        <!-- Live pill 1 -->
+        <div style="display: flex; align-items: center; gap: 5px; background: rgba(196,166,106,0.15); border: 1px solid rgba(196,166,106,0.3); border-radius: 20px; padding: 4px 10px; flex-shrink: 0;">
+          <div style="width: 6px; height: 6px; border-radius: 50%; background: #e85a4f; animation: blink 1.5s infinite;"></div>
+          <span style="font-size: 11px; font-weight: 700; color: #c4a66a;">Voting</span>
+          <span style="font-size: 10px; color: rgba(255,255,255,0.4);">4:32</span>
+        </div>
+        <!-- Live pill 2 -->
+        <div style="display: flex; align-items: center; gap: 5px; background: rgba(90,60,40,0.3); border: 1px solid rgba(196,166,106,0.2); border-radius: 20px; padding: 4px 10px; flex-shrink: 0;">
+          <div style="width: 6px; height: 6px; border-radius: 50%; background: #e85a4f; animation: blink 1.5s infinite;"></div>
+          <span style="font-size: 11px; font-weight: 700; color: #c4a66a;">Dilemma</span>
+          <span style="font-size: 10px; color: rgba(255,255,255,0.4);">12:00</span>
+        </div>
+        <div style="flex: 1;"></div>
+        <span style="opacity: 0.3; font-size: 12px; color: #c4a66a;">›</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- New: Activity Status Strip — scenario 3: nothing live -->
+  <div style="text-align: center; width: 100%; max-width: 390px;">
+    <div style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4); margin-bottom: 8px; letter-spacing: 0.05em;">NEW — NOTHING LIVE (SOCIAL HOUR)</div>
+    <div style="background: #221f1a; border-radius: 12px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; cursor: pointer;">
+      <div style="display: flex; align-items: center; padding: 8px 12px; gap: 8px;">
+        <span style="font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.35); letter-spacing: 0.05em; flex-shrink: 0;">DAY 3</span>
+        <div style="width: 1px; height: 16px; background: rgba(139,115,85,0.15); flex-shrink: 0;"></div>
+        <span style="font-size: 11px; color: rgba(255,255,255,0.4);">Social Hour</span>
+        <div style="flex: 1;"></div>
+        <span style="font-size: 10px; color: rgba(255,255,255,0.25); flex-shrink: 0;">Voting in 45m</span>
+        <span style="opacity: 0.3; font-size: 12px; color: #c4a66a;">›</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+</style>
+
+<div style="margin-top: 24px; padding: 16px; background: rgba(139,115,85,0.08); border-radius: 8px;">
+  <h3 style="margin-top: 0;">Status Strip Behavior</h3>
+  <ul style="margin: 0; padding-left: 20px; color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.8;">
+    <li><strong>Tapping anywhere</strong> on the strip switches to the Today tab</li>
+    <li><strong>Live pills</strong> show cartridge type + countdown, with blinking red dot</li>
+    <li><strong>Multiple live</strong> cartridges get individual pills (voting + dilemma can overlap)</li>
+    <li><strong>"Next up" hint</strong> shown when space allows — keeps players aware of what's coming</li>
+    <li><strong>Nothing live</strong> — shows current phase + next upcoming activity</li>
+    <li><strong>Thinner</strong> than current BroadcastBar — reclaims vertical space for chat</li>
+    <li>Dashboard overlay (swipe down) still accessible from this bar</li>
+  </ul>
+</div>

@@ -1,0 +1,5 @@
+{"type":"server-started","port":58392,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:58392","screen_dir":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/42307-1774895693/content","state_dir":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/42307-1774895693/state"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/42307-1774895693/content/page-layout.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/42307-1774895693/content/page-layout-v2.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/42307-1774895693/content/waiting.html"}
+{"type":"server-stopped","reason":"idle timeout"}

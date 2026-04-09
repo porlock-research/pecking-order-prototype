@@ -1,0 +1,165 @@
+<h2>Voting: Avatar-First Input</h2>
+<p class="subtitle">The avatar IS the button. Bigger, first names only, tap the face to decide their fate.</p>
+
+<div class="section">
+  <h3>Bubble Vote — Avatar Input</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">BEFORE — button with tiny avatar</div>
+      <div class="mockup-body" style="background: #1a1a2e; padding: 20px; font-family: system-ui;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); cursor: pointer;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #4a3a2e, #6b5b4e); flex-shrink: 0;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Shadow McBride</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: #2a2a3e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); cursor: pointer;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #4a3a4e, #6b5b6e); flex-shrink: 0;"></div>
+            <div style="color: #f5f0e8; font-size: 12px; font-weight: 700;">Ember Nightshade</div>
+          </div>
+        </div>
+        <div style="color: #9b8e7e; font-size: 10px; margin-top: 10px; text-align: center;">32px avatar · full persona name · rectangular button target</div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">AFTER — avatar IS the input</div>
+      <div class="mockup-body" style="background: #1a1a2e; padding: 20px; font-family: system-ui;">
+
+        <!-- Rules banner (collapsed) -->
+        <div style="background: rgba(59,130,246,0.06); border-radius: 8px; padding: 6px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <div style="color: #9b8e7e; font-size: 10px;">Fewest saves = eliminated · Top 3 silver immune</div>
+          <div style="color: #555; font-size: 9px;">ⓘ</div>
+        </div>
+
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 4px;">
+          <div style="color: #3b82f6; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-family: ui-monospace;">Bubble: Save a Player</div>
+        </div>
+        <div style="color: #f5f0e8; font-size: 13px; text-align: center; margin-bottom: 14px;">Who do you want to save?</div>
+
+        <!-- Voter strip -->
+        <div style="display: flex; justify-content: center; gap: 4px; margin-bottom: 14px;">
+          <div style="width: 22px; height: 22px; border-radius: 50%; background: #4a3a2e; border: 2px solid #2d6a4f; position: relative;">
+            <div style="position: absolute; bottom: -1px; right: -1px; width: 8px; height: 8px; border-radius: 50%; background: #2d6a4f; font-size: 6px; color: white; display: flex; align-items: center; justify-content: center;">✓</div>
+          </div>
+          <div style="width: 22px; height: 22px; border-radius: 50%; background: #3a4a3e; border: 2px solid #555; opacity: 0.5;"></div>
+          <div style="width: 22px; height: 22px; border-radius: 50%; background: #2e3a4a; border: 2px solid #555; opacity: 0.5;"></div>
+          <div style="width: 22px; height: 22px; border-radius: 50%; background: #4a3a4e; border: 2px solid #555; opacity: 0.5;"></div>
+        </div>
+
+        <!-- Avatar grid — BIG avatars, first name below, avatar = tap target -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; justify-items: center;">
+
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #4a3a2e, #6b5b4e); border: 3px solid rgba(255,255,255,0.08); transition: all 0.15s;"></div>
+            <div style="color: #f5f0e8; font-size: 11px; font-weight: 600;">Shadow</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #4a3a4e, #6b5b6e); border: 3px solid #3b82f6; box-shadow: 0 0 12px rgba(59,130,246,0.3); transition: all 0.15s;"></div>
+            <div style="color: #3b82f6; font-size: 11px; font-weight: 700;">Ember</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #3a4a3e, #5b6b5e); border: 3px solid rgba(255,255,255,0.08); transition: all 0.15s;"></div>
+            <div style="color: #f5f0e8; font-size: 11px; font-weight: 600;">Phoenix</div>
+          </div>
+
+        </div>
+
+        <div style="color: #9b8e7e; font-size: 10px; margin-top: 12px; text-align: center;">64px avatar · first name · tap the face</div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>States: Idle → Selected → Confirmed</h3>
+  <div class="mockup">
+    <div class="mockup-header">Avatar states on tap</div>
+    <div class="mockup-body" style="background: #1a1a2e; padding: 24px; font-family: system-ui;">
+      <div style="display: flex; justify-content: center; gap: 32px; align-items: flex-start;">
+
+        <!-- Idle -->
+        <div style="text-align: center;">
+          <div style="color: #9b8e7e; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Idle</div>
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #4a3a2e, #6b5b4e); border: 3px solid rgba(255,255,255,0.08); margin: 0 auto;"></div>
+          <div style="color: #f5f0e8; font-size: 11px; font-weight: 600; margin-top: 6px;">Shadow</div>
+        </div>
+
+        <!-- Selected (pre-confirm) -->
+        <div style="text-align: center;">
+          <div style="color: #3b82f6; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Tapped</div>
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #4a3a4e, #6b5b6e); border: 3px solid #3b82f6; box-shadow: 0 0 14px rgba(59,130,246,0.35); margin: 0 auto; transform: scale(1.05);"></div>
+          <div style="color: #3b82f6; font-size: 11px; font-weight: 700; margin-top: 6px;">Ember</div>
+          <div style="margin-top: 6px; background: #3b82f6; color: white; font-size: 10px; font-weight: 700; padding: 4px 14px; border-radius: 8px; display: inline-block;">Save Ember?</div>
+        </div>
+
+        <!-- Confirmed (locked in) -->
+        <div style="text-align: center;">
+          <div style="color: #2d6a4f; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Confirmed</div>
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #3a4a3e, #5b6b5e); border: 3px solid #2d6a4f; margin: 0 auto; position: relative;">
+            <div style="position: absolute; bottom: -2px; right: -2px; width: 20px; height: 20px; border-radius: 50%; background: #2d6a4f; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; border: 2px solid #1a1a2e;">✓</div>
+          </div>
+          <div style="color: #2d6a4f; font-size: 11px; font-weight: 700; margin-top: 6px;">Phoenix</div>
+          <div style="color: #2d6a4f; font-size: 10px; margin-top: 2px;">Saved!</div>
+        </div>
+
+        <!-- Other players (dimmed after confirm) -->
+        <div style="text-align: center;">
+          <div style="color: #555; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Others dim</div>
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #4a3a2e, #6b5b4e); border: 3px solid rgba(255,255,255,0.04); margin: 0 auto; opacity: 0.35; filter: grayscale(40%);"></div>
+          <div style="color: #555; font-size: 11px; font-weight: 600; margin-top: 6px;">Shadow</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Grid Sizing — 3 vs 4 players</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">3 eligible targets</div>
+      <div class="mockup-body" style="background: #1a1a2e; padding: 20px; font-family: system-ui;">
+        <div style="display: flex; justify-content: center; gap: 20px;">
+          <div style="text-align: center;"><div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #4a3a2e, #6b5b4e); border: 3px solid rgba(255,255,255,0.08);"></div><div style="color: #f5f0e8; font-size: 11px; font-weight: 600; margin-top: 6px;">Shadow</div></div>
+          <div style="text-align: center;"><div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #4a3a4e, #6b5b6e); border: 3px solid rgba(255,255,255,0.08);"></div><div style="color: #f5f0e8; font-size: 11px; font-weight: 600; margin-top: 6px;">Ember</div></div>
+          <div style="text-align: center;"><div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #3a4a3e, #5b6b5e); border: 3px solid rgba(255,255,255,0.08);"></div><div style="color: #f5f0e8; font-size: 11px; font-weight: 600; margin-top: 6px;">Phoenix</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">5+ eligible targets (smaller, grid wrap)</div>
+      <div class="mockup-body" style="background: #1a1a2e; padding: 20px; font-family: system-ui;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; justify-items: center;">
+          <div style="text-align: center;"><div style="width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #4a3a2e, #6b5b4e); border: 2px solid rgba(255,255,255,0.08);"></div><div style="color: #f5f0e8; font-size: 10px; font-weight: 600; margin-top: 4px;">Shadow</div></div>
+          <div style="text-align: center;"><div style="width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #4a3a4e, #6b5b6e); border: 2px solid rgba(255,255,255,0.08);"></div><div style="color: #f5f0e8; font-size: 10px; font-weight: 600; margin-top: 4px;">Ember</div></div>
+          <div style="text-align: center;"><div style="width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #3a4a3e, #5b6b5e); border: 2px solid rgba(255,255,255,0.08);"></div><div style="color: #f5f0e8; font-size: 10px; font-weight: 600; margin-top: 4px;">Phoenix</div></div>
+          <div style="text-align: center;"><div style="width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #5a4a3e, #7b6b5e); border: 2px solid rgba(255,255,255,0.08);"></div><div style="color: #f5f0e8; font-size: 10px; font-weight: 600; margin-top: 4px;">Viper</div></div>
+          <div style="text-align: center;"><div style="width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #3a3a5e, #5b5b7e); border: 2px solid rgba(255,255,255,0.08);"></div><div style="color: #f5f0e8; font-size: 10px; font-weight: 600; margin-top: 4px;">Luna</div></div>
+          <div style="text-align: center;"><div style="width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #5a3a4e, #7b5b6e); border: 2px solid rgba(255,255,255,0.08);"></div><div style="color: #f5f0e8; font-size: 10px; font-weight: 600; margin-top: 4px;">Raven</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>Does this feel right?</h3>
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Yes — write the spec</h3>
+      <p>Proceed with: avatar-as-input, first names, confirmation tap, mechanism-specific language, voter strip, hidden tallies, result persistence.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>Needs tweaks</h3>
+    </div>
+  </div>
+</div>

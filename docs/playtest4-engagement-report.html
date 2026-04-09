@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pecking Order - Playtest 4 Engagement Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #FDF8F0;
+    --bg-surface: #FAF3E8;
+    --bg-elevated: #F5EDE0;
+    --coral: #E8614D;
+    --teal: #3BA99C;
+    --gold: #D4960A;
+    --pink: #D94073;
+    --lavender: #8B6CC1;
+    --amber: #E89B3A;
+    --sage: #6B9E6E;
+    --cream: #FFF8ED;
+    --warm-brown: #8B7355;
+    --text: #3D2E1F;
+    --text-dim: #9B8E7E;
+    --card-shadow: 0 2px 8px rgba(139, 115, 85, 0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 { font-family: 'Quicksand', sans-serif; }
+
+  .header {
+    text-align: center;
+    padding: 32px 16px 24px;
+    margin-bottom: 24px;
+  }
+  .header-badge {
+    display: inline-block;
+    background: var(--coral);
+    color: white;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+  }
+  .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+  .header .subtitle { font-size: 15px; color: var(--text-dim); }
+  .header .game-code {
+    display: inline-block;
+    background: var(--bg-elevated);
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--warm-brown);
+    padding: 4px 10px;
+    border-radius: 8px;
+    margin-top: 8px;
+  }
+
+  .card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--card-shadow);
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .card-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .card-title { font-size: 17px; font-weight: 700; }
+  .card-subtitle { font-size: 12px; color: var(--text-dim); font-weight: 500; }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--bg-surface);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-value { font-family: 'Quicksand', sans-serif; font-size: 28px; font-weight: 700; }
+  .stat-label { font-size: 12px; color: var(--text-dim); font-weight: 500; margin-top: 2px; }
+  .stat-change { font-size: 11px; font-weight: 600; margin-top: 2px; }
+  .stat-change.down { color: var(--coral); }
+  .stat-change.up { color: var(--sage); }
+
+  .big-stat-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .big-stat {
+    text-align: center;
+    padding: 12px 8px;
+    background: var(--bg-surface);
+    border-radius: 12px;
+  }
+  .big-stat .num { font-family: 'Quicksand', sans-serif; font-size: 32px; font-weight: 700; }
+  .big-stat .label { font-size: 11px; color: var(--text-dim); font-weight: 500; }
+
+  .bar-chart { margin: 12px 0; }
+  .bar-row { display: flex; align-items: center; margin-bottom: 6px; gap: 8px; }
+  .bar-label {
+    width: 80px; font-size: 12px; font-weight: 600;
+    text-align: right; flex-shrink: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .bar-track {
+    flex: 1; height: 22px;
+    background: var(--bg-surface);
+    border-radius: 6px; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 6px;
+    display: flex; align-items: center; padding-left: 8px;
+  }
+  .bar-fill span { font-size: 11px; font-weight: 600; color: white; }
+  .bar-value { width: 50px; font-size: 12px; font-weight: 600; text-align: left; flex-shrink: 0; color: var(--text-dim); }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th {
+    text-align: left; font-size: 11px; font-weight: 600;
+    color: var(--text-dim); text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 8px 6px;
+    border-bottom: 2px solid var(--bg-elevated);
+  }
+  .data-table td { padding: 8px 6px; border-bottom: 1px solid var(--bg-surface); vertical-align: middle; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table .player-name { font-weight: 600; white-space: nowrap; }
+  .data-table .num-cell { text-align: right; font-family: 'Quicksand', sans-serif; font-weight: 600; }
+  .eliminated { color: var(--coral); font-size: 11px; font-weight: 600; }
+
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 6px;
+  }
+  .tag-coral { background: rgba(232,97,77,0.12); color: var(--coral); }
+  .tag-teal { background: rgba(59,169,156,0.12); color: var(--teal); }
+  .tag-gold { background: rgba(212,150,10,0.12); color: var(--gold); }
+  .tag-sage { background: rgba(107,158,110,0.12); color: var(--sage); }
+
+  .timeline { margin: 8px 0; }
+  .timeline-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--bg-surface); }
+  .timeline-item:last-child { border-bottom: none; }
+  .timeline-time {
+    font-family: 'Quicksand', sans-serif; font-size: 12px; font-weight: 600;
+    color: var(--text-dim); width: 44px; flex-shrink: 0; padding-top: 1px;
+  }
+  .timeline-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+  .timeline-content { flex: 1; font-size: 13px; }
+  .timeline-content strong { font-weight: 600; }
+
+  .insight {
+    background: linear-gradient(135deg, rgba(59,169,156,0.08), rgba(139,108,193,0.08));
+    border-radius: 14px; padding: 16px; margin: 12px 0;
+  }
+  .insight-title { font-family: 'Quicksand', sans-serif; font-size: 14px; font-weight: 700; color: var(--teal); margin-bottom: 6px; }
+  .insight p { font-size: 13px; line-height: 1.5; }
+
+  .callout {
+    border-left: 3px solid var(--amber);
+    background: var(--cream);
+    padding: 12px 16px;
+    border-radius: 0 10px 10px 0;
+    margin: 12px 0;
+    font-size: 14px;
+    font-style: italic;
+    color: var(--warm-brown);
+  }
+
+  .gap-indicator {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 8px 0;
+    font-family: 'Quicksand', sans-serif; font-size: 12px; font-weight: 700;
+    color: var(--coral);
+  }
+  .gap-indicator .line { flex: 1; height: 2px; background: rgba(232,97,77,0.2); border-radius: 1px; }
+
+  .divider { display: flex; align-items: center; gap: 12px; margin: 28px 0 20px; }
+  .divider-line { flex: 1; height: 1px; background: var(--bg-elevated); }
+  .divider-text {
+    font-family: 'Quicksand', sans-serif; font-size: 13px; font-weight: 700;
+    color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+  }
+
+  .footer { text-align: center; padding: 24px 16px; color: var(--text-dim); font-size: 12px; }
+
+  @media (max-width: 480px) {
+    body { padding: 10px; }
+    .header h1 { font-size: 24px; }
+    .big-stat .num { font-size: 26px; }
+    .bar-label { width: 64px; font-size: 11px; }
+    .data-table { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-badge">Playtest 4 Report</div>
+  <h1>Engagement Analysis</h1>
+  <div class="subtitle">Game C24FZ9 &mdash; Days 1, 2 &amp; 3</div>
+  <div class="game-code">game-1775416073250-898 &bull; staging &bull; PLAYTEST_SHORT (3&ndash;8pm PDT)</div>
+</div>
+
+<!-- THE GAP -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon" style="background: rgba(232,97,77,0.12);"><span style="font-size: 20px;">&#x26A0;</span></div>
+    <div>
+      <div class="card-title">The Engagement Gap</div>
+      <div class="card-subtitle">Players connected but didn't engage</div>
+    </div>
+  </div>
+
+  <p style="font-size: 14px; margin-bottom: 16px;">Device fingerprinting reveals that <strong>6&ndash;7 of 8 players opened the app every day</strong>. But journal data shows only 3&ndash;6 actually did anything. The gap widened each day.</p>
+
+  <table class="data-table">
+    <thead><tr><th>Day</th><th style="text-align:right">Connected</th><th style="text-align:right">Acted</th><th style="text-align:right">Gap</th></tr></thead>
+    <tbody>
+      <tr><td>Day 1</td><td class="num-cell" style="color: var(--teal);">~7</td><td class="num-cell">6</td><td class="num-cell" style="color: var(--amber);">1 idle</td></tr>
+      <tr><td>Day 2</td><td class="num-cell" style="color: var(--teal);">~6</td><td class="num-cell">3</td><td class="num-cell" style="color: var(--coral);">3 idle</td></tr>
+      <tr><td>Day 3</td><td class="num-cell" style="color: var(--teal);">~6</td><td class="num-cell">4</td><td class="num-cell" style="color: var(--coral);">2 idle</td></tr>
+    </tbody>
+  </table>
+
+  <div class="gap-indicator">
+    <div class="line"></div>
+    Players opened the app, saw nothing actionable, and left
+    <div class="line"></div>
+  </div>
+</div>
+
+<!-- OVERVIEW -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon" style="background: rgba(59,169,156,0.12);"><span style="font-size: 20px;">&#x1F4CA;</span></div>
+    <div>
+      <div class="card-title">Game at a Glance</div>
+      <div class="card-subtitle">8 players, 3 days, 5 eliminated</div>
+    </div>
+  </div>
+  <div class="big-stat-row">
+    <div class="big-stat"><div class="num" style="color: var(--coral);">62</div><div class="label">Journal Events</div></div>
+    <div class="big-stat"><div class="num" style="color: var(--coral);">5</div><div class="label">Eliminated</div></div>
+    <div class="big-stat"><div class="num" style="color: var(--gold);">5</div><div class="label">Silver Moved</div></div>
+  </div>
+  <table class="data-table">
+    <thead><tr><th>Player</th><th>Status</th><th style="text-align:right">Chat</th><th style="text-align:right">DMs</th><th style="text-align:right">Votes</th></tr></thead>
+    <tbody>
+      <tr><td class="player-name">Kale Leafson (p1)</td><td><span class="eliminated">ELIM Day 1</span></td><td class="num-cell">1</td><td class="num-cell">8</td><td class="num-cell">1</td></tr>
+      <tr><td class="player-name">Joy Sparkle (p5)</td><td><span class="tag tag-sage">Alive</span></td><td class="num-cell">2</td><td class="num-cell">1</td><td class="num-cell">0</td></tr>
+      <tr><td class="player-name">Arthur Penske (p8)</td><td><span class="tag tag-sage">Alive</span></td><td class="num-cell">1</td><td class="num-cell">1</td><td class="num-cell">2</td></tr>
+      <tr><td class="player-name">Barry Bumbling (p3)</td><td><span class="eliminated">ELIM Day 3</span></td><td class="num-cell">3</td><td class="num-cell">3</td><td class="num-cell">1</td></tr>
+      <tr><td class="player-name">Gloria Drama (p6)</td><td><span class="tag tag-sage">Alive</span></td><td class="num-cell">1</td><td class="num-cell">0</td><td class="num-cell">1</td></tr>
+      <tr><td class="player-name">Spike Spade (p2)</td><td><span class="eliminated">INACT Day 3</span></td><td class="num-cell">1</td><td class="num-cell">1</td><td class="num-cell">0</td></tr>
+      <tr><td class="player-name">Hank Bunker (p7)</td><td><span class="eliminated">INACT Day 2</span></td><td class="num-cell">0</td><td class="num-cell">0</td><td class="num-cell">0</td></tr>
+      <tr><td class="player-name">Preston Sterling (p4)</td><td><span class="eliminated">INACT Day 2</span></td><td class="num-cell">0</td><td class="num-cell">0</td><td class="num-cell">0</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PLAYTEST 3 COMPARISON -->
+<div class="divider"><div class="divider-line"></div><div class="divider-text">vs Playtest 3</div><div class="divider-line"></div></div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon" style="background: rgba(139,108,193,0.12);"><span style="font-size: 20px;">&#x2696;&#xFE0F;</span></div>
+    <div>
+      <div class="card-title">Same Players, Different Game</div>
+      <div class="card-subtitle">Mostly the same playtesters, dramatically different engagement</div>
+    </div>
+  </div>
+  <table class="data-table">
+    <thead><tr><th>Metric</th><th style="text-align:center"><span class="tag tag-teal">Playtest 3</span></th><th style="text-align:center"><span class="tag tag-coral">Playtest 4</span></th><th style="text-align:right">Change</th></tr></thead>
+    <tbody>
+      <tr><td>Schedule</td><td style="text-align:center; font-size: 12px;">10am&ndash;5pm (7h)</td><td style="text-align:center; font-size: 12px;">3&ndash;8pm (5h)</td><td></td></tr>
+      <tr><td>Chat Messages</td><td class="num-cell" style="text-align:center; color: var(--teal);">522</td><td class="num-cell" style="text-align:center; color: var(--coral);">10</td><td class="num-cell" style="color: var(--coral);">-98%</td></tr>
+      <tr><td>DMs Sent</td><td class="num-cell" style="text-align:center; color: var(--teal);">201</td><td class="num-cell" style="text-align:center; color: var(--coral);">13</td><td class="num-cell" style="color: var(--coral);">-94%</td></tr>
+      <tr><td>Silver Transfers</td><td class="num-cell" style="text-align:center;">33</td><td class="num-cell" style="text-align:center;">1</td><td class="num-cell" style="color: var(--coral);">-97%</td></tr>
+      <tr><td>Votes Cast</td><td class="num-cell" style="text-align:center;">~12</td><td class="num-cell" style="text-align:center;">6</td><td class="num-cell" style="color: var(--coral);">-50%</td></tr>
+      <tr><td>Inactivity Elims</td><td class="num-cell" style="text-align:center;">0</td><td class="num-cell" style="text-align:center; color: var(--coral);">3</td><td></td></tr>
+    </tbody>
+  </table>
+  <div class="callout" style="margin-top: 14px;">
+    Key differences: (1) Today Tab moved games &amp; votes to a separate tab, (2) 3&ndash;8pm window instead of 10am&ndash;5pm, (3) different daily schedules.
+  </div>
+</div>
+
+<!-- CONNECTION PATTERNS -->
+<div class="divider"><div class="divider-line"></div><div class="divider-text">Connection Patterns</div><div class="divider-line"></div></div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon" style="background: rgba(59,169,156,0.12);"><span style="font-size: 20px;">&#x1F4F1;</span></div>
+    <div>
+      <div class="card-title">Who Connected When</div>
+      <div class="card-subtitle">Device fingerprinting from Cloudflare logs (geo + device + ISP)</div>
+    </div>
+  </div>
+
+  <h4 style="font-size: 14px; margin-bottom: 8px;">Connections Per Hour (PDT)</h4>
+  <table class="data-table">
+    <thead><tr><th>Hour</th><th style="text-align:right">Day 1</th><th style="text-align:right">Day 2</th><th style="text-align:right">Day 3</th></tr></thead>
+    <tbody>
+      <tr><td>3pm</td><td class="num-cell" style="color: var(--teal);">28</td><td class="num-cell">5</td><td class="num-cell">8</td></tr>
+      <tr><td>4pm</td><td class="num-cell" style="color: var(--teal);">24</td><td class="num-cell">3</td><td class="num-cell">3</td></tr>
+      <tr><td>5pm</td><td class="num-cell">11</td><td class="num-cell">7</td><td class="num-cell">4</td></tr>
+      <tr><td>6pm</td><td class="num-cell">6</td><td class="num-cell" style="color: var(--amber);">12</td><td class="num-cell">7</td></tr>
+      <tr><td>7pm</td><td class="num-cell" style="color: var(--amber);">14</td><td class="num-cell">9</td><td class="num-cell">3</td></tr>
+    </tbody>
+  </table>
+
+  <div class="insight" style="margin-top: 14px;">
+    <div class="insight-title">Pattern shift</div>
+    <p>Day 1 front-loaded: players rushed in at 3pm game start (28 connections). By Day 2, the peak shifted to 6pm &mdash; players weren't checking at start, they trickled in later. Day 3 was flat and low across the entire window.</p>
+  </div>
+
+  <h4 style="font-size: 14px; margin: 16px 0 8px;">Player Locations</h4>
+  <table class="data-table">
+    <thead><tr><th>Location</th><th>Devices</th><th style="text-align:center">D1</th><th style="text-align:center">D2</th><th style="text-align:center">D3</th></tr></thead>
+    <tbody>
+      <tr><td class="player-name">Abbotsford, BC</td><td style="font-size: 12px;">iPhone, iPad</td><td style="text-align:center; color: var(--sage);">&#x2713;</td><td style="text-align:center; color: var(--sage);">&#x2713;</td><td style="text-align:center; color: var(--sage);">&#x2713;</td></tr>
+      <tr><td class="player-name">Vancouver, BC</td><td style="font-size: 12px;">Android, iPhone, Mac</td><td style="text-align:center; color: var(--sage);">&#x2713;</td><td style="text-align:center; color: var(--sage);">&#x2713;</td><td style="text-align:center; color: var(--sage);">&#x2713;</td></tr>
+      <tr><td class="player-name">Burnaby, BC</td><td style="font-size: 12px;">Android</td><td style="text-align:center; color: var(--sage);">&#x2713;</td><td style="text-align:center; color: var(--text-dim);">&mdash;</td><td style="text-align:center; color: var(--text-dim);">&mdash;</td></tr>
+      <tr><td class="player-name">Winnipeg, MB</td><td style="font-size: 12px;">iPhone</td><td style="text-align:center; color: var(--sage);">&#x2713;</td><td style="text-align:center; color: var(--text-dim);">&mdash;</td><td style="text-align:center; color: var(--text-dim);">&mdash;</td></tr>
+      <tr><td class="player-name">Toronto, ON</td><td style="font-size: 12px;">iPhone</td><td style="text-align:center; color: var(--text-dim);">&mdash;</td><td style="text-align:center; color: var(--sage);">&#x2713;</td><td style="text-align:center; color: var(--text-dim);">&mdash;</td></tr>
+      <tr><td class="player-name">Los Angeles, CA</td><td style="font-size: 12px;">iPhone</td><td style="text-align:center; color: var(--text-dim);">&mdash;</td><td style="text-align:center; color: var(--text-dim);">&mdash;</td><td style="text-align:center; color: var(--sage);">&#x2713;</td></tr>
+    </tbody>
+  </table>
+
+  <p style="font-size: 12px; color: var(--text-dim); margin-top: 8px;">Note: Multiple fingerprints per city may be the same player on WiFi vs cellular, or different household members on the same network.</p>
+</div>
+
+<!-- DAY 1 -->
+<div class="divider"><div class="divider-line"></div><div class="divider-text">Day 1 &mdash; The Only Real Day</div><div class="divider-line"></div></div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon" style="background: rgba(59,169,156,0.12);"><span style="font-size: 20px;">&#x1F331;</span></div>
+    <div><div class="card-title">Promising Start</div><div class="card-subtitle">35 events &bull; Majority Vote &bull; ~7 players connected</div></div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-value" style="color: var(--teal);">5</div><div class="stat-label">Chat Messages</div></div>
+    <div class="stat-box"><div class="stat-value" style="color: var(--lavender);">13</div><div class="stat-label">DMs Sent</div></div>
+    <div class="stat-box"><div class="stat-value" style="color: var(--gold);">4</div><div class="stat-label">Votes Cast</div></div>
+    <div class="stat-box"><div class="stat-value" style="color: var(--coral);">1</div><div class="stat-label">Eliminated</div></div>
+  </div>
+
+  <h4 style="font-size: 14px; margin-bottom: 8px;">Timeline</h4>
+  <div class="timeline">
+    <div class="timeline-item"><div class="timeline-time">3:00</div><div class="timeline-dot" style="background: var(--teal);"></div><div class="timeline-content"><strong>Day starts.</strong> GM welcome message. Spike (p2): "I will donate 5 silver!"</div></div>
+    <div class="timeline-item"><div class="timeline-time">3:27</div><div class="timeline-dot" style="background: var(--amber);"></div><div class="timeline-content">Barry (p3): "If we do what happens?" &mdash; unclear on dilemma mechanics.</div></div>
+    <div class="timeline-item"><div class="timeline-time">4:00</div><div class="timeline-dot" style="background: var(--lavender);"></div><div class="timeline-content"><strong>DMs open.</strong> Kale (p1) messages Barry: <em>"You get notifications?"</em> &mdash; discussing broken push.</div></div>
+    <div class="timeline-item"><div class="timeline-time">4:04</div><div class="timeline-dot" style="background: var(--lavender);"></div><div class="timeline-content">Barry &rarr; Kale: <em>"I got a different one but not for the DM... Something wonky with notifications."</em></div></div>
+    <div class="timeline-item"><div class="timeline-time">4:11</div><div class="timeline-dot" style="background: var(--teal);"></div><div class="timeline-content">Kale (p1): "Hi everyone~" &mdash; first group chat from the DM initiator.</div></div>
+    <div class="timeline-item"><div class="timeline-time">4:17</div><div class="timeline-dot" style="background: var(--pink);"></div><div class="timeline-content"><strong>Spike starts a group DM alliance</strong> with Kale, Preston, Hank, Arthur: <em>"Hey dudes! I wanted to reach out and create a solid core."</em> Only Kale and Arthur respond.</div></div>
+    <div class="timeline-item"><div class="timeline-time">5:00</div><div class="timeline-dot" style="background: var(--teal);"></div><div class="timeline-content">Barry: "Who kept the silver?!" &mdash; reacting to Silver Gambit results.</div></div>
+    <div class="timeline-item"><div class="timeline-time">5:12</div><div class="timeline-dot" style="background: var(--sage);"></div><div class="timeline-content">Joy (p5): <em>"Hey everyone!! I donated mine, but I understand why people chose to keep :)"</em></div></div>
+    <div class="timeline-item"><div class="timeline-time">6:01</div><div class="timeline-dot" style="background: var(--gold);"></div><div class="timeline-content"><strong>Trivia starts.</strong> 4 players participate. Arthur earns 4, Joy earns 8, Barry earns 9 silver.</div></div>
+    <div class="timeline-item"><div class="timeline-time">7:02</div><div class="timeline-dot" style="background: var(--coral);"></div><div class="timeline-content"><strong>Voting opens.</strong> Only 4 of 8 vote. All scattered: p8&rarr;p5, p1&rarr;p6, p3&rarr;p1, p6&rarr;p4. Four-way tie.</div></div>
+    <div class="timeline-item"><div class="timeline-time">8:00</div><div class="timeline-dot" style="background: var(--coral);"></div><div class="timeline-content"><strong>Kale (p1) eliminated</strong> via lowest-silver tiebreaker. The most active DM sender is gone.</div></div>
+  </div>
+
+  <div class="insight">
+    <div class="insight-title">The fatal elimination</div>
+    <p>Kale sent 8 of 13 DMs and was the only player initiating conversations. After elimination, DMs dropped to <strong>zero for the rest of the game</strong>. The social flywheel never got a second spin.</p>
+  </div>
+</div>
+
+<!-- DAY 2 -->
+<div class="divider"><div class="divider-line"></div><div class="divider-text">Day 2 &mdash; The Fade</div><div class="divider-line"></div></div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon" style="background: rgba(232,155,58,0.12);"><span style="font-size: 20px;">&#x1F32B;</span></div>
+    <div><div class="card-title">Greetings Into the Void</div><div class="card-subtitle">14 events &bull; Executioner Vote &bull; ~6 connected, 3 acted</div></div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-value" style="color: var(--amber);">2</div><div class="stat-label">Chat Messages</div><div class="stat-change down">-60% vs Day 1</div></div>
+    <div class="stat-box"><div class="stat-value" style="color: var(--coral);">0</div><div class="stat-label">DMs Sent</div><div class="stat-change down">-100%</div></div>
+    <div class="stat-box"><div class="stat-value" style="color: var(--gold);">2</div><div class="stat-label">Votes Cast</div><div class="stat-change down">of 7 eligible</div></div>
+    <div class="stat-box"><div class="stat-value" style="color: var(--coral);">2</div><div class="stat-label">Inactivity Elims</div></div>
+  </div>
+
+  <div class="timeline">
+    <div class="timeline-item"><div class="timeline-time">3:42</div><div class="timeline-dot" style="background: var(--sage);"></div><div class="timeline-content">Joy (p5): <em>"Good day everyone!! "</em> &mdash; greeting into an empty room.</div></div>
+    <div class="timeline-item"><div class="timeline-time">5:38</div><div class="timeline-dot" style="background: var(--text-dim);"></div><div class="timeline-content">Arthur (p8): <em>"Hey how's it going!"</em> &mdash; two hours later, still just hellos.</div></div>
+    <div class="timeline-item"><div class="timeline-time">7:02</div><div class="timeline-dot" style="background: var(--coral);"></div><div class="timeline-content"><strong>Executioner vote opens.</strong> Only 2 votes: Arthur votes for himself as executioner, Gloria votes for Joy. In Playtest 3, this mechanic generated 490 events.</div></div>
+    <div class="timeline-item"><div class="timeline-time">8:01</div><div class="timeline-dot" style="background: var(--coral);"></div><div class="timeline-content"><strong>Hank &amp; Preston auto-eliminated</strong> for inactivity. Neither appeared in any journal event across the entire game.</div></div>
+  </div>
+
+  <div class="callout">
+    The Executioner mechanic drove Playtest 3's peak engagement day (490 events, 157 DMs). Here it produced 2 votes and zero DMs. Same mechanic, same players &mdash; the difference is context and discoverability.
+  </div>
+</div>
+
+<!-- DAY 3 -->
+<div class="divider"><div class="divider-line"></div><div class="divider-text">Day 3 &mdash; Asking What's Happening</div><div class="divider-line"></div></div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon" style="background: rgba(232,97,77,0.12);"><span style="font-size: 20px;">&#x2753;</span></div>
+    <div><div class="card-title">Confusion</div><div class="card-subtitle">13 events &bull; Second-to-Last &bull; ~6 connected, 4 acted</div></div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-value" style="color: var(--amber);">4</div><div class="stat-label">Chat Messages</div><div class="stat-change up">+100% vs Day 2</div></div>
+    <div class="stat-box"><div class="stat-value" style="color: var(--coral);">0</div><div class="stat-label">DMs Sent</div></div>
+    <div class="stat-box"><div class="stat-value" style="color: var(--text-dim);">0</div><div class="stat-label">Votes</div><div class="stat-change">auto mechanic</div></div>
+    <div class="stat-box"><div class="stat-value" style="color: var(--coral);">2</div><div class="stat-label">Eliminated</div></div>
+  </div>
+
+  <div class="timeline">
+    <div class="timeline-item"><div class="timeline-time">3:01</div><div class="timeline-dot" style="background: var(--sage);"></div><div class="timeline-content">Gloria (p6): <em>"Well hello everyone."</em></div></div>
+    <div class="timeline-item"><div class="timeline-time">3:02</div><div class="timeline-dot" style="background: var(--sage);"></div><div class="timeline-content">Joy (p5): <em>"Hi people!"</em></div></div>
+    <div class="timeline-item"><div class="timeline-time">3:40</div><div class="timeline-dot" style="background: var(--amber);"></div><div class="timeline-content">Barry (p3): <em>"Oh my"</em> &mdash; then <strong><em>"What is grid push?"</em></strong> &mdash; doesn't know what the day's game is.</div></div>
+    <div class="timeline-item"><div class="timeline-time">8:01</div><div class="timeline-dot" style="background: var(--coral);"></div><div class="timeline-content"><strong>Barry eliminated</strong> (Second-to-Last, 81 silver). <strong>Spike eliminated</strong> (inactivity).</div></div>
+  </div>
+
+  <div class="insight">
+    <div class="insight-title">The "What is grid push?" moment</div>
+    <p>Barry's question is the strongest signal that the Today Tab isn't surfacing game mechanics. This player was active enough to chat &mdash; yet had no idea a game was happening. In Playtest 3, games were visible inline. Now they're a tab away, and players don't know to look.</p>
+  </div>
+</div>
+
+<!-- LOBBY FUNNEL -->
+<div class="divider"><div class="divider-line"></div><div class="divider-text">Lobby &amp; Onboarding</div><div class="divider-line"></div></div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon" style="background: rgba(212,150,10,0.12);"><span style="font-size: 20px;">&#x1F6AA;</span></div>
+    <div>
+      <div class="card-title">The Join Funnel</div>
+      <div class="card-subtitle">32 device fingerprints visited lobby pages</div>
+    </div>
+  </div>
+
+  <h4 style="font-size: 14px; margin-bottom: 8px;">Page Visit Counts</h4>
+  <div class="bar-chart">
+    <div class="bar-row"><div class="bar-label">/join</div><div class="bar-track"><div class="bar-fill" style="width: 100%; background: var(--teal);"><span>170 visits</span></div></div><div class="bar-value"></div></div>
+    <div class="bar-row"><div class="bar-label">/waiting</div><div class="bar-track"><div class="bar-fill" style="width: 88%; background: var(--amber);"><span>151 visits</span></div></div><div class="bar-value"></div></div>
+    <div class="bar-row"><div class="bar-label">/play</div><div class="bar-track"><div class="bar-fill" style="width: 2.4%; background: var(--coral);"></div></div><div class="bar-value" style="color: var(--coral);">4 visits</div></div>
+  </div>
+
+  <p style="font-size: 13px; margin-top: 12px;">14 of 32 fingerprints visited lobby pages but <strong>never connected to the game server</strong>. Some are duplicate fingerprints of real players (WiFi vs cellular), but the pattern suggests friction in the join &rarr; play transition.</p>
+
+  <div class="callout" style="margin-top: 14px;">
+    3 fingerprints from Google Cloud IPs (ASN 15169) &mdash; likely bots or link previews, not real players. But at least 3&ndash;4 real device fingerprints visited /join repeatedly without making it to the game.
+  </div>
+</div>
+
+<!-- WHAT CHANGED -->
+<div class="divider"><div class="divider-line"></div><div class="divider-text">What Changed Between Playtests</div><div class="divider-line"></div></div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon" style="background: rgba(107,158,110,0.12);"><span style="font-size: 20px;">&#x1F50D;</span></div>
+    <div>
+      <div class="card-title">Three Variables</div>
+      <div class="card-subtitle">Same players, different outcomes</div>
+    </div>
+  </div>
+
+  <div class="insight" style="margin-bottom: 10px;">
+    <div class="insight-title">1. Today Tab buried game mechanics</div>
+    <p>Games, votes, and activities moved to a separate tab. Players open the app, see Chat, type a greeting, and leave. They never discover that voting is live, a game is playable, or a dilemma needs a response. Barry's <em>"What is grid push?"</em> on Day 3 proves this &mdash; he was engaged enough to chat but had no idea a game existed. The engagement gap (6&ndash;7 connected, only 3&ndash;4 acted) is a discoverability gap.</p>
+  </div>
+
+  <div class="insight" style="margin-bottom: 10px; background: linear-gradient(135deg, rgba(232,97,77,0.08), rgba(212,150,10,0.08));">
+    <div class="insight-title" style="color: var(--coral);">2. Schedule window shifted to evening</div>
+    <p>10am&ndash;5pm catches work-break check-ins throughout the day. 3pm&ndash;8pm competes with dinner, family time, and evening plans. Worse: voting opens at 7pm and closes at 8pm &mdash; a 58-minute window at the tail end of the evening. Players who checked the app at 3&ndash;5pm wouldn't know voting was coming; by 7pm they'd moved on.</p>
+  </div>
+
+  <div class="insight" style="background: linear-gradient(135deg, rgba(212,150,10,0.08), rgba(107,158,110,0.08));">
+    <div class="insight-title" style="color: var(--gold);">3. The social catalyst died Day 1</div>
+    <p>Kale (p1) sent 62% of all DMs and was the only player initiating private conversations. Majority Vote eliminated Kale on a random 4-way tiebreaker. After that, DMs dropped to zero permanently. In Playtest 3, Brenda (the social catalyst) survived until Day 3, giving the game time to build momentum.</p>
+  </div>
+</div>
+
+<!-- RECOMMENDATIONS -->
+<div class="divider"><div class="divider-line"></div><div class="divider-text">Recommendations</div><div class="divider-line"></div></div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon" style="background: rgba(59,169,156,0.12);"><span style="font-size: 20px;">&#x1F527;</span></div>
+    <div>
+      <div class="card-title">What to Try Next</div>
+      <div class="card-subtitle">Ordered by expected impact</div>
+    </div>
+  </div>
+
+  <div class="insight" style="margin-bottom: 10px;">
+    <div class="insight-title">Surface game mechanics in the Chat tab</div>
+    <p>Inline cards, banners, or pinned messages in chat when voting is live, a game is playable, or a dilemma needs response. Players shouldn't need to discover a second tab. The data shows they won't.</p>
+  </div>
+
+  <div class="insight" style="margin-bottom: 10px;">
+    <div class="insight-title">Revert to daytime schedule for next playtest</div>
+    <p>10am&ndash;5pm worked. 3pm&ndash;8pm didn't. Test one variable at a time &mdash; keep the schedule that produced 490 events.</p>
+  </div>
+
+  <div class="insight" style="margin-bottom: 10px;">
+    <div class="insight-title">Protect early social catalysts</div>
+    <p>Day 1 Majority Vote eliminated the most engaged player on a random tiebreaker. Consider starting with a mechanic that doesn't eliminate the most socially active player by coin flip. Executioner or Podium Sacrifice gives players agency over who stays.</p>
+  </div>
+
+  <div class="insight">
+    <div class="insight-title">Increase inactivity threshold to 2 days</div>
+    <p>1-day threshold with a 5-hour window means missing a single evening kills you. 3 of 5 eliminations were inactivity-based &mdash; the game shrunk faster than engagement could build.</p>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <p style="margin-bottom: 4px;"><strong>Pecking Order</strong> &mdash; Playtest 4 Engagement Report</p>
+  <p>Game C24FZ9 &bull; April 5&ndash;8, 2026 &bull; Staging</p>
+  <p style="margin-top: 8px; font-size: 11px;">Generated from D1 GameJournal, Cloudflare device fingerprints &amp; Axiom connection logs</p>
+</div>
+
+</body>
+</html>

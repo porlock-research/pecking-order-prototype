@@ -37,9 +37,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Playwright
-e2e/test-results/
-e2e/playwright-report/
+# Test artifacts (all apps)
+**/test-results/
+**/playwright-report/
 
 # Playwright auth state
 **/e2e/.auth/
@@ -59,7 +59,7 @@ skills-lock.json
 # Playwright MCP logs
 .playwright-mcp/
 
-# Screenshots
-staging-game-over.png
+# Screenshots from testing/debugging (root level)
+/*.png
 
 # Gemini

@@ -1,0 +1,120 @@
+<h2>Social Media Link Unfurls</h2>
+<p class="subtitle">How the playtest link will appear when shared — current state vs what we need</p>
+
+<div style="margin-bottom:24px;padding:16px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;">
+  <h3 style="color:#ef4444;margin:0 0 4px;">Current Problem</h3>
+  <p style="color:#ccc;font-size:13px;margin:0;">OG image points to <code>/og-playtest.png</code> which doesn't exist. All platforms will show a text-only preview or a broken image.</p>
+</div>
+
+<h3>Option A: Use a persona image directly</h3>
+<p class="subtitle">Quick — use a persona's medium.png from R2 as the OG image</p>
+
+<div style="display:flex;gap:24px;flex-wrap:wrap;margin:16px 0;">
+  <!-- iMessage -->
+  <div style="width:340px;">
+    <div class="label">iMessage / SMS</div>
+    <div style="background:#1c1c1e;border-radius:16px;overflow:hidden;margin-top:6px;">
+      <div style="height:180px;background:linear-gradient(135deg,#4c1d95,#2c003e);display:flex;align-items:center;justify-content:center;">
+        <div style="width:120px;height:160px;background:#6b21a8;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#a78bfa;font-size:11px;text-align:center;">Portrait image<br>(not ideal —<br>letterboxed)</div>
+      </div>
+      <div style="padding:12px 14px;">
+        <div style="font-size:11px;color:#8e8e93;text-transform:uppercase;">playtest.peckingorder.ca</div>
+        <div style="font-size:15px;color:#fff;font-weight:600;margin:2px 0;">Pecking Order — Join the Playtest</div>
+        <div style="font-size:13px;color:#8e8e93;">A social game of alliances, betrayal & strategy. Sign up to play.</div>
+      </div>
+    </div>
+    <p style="color:#f97316;font-size:11px;margin-top:6px;">⚠️ Portrait persona image will be letterboxed in landscape card</p>
+  </div>
+
+  <!-- Discord -->
+  <div style="width:340px;">
+    <div class="label">Discord</div>
+    <div style="background:#2f3136;border-left:4px solid #fbbf24;border-radius:4px;padding:12px 16px;margin-top:6px;">
+      <div style="font-size:12px;color:#b9bbbe;margin-bottom:4px;">playtest.peckingorder.ca</div>
+      <div style="font-size:16px;color:#00aff4;font-weight:600;margin-bottom:4px;">Pecking Order — Join the Playtest</div>
+      <div style="font-size:14px;color:#dcddde;margin-bottom:8px;">A social game of alliances, betrayal & strategy. Sign up to play.</div>
+      <div style="width:120px;height:160px;background:#6b21a8;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#a78bfa;font-size:11px;">Portrait</div>
+    </div>
+    <p style="color:#10b981;font-size:11px;margin-top:6px;">✓ Discord shows portrait images OK (thumbnail on right)</p>
+  </div>
+
+  <!-- Twitter -->
+  <div style="width:340px;">
+    <div class="label">Twitter / X</div>
+    <div style="background:#15202b;border:1px solid #38444d;border-radius:16px;overflow:hidden;margin-top:6px;">
+      <div style="height:160px;background:linear-gradient(135deg,#4c1d95,#2c003e);display:flex;align-items:center;justify-content:center;">
+        <div style="width:120px;height:140px;background:#6b21a8;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#a78bfa;font-size:11px;text-align:center;">Portrait<br>(cropped)</div>
+      </div>
+      <div style="padding:10px 14px;">
+        <div style="font-size:15px;color:#e7e9ea;font-weight:400;">Pecking Order — Join the Playtest</div>
+        <div style="font-size:13px;color:#71767b;">A social game of alliances, betrayal &amp; strategy. Sign up to play.</div>
+        <div style="font-size:13px;color:#71767b;">playtest.peckingorder.ca</div>
+      </div>
+    </div>
+    <p style="color:#f97316;font-size:11px;margin-top:6px;">⚠️ summary_large_image crops portrait images badly</p>
+  </div>
+</div>
+
+<h3 style="margin-top:32px;">Option B: Generate a proper 1200×630 OG image (Recommended)</h3>
+<p class="subtitle">Use Next.js ImageResponse API to compose a landscape image with persona + branding</p>
+
+<div style="display:flex;gap:24px;flex-wrap:wrap;margin:16px 0;">
+  <!-- Generated OG mockup -->
+  <div style="width:600px;">
+    <div class="label">Generated OG Image (1200×630 → shown at 600×315)</div>
+    <div style="width:600px;height:315px;background:linear-gradient(135deg,#2c003e 0%,#4c1d95 100%);border-radius:8px;overflow:hidden;position:relative;margin-top:6px;display:flex;align-items:center;">
+      <!-- Grid pattern hint -->
+      <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);background-size:50px 50px;"></div>
+      <!-- Persona images -->
+      <div style="display:flex;gap:8px;padding-left:40px;z-index:1;">
+        <div style="width:100px;height:140px;background:#7c3aed;border-radius:12px;transform:rotate(-6deg);display:flex;align-items:flex-end;padding:8px;font-size:11px;color:#d8b4fe;">Persona 1</div>
+        <div style="width:120px;height:170px;background:#6b21a8;border-radius:12px;border:2px solid rgba(251,191,36,0.4);display:flex;align-items:flex-end;padding:8px;font-size:11px;color:#fbbf24;">Featured</div>
+        <div style="width:100px;height:140px;background:#7c3aed;border-radius:12px;transform:rotate(6deg);display:flex;align-items:flex-end;padding:8px;font-size:11px;color:#d8b4fe;">Persona 3</div>
+      </div>
+      <!-- Text -->
+      <div style="padding:0 40px;z-index:1;flex:1;">
+        <div style="font-family:sans-serif;font-weight:900;font-size:36px;color:#fbbf24;letter-spacing:1px;text-shadow:0 2px 12px rgba(251,191,36,0.3);">PECKING ORDER</div>
+        <div style="font-size:14px;color:#d8b4fe;margin-top:4px;">A social game of alliances, betrayal & strategy</div>
+        <div style="margin-top:12px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);border-radius:20px;display:inline-block;padding:4px 14px;">
+          <span style="color:#fbbf24;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Join the Playtest</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How it looks in iMessage -->
+  <div style="width:340px;">
+    <div class="label">iMessage with proper OG image</div>
+    <div style="background:#1c1c1e;border-radius:16px;overflow:hidden;margin-top:6px;">
+      <div style="height:180px;background:linear-gradient(135deg,#4c1d95,#2c003e);display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="font-family:sans-serif;font-weight:900;font-size:20px;color:#fbbf24;">PECKING ORDER</div>
+      </div>
+      <div style="padding:12px 14px;">
+        <div style="font-size:11px;color:#8e8e93;text-transform:uppercase;">playtest.peckingorder.ca</div>
+        <div style="font-size:15px;color:#fff;font-weight:600;margin:2px 0;">Pecking Order — Join the Playtest</div>
+        <div style="font-size:13px;color:#8e8e93;">A social game of alliances, betrayal & strategy. Sign up to play.</div>
+      </div>
+    </div>
+    <p style="color:#10b981;font-size:11px;margin-top:6px;">✓ Landscape image fills the card perfectly</p>
+  </div>
+</div>
+
+<div style="margin-top:24px;padding:16px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;">
+  <h3 style="color:#10b981;margin:0 0 8px;">Recommendation</h3>
+  <ul style="color:#ccc;font-size:13px;line-height:1.8;margin:0;padding-left:20px;">
+    <li><strong>Option B</strong> — generate a 1200×630 OG image using Next.js <code>ImageResponse</code> API</li>
+    <li>Compose 3 persona images in the hand-of-cards layout + game title + tagline</li>
+    <li>Generated server-side, cached, looks great on all platforms</li>
+    <li>Alternative: create a static PNG manually if ImageResponse doesn't work on Cloudflare Workers</li>
+  </ul>
+</div>
+
+<h3 style="margin-top:24px;">Metadata Tags (Current)</h3>
+<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:16px;font-family:monospace;font-size:12px;color:#a78bfa;line-height:1.8;">
+  og:title → "Pecking Order — Join the Playtest"<br>
+  og:description → "A social game of alliances, betrayal & strategy. Sign up to play."<br>
+  og:image → ❌ /og-playtest.png (404)<br>
+  og:url → https://playtest.peckingorder.ca<br>
+  twitter:card → summary_large_image<br>
+  theme-color → #2c003e
+</div>

@@ -1,0 +1,117 @@
+<h2>Voting Language: Tight, Action-First Wording</h2>
+<p class="subtitle">People don't read — every word must earn its place. Header = mechanic + action. Instruction = question, not statement.</p>
+
+<div class="section">
+  <h3>Header + Call to Action per Mechanism</h3>
+  <div class="mockup">
+    <div class="mockup-header">Proposed wording — header combines name + action verb</div>
+    <div class="mockup-body" style="background: #1a1a2e; padding: 20px; font-family: system-ui;">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+
+        <!-- Bubble -->
+        <div style="background: #2a2a3e; border-radius: 12px; padding: 14px; border-left: 3px solid #3b82f6;">
+          <div style="color: #3b82f6; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-family: ui-monospace;">Bubble: Save a Player</div>
+          <div style="color: #f5f0e8; font-size: 13px; margin-top: 8px; font-weight: 500;">Who do you want to save?</div>
+          <div style="color: #9b8e7e; font-size: 10px; margin-top: 4px;">Fewest saves = eliminated · Top 3 silver are immune</div>
+        </div>
+
+        <!-- Majority -->
+        <div style="background: #2a2a3e; border-radius: 12px; padding: 14px; border-left: 3px solid #e2b865;">
+          <div style="color: #e2b865; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-family: ui-monospace;">Majority: Eliminate a Player</div>
+          <div style="color: #f5f0e8; font-size: 13px; margin-top: 8px; font-weight: 500;">Who should go?</div>
+          <div style="color: #9b8e7e; font-size: 10px; margin-top: 4px;">Most votes = eliminated · Ties broken by lowest silver</div>
+        </div>
+
+        <!-- Executioner Phase 1 -->
+        <div style="background: #2a2a3e; border-radius: 12px; padding: 14px; border-left: 3px solid #9d174d;">
+          <div style="color: #9d174d; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-family: ui-monospace;">Executioner: Elect a Judge</div>
+          <div style="color: #f5f0e8; font-size: 13px; margin-top: 8px; font-weight: 500;">Who do you trust with the power?</div>
+          <div style="color: #9b8e7e; font-size: 10px; margin-top: 4px;">The elected player chooses who to eliminate</div>
+        </div>
+
+        <!-- Executioner Phase 2 -->
+        <div style="background: #2a2a3e; border-radius: 12px; padding: 14px; border-left: 3px solid #9d174d;">
+          <div style="color: #9d174d; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-family: ui-monospace;">Executioner: Pick Your Target</div>
+          <div style="color: #f5f0e8; font-size: 13px; margin-top: 8px; font-weight: 500;">You are the executioner. Who goes?</div>
+          <div style="color: #9b8e7e; font-size: 10px; margin-top: 4px;">Your choice is final</div>
+        </div>
+
+        <!-- Podium Sacrifice -->
+        <div style="background: #2a2a3e; border-radius: 12px; padding: 14px; border-left: 3px solid #b8840a;">
+          <div style="color: #b8840a; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-family: ui-monospace;">Podium: Save One from the Top</div>
+          <div style="color: #f5f0e8; font-size: 13px; margin-top: 8px; font-weight: 500;">Which top player deserves to stay?</div>
+          <div style="color: #9b8e7e; font-size: 10px; margin-top: 4px;">Top 3 silver holders are at risk · Save one, one goes</div>
+        </div>
+
+        <!-- Shield -->
+        <div style="background: #2a2a3e; border-radius: 12px; padding: 14px; border-left: 3px solid #2d6a4f;">
+          <div style="color: #2d6a4f; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-family: ui-monospace;">Shield: Protect a Player</div>
+          <div style="color: #f5f0e8; font-size: 13px; margin-top: 8px; font-weight: 500;">Who deserves protection?</div>
+          <div style="color: #9b8e7e; font-size: 10px; margin-top: 4px;">Most-shielded player is safe · Then majority vote eliminates</div>
+        </div>
+
+        <!-- Finals -->
+        <div style="background: #2a2a3e; border-radius: 12px; padding: 14px; border-left: 3px solid #e2b865;">
+          <div style="color: #e2b865; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-family: ui-monospace;">Finals: Crown the Winner</div>
+          <div style="color: #f5f0e8; font-size: 13px; margin-top: 8px; font-weight: 500;">Who played the best game?</div>
+          <div style="color: #9b8e7e; font-size: 10px; margin-top: 4px;">Eliminated players vote · Most votes wins</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Post-Vote Confirmations (matching language)</h3>
+  <div class="mockup">
+    <div class="mockup-header">After player taps a target</div>
+    <div class="mockup-body" style="background: #1a1a2e; padding: 16px; font-family: system-ui;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div style="background: #2a2a3e; padding: 10px; border-radius: 8px;">
+          <div style="color: #3b82f6; font-size: 10px; font-weight: 700;">BUBBLE</div>
+          <div style="color: #f5f0e8; font-size: 12px; margin-top: 4px;">You saved <strong>Ember</strong></div>
+        </div>
+        <div style="background: #2a2a3e; padding: 10px; border-radius: 8px;">
+          <div style="color: #e2b865; font-size: 10px; font-weight: 700;">MAJORITY</div>
+          <div style="color: #f5f0e8; font-size: 12px; margin-top: 4px;">You voted for <strong>Shadow</strong></div>
+        </div>
+        <div style="background: #2a2a3e; padding: 10px; border-radius: 8px;">
+          <div style="color: #9d174d; font-size: 10px; font-weight: 700;">EXECUTIONER (elect)</div>
+          <div style="color: #f5f0e8; font-size: 12px; margin-top: 4px;">You elected <strong>Viper</strong></div>
+        </div>
+        <div style="background: #2a2a3e; padding: 10px; border-radius: 8px;">
+          <div style="color: #b8840a; font-size: 10px; font-weight: 700;">PODIUM</div>
+          <div style="color: #f5f0e8; font-size: 12px; margin-top: 4px;">You saved <strong>Phoenix</strong></div>
+        </div>
+        <div style="background: #2a2a3e; padding: 10px; border-radius: 8px;">
+          <div style="color: #2d6a4f; font-size: 10px; font-weight: 700;">SHIELD</div>
+          <div style="color: #f5f0e8; font-size: 12px; margin-top: 4px;">You shielded <strong>Ember</strong></div>
+        </div>
+        <div style="background: #2a2a3e; padding: 10px; border-radius: 8px;">
+          <div style="color: #e2b865; font-size: 10px; font-weight: 700;">FINALS</div>
+          <div style="color: #f5f0e8; font-size: 12px; margin-top: 4px;">You crowned <strong>Phoenix</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>Does this direction feel right?</h3>
+
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Good direction — proceed</h3>
+      <p>Write the spec with this language approach for all mechanisms.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>Needs tweaks</h3>
+      <p>Tell me what to adjust.</p>
+    </div>
+  </div>
+</div>

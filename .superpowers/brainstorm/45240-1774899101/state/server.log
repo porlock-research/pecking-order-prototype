@@ -1,0 +1,7 @@
+{"type":"server-started","port":64025,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:64025","screen_dir":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/45240-1774899101/content","state_dir":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/45240-1774899101/state"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/45240-1774899101/content/today-tab-cards.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/45240-1774899101/content/today-tab-expanded.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/45240-1774899101/content/fullscreen-takeover.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/45240-1774899101/content/broadcast-bar-redesign.html"}
+{"type":"screen-added","file":"/Users/manu/Projects/pecking-order/.superpowers/brainstorm/45240-1774899101/content/broadcast-bar-v2.html"}
+{"type":"server-stopped","reason":"idle timeout"}
