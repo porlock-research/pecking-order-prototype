@@ -1,0 +1,7 @@
+MATCH_TOOL: Bash
+MATCH_PATTERN: /parties/.*/(state|\/state)|curl.*\/state|GET.*\/state
+ADVISORY: |
+  /state only returns L2 context (state value, dayIndex, manifest, roster).
+  It does NOT include L3 context: channels, chatLog, cartridge state, day phase.
+  For L3 data, use WebSocket SYNC or INSPECT.SUBSCRIBE.
+  See apps/game-server/CLAUDE.md "GET /state Limitation" section.

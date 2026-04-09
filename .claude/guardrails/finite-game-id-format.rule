@@ -1,0 +1,10 @@
+MATCH_TOOL: Bash
+MATCH_PATTERN: axiom|po-logs
+ADVISORY: |
+  Game server logs use internal game IDs (format: game-{timestamp}-{random}).
+  Invite codes (e.g., M48TJ8) appear in lobby logs, not game-server logs.
+  If you have an invite code, first resolve it to the internal game ID:
+  1. Query lobby logs: where body has '{INVITE_CODE}'
+  2. Extract the internal game ID from the result
+  3. Then query game-server logs with the internal ID
+  See the investigate-game skill for the full procedure.

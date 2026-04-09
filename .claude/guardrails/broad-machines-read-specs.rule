@@ -1,0 +1,8 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/game-server/src/machines/
+ADVISORY: |
+  You are editing state machine code. Before proceeding:
+  1. Run `npm run generate:docs` to regenerate machine specs
+  2. Read the relevant spec in docs/machines/ to understand current state structure
+  3. Check plans/DECISIONS.md for ADRs related to this machine
+  4. After your changes, run `npm run generate:docs` again to update specs

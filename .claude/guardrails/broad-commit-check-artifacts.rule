@@ -1,0 +1,8 @@
+MATCH_TOOL: Bash
+MATCH_PATTERN: git commit
+ADVISORY: |
+  Before committing, check for untracked test artifacts:
+  - Root *.png files (from Playwright/testing skills)
+  - **/test-results/ directories
+  - **/playwright-report/ directories
+  Clean up or gitignore any stale artifacts before committing.

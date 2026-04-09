@@ -1,0 +1,11 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: cartridges/voting/
+ADVISORY: |
+  You are editing voting cartridge code. Key invariants:
+  - Every voting mechanism MUST eliminate exactly one player
+  - eliminatedId must NEVER be null
+  - If no one votes, eliminate lowest silver. If tied, use lowest silver
+  - Only exception: FINALS picks a winner instead of eliminating
+  - All result summaries must show: vote tallies, who voted for whom, elimination outcome
+  - Results must be shown immediately after voting closes, never delayed to night summary
+  Read apps/game-server/CLAUDE.md for full game design rules.
