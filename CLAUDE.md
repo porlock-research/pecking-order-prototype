@@ -16,18 +16,6 @@ Turborepo monorepo. Cloudflare Workers (PartyServer/Durable Objects), XState v5.
 - `packages/auth` — JWT creation/verification (jose)
 - `packages/ui-kit` — Tailwind preset + theme CSS variables
 
-## Architecture
-
-Russian Doll: L1 (Durable Object `server.ts`) → L2 (XState orchestrator `l2-orchestrator.ts`) → L3 (daily session `l3-session.ts`) → L4 (post-game `l4-post-game.ts`).
-
-L2 states: `uninitialized` → `preGame` → `dayLoop` (invokes L3) → `nightSummary` → `gameSummary` (invokes L4) → `gameOver`
-
-Server modules (L1 is a thin shell): `http-handlers.ts`, `ws-handlers.ts`, `subscription.ts`, `machine-actions.ts`, `scheduling.ts`, `snapshot.ts`, `sync.ts`, `global-routes.ts`, `log.ts`
-
-- **Specs**: `spec/spec_master_technical_spec.md` and `spec/spec_implementation_guidance.md` are the source of truth
-- **ADR log**: `plans/DECISIONS.md` (ADR-001 through ADR-129+)
-- **Cartridge registries**: Voting (`cartridges/voting/_registry.ts`), Prompts (`cartridges/prompts/_registry.ts`), Games (`packages/game-cartridges/src/machines/index.ts`)
-
 ## Commands
 
 ```bash
@@ -51,6 +39,10 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - **Always merge main INTO feature branch first** before merging to main. The branch safety hook blocks edits on main — if conflicts arise during merge-to-main, you're stuck. Resolve on the feature branch first.
 - **Clean up plans after implementation** — move finished `docs/plans/` files to `docs/plans/archive/` to avoid stale plans confusing future sessions. **Never bulk-delete `~/.claude/plans/`** — that directory is shared across all projects. Only delete plans you can confirm belong to this project and are completed
 - **After changes to L2/L3 machines, SYNC payload shape, manifest types, or cartridge registries** — check if `DemoServer` (`apps/game-server/src/demo/`) needs updating
+- **Subagents use Opus only**: Always set `model: "opus"` when spawning subagents. Never use haiku or sonnet.
+- **Advisory hooks are active** — `.claude/guardrails/` contains rules that fire during tool calls. If a hook advisory appears, follow it before proceeding.
+- **Knowledge hierarchy**: Root CLAUDE.md has monorepo-wide rules. Per-app CLAUDE.md files have app-specific conventions. When working in an app, both are loaded automatically.
+- **End-of-session reflection**: Before ending a session, consider whether you encountered any novel problems. If so, create a guardrail rule file in `.claude/guardrails/` to help future agents.
 
 ## Key Conventions
 
@@ -73,54 +65,6 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - **Lobby PII**: PlaytestSignups stores encrypted PII only (`email_encrypted`, `phone_encrypted`, `email_hash`). Plaintext `email`/`phone` columns were dropped (migration 0014). `PII_ENCRYPTION_KEY` env var is required. Crypto helpers in `apps/lobby/lib/crypto.ts`.
 - **PartyWhen scheduler**: Manages the alarm task queue in DO SQLite (`tasks` table). We access internals via `(scheduler as any).querySql(...)` because the public API is limited. The `wakeUpL2` callback is a no-op by design — actual WAKEUP delivery happens in `onAlarm()`.
 
-## Manifest & Scheduling Glossary
-
-- **STATIC manifest**: All days pre-computed at game creation. Timeline events have fixed ISO timestamps.
-- **DYNAMIC manifest**: Days resolved at runtime by the Game Master actor. Timeline anchored to `Date.now()` on each day start.
-- **ADMIN scheduling**: No alarms — game master advances manually via `NEXT_STAGE`. Timeline timestamps are cosmetic only.
-- **PRE_SCHEDULED scheduling**: Real PartyWhen alarms fire timeline events automatically.
-- **Common trap**: A STATIC/ADMIN game with timestamps in its timeline = timestamps never fire. Use DYNAMIC/PRE_SCHEDULED for real alarms.
-- **Schedule presets**: `SMOKE_TEST` (5min days), `SPEED_RUN` (23min), `PLAYTEST` (4h), `PLAYTEST_SHORT` (5h, 3–8pm), `COMPACT` (6h), `DEFAULT` (24h). See `timeline-presets.ts`.
-- **"Use now" anchoring**: Dynamic timelines use `dayIndex` for WHAT content plays (vote type, game type) and `Date.now()` for WHEN events fire. Never anchor to `startTime + dayOffset`.
-- **Calendar preset day cycle**: `computeNextDayStart` for calendar presets always returns `now + 24h`. This means one game day per real calendar day regardless of the event window length. For faster day cycles, use an offset-based preset.
-- **Timezone rule**: Calendar preset `clockTimes` are offsets from `firstEventTime`, not absolute UTC. Always test with non-midnight startTimes to catch timezone bugs.
-
-## Game Design Rules
-
-These rules come from playtesting. Violating them causes game-breaking bugs or UX regressions.
-
-- **Voting always eliminates**: Every voting mechanism must eliminate exactly one player. `eliminatedId` must NEVER be null. If no one votes, eliminate lowest silver. If tied, use lowest silver. Only exception: FINALS picks a winner.
-- **Results shown immediately**: Show voting/game/prompt results as soon as the phase closes. Never delay results to night summary — this is an async game, players shouldn't wait hours.
-- **No emoji in UI**: Use `@solar-icons/react` (vivid shell) or lucide-react (classic). Emoji look inconsistent across platforms.
-- **Persona avatars always visible**: Never replace player avatars with status icons. Use overlay indicators (badges, borders, opacity) on the avatar instead.
-- **Results inline, not fullscreen**: Completed activity results render inline in the Today tab. Fullscreen takeover ONLY for arcade games (they need the canvas).
-- **Explain mechanics to players**: Every cartridge should have an explanation. Game Master messages in chat are the preferred approach.
-- **All voting result summaries must show**: vote tallies per player, who voted for whom, and the elimination outcome. Each mechanism stores tallies under different keys — see `CompletedSummary.tsx`.
-
-## XState v5 Rules
-
-- **`sendParent()` in `assign()`**: Silent no-op. Split into separate actions.
-- **Invoked children**: Do NOT receive unhandled parent events. Use explicit `sendTo('childId', event)`.
-- **Spawned actor snapshots**: Must register machine in `setup({ actors: { key: machine } })` and spawn via key string, or snapshot restore fails with `this.logic.transition is not a function`.
-- **Set/Map in context**: Serialize to `{}` via JSON.stringify. Use `Record<string, true>` instead of `Set`, plain objects instead of `Map`.
-- **Entry action batching**: `enqueue.sendTo()` queues delivery until AFTER all entry actions complete. For synchronous reads, use direct `ref.send()` inside `assign()`.
-- **`invoke.src` with function**: Treated as callback actor, not key lookup. Use `spawn()` for dynamic dispatch.
-- **`enqueue.sendTo('child-id', event)`**: Cannot resolve invoked children. Use `enqueue.raise()` workaround.
-- **`spawn()` only in `assign()`**: `spawn()` is NOT available in `enqueueActions()`. If you need to spawn AND do other work, use separate actions: `assign()` for spawn, then another action for the rest.
-- **Parallel state name collisions**: Parallel regions (dilemmaLayer, activityLayer, votingLayer) should use unique state names. Using `playing` in multiple layers causes `resolveDayPhase()` to misidentify the phase. Use descriptive names like `dilemmaActive`, `voting`, `dailyGame`.
-
-## Client Architecture
-
-- **State**: Zustand store (`src/store/useGameStore.ts`). `playerId` is NOT set from SYNC — must call `setPlayerId()` explicitly.
-- **WebSocket**: PartySocket via `useGameEngine` hook. Connects to `/parties/game-server/{gameId}`.
-- **Shells**: `ShellLoader` lazy-loads from `shells/registry.ts`. Select via `?shell=immersive|classic|vivid`.
-- **CSS**: Tailwind + `@pecking-order/ui-kit` preset. Shell-specific CSS variables (e.g., `--vivid-*`).
-- **Vivid shell**: Inline styles with `--vivid-*` CSS variables (NOT Tailwind classes). `@solar-icons/react` icons with `weight="Bold"`. Springs from `shells/vivid/springs.ts`.
-- **Vaul Portal**: `Drawer.Portal` renders outside shell DOM tree — CSS custom properties don't resolve. Use explicit hex values.
-- **Icons**: `@solar-icons/react` (vivid), lucide-react (classic/admin). **Motion**: framer-motion. **Toasts**: sonner. **Drawers**: vaul.
-- **PWA**: vite-plugin-pwa, custom service worker (`src/sw.ts`), autoUpdate strategy.
-- **Error reporting**: Sentry (`@sentry/react`), tunneled via sentry-tunnel worker.
-
 ## Testing
 
 - **Vitest**: `apps/game-server/src/machines/__tests__/`. Pattern: create actor → send events → assert snapshots.
@@ -140,13 +84,10 @@ These rules come from playtesting. Violating them causes game-breaking bugs or U
 
 ## Key Documentation
 
-- `ARCHITECTURE.md` — Non-obvious data flows, module relationships, implicit contracts (read alongside this file)
+- `ARCHITECTURE.md` — Non-obvious data flows, module relationships, implicit contracts
+- `plans/DECISIONS.md` — ADR log (ADR-001 through ADR-129+). **Read before architectural changes.**
 - `spec/spec_master_technical_spec.md` — Technical requirements (source of truth)
 - `spec/spec_implementation_guidance.md` — Implementation patterns (source of truth)
-- `plans/DECISIONS.md` — ADR log (ADR-001 through ADR-129+)
-- `plans/architecture/server-refactor-and-dynamic-days.md` — Phased refactor plan
-- `plans/architecture/feature-dynamic-days.md` — Dynamic days design
-- `docs/plans/` — Design docs and implementation plans (active work)
-- `docs/plans/archive/` — Completed plans (moved here after implementation)
-- `plans/issues/` — Categorized issue tracker
 - `docs/machines/` — Auto-generated XState machine diagrams (`npm run generate:docs`)
+- `docs/plans/` — Active design docs and implementation plans
+- `docs/plans/archive/` — Completed plans (reference only)
