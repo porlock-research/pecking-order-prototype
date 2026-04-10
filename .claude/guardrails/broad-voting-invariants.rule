@@ -8,4 +8,4 @@ ADVISORY: |
   - Only exception: FINALS picks a winner instead of eliminating
   - All result summaries must show: vote tallies, who voted for whom, elimination outcome
   - Results must be shown immediately after voting closes, never delayed to night summary
-  Read apps/game-server/CLAUDE.md for full game design rules.
+  Read apps/game-server/.claude/invariants/voting.md for full rules.

@@ -1,0 +1,22 @@
+MATCH_TOOL: Write|Edit
+MATCH_PATTERN: \.claude/guardrails/.*\.rule
+ADVISORY: |
+  You are creating or editing a guardrail rule file.
+
+  Pattern matching should be SPECIFIC, not broad:
+  ❌ MATCH_PATTERN: server\.ts
+     (matches ANY server.ts, even in wrong directories)
+
+  ✅ MATCH_PATTERN: game-server/src/server\.ts
+     (targets the specific architectural component)
+
+  Overly broad patterns cause:
+  - False positives (advisory fires when not needed)
+  - Advisory noise (agent ignores repetitive false triggers)
+  - Harder to distinguish which rule fired
+
+  Before committing a rule, test the pattern against the codebase
+  to verify it matches ONLY the files it should target.
+
+  Learned during guardian hook implementation: pattern scope was too
+  broad initially, causing unnecessary advisor output.

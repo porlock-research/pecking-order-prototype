@@ -1,0 +1,31 @@
+MATCH_TOOL: Agent
+MATCH_PATTERN: superpowers:writing-plans|superpowers:executing-plans
+ADVISORY: |
+  You are about to write or execute a plan based on a spec or design.
+
+  CRITICAL LEARNING — Plan drift:
+  Plans often become narrower than the spec they're based on. The agent
+  executing the plan focuses on what's easy to implement (infrastructure,
+  files, configuration) and misses what's harder to quantify (patterns,
+  meta-processes, self-improvement loops).
+
+  This happened in the self-learning workflow design: the spec described:
+  1. Advisory hooks (✓ built)
+  2. Hierarchical knowledge structure (✓ partially built)
+  3. Self-learning loop mechanism (✗ NOT built)
+  4. Per-app .claude/ directories (✗ NOT built)
+  5. Skill update process (✗ NOT built)
+  6. Promotion path mechanism (✗ NOT built)
+  7. Daily health check cadence (✗ NOT built)
+
+  The plan covered #1-2 and was executed successfully, but didn't include
+  #3-7. The agent didn't notice until the user caught the gap.
+
+  BEFORE EXECUTING A PLAN:
+  1. Read the full spec/design document
+  2. Compare plan section-by-section against spec
+  3. Call out any sections of the spec not in the plan
+  4. Ask: "Is this section intentionally deferred, or is it a gap?"
+
+  This is the same pattern the self-learning system was designed to catch.
+  Agents should be the first line of defense against drift.

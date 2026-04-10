@@ -1,0 +1,14 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: \.claude/hooks/.*\.sh|settings\.json.*hooks
+ADVISORY: |
+  You are implementing or modifying a Claude Code hook.
+
+  CRITICAL: Hook output fields have different audiences:
+  - permissionDecisionReason: shown in UI ONLY — agent model NEVER sees it
+  - additionalContext: injected into model context — agent sees it
+
+  If your hook needs to advise the AGENT, use additionalContext.
+  If your hook only needs to explain the decision to the USER, use permissionDecisionReason.
+
+  This was discovered when the guardian advisory hook didn't reach agents
+  until switched from permissionDecisionReason to additionalContext.
