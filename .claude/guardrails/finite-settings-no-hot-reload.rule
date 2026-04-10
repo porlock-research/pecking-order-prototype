@@ -1,0 +1,15 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: settings\.local\.json|settings\.json
+ADVISORY: |
+  You are modifying Claude Code settings.
+
+  IMPORTANT: settings.local.json does NOT hot-reload. Changes only take
+  effect in NEW sessions (new terminal tab + new claude session).
+
+  If you're testing hook changes, tell the user they need to start a
+  fresh session to see the effect. Don't waste time debugging why a
+  hook isn't firing in the current or an existing session.
+
+  Also: settings.local.json is gitignored. Hook registration changes
+  must be communicated to users for manual setup — they cannot be
+  committed to the repository.

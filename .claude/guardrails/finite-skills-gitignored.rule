@@ -1,0 +1,8 @@
+MATCH_TOOL: Bash
+MATCH_PATTERN: git add.*\.claude/skills
+ADVISORY: |
+  .claude/skills/ is gitignored. To commit skill file changes, use:
+    git add -f .claude/skills/path/to/SKILL.md
+
+  Without -f, git will silently skip the file and your skill update
+  won't be committed.
