@@ -64,14 +64,15 @@ ${ADVISORY}
 done
 
 if [ -n "$ADVISORIES" ]; then
-  # Output as permissionDecision: allow with reason (agent sees the reason)
+  # Use additionalContext to inject advisory text into the model's context
+  # permissionDecisionReason only shows in UI; additionalContext reaches the agent
   ESCAPED=$(echo "$ADVISORIES" | jq -Rs .)
   cat <<EOF
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "allow",
-    "permissionDecisionReason": $ESCAPED
+    "additionalContext": $ESCAPED
   }
 }
 EOF
