@@ -49,6 +49,7 @@ NEVER kill spawned children directly. Forward termination event → child calcul
 - **"Use now" anchoring**: Dynamic timelines use `dayIndex` for WHAT content plays (vote type, game type) and `Date.now()` for WHEN events fire. Never anchor to `startTime + dayOffset`.
 - **Calendar preset day cycle**: `computeNextDayStart` for calendar presets always returns `now + 24h`. One game day per real calendar day.
 - **Timezone rule**: Calendar preset `clockTimes` are offsets from `firstEventTime`, not absolute UTC. Always test with non-midnight startTimes.
+- **Schedule presets**: `SMOKE_TEST` (5min days), `SPEED_RUN` (23min), `PLAYTEST` (4h), `PLAYTEST_SHORT` (5h, 3–8pm), `COMPACT` (6h), `DEFAULT` (24h). See `timeline-presets.ts`.
 
 ## PartyWhen Scheduler
 

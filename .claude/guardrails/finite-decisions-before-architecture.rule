@@ -1,5 +1,5 @@
 MATCH_TOOL: Edit|Write
-MATCH_PATTERN: l2-orchestrator|l3-session|l4-post-game|server\.ts|http-handlers|ws-handlers|scheduling
+MATCH_PATTERN: l2-orchestrator|l3-session|l4-post-game|game-server/src/server\.ts|http-handlers|ws-handlers|scheduling
 ADVISORY: |
   You are editing core server architecture. Before making changes:
   - Read plans/DECISIONS.md for relevant ADRs (129+ decisions documented)
