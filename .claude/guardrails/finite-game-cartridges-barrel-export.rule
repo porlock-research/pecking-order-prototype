@@ -1,0 +1,9 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: packages/game-cartridges/src/machines/index\.ts
+ADVISORY: |
+  game-cartridges has TWO barrel export levels:
+  1. packages/game-cartridges/src/machines/index.ts (machine registry)
+  2. packages/game-cartridges/src/index.ts (package entry point)
+  Adding a new machine to machines/index.ts is NOT enough — you must
+  ALSO add it to src/index.ts or it won't be available to consumers
+  via import('@pecking-order/game-cartridges').
