@@ -12,7 +12,7 @@ Turborepo monorepo. Cloudflare Workers (PartyServer/Durable Objects), XState v5.
 - `apps/nudge-worker` — Push notification delivery worker
 - `apps/sentry-tunnel` — Error reporting proxy
 - `packages/shared-types` — Event constants (`Events.*`), Zod schemas, manifest types. **Always import constants from here.**
-- `packages/game-cartridges` — 16 game mini-game XState machines (arcade factory + sync decisions + trivia + live)
+- `packages/game-cartridges` — 19 game mini-game XState machines (arcade factory + sync decisions + trivia + live)
 - `packages/auth` — JWT creation/verification (jose)
 - `packages/ui-kit` — Tailwind preset + theme CSS variables
 

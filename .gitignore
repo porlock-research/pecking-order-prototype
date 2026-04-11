@@ -56,6 +56,9 @@ skills-lock.json
 # Git worktrees
 .worktrees/
 
+# Superpowers brainstorm sessions
+.superpowers/
+
 # Playwright MCP logs
 .playwright-mcp/
 
