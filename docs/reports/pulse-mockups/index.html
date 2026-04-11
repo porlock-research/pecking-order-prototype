@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Pulse Shell — Design Mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0e; font-family: 'Outfit', sans-serif; color: #f0f0f0; }
+
+  .hero { text-align: center; padding: 60px 20px 40px; }
+  .hero h1 { font-size: 48px; font-weight: 900; color: #ff3b6f; letter-spacing: -2px; }
+  .hero p { font-size: 16px; color: #666; margin-top: 10px; max-width: 600px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+
+  .toggle { display: flex; justify-content: center; gap: 4px; margin: 30px auto; background: #13131a; border-radius: 12px; padding: 4px; width: fit-content; }
+  .toggle-btn { padding: 10px 24px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; border: none; font-family: 'Outfit'; }
+  .toggle-btn.active { background: #ff3b6f; color: #fff; }
+  .toggle-btn:not(.active) { background: none; color: #555; }
+
+  .gallery { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .section { margin-bottom: 60px; }
+  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; color: #ff3b6f; text-align: center; margin-bottom: 8px; }
+  .section-desc { font-size: 14px; color: #555; text-align: center; margin-bottom: 20px; }
+  .section img { width: 100%; border-radius: 12px; display: block; }
+
+  .theme-light, .theme-dark { display: none; }
+  .theme-dark.visible, .theme-light.visible { display: block; }
+
+  .footer { text-align: center; padding: 40px 20px; color: #333; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>PULSE</h1>
+  <p>A new shell for Pecking Order. Reality TV aesthetic, persona-first design, activity pulse bar, broadcast ticker. Designed to make the game feel alive.</p>
+</div>
+
+<div class="toggle">
+  <button class="toggle-btn active" onclick="setTheme('dark')">Dark Mode</button>
+  <button class="toggle-btn" onclick="setTheme('light')">Light Mode</button>
+</div>
+
+<!-- DARK -->
+<div class="gallery theme-dark visible" id="dark">
+  <div class="section">
+    <div class="section-title">Core Screens</div>
+    <div class="section-desc">Chat and Cast tabs with broadcast ticker and pulse bar</div>
+    <img src="02-core-screens.png">
+  </div>
+  <div class="section">
+    <div class="section-title">Conversations</div>
+    <div class="section-desc">Direct messages and group DMs with character portraits</div>
+    <img src="03-conversations.png">
+  </div>
+  <div class="section">
+    <div class="section-title">Active Cartridges</div>
+    <div class="section-desc">Executioner Vote and Trivia Blitz expanded from pulse bar</div>
+    <img src="04-cartridges.png">
+  </div>
+  <div class="section">
+    <div class="section-title">Actions</div>
+    <div class="section-desc">Send Silver and Nudge interactions</div>
+    <img src="05-actions.png">
+  </div>
+</div>
+
+<!-- LIGHT -->
+<div class="gallery theme-light" id="light">
+  <div class="section">
+    <div class="section-title">Core Screens</div>
+    <div class="section-desc">Chat and Cast tabs with broadcast ticker and pulse bar</div>
+    <img src="light-01-core.png">
+  </div>
+  <div class="section">
+    <div class="section-title">Conversations</div>
+    <div class="section-desc">Direct messages and group DMs with character portraits</div>
+    <img src="light-02-conversations.png">
+  </div>
+  <div class="section">
+    <div class="section-title">Active Cartridges</div>
+    <div class="section-desc">Executioner Vote and Trivia Blitz expanded from pulse bar</div>
+    <img src="light-03-cartridges.png">
+  </div>
+  <div class="section">
+    <div class="section-title">Actions</div>
+    <div class="section-desc">Send Silver and Nudge interactions</div>
+    <img src="light-04-actions.png">
+  </div>
+</div>
+
+<div class="footer">Pecking Order — Pulse Shell Design Mockups — April 2026</div>
+
+<script>
+function setTheme(theme) {
+  document.getElementById('dark').classList.toggle('visible', theme === 'dark');
+  document.getElementById('light').classList.toggle('visible', theme === 'light');
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(theme));
+  });
+}
+</script>
+</body>
+</html>
