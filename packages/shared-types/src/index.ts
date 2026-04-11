@@ -89,6 +89,7 @@ export const GameTypeSchema = z.enum([
   "REACTION_TIME", "COLOR_MATCH", "STACKER", "QUICK_MATH", "SIMON_SAYS", "AIM_TRAINER",
   "BET_BET_BET", "BLIND_AUCTION", "KINGS_RANSOM", "THE_SPLIT",
   "TOUCH_SCREEN",
+  "SHOCKWAVE", "ORBIT", "BEAT_DROP",
   "NONE",
 ]);
 export type GameType = z.infer<typeof GameTypeSchema>;

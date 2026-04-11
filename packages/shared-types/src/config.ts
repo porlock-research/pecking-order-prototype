@@ -116,6 +116,27 @@ export const Config = {
       revealDurationMs: 8_000,
       winnerBonus: 10,
     },
+    shockwave: {
+      timeLimitMs: 60_000,
+      scorePerSilver: 3,
+      nearMissBonus: 5,
+      scorePerGold: 15,
+    },
+    orbit: {
+      timeLimitMs: 60_000,
+      transfersPerSilver: 2,
+      perfectsPerBonusSilver: 3,
+      transfersPerGold: 10,
+    },
+    beatDrop: {
+      timeLimitMs: 90_000,
+      scorePerSilver: 500,
+      perfectAccuracyBonus: 3,
+      scorePerGold: 2500,
+      startBpm: 100,
+      endBpm: 160,
+      maxLives: 3,
+    },
   },
   dilemma: {
     silverParticipation: 5,

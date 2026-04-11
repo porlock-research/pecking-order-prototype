@@ -38,6 +38,9 @@ const GAME_POOL: MechanicSpec<GameType>[] = [
   { type: 'GAP_RUN', minPlayers: 2 },
   { type: 'SIMON_SAYS', minPlayers: 2 },
   { type: 'AIM_TRAINER', minPlayers: 2 },
+  { type: 'SHOCKWAVE', minPlayers: 2 },
+  { type: 'ORBIT', minPlayers: 2 },
+  { type: 'BEAT_DROP', minPlayers: 2 },
 ];
 
 // Activities: icebreaker → suspense → fun → deeper social → opinion → deduction.

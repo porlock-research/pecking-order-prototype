@@ -26,4 +26,7 @@ export const GAME_TYPE_INFO: Record<Exclude<GameType, 'NONE'>, GameTypeInfo> = {
   BLIND_AUCTION:   { name: 'Blind Auction',   description: 'Bid without seeing others\' bets' },
   KINGS_RANSOM:    { name: 'King\'s Ransom',  description: 'A royal risk-reward gamble' },
   THE_SPLIT:       { name: 'The Split',       description: 'Split or steal — trust is everything' },
+  SHOCKWAVE:       { name: 'Shockwave',      description: 'Dodge contracting rings in a neon arena' },
+  ORBIT:           { name: 'Orbit',           description: 'Slingshot between gravity wells — timing is everything' },
+  BEAT_DROP:       { name: 'Beat Drop',       description: 'Hit notes on the beat, build combos, don\'t miss' },
 };
