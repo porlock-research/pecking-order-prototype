@@ -1,0 +1,7 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: ticker|Ticker|TICKER
+ADVISORY: |
+  Ticker messages arrive via TICKER.UPDATE WebSocket events (their own namespace),
+  NOT via SYSTEM.SYNC. Per ADR-030, the useGameEngine hook dispatches ticker messages
+  separately. The store field is `tickerMessages` but it's populated by TICKER.UPDATE,
+  not the SYNC handler. Don't wire ticker consumption to the SYNC flow.
