@@ -43,6 +43,12 @@ export function setupActorSubscription(
   // with the restored snapshot — suppress ticker emissions to avoid duplicates.
   let isRestoreFire = true;
 
+  // Debounce SYNC broadcast — complex transitions (nightSummary, FACT.RECORD chains)
+  // trigger 10-15+ assign() calls, each firing this subscription. Without debouncing,
+  // each fires a full SYNC broadcast + snapshot serialize, flooding the client.
+  // The save is kept synchronous for durability; only broadcasts are batched.
+  let syncPending = false;
+
   actor.subscribe(async (snapshot) => {
     const { state } = deps;
     const { l3Context, l3Snapshot, chatLog } = extractL3Context(snapshot, state.lastKnownChatLog);
@@ -68,13 +74,25 @@ export function setupActorSubscription(
 
     // B. (Scheduling moved to handleInit — manifest events pre-scheduled at game creation)
 
-    // C. Broadcast SYSTEM.SYNC to all clients
-    const cartridges = extractCartridges(snapshot);
-    broadcastSync(
-      { snapshot, l3Context, l3SnapshotValue: l3Snapshot?.value, chatLog, cartridges },
-      deps.getConnections,
-      getOnlinePlayerIds(deps.connectedPlayers),
-    );
+    // C. Broadcast SYSTEM.SYNC to all clients (debounced via microtask)
+    // Multiple rapid assign() calls within a single transition batch into one broadcast.
+    if (!syncPending) {
+      syncPending = true;
+      queueMicrotask(() => {
+        syncPending = false;
+        const currentActor = deps.getActor();
+        if (!currentActor) return;
+        const latestSnapshot = currentActor.getSnapshot();
+        const { l3Context: latestL3, l3Snapshot: latestL3Snap, chatLog: latestChat } =
+          extractL3Context(latestSnapshot, deps.state.lastKnownChatLog);
+        const latestCartridges = extractCartridges(latestSnapshot);
+        broadcastSync(
+          { snapshot: latestSnapshot, l3Context: latestL3, l3SnapshotValue: latestL3Snap?.value, chatLog: latestChat, cartridges: latestCartridges },
+          deps.getConnections,
+          getOnlinePlayerIds(deps.connectedPlayers),
+        );
+      });
+    }
 
     // D. Ticker: detect state transitions
     const l3StateJson = l3Snapshot ? JSON.stringify(l3Snapshot.value) : '';
