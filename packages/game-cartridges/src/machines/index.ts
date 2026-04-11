@@ -20,6 +20,9 @@ export { blindAuctionMachine } from './blind-auction';
 export { kingsRansomMachine } from './kings-ransom';
 export { touchScreenMachine } from './touch-screen';
 export { theSplitMachine } from './the-split';
+export { shockwaveMachine } from './shockwave';
+export { orbitMachine } from './orbit';
+export { beatDropMachine } from './beat-drop';
 
 import { gapRunMachine } from './gap-run';
 import { gridPushMachine } from './grid-push';
@@ -37,6 +40,9 @@ import { blindAuctionMachine } from './blind-auction';
 import { kingsRansomMachine } from './kings-ransom';
 import { touchScreenMachine } from './touch-screen';
 import { theSplitMachine } from './the-split';
+import { shockwaveMachine } from './shockwave';
+import { orbitMachine } from './orbit';
+import { beatDropMachine } from './beat-drop';
 
 export const GAME_REGISTRY = {
   GAP_RUN: gapRunMachine,
@@ -55,4 +61,7 @@ export const GAME_REGISTRY = {
   KINGS_RANSOM: kingsRansomMachine,
   TOUCH_SCREEN: touchScreenMachine,
   THE_SPLIT: theSplitMachine,
+  SHOCKWAVE: shockwaveMachine,
+  ORBIT: orbitMachine,
+  BEAT_DROP: beatDropMachine,
 } as const;
