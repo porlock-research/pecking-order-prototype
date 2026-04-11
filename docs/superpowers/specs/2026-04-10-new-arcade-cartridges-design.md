@@ -425,7 +425,7 @@ File: packages/game-cartridges/src/machines/beat-drop.ts
 gameType: 'BEAT_DROP'
 defaultTimeLimit: 90_000
 computeRewards:
-  silver = floor(score / 500) + (accuracy === 1.0 ? 3 : 0), capped at 15
+  silver = floor(score / 500) + (accuracyPct === 100 ? 3 : 0), capped at 15
   gold = floor(score / 2500)
 ```
 
@@ -436,7 +436,7 @@ computeRewards:
   score: number;
   perfectHits: number;
   maxCombo: number;
-  accuracy: number;  // 0-1, fraction of non-miss hits
+  accuracyPct: number;  // 0-100 integer — NOT 0-1 fraction (arcade machine floors all values)
   // timeElapsed is injected server-side by the arcade machine — do NOT send from client
 }
 ```
@@ -525,7 +525,7 @@ Config.game.beatDrop = {
 
 ### DemoServer
 
-The DemoServer (`apps/game-server/src/demo/`) is chat-only — no game cartridge references. Adding to `GAME_REGISTRY` does **not** require DemoServer changes. Verified: no compilation impact.
+The DemoServer (`apps/game-server/src/demo/`) has hardcoded game types in its manifest but does not import from `GAME_REGISTRY` or spawn cartridge machines. Adding new types to `GameTypeSchema`/`GAME_REGISTRY` does **not** require DemoServer changes. Verified: no compilation impact.
 
 ---
 
