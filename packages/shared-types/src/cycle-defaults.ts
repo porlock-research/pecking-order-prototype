@@ -41,6 +41,13 @@ const GAME_POOL: MechanicSpec<GameType>[] = [
   { type: 'SHOCKWAVE', minPlayers: 2 },
   { type: 'ORBIT', minPlayers: 2 },
   { type: 'BEAT_DROP', minPlayers: 2 },
+  { type: 'RIPPLE', minPlayers: 2 },
+  { type: 'BOUNCE', minPlayers: 2 },
+  { type: 'INFLATE', minPlayers: 2 },
+  { type: 'SWITCHBOARD', minPlayers: 2 },
+  { type: 'FLOCK', minPlayers: 2 },
+  { type: 'SCULPTOR', minPlayers: 2 },
+  { type: 'CODEBREAKER', minPlayers: 2 },
 ];
 
 // Activities: icebreaker → suspense → fun → deeper social → opinion → deduction.
