@@ -17,4 +17,7 @@ If advisories exist, display each one clearly with a brief explanation of what a
 - **CLEANUP** — stale files or artifacts to remove
 - **REVIEW** — guardrail rules or knowledge that may need promotion or updating
 
-After displaying, ask if the user wants to address any of them now.
+After displaying, delete the cache file so the status line indicator clears:
+`rm -f /tmp/claude-advisory-<hash>.txt`
+
+Then ask if the user wants to address any of them now.

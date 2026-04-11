@@ -32,10 +32,10 @@ if [ -n "$STALE_DIRS" ]; then
 CLEANUP: Stale test artifact directories found:$STALE_DIRS"
 fi
 
-# 5. Check for rules that might be ready for promotion (more than 3 rules with same prefix)
+# 5. Check for rules that might be ready for promotion (more than 12 rules with same prefix)
 for prefix in broad finite; do
   COUNT=$(ls "$GUARDRAILS_DIR"/${prefix}-*.rule 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$COUNT" -gt 5 ]; then
+  if [ "$COUNT" -gt 12 ]; then
     REPORT="$REPORT
 REVIEW: $COUNT $prefix-* rules — consider promoting related rules into skills or workflows."
   fi
