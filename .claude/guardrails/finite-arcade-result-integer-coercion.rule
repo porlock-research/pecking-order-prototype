@@ -1,0 +1,7 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: (arcade|game-cartridges|Renderer\.tsx|onResult)
+ADVISORY: |
+  Arcade machine result values are ALL coerced via Math.floor(Number(val) || 0)
+  at arcade-machine.ts:139. Any fractional values (e.g., accuracy as 0-1 float)
+  will be destroyed. Always send integer values in onResult payloads.
+  Example: use accuracyPct (0-100) not accuracy (0.0-1.0).
