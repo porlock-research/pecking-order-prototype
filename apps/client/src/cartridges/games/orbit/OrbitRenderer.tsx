@@ -83,22 +83,45 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
         const transferNum = stars.length;
         const wellRadius = Math.max(MIN_WELL_RADIUS, INITIAL_WELL_RADIUS - transferNum * WELL_SHRINK_PER_TRANSFER) * (1 - difficulty * 0.2);
 
-        let x: number, y: number;
+        let x = HALF, y = HALF;
         if (stars.length === 0) {
-          x = HALF;
-          y = HALF;
+          // first star at center
         } else {
           const prev = stars[stars.length - 1];
-          // Place stars in a spread around the forward direction
-          // Use multiple candidate positions and pick one that's reachable
-          // (within well radius of a tangent release from the previous star)
-          const minDist = 120; // enough space to feel like a real jump
-          const maxDist = 200; // but not so far that it's unreachable
-          const placeDist = minDist + rng() * (maxDist - minDist);
-          // Spread across a wide arc so different release timings reach different stars
-          const placeAngle = rng() * Math.PI * 2; // full circle — any direction is valid
-          x = prev.x + Math.cos(placeAngle) * placeDist;
-          y = prev.y + Math.sin(placeAngle) * placeDist;
+          const minDist = 140;
+          const maxDist = 220;
+          const MIN_SEPARATION = 100; // minimum distance from ANY existing star
+
+          // Try up to 20 candidates, pick first that's far enough from all existing stars
+          let placed = false;
+          for (let attempt = 0; attempt < 20; attempt++) {
+            const placeDist = minDist + rng() * (maxDist - minDist);
+            const placeAngle = rng() * Math.PI * 2;
+            const cx = prev.x + Math.cos(placeAngle) * placeDist;
+            const cy = prev.y + Math.sin(placeAngle) * placeDist;
+
+            // Check distance from all existing stars
+            let tooClose = false;
+            for (const existing of stars) {
+              if (distance(cx, cy, existing.x, existing.y) < MIN_SEPARATION) {
+                tooClose = true;
+                break;
+              }
+            }
+            if (!tooClose) {
+              x = cx;
+              y = cy;
+              placed = true;
+              break;
+            }
+          }
+          // Fallback: place further out if all attempts failed
+          if (!placed) {
+            const placeDist = maxDist + 50;
+            const placeAngle = rng() * Math.PI * 2;
+            x = prev.x + Math.cos(placeAngle) * placeDist;
+            y = prev.y + Math.sin(placeAngle) * placeDist;
+          }
         }
 
         const colorKey = STAR_COLORS_KEYS[Math.floor(rng() * STAR_COLORS_KEYS.length)];
@@ -255,23 +278,11 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
         ctx.setLineDash([]);
         ctx.globalAlpha = 1;
 
-        // Orbit path + remaining orbits indicator for current star
+        // Orbit path for current star — prominent solid ring
         if (i === currentStarIdx && state === 'orbiting') {
-          // Draw orbit countdown ring — arc that shrinks as orbits are used
-          const orbitsLeft = star.maxOrbits - orbitCount;
-          const orbitFraction = orbitsLeft / star.maxOrbits;
-          const urgencyColor = orbitFraction <= 0.34 ? t.colors.danger : orbitFraction <= 0.67 ? t.colors.orange : star.color;
           ctx.globalAlpha = 0.4 * alpha;
-          ctx.strokeStyle = urgencyColor;
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(star.x, star.y, star.orbitRadius + 8, -Math.PI / 2, -Math.PI / 2 + orbitFraction * Math.PI * 2);
-          ctx.stroke();
-
-          ctx.globalAlpha = 0.15 * alpha;
           ctx.strokeStyle = star.color;
-          ctx.lineWidth = 1;
-          ctx.setLineDash([3, 5]);
+          ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.arc(star.x, star.y, star.orbitRadius, 0, Math.PI * 2);
           ctx.stroke();
@@ -298,23 +309,35 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
         ctx.globalAlpha = 1;
       }
 
-      // Trajectory preview
+      // Trajectory preview — prominent dashed line showing release direction
       if (state === 'orbiting' && difficulty <= 0.6) {
-        const star = stars[currentStarIdx];
         const tangentAngle = orbitAngle + Math.PI / 2;
         const startX = planetX;
         const startY = planetY;
         const endX = startX + Math.cos(tangentAngle) * PREVIEW_LENGTH;
         const endY = startY + Math.sin(tangentAngle) * PREVIEW_LENGTH;
 
-        ctx.globalAlpha = 0.3 * deathFadeAlpha;
-        ctx.strokeStyle = t.colors.textDim;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 5]);
+        ctx.globalAlpha = 0.6 * deathFadeAlpha;
+        ctx.strokeStyle = t.colors.info;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        drawWithGlow(ctx, t.colors.info, 4, () => {
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+        });
+        // Arrow head
+        const arrowSize = 8;
+        const ax = endX;
+        const ay = endY;
+        ctx.fillStyle = t.colors.info;
         ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(endX, endY);
-        ctx.stroke();
+        ctx.moveTo(ax + Math.cos(tangentAngle) * arrowSize, ay + Math.sin(tangentAngle) * arrowSize);
+        ctx.lineTo(ax + Math.cos(tangentAngle + 2.5) * arrowSize, ay + Math.sin(tangentAngle + 2.5) * arrowSize);
+        ctx.lineTo(ax + Math.cos(tangentAngle - 2.5) * arrowSize, ay + Math.sin(tangentAngle - 2.5) * arrowSize);
+        ctx.closePath();
+        ctx.fill();
         ctx.setLineDash([]);
         ctx.globalAlpha = 1;
       }
