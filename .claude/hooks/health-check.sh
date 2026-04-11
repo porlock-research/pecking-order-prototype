@@ -41,7 +41,30 @@ REVIEW: $COUNT $prefix-* rules — consider promoting related rules into skills 
   fi
 done
 
-# Output as additionalContext
+# Collect advisories (lines after the first "GUARDRAILS: N rules active" line)
+ADVISORIES=""
+ADVISORY_COUNT=0
+while IFS= read -r line; do
+  case "$line" in
+    GUARDRAILS:*) ;; # skip the count line — it's info, not an advisory
+    "") ;;           # skip empty lines
+    *)
+      ADVISORIES="${ADVISORIES}${line}
+"
+      ADVISORY_COUNT=$((ADVISORY_COUNT + 1))
+      ;;
+  esac
+done <<< "$REPORT"
+
+# Write advisory cache for statusline and /advisories command
+ADVISORY_FILE="/tmp/claude-advisory-$(echo "$CLAUDE_PROJECT_DIR" | shasum -a 256 | cut -c1-8).txt"
+if [ "$ADVISORY_COUNT" -gt 0 ]; then
+  printf "%s\n%s" "$ADVISORY_COUNT" "$ADVISORIES" > "$ADVISORY_FILE"
+else
+  rm -f "$ADVISORY_FILE"
+fi
+
+# Output as additionalContext (agent sees full report including guardrail count)
 if [ -n "$REPORT" ]; then
   ESCAPED=$(echo "$REPORT" | jq -Rs .)
   cat <<EOF

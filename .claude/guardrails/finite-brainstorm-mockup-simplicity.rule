@@ -1,8 +1,0 @@
-MATCH_TOOL: Write
-MATCH_PATTERN: \.superpowers/brainstorm/.*/content/.*\.html
-ADVISORY: |
-  Keep brainstorm mockup HTML simple. Complex CSS (deep nesting, pseudo-elements, animations,
-  absolute positioning) can break rendering in the visual companion frame. Prefer: flat class
-  hierarchies, inline styles for one-offs, minimal CSS. If a mockup renders broken, simplify
-  the CSS rather than debugging the frame template. The simpler version (novel-v2.html pattern)
-  always works better than the complex one.
