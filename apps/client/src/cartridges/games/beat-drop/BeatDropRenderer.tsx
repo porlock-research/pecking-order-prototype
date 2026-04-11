@@ -70,7 +70,7 @@ interface HitFeedback {
 function generateNotes(rng: () => number, timeLimit: number, difficulty: number): Note[] {
   const { startBpm, endBpm } = Config.game.beatDrop;
   const notes: Note[] = [];
-  let currentTime = 1000; // start after 1 second
+  let currentTime = 3000; // 3 second grace period — player orients to the lanes
 
   while (currentTime < timeLimit - 2000) {
     // BPM at current time

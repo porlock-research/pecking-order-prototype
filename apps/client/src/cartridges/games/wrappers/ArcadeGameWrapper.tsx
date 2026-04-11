@@ -139,12 +139,22 @@ export default function ArcadeGameWrapper({
         </div>
       )}
 
-      {/* COUNTDOWN: 3-2-1-GO */}
+      {/* COUNTDOWN: show game preview with overlay */}
       {gamePhase === 'COUNTDOWN' && (
-        <div className="p-6 flex items-center justify-center min-h-[200px]">
-          <span className="text-6xl font-black font-display text-skin-gold animate-pulse">
-            {countdownValue > 0 ? countdownValue : 'GO'}
-          </span>
+        <div className="relative">
+          <div className="opacity-40 pointer-events-none">
+            <Renderer
+              seed={seed}
+              difficulty={difficulty}
+              timeLimit={timeLimit}
+              onResult={() => {}} // no-op during preview
+            />
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <span className="text-7xl font-black font-display text-skin-gold drop-shadow-lg" style={{ textShadow: '0 0 30px rgba(251,191,36,0.4)' }}>
+              {countdownValue > 0 ? countdownValue : 'GO'}
+            </span>
+          </div>
         </div>
       )}
 

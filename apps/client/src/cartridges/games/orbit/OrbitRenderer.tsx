@@ -37,6 +37,7 @@ interface Star {
   color: string;
   size: number;
   pulsePhase: number;
+  maxOrbits: number; // how many revolutions before ejection
 }
 
 export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }: ArcadeRendererProps) {
@@ -91,8 +92,8 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
           // Place stars in a spread around the forward direction
           // Use multiple candidate positions and pick one that's reachable
           // (within well radius of a tangent release from the previous star)
-          const minDist = wellRadius * 0.8; // overlap with well radius — always capturable
-          const maxDist = wellRadius + 80; // not too far
+          const minDist = 120; // enough space to feel like a real jump
+          const maxDist = 200; // but not so far that it's unreachable
           const placeDist = minDist + rng() * (maxDist - minDist);
           // Spread across a wide arc so different release timings reach different stars
           const placeAngle = rng() * Math.PI * 2; // full circle — any direction is valid
@@ -104,6 +105,9 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
         const color = t.colors[colorKey];
         const size = Math.max(6, wellRadius / 8);
 
+        // Bigger stars = more orbits allowed (2-5 range)
+        const maxOrbits = Math.max(2, Math.min(5, Math.round(size / 3) + 1));
+
         stars.push({
           x, y,
           orbitRadius: INITIAL_ORBIT_RADIUS,
@@ -111,6 +115,7 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
           color,
           size,
           pulsePhase: rng() * Math.PI * 2,
+          maxOrbits,
         });
 
         furthestX = Math.max(furthestX, x);
@@ -123,6 +128,7 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
     // --- Game state ---
     let currentStarIdx = 0;
     let orbitAngle = 0;
+    let orbitCount = 0; // revolutions completed on current star
     let orbitSpeed = INITIAL_ORBIT_SPEED;
     let planetX = stars[0].x + INITIAL_ORBIT_RADIUS;
     let planetY = stars[0].y;
@@ -178,6 +184,7 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
     respawnRef.current = () => {
       const star = stars[currentStarIdx];
       orbitAngle = 0;
+      orbitCount = 0;
       star.orbitRadius = INITIAL_ORBIT_RADIUS;
       planetX = star.x + INITIAL_ORBIT_RADIUS;
       planetY = star.y;
@@ -248,8 +255,19 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
         ctx.setLineDash([]);
         ctx.globalAlpha = 1;
 
-        // Orbit path for current star
+        // Orbit path + remaining orbits indicator for current star
         if (i === currentStarIdx && state === 'orbiting') {
+          // Draw orbit countdown ring — arc that shrinks as orbits are used
+          const orbitsLeft = star.maxOrbits - orbitCount;
+          const orbitFraction = orbitsLeft / star.maxOrbits;
+          const urgencyColor = orbitFraction <= 0.34 ? t.colors.danger : orbitFraction <= 0.67 ? t.colors.orange : star.color;
+          ctx.globalAlpha = 0.4 * alpha;
+          ctx.strokeStyle = urgencyColor;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.orbitRadius + 8, -Math.PI / 2, -Math.PI / 2 + orbitFraction * Math.PI * 2);
+          ctx.stroke();
+
           ctx.globalAlpha = 0.15 * alpha;
           ctx.strokeStyle = star.color;
           ctx.lineWidth = 1;
@@ -368,7 +386,26 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
 
         if (state === 'orbiting') {
           const star = stars[currentStarIdx];
+          const prevAngle = orbitAngle;
           orbitAngle += orbitSpeed * (dt / 1000);
+
+          // Count completed revolutions
+          if (Math.floor(orbitAngle / (Math.PI * 2)) > Math.floor(prevAngle / (Math.PI * 2))) {
+            orbitCount++;
+          }
+
+          // Auto-eject if exceeded max orbits — flung out tangentially
+          if (orbitCount >= star.maxOrbits) {
+            const tangentAngle = orbitAngle + Math.PI / 2;
+            const releaseSpeed = orbitSpeed * star.orbitRadius;
+            planetVx = Math.cos(tangentAngle) * releaseSpeed;
+            planetVy = Math.sin(tangentAngle) * releaseSpeed;
+            state = 'flying';
+            flyingTime = 0;
+            setShowRespawn(false);
+            screenFlash.trigger(withAlpha(t.colors.danger, 0.15), 200);
+          }
+
           planetX = star.x + Math.cos(orbitAngle) * star.orbitRadius;
           planetY = star.y + Math.sin(orbitAngle) * star.orbitRadius;
           trail.push(planetX, planetY);
@@ -400,6 +437,7 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
               transfers++;
               orbitSpeed *= ORBIT_SPEED_MULT;
               flyingTime = 0;
+              orbitCount = 0;
               setShowRespawn(false);
 
               // Perfect capture?
