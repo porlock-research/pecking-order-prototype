@@ -19,6 +19,9 @@ const GAME_COMPONENTS: Record<string, React.LazyExoticComponent<React.ComponentT
   [GameTypes.KINGS_RANSOM]: React.lazy(() => import('../../cartridges/games/kings-ransom/KingsRansom')),
   [GameTypes.TOUCH_SCREEN]: React.lazy(() => import('../../cartridges/games/touch-screen/TouchScreen')),
   [GameTypes.THE_SPLIT]: React.lazy(() => import('../../cartridges/games/the-split/TheSplit')),
+  [GameTypes.SHOCKWAVE]: React.lazy(() => import('../../cartridges/games/shockwave/Shockwave')),
+  [GameTypes.ORBIT]: React.lazy(() => import('../../cartridges/games/orbit/Orbit')),
+  [GameTypes.BEAT_DROP]: React.lazy(() => import('../../cartridges/games/beat-drop/BeatDrop')),
 };
 
 interface GamePanelProps {

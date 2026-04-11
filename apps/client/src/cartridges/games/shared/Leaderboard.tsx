@@ -19,6 +19,9 @@ const GAME_STAT_CONFIG: Record<string, { key: string; label: string; format?: (v
   [GameTypes.SIMON_SAYS]: { key: 'roundsCompleted', label: 'Rounds' },
   [GameTypes.AIM_TRAINER]: { key: 'score', label: 'Score' },
   [GameTypes.TRIVIA]: { key: 'correctCount', label: 'Correct' },
+  [GameTypes.SHOCKWAVE]: { key: 'wavesCleared', label: 'Waves' },
+  [GameTypes.ORBIT]: { key: 'transfers', label: 'Transfers' },
+  [GameTypes.BEAT_DROP]: { key: 'score', label: 'Score' },
 };
 
 interface LeaderboardProps {
