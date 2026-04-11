@@ -157,11 +157,12 @@ class PulseRingEmitter {
 ### Utility Functions
 
 ```typescript
-// Color manipulation using CartridgeTheme's withAlpha pattern
-function withAlpha(color: string, alpha: number): string;
+// Re-export from @pecking-order/ui-kit — DO NOT re-implement
+export { withAlpha } from '@pecking-order/ui-kit/cartridge-theme';
 
-// Seeded PRNG (matches existing Mulberry32 pattern)
-function seededRandom(seed: number): () => number;
+// Seeded PRNG — extracted from existing copy-pasted mulberry32 implementations
+// (currently duplicated in 9 renderer files). Single source of truth.
+function mulberry32(seed: number): () => number;
 
 // Lerp for smooth transitions
 function lerp(a: number, b: number, t: number): number;
@@ -170,6 +171,8 @@ function lerp(a: number, b: number, t: number): number;
 function normalizeAngle(a: number): number;
 function angleBetween(x1: number, y1: number, x2: number, y2: number): number;
 ```
+
+**Note:** `withAlpha` already exists in `@pecking-order/ui-kit/cartridge-theme` (line 66). `mulberry32` is currently copy-pasted across 9 renderer files — this module becomes the single source of truth. Existing renderers can migrate their imports incrementally.
 
 ### Theme Integration
 
@@ -206,7 +209,7 @@ Neon survival in a circular arena. Contracting ring hazards pulse inward with ga
 - **Arena:** Circular play area centered on canvas. Player is a bright point that moves freely within it.
 - **Waves:** Rings spawn at the arena edge and contract inward at constant speed. Each ring is an arc with 1-3 gaps.
 - **Movement:** Player moves toward mouse/touch position at a fixed speed. Click/tap to dash (short burst, 3-second cooldown).
-- **Scoring:** +1 per wave survived. Near-miss bonus (+0.5) for passing within 10px of a ring edge. Combo multiplier builds from consecutive waves survived without taking a dash (risky play rewarded).
+- **Scoring:** +1 per wave survived. Near-miss bonus (+0.5) for passing within 10px of a ring edge. Combo multiplier builds from consecutive waves survived without dashing: 1x (0-4 waves), 1.5x (5-9), 2x (10-19), 3x (20+). Resets to 1x on dash. Risky play rewarded.
 - **Death:** Touch any ring wall.
 
 ### Difficulty Ramp
@@ -244,14 +247,14 @@ computeRewards:
   gold = floor(wavesCleared / 15)
 ```
 
-### Result Payload
+### Result Payload (sent by client via `onResult`)
 
 ```typescript
 {
   wavesCleared: number;
   nearMisses: number;
   maxCombo: number;
-  timeElapsed: number;
+  // timeElapsed is injected server-side by the arcade machine — do NOT send from client
 }
 ```
 
@@ -320,7 +323,13 @@ Difficulty parameter shifts phases earlier and reduces well radii further.
 
 ### Camera
 
-The canvas viewport follows the planet. When a transfer completes, the camera smoothly pans to center the new star. Stars off-screen are not rendered.
+The canvas viewport follows the planet via a 2D camera offset applied to all drawing.
+
+- **During orbit:** Camera centers on the current star (static).
+- **During flight:** Camera lerps toward the planet position at ~5% per frame (smooth follow, slight lag creates dynamism).
+- **On capture:** Camera lerps to center the new star over ~300ms (ease-out).
+- **Viewport culling:** Only draw stars within `viewport + 100px` margin. Stars are generated in chunks ahead of the player's travel direction, so there's always content to fly toward.
+- **Implementation:** `ctx.translate(-cameraX, -cameraY)` before drawing world objects, restore after. HUD draws without camera transform.
 
 ### Server Machine
 
@@ -333,14 +342,14 @@ computeRewards:
   gold = floor(transfers / 10)
 ```
 
-### Result Payload
+### Result Payload (sent by client via `onResult`)
 
 ```typescript
 {
   transfers: number;
   perfectCaptures: number;
-  longestChain: number;  // (same as transfers since death ends the game, but included for leaderboard display)
-  timeElapsed: number;
+  longestChain: number;  // same as transfers since death ends game, but useful for leaderboard display
+  // timeElapsed is injected server-side by the arcade machine — do NOT send from client
 }
 ```
 
@@ -371,7 +380,7 @@ Rhythm lane game. Notes fall in 4 lanes — hit them on the beat line. Build com
   - GREAT: ±60ms — 60 points
   - GOOD: ±100ms — 30 points
   - MISS: >100ms or unpress — 0 points
-- **Hold notes:** Elongated notes — press and hold until the tail passes the line. Scored on initial press timing + hold completion.
+- **Hold notes:** Elongated notes — press and hold until the tail passes the line. Scored on initial press timing + hold completion. *Implementation note: hold notes are the riskiest mechanic (no existing game has sustained interaction, mobile tap-vs-hold is tricky). If they prove buggy or feel bad, cut them — the base note types provide enough variety.*
 - **Combo:** Consecutive non-miss hits build combo. Multipliers: 1x (0-9), 2x (10-24), 3x (25-49), 4x (50+). Miss resets to 0.
 - **Lives:** 3 misses total = game over. Keeps tension high in a short game.
 
@@ -420,7 +429,7 @@ computeRewards:
   gold = floor(score / 2500)
 ```
 
-### Result Payload
+### Result Payload (sent by client via `onResult`)
 
 ```typescript
 {
@@ -428,7 +437,7 @@ computeRewards:
   perfectHits: number;
   maxCombo: number;
   accuracy: number;  // 0-1, fraction of non-miss hits
-  timeElapsed: number;
+  // timeElapsed is injected server-side by the arcade machine — do NOT send from client
 }
 ```
 
@@ -461,12 +470,62 @@ computeRewards:
 | File | Change |
 |------|--------|
 | `packages/shared-types/src/index.ts` | Add `SHOCKWAVE`, `ORBIT`, `BEAT_DROP` to `GameTypeSchema` |
-| `packages/shared-types/src/game-type-info.ts` | Add entries to `GAME_TYPE_INFO` |
-| `packages/shared-types/src/config.ts` | Add `Config.game.shockwave`, `Config.game.orbit`, `Config.game.beatDrop` |
-| `packages/shared-types/src/cycle-defaults.ts` | Add to `GAME_POOL` |
+| `packages/shared-types/src/game-type-info.ts` | Add entries to `GAME_TYPE_INFO` (see below) |
+| `packages/shared-types/src/config.ts` | Add config constants (see below) |
+| `packages/shared-types/src/cycle-defaults.ts` | Add to `GAME_POOL` (see below). NOT added to `LIVE_GAMES` — all three are solo arcade games. |
 | `packages/game-cartridges/src/machines/index.ts` | Export + register in `GAME_REGISTRY` |
 | `apps/client/src/components/panels/GamePanel.tsx` | Add lazy imports to `GAME_COMPONENTS` |
-| `apps/client/src/cartridges/games/shared/Leaderboard.tsx` | Add stat config to `GAME_STAT_CONFIG` |
+| `apps/client/src/cartridges/games/shared/Leaderboard.tsx` | Add stat config to `GAME_STAT_CONFIG` (see below) |
+
+### GAME_POOL Entries
+
+Append after existing arcade games (end of array). All `minPlayers: 2`:
+
+```typescript
+{ type: 'SHOCKWAVE', minPlayers: 2 },
+{ type: 'ORBIT', minPlayers: 2 },
+{ type: 'BEAT_DROP', minPlayers: 2 },
+```
+
+### GAME_STAT_CONFIG Entries
+
+```typescript
+SHOCKWAVE: { key: 'wavesCleared', label: 'Waves' },
+ORBIT:     { key: 'transfers',    label: 'Transfers' },
+BEAT_DROP: { key: 'score',        label: 'Score' },
+```
+
+### Config Constants
+
+```typescript
+Config.game.shockwave = {
+  timeLimitMs: 60_000,
+  scorePerSilver: 3,       // wavesCleared divisor
+  nearMissBonus: 5,        // nearMisses divisor for bonus silver
+  scorePerGold: 15,        // wavesCleared divisor
+};
+
+Config.game.orbit = {
+  timeLimitMs: 60_000,
+  transfersPerSilver: 2,
+  perfectsPerBonusSilver: 3,
+  transfersPerGold: 10,
+};
+
+Config.game.beatDrop = {
+  timeLimitMs: 90_000,
+  scorePerSilver: 500,
+  perfectAccuracyBonus: 3, // bonus silver for 100% accuracy
+  scorePerGold: 2500,
+  startBpm: 100,
+  endBpm: 160,
+  maxLives: 3,
+};
+```
+
+### DemoServer
+
+The DemoServer (`apps/game-server/src/demo/`) is chat-only — no game cartridge references. Adding to `GAME_REGISTRY` does **not** require DemoServer changes. Verified: no compilation impact.
 
 ---
 
@@ -482,9 +541,21 @@ All follow the existing pattern: silver is the primary reward (capped at 15), go
 
 ---
 
+## Wrapper Components
+
+Each game's wrapper component (e.g., `Shockwave.tsx`) should implement the `renderBreakdown` prop for `ArcadeGameWrapper`. These games are stat-rich — showing a post-game breakdown adds to the satisfaction:
+
+- **Shockwave:** Waves cleared, near-misses, max combo
+- **Orbit:** Transfers, perfect captures
+- **Beat Drop:** Perfect/Great/Good/Miss counts, max combo, accuracy %
+
+## Event Types
+
+Arcade events use the factory pattern: `Events.Game.start(gameType)` generates `GAME.{TYPE}.START`, `Events.Game.result(gameType)` generates `GAME.{TYPE}.RESULT`. This works for any string in `GameTypeSchema` — no additional event registration needed for new types.
+
 ## Out of Scope
 
 - Audio/sound effects — the game has no audio system currently
-- Migrating existing games to shared VFX module — future follow-up, not this batch
+- Migrating existing games to shared VFX module — future follow-up, not this batch (but the module is designed for incremental adoption)
 - New sync-decision or trivia games
 - Leaderboard changes beyond stat config entries
