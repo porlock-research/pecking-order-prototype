@@ -3,6 +3,11 @@ import type { ArcadeRendererProps } from '@pecking-order/shared-types';
 import { useCartridgeTheme } from '../../CartridgeThemeContext';
 import type { CartridgeTheme } from '@pecking-order/ui-kit/cartridge-theme';
 import { withAlpha } from '@pecking-order/ui-kit/cartridge-theme';
+import {
+  mulberry32,
+  ParticleEmitter, TrailRenderer, ScreenShake,
+  drawWithGlow, ScreenFlash,
+} from '../shared/canvas-vfx';
 
 // --- Game Constants ---
 
@@ -15,15 +20,32 @@ const PLAYER_SIZE = 20;
 const CANVAS_HEIGHT = 200;
 const PLATFORM_Y = CANVAS_HEIGHT - 30;
 
-// --- Seeded PRNG (Mulberry32) ---
+// --- VFX state (lives alongside game state) ---
 
-function mulberry32(seed: number) {
-  let s = seed | 0;
-  return () => {
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+interface VfxState {
+  particles: ParticleEmitter;
+  trail: TrailRenderer;
+  shake: ScreenShake;
+  flash: ScreenFlash;
+  wasOnGround: boolean;
+  deathFreezeTimer: number; // ms remaining on death freeze
+  deathTriggered: boolean;
+}
+
+function createVfxState(): VfxState {
+  return {
+    particles: new ParticleEmitter(),
+    trail: new TrailRenderer({
+      maxPoints: 18,
+      width: { start: 10, end: 1 },
+      color: (i, total) => withAlpha('#fbbf24', 0.4 * (1 - i / total)),
+      opacity: { start: 0.5, end: 0 },
+    }),
+    shake: new ScreenShake(),
+    flash: new ScreenFlash(),
+    wasOnGround: true,
+    deathFreezeTimer: 0,
+    deathTriggered: false,
   };
 }
 
@@ -193,11 +215,64 @@ function updateGame(state: GameState, dt: number, canvasWidth: number, timeLimit
   };
 }
 
-function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth: number, timeLimit: number, theme: CartridgeTheme) {
+// --- Find gap edges for glow effect ---
+
+function findGapEdges(segments: Segment[], cameraX: number, canvasWidth: number): { x: number; side: 'left' | 'right' }[] {
+  const edges: { x: number; side: 'left' | 'right' }[] = [];
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    if (!seg.isGap) continue;
+    const leftEdgeScreen = seg.x - cameraX;
+    const rightEdgeScreen = seg.x + seg.width - cameraX;
+    // Left edge of gap = right edge of preceding platform
+    if (leftEdgeScreen > -10 && leftEdgeScreen < canvasWidth + 10) {
+      edges.push({ x: leftEdgeScreen, side: 'left' });
+    }
+    // Right edge of gap = left edge of following platform
+    if (rightEdgeScreen > -10 && rightEdgeScreen < canvasWidth + 10) {
+      edges.push({ x: rightEdgeScreen, side: 'right' });
+    }
+  }
+  return edges;
+}
+
+function renderGame(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  canvasWidth: number,
+  timeLimit: number,
+  theme: CartridgeTheme,
+  vfx: VfxState,
+) {
   const { cameraX, playerX, playerY, playerVY, segments, distance, elapsed, alive } = state;
+
+  // Apply screen shake
+  vfx.shake.apply(ctx);
 
   ctx.fillStyle = theme.colors.bg;
   ctx.fillRect(0, 0, canvasWidth, CANVAS_HEIGHT);
+
+  // Speed factor for speed lines
+  const speed = getSpeed(elapsed, state.baseDifficulty);
+  const speedFactor = Math.min(1, (speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED));
+
+  // Speed lines — faint horizontal lines racing past
+  if (speedFactor > 0.05) {
+    const lineCount = Math.floor(3 + speedFactor * 12);
+    ctx.strokeStyle = withAlpha(theme.colors.text, 0.03 * speedFactor);
+    ctx.lineWidth = 1;
+    for (let i = 0; i < lineCount; i++) {
+      // Deterministic positions using camera offset
+      const seed = (i * 7919 + Math.floor(cameraX * 0.3)) % 1000;
+      const y = (seed * 0.2) % CANVAS_HEIGHT;
+      const lineLen = 20 + (seed % 40);
+      const xOff = (cameraX * (1.5 + (i % 3) * 0.5)) % (canvasWidth + lineLen);
+      ctx.beginPath();
+      ctx.moveTo(canvasWidth - xOff, y);
+      ctx.lineTo(canvasWidth - xOff + lineLen, y);
+      ctx.stroke();
+    }
+  }
 
   // Parallax background lines
   ctx.strokeStyle = withAlpha(theme.colors.gold, 0.03);
@@ -244,24 +319,46 @@ function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth
     ctx.stroke();
   }
 
+  // Platform edge glow — bright dots at edges near gaps
+  const gapEdges = findGapEdges(segments, cameraX, canvasWidth);
+  for (const edge of gapEdges) {
+    drawWithGlow(ctx, theme.colors.gold, 12, () => {
+      ctx.fillStyle = withAlpha(theme.colors.gold, 0.6);
+      ctx.beginPath();
+      ctx.arc(edge.x, PLATFORM_Y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  // Player trail (drawn behind player)
+  vfx.trail.draw(ctx);
+
   // Player
   if (alive) {
-    ctx.save();
     const screenPlayerX = playerX;
     const centerX = screenPlayerX + PLAYER_SIZE / 2;
     const centerY = playerY + PLAYER_SIZE / 2;
-
     const rotation = Math.max(-0.3, Math.min(0.3, playerVY * 0.0004));
+
+    ctx.save();
     ctx.translate(centerX, centerY);
     ctx.rotate(rotation);
 
-    ctx.fillStyle = theme.colors.gold;
-    ctx.shadowColor = theme.colors.gold;
-    ctx.shadowBlur = 8;
-    ctx.fillRect(-PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
-    ctx.shadowBlur = 0;
+    // Player square with enhanced glow
+    drawWithGlow(ctx, theme.colors.gold, 15, () => {
+      ctx.fillStyle = theme.colors.gold;
+      ctx.fillRect(-PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
+    });
+
+    // Bright white center pixel
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-1.5, -1.5, 3, 3);
+
     ctx.restore();
   }
+
+  // Particles (on top of everything)
+  vfx.particles.draw(ctx);
 
   // HUD: distance
   ctx.font = 'bold 14px monospace';
@@ -276,8 +373,12 @@ function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth
   ctx.fillStyle = seconds <= 10 ? withAlpha(theme.colors.danger, 0.8) : withAlpha(theme.colors.text, 0.4);
   ctx.fillText(`${seconds}s`, 12, 20);
 
+  // Screen flash (drawn over game content)
+  vfx.flash.draw(ctx, canvasWidth, CANVAS_HEIGHT);
+
   // Death overlay
-  if (!alive) {
+  if (!alive && vfx.deathFreezeTimer <= 0) {
+    // Fade to black after freeze
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, canvasWidth, CANVAS_HEIGHT);
     ctx.font = 'bold 18px monospace';
@@ -289,6 +390,9 @@ function renderGame(ctx: CanvasRenderingContext2D, state: GameState, canvasWidth
     ctx.fillStyle = withAlpha(theme.colors.text, 0.5);
     ctx.fillText(`Distance: ${Math.floor(distance)}m`, canvasWidth / 2, CANVAS_HEIGHT / 2 + 14);
   }
+
+  // Restore from screen shake
+  vfx.shake.restore(ctx);
 }
 
 // --- Renderer Component ---
@@ -300,6 +404,7 @@ export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }
   themeRef.current = theme;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameStateRef = useRef<GameState | null>(null);
+  const vfxRef = useRef<VfxState | null>(null);
   const rafRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const pausedRef = useRef(false);
@@ -311,7 +416,27 @@ export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }
 
   const handleJump = useCallback(() => {
     const gs = gameStateRef.current;
+    const vfx = vfxRef.current;
     if (!gs || !gs.alive || !gs.onGround) return;
+
+    // Jump particles — dust downward from feet
+    if (vfx) {
+      const t = themeRef.current;
+      const screenCenterX = gs.playerX + PLAYER_SIZE / 2;
+      const footY = gs.playerY + PLAYER_SIZE;
+      vfx.particles.emit({
+        count: 7,
+        position: { x: screenCenterX, y: footY },
+        velocity: { min: 30, max: 80 },
+        angle: { min: Math.PI * 0.25, max: Math.PI * 0.75 }, // downward spread
+        lifetime: { min: 200, max: 400 },
+        size: { start: 2.5, end: 0.5 },
+        color: t.colors.gold,
+        opacity: { start: 0.7, end: 0 },
+        gravity: 200,
+      });
+    }
+
     gameStateRef.current = {
       ...gs,
       playerVY: JUMP_VELOCITY,
@@ -328,6 +453,8 @@ export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }
 
     const gs = createGameState(seed || Date.now(), canvasWidth, difficulty ?? 0);
     gameStateRef.current = gs;
+    const vfx = createVfxState();
+    vfxRef.current = vfx;
     lastTimeRef.current = performance.now();
     resultSentRef.current = false;
 
@@ -338,20 +465,103 @@ export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }
         return;
       }
 
-      const dt = Math.min(0.05, (now - lastTimeRef.current) / 1000);
+      const rawDt = Math.min(0.05, (now - lastTimeRef.current) / 1000);
+      const dtMs = rawDt * 1000;
       lastTimeRef.current = now;
 
       const current = gameStateRef.current!;
       const activeCanvas = canvasRef.current;
-      const updated = updateGame(current, dt, activeCanvas?.width ?? canvasWidth, timeLimit);
+      const updated = updateGame(current, rawDt, activeCanvas?.width ?? canvasWidth, timeLimit);
       gameStateRef.current = updated;
 
+      // --- VFX updates ---
+      const t = themeRef.current;
+
+      // Update VFX systems
+      vfx.particles.update(dtMs);
+      vfx.shake.update(dtMs);
+      vfx.flash.update(dtMs);
+
+      if (updated.alive) {
+        // Push player position to trail
+        const screenCenterX = updated.playerX + PLAYER_SIZE / 2;
+        const centerY = updated.playerY + PLAYER_SIZE / 2;
+        vfx.trail.push(screenCenterX, centerY);
+
+        // Landing dust — onGround transitions from false to true
+        if (updated.onGround && !vfx.wasOnGround) {
+          const footY = updated.playerY + PLAYER_SIZE;
+          vfx.particles.emit({
+            count: 9,
+            position: { x: screenCenterX, y: footY },
+            velocity: { min: 40, max: 100 },
+            angle: { min: -Math.PI * 0.15, max: Math.PI * 0.15 }, // spread outward (left)
+            lifetime: { min: 200, max: 450 },
+            size: { start: 2, end: 0.5 },
+            color: t.colors.gold,
+            opacity: { start: 0.5, end: 0 },
+            gravity: 100,
+          });
+          // Mirror — particles going right
+          vfx.particles.emit({
+            count: 9,
+            position: { x: screenCenterX, y: footY },
+            velocity: { min: 40, max: 100 },
+            angle: { min: Math.PI * 0.85, max: Math.PI * 1.15 },
+            lifetime: { min: 200, max: 450 },
+            size: { start: 2, end: 0.5 },
+            color: t.colors.gold,
+            opacity: { start: 0.5, end: 0 },
+            gravity: 100,
+          });
+        }
+        vfx.wasOnGround = updated.onGround;
+      }
+
+      // Death effects — trigger once when alive transitions to false
+      if (!updated.alive && !vfx.deathTriggered) {
+        vfx.deathTriggered = true;
+        vfx.deathFreezeTimer = 200; // 200ms freeze before overlay
+
+        // Screen shake
+        vfx.shake.trigger({ intensity: 8, duration: 400 });
+
+        // Screen flash
+        vfx.flash.trigger(withAlpha(t.colors.danger, 0.3), 300);
+
+        // Death burst particles
+        const lastX = updated.playerX + PLAYER_SIZE / 2;
+        const lastY = updated.playerY + PLAYER_SIZE / 2;
+        vfx.particles.emit({
+          count: 15,
+          position: { x: lastX, y: lastY },
+          velocity: { min: 60, max: 180 },
+          angle: { min: 0, max: Math.PI * 2 },
+          lifetime: { min: 400, max: 800 },
+          size: { start: 3.5, end: 0.5 },
+          color: [t.colors.gold, t.colors.danger, t.colors.pink],
+          opacity: { start: 1, end: 0 },
+          gravity: 150,
+        });
+      }
+
+      // Count down death freeze timer
+      if (vfx.deathFreezeTimer > 0) {
+        vfx.deathFreezeTimer -= dtMs;
+      }
+
+      // Render
       if (activeCanvas) {
-        const ctx = activeCanvas.getContext('2d');
-        if (ctx) renderGame(ctx, updated, activeCanvas.width, timeLimit, themeRef.current);
+        const ctx = activeCanvas.getContext('2d')!;
+        renderGame(ctx, updated, activeCanvas.width, timeLimit, t, vfx);
       }
 
       if (!updated.alive) {
+        // Keep animating VFX for a short period after death
+        if (vfx.particles.activeCount > 0 || vfx.deathFreezeTimer > 0) {
+          rafRef.current = requestAnimationFrame(loop);
+          return;
+        }
         if (!resultSentRef.current) {
           resultSentRef.current = true;
           onResultRef.current({
