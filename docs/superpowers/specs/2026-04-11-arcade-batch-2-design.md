@@ -121,6 +121,8 @@ class WavePool {
 
 **Rendering approach:** Each source draws concentric circle arcs with opacity = amplitude at that distance. Uses `globalCompositeOperation = 'screen'` for overlap regions so constructive interference brightens naturally. Destructive zones rendered via a secondary pass with dimming at half-wavelength offset positions.
 
+**Performance budget:** `WavePool.draw` must complete in <4ms on mobile. With ~5 active sources and ~10 rings per source, this is ~50 arc draws — well within budget. The `getHeight` method (for scoring) only computes at target positions (4-6 points), not per-pixel.
+
 **Used by:** Ripple. Available for future water/sound-wave games.
 
 ### SwarmRenderer
@@ -151,6 +153,8 @@ class SwarmRenderer {
 ```
 
 Each boid stores its last `trailLength` positions internally. Renders: tiny directional triangle pointing in heading direction + fading mini-trail behind. Connection lines drawn between nearby boids create an organic, breathing mesh.
+
+**Performance note:** Connection lines are O(n^2) distance checks. With 30 boids = 435 checks/frame, which is trivial at 60fps on any device. If `connectionMaxDist` is kept reasonable (~20px), only a handful of lines are drawn per frame. No spatial hash needed at this scale.
 
 **Used by:** Flock.
 
@@ -276,7 +280,7 @@ Difficulty parameter (0-1, scales with day index) shifts phases earlier and incr
 | Amplify bonus | Large PulseRing (gold, 80px, 400ms), ScreenFlash (gold, 100ms), FloatingText "AMPLIFY x3" (gold, fontSize 24), 20 gold/orange particles shower, SlowMo (0.5, 150ms) | `theme.colors.gold` dominant |
 | Cancel warning | Both ripple sources dim briefly, faint red flash at overlap point (ScreenFlash localized), FloatingText "TOO CLOSE" in danger at 0.5 opacity | `theme.colors.danger` at 0.3 |
 | Combo indicator | Multiplier text near last hit, scales up with SpringValue. At 3x: gold glow. At 3x: continuous gold ember particles from score display | `theme.colors.gold` text |
-| Stone counter | Remaining stones as small dots at top-left, dimming as used | `theme.colors.text` at 0.4 |
+| Stone counter | Remaining stones as small dots at top-left, dimming as used. At 2 remaining: dots pulse gold. At 1 remaining: "LAST STONE" FloatingText + dot pulses danger | `theme.colors.text` at 0.4, `gold` pulse at 2, `danger` pulse at 1 |
 | Background details | Faint radial gradient from center (0.03 opacity), gives depth | `theme.colors.bgSubtle` |
 
 ### Server Machine
@@ -338,7 +342,7 @@ A ball drops from the top. Before it falls, draw angled platforms. Watch the bal
 
 - Hit target (within 30px): 50 pts
 - Bullseye (within 15px): 100 pts
-- Each platform/wall bounce before hitting target: +10 pts (encourages creative multi-bounce solutions)
+- Each platform/wall bounce before hitting target: +10 pts, capped at 5 scored bounces per round (encourages creative multi-bounce solutions without rewarding degenerate oscillation loops)
 - Speed bonus: completing planning in < 3s = +50 pts
 - Streak: consecutive hits build multiplier: 1x (0-2), 1.5x (3-5), 2x (6+)
 - Miss (ball exits bounds or timeout): 0 pts, streak resets
@@ -399,11 +403,11 @@ computeRewards:
 ### Controls
 
 - **Desktop:** Click + drag to draw a platform. Click existing platform to erase. Click "Drop" or press Space to release ball.
-- **Mobile:** Touch + drag to draw (preview extends 20px beyond finger in both directions). Tap existing platform to erase (platform highlights on touch-near, 24px hit zone around line). Tap "Drop" button (56px height, positioned at top-right away from drawing area).
+- **Mobile:** Touch + drag to draw (preview extends 20px beyond finger in both directions). Tap existing platform to erase (platform highlights on touch-near, 24px hit zone around line). Tap "Drop" button (56px height, bottom-right corner).
 
 ### Mobile Notes
 
-- Drawing area occupies most of canvas. "Drop" button at top-right (thumb can reach, but away from primary drawing zone at bottom).
+- Drawing area occupies most of canvas. "Drop" button at bottom-right — the most time-critical button must be within thumb reach (auto-drops after 5s if not pressed). Drawing naturally happens in the middle/left, so bottom-right avoids accidental draws.
 - Platform erase uses proximity detection (24px from line) rather than requiring precise tap ON the line.
 - Drag gestures start 20px+ from edges to avoid system gesture conflicts.
 - Score and round info at top-left.
@@ -424,7 +428,7 @@ Hold to inflate a balloon. Release to bank the points. But each balloon has a hi
 ### Mechanics
 
 - **Balloon:** Appears center screen. Hold anywhere to inflate. Balloon grows, wobbles, stretches.
-- **Bank:** Release to bank. Score = floor(inflatePercentage × 100). Bigger = more points.
+- **Bank:** Release to bank. Score = floor(inflatePercentage × 100). Bigger = more points. Minimum hold time of 300ms before release counts as bank — prevents accidental finger-lift or palm touches from banking a tiny balloon.
 - **Pop:** Each balloon has a hidden pop threshold (seeded, varies by type). Exceeding it = pop → 0 points + lose a life.
 - **Lives:** 3 total. 3 pops = game over.
 - **Balloon types (seeded selection):**
@@ -717,11 +721,12 @@ A target silhouette is shown. You have a rectangular block of "clay." Draw strai
 
 ### Mechanics
 
-- **Clay grid:** 40x40 cell grid (each cell ~10px). Starts as a solid filled rectangle.
+- **Clay grid:** 30x30 cell grid (each cell ~12.5px on a 375px mobile viewport). Starts as a solid filled rectangle. 30x30 gives better touch precision than 40x40 — a finger covers ~3.5 cells instead of ~4.7, making cuts more predictable.
 - **Target silhouette:** Shown as a translucent overlay behind/around the clay. The goal shape.
 - **Cuts:** Draw a straight line across the clay (drag gesture). The line divides the clay into two regions.
-  - The game computes which side has MORE overlap with the target silhouette.
-  - The higher-overlap side stays. The other side falls away as debris.
+  - **Preview phase (300ms):** Both sides flash different colors — green tint on the side that will stay, red tint on the side that will fall. This gives the player a brief "did I cut right?" moment before the debris animation.
+  - The game computes which side has MORE overlap with the target silhouette. The higher-overlap side stays. The other side falls away as debris.
+  - The target silhouette overlay (visible at all times behind the clay at 0.15 opacity) guides cut direction — but the preview phase confirms the result.
 - **3 cuts per round.** After 3 cuts (or tap "Done" to end early): scoring comparison.
 - **Scoring:** overlap % = (cells matching target ∩ remaining clay) / (total target cells). Score = floor(overlapPercentage).
   - Note: cells outside the target that remain (excess clay) reduce the score. Precision matters.
@@ -731,7 +736,7 @@ A target silhouette is shown. You have a rectangular block of "clay." Draw strai
 
 ### Target Shape Library (seeded selection)
 
-Shapes are stored as 40x40 boolean masks. Seeded PRNG selects from the library and applies random rotation/mirror for variety.
+Shapes are stored as 30x30 boolean masks. Seeded PRNG selects from the library and applies random rotation/mirror for variety.
 
 | Difficulty | Shapes | Examples |
 |-----------|--------|----------|
@@ -744,10 +749,10 @@ Shapes are stored as 40x40 boolean masks. Seeded PRNG selects from the library a
 
 | Phase | Rounds / Diff | Shape Complexity | Cuts Allowed | Perfect Threshold |
 |-------|--------------|-----------------|-------------|-------------------|
-| Learn | 1-2 / low | Easy (convex) | 3 | 90%+ |
-| Build | 3-5 / mid | Medium (concave) | 3 | 92%+ |
-| Challenge | 6-8 / high | Hard (complex) | 3 | 95%+ |
-| Expert | 9+ / very high | Expert (asymmetric) | 2 cuts only | 95%+ |
+| Learn | 1-2 / low | Easy (convex) | 3 | 85%+ |
+| Build | 3-5 / mid | Medium (concave) | 3 | 88%+ |
+| Challenge | 6-8 / high | Hard (complex) | 3 | 92%+ |
+| Expert | 9+ / very high | Expert (asymmetric) | 2 cuts only | 92%+ |
 
 ### Visual Effects
 
@@ -852,8 +857,8 @@ Difficulty parameter shifts phases earlier and reduces guess timers.
 |---------|-----------|--------------|
 | Hidden code | 4 circles (40px diameter) at top, covered with frosted glass overlay (semi-transparent fill + blur effect via layered draws). "?" symbol centered, gentle pulse (SpringValue opacity oscillation). Subtle shimmer: highlight arc sweeps across surface cyclically | `theme.colors.bgSubtle` frosted fill, `text` "?" at 0.4 |
 | Color palette | 5-7 color circles (36px, 48px touch target) at bottom of screen. Selected color has bright ring border (3px). Colors derived from theme | `pink`, `info`, `gold`, `green`, `danger`, `orange`, `text` (for 7th) |
-| Guess positions | 4 large circles (44px diameter, 48px touch target) in current guess row. Each shows chosen color as gem-like orb with radial gradient + drawWithGlow (8px blur). Tap cycles with SpringValue rotation animation (scale 1→0.8→1 with color change) | Each color from palette |
-| Small arrows | Flanking each position: left arrow (cycle back) and right arrow (cycle forward). 36px touch target each. Subtle, visible on focus | `theme.colors.textDim`, brighten on touch |
+| Guess positions | 4 circles (44px diameter, 48px touch target) in current guess row. Tap to select (highlight ring appears). Shows chosen color as gem-like orb with radial gradient + drawWithGlow (8px blur). Color change: SpringValue scale 1→0.8→1 | Each color from palette |
+| Selected position arrows | Only the SELECTED position shows flanking left/right arrows (36px touch target each). This keeps total width to 4 × 48px + 3 × 8px = 216px (fits 375px mobile). Arrows appear/disappear with SpringValue scale | `theme.colors.textDim`, brighten on touch |
 | Submit button | Rounded rect (56px height, 120px width). Glows when all positions filled. Press: SpringValue scale 1→0.9→1, PulseRing (15px) | `theme.colors.gold` fill, brighter on press |
 | Guess timer | Circular progress ring around Submit button. Smooth countdown. Color transitions | Full: `green`, mid: `gold`, low: `danger`. At < 2s: ring pulses, faint ScreenShake (1, continuous) |
 | Feedback dots — correct position (filled) | Bright dot (10px) that pops in with SpringValue (scale 0→1.3→1). Tiny PulseRing (15px, 200ms). 3 gold sparkle particles | `theme.colors.gold` dot + sparkles |
@@ -892,17 +897,17 @@ computeRewards:
 
 ### Controls
 
-- **Desktop:** Click position to cycle color forward. Click left/right arrows to cycle direction. Click Submit.
-- **Mobile:** Tap position (48px target) to cycle forward. Tap arrows (36px target, flanking each position). Tap Submit (56px height).
+- **Desktop:** Click position to select it, then click left/right arrows to cycle color. Or click a color in the palette to set the selected position directly. Click Submit.
+- **Mobile:** Tap position (48px target) to select it. Arrows appear on selected position only (36px targets). Alternatively, tap a color in the palette to set the selected position directly (faster — no cycling needed). Tap Submit (56px height).
 - No long-press. No drag. Pure tap interaction.
 
 ### Mobile Notes
 
-- Color palette at bottom of screen — easy thumb access.
-- Guess positions in middle area.
-- Hidden code at top.
+- **Layout fits 375px screens:** 4 positions at 48px + 3 gaps at 8px = 216px. Arrows only appear on the selected position (not all 4 simultaneously), keeping width well within bounds.
+- **Two input modes:** Tap arrows to cycle (precise), OR tap palette color directly (faster for any color). Palette-tap is the primary mobile flow.
+- Color palette at bottom of screen — easy thumb access. 5-7 colors at 36px + gaps fits within 375px.
+- Guess positions in middle area. Hidden code at top.
 - Submit button between guess row and palette, centered, 56px height.
-- All interactive elements ≥ 36px touch target (arrows), ≥ 48px (positions, colors).
 - Previous guesses scroll upward and compress — never occlude active guess row.
 
 ---
@@ -1002,7 +1007,7 @@ Config.game.flock = {
 Config.game.sculptor = {
   timeLimitMs: 60_000,
   cutsPerRound: 3,
-  gridSize: 40,
+  gridSize: 30,
   scorePerSilver: 300,
   perfectCutBonus: 2,      // perfectCuts divisor for bonus silver
   scorePerGold: 1500,
@@ -1034,14 +1039,16 @@ Append after existing arcade games:
 ### GAME_STAT_CONFIG Entries
 
 ```typescript
-RIPPLE:       { key: 'score',        label: 'Score' },
-BOUNCE:       { key: 'score',        label: 'Score' },
-INFLATE:      { key: 'score',        label: 'Score' },
-SWITCHBOARD:  { key: 'score',        label: 'Score' },
-FLOCK:        { key: 'score',        label: 'Score' },
-SCULPTOR:     { key: 'score',        label: 'Score' },
-CODEBREAKER:  { key: 'codesCracked', label: 'Codes' },
+RIPPLE:       { key: 'amplifies',              label: 'Amplifies' },
+BOUNCE:       { key: 'bullseyes',              label: 'Bullseyes' },
+INFLATE:      { key: 'balloonsBanked',         label: 'Banked' },
+SWITCHBOARD:  { key: 'instructionsCompleted',  label: 'Completed' },
+FLOCK:        { key: 'boidsRemaining',         label: 'Boids Left' },
+SCULPTOR:     { key: 'perfectCuts',            label: 'Perfects' },
+CODEBREAKER:  { key: 'codesCracked',           label: 'Codes' },
 ```
+
+Each stat showcases the game's signature skill rather than generic score (which already maps to silver). Leaderboards become more interesting when each game highlights a different achievement.
 
 ### GAME_TYPE_INFO Entries
 
@@ -1054,6 +1061,14 @@ FLOCK:        { name: 'Flock',        description: 'Herd your swarm through gate
 SCULPTOR:     { name: 'Sculptor',     description: 'Carve the shape, match the target' },
 CODEBREAKER:  { name: 'Codebreaker',  description: 'Crack the code before time runs out' },
 ```
+
+### LIVE_GAMES Exclusion
+
+NOT added to `LIVE_GAMES` — all seven are solo arcade games, not live multiplayer activities.
+
+### Event Types
+
+Arcade events use the factory pattern: `Events.Game.start(gameType)` generates `GAME.{TYPE}.START`, `Events.Game.result(gameType)` generates `GAME.{TYPE}.RESULT`. This works for any string in `GameTypeSchema` — no additional event registration needed for new types.
 
 ### DemoServer
 
