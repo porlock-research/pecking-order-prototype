@@ -36,12 +36,13 @@ export default function ArcadeGameWrapper({
 }: ArcadeGameWrapperProps) {
   const { status, silverReward, goldContribution, seed, timeLimit, difficulty, gameType } = cartridge;
 
-  const [gamePhase, setGamePhase] = useState<'NOT_STARTED' | 'PLAYING' | 'DEAD' | 'AWAITING_DECISION' | 'COMPLETED'>(
+  const [gamePhase, setGamePhase] = useState<'NOT_STARTED' | 'COUNTDOWN' | 'PLAYING' | 'DEAD' | 'AWAITING_DECISION' | 'COMPLETED'>(
     status === ArcadePhases.COMPLETED ? 'COMPLETED'
       : status === ArcadePhases.AWAITING_DECISION ? 'AWAITING_DECISION'
       : 'NOT_STARTED'
   );
   const [gameDeadline, setGameDeadline] = useState<number | null>(null);
+  const [countdownValue, setCountdownValue] = useState(3);
   const [finalResult, setFinalResult] = useState<Record<string, number>>(
     cartridge.result || {}
   );
@@ -56,10 +57,22 @@ export default function ArcadeGameWrapper({
   timeLimitRef.current = timeLimit;
 
   const handleStart = useCallback(() => {
-    engineRef.current.sendGameAction(Events.Game.start(gameTypeRef.current));
-    setGamePhase('PLAYING');
-    setGameDeadline(Date.now() + timeLimitRef.current);
+    setCountdownValue(3);
+    setGamePhase('COUNTDOWN');
   }, []);
+
+  // Countdown timer: 3 → 2 → 1 → GO → start game
+  useEffect(() => {
+    if (gamePhase !== 'COUNTDOWN') return;
+    if (countdownValue <= 0) {
+      engineRef.current.sendGameAction(Events.Game.start(gameTypeRef.current));
+      setGamePhase('PLAYING');
+      setGameDeadline(Date.now() + timeLimitRef.current);
+      return;
+    }
+    const timer = setTimeout(() => setCountdownValue(v => v - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [gamePhase, countdownValue]);
 
   const handleResult = useCallback((result: Record<string, number>) => {
     setFinalResult(result);
@@ -123,6 +136,15 @@ export default function ArcadeGameWrapper({
           >
             Start
           </button>
+        </div>
+      )}
+
+      {/* COUNTDOWN: 3-2-1-GO */}
+      {gamePhase === 'COUNTDOWN' && (
+        <div className="p-6 flex items-center justify-center min-h-[200px]">
+          <span className="text-6xl font-black font-display text-skin-gold animate-pulse">
+            {countdownValue > 0 ? countdownValue : 'GO'}
+          </span>
         </div>
       )}
 

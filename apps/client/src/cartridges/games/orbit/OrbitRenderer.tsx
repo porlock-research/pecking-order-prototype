@@ -14,8 +14,8 @@ const CANVAS_SIZE = 400;
 const HALF = CANVAS_SIZE / 2;
 const STAR_COLORS_KEYS = ['gold', 'orange', 'pink', 'text'] as const;
 const INITIAL_ORBIT_RADIUS = 40;
-const INITIAL_ORBIT_SPEED = (Math.PI * 2) / 3; // 1 rev per 3s
-const ORBIT_SPEED_MULT = 1.08; // 8% faster each transfer
+const INITIAL_ORBIT_SPEED = (Math.PI * 2) / 3.5; // 1 rev per 3.5s — slightly slower start
+const ORBIT_SPEED_MULT = 1.05; // 5% faster each transfer — gradual ramp
 const INITIAL_WELL_RADIUS = 80;
 const MIN_WELL_RADIUS = 40;
 const WELL_SHRINK_PER_TRANSFER = 2;
@@ -77,8 +77,7 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
     function generateStars(count: number) {
       for (let i = 0; i < count; i++) {
         const transferNum = stars.length;
-        const wellRadius = Math.max(MIN_WELL_RADIUS, INITIAL_WELL_RADIUS - transferNum * WELL_SHRINK_PER_TRANSFER);
-        wellRadius * (1 - difficulty * 0.2); // difficulty reduces well size
+        const wellRadius = Math.max(MIN_WELL_RADIUS, INITIAL_WELL_RADIUS - transferNum * WELL_SHRINK_PER_TRANSFER) * (1 - difficulty * 0.2);
 
         let x: number, y: number;
         if (stars.length === 0) {
@@ -86,10 +85,14 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
           y = HALF;
         } else {
           const prev = stars[stars.length - 1];
-          const minDist = 120;
-          const maxDist = 250;
+          // Place stars in a spread around the forward direction
+          // Use multiple candidate positions and pick one that's reachable
+          // (within well radius of a tangent release from the previous star)
+          const minDist = wellRadius + 40; // must be close enough to capture
+          const maxDist = wellRadius + 120;
           const placeDist = minDist + rng() * (maxDist - minDist);
-          const placeAngle = rng() * Math.PI - Math.PI / 2; // bias forward-ish
+          // Spread across a wide arc so different release timings reach different stars
+          const placeAngle = rng() * Math.PI * 2; // full circle — any direction is valid
           x = prev.x + Math.cos(placeAngle) * placeDist;
           y = prev.y + Math.sin(placeAngle) * placeDist;
         }
@@ -101,7 +104,7 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
         stars.push({
           x, y,
           orbitRadius: INITIAL_ORBIT_RADIUS,
-          wellRadius: Math.max(MIN_WELL_RADIUS, INITIAL_WELL_RADIUS - transferNum * WELL_SHRINK_PER_TRANSFER) * (1 - difficulty * 0.2),
+          wellRadius,
           color,
           size,
           pulsePhase: rng() * Math.PI * 2,
@@ -415,13 +418,19 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
             }
           }
 
-          // Respawn if drifted too far — return to last star, keep timer running
+          // Respawn if drifted too far from all stars
           if (!captured) {
-            const screenX = planetX - cameraX + HALF;
-            const screenY = planetY - cameraY + HALF;
-            if (screenX < -DEATH_MARGIN || screenX > CANVAS_SIZE + DEATH_MARGIN ||
-                screenY < -DEATH_MARGIN || screenY > CANVAS_SIZE + DEATH_MARGIN) {
-              // Respawn at current star
+            // Find distance to nearest star (excluding current)
+            let nearestDist = Infinity;
+            for (let i = 0; i < stars.length; i++) {
+              if (i === currentStarIdx) continue;
+              nearestDist = Math.min(nearestDist, distance(planetX, planetY, stars[i].x, stars[i].y));
+            }
+            // Also check distance from current star
+            const fromCurrent = distance(planetX, planetY, stars[currentStarIdx].x, stars[currentStarIdx].y);
+
+            // Respawn if planet is far from current star AND not approaching any other star
+            if (fromCurrent > 300 && nearestDist > 300) {
               const star = stars[currentStarIdx];
               orbitAngle = 0;
               star.orbitRadius = INITIAL_ORBIT_RADIUS;
@@ -431,7 +440,6 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
               planetVy = 0;
               state = 'orbiting';
               trail.clear();
-              // Brief flash to signal the miss
               screenFlash.trigger(withAlpha(t.colors.danger, 0.3), 300);
             }
           }
