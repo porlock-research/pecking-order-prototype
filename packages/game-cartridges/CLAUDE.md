@@ -2,7 +2,7 @@
 
 ## Registries
 
-- **Games**: `src/machines/index.ts` — 12 entries (9 arcade, TRIVIA, REALTIME_TRIVIA, TOUCH_SCREEN + 4 sync decisions)
+- **Games**: `src/machines/index.ts` — 16 entries (9 arcade, TRIVIA, REALTIME_TRIVIA, TOUCH_SCREEN + 4 sync decisions). Count may increase as new games are added — check the file for the current count.
 - **Voting**: `apps/game-server/src/machines/cartridges/voting/_registry.ts`
 - **Prompts**: `apps/game-server/src/machines/cartridges/prompts/_registry.ts`
 - **Dilemmas**: `apps/game-server/src/machines/cartridges/dilemmas/_registry.ts`
