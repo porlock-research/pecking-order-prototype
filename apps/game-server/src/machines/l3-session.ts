@@ -34,6 +34,7 @@ export interface DailyContext {
   groupChatOpen: boolean;
   dmGroupsByPlayer: Record<string, string[]>;
   slotsUsedByPlayer: Record<string, number>;
+  nudgesThisDay: Record<string, boolean>;
   dmSlotsPerPlayer: number;
   requireDmInvite: boolean;
 }
@@ -64,6 +65,9 @@ export type DailyEvent =
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
   | { type: 'SOCIAL.ACCEPT_DM'; senderId: string; channelId: string }
   | { type: 'SOCIAL.DECLINE_DM'; senderId: string; channelId: string }
+  | { type: 'SOCIAL.REACT'; senderId: string; messageId: string; emoji: string }
+  | { type: 'SOCIAL.NUDGE'; senderId: string; targetId: string }
+  | { type: 'SOCIAL.WHISPER'; senderId: string; targetId: string; text: string }
   | { type: 'FACT.RECORD'; fact: Fact }
   | AdminEvent;
 
@@ -114,6 +118,7 @@ export function buildL3Context(input: { dayIndex: number; roster: Record<string,
     groupChatOpen: false,
     dmGroupsByPlayer: {},
     slotsUsedByPlayer: {},
+    nudgesThisDay: {},
     requireDmInvite: input.manifest?.requireDmInvite ?? false,
     dmSlotsPerPlayer: input.manifest?.dmSlotsPerPlayer ?? 5,
   };
@@ -201,6 +206,15 @@ export const dailySessionMachine = setup({
                 ],
                 'SOCIAL.DECLINE_DM': [
                   { guard: 'canDeclineDm', actions: ['declineDmInvite', 'recordInviteDeclinedFact'] },
+                ],
+                'SOCIAL.REACT': [
+                  { guard: 'isReactionAllowed', actions: ['processReaction', 'emitReactionFact'] },
+                ],
+                'SOCIAL.NUDGE': [
+                  { guard: 'isNudgeAllowed', actions: ['trackNudge', 'processNudge'] },
+                ],
+                'SOCIAL.WHISPER': [
+                  { guard: 'isWhisperAllowed', actions: ['processWhisper', 'emitWhisperFact'] },
                 ],
                 'INTERNAL.OPEN_DMS': { actions: [assign({ dmsOpen: true }), sendParent({ type: 'PUSH.PHASE', trigger: 'OPEN_DMS' } as any)] },
                 'INTERNAL.CLOSE_DMS': { actions: [assign({ dmsOpen: false }), sendParent({ type: 'PUSH.PHASE', trigger: 'CLOSE_DMS' } as any)] },

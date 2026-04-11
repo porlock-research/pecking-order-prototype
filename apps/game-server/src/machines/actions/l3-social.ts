@@ -72,7 +72,9 @@ export const l3SocialActions = {
       }
     }
 
-    const msg = buildChatMessage(senderId, event.content, channelId);
+    const msg = buildChatMessage(senderId, event.content, channelId, {
+      replyTo: event.replyTo,
+    });
     const chatLog = appendToChatLog(context.chatLog, msg);
 
     // Silver cost
@@ -208,6 +210,92 @@ export const l3SocialActions = {
     else if (!context.roster[targetId]) reason = 'TARGET_NOT_FOUND';
     console.warn(JSON.stringify({ level: 'warn', component: 'L3', event: 'social.reject.silver', senderId, targetId, amount, reason }));
     return { type: Events.Rejection.SILVER_TRANSFER, senderId, reason };
+  }),
+
+  // --- Reactions ---
+  processReaction: assign(({ context, event }: any) => {
+    if (event.type !== Events.Social.REACT) return {};
+    const { senderId, messageId, emoji } = event;
+    const ALLOWED_EMOJIS = ['😂', '👀', '🔥', '💀', '❤️'];
+    if (!ALLOWED_EMOJIS.includes(emoji)) return {};
+
+    const chatLog = context.chatLog.map((msg: any) => {
+      if (msg.id !== messageId) return msg;
+      const reactions: Record<string, string[]> = { ...(msg.reactions || {}) };
+      const reactors = reactions[emoji] ? [...reactions[emoji]] : [];
+      const idx = reactors.indexOf(senderId);
+      if (idx >= 0) {
+        reactors.splice(idx, 1);
+        if (reactors.length === 0) {
+          delete reactions[emoji];
+        } else {
+          reactions[emoji] = reactors;
+        }
+      } else {
+        reactions[emoji] = [...reactors, senderId];
+      }
+      return { ...msg, reactions: Object.keys(reactions).length > 0 ? reactions : undefined };
+    });
+    return { chatLog };
+  }),
+
+  emitReactionFact: sendParent(({ event }: any) => {
+    if (event.type !== Events.Social.REACT) return { type: Events.Fact.RECORD, fact: { type: FactTypes.REACTION, actorId: '', timestamp: 0 } };
+    return {
+      type: Events.Fact.RECORD,
+      fact: {
+        type: FactTypes.REACTION,
+        actorId: event.senderId,
+        payload: { messageId: event.messageId, emoji: event.emoji },
+        timestamp: Date.now(),
+      },
+    };
+  }),
+
+  // --- Nudge ---
+  trackNudge: assign(({ context, event }: any) => {
+    if (event.type !== Events.Social.NUDGE) return {};
+    const nudgesThisDay = { ...(context.nudgesThisDay || {}) };
+    nudgesThisDay[`${event.senderId}:${event.targetId}`] = true;
+    return { nudgesThisDay };
+  }),
+
+  processNudge: sendParent(({ event }: any) => {
+    if (event.type !== Events.Social.NUDGE) return { type: Events.Fact.RECORD, fact: { type: FactTypes.NUDGE, actorId: '', timestamp: 0 } };
+    return {
+      type: Events.Fact.RECORD,
+      fact: {
+        type: FactTypes.NUDGE,
+        actorId: event.senderId,
+        targetId: event.targetId,
+        payload: {},
+        timestamp: Date.now(),
+      },
+    };
+  }),
+
+  // --- Whisper ---
+  processWhisper: assign(({ context, event }: any) => {
+    if (event.type !== Events.Social.WHISPER) return {};
+    const msg = buildChatMessage(event.senderId, event.text, 'MAIN', {
+      whisperTarget: event.targetId,
+    });
+    const chatLog = appendToChatLog(context.chatLog, msg);
+    return { chatLog };
+  }),
+
+  emitWhisperFact: sendParent(({ event }: any) => {
+    if (event.type !== Events.Social.WHISPER) return { type: Events.Fact.RECORD, fact: { type: FactTypes.WHISPER, actorId: '', timestamp: 0 } };
+    return {
+      type: Events.Fact.RECORD,
+      fact: {
+        type: FactTypes.WHISPER,
+        actorId: event.senderId,
+        targetId: event.targetId,
+        payload: {},
+        timestamp: Date.now(),
+      },
+    };
   }),
 
   // Game channel management
@@ -477,6 +565,41 @@ export const l3SocialGuards = {
     const channel = context.channels[channelId];
     if (!channel) return false;
     return (channel.pendingMemberIds || []).includes(declinerId);
+  },
+
+  // Guard: reaction target message must exist in chatLog
+  isReactionAllowed: ({ context, event }: any) => {
+    if (event.type !== Events.Social.REACT) return false;
+    const ALLOWED_EMOJIS = ['😂', '👀', '🔥', '💀', '❤️'];
+    if (!ALLOWED_EMOJIS.includes(event.emoji)) return false;
+    return context.chatLog.some((msg: any) => msg.id === event.messageId);
+  },
+
+  // Guard: nudge target must be alive, one per sender→target per day
+  isNudgeAllowed: ({ context, event }: any) => {
+    if (event.type !== Events.Social.NUDGE) return false;
+    const { senderId, targetId } = event;
+    if (senderId === targetId) return false;
+    if (!context.roster[targetId] || context.roster[targetId].status !== PlayerStatuses.ALIVE) return false;
+    if (!context.roster[senderId] || context.roster[senderId].status !== PlayerStatuses.ALIVE) return false;
+    // Rate limit: check facts for existing NUDGE from sender→target today
+    // Facts are recorded via L2, not directly available in L3 context.
+    // We use a lightweight tracking approach: store nudges in context.
+    const nudges = context.nudgesThisDay || {};
+    const key = `${senderId}:${targetId}`;
+    if (nudges[key]) return false;
+    return true;
+  },
+
+  // Guard: whisper target must be alive, text non-empty
+  isWhisperAllowed: ({ context, event }: any) => {
+    if (event.type !== Events.Social.WHISPER) return false;
+    const { senderId, targetId, text } = event;
+    if (senderId === targetId) return false;
+    if (!text || text.length === 0) return false;
+    if (!context.roster[targetId] || context.roster[targetId].status !== PlayerStatuses.ALIVE) return false;
+    if (!context.roster[senderId] || context.roster[senderId].status !== PlayerStatuses.ALIVE) return false;
+    return true;
   },
 
   isGroupDmCreationAllowed: ({ context, event }: any) => {

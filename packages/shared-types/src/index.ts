@@ -393,7 +393,7 @@ export const InitPayloadSchema = z.object({
 // --- Journal & Facts (Persistence) ---
 
 export const FactSchema = z.object({
-  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "PERK_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED", "PROMPT_RESULT", "DM_INVITE_SENT", "DM_INVITE_ACCEPTED", "DM_INVITE_DECLINED", "DILEMMA_RESULT"]),
+  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "PERK_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED", "PROMPT_RESULT", "DM_INVITE_SENT", "DM_INVITE_ACCEPTED", "DM_INVITE_DECLINED", "DILEMMA_RESULT", "REACTION", "NUDGE", "WHISPER"]),
   actorId: z.string(),
   targetId: z.string().optional(),
   payload: z.any().optional(), // JSON details
@@ -434,13 +434,18 @@ export const ChatMessageSchema = z.object({
   channelId: z.string(),                         // Channel-based routing
   channel: z.enum(["MAIN", "DM"]).optional(),    // DEPRECATED — kept for migration
   targetId: z.string().optional(),               // DEPRECATED — kept for migration
+  replyTo: z.string().optional(),                // messageId of the message being replied to
+  whisperTarget: z.string().optional(),          // playerId — only sender+target see full content
+  reactions: z.record(z.string(), z.array(z.string())).optional(), // emoji → [reactorPlayerIds]
+  redacted: z.boolean().optional(),              // true for whisper messages not visible to this player
 });
 
 export const SocialEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("SOCIAL.SEND_MSG"),
     content: z.string(),
-    targetId: z.string().optional()
+    targetId: z.string().optional(),
+    replyTo: z.string().optional(),
   }),
   z.object({
     type: z.literal("SOCIAL.SEND_SILVER"),
@@ -450,7 +455,21 @@ export const SocialEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("SOCIAL.CREATE_CHANNEL"),
     memberIds: z.array(z.string()).min(2),  // excludes sender (injected by L1)
-  })
+  }),
+  z.object({
+    type: z.literal("SOCIAL.REACT"),
+    messageId: z.string(),
+    emoji: z.string(),
+  }),
+  z.object({
+    type: z.literal("SOCIAL.NUDGE"),
+    targetId: z.string(),
+  }),
+  z.object({
+    type: z.literal("SOCIAL.WHISPER"),
+    targetId: z.string(),
+    text: z.string().min(1).max(280),
+  }),
 ]);
 
 export const AdminEventSchema = z.object({

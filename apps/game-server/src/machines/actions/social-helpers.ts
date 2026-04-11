@@ -7,6 +7,7 @@ export function buildChatMessage(
   senderId: string,
   content: string,
   channelId: string,
+  extra?: { replyTo?: string; whisperTarget?: string },
 ): ChatMessage {
   const channel = channelId === 'MAIN' ? 'MAIN' as const : 'DM' as const;
   return {
@@ -16,6 +17,8 @@ export function buildChatMessage(
     content,
     channelId,
     channel,
+    ...(extra?.replyTo ? { replyTo: extra.replyTo } : {}),
+    ...(extra?.whisperTarget ? { whisperTarget: extra.whisperTarget } : {}),
   };
 }
 
