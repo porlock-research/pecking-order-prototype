@@ -4,7 +4,7 @@ import type { SocialPlayer, GameProjection } from '@pecking-order/shared-types';
 
 // --- Types ---
 
-type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA' | 'BET_BET_BET' | 'BLIND_AUCTION' | 'KINGS_RANSOM' | 'TOUCH_SCREEN' | 'THE_SPLIT';
+type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA' | 'BET_BET_BET' | 'BLIND_AUCTION' | 'KINGS_RANSOM' | 'TOUCH_SCREEN' | 'THE_SPLIT' | 'SHOCKWAVE' | 'ORBIT' | 'BEAT_DROP';
 
 interface GapRunConfig {
   difficulty: number; // 0-1
@@ -126,6 +126,21 @@ const GAME_DEFS: Record<GameType, GameDef> = {
     defaultConfig: { difficulty: 0.2 },
     botPayload: () => ({ action: Math.random() > 0.5 ? 'SPLIT' : 'STEAL' }),
   },
+  SHOCKWAVE: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.shockwaveMachine),
+    Component: lazy(() => import('../cartridges/games/shockwave/Shockwave')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  ORBIT: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.orbitMachine),
+    Component: lazy(() => import('../cartridges/games/orbit/Orbit')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  BEAT_DROP: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.beatDropMachine),
+    Component: lazy(() => import('../cartridges/games/beat-drop/BeatDrop')),
+    defaultConfig: { difficulty: 0.2 },
+  },
 };
 
 const GAME_TYPES = Object.keys(GAME_DEFS) as GameType[];
@@ -178,7 +193,7 @@ export default function GameDevHarness() {
     const input: any = { gameType: type, roster: MOCK_ROSTER, dayIndex: 1 };
 
     // Pass per-game config into machine input
-    const ARCADE_TYPES: string[] = ['GAP_RUN', 'GRID_PUSH', 'SEQUENCE', 'REACTION_TIME', 'COLOR_MATCH', 'STACKER', 'QUICK_MATH', 'SIMON_SAYS', 'AIM_TRAINER'];
+    const ARCADE_TYPES: string[] = ['GAP_RUN', 'GRID_PUSH', 'SEQUENCE', 'REACTION_TIME', 'COLOR_MATCH', 'STACKER', 'QUICK_MATH', 'SIMON_SAYS', 'AIM_TRAINER', 'SHOCKWAVE', 'ORBIT', 'BEAT_DROP'];
     if (ARCADE_TYPES.includes(type) && 'difficulty' in cfg) {
       input.difficulty = cfg.difficulty;
     }

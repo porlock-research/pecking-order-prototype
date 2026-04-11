@@ -16,15 +16,15 @@ const CANVAS_HEIGHT = 500;
 const LANE_COUNT = 4;
 const LANE_WIDTH = CANVAS_WIDTH / LANE_COUNT;
 const HIT_LINE_Y = CANVAS_HEIGHT - 80;
-const NOTE_SPEED = 300; // px/s
+const NOTE_SPEED = 200; // px/s — slower for readability
 const NOTE_WIDTH = 36;
 const NOTE_HEIGHT = 14;
 const NOTE_BORDER_RADIUS = 7;
 
-// Timing windows (ms)
-const PERFECT_WINDOW = 30;
-const GREAT_WINDOW = 60;
-const GOOD_WINDOW = 100;
+// Timing windows (ms) — generous for accessibility
+const PERFECT_WINDOW = 50;
+const GREAT_WINDOW = 100;
+const GOOD_WINDOW = 150;
 
 // Points per grade
 const PERFECT_POINTS = 100;
@@ -79,10 +79,11 @@ function generateNotes(rng: () => number, timeLimit: number, difficulty: number)
     const beatInterval = 60000 / bpm;
 
     // Pattern selection — more complex patterns at higher difficulty and time
-    const complexityBias = progress * 0.6 + difficulty * 0.4;
+    // Bias starts low so early game is mostly singles
+    const complexityBias = progress * 0.4 + difficulty * 0.3;
     const roll = rng();
 
-    if (roll < 0.4 - complexityBias * 0.2) {
+    if (roll < 0.5 - complexityBias * 0.2) {
       // Single
       const lane = Math.floor(rng() * LANE_COUNT);
       notes.push({ lane, time: currentTime, duration: 0, hit: false });

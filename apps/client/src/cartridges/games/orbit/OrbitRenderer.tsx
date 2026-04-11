@@ -415,14 +415,24 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
             }
           }
 
-          // Check death (drifted too far from all visible stars)
+          // Respawn if drifted too far — return to last star, keep timer running
           if (!captured) {
             const screenX = planetX - cameraX + HALF;
             const screenY = planetY - cameraY + HALF;
             if (screenX < -DEATH_MARGIN || screenX > CANVAS_SIZE + DEATH_MARGIN ||
                 screenY < -DEATH_MARGIN || screenY > CANVAS_SIZE + DEATH_MARGIN) {
-              dead = true;
-              deathTime = 0;
+              // Respawn at current star
+              const star = stars[currentStarIdx];
+              orbitAngle = 0;
+              star.orbitRadius = INITIAL_ORBIT_RADIUS;
+              planetX = star.x + INITIAL_ORBIT_RADIUS;
+              planetY = star.y;
+              planetVx = 0;
+              planetVy = 0;
+              state = 'orbiting';
+              trail.clear();
+              // Brief flash to signal the miss
+              screenFlash.trigger(withAlpha(t.colors.danger, 0.3), 300);
             }
           }
         }

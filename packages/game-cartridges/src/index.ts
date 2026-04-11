@@ -23,5 +23,6 @@ export {
   triviaMachine, realtimeTriviaMachine,
   betBetBetMachine, blindAuctionMachine, kingsRansomMachine,
   touchScreenMachine, theSplitMachine,
+  shockwaveMachine, orbitMachine, beatDropMachine,
   GAME_REGISTRY,
 } from './machines';
