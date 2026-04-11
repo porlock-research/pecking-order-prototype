@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import type { ArcadeRendererProps } from '@pecking-order/shared-types';
 import { useCartridgeTheme } from '../../CartridgeThemeContext';
 import { withAlpha } from '@pecking-order/ui-kit/cartridge-theme';
@@ -49,6 +49,9 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
 
+  const [showRespawn, setShowRespawn] = useState(false);
+  const respawnRef = useRef<(() => void) | null>(null);
+
   const gameLoop = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -88,8 +91,8 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
           // Place stars in a spread around the forward direction
           // Use multiple candidate positions and pick one that's reachable
           // (within well radius of a tangent release from the previous star)
-          const minDist = wellRadius + 40; // must be close enough to capture
-          const maxDist = wellRadius + 120;
+          const minDist = wellRadius * 0.8; // overlap with well radius — always capturable
+          const maxDist = wellRadius + 80; // not too far
           const placeDist = minDist + rng() * (maxDist - minDist);
           // Spread across a wide arc so different release timings reach different stars
           const placeAngle = rng() * Math.PI * 2; // full circle — any direction is valid
@@ -132,6 +135,8 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
     let dead = false;
     let deathTime = 0;
     let deathFadeAlpha = 1;
+    let flyingTime = 0;
+    const DRIFT_TIMEOUT = 2000; // ms before showing respawn button
 
     // Camera
     let cameraX = stars[0].x;
@@ -162,10 +167,28 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
         planetVx = Math.cos(tangentAngle) * releaseSpeed;
         planetVy = Math.sin(tangentAngle) * releaseSpeed;
         state = 'flying';
+        flyingTime = 0;
+        setShowRespawn(false);
       }
     }
 
     canvas.addEventListener('pointerdown', onPointerDown);
+
+    // Respawn function — called from React button
+    respawnRef.current = () => {
+      const star = stars[currentStarIdx];
+      orbitAngle = 0;
+      star.orbitRadius = INITIAL_ORBIT_RADIUS;
+      planetX = star.x + INITIAL_ORBIT_RADIUS;
+      planetY = star.y;
+      planetVx = 0;
+      planetVy = 0;
+      state = 'orbiting';
+      flyingTime = 0;
+      trail.clear();
+      setShowRespawn(false);
+      screenFlash.trigger(withAlpha(t.colors.danger, 0.2), 200);
+    };
 
     // --- Render ---
     function renderGame() {
@@ -376,6 +399,8 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
               state = 'orbiting';
               transfers++;
               orbitSpeed *= ORBIT_SPEED_MULT;
+              flyingTime = 0;
+              setShowRespawn(false);
 
               // Perfect capture?
               if (dist < star.wellRadius * PERFECT_CAPTURE_RATIO) {
@@ -418,29 +443,11 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
             }
           }
 
-          // Respawn if drifted too far from all stars
+          // Track flying time — show respawn button after timeout
           if (!captured) {
-            // Find distance to nearest star (excluding current)
-            let nearestDist = Infinity;
-            for (let i = 0; i < stars.length; i++) {
-              if (i === currentStarIdx) continue;
-              nearestDist = Math.min(nearestDist, distance(planetX, planetY, stars[i].x, stars[i].y));
-            }
-            // Also check distance from current star
-            const fromCurrent = distance(planetX, planetY, stars[currentStarIdx].x, stars[currentStarIdx].y);
-
-            // Respawn if planet is far from current star AND not approaching any other star
-            if (fromCurrent > 300 && nearestDist > 300) {
-              const star = stars[currentStarIdx];
-              orbitAngle = 0;
-              star.orbitRadius = INITIAL_ORBIT_RADIUS;
-              planetX = star.x + INITIAL_ORBIT_RADIUS;
-              planetY = star.y;
-              planetVx = 0;
-              planetVy = 0;
-              state = 'orbiting';
-              trail.clear();
-              screenFlash.trigger(withAlpha(t.colors.danger, 0.3), 300);
+            flyingTime += dt;
+            if (flyingTime >= DRIFT_TIMEOUT) {
+              setShowRespawn(true);
             }
           }
         }
@@ -487,7 +494,7 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
   }, [gameLoop]);
 
   return (
-    <div ref={containerRef} className="flex items-center justify-center w-full">
+    <div ref={containerRef} className="relative flex items-center justify-center w-full">
       <canvas
         ref={canvasRef}
         width={CANVAS_SIZE}
@@ -495,6 +502,14 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
         className="max-w-full max-h-full touch-none"
         style={{ imageRendering: 'pixelated' }}
       />
+      {showRespawn && (
+        <button
+          onClick={() => respawnRef.current?.()}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 px-6 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-sm font-mono text-white/90 hover:bg-white/20 active:scale-95 transition-all animate-pulse"
+        >
+          Retry from last star
+        </button>
+      )}
     </div>
   );
 }
