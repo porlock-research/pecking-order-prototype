@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+.pulse-shell {
+  /* Pulse palette */
+  --pulse-bg: #0a0a0e;
+  --pulse-surface: #13131a;
+  --pulse-surface-2: #1a1a24;
+  --pulse-surface-3: #1e1e2a;
+  --pulse-text-1: #f0f0f0;
+  --pulse-text-2: #999;
+  --pulse-text-3: #555;
+  --pulse-text-4: #333;
+  --pulse-accent: #ff3b6f;
+  --pulse-accent-glow: rgba(255, 59, 111, 0.15);
+  --pulse-gold: #ffd700;
+  --pulse-gold-glow: rgba(255, 215, 0, 0.12);
+  --pulse-nudge: #ffa500;
+  --pulse-whisper: #9b59b6;
+  --pulse-border: rgba(255, 255, 255, 0.04);
+
+  /* --po-* skin contract for cartridges */
+  --po-bg-deep: var(--pulse-bg);
+  --po-bg-panel: var(--pulse-surface);
+  --po-bg-input: var(--pulse-surface-2);
+  --po-bg-bubble: var(--pulse-surface-3);
+  --po-text: var(--pulse-text-1);
+  --po-text-dim: var(--pulse-text-3);
+  --po-gold: var(--pulse-gold);
+  --po-pink: var(--pulse-accent);
+  --po-border: var(--pulse-border);
+  --po-font-display: 'Outfit', sans-serif;
+  --po-font-body: 'Outfit', sans-serif;
+
+  font-family: 'Outfit', sans-serif;
+  background: var(--pulse-bg);
+  color: var(--pulse-text-1);
+}
+
+.pulse-shell[data-theme="light"] {
+  --pulse-bg: #f2f2f6;
+  --pulse-surface: #f0f0f4;
+  --pulse-surface-2: #e8e8ee;
+  --pulse-surface-3: #e0e0e8;
+  --pulse-text-1: #1a1a22;
+  --pulse-text-2: #666;
+  --pulse-text-3: #999;
+  --pulse-text-4: #ccc;
+  --pulse-border: rgba(0, 0, 0, 0.06);
+}
+
+/* Breathing dot animation for pills */
+@keyframes pulse-breathe {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* Pill urgency pulse */
+@keyframes pulse-pill-urgent {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* Ticker scroll */
+@keyframes pulse-ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Hint pulse for first reaction trigger */
+@keyframes pulse-hint {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 8px 2px var(--pulse-accent); }
+}
+
+/* Gold shimmer for silver events */
+@keyframes pulse-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

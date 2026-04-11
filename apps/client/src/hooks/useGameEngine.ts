@@ -99,11 +99,12 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     },
   });
 
-  const sendMessage = (content: string) => {
+  const sendMessage = (content: string, opts?: { replyTo?: string }) => {
     socket.send(JSON.stringify({
       type: Events.Social.SEND_MSG,
       content,
       channelId: 'MAIN',
+      ...(opts?.replyTo ? { replyTo: opts.replyTo } : {}),
     }));
   };
 
@@ -144,12 +145,25 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     socket.send(JSON.stringify({ type, ...payload }));
   };
 
-  const sendToChannel = (channelId: string, content: string) => {
+  const sendToChannel = (channelId: string, content: string, opts?: { replyTo?: string }) => {
     socket.send(JSON.stringify({
       type: Events.Social.SEND_MSG,
       content,
       channelId,
+      ...(opts?.replyTo ? { replyTo: opts.replyTo } : {}),
     }));
+  };
+
+  const sendReaction = (messageId: string, emoji: string) => {
+    socket.send(JSON.stringify({ type: Events.Social.REACT, messageId, emoji }));
+  };
+
+  const sendNudge = (targetId: string) => {
+    socket.send(JSON.stringify({ type: Events.Social.NUDGE, targetId }));
+  };
+
+  const sendWhisper = (targetId: string, text: string) => {
+    socket.send(JSON.stringify({ type: Events.Social.WHISPER, targetId, text }));
   };
 
   const createGroupDm = (memberIds: string[]) => {
@@ -192,6 +206,9 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     sendGameAction,
     sendActivityAction,
     sendPerk,
+    sendReaction,
+    sendNudge,
+    sendWhisper,
     sendTyping,
     stopTyping,
   };

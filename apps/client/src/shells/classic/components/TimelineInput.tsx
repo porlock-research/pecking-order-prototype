@@ -26,7 +26,7 @@ function TypingIndicator({ typingPlayers, playerId, roster }: {
 
 interface TimelineInputProps {
   engine: {
-    sendMessage: (content: string, targetId?: string) => void;
+    sendMessage: (content: string, opts?: { replyTo?: string }) => void;
     sendTyping: (channel?: string) => void;
     stopTyping: (channel?: string) => void;
   };
