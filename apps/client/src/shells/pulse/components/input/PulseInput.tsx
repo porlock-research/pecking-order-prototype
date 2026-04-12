@@ -12,11 +12,12 @@ import { AmountPicker } from './AmountPicker';
 import { CommandPreview } from './CommandPreview';
 import { WhisperMode } from './WhisperMode';
 import { ReplyBar } from './ReplyBar';
+import { MentionAutocomplete } from './MentionAutocomplete';
 import { DayPhases } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 
 export function PulseInput() {
-  const { engine, playerId } = usePulse();
+  const { engine, playerId, openDM, openNudge } = usePulse();
   const phase = useGameStore(s => s.phase);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
@@ -73,19 +74,39 @@ export function PulseInput() {
     if (val.length > 0) engine.sendTyping('MAIN');
   };
 
+  // Detect @query for mention autocomplete
+  const getMentionQuery = (val: string): string | null => {
+    const atIdx = val.lastIndexOf('@');
+    if (atIdx < 0) return null;
+    const after = val.slice(atIdx + 1);
+    // No space after @ — still showing autocomplete
+    if (after.includes(' ')) return null;
+    return after;
+  };
+
+  const handleMentionSelect = useCallback((playerName: string) => {
+    const atIdx = text.lastIndexOf('@');
+    if (atIdx < 0) return;
+    const before = text.slice(0, atIdx);
+    setText(`${before}@${playerName} `);
+    inputRef.current?.focus();
+  }, [text]);
+
+  const mentionQuery = commandMode.mode === 'idle' ? getMentionQuery(text) : null;
+
   // Command flow handlers
   const handlePlayerSelect = useCallback((player: any, pid: string) => {
     if (commandMode.mode !== 'player-picker') return;
     const cmd = commandMode.command;
 
     if (cmd === 'dm') {
-      engine.sendFirstMessage([pid], '');
+      openDM(pid);
       cancel();
       return;
     }
 
     if (cmd === 'nudge') {
-      engine.sendNudge(pid);
+      openNudge(pid);
       cancel();
       return;
     }
@@ -178,6 +199,16 @@ export function PulseInput() {
       {/* Default input (idle mode) */}
       {commandMode.mode === 'idle' && (
         <>
+          {/* Mention autocomplete */}
+          {mentionQuery !== null && (
+            <div style={{ position: 'relative' }}>
+              <MentionAutocomplete
+                query={mentionQuery}
+                onSelect={handleMentionSelect}
+                excludeId={playerId}
+              />
+            </div>
+          )}
           {!text && <HintChips onSelect={selectCommand} />}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
             <input
@@ -198,26 +229,28 @@ export function PulseInput() {
                 outline: 'none',
               }}
             />
-            <motion.button
-              whileTap={PULSE_TAP.button}
-              onClick={handleSend}
-              disabled={!text.trim()}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: text.trim() ? 'var(--pulse-accent)' : 'var(--pulse-surface-2)',
-                border: 'none',
-                cursor: text.trim() ? 'pointer' : 'default',
-                color: '#fff',
-                transition: 'background 0.15s ease',
-              }}
-            >
-              <Send size={16} />
-            </motion.button>
+            {text.trim() && (
+              <motion.button
+                whileTap={PULSE_TAP.button}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                onClick={handleSend}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'var(--pulse-accent)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#fff',
+                }}
+              >
+                <Send size={16} />
+              </motion.button>
+            )}
           </div>
         </>
       )}

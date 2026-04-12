@@ -17,7 +17,8 @@ interface DMViewProps {
 export function DMView({ channelId, targetId, onBack }: DMViewProps) {
   const roster = useGameStore(s => s.roster);
   const chatLog = useGameStore(s => s.chatLog);
-  const { engine, playerId } = usePulse();
+  const onlinePlayers = useGameStore(s => s.onlinePlayers);
+  const { engine, playerId, openSendSilver, openNudge } = usePulse();
   const [text, setText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [openReactionId, setOpenReactionId] = useState<string | null>(null);
@@ -25,8 +26,12 @@ export function DMView({ channelId, targetId, onBack }: DMViewProps) {
   const target = roster[targetId];
   const playerIndex = Object.keys(roster).indexOf(targetId);
   const color = getPlayerColor(playerIndex);
+  const isOnline = onlinePlayers.includes(targetId);
 
-  const dmMessages = channelId ? chatLog.filter(m => m.channelId === channelId) : [];
+  // Filter: only messages in THIS specific DM channel (no whispers, no MAIN messages, no empty content)
+  const dmMessages = channelId
+    ? chatLog.filter(m => m.channelId === channelId && !m.whisperTarget && !m.redacted && m.content?.trim())
+    : [];
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -46,32 +51,79 @@ export function DMView({ channelId, targetId, onBack }: DMViewProps) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', background: 'var(--pulse-bg)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-2)', display: 'flex' }}>
-          <ArrowLeft size={20} />
-        </button>
-        <StatusRing playerId={targetId} size={44}>
-          <img src={target?.avatarUrl} alt="" style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover' }} />
-        </StatusRing>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color, fontFamily: 'var(--po-font-body)' }}>{target?.personaName}</div>
+      {/* Header with large persona portrait for immersion */}
+      <div
+        style={{
+          position: 'relative',
+          padding: '12px 16px 16px',
+          background: `linear-gradient(180deg, ${color}18 0%, var(--pulse-surface) 100%)`,
+          borderBottom: '1px solid var(--pulse-border)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={onBack} aria-label="Back" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-1)', display: 'flex', padding: 4 }}>
+            <ArrowLeft size={22} />
+          </button>
+          <StatusRing playerId={targetId} size={56}>
+            <img
+              src={target?.avatarUrl}
+              alt=""
+              style={{ width: 56, height: 56, borderRadius: 14, objectFit: 'cover', objectPosition: 'center top' }}
+            />
+          </StatusRing>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 17, color, fontFamily: 'var(--po-font-body)', letterSpacing: -0.2 }}>
+              {target?.personaName}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--pulse-text-3)', fontFamily: 'var(--po-font-body)' }}>
+              {isOnline && (
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2ecc71', boxShadow: '0 0 6px #2ecc71' }} />
+              )}
+              <span>{isOnline ? 'Online now' : 'Offline'}</span>
+            </div>
+          </div>
+          <motion.button
+            whileTap={PULSE_TAP.button}
+            onClick={() => openSendSilver(targetId)}
+            aria-label="Send silver"
+            style={{
+              width: 40, height: 40, borderRadius: 12,
+              background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)',
+              cursor: 'pointer', color: 'var(--pulse-gold)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <Coins size={18} />
+          </motion.button>
+          <motion.button
+            whileTap={PULSE_TAP.button}
+            onClick={() => openNudge(targetId)}
+            aria-label="Nudge"
+            style={{
+              width: 40, height: 40, borderRadius: 12,
+              background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)',
+              cursor: 'pointer', color: 'var(--pulse-nudge)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <Hand size={18} />
+          </motion.button>
         </div>
-        <button onClick={() => engine.sendSilver(5, targetId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-gold)' }}>
-          <Coins size={20} />
-        </button>
-        <button onClick={() => engine.sendNudge(targetId)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-nudge)' }}>
-          <Hand size={20} />
-        </button>
-      </div>
-
-      {/* Privacy */}
-      <div style={{ textAlign: 'center', padding: '4px 0', fontSize: 10, color: 'var(--pulse-text-3)' }}>
-        {'🔒 Private conversation'}
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {dmMessages.length === 0 && (
+          <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--pulse-text-3)', fontSize: 13, fontFamily: 'var(--po-font-body)' }}>
+            <img
+              src={target?.avatarUrl}
+              alt=""
+              style={{ width: 120, height: 160, borderRadius: 16, objectFit: 'cover', objectPosition: 'center top', marginBottom: 12, opacity: 0.5 }}
+            />
+            <div style={{ fontWeight: 600, color: 'var(--pulse-text-2)', marginBottom: 2 }}>Start a conversation</div>
+            <div>Only you and {target?.personaName?.split(' ')[0]} will see these messages</div>
+          </div>
+        )}
         {dmMessages.map((msg, i) => {
           const prev = i > 0 ? dmMessages[i - 1] : null;
           const showHeader = !prev || prev.senderId !== msg.senderId || msg.timestamp - prev.timestamp > 120_000;
@@ -89,18 +141,25 @@ export function DMView({ channelId, targetId, onBack }: DMViewProps) {
       </div>
 
       {/* Input */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderTop: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderTop: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)' }}>
         <input
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
-          placeholder="Message..."
-          style={{ flex: 1, padding: '10px 14px', borderRadius: 12, background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)', color: 'var(--pulse-text-1)', fontSize: 14, fontFamily: 'var(--po-font-body)', outline: 'none' }}
+          placeholder={`Message ${target?.personaName?.split(' ')[0]}...`}
+          style={{ flex: 1, padding: '10px 14px', borderRadius: 12, background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)', color: 'var(--pulse-text-1)', fontSize: 15, fontFamily: 'var(--po-font-body)', outline: 'none' }}
         />
-        <motion.button whileTap={PULSE_TAP.button} onClick={handleSend} disabled={!text.trim()}
-          style={{ width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: text.trim() ? 'var(--pulse-accent)' : 'var(--pulse-surface-2)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', color: '#fff' }}>
-          <Send size={16} />
-        </motion.button>
+        {text.trim() && (
+          <motion.button
+            whileTap={PULSE_TAP.button}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            onClick={handleSend}
+            style={{ width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--pulse-accent)', border: 'none', cursor: 'pointer', color: '#fff' }}
+          >
+            <Send size={16} />
+          </motion.button>
+        )}
       </div>
     </div>
   );

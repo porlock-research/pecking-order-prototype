@@ -14,12 +14,30 @@ export interface PillState {
   cartridgeData?: any;
 }
 
+const ACTION_TO_KIND: Record<string, PillState['kind']> = {
+  OPEN_VOTING: 'voting',
+  START_GAME: 'game',
+  START_ACTIVITY: 'prompt',
+  INJECT_PROMPT: 'prompt',
+  START_DILEMMA: 'dilemma',
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  OPEN_VOTING: 'Vote',
+  START_GAME: 'Game',
+  START_ACTIVITY: 'Activity',
+  INJECT_PROMPT: 'Prompt',
+  START_DILEMMA: 'Dilemma',
+};
+
 export function usePillStates(): PillState[] {
   const voting = useGameStore(s => s.activeVotingCartridge);
   const game = useGameStore(s => s.activeGameCartridge);
   const prompt = useGameStore(s => s.activePromptCartridge);
   const dilemma = useGameStore(s => s.activeDilemma);
   const completed = useGameStore(s => s.completedCartridges);
+  const manifest = useGameStore(s => s.manifest);
+  const dayIndex = useGameStore(s => s.dayIndex);
 
   return useMemo(() => {
     const pills: PillState[] = [];
@@ -89,6 +107,32 @@ export function usePillStates(): PillState[] {
       }
     }
 
+    // Upcoming pills from current day's manifest timeline (PRE_SCHEDULED only — ADMIN events have no fixed times)
+    const day = manifest?.days?.[dayIndex - 1] ?? manifest?.days?.[dayIndex];
+    if (day?.timeline && manifest?.scheduling === 'PRE_SCHEDULED') {
+      const now = Date.now();
+      for (const ev of day.timeline as any[]) {
+        const kind = ACTION_TO_KIND[ev.action];
+        if (!kind) continue;
+        // Parse time — ISO or HH:MM
+        let eventTime: number | null = null;
+        if (ev.time?.includes('T')) {
+          eventTime = new Date(ev.time).getTime();
+        }
+        if (eventTime === null || eventTime <= now) continue;
+        // Don't add upcoming if the kind is already active
+        if (pills.some(p => p.kind === kind && p.lifecycle !== 'completed')) continue;
+
+        pills.push({
+          id: `upcoming-${ev.action}-${ev.time}`,
+          kind,
+          label: ACTION_LABELS[ev.action] || kind,
+          lifecycle: 'upcoming',
+          timeRemaining: Math.floor((eventTime - now) / 1000),
+        });
+      }
+    }
+
     return pills;
-  }, [voting, game, prompt, dilemma, completed]);
+  }, [voting, game, prompt, dilemma, completed, manifest, dayIndex]);
 }

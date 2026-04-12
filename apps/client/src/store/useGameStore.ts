@@ -411,7 +411,7 @@ export const useGameStore = create<GameState>((set) => ({
       gameId: data.context?.gameId || state.gameId,
       dayIndex: data.context?.dayIndex || 0,
       roster: stableRef(state.roster, nextRoster),
-      chatLog: nextChatLog.length === state.chatLog.length ? state.chatLog : nextChatLog,
+      chatLog: stableRef(state.chatLog, nextChatLog),
       channels: stableRef(state.channels, nextChannels),
       groupChatOpen: data.context?.groupChatOpen ?? state.groupChatOpen,
       dmsOpen: data.context?.dmsOpen ?? state.dmsOpen,

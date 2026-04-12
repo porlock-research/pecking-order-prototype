@@ -68,14 +68,14 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
         borderRadius: 12,
         fontSize: 13,
         fontWeight: 500,
-        color: 'var(--pulse-text-2)',
+        color: 'var(--pulse-text-1)',
         fontFamily: 'var(--po-font-body)',
         background: isGold
-          ? 'linear-gradient(90deg, transparent 0%, rgba(255,215,0,0.08) 50%, transparent 100%)'
+          ? 'linear-gradient(90deg, rgba(255,215,0,0.04) 0%, rgba(255,215,0,0.1) 50%, rgba(255,215,0,0.04) 100%)'
           : 'var(--pulse-surface-2)',
         backgroundSize: isGold ? '200% 100%' : undefined,
         animation: isGold ? 'pulse-shimmer 2s ease forwards' : undefined,
-        border: '1px solid var(--pulse-border)',
+        border: isGold ? '1px solid rgba(255,215,0,0.2)' : '1px solid var(--pulse-border)',
       }}
     >
       <span>{message.content}</span>

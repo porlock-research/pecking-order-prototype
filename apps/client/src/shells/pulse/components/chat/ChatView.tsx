@@ -5,10 +5,12 @@ import { MessageCard } from './MessageCard';
 import { BroadcastCard } from './BroadcastCard';
 import { WhisperCard } from './WhisperCard';
 import { TypingIndicator } from './TypingIndicator';
-import { DayPhases, GAME_MASTER_ID } from '@pecking-order/shared-types';
+import { DayPhases, GAME_MASTER_ID, TickerCategories } from '@pecking-order/shared-types';
+import type { TickerMessage } from '@pecking-order/shared-types';
 
 export function ChatView() {
   const chatLog = useGameStore(s => s.chatLog);
+  const tickerMessages = useGameStore(s => s.tickerMessages);
   const phase = useGameStore(s => s.phase);
   const { playerId } = usePulse();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -20,12 +22,30 @@ export function ChatView() {
     m => m.channelId === 'MAIN' || (!m.channelId && m.channel === 'MAIN'),
   );
 
-  // Auto-scroll on new messages
+  // Social events from ticker that should render as inline broadcast cards
+  // (silver transfers, nudges — these are facts, not chat messages)
+  const socialEvents: TickerMessage[] = tickerMessages.filter(
+    t => t.category === TickerCategories.SOCIAL_TRANSFER
+      || t.category === TickerCategories.SOCIAL_PERK
+      || t.category === TickerCategories.SOCIAL_NUDGE,
+  );
+
+  // Interleave messages and social events by timestamp
+  type TimelineEntry =
+    | { type: 'msg'; data: any; ts: number }
+    | { type: 'social'; data: TickerMessage; ts: number };
+
+  const timeline: TimelineEntry[] = [
+    ...mainMessages.map(m => ({ type: 'msg' as const, data: m, ts: m.timestamp })),
+    ...socialEvents.map(t => ({ type: 'social' as const, data: t, ts: t.timestamp })),
+  ].sort((a, b) => a.ts - b.ts);
+
+  // Auto-scroll on new entries
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [mainMessages.length, autoScroll]);
+  }, [timeline.length, autoScroll]);
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
@@ -36,15 +56,18 @@ export function ChatView() {
   const isSocialPhase = phase !== DayPhases.ELIMINATION && phase !== DayPhases.GAME_OVER;
 
   // Group consecutive messages from the same sender within 2 minutes
-  const groupedMessages: Array<{ msg: any; showHeader: boolean }> = [];
-  for (let i = 0; i < mainMessages.length; i++) {
-    const msg = mainMessages[i];
-    const prev = i > 0 ? mainMessages[i - 1] : null;
-    const showHeader =
-      !prev ||
-      prev.senderId !== msg.senderId ||
-      msg.timestamp - prev.timestamp > 120_000;
-    groupedMessages.push({ msg, showHeader });
+  // (Only applies to message entries; social events break the grouping)
+  const grouped: Array<{ entry: TimelineEntry; showHeader: boolean }> = [];
+  for (let i = 0; i < timeline.length; i++) {
+    const entry = timeline[i];
+    const prev = i > 0 ? timeline[i - 1] : null;
+    let showHeader = true;
+    if (entry.type === 'msg' && prev?.type === 'msg') {
+      showHeader =
+        prev.data.senderId !== entry.data.senderId ||
+        entry.data.timestamp - prev.data.timestamp > 120_000;
+    }
+    grouped.push({ entry, showHeader });
   }
 
   return (
@@ -76,7 +99,26 @@ export function ChatView() {
         </div>
       )}
 
-      {groupedMessages.map(({ msg, showHeader }) => {
+      {grouped.map(({ entry, showHeader }) => {
+        // Social event from ticker (silver, nudge, perk) — inline broadcast card
+        if (entry.type === 'social') {
+          const t = entry.data;
+          // Synthesize a minimal message-like shape for BroadcastCard
+          return (
+            <BroadcastCard
+              key={`social-${t.timestamp}-${t.text.slice(0, 20)}`}
+              message={{
+                id: `social-${t.timestamp}`,
+                senderId: 'SYSTEM',
+                timestamp: t.timestamp,
+                content: t.text,
+                channelId: 'MAIN',
+              } as any}
+            />
+          );
+        }
+
+        const msg = entry.data;
         // Redacted whisper
         if (msg.whisperTarget && msg.redacted) {
           return <WhisperCard key={msg.id} message={msg} />;
