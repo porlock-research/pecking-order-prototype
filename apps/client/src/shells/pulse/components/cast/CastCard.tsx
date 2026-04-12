@@ -9,12 +9,15 @@ interface CastCardProps {
   player: SocialPlayer;
   playerId: string;
   playerIndex: number;
+  rank?: number;
+  isSelf?: boolean;
+  compact?: boolean;
   onSilver: () => void;
   onDM: () => void;
   onNudge: () => void;
 }
 
-export function CastCard({ player, playerId, playerIndex, onSilver, onDM, onNudge }: CastCardProps) {
+export function CastCard({ player, playerId, playerIndex, rank, isSelf, compact, onSilver, onDM, onNudge }: CastCardProps) {
   const onlinePlayers = useGameStore(s => s.onlinePlayers);
   const isEliminated = player.status === 'ELIMINATED';
   const isOnline = onlinePlayers.includes(playerId);
@@ -23,17 +26,23 @@ export function CastCard({ player, playerId, playerIndex, onSilver, onDM, onNudg
   const rawBio = player.bio?.split(/[.!?]/)[0]?.trim() ?? '';
   const stereotype = rawBio.length > 4 && rawBio.length <= 50 ? rawBio : '';
 
+  const portraitHeight = compact ? 80 : 150;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: isEliminated ? 0.95 : 1 }}
       transition={PULSE_SPRING.snappy}
       style={{
-        borderRadius: 16,
+        borderRadius: compact ? 12 : 16,
         overflow: 'hidden',
         background: 'var(--pulse-surface)',
-        border: isOnline ? `1px solid ${color}40` : '1px solid var(--pulse-border)',
-        opacity: isEliminated ? 0.6 : 1,
+        border: isSelf
+          ? '2px solid var(--pulse-accent)'
+          : isOnline
+            ? `1px solid ${color}40`
+            : '1px solid var(--pulse-border)',
+        opacity: isEliminated ? 0.55 : 1,
         filter: isEliminated ? 'grayscale(1)' : undefined,
         transition: 'filter 0.5s ease, opacity 0.5s ease, border-color 0.3s ease',
         position: 'relative',
@@ -46,14 +55,58 @@ export function CastCard({ player, playerId, playerIndex, onSilver, onDM, onNudg
           alt={player.personaName}
           style={{
             width: '100%',
-            height: 150,
+            height: portraitHeight,
             objectFit: 'cover',
             objectPosition: 'center 25%',
             display: 'block',
           }}
         />
-        {/* Online indicator */}
-        {isOnline && !isEliminated && (
+        {/* Rank badge top-left */}
+        {rank && !compact && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              minWidth: 22,
+              height: 22,
+              padding: '0 6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 8,
+              background: rank === 1 ? 'linear-gradient(135deg, var(--pulse-gold), #e6a500)' : 'rgba(0,0,0,0.6)',
+              backdropFilter: 'blur(4px)',
+              fontSize: 11,
+              fontWeight: 800,
+              color: rank === 1 ? '#1a1422' : 'var(--pulse-text-1)',
+            }}
+          >
+            #{rank}
+          </div>
+        )}
+        {/* "YOU" badge top-right (overrides LIVE for self) */}
+        {isSelf && !isEliminated && !compact && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              padding: '3px 8px',
+              borderRadius: 10,
+              background: 'var(--pulse-accent)',
+              fontSize: 9,
+              fontWeight: 800,
+              color: '#fff',
+              letterSpacing: 0.8,
+              textTransform: 'uppercase',
+            }}
+          >
+            You
+          </div>
+        )}
+        {/* Online indicator (only if not self — self gets YOU badge) */}
+        {isOnline && !isEliminated && !isSelf && !compact && (
           <div
             style={{
               position: 'absolute',
@@ -78,42 +131,44 @@ export function CastCard({ player, playerId, playerIndex, onSilver, onDM, onNudg
           </div>
         )}
         {/* Silver badge bottom-left */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 8,
-            left: 8,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '3px 8px',
-            borderRadius: 10,
-            background: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(4px)',
-            fontSize: 11,
-            fontWeight: 700,
-            color: 'var(--pulse-gold)',
-          }}
-        >
-          <Coins size={13} weight="fill" />
-          <span>{player.silver}</span>
-        </div>
+        {!compact && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 8,
+              left: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 8px',
+              borderRadius: 10,
+              background: 'rgba(0,0,0,0.6)',
+              backdropFilter: 'blur(4px)',
+              fontSize: 11,
+              fontWeight: 700,
+              color: 'var(--pulse-gold)',
+            }}
+          >
+            <Coins size={13} weight="fill" />
+            <span>{player.silver}</span>
+          </div>
+        )}
       </div>
 
       {/* Name + stereotype */}
-      <div style={{ padding: '10px 12px 8px' }}>
-        <div style={{ fontWeight: 800, fontSize: 15, color, fontFamily: 'var(--po-font-body)', letterSpacing: -0.2 }}>
+      <div style={{ padding: compact ? '6px 8px' : '10px 12px 8px' }}>
+        <div style={{ fontWeight: compact ? 700 : 800, fontSize: compact ? 11 : 15, color, fontFamily: 'var(--po-font-body)', letterSpacing: -0.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {player.personaName}
         </div>
-        {stereotype && (
+        {!compact && stereotype && (
           <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--pulse-text-3)', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {stereotype}
           </div>
         )}
       </div>
 
-      {/* Actions */}
-      {!isEliminated && (
+      {/* Actions — hidden for self (no DM-yourself) and eliminated/compact */}
+      {!isEliminated && !isSelf && !compact && (
         <div style={{ display: 'flex', borderTop: '1px solid var(--pulse-border)' }}>
           {[
             { Icon: ChatCircle, handler: onDM, label: 'DM' },

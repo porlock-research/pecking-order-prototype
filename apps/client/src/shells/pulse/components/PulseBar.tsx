@@ -49,7 +49,7 @@ export function PulseBar() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden', gap: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden', gap: 8 }}>
           {allAlive.map(([id, p], i) => {
             const isOnline = onlinePlayers.includes(id);
             const isTyping = typingPlayers[id] === 'MAIN';
@@ -90,18 +90,39 @@ export function PulseBar() {
                     display: 'block',
                   }}
                 />
-                {/* Self indicator — subtle accent ring around your own avatar */}
+                {/* Self indicator — solid accent ring + "YOU" tag below */}
                 {isSelf && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      inset: -2,
-                      borderRadius: 12,
-                      border: '1.5px solid var(--pulse-accent)',
-                      opacity: 0.5,
-                      pointerEvents: 'none',
-                    }}
-                  />
+                  <>
+                    <span
+                      style={{
+                        position: 'absolute',
+                        inset: -2,
+                        borderRadius: 12,
+                        border: '2px solid var(--pulse-accent)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: -8,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: 'var(--pulse-accent)',
+                        color: '#fff',
+                        fontSize: 7,
+                        fontWeight: 800,
+                        letterSpacing: 0.5,
+                        padding: '1px 5px',
+                        borderRadius: 6,
+                        textTransform: 'uppercase',
+                        pointerEvents: 'none',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      You
+                    </span>
+                  </>
                 )}
                 {/* Typing pulse ring (overrides) */}
                 {isTyping && (
