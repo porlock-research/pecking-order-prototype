@@ -96,22 +96,28 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
           width: '100%',
           minWidth: 0,
           position: 'relative',
+          // Every message gets its own bubble so grouped messages from the
+          // same sender are still visually distinct.
+          // - Self: coral-tinted bubble
+          // - Whisper: purple-tinted bubble with left accent
+          // - Other: subtle surface bubble with player-color left accent
+          borderRadius: 16,
+          padding: '10px 14px',
           ...(isSelf
             ? {
                 background: 'linear-gradient(135deg, rgba(255,59,111,0.14) 0%, rgba(255,59,111,0.06) 100%)',
                 border: '1px solid rgba(255,59,111,0.18)',
-                borderRadius: 16,
-                padding: '10px 14px',
               }
-            : {}),
-          ...(isWhisper
-            ? {
-                background: 'rgba(155, 89, 182, 0.08)',
-                borderRadius: 16,
-                padding: '10px 14px',
-                borderLeft: '3px solid var(--pulse-whisper)',
-              }
-            : {}),
+            : isWhisper
+              ? {
+                  background: 'rgba(155, 89, 182, 0.08)',
+                  borderLeft: '3px solid var(--pulse-whisper)',
+                }
+              : {
+                  background: 'var(--pulse-surface)',
+                  border: '1px solid var(--pulse-border)',
+                  borderLeft: `3px solid ${color}`,
+                }),
         }}
       >
         {/* Name plate */}

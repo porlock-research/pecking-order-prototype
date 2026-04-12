@@ -167,6 +167,27 @@ export function CastCard({ player, playerId, playerIndex, rank, isSelf, compact,
         )}
       </div>
 
+      {/* Self: render an empty action-row spacer so card heights match other players */}
+      {isSelf && !isEliminated && !compact && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '10px 0',
+            borderTop: '1px solid var(--pulse-border)',
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: 1,
+            color: 'var(--pulse-text-3)',
+            textTransform: 'uppercase',
+            fontFamily: 'var(--po-font-body)',
+          }}
+        >
+          That's you
+        </div>
+      )}
+
       {/* Actions — hidden for self (no DM-yourself) and eliminated/compact */}
       {!isEliminated && !isSelf && !compact && (
         <div style={{ display: 'flex', borderTop: '1px solid var(--pulse-border)' }}>
