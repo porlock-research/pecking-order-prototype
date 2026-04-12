@@ -1,0 +1,41 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: cartridges/games/(color-sort|stacker|the-split|[^/]*puzzle[^/]*)/[^/]+Renderer\.tsx
+ADVISORY: |
+  Pickup-and-place puzzle games (pick an item, animate it, drop into
+  a target) should use a POP-ON-PICKUP ownership model, not a defer-
+  until-settle model.
+
+  Correct model:
+    pickupFromTube(i):
+      const ball = tubes[i].pop();          // ← POP immediately
+      floating = { color: ball, fromTube: i, phase: 'lifting', ... };
+
+    tryPlaceInto(dest):
+      floating.fromTube = -(dest + 1);       // encode dest as negative
+      floating.phase = 'traveling';
+      selected = -1;                         // ← reset selection
+
+    // On fall-settle (in loop):
+      const destTube = -floating.fromTube - 1;
+      tubes[destTube].push(floating.color);
+      floating = null;
+
+    dropSelected (cancel):
+      floating.fromTube = -(home + 1);       // cancel also travels+falls
+      floating.phase = 'traveling';
+      selected = -1;
+
+  Why: if pickup doesn't pop, the source still contains the ball
+  during animation. When settle runs push() on destination, the ball
+  DUPLICATES. Also `selected` never resets, so the gold-glow outline
+  persists after placement.
+
+  Related stale-logic trap: if pickup pops on day 1, ANY draw-time
+  skip like `if (isSel && j === tubes[i].length - 1 && floating) continue;`
+  was written for the non-pop era and MUST be deleted. After pop, that
+  condition skips the ball UNDER the picked one (which is now the top
+  of the shortened array) — the ball visually disappears until settle.
+
+  Rule of thumb: if your `floating` ball variable owns the ball, the
+  source array should NOT contain it. Never have both references
+  simultaneously.
