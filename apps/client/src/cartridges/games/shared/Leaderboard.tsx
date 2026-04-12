@@ -22,6 +22,7 @@ const GAME_STAT_CONFIG: Record<string, { key: string; label: string; format?: (v
   [GameTypes.SHOCKWAVE]: { key: 'wavesCleared', label: 'Waves' },
   [GameTypes.ORBIT]: { key: 'transfers', label: 'Transfers' },
   [GameTypes.BEAT_DROP]: { key: 'score', label: 'Score' },
+  [GameTypes.INFLATE]: { key: 'score', label: 'Score' },
 };
 
 interface LeaderboardProps {

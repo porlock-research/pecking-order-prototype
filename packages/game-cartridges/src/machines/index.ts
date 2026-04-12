@@ -23,6 +23,7 @@ export { theSplitMachine } from './the-split';
 export { shockwaveMachine } from './shockwave';
 export { orbitMachine } from './orbit';
 export { beatDropMachine } from './beat-drop';
+export { inflateMachine } from './inflate';
 
 import { gapRunMachine } from './gap-run';
 import { gridPushMachine } from './grid-push';
@@ -43,6 +44,7 @@ import { theSplitMachine } from './the-split';
 import { shockwaveMachine } from './shockwave';
 import { orbitMachine } from './orbit';
 import { beatDropMachine } from './beat-drop';
+import { inflateMachine } from './inflate';
 
 export const GAME_REGISTRY = {
   GAP_RUN: gapRunMachine,
@@ -64,4 +66,5 @@ export const GAME_REGISTRY = {
   SHOCKWAVE: shockwaveMachine,
   ORBIT: orbitMachine,
   BEAT_DROP: beatDropMachine,
+  INFLATE: inflateMachine,
 } as const;

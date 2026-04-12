@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chain Reaction — Prototype</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1025; color: #fff; font-family: 'SF Mono', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+  h2 { color: #c4a66a; margin-bottom: 8px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; }
+  #hud { display: flex; gap: 24px; margin-bottom: 12px; font-size: 13px; color: rgba(255,255,255,0.6); }
+  #hud span { color: #c4a66a; }
+  #next-tile { margin-bottom: 8px; font-size: 12px; color: rgba(255,255,255,0.4); }
+  #next-tile b { color: #fff; font-size: 16px; }
+  canvas { border-radius: 12px; cursor: pointer; }
+  #msg { margin-top: 12px; font-size: 13px; color: rgba(255,255,255,0.5); height: 20px; }
+  #restart { margin-top: 12px; padding: 8px 24px; background: #c4a66a; color: #1a1025; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: inherit; display: none; }
+</style>
+</head><body>
+<h2>Chain Reaction</h2>
+<div id="hud">Score: <span id="score">0</span> &nbsp; Merges: <span id="merges">0</span> &nbsp; Best: <span id="best">2</span></div>
+<div id="next-tile">Next: <b id="next-val">2</b></div>
+<canvas id="c" width="340" height="340"></canvas>
+<div id="msg">Tap an empty cell to place the tile</div>
+<button id="restart" onclick="init()">Play Again</button>
+
+<script>
+const GRID = 5;
+const PAD = 10;
+const CELL = 64;
+const SIZE = GRID * CELL + PAD * 2;
+const canvas = document.getElementById('c');
+canvas.width = canvas.height = SIZE;
+const ctx = canvas.getContext('2d');
+
+const COLORS = {
+  2: '#5b8fb9', 4: '#6b9f4a', 8: '#c4a66a', 16: '#d4764a',
+  32: '#c95b8f', 64: '#8b5cf6', 128: '#e74c3c', 256: '#f1c40f',
+  512: '#1abc9c', 1024: '#e67e22', 2048: '#ff6b9d'
+};
+
+let grid, score, merges, bestTile, nextVal, gameOver, animating;
+let anims = []; // {type, x, y, val, t, duration, fromX?, fromY?}
+
+function init() {
+  grid = Array.from({length: GRID}, () => Array(GRID).fill(0));
+  score = 0; merges = 0; bestTile = 2; gameOver = false; animating = false;
+  anims = [];
+  nextVal = pickNext();
+  updateHUD();
+  document.getElementById('restart').style.display = 'none';
+  document.getElementById('msg').textContent = 'Tap an empty cell to place the tile';
+  draw();
+}
+
+function pickNext() {
+  const r = Math.random();
+  if (r < 0.6) return 2;
+  if (r < 0.85) return 4;
+  return 8;
+}
+
+function updateHUD() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('merges').textContent = merges;
+  document.getElementById('best').textContent = bestTile;
+  document.getElementById('next-val').textContent = nextVal;
+}
+
+function cellColor(val) {
+  return COLORS[val] || '#ff6b9d';
+}
+
+function draw() {
+  ctx.clearRect(0, 0, SIZE, SIZE);
+  // Background
+  ctx.fillStyle = '#2a1f35';
+  ctx.beginPath();
+  ctx.roundRect(0, 0, SIZE, SIZE, 12);
+  ctx.fill();
+
+  // Grid cells
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const px = PAD + x * CELL;
+      const py = PAD + y * CELL;
+      ctx.fillStyle = '#352a40';
+      ctx.beginPath();
+      ctx.roundRect(px + 2, py + 2, CELL - 4, CELL - 4, 8);
+      ctx.fill();
+
+      const val = grid[y][x];
+      if (val > 0) {
+        drawTile(px + 2, py + 2, CELL - 4, val, 1);
+      }
+    }
+  }
+
+  // Animations
+  for (const a of anims) {
+    if (a.type === 'place') {
+      const s = easeOutBack(a.t / a.duration);
+      const px = PAD + a.x * CELL + 2;
+      const py = PAD + a.y * CELL + 2;
+      ctx.save();
+      ctx.translate(px + (CELL-4)/2, py + (CELL-4)/2);
+      ctx.scale(s, s);
+      drawTile(-(CELL-4)/2, -(CELL-4)/2, CELL-4, a.val, 1);
+      ctx.restore();
+    } else if (a.type === 'merge') {
+      const s = 1 + Math.sin(a.t / a.duration * Math.PI) * 0.3;
+      const px = PAD + a.x * CELL + 2;
+      const py = PAD + a.y * CELL + 2;
+      ctx.save();
+      ctx.translate(px + (CELL-4)/2, py + (CELL-4)/2);
+      ctx.scale(s, s);
+      drawTile(-(CELL-4)/2, -(CELL-4)/2, CELL-4, a.val, 1);
+      ctx.restore();
+    }
+  }
+}
+
+function drawTile(x, y, size, val, alpha) {
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = cellColor(val);
+  ctx.beginPath();
+  ctx.roundRect(x, y, size, size, 8);
+  ctx.fill();
+  // Lighter top edge
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.beginPath();
+  ctx.roundRect(x, y, size, size * 0.4, [8, 8, 0, 0]);
+  ctx.fill();
+  // Number
+  ctx.fillStyle = val >= 64 ? '#fff' : 'rgba(0,0,0,0.7)';
+  ctx.font = `bold ${val >= 1000 ? 16 : val >= 100 ? 20 : 24}px 'SF Mono', monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(val, x + size/2, y + size/2 + 2);
+  ctx.globalAlpha = 1;
+}
+
+function easeOutBack(t) {
+  const c = 1.7;
+  return 1 + (t - 1) ** 2 * ((c + 1) * (t - 1) + c) + (t - 1);
+}
+
+function place(gx, gy) {
+  if (gameOver || animating || grid[gy][gx] !== 0) return;
+  grid[gy][gx] = nextVal;
+  anims.push({ type: 'place', x: gx, y: gy, val: nextVal, t: 0, duration: 200 });
+  animating = true;
+
+  setTimeout(() => {
+    runMerges(gx, gy);
+  }, 150);
+}
+
+function runMerges() {
+  let merged = true;
+  let chainLen = 0;
+  const doPass = () => {
+    merged = false;
+    for (let y = 0; y < GRID; y++) {
+      for (let x = 0; x < GRID; x++) {
+        if (grid[y][x] === 0) continue;
+        // Check right and down neighbors
+        for (const [dx, dy] of [[1,0],[0,1],[-1,0],[0,-1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) continue;
+          if (grid[ny][nx] === grid[y][x]) {
+            // Merge!
+            const newVal = grid[y][x] * 2;
+            grid[y][x] = newVal;
+            grid[ny][nx] = 0;
+            score += newVal;
+            merges++;
+            chainLen++;
+            if (newVal > bestTile) bestTile = newVal;
+            anims.push({ type: 'merge', x, y, val: newVal, t: 0, duration: 300 });
+            merged = true;
+            updateHUD();
+            break;
+          }
+        }
+        if (merged) break;
+      }
+      if (merged) break;
+    }
+    if (merged) {
+      setTimeout(doPass, 200);
+    } else {
+      finishTurn(chainLen);
+    }
+  };
+  setTimeout(doPass, 100);
+}
+
+function finishTurn(chainLen) {
+  if (chainLen > 1) {
+    document.getElementById('msg').textContent = `${chainLen}x chain! +${score}`;
+  }
+  nextVal = pickNext();
+  updateHUD();
+  animating = false;
+
+  // Check game over
+  let hasEmpty = false;
+  for (let y = 0; y < GRID; y++)
+    for (let x = 0; x < GRID; x++)
+      if (grid[y][x] === 0) hasEmpty = true;
+
+  if (!hasEmpty) {
+    // Check if any merges possible
+    let canMerge = false;
+    for (let y = 0; y < GRID; y++) {
+      for (let x = 0; x < GRID; x++) {
+        for (const [dx, dy] of [[1,0],[0,1]]) {
+          const nx = x+dx, ny = y+dy;
+          if (nx < GRID && ny < GRID && grid[ny][nx] === grid[y][x]) canMerge = true;
+        }
+      }
+    }
+    if (!canMerge) {
+      gameOver = true;
+      document.getElementById('msg').textContent = `Game Over! Score: ${score}`;
+      document.getElementById('restart').style.display = 'block';
+    }
+  }
+}
+
+// Animation loop
+let lastTime = 0;
+function animate(now) {
+  const dt = lastTime ? now - lastTime : 16;
+  lastTime = now;
+
+  for (let i = anims.length - 1; i >= 0; i--) {
+    anims[i].t += dt;
+    if (anims[i].t >= anims[i].duration) anims.splice(i, 1);
+  }
+
+  draw();
+  requestAnimationFrame(animate);
+}
+
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const scale = SIZE / rect.width;
+  const mx = (e.clientX - rect.left) * scale;
+  const my = (e.clientY - rect.top) * scale;
+  const gx = Math.floor((mx - PAD) / CELL);
+  const gy = Math.floor((my - PAD) / CELL);
+  if (gx >= 0 && gx < GRID && gy >= 0 && gy < GRID) {
+    place(gx, gy);
+  }
+});
+
+init();
+requestAnimationFrame(animate);
+</script>
+</body></html>
