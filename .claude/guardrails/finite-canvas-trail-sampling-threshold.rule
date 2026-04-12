@@ -1,0 +1,23 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: cartridges/games/.*Renderer\.tsx
+ADVISORY: |
+  Continuous-motion canvas renderers with "trail sampling" (only pushing a
+  new point when distance >= THRESHOLD) have a subtle bug: if THRESHOLD
+  exceeds per-frame movement distance, the trail array never grows past
+  1 element.
+
+  At 120 px/s and 16ms frames, movement is ~1.92 px/frame. A threshold
+  of 3px means no new points are ever added — every frame just updates
+  trail[0] in place.
+
+  Rules of thumb:
+  - Sampling threshold should be <= minimum expected per-frame movement
+    (speed_min * min_frame_dt). For 120 px/s * 16ms = ~2px → threshold < 2.
+  - OR push every frame and trim by arc-length (simpler, more robust).
+  - OR compute threshold from actual movement (`d < THRESHOLD` is fine
+    if you still unshift occasionally).
+
+  Related trap: body-rendering functions that take "draw body + head"
+  and early-return on `trail.length < 2` will ALSO skip the head.
+  Fix: draw the head unconditionally, OR pre-seed the trail with a
+  second point behind the head on init so the guard never triggers.
