@@ -1,4 +1,4 @@
-import { MessageCircle, Users } from 'lucide-react';
+import { ChatCircle, Users } from '../icons';
 import { motion } from 'framer-motion';
 import { PULSE_TAP } from '../springs';
 
@@ -8,7 +8,7 @@ interface TabBarProps {
 }
 
 const tabs = [
-  { id: 'chat' as const, label: 'Chat', Icon: MessageCircle },
+  { id: 'chat' as const, label: 'Chat', Icon: ChatCircle },
   { id: 'cast' as const, label: 'Cast', Icon: Users },
 ];
 
@@ -45,7 +45,7 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
               transition: 'color 0.15s ease',
             }}
           >
-            <Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
+            <Icon size={22} weight={isActive ? 'fill' : 'regular'} />
             <span
               style={{
                 fontSize: 10,

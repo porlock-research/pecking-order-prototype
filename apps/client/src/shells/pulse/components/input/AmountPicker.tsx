@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '../../icons';
 import { getPlayerColor } from '../../colors';
 import { useGameStore } from '../../../../store/useGameStore';
 import type { SocialPlayer } from '@pecking-order/shared-types';
@@ -24,7 +24,7 @@ export function AmountPicker({ player, playerId, onSelect, onBack }: AmountPicke
           onClick={onBack}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-2)', display: 'flex' }}
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={20} weight="bold" />
         </button>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--pulse-text-2)', fontFamily: 'var(--po-font-body)' }}>
           {'💰 Silver → '}

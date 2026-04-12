@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Lock, X, Send } from 'lucide-react';
+import { Lock, X, PaperPlaneTilt } from '../../icons';
 import { motion } from 'framer-motion';
 import { PULSE_TAP } from '../../springs';
 import type { SocialPlayer } from '@pecking-order/shared-types';
@@ -27,7 +27,7 @@ export function WhisperMode({ player, playerId, onSend, onCancel }: WhisperModeP
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
-      <Lock size={16} style={{ color: 'var(--pulse-whisper)', flexShrink: 0 }} />
+      <Lock size={18} weight="fill" style={{ color: 'var(--pulse-whisper)', flexShrink: 0 }} />
 
       <input
         ref={inputRef}
@@ -60,11 +60,11 @@ export function WhisperMode({ player, playerId, onSend, onCancel }: WhisperModeP
           color: '#fff',
         }}
       >
-        <Send size={16} />
+        <PaperPlaneTilt size={16} weight="fill" />
       </motion.button>
 
       <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-3)', display: 'flex' }}>
-        <X size={16} />
+        <X size={16} weight="bold" />
       </button>
     </div>
   );

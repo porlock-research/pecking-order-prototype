@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send } from 'lucide-react';
+import { PaperPlaneTilt } from '../../icons';
 import { motion } from 'framer-motion';
 import { usePulse } from '../../PulseShell';
 import { useGameStore } from '../../../../store/useGameStore';
@@ -248,7 +248,7 @@ export function PulseInput() {
                   color: '#fff',
                 }}
               >
-                <Send size={16} />
+                <PaperPlaneTilt size={16} weight="fill" />
               </motion.button>
             )}
           </div>
@@ -277,7 +277,7 @@ export function PulseInput() {
               background: text.trim() ? 'var(--pulse-accent)' : 'var(--pulse-surface-2)',
               border: 'none', cursor: text.trim() ? 'pointer' : 'default', color: '#fff',
             }}>
-            <Send size={16} />
+            <PaperPlaneTilt size={16} weight="fill" />
           </motion.button>
         </div>
       )}

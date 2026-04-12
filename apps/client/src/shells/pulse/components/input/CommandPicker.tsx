@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion';
-import { Coins, MessageCircle, Hand, Lock, X } from 'lucide-react';
+import { Coins, ChatCircle, HandWaving, Lock, X } from '../../icons';
 import { PULSE_SPRING } from '../../springs';
 import type { Command } from '../../hooks/useCommandBuilder';
 
 const commands: Array<{ id: Command; icon: typeof Coins; label: string; desc: string; color: string }> = [
   { id: 'silver', icon: Coins, label: 'Silver', desc: 'Send silver', color: 'var(--pulse-gold)' },
-  { id: 'dm', icon: MessageCircle, label: 'DM', desc: 'Start a chat', color: 'var(--pulse-accent)' },
-  { id: 'nudge', icon: Hand, label: 'Nudge', desc: 'Poke a player', color: 'var(--pulse-nudge)' },
+  { id: 'dm', icon: ChatCircle, label: 'DM', desc: 'Start a chat', color: 'var(--pulse-accent)' },
+  { id: 'nudge', icon: HandWaving, label: 'Nudge', desc: 'Poke a player', color: 'var(--pulse-nudge)' },
   { id: 'whisper', icon: Lock, label: 'Whisper', desc: 'Secret message', color: 'var(--pulse-whisper)' },
 ];
 
@@ -51,7 +51,7 @@ export function CommandPicker({ onSelect, onClose }: CommandPickerProps) {
               color,
             }}
           >
-            <Icon size={20} />
+            <Icon size={22} weight="fill" />
             <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'var(--po-font-body)' }}>{label}</span>
             <span style={{ fontSize: 9, color: 'var(--pulse-text-3)', fontFamily: 'var(--po-font-body)' }}>{desc}</span>
           </motion.button>
@@ -69,7 +69,7 @@ export function CommandPicker({ onSelect, onClose }: CommandPickerProps) {
             cursor: 'pointer', color: 'var(--pulse-text-2)',
           }}
         >
-          <X size={16} />
+          <X size={18} weight="bold" />
         </motion.button>
       </motion.div>
     </>

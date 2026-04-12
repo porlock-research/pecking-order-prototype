@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
@@ -28,7 +28,7 @@ export function PlayerPicker({ breadcrumb, onSelect, onBack }: PlayerPickerProps
           onClick={onBack}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-2)', display: 'flex' }}
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={20} weight="bold" />
         </button>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--pulse-text-2)', fontFamily: 'var(--po-font-body)' }}>
           {breadcrumb}

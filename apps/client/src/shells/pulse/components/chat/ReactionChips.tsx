@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Plus } from 'lucide-react';
+import { PlusCircle } from '../../icons';
 import { usePulse } from '../../PulseShell';
 import { PULSE_SPRING } from '../../springs';
 import type { ChatMessage } from '@pecking-order/shared-types';
@@ -63,7 +63,7 @@ export function ReactionChips({ message, onOpenReaction }: ReactionChipsProps) {
           color: 'var(--pulse-text-3)',
         }}
       >
-        <Plus size={12} />
+        <PlusCircle size={14} weight="fill" />
       </button>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft, PaperPlaneTilt } from '../../icons';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
@@ -40,7 +40,7 @@ export function GroupDMView({ channelId, memberIds, onBack }: GroupDMViewProps) 
       {/* Header with stacked avatars */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)' }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-2)', display: 'flex' }}>
-          <ArrowLeft size={20} />
+          <ArrowLeft size={22} weight="bold" />
         </button>
         {/* Overlapping portrait stack */}
         <div style={{ display: 'flex', position: 'relative', width: 24 + otherMembers.length * 18, height: 36 }}>
@@ -94,7 +94,7 @@ export function GroupDMView({ channelId, memberIds, onBack }: GroupDMViewProps) 
           placeholder="Message..." style={{ flex: 1, padding: '10px 14px', borderRadius: 12, background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)', color: 'var(--pulse-text-1)', fontSize: 14, fontFamily: 'var(--po-font-body)', outline: 'none' }} />
         <motion.button whileTap={PULSE_TAP.button} onClick={handleSend} disabled={!text.trim()}
           style={{ width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: text.trim() ? 'var(--pulse-accent)' : 'var(--pulse-surface-2)', border: 'none', cursor: text.trim() ? 'pointer' : 'default', color: '#fff' }}>
-          <Send size={16} />
+          <PaperPlaneTilt size={16} weight="fill" />
         </motion.button>
       </div>
     </div>

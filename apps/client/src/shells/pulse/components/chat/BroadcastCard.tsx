@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Radio } from 'lucide-react';
+import { Broadcast } from '../../icons';
 import { PULSE_SPRING } from '../../springs';
 import { GAME_MASTER_ID } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
@@ -38,7 +38,7 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
             flexShrink: 0,
           }}
         >
-          <Radio size={18} strokeWidth={2.5} />
+          <Broadcast size={18} weight="fill" />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--pulse-accent)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>

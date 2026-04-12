@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Smile, Reply } from 'lucide-react';
+import { Smiley, Reply } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
@@ -174,7 +174,7 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
               borderRadius: 10,
             }}
           >
-            <Reply size={14} />
+            <Reply size={14} weight="bold" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onOpenReaction(message.id); }}
@@ -187,7 +187,7 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
               borderRadius: 10,
             }}
           >
-            <Smile size={14} />
+            <Smiley size={14} weight="fill" />
           </button>
         </div>
 

@@ -1,13 +1,13 @@
 import { motion } from 'framer-motion';
-import { Vote, Gamepad2, MessageSquare, Scale } from 'lucide-react';
+import { ChartBar, GameController, ChatCircleDots, Scales } from '../icons';
 import { PULSE_SPRING, PULSE_TAP } from '../springs';
 import type { PillState, PillLifecycle } from '../hooks/usePillStates';
 
-const PILL_ICONS: Record<string, typeof Vote> = {
-  voting: Vote,
-  game: Gamepad2,
-  prompt: MessageSquare,
-  dilemma: Scale,
+const PILL_ICONS: Record<string, typeof ChartBar> = {
+  voting: ChartBar,
+  game: GameController,
+  prompt: ChatCircleDots,
+  dilemma: Scales,
 };
 
 function lifecycleStyles(lifecycle: PillLifecycle) {
@@ -56,7 +56,7 @@ interface PillProps {
 }
 
 export function Pill({ pill, mini, onTap }: PillProps) {
-  const Icon = PILL_ICONS[pill.kind] || MessageSquare;
+  const Icon = PILL_ICONS[pill.kind] || ChatCircleDots;
   const styles = lifecycleStyles(pill.lifecycle);
   const showDot = pill.lifecycle === 'just-started' || pill.lifecycle === 'starting';
   const showBadge = pill.lifecycle === 'needs-action' || pill.lifecycle === 'urgent';
@@ -84,7 +84,7 @@ export function Pill({ pill, mini, onTap }: PillProps) {
         ...styles,
       }}
     >
-      <Icon size={mini ? 12 : 14} />
+      <Icon size={mini ? 14 : 16} weight="fill" />
       {!mini && <span>{pill.label}</span>}
       {pill.progress && !mini && (
         <span style={{ color: 'var(--pulse-text-2)', fontSize: 10 }}>{pill.progress}</span>

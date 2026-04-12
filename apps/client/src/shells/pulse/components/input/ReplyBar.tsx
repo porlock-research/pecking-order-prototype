@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { X } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
 import type { ChatMessage } from '@pecking-order/shared-types';
@@ -38,7 +38,7 @@ export function ReplyBar({ message, onCancel }: ReplyBarProps) {
         onClick={onCancel}
         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-3)', display: 'flex', flexShrink: 0 }}
       >
-        <X size={14} />
+        <X size={14} weight="bold" />
       </button>
     </div>
   );

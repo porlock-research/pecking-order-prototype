@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Coins, MessageCircle, Hand } from 'lucide-react';
+import { Coins, ChatCircle, HandWaving } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
@@ -15,9 +15,9 @@ interface AvatarPopoverProps {
 }
 
 const actions = [
-  { id: 'silver', Icon: Coins, label: 'Silver', color: 'var(--pulse-gold)' },
-  { id: 'dm', Icon: MessageCircle, label: 'DM', color: 'var(--pulse-accent)' },
-  { id: 'nudge', Icon: Hand, label: 'Nudge', color: 'var(--pulse-nudge)' },
+  { id: 'silver', Icon: Coins, label: 'Silver', color: 'var(--pulse-text-1)' },
+  { id: 'dm', Icon: ChatCircle, label: 'DM', color: 'var(--pulse-text-1)' },
+  { id: 'nudge', Icon: HandWaving, label: 'Nudge', color: 'var(--pulse-text-1)' },
 ] as const;
 
 export function AvatarPopover({ targetId, anchorRect, onClose, onSilver, onDM }: AvatarPopoverProps) {
@@ -110,7 +110,7 @@ export function AvatarPopover({ targetId, anchorRect, onClose, onSilver, onDM }:
                 opacity: isSocialPhase ? 1 : 0.4,
               }}
             >
-              <Icon size={18} />
+              <Icon size={20} weight="fill" />
               <span style={{ fontSize: 9, fontWeight: 600, fontFamily: 'var(--po-font-body)' }}>{label}</span>
             </motion.button>
           ))}

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Coins, Hand, Send } from 'lucide-react';
+import { ArrowLeft, Coins, HandWaving, PaperPlaneTilt } from '../../icons';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
@@ -62,7 +62,7 @@ export function DMView({ channelId, targetId, onBack }: DMViewProps) {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={onBack} aria-label="Back" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-1)', display: 'flex', padding: 4 }}>
-            <ArrowLeft size={22} />
+            <ArrowLeft size={22} weight="bold" />
           </button>
           <StatusRing playerId={targetId} size={56}>
             <img
@@ -89,11 +89,11 @@ export function DMView({ channelId, targetId, onBack }: DMViewProps) {
             style={{
               width: 40, height: 40, borderRadius: 12,
               background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)',
-              cursor: 'pointer', color: 'var(--pulse-gold)',
+              cursor: 'pointer', color: 'var(--pulse-text-1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <Coins size={18} />
+            <Coins size={20} weight="fill" />
           </motion.button>
           <motion.button
             whileTap={PULSE_TAP.button}
@@ -102,11 +102,11 @@ export function DMView({ channelId, targetId, onBack }: DMViewProps) {
             style={{
               width: 40, height: 40, borderRadius: 12,
               background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)',
-              cursor: 'pointer', color: 'var(--pulse-nudge)',
+              cursor: 'pointer', color: 'var(--pulse-text-1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <Hand size={18} />
+            <HandWaving size={20} weight="fill" />
           </motion.button>
         </div>
       </div>
@@ -157,7 +157,7 @@ export function DMView({ channelId, targetId, onBack }: DMViewProps) {
             onClick={handleSend}
             style={{ width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--pulse-accent)', border: 'none', cursor: 'pointer', color: '#fff' }}
           >
-            <Send size={16} />
+            <PaperPlaneTilt size={16} weight="fill" />
           </motion.button>
         )}
       </div>

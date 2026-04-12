@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
@@ -59,7 +59,7 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
             color: 'var(--pulse-text-3)',
           }}
         >
-          <X size={20} />
+          <X size={20} weight="bold" />
         </button>
 
         {/* Recipient */}

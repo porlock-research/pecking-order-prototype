@@ -1,4 +1,4 @@
-import { Smile } from 'lucide-react';
+import { Smiley } from '../../icons';
 
 interface ReactionTriggerProps {
   messageId: string;
@@ -32,7 +32,7 @@ export function ReactionTrigger({ messageId, isOpen, onOpen }: ReactionTriggerPr
       }}
       className="pulse-reaction-trigger"
     >
-      <Smile size={16} />
+      <Smiley size={16} weight="fill" />
       <style>{`
         @media (hover: hover) {
           .pulse-reaction-trigger { opacity: 0 !important; }

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X } from '../../icons';
 import { getPlayerColor } from '../../colors';
 import { useGameStore } from '../../../../store/useGameStore';
 import { PULSE_TAP } from '../../springs';
@@ -42,7 +42,7 @@ export function CommandPreview({ player, playerId, amount, onSend, onCancel }: C
       </motion.button>
 
       <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-3)', display: 'flex' }}>
-        <X size={18} />
+        <X size={18} weight="bold" />
       </button>
     </div>
   );

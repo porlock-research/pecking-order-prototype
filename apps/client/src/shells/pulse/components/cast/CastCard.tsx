@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { MessageCircle, Coins, Hand } from 'lucide-react';
+import { ChatCircle, Coins, HandWaving } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
 import { PULSE_SPRING, PULSE_TAP } from '../../springs';
@@ -94,7 +94,7 @@ export function CastCard({ player, playerId, playerIndex, onSilver, onDM, onNudg
             color: 'var(--pulse-gold)',
           }}
         >
-          <Coins size={12} />
+          <Coins size={13} weight="fill" />
           <span>{player.silver}</span>
         </div>
       </div>
@@ -115,9 +115,9 @@ export function CastCard({ player, playerId, playerIndex, onSilver, onDM, onNudg
       {!isEliminated && (
         <div style={{ display: 'flex', borderTop: '1px solid var(--pulse-border)' }}>
           {[
-            { Icon: MessageCircle, handler: onDM, label: 'DM' },
+            { Icon: ChatCircle, handler: onDM, label: 'DM' },
             { Icon: Coins, handler: onSilver, label: 'Silver' },
-            { Icon: Hand, handler: onNudge, label: 'Nudge' },
+            { Icon: HandWaving, handler: onNudge, label: 'Nudge' },
           ].map(({ Icon, handler, label }, i) => (
             <motion.button
               key={i}
@@ -137,7 +137,7 @@ export function CastCard({ player, playerId, playerIndex, onSilver, onDM, onNudg
                 borderRight: i < 2 ? '1px solid var(--pulse-border)' : undefined,
               }}
             >
-              <Icon size={16} strokeWidth={2} />
+              <Icon size={18} weight="fill" />
             </motion.button>
           ))}
         </div>
