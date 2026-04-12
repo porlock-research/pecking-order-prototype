@@ -67,7 +67,10 @@ export function PulseInput() {
     if (val === '/') {
       openCommandPicker();
       setText('');
+      return;
     }
+    // Send typing indicator (auto-stops after 3s on server side)
+    if (val.length > 0) engine.sendTyping('MAIN');
   };
 
   // Command flow handlers

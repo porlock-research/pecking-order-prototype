@@ -1,4 +1,4 @@
-import { useState, createContext, useContext } from 'react';
+import { useState, createContext, useContext, useCallback } from 'react';
 import './pulse-theme.css';
 import type { ShellProps } from '../types';
 import type { GameEngine } from '../types';
@@ -10,14 +10,24 @@ import { TabBar } from './components/TabBar';
 import { ChatView } from './components/chat/ChatView';
 import { CastGrid } from './components/cast/CastGrid';
 import { PulseInput } from './components/input/PulseInput';
+import { AvatarPopover } from './components/popover/AvatarPopover';
+import { SendSilverSheet } from './components/popover/SendSilverSheet';
+import { NudgeConfirmation } from './components/popover/NudgeConfirmation';
+import { DMView } from './components/dm/DMView';
+import { GroupDMView } from './components/dm/GroupDMView';
 import { EliminationReveal } from './components/reveals/EliminationReveal';
 import { WinnerReveal } from './components/reveals/WinnerReveal';
 import { PhaseTransition } from './components/reveals/PhaseTransition';
+import { AnimatePresence } from 'framer-motion';
 
-// Context to provide engine + playerId to all Pulse children
+// Context to provide engine + playerId + overlay actions to all Pulse children
 export const PulseContext = createContext<{
   engine: GameEngine;
   playerId: string;
+  openAvatarPopover: (targetId: string, anchorRect: DOMRect) => void;
+  openSendSilver: (targetId: string) => void;
+  openNudge: (targetId: string) => void;
+  openDM: (targetId: string) => void;
 }>(null!);
 
 export function usePulse() {
@@ -27,9 +37,32 @@ export function usePulse() {
 export default function PulseShell({ playerId, engine, token }: ShellProps) {
   const [activeTab, setActiveTab] = useState<'chat' | 'cast'>('chat');
   const phase = useGameStore(s => s.phase);
+  const channels = useGameStore(s => s.channels);
+
+  // Overlay state
+  const [popover, setPopover] = useState<{ targetId: string; anchorRect: DOMRect } | null>(null);
+  const [silverTarget, setSilverTarget] = useState<string | null>(null);
+  const [nudgeTarget, setNudgeTarget] = useState<string | null>(null);
+  const [dmTarget, setDmTarget] = useState<string | null>(null);
+
+  const openAvatarPopover = useCallback((targetId: string, anchorRect: DOMRect) => {
+    setPopover({ targetId, anchorRect });
+  }, []);
+  const openSendSilver = useCallback((targetId: string) => setSilverTarget(targetId), []);
+  const openNudge = useCallback((targetId: string) => setNudgeTarget(targetId), []);
+  const openDM = useCallback((targetId: string) => setDmTarget(targetId), []);
+
+  // Resolve DM channel for the current dmTarget (may not exist yet — first DM creates it)
+  const dmChannel = dmTarget
+    ? Object.values(channels).find(ch =>
+        ch.type === 'DM' &&
+        ch.memberIds.includes(playerId) &&
+        ch.memberIds.includes(dmTarget)
+      )
+    : null;
 
   return (
-    <PulseContext.Provider value={{ engine, playerId }}>
+    <PulseContext.Provider value={{ engine, playerId, openAvatarPopover, openSendSilver, openNudge, openDM }}>
       <div
         className="pulse-shell"
         style={{
@@ -50,6 +83,39 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
         <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
         {/* Overlays */}
+        <AnimatePresence>
+          {popover && (
+            <AvatarPopover
+              targetId={popover.targetId}
+              anchorRect={popover.anchorRect}
+              onClose={() => setPopover(null)}
+              onSilver={id => { setPopover(null); openSendSilver(id); }}
+              onDM={id => { setPopover(null); openDM(id); }}
+            />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {silverTarget && (
+            <SendSilverSheet targetId={silverTarget} onClose={() => setSilverTarget(null)} />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {nudgeTarget && (
+            <NudgeConfirmation
+              targetId={nudgeTarget}
+              onClose={() => setNudgeTarget(null)}
+              onDM={id => { setNudgeTarget(null); openDM(id); }}
+            />
+          )}
+        </AnimatePresence>
+        {dmTarget && (
+          <DMView
+            channelId={dmChannel?.id ?? null}
+            targetId={dmTarget}
+            onBack={() => setDmTarget(null)}
+          />
+        )}
+
         <EliminationReveal />
         <WinnerReveal />
         <PhaseTransition />

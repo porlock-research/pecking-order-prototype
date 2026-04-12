@@ -77,3 +77,24 @@
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* Message inline actions — hidden by default, shown on hover */
+.pulse-msg-actions {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .pulse-msg-content:hover .pulse-msg-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+@media (hover: none) {
+  /* Touch devices: show subtle hint — tap message to activate */
+  .pulse-msg-content:focus-within .pulse-msg-actions,
+  .pulse-msg-content.pulse-msg-tapped .pulse-msg-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

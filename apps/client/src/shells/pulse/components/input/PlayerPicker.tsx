@@ -60,7 +60,7 @@ export function PlayerPicker({ breadcrumb, onSelect, onBack }: PlayerPickerProps
             <img
               src={player.avatarUrl}
               alt={player.personaName}
-              style={{ width: '100%', height: 72, borderRadius: 8, objectFit: 'cover' }}
+              style={{ width: '100%', height: 100, borderRadius: 8, objectFit: 'cover', objectPosition: 'center 25%' }}
             />
             <span style={{
               fontSize: 10, fontWeight: 600, color: getPlayerColor(Object.keys(roster).indexOf(id)),

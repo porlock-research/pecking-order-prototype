@@ -40,10 +40,9 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
           level: 'warning',
           data: { code: event.code, reason: event.reason, gameId },
         });
-        // Clear ALL cached tokens for this game to prevent reconnect loop
+        // Clear cached tokens for this game to prevent reconnect loop
         // (covers secret rotation, game cleanup, token expiry)
-        // Try URL path first, then fall back to clearing all po_pwa_* cookies
-        // (cookie recovery connects without changing the URL path, so the regex may miss)
+        // Clear both po_token_* (localStorage) and po_pwa_* (cookie bridge)
         const code = window.location.pathname.match(/\/game\/([A-Za-z0-9]+)/)?.[1];
         if (code) {
           localStorage.removeItem(`po_token_${code}`);
@@ -52,16 +51,10 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
           caches.open('po-tokens-v1').then(c =>
             c.delete(new Request(`/po-token-cache/po_token_${code}`))
           ).catch(() => {});
-        } else {
-          // No game code in URL — likely a cookie-recovery connection.
-          // Clear ALL po_pwa_* cookies to break the reconnect loop.
-          const pwaCookies = document.cookie.matchAll(/po_pwa_([^=]+)/g);
-          for (const m of pwaCookies) {
-            document.cookie = `po_pwa_${m[1]}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-            localStorage.removeItem(`po_token_${m[1]}`);
-          }
         }
-        window.location.replace('/');
+        // Redirect with ?noRecover=1 to prevent cookie recovery from
+        // immediately connecting to another stale game (GH-115)
+        window.location.replace('/?noRecover=1');
       }
     },
     onError(event) {

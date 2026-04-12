@@ -357,6 +357,14 @@ export default function App() {
       const transientToken = params.get('_t');
       const rawToken = params.get('token');
 
+      // ── GH-115: Skip cookie recovery after a 4003 rejection ──
+      // useGameEngine redirects to /?noRecover=1 after an invalid-token close.
+      // Without this, cookie recovery picks up the next stale game and loops.
+      const noRecover = params.get('noRecover') === '1';
+      if (noRecover) {
+        window.history.replaceState({}, '', '/');
+      }
+
       // ── Shell override from URL ──
       // Magic links include ?shell=vivid to force correct shell,
       // overriding any stale localStorage value from old sessions.
@@ -439,7 +447,8 @@ export default function App() {
       } else {
         // No game code in URL — launcher flow
         // Cookie auto-recovery: only navigate if the lobby confirms the game is active
-        const fromCookie = recoverGameFromCookies();
+        // Skip entirely if arriving from a 4003 rejection (GH-115)
+        const fromCookie = noRecover ? null : recoverGameFromCookies();
         if (fromCookie) {
           const cookieCode = fromCookie.gameCode.toUpperCase();
           if (!active || active.codes.has(cookieCode)) {

@@ -9,7 +9,7 @@ import { MessageCard } from '../chat/MessageCard';
 import { PULSE_TAP } from '../../springs';
 
 interface DMViewProps {
-  channelId: string;
+  channelId: string | null;
   targetId: string;
   onBack: () => void;
 }
@@ -26,7 +26,7 @@ export function DMView({ channelId, targetId, onBack }: DMViewProps) {
   const playerIndex = Object.keys(roster).indexOf(targetId);
   const color = getPlayerColor(playerIndex);
 
-  const dmMessages = chatLog.filter(m => m.channelId === channelId);
+  const dmMessages = channelId ? chatLog.filter(m => m.channelId === channelId) : [];
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -36,7 +36,11 @@ export function DMView({ channelId, targetId, onBack }: DMViewProps) {
 
   const handleSend = () => {
     if (!text.trim()) return;
-    engine.sendToChannel(channelId, text.trim());
+    if (channelId) {
+      engine.sendToChannel(channelId, text.trim());
+    } else {
+      engine.sendFirstMessage([targetId], text.trim());
+    }
     setText('');
   };
 

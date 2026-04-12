@@ -4,7 +4,8 @@ import { usePulse } from '../../PulseShell';
 import { MessageCard } from './MessageCard';
 import { BroadcastCard } from './BroadcastCard';
 import { WhisperCard } from './WhisperCard';
-import { DayPhases } from '@pecking-order/shared-types';
+import { TypingIndicator } from './TypingIndicator';
+import { DayPhases, GAME_MASTER_ID } from '@pecking-order/shared-types';
 
 export function ChatView() {
   const chatLog = useGameStore(s => s.chatLog);
@@ -81,8 +82,8 @@ export function ChatView() {
           return <WhisperCard key={msg.id} message={msg} />;
         }
 
-        // Broadcast event cards (system messages)
-        if (msg.senderId === 'SYSTEM' || msg.senderId === 'GM') {
+        // Broadcast event cards (system messages, GM briefings)
+        if (msg.senderId === 'SYSTEM' || msg.senderId === 'GM' || msg.senderId === GAME_MASTER_ID) {
           return <BroadcastCard key={msg.id} message={msg} />;
         }
 
@@ -97,6 +98,8 @@ export function ChatView() {
           />
         );
       })}
+
+      <TypingIndicator />
 
       {/* Jump to latest */}
       {!autoScroll && (

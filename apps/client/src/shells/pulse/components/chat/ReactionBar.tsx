@@ -1,10 +1,9 @@
 import { motion } from 'framer-motion';
-import { Reply } from 'lucide-react';
 import { usePulse } from '../../PulseShell';
 import { PULSE_SPRING } from '../../springs';
 import type { ChatMessage } from '@pecking-order/shared-types';
 
-const EMOJIS = ['😂', '👀', '🔥', '💀', '❤���'];
+const EMOJIS = ['😂', '👀', '🔥', '💀', '❤️'];
 
 interface ReactionBarProps {
   messageId: string;
@@ -12,17 +11,11 @@ interface ReactionBarProps {
   onClose: () => void;
 }
 
-export function ReactionBar({ messageId, message, onClose }: ReactionBarProps) {
+export function ReactionBar({ messageId, message: _message, onClose }: ReactionBarProps) {
   const { engine } = usePulse();
 
   const handleReact = (emoji: string) => {
     engine.sendReaction(messageId, emoji);
-    onClose();
-  };
-
-  const handleReply = () => {
-    // Dispatch reply mode — PulseInput listens via a shared state
-    window.dispatchEvent(new CustomEvent('pulse:reply', { detail: { message } }));
     onClose();
   };
 
@@ -67,12 +60,12 @@ export function ReactionBar({ messageId, message, onClose }: ReactionBarProps) {
               handleReact(emoji);
             }}
             style={{
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 20,
+              fontSize: 22,
               background: 'none',
               border: 'none',
               cursor: 'pointer',
@@ -82,39 +75,6 @@ export function ReactionBar({ messageId, message, onClose }: ReactionBarProps) {
             {emoji}
           </motion.button>
         ))}
-
-        {/* Divider */}
-        <div
-          style={{
-            width: 1,
-            height: 24,
-            background: 'var(--pulse-text-4)',
-            margin: '0 2px',
-          }}
-        />
-
-        {/* Reply button */}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleReply();
-          }}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 1,
-            padding: '4px 8px',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--pulse-text-2)',
-          }}
-        >
-          <Reply size={16} />
-          <span style={{ fontSize: 8, fontWeight: 600, fontFamily: 'var(--po-font-body)' }}>Reply</span>
-        </motion.button>
       </motion.div>
     </>
   );

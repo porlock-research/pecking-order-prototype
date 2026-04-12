@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Coins, MessageCircle, Hand, Lock } from 'lucide-react';
+import { Coins, MessageCircle, Hand, Lock, X } from 'lucide-react';
 import { PULSE_SPRING } from '../../springs';
 import type { Command } from '../../hooks/useCommandBuilder';
 
@@ -29,6 +29,7 @@ export function CommandPicker({ onSelect, onClose }: CommandPickerProps) {
           gap: 8,
           padding: '8px 12px',
           zIndex: 40,
+          alignItems: 'stretch',
         }}
       >
         {commands.map(({ id, icon: Icon, label, desc, color }) => (
@@ -55,6 +56,21 @@ export function CommandPicker({ onSelect, onClose }: CommandPickerProps) {
             <span style={{ fontSize: 9, color: 'var(--pulse-text-3)', fontFamily: 'var(--po-font-body)' }}>{desc}</span>
           </motion.button>
         ))}
+        {/* Dismiss */}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            width: 36,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 14,
+            background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)',
+            cursor: 'pointer', color: 'var(--pulse-text-2)',
+          }}
+        >
+          <X size={16} />
+        </motion.button>
       </motion.div>
     </>
   );
