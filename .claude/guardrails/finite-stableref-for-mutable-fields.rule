@@ -1,0 +1,26 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/client/src/store/useGameStore\.ts$
+ADVISORY: |
+  Zustand SYNC handler gotcha discovered while debugging Pulse reactions:
+
+  When merging a server SYNC payload, DON'T use length-based equality to dedupe
+  collection fields. Items can MUTATE without changing the collection length.
+
+  WRONG (this discarded reaction updates):
+    chatLog: nextChatLog.length === state.chatLog.length ? state.chatLog : nextChatLog,
+
+  Reactions are stored as metadata on individual ChatMessage objects in chatLog.
+  When a player reacts, the message object is updated in-place but chatLog.length
+  doesn't change → the equality check returned `state.chatLog` (stale data, no
+  reaction) and the UI never re-rendered.
+
+  RIGHT (use stableRef for any field that can mutate without identity change):
+    chatLog: stableRef(state.chatLog, nextChatLog),
+
+  `stableRef(prev, next)` does deep equality and returns prev if they're equivalent
+  (preserving reference for downstream memoization), or next otherwise.
+
+  Rule: any store field that holds an array/object whose CONTENTS can change
+  independently of its IDENTITY/LENGTH must use `stableRef`. This applies to
+  chatLog, channels, roster, completedCartridges, dmStats, and any future field
+  that carries server-mutable nested data.
