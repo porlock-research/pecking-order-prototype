@@ -4,7 +4,7 @@ import type { SocialPlayer, GameProjection } from '@pecking-order/shared-types';
 
 // --- Types ---
 
-type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA' | 'BET_BET_BET' | 'BLIND_AUCTION' | 'KINGS_RANSOM' | 'TOUCH_SCREEN' | 'THE_SPLIT' | 'SHOCKWAVE' | 'ORBIT' | 'BEAT_DROP' | 'INFLATE';
+type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA' | 'BET_BET_BET' | 'BLIND_AUCTION' | 'KINGS_RANSOM' | 'TOUCH_SCREEN' | 'THE_SPLIT' | 'SHOCKWAVE' | 'ORBIT' | 'BEAT_DROP' | 'INFLATE' | 'SNAKE';
 
 interface GapRunConfig {
   difficulty: number; // 0-1
@@ -146,6 +146,11 @@ const GAME_DEFS: Record<GameType, GameDef> = {
     Component: lazy(() => import('../cartridges/games/inflate/Inflate')),
     defaultConfig: { difficulty: 0.2 },
   },
+  SNAKE: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.snakeMachine),
+    Component: lazy(() => import('../cartridges/games/snake/Snake')),
+    defaultConfig: { difficulty: 0.2 },
+  },
 };
 
 const GAME_TYPES = Object.keys(GAME_DEFS) as GameType[];
@@ -198,7 +203,7 @@ export default function GameDevHarness() {
     const input: any = { gameType: type, roster: MOCK_ROSTER, dayIndex: 1 };
 
     // Pass per-game config into machine input
-    const ARCADE_TYPES: string[] = ['GAP_RUN', 'GRID_PUSH', 'SEQUENCE', 'REACTION_TIME', 'COLOR_MATCH', 'STACKER', 'QUICK_MATH', 'SIMON_SAYS', 'AIM_TRAINER', 'SHOCKWAVE', 'ORBIT', 'BEAT_DROP', 'INFLATE'];
+    const ARCADE_TYPES: string[] = ['GAP_RUN', 'GRID_PUSH', 'SEQUENCE', 'REACTION_TIME', 'COLOR_MATCH', 'STACKER', 'QUICK_MATH', 'SIMON_SAYS', 'AIM_TRAINER', 'SHOCKWAVE', 'ORBIT', 'BEAT_DROP', 'INFLATE', 'SNAKE'];
     if (ARCADE_TYPES.includes(type) && 'difficulty' in cfg) {
       input.difficulty = cfg.difficulty;
     }

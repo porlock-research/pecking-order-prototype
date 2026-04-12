@@ -24,6 +24,6 @@ export {
   betBetBetMachine, blindAuctionMachine, kingsRansomMachine,
   touchScreenMachine, theSplitMachine,
   shockwaveMachine, orbitMachine, beatDropMachine,
-  inflateMachine,
+  inflateMachine, snakeMachine,
   GAME_REGISTRY,
 } from './machines';

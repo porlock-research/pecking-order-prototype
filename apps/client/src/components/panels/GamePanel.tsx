@@ -23,6 +23,7 @@ const GAME_COMPONENTS: Record<string, React.LazyExoticComponent<React.ComponentT
   [GameTypes.ORBIT]: React.lazy(() => import('../../cartridges/games/orbit/Orbit')),
   [GameTypes.BEAT_DROP]: React.lazy(() => import('../../cartridges/games/beat-drop/BeatDrop')),
   [GameTypes.INFLATE]: React.lazy(() => import('../../cartridges/games/inflate/Inflate')),
+  [GameTypes.SNAKE]: React.lazy(() => import('../../cartridges/games/snake/Snake')),
 };
 
 interface GamePanelProps {
