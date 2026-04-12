@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowLeft } from '../../icons';
+import { ArrowLeft, Coins } from '../../icons';
 import { getPlayerColor } from '../../colors';
 import { useGameStore } from '../../../../store/useGameStore';
 import type { SocialPlayer } from '@pecking-order/shared-types';
@@ -26,10 +26,11 @@ export function AmountPicker({ player, playerId, onSelect, onBack }: AmountPicke
         >
           <ArrowLeft size={20} weight="bold" />
         </button>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--pulse-text-2)', fontFamily: 'var(--po-font-body)' }}>
-          {'💰 Silver → '}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--pulse-text-2)', fontFamily: 'var(--po-font-body)' }}>
+          <Coins size={14} weight="fill" style={{ color: 'var(--pulse-gold)' }} />
+          <span>Silver →</span>
           <span style={{ color: getPlayerColor(playerIndex) }}>{player.personaName}</span>
-          {' — amount'}
+          <span>— amount</span>
         </span>
       </div>
 

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useGameStore } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
+import { HandWaving, ChatCircle } from '../../icons';
 import { PULSE_SPRING, PULSE_TAP } from '../../springs';
 
 interface NudgeConfirmationProps {
@@ -38,7 +39,15 @@ export function NudgeConfirmation({ targetId, onClose, onDM }: NudgeConfirmation
           minWidth: 260,
         }}
       >
-        <div style={{ fontSize: 48, marginBottom: 12 }}>{'👋'}</div>
+        <div style={{
+          width: 72, height: 72, borderRadius: 18,
+          background: 'linear-gradient(135deg, var(--pulse-nudge) 0%, #e67e22 100%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px',
+          boxShadow: '0 4px 16px rgba(255,160,77,0.35)',
+        }}>
+          <HandWaving size={40} weight="fill" color="#1a1422" />
+        </div>
         <img
           src={target?.avatarUrl}
           alt={target?.personaName}
@@ -67,13 +76,15 @@ export function NudgeConfirmation({ targetId, onClose, onDM }: NudgeConfirmation
             whileTap={PULSE_TAP.button}
             onClick={() => { onDM(targetId); onClose(); }}
             style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '10px 20px', borderRadius: 12,
               background: 'var(--pulse-accent)', border: 'none',
-              color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
               fontFamily: 'var(--po-font-body)',
             }}
           >
-            Send DM {'→'}
+            <ChatCircle size={14} weight="fill" />
+            Send DM
           </motion.button>
         </div>
       </motion.div>

@@ -4,6 +4,7 @@ import { usePulse } from '../../PulseShell';
 import { MessageCard } from './MessageCard';
 import { BroadcastCard } from './BroadcastCard';
 import { WhisperCard } from './WhisperCard';
+import { SilverTransferCard } from './SilverTransferCard';
 import { TypingIndicator } from './TypingIndicator';
 import { DayPhases, GAME_MASTER_ID, TickerCategories } from '@pecking-order/shared-types';
 import type { TickerMessage } from '@pecking-order/shared-types';
@@ -103,7 +104,17 @@ export function ChatView() {
         // Social event from ticker (silver, nudge, perk) — inline broadcast card
         if (entry.type === 'social') {
           const t = entry.data;
-          // Synthesize a minimal message-like shape for BroadcastCard
+          // Silver transfers get the richer avatar-based card
+          if (t.category === TickerCategories.SOCIAL_TRANSFER) {
+            return (
+              <SilverTransferCard
+                key={`social-${t.timestamp}-${t.text.slice(0, 20)}`}
+                text={t.text}
+                timestamp={t.timestamp}
+              />
+            );
+          }
+          // Other social events (nudge, perk) use the simpler broadcast card
           return (
             <BroadcastCard
               key={`social-${t.timestamp}-${t.text.slice(0, 20)}`}

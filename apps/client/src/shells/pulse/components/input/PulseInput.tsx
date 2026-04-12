@@ -136,8 +136,8 @@ export function PulseInput() {
   // Breadcrumb for player picker
   const getBreadcrumb = () => {
     if (commandMode.mode !== 'player-picker') return '';
-    const icons: Record<string, string> = { silver: '💰 Silver', dm: '💬 DM', nudge: '👋 Nudge', whisper: '🤫 Whisper', mention: '@ Mention' };
-    return `${icons[commandMode.command] || ''} — pick a player`;
+    const labels: Record<string, string> = { silver: 'Send Silver', dm: 'Direct Message', nudge: 'Nudge', whisper: 'Whisper', mention: 'Mention' };
+    return `${labels[commandMode.command] || ''} — pick a player`;
   };
 
   if (!isSocialPhase) {

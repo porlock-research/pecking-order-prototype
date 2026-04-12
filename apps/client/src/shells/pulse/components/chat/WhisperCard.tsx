@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useGameStore } from '../../../../store/useGameStore';
+import { Lock } from '../../icons';
 import { PULSE_SPRING } from '../../springs';
 import { getPlayerColor } from '../../colors';
 import type { ChatMessage } from '@pecking-order/shared-types';
@@ -36,8 +37,9 @@ export function WhisperCard({ message }: WhisperCardProps) {
         fontStyle: 'italic',
       }}
     >
+      <Lock size={14} weight="fill" style={{ flexShrink: 0 }} />
       <span>
-        {'🤫 Someone whispered to '}
+        Someone whispered to{' '}
         <span style={{ color: getPlayerColor(targetIndex), fontWeight: 700, fontStyle: 'normal' }}>
           {target?.personaName || 'someone'}
         </span>

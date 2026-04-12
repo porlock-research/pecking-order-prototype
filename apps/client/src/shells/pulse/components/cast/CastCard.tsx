@@ -19,8 +19,9 @@ export function CastCard({ player, playerId, playerIndex, onSilver, onDM, onNudg
   const isEliminated = player.status === 'ELIMINATED';
   const isOnline = onlinePlayers.includes(playerId);
   const color = getPlayerColor(playerIndex);
-  // Use bio as pseudo-stereotype (first 3 words)
-  const stereotype = player.bio?.split(/[.!?]/)[0]?.slice(0, 40) ?? '';
+  // Use bio as pseudo-stereotype — hide if it's a placeholder value
+  const rawBio = player.bio?.split(/[.!?]/)[0]?.trim() ?? '';
+  const stereotype = rawBio.length > 4 && rawBio.length <= 50 ? rawBio : '';
 
   return (
     <motion.div

@@ -10,6 +10,13 @@ const PILL_ICONS: Record<string, typeof ChartBar> = {
   dilemma: Scales,
 };
 
+const PILL_COLORS: Record<string, string> = {
+  voting: 'var(--pulse-vote)',
+  game: 'var(--pulse-game)',
+  prompt: 'var(--pulse-prompt)',
+  dilemma: 'var(--pulse-dilemma)',
+};
+
 function lifecycleStyles(lifecycle: PillLifecycle) {
   switch (lifecycle) {
     case 'upcoming':
@@ -57,9 +64,11 @@ interface PillProps {
 
 export function Pill({ pill, mini, onTap }: PillProps) {
   const Icon = PILL_ICONS[pill.kind] || ChatCircleDots;
+  const kindColor = PILL_COLORS[pill.kind] || 'var(--pulse-accent)';
   const styles = lifecycleStyles(pill.lifecycle);
   const showDot = pill.lifecycle === 'just-started' || pill.lifecycle === 'starting';
   const showBadge = pill.lifecycle === 'needs-action' || pill.lifecycle === 'urgent';
+  const isActive = pill.lifecycle !== 'completed' && pill.lifecycle !== 'upcoming';
 
   return (
     <motion.button
@@ -76,12 +85,18 @@ export function Pill({ pill, mini, onTap }: PillProps) {
         borderRadius: 20,
         cursor: 'pointer',
         fontSize: mini ? 10 : 11,
-        fontWeight: 600,
+        fontWeight: 700,
         fontFamily: 'var(--po-font-body)',
-        color: 'var(--pulse-text-1)',
+        color: isActive ? kindColor : 'var(--pulse-text-2)',
         whiteSpace: 'nowrap',
         position: 'relative',
+        letterSpacing: 0.3,
+        textTransform: 'uppercase',
         ...styles,
+        ...(isActive ? {
+          background: `${kindColor}14`,
+          border: `1px solid ${kindColor}40`,
+        } : {}),
       }}
     >
       <Icon size={mini ? 14 : 16} weight="fill" />
@@ -95,7 +110,8 @@ export function Pill({ pill, mini, onTap }: PillProps) {
             width: 6,
             height: 6,
             borderRadius: '50%',
-            background: 'var(--pulse-accent)',
+            background: kindColor,
+            boxShadow: `0 0 6px ${kindColor}`,
             animation: 'pulse-breathe 2s ease-in-out infinite',
             flexShrink: 0,
           }}
