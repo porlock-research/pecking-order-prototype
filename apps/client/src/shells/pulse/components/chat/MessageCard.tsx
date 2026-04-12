@@ -97,7 +97,8 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
           position: 'relative',
           ...(isSelf
             ? {
-                background: 'var(--pulse-surface-2)',
+                background: 'linear-gradient(135deg, rgba(255,59,111,0.14) 0%, rgba(255,59,111,0.06) 100%)',
+                border: '1px solid rgba(255,59,111,0.18)',
                 borderRadius: 16,
                 padding: '10px 14px',
               }
@@ -148,14 +149,14 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
           <MentionRenderer text={message.content} />
         </div>
 
-        {/* Inline action buttons (reply + emoji) — visible on hover/tap */}
+        {/* Inline action buttons (reply + emoji) — visible on hover/tap, hidden when picker open */}
         <div
           className="pulse-msg-actions"
           style={{
             position: 'absolute',
             top: -14,
             [isSelf ? 'left' : 'right']: 8,
-            display: 'flex',
+            display: isBarOpen ? 'none' : 'flex',
             gap: 2,
             padding: '2px',
             borderRadius: 12,

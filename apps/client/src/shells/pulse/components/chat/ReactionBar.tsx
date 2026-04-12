@@ -36,19 +36,21 @@ export function ReactionBar({ messageId, message: _message, onClose }: ReactionB
         exit={{ opacity: 0, scale: 0.85 }}
         transition={PULSE_SPRING.pop}
         style={{
+          // Replace the action button bar in-place — same top:-14 as triggers,
+          // expanding from the right edge so it grows into existing space
           position: 'absolute',
-          top: -52,
-          right: -4,
+          top: -16,
+          right: 4,
           display: 'flex',
           alignItems: 'center',
           gap: 1,
-          padding: '4px 6px',
-          borderRadius: 20,
+          padding: '3px 5px',
+          borderRadius: 18,
           background: 'var(--pulse-surface-3)',
           border: '1px solid var(--pulse-border-2)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
           zIndex: 51,
-          transformOrigin: 'bottom right',
+          transformOrigin: 'right center',
         }}
       >
         {EMOJIS.map(emoji => (

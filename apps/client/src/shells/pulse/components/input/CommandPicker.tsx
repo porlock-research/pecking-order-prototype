@@ -25,6 +25,7 @@ export function CommandPicker({ onSelect, onClose }: CommandPickerProps) {
         exit={{ opacity: 0, y: 12 }}
         transition={PULSE_SPRING.snappy}
         style={{
+          position: 'relative',
           display: 'flex',
           gap: 8,
           padding: '8px 12px',

@@ -1,7 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Coins, ChatCircle, HandWaving } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
-import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
 import { PULSE_SPRING } from '../../springs';
 import { DayPhases } from '@pecking-order/shared-types';
@@ -12,6 +11,7 @@ interface AvatarPopoverProps {
   onClose: () => void;
   onSilver: (targetId: string) => void;
   onDM: (targetId: string) => void;
+  onNudge: (targetId: string) => void;
 }
 
 const actions = [
@@ -20,10 +20,9 @@ const actions = [
   { id: 'nudge', Icon: HandWaving, label: 'Nudge', color: 'var(--pulse-text-1)' },
 ] as const;
 
-export function AvatarPopover({ targetId, anchorRect, onClose, onSilver, onDM }: AvatarPopoverProps) {
+export function AvatarPopover({ targetId, anchorRect, onClose, onSilver, onDM, onNudge }: AvatarPopoverProps) {
   const roster = useGameStore(s => s.roster);
   const phase = useGameStore(s => s.phase);
-  const { engine } = usePulse();
   const player = roster[targetId];
   const playerIndex = Object.keys(roster).indexOf(targetId);
   const color = getPlayerColor(playerIndex);
@@ -44,7 +43,7 @@ export function AvatarPopover({ targetId, anchorRect, onClose, onSilver, onDM }:
         onDM(targetId);
         break;
       case 'nudge':
-        engine.sendNudge(targetId);
+        onNudge(targetId);
         break;
     }
     onClose();

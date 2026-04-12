@@ -209,7 +209,7 @@ export function PulseInput() {
               />
             </div>
           )}
-          {!text && <HintChips onSelect={selectCommand} />}
+          <HintChips onSelect={selectCommand} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
             <input
               ref={inputRef}

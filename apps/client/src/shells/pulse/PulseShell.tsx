@@ -91,6 +91,7 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
               onClose={() => setPopover(null)}
               onSilver={id => { setPopover(null); openSendSilver(id); }}
               onDM={id => { setPopover(null); openDM(id); }}
+              onNudge={id => { setPopover(null); openNudge(id); }}
             />
           )}
         </AnimatePresence>

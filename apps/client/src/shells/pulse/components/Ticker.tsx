@@ -75,9 +75,9 @@ export function Ticker() {
       rest = rest.slice(earliest.idx + earliest.name.length);
     }
     return (
-      <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, paddingRight: 28 }}>
+      <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, paddingRight: 24 }}>
         {segments.map((s, i) => s.type === 'text' ? (
-          <span key={i} style={{ color: 'var(--pulse-text-3)' }}>{s.value}</span>
+          <span key={i} style={{ color: 'var(--pulse-text-1)', fontWeight: 500 }}>{s.value}</span>
         ) : (
           <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <img
@@ -85,9 +85,10 @@ export function Ticker() {
               alt=""
               style={{ width: 18, height: 18, borderRadius: 5, objectFit: 'cover', objectPosition: 'center top', flexShrink: 0 }}
             />
-            <span style={{ color: 'var(--pulse-accent)', fontWeight: 700 }}>{s.name}</span>
+            <span style={{ color: 'var(--pulse-accent)', fontWeight: 800 }}>{s.name}</span>
           </span>
         ))}
+        <span style={{ color: 'var(--pulse-text-4)', marginLeft: 4 }}>·</span>
       </span>
     );
   };

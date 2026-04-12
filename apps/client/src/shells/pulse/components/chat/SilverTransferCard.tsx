@@ -52,53 +52,38 @@ export function SilverTransferCard({ text }: SilverTransferCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -12, scale: 0.98 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      transition={PULSE_SPRING.bouncy}
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={PULSE_SPRING.gentle}
       style={{
-        display: 'flex',
+        display: 'inline-flex',
+        alignSelf: 'flex-start',
         alignItems: 'center',
-        gap: 10,
-        padding: '8px 12px 8px 8px',
-        margin: '6px 0',
-        borderRadius: 14,
-        background:
-          'linear-gradient(90deg, rgba(255,200,61,0.08) 0%, rgba(255,200,61,0.03) 100%), var(--pulse-surface)',
-        border: '1px solid rgba(255,200,61,0.25)',
-        boxShadow: '0 0 0 1px rgba(255,200,61,0.05), 0 4px 16px rgba(255,200,61,0.06)',
+        gap: 8,
+        padding: '4px 10px 4px 4px',
+        margin: '3px 0',
+        borderRadius: 999,
+        background: 'rgba(255,200,61,0.05)',
+        border: '1px solid rgba(255,200,61,0.15)',
         fontFamily: 'var(--po-font-body)',
-        position: 'relative',
-        overflow: 'hidden',
       }}
     >
-      {/* Shimmer stripe */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'linear-gradient(90deg, transparent 0%, rgba(255,200,61,0.18) 50%, transparent 100%)',
-          backgroundSize: '200% 100%',
-          animation: 'pulse-shimmer 2.5s ease-out forwards',
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* Overlapping portraits */}
-      <div style={{ position: 'relative', width: 48, height: 32, flexShrink: 0, zIndex: 1 }}>
+      {/* Overlapping portraits — smaller */}
+      <div style={{ position: 'relative', width: 32, height: 22, flexShrink: 0 }}>
         {sender && (
           <img
             src={sender.avatarUrl}
-            alt={sender.personaName}
+            alt=""
             style={{
               position: 'absolute',
               left: 0,
               top: 0,
-              width: 32,
-              height: 32,
-              borderRadius: 8,
+              width: 22,
+              height: 22,
+              borderRadius: 6,
               objectFit: 'cover',
               objectPosition: 'center top',
-              border: '2px solid var(--pulse-surface)',
+              border: '1.5px solid var(--pulse-bg)',
               zIndex: 2,
             }}
           />
@@ -106,48 +91,43 @@ export function SilverTransferCard({ text }: SilverTransferCardProps) {
         {recipient && (
           <img
             src={recipient.avatarUrl}
-            alt={recipient.personaName}
+            alt=""
             style={{
               position: 'absolute',
-              left: 16,
+              left: 10,
               top: 0,
-              width: 32,
-              height: 32,
-              borderRadius: 8,
+              width: 22,
+              height: 22,
+              borderRadius: 6,
               objectFit: 'cover',
               objectPosition: 'center top',
-              border: '2px solid var(--pulse-surface)',
+              border: '1.5px solid var(--pulse-bg)',
               zIndex: 1,
             }}
           />
         )}
       </div>
 
-      {/* Text */}
-      <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--pulse-text-1)', lineHeight: 1.35, zIndex: 1 }}>
+      {/* Text — small, single line */}
+      <div style={{ fontSize: 11, color: 'var(--pulse-text-2)', lineHeight: 1.2, fontWeight: 500 }}>
         <span style={{ fontWeight: 700, color: senderColor }}>{senderName}</span>
-        <span style={{ color: 'var(--pulse-text-2)' }}> sent </span>
+        <span> → </span>
         <span style={{ fontWeight: 700, color: recipientColor }}>{recipientName}</span>
       </div>
 
-      {/* Gold amount chip */}
+      {/* Gold amount chip — compact */}
       <div
         style={{
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
-          gap: 4,
-          padding: '4px 10px',
-          borderRadius: 12,
-          background: 'linear-gradient(135deg, var(--pulse-gold) 0%, #e6a500 100%)',
-          color: '#1a1422',
+          gap: 3,
+          color: 'var(--pulse-gold)',
           fontWeight: 800,
-          fontSize: 12,
+          fontSize: 11,
           flexShrink: 0,
-          zIndex: 1,
-          boxShadow: '0 2px 8px rgba(255,200,61,0.3)',
         }}
       >
-        <Coins size={12} weight="fill" />
+        <Coins size={11} weight="fill" />
         <span>{amount}</span>
       </div>
     </motion.div>

@@ -15,23 +15,24 @@ interface HintChipsProps {
 
 export function HintChips({ onSelect }: HintChipsProps) {
   return (
-    <div style={{ display: 'flex', gap: 6, padding: '4px 12px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+    <div style={{ display: 'flex', gap: 6, padding: '6px 12px 2px', overflowX: 'auto', scrollbarWidth: 'none' }}>
       {hints.map(h => (
         <motion.button
           key={h.label}
           whileTap={{ scale: 0.95 }}
           onClick={() => onSelect(h.command)}
           style={{
-            padding: '4px 10px',
-            borderRadius: 12,
+            padding: '5px 11px',
+            borderRadius: 14,
             fontSize: 11,
-            fontWeight: 600,
+            fontWeight: 700,
             fontFamily: 'var(--po-font-body)',
-            background: 'var(--pulse-surface-2)',
-            border: '1px solid var(--pulse-border)',
+            background: `${h.color}14`,
+            border: `1px solid ${h.color}33`,
             color: h.color,
             cursor: 'pointer',
             whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           {h.label}
