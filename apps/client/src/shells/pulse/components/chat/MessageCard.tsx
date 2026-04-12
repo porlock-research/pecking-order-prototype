@@ -197,6 +197,7 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
           <ReactionBar
             messageId={message.id}
             message={message}
+            isSelf={isSelf}
             onClose={() => onOpenReaction(null)}
           />
         )}

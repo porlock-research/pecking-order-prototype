@@ -8,10 +8,11 @@ const EMOJIS = ['😂', '👀', '🔥', '💀', '❤️'];
 interface ReactionBarProps {
   messageId: string;
   message: ChatMessage;
+  isSelf: boolean;
   onClose: () => void;
 }
 
-export function ReactionBar({ messageId, message: _message, onClose }: ReactionBarProps) {
+export function ReactionBar({ messageId, message: _message, isSelf, onClose }: ReactionBarProps) {
   const { engine } = usePulse();
 
   const handleReact = (emoji: string) => {
@@ -36,12 +37,12 @@ export function ReactionBar({ messageId, message: _message, onClose }: ReactionB
         exit={{ opacity: 0, scale: 0.85 }}
         transition={PULSE_SPRING.pop}
         style={{
-          // Replaces the action-trigger bar in EXACT same position
-          // (triggers are at top:-14, height ~28; we match the top edge
-          // and grow horizontally to the left)
+          // Replaces the action-trigger bar in EXACT same position.
+          // Self messages have triggers on the LEFT (row-reverse layout),
+          // others on the RIGHT — picker mirrors that placement.
           position: 'absolute',
           top: -14,
-          right: 8,
+          [isSelf ? 'left' : 'right']: 8,
           display: 'flex',
           alignItems: 'center',
           gap: 1,
@@ -51,7 +52,7 @@ export function ReactionBar({ messageId, message: _message, onClose }: ReactionB
           border: '1px solid var(--pulse-border-2)',
           boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
           zIndex: 51,
-          transformOrigin: 'right center',
+          transformOrigin: isSelf ? 'left center' : 'right center',
         }}
       >
         {EMOJIS.map(emoji => (
