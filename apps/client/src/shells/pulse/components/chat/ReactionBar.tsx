@@ -36,16 +36,17 @@ export function ReactionBar({ messageId, message: _message, onClose }: ReactionB
         exit={{ opacity: 0, scale: 0.85 }}
         transition={PULSE_SPRING.pop}
         style={{
-          // Replace the action button bar in-place — same top:-14 as triggers,
-          // expanding from the right edge so it grows into existing space
+          // Replaces the action-trigger bar in EXACT same position
+          // (triggers are at top:-14, height ~28; we match the top edge
+          // and grow horizontally to the left)
           position: 'absolute',
-          top: -16,
-          right: 4,
+          top: -14,
+          right: 8,
           display: 'flex',
           alignItems: 'center',
           gap: 1,
-          padding: '3px 5px',
-          borderRadius: 18,
+          padding: '2px 4px',
+          borderRadius: 14,
           background: 'var(--pulse-surface-3)',
           border: '1px solid var(--pulse-border-2)',
           boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
@@ -63,16 +64,17 @@ export function ReactionBar({ messageId, message: _message, onClose }: ReactionB
               handleReact(emoji);
             }}
             style={{
-              width: 34,
-              height: 34,
+              width: 28,
+              height: 24,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 20,
+              fontSize: 18,
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              borderRadius: '50%',
+              borderRadius: 8,
+              padding: 0,
             }}
           >
             {emoji}

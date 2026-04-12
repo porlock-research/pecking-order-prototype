@@ -33,17 +33,18 @@ export function AmbientBackground() {
             'radial-gradient(ellipse 80% 60% at 50% 110%, rgba(176,105,219,0.05) 0%, transparent 50%)',
         }}
       />
-      {/* Subtle dot grid texture — gives the void some structure */}
+      {/* Diagonal noise — subtle striated texture, not a flat field */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
           pointerEvents: 'none',
           zIndex: 0,
-          backgroundImage:
-            'radial-gradient(circle, rgba(255,255,255,0.018) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-          opacity: 0.6,
+          backgroundImage: `
+            radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 1.5px),
+            linear-gradient(135deg, transparent 49.5%, rgba(255,255,255,0.012) 50%, transparent 50.5%)
+          `,
+          backgroundSize: '32px 32px, 8px 8px',
         }}
       />
     </>

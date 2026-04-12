@@ -59,8 +59,10 @@ export function useCommandBuilder() {
 
   const back = useCallback(() => {
     switch (state.mode) {
+      // PlayerPicker is the first real step in any flow — back returns to chat.
+      // (CommandPicker is just an entry point, not a navigation level.)
       case 'player-picker':
-        setState({ mode: 'command-picker' });
+        setState({ mode: 'idle' });
         break;
       case 'amount-picker':
         setState({ mode: 'player-picker', command: 'silver' });

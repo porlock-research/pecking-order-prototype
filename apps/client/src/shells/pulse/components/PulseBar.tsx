@@ -42,10 +42,10 @@ export function PulseBar() {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
           <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.5, color: '#2ecc71', textTransform: 'uppercase' }}>
-            Live
+            Here
           </div>
           <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--pulse-text-3)', fontFamily: 'var(--po-font-body)' }}>
-            {onlineCount} online
+            {onlineCount} of {allAlive.length}
           </div>
         </div>
 

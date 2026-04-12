@@ -24,10 +24,12 @@
   --pulse-border: rgba(255, 255, 255, 0.06);
   --pulse-border-2: rgba(255, 255, 255, 0.1);
 
-  /* Ambient warm background — subtle coral glow center */
-  background: radial-gradient(ellipse 140% 90% at 50% 0%, rgba(255, 59, 111, 0.04) 0%, transparent 40%),
-              radial-gradient(ellipse 120% 80% at 50% 100%, rgba(176, 105, 219, 0.03) 0%, transparent 50%),
-              var(--pulse-bg);
+  /* Ambient warm background: warm dark base, softer than pure ink */
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(255, 59, 111, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 90% 50% at 30% 100%, rgba(176, 105, 219, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 90% 50% at 70% 100%, rgba(96, 165, 250, 0.04) 0%, transparent 60%),
+    linear-gradient(180deg, var(--pulse-bg) 0%, var(--pulse-bg-2) 100%);
 
   /* --po-* skin contract for cartridges */
   --po-bg-deep: var(--pulse-bg);
