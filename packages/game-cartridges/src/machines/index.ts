@@ -25,6 +25,8 @@ export { orbitMachine } from './orbit';
 export { beatDropMachine } from './beat-drop';
 export { inflateMachine } from './inflate';
 export { snakeMachine } from './snake';
+export { flappyMachine } from './flappy';
+export { colorSortMachine } from './color-sort';
 
 import { gapRunMachine } from './gap-run';
 import { gridPushMachine } from './grid-push';
@@ -47,6 +49,8 @@ import { orbitMachine } from './orbit';
 import { beatDropMachine } from './beat-drop';
 import { inflateMachine } from './inflate';
 import { snakeMachine } from './snake';
+import { flappyMachine } from './flappy';
+import { colorSortMachine } from './color-sort';
 
 export const GAME_REGISTRY = {
   GAP_RUN: gapRunMachine,
@@ -70,4 +74,6 @@ export const GAME_REGISTRY = {
   BEAT_DROP: beatDropMachine,
   INFLATE: inflateMachine,
   SNAKE: snakeMachine,
+  FLAPPY: flappyMachine,
+  COLOR_SORT: colorSortMachine,
 } as const;
