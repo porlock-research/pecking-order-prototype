@@ -88,11 +88,12 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
         <div style={{ width: AVATAR_SIZE, flexShrink: 0 }} />
       )}
 
-      {/* Content */}
+      {/* Content column: bubble + chips outside */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
       <div
         className="pulse-msg-content"
         style={{
-          flex: 1,
+          width: '100%',
           minWidth: 0,
           position: 'relative',
           ...(isSelf
@@ -201,9 +202,9 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
             onClose={() => onOpenReaction(null)}
           />
         )}
-
-        {/* Reaction chips */}
-        <ReactionChips message={message} onOpenReaction={() => onOpenReaction(message.id)} />
+      </div>
+        {/* Reaction chips — always OUTSIDE the bubble, aligned with content side */}
+        <ReactionChips message={message} />
       </div>
     </div>
   );

@@ -1,21 +1,25 @@
 import { motion } from 'framer-motion';
-import { PlusCircle } from '../../icons';
 import { usePulse } from '../../PulseShell';
 import { PULSE_SPRING } from '../../springs';
 import type { ChatMessage } from '@pecking-order/shared-types';
 
 interface ReactionChipsProps {
   message: ChatMessage;
-  onOpenReaction: () => void;
 }
 
-export function ReactionChips({ message, onOpenReaction }: ReactionChipsProps) {
+/**
+ * Render existing reactions as chips below a message.
+ * Tap a chip to toggle your own reaction.
+ * No "+" button — the smile icon in the inline action bar is the canonical
+ * way to add new reactions (avoids a duplicate trigger).
+ */
+export function ReactionChips({ message }: ReactionChipsProps) {
   const { engine, playerId } = usePulse();
   const reactions = message.reactions;
   if (!reactions || Object.keys(reactions).length === 0) return null;
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
       {Object.entries(reactions).map(([emoji, reactors]) => {
         const isMine = (reactors as string[]).includes(playerId);
         return (
@@ -46,25 +50,6 @@ export function ReactionChips({ message, onOpenReaction }: ReactionChipsProps) {
           </motion.button>
         );
       })}
-
-      {/* Plus button to open reaction bar */}
-      <button
-        onClick={onOpenReaction}
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--pulse-surface-2)',
-          border: '1px solid var(--pulse-border)',
-          cursor: 'pointer',
-          color: 'var(--pulse-text-3)',
-        }}
-      >
-        <PlusCircle size={14} weight="fill" />
-      </button>
     </div>
   );
 }

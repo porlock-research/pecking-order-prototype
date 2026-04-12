@@ -90,17 +90,29 @@ export function PulseBar() {
                     display: 'block',
                   }}
                 />
-                {/* Online glow ring (subtle, on-persona color) */}
-                {isOnline && (
+                {/* Self indicator — subtle accent ring around your own avatar */}
+                {isSelf && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      inset: -2,
+                      borderRadius: 12,
+                      border: '1.5px solid var(--pulse-accent)',
+                      opacity: 0.5,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                )}
+                {/* Typing pulse ring (overrides) */}
+                {isTyping && (
                   <span
                     style={{
                       position: 'absolute',
                       inset: -2,
                       borderRadius: 12,
                       border: `1.5px solid ${color}`,
-                      opacity: 0.6,
                       pointerEvents: 'none',
-                      animation: isTyping ? 'pulse-breathe 0.9s ease-in-out infinite' : 'pulse-breathe 3s ease-in-out infinite',
+                      animation: 'pulse-breathe 0.9s ease-in-out infinite',
                     }}
                   />
                 )}
