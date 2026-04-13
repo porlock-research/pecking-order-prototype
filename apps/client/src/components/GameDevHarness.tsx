@@ -181,6 +181,7 @@ export default function GameDevHarness() {
   const [config, setConfig] = useState<GameConfig>(GAME_DEFS.GAP_RUN.defaultConfig);
   const [cartridge, setCartridge] = useState<GameProjection | null>(null);
   const [eventLog, setEventLog] = useState<LogEntry[]>([]);
+  const [eventLogOpen, setEventLogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const actorRef = useRef<AnyActorRef | null>(null);
@@ -523,12 +524,20 @@ export default function GameDevHarness() {
         </div>
       </div>
 
-      {/* Bottom: Event log */}
-      <div className="shrink-0 h-48 border-t border-white/[0.06] bg-skin-panel/60 flex flex-col">
-        <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06]">
-          <span className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">Event Log</span>
+      {/* Bottom: Event log (collapsible — collapsed by default so the canvas gets full room) */}
+      <div className={`shrink-0 border-t border-white/[0.06] bg-skin-panel/60 flex flex-col ${eventLogOpen ? 'h-48' : ''}`}>
+        <button
+          type="button"
+          onClick={() => setEventLogOpen(v => !v)}
+          className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06] hover:bg-white/[0.03] cursor-pointer text-left"
+        >
+          <span className="text-[10px] font-mono text-skin-dim uppercase tracking-widest flex items-center gap-2">
+            <span className="inline-block w-3 text-center">{eventLogOpen ? '▾' : '▸'}</span>
+            Event Log
+          </span>
           <span className="text-[10px] font-mono text-skin-dim">{eventLog.length} events</span>
-        </div>
+        </button>
+        {eventLogOpen && (
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1 font-mono text-[11px]">
           {eventLog.length === 0 && (
             <p className="text-skin-dim/40 italic">No events yet. Start a game to see actions here.</p>
@@ -559,6 +568,7 @@ export default function GameDevHarness() {
           })}
           <div ref={logEndRef} />
         </div>
+        )}
       </div>
     </div>
   );

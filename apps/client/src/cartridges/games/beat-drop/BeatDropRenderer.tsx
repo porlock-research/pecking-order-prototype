@@ -419,20 +419,42 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
         ctx.stroke();
       }
 
-      // Hit line
-      const hitLineGrad = ctx.createLinearGradient(0, HIT_LINE_Y, w, HIT_LINE_Y);
+      // Target window (GOOD_WINDOW stripe) — shows WHEN to tap
+      const windowHeight = (GOOD_WINDOW * 2 * NOTE_SPEED) / 1000;
       for (let i = 0; i < LANE_COUNT; i++) {
-        hitLineGrad.addColorStop(i / LANE_COUNT, withAlpha(laneColors[i], 0.7));
-        hitLineGrad.addColorStop((i + 1) / LANE_COUNT, withAlpha(laneColors[i], 0.7));
+        const laneX = i * LANE_WIDTH;
+        ctx.fillStyle = withAlpha(laneColors[i], 0.12);
+        ctx.fillRect(laneX, HIT_LINE_Y - windowHeight / 2, LANE_WIDTH, windowHeight);
       }
-      ctx.strokeStyle = hitLineGrad;
-      ctx.lineWidth = 3;
-      drawWithGlow(ctx, t.colors.text, 6, () => {
-        ctx.beginPath();
-        ctx.moveTo(0, HIT_LINE_Y);
-        ctx.lineTo(w, HIT_LINE_Y);
-        ctx.stroke();
-      });
+
+      // Hit line — thick, per-lane colored, glowing — the bright "tap here" bar
+      for (let i = 0; i < LANE_COUNT; i++) {
+        const laneX = i * LANE_WIDTH;
+        drawWithGlow(ctx, laneColors[i], 10, () => {
+          ctx.fillStyle = laneColors[i];
+          ctx.fillRect(laneX + 2, HIT_LINE_Y - 3, LANE_WIDTH - 4, 6);
+        });
+      }
+
+      // Tap-zone rectangles below the hit line — large mobile-friendly touch targets
+      const tapZoneTop = HIT_LINE_Y + windowHeight / 2 + 6;
+      const tapZoneBottom = h - 28; // leave room for lives dots
+      for (let i = 0; i < LANE_COUNT; i++) {
+        const laneX = i * LANE_WIDTH;
+        const pressed = lanePressed[i];
+        ctx.fillStyle = withAlpha(laneColors[i], pressed ? 0.35 : 0.1);
+        ctx.fillRect(laneX + 4, tapZoneTop, LANE_WIDTH - 8, tapZoneBottom - tapZoneTop);
+        ctx.strokeStyle = withAlpha(laneColors[i], pressed ? 0.9 : 0.45);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(laneX + 4, tapZoneTop, LANE_WIDTH - 8, tapZoneBottom - tapZoneTop);
+
+        // Key label (desktop hint) — bigger, clearer
+        ctx.font = 'bold 18px monospace';
+        ctx.fillStyle = withAlpha(laneColors[i], pressed ? 1 : 0.7);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(['D', 'F', 'J', 'K'][i], laneX + LANE_WIDTH / 2, (tapZoneTop + tapZoneBottom) / 2);
+      }
 
       // Draw notes
       const visibleWindowMs = (CANVAS_HEIGHT / NOTE_SPEED) * 1000;
@@ -470,13 +492,23 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
           ctx.roundRect(-NOTE_WIDTH / 2, -NOTE_HEIGHT / 2, NOTE_WIDTH, NOTE_HEIGHT, NOTE_BORDER_RADIUS);
           ctx.fill();
         } else {
-          // Regular note
-          drawWithGlow(ctx, color, 6, () => {
+          // Regular note — glow intensifies when inside hit window
+          const inWindow = Math.abs(timeDiff) <= GOOD_WINDOW;
+          const glow = inWindow ? 20 : 6;
+          drawWithGlow(ctx, color, glow, () => {
             ctx.fillStyle = color;
             ctx.beginPath();
             ctx.roundRect(-NOTE_WIDTH / 2, -NOTE_HEIGHT / 2, NOTE_WIDTH, NOTE_HEIGHT, NOTE_BORDER_RADIUS);
             ctx.fill();
           });
+          // Add a ring when in window — strong visual "TAP NOW!" cue
+          if (inWindow) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(-NOTE_WIDTH / 2 - 3, -NOTE_HEIGHT / 2 - 3, NOTE_WIDTH + 6, NOTE_HEIGHT + 6, NOTE_BORDER_RADIUS + 2);
+            ctx.stroke();
+          }
         }
 
         ctx.restore();
@@ -507,26 +539,6 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
         ctx.fillText(fb.text, fb.lane * LANE_WIDTH + LANE_WIDTH / 2, fb.y);
       }
       ctx.globalAlpha = 1;
-
-      // Key indicators at bottom
-      for (let i = 0; i < LANE_COUNT; i++) {
-        const kx = i * LANE_WIDTH + (LANE_WIDTH - 36) / 2;
-        const ky = h - 40;
-        const pressed = lanePressed[i];
-        ctx.strokeStyle = withAlpha(laneColors[i], pressed ? 0.8 : 0.3);
-        ctx.fillStyle = pressed ? withAlpha(laneColors[i], 0.2) : 'transparent';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(kx, ky, 36, 28, 6);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.font = '11px monospace';
-        ctx.fillStyle = withAlpha(laneColors[i], pressed ? 0.8 : 0.5);
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(['D', 'F', 'J', 'K'][i], kx + 18, ky + 14);
-      }
 
       // HUD
       ctx.font = '14px monospace';
