@@ -1,0 +1,30 @@
+MATCH_TOOL: Write
+MATCH_PATTERN: docs/reports/.*\.html
+ADVISORY: |
+  security_reminder_hook blocks any file containing `element.innerHTML = ...`
+  patterns (even trusted static HTML mockups with no user input — the hook is
+  content-based, doesn't evaluate context). The write just fails.
+
+  Use imperative DOM construction with a small helper:
+
+    function h(tag, props, children) {
+      const el = document.createElement(tag);
+      if (props) for (const k of Object.keys(props)) {
+        if (k === 'class') el.className = props[k];
+        else if (k === 'text') el.textContent = props[k];
+        else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), props[k]);
+        else el.setAttribute(k, props[k]);
+      }
+      if (children) for (const c of children) {
+        if (c == null || c === false) continue;
+        el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+      }
+      return el;
+    }
+    function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+  Then: `parent.appendChild(h('div', {class:'foo'}, ['text', h('span', null, ['nested'])]))`
+
+  Works for all nested structures. See docs/reports/pulse-mockups/11-cast-strip-v2.html
+  for a full working example. Older mockups like 08-full-interaction-prototype.html
+  used innerHTML before the hook existed — don't copy that pattern for new files.
