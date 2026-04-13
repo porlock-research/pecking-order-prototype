@@ -7,7 +7,17 @@ import {
   mulberry32, lerp, distance,
   ParticleEmitter, TrailRenderer, ScreenShake,
   drawWithGlow, SlowMo, ScreenFlash, PulseRingEmitter,
+  FloatingTextEmitter, SpringValue,
 } from '../shared/canvas-vfx';
+
+const px = (v: number) => Math.round(v);
+
+// Wave milestone ladder — highest tier reserved for deep runs
+const WAVE_MILESTONES: { waves: number; text: string }[] = [
+  { waves: 5, text: '5 WAVES' },
+  { waves: 15, text: '15 WAVES' },
+  { waves: 30, text: '30 WAVES!' },
+];
 
 // --- Constants ---
 
@@ -117,9 +127,11 @@ export default function ShockwaveRenderer({ seed, difficulty, timeLimit, onResul
     let maxCombo = 0;
     let dead = false;
     let deathTime = 0;
+    let ending = false; // single end-of-game VFX guard
     let elapsed = 0;
     let lastWaveSpawn = 0;
     let colorIndex = 0;
+    const crossedMilestones = new Set<number>();
 
     // Dash state
     let dashing = false;
@@ -140,6 +152,8 @@ export default function ShockwaveRenderer({ seed, difficulty, timeLimit, onResul
     const slowMo = new SlowMo();
     const screenFlash = new ScreenFlash();
     const pulseRings = new PulseRingEmitter();
+    const floatingText = new FloatingTextEmitter();
+    const waveSpring = new SpringValue({ stiffness: 220, damping: 14 });
 
     // Ambient dust particles
     const ambientParticles = new ParticleEmitter();
@@ -301,6 +315,7 @@ export default function ShockwaveRenderer({ seed, difficulty, timeLimit, onResul
       // VFX layers
       particles.draw(ctx);
       pulseRings.draw(ctx);
+      floatingText.draw(ctx);
 
       screenShake.restore(ctx);
 
@@ -310,10 +325,15 @@ export default function ShockwaveRenderer({ seed, difficulty, timeLimit, onResul
       ctx.font = '14px monospace';
       ctx.textBaseline = 'top';
 
-      // Wave count
-      ctx.fillStyle = withAlpha(t.colors.text, 0.5);
+      // Wave count — spring-pulses on every clear
+      const waveScale = 1 + waveSpring.value;
+      ctx.save();
+      ctx.translate(px(12), px(12));
+      ctx.scale(waveScale, waveScale);
+      ctx.fillStyle = withAlpha(t.colors.text, 0.6);
       ctx.textAlign = 'left';
-      ctx.fillText(`Waves: ${wavesCleared}`, 12, 12);
+      ctx.fillText(`Waves: ${wavesCleared}`, 0, 0);
+      ctx.restore();
 
       // Combo
       const mult = comboMultiplier(combo);
@@ -330,13 +350,51 @@ export default function ShockwaveRenderer({ seed, difficulty, timeLimit, onResul
       ctx.fillText(`${remaining}s`, w / 2, h - 24);
     }
 
+    function triggerEnding(reason: 'crashed' | 'timesup') {
+      if (ending) return;
+      ending = true;
+      const color = reason === 'crashed' ? t.colors.danger : t.colors.gold;
+      const text = reason === 'crashed' ? 'CRASHED!' : "SURVIVED!";
+      // Crash VFX already fired inline on collision; for time-up, play a celebratory end
+      if (reason === 'timesup') {
+        screenFlash.trigger(withAlpha(color, 0.35), 400);
+        pulseRings.emit({
+          x: CENTER,
+          y: CENTER,
+          color,
+          maxRadius: 220,
+          duration: 700,
+          lineWidth: 3,
+        });
+        particles.emit({
+          count: 40,
+          position: { x: CENTER, y: CENTER },
+          velocity: { min: 120, max: 280 },
+          angle: { min: 0, max: Math.PI * 2 },
+          lifetime: { min: 500, max: 900 },
+          size: { start: 3, end: 0.5 },
+          color: [color, t.colors.text],
+          opacity: { start: 1, end: 0 },
+        });
+      }
+      floatingText.emit({
+        text,
+        x: CENTER,
+        y: CENTER - 20,
+        color,
+        fontSize: 28,
+        duration: 900,
+        drift: 30,
+      });
+    }
+
     // --- Game loop ---
     let lastTime = performance.now();
     let animId: number;
     let resultSent = false;
 
     function frame(now: number) {
-      const realDt = Math.min(now - lastTime, 50); // cap at 50ms
+      const realDt = Math.max(0, Math.min(now - lastTime, 50)); // clamp to [0, 50ms]
       lastTime = now;
 
       const dt = slowMo.update(realDt);
@@ -397,10 +455,62 @@ export default function ShockwaveRenderer({ seed, difficulty, timeLimit, onResul
               wave.angle += wave.rotationSpeed * (dt / 1000);
             }
             if (wave.radius < 10) {
+              const clearColor = wave.color;
               waves.splice(i, 1);
               wavesCleared++;
               combo++;
               maxCombo = Math.max(maxCombo, combo);
+
+              // Per-clear flash + themed centre burst (subtle — fires every wave)
+              screenFlash.trigger(withAlpha(clearColor, 0.14), 90);
+              waveSpring.target = 0.25;
+              particles.emit({
+                count: 14,
+                position: { x: CENTER, y: CENTER },
+                velocity: { min: 40, max: 120 },
+                angle: { min: 0, max: Math.PI * 2 },
+                lifetime: { min: 240, max: 480 },
+                size: { start: 2, end: 0.5 },
+                color: clearColor,
+                opacity: { start: 0.9, end: 0 },
+              });
+
+              // Milestone ladder — louder celebration at 5 / 15 / 30 waves
+              for (const m of WAVE_MILESTONES) {
+                if (wavesCleared === m.waves && !crossedMilestones.has(m.waves)) {
+                  crossedMilestones.add(m.waves);
+                  const tier = m.waves >= 30 ? 1 : m.waves >= 15 ? 0.7 : 0.5;
+                  screenFlash.trigger(withAlpha(t.colors.gold, 0.22 * tier), 140);
+                  screenShake.trigger({ intensity: 4 + 3 * tier, duration: 200 });
+                  pulseRings.emit({
+                    x: CENTER,
+                    y: CENTER,
+                    color: t.colors.gold,
+                    maxRadius: 120 + 60 * tier,
+                    duration: 560,
+                    lineWidth: 2,
+                  });
+                  particles.emit({
+                    count: 28 + Math.round(14 * tier),
+                    position: { x: CENTER, y: CENTER },
+                    velocity: { min: 80, max: 220 },
+                    angle: { min: 0, max: Math.PI * 2 },
+                    lifetime: { min: 400, max: 800 },
+                    size: { start: 3, end: 0.5 },
+                    color: [t.colors.gold, clearColor, '#ffffff'],
+                    opacity: { start: 1, end: 0 },
+                  });
+                  floatingText.emit({
+                    text: m.text,
+                    x: CENTER,
+                    y: CENTER - 30,
+                    color: t.colors.gold,
+                    fontSize: 18 + Math.round(4 * tier),
+                    duration: 900,
+                    drift: 40,
+                  });
+                }
+              }
             }
           }
 
@@ -464,7 +574,16 @@ export default function ShockwaveRenderer({ seed, difficulty, timeLimit, onResul
 
       if (dead) {
         deathTime += realDt;
+        if (!ending) {
+          // collision path sets dead via hit; time-up path sets dead by clock — distinguish by wave collision VFX being fired inline
+          // Treat as 'crashed' if collision VFX was triggered (we detect by slowMo being active), else 'timesup'
+          triggerEnding(elapsed >= timeLimit ? 'timesup' : 'crashed');
+        }
       }
+
+      // Wave-clear spring decays; clear handlers bump it
+      waveSpring.target = 0;
+      waveSpring.update(realDt);
 
       // Update VFX
       particles.update(dt);
@@ -472,6 +591,7 @@ export default function ShockwaveRenderer({ seed, difficulty, timeLimit, onResul
       screenShake.update(dt);
       screenFlash.update(dt);
       pulseRings.update(dt);
+      floatingText.update(dt);
 
       // Render
       renderGame(dt);
