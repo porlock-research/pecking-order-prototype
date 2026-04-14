@@ -15,6 +15,8 @@ import { AvatarPopover } from './components/popover/AvatarPopover';
 import { SendSilverSheet } from './components/popover/SendSilverSheet';
 import { NudgeConfirmation } from './components/popover/NudgeConfirmation';
 import { DmSheet } from './components/dm-sheet/DmSheet';
+import { SocialPanel } from './components/social-panel/SocialPanel';
+import { PanelButton } from './components/header/PanelButton';
 import { EliminationReveal } from './components/reveals/EliminationReveal';
 import { WinnerReveal } from './components/reveals/WinnerReveal';
 import { PhaseTransition } from './components/reveals/PhaseTransition';
@@ -78,6 +80,15 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
       >
         <AmbientBackground />
         <Ticker />
+        <div style={{
+          display: 'flex', justifyContent: 'flex-end',
+          padding: '6px 12px',
+          background: 'var(--pulse-surface)',
+          borderBottom: '1px solid var(--pulse-border)',
+          position: 'relative', zIndex: 3,
+        }}>
+          <PanelButton onClick={openSocialPanel} />
+        </div>
         <CastStrip />
         <PulseBar />
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
@@ -121,6 +132,11 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
               isGroup={dmIsGroup}
               onClose={() => { setDmTarget(null); setDmIsGroup(false); }}
             />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {socialPanelOpen && (
+            <SocialPanel onClose={() => setSocialPanelOpen(false)} />
           )}
         </AnimatePresence>
 
