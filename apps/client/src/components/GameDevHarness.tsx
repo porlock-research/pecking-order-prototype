@@ -4,7 +4,7 @@ import type { SocialPlayer, GameProjection } from '@pecking-order/shared-types';
 
 // --- Types ---
 
-type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA' | 'BET_BET_BET' | 'BLIND_AUCTION' | 'KINGS_RANSOM' | 'TOUCH_SCREEN' | 'THE_SPLIT' | 'SHOCKWAVE' | 'ORBIT' | 'BEAT_DROP';
+type GameType = 'GAP_RUN' | 'GRID_PUSH' | 'SEQUENCE' | 'REACTION_TIME' | 'COLOR_MATCH' | 'STACKER' | 'QUICK_MATH' | 'SIMON_SAYS' | 'AIM_TRAINER' | 'TRIVIA' | 'REALTIME_TRIVIA' | 'BET_BET_BET' | 'BLIND_AUCTION' | 'KINGS_RANSOM' | 'TOUCH_SCREEN' | 'THE_SPLIT' | 'SHOCKWAVE' | 'ORBIT' | 'BEAT_DROP' | 'INFLATE' | 'SNAKE' | 'FLAPPY' | 'COLOR_SORT' | 'BLINK' | 'RECALL';
 
 interface GapRunConfig {
   difficulty: number; // 0-1
@@ -141,6 +141,36 @@ const GAME_DEFS: Record<GameType, GameDef> = {
     Component: lazy(() => import('../cartridges/games/beat-drop/BeatDrop')),
     defaultConfig: { difficulty: 0.2 },
   },
+  INFLATE: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.inflateMachine),
+    Component: lazy(() => import('../cartridges/games/inflate/Inflate')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  SNAKE: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.snakeMachine),
+    Component: lazy(() => import('../cartridges/games/snake/Snake')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  FLAPPY: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.flappyMachine),
+    Component: lazy(() => import('../cartridges/games/flappy/Flappy')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  COLOR_SORT: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.colorSortMachine),
+    Component: lazy(() => import('../cartridges/games/color-sort/ColorSort')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  BLINK: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.blinkMachine),
+    Component: lazy(() => import('../cartridges/games/blink/Blink')),
+    defaultConfig: { difficulty: 0.2 },
+  },
+  RECALL: {
+    loadMachine: () => import('@pecking-order/game-cartridges').then(m => m.recallMachine),
+    Component: lazy(() => import('../cartridges/games/recall/Recall')),
+    defaultConfig: { difficulty: 0.2 },
+  },
 };
 
 const GAME_TYPES = Object.keys(GAME_DEFS) as GameType[];
@@ -161,6 +191,7 @@ export default function GameDevHarness() {
   const [config, setConfig] = useState<GameConfig>(GAME_DEFS.GAP_RUN.defaultConfig);
   const [cartridge, setCartridge] = useState<GameProjection | null>(null);
   const [eventLog, setEventLog] = useState<LogEntry[]>([]);
+  const [eventLogOpen, setEventLogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const logEndRef = useRef<HTMLDivElement>(null);
   const actorRef = useRef<AnyActorRef | null>(null);
@@ -193,7 +224,7 @@ export default function GameDevHarness() {
     const input: any = { gameType: type, roster: MOCK_ROSTER, dayIndex: 1 };
 
     // Pass per-game config into machine input
-    const ARCADE_TYPES: string[] = ['GAP_RUN', 'GRID_PUSH', 'SEQUENCE', 'REACTION_TIME', 'COLOR_MATCH', 'STACKER', 'QUICK_MATH', 'SIMON_SAYS', 'AIM_TRAINER', 'SHOCKWAVE', 'ORBIT', 'BEAT_DROP'];
+    const ARCADE_TYPES: string[] = ['GAP_RUN', 'GRID_PUSH', 'SEQUENCE', 'REACTION_TIME', 'COLOR_MATCH', 'STACKER', 'QUICK_MATH', 'SIMON_SAYS', 'AIM_TRAINER', 'SHOCKWAVE', 'ORBIT', 'BEAT_DROP', 'INFLATE', 'SNAKE', 'FLAPPY', 'COLOR_SORT', 'BLINK', 'RECALL'];
     if (ARCADE_TYPES.includes(type) && 'difficulty' in cfg) {
       input.difficulty = cfg.difficulty;
     }
@@ -503,12 +534,20 @@ export default function GameDevHarness() {
         </div>
       </div>
 
-      {/* Bottom: Event log */}
-      <div className="shrink-0 h-48 border-t border-white/[0.06] bg-skin-panel/60 flex flex-col">
-        <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06]">
-          <span className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">Event Log</span>
+      {/* Bottom: Event log (collapsible — collapsed by default so the canvas gets full room) */}
+      <div className={`shrink-0 border-t border-white/[0.06] bg-skin-panel/60 flex flex-col ${eventLogOpen ? 'h-48' : ''}`}>
+        <button
+          type="button"
+          onClick={() => setEventLogOpen(v => !v)}
+          className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06] hover:bg-white/[0.03] cursor-pointer text-left"
+        >
+          <span className="text-[10px] font-mono text-skin-dim uppercase tracking-widest flex items-center gap-2">
+            <span className="inline-block w-3 text-center">{eventLogOpen ? '▾' : '▸'}</span>
+            Event Log
+          </span>
           <span className="text-[10px] font-mono text-skin-dim">{eventLog.length} events</span>
-        </div>
+        </button>
+        {eventLogOpen && (
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1 font-mono text-[11px]">
           {eventLog.length === 0 && (
             <p className="text-skin-dim/40 italic">No events yet. Start a game to see actions here.</p>
@@ -539,6 +578,7 @@ export default function GameDevHarness() {
           })}
           <div ref={logEndRef} />
         </div>
+        )}
       </div>
     </div>
   );

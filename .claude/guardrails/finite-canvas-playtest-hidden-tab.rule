@@ -1,0 +1,24 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: cartridges/games/[^/]+/[^/]+Renderer\.tsx
+ADVISORY: |
+  When play-testing a canvas renderer via a browser MCP, verify the
+  tab is foregrounded BEFORE debugging the renderer code.
+
+  Chrome throttles `requestAnimationFrame` to ~0 calls/sec in hidden
+  tabs (`document.visibilityState === 'hidden'`). The useEffect mounts,
+  the first RAF is scheduled, but no frame ever fires, so nothing is
+  drawn. The canvas stays fully transparent. Easy to mis-diagnose as
+  broken renderer logic.
+
+  Diagnostic one-liner (via mcp__claude-in-chrome__javascript_tool):
+    ({ vis: document.visibilityState, focus: document.hasFocus() })
+
+  Only `visibilityState === 'visible'` matters — `hasFocus()` false is
+  fine for RAF.
+
+  Related trap: the separate `chrome-devtools-mcp` tools use their own
+  Chrome profile at `~/.cache/chrome-devtools-mcp/chrome-profile` which
+  conflicts with the user's running Chrome. Use `mcp__claude-in-chrome__*`
+  to drive the user's own browser session. Error signature for the
+  profile conflict: "The browser is already running for /Users/.../
+  chrome-profile. Use --isolated to run multiple browser instances."

@@ -5,6 +5,7 @@ import { withAlpha } from '@pecking-order/ui-kit/cartridge-theme';
 import {
   ParticleEmitter, ScreenShake,
   drawWithGlow, ScreenFlash, PulseRingEmitter,
+  SlowMo, FloatingTextEmitter, SpringValue, DebrisEmitter,
 } from '../shared/canvas-vfx';
 
 const CANVAS_WIDTH = 280;
@@ -14,6 +15,16 @@ const BASE_SPEED = 80; // px/sec
 const SPEED_INCREASE = 12; // px/sec per layer
 const INITIAL_WIDTH = 100;
 const PERFECT_THRESHOLD = 2; // px
+
+const px = (v: number) => Math.round(v);
+
+// Height milestones — fire slow-mo + callout on crossing
+const MILESTONES: { height: number; text: string }[] = [
+  { height: 5,  text: 'RISING' },
+  { height: 10, text: 'TOWER' },
+  { height: 20, text: 'SKYLINE' },
+  { height: 40, text: 'TITAN' },
+];
 
 // Falling piece from overhang trim or miss
 interface FallingPiece {
@@ -64,6 +75,14 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
     const screenShake = new ScreenShake();
     const screenFlash = new ScreenFlash();
     const pulseRings = new PulseRingEmitter();
+    const slowMo = new SlowMo();
+    const floatingText = new FloatingTextEmitter();
+    const heightSpring = new SpringValue({ stiffness: 220, damping: 14 });
+    const topple = new DebrisEmitter();
+    const crossedMilestones = new Set<number>();
+    let ending = false; // single guard — end-of-game VFX fire exactly once
+    let finalHeight = 0;
+    let finalPerfects = 0;
 
     // --- Drop handler ---
     function handleDrop() {
@@ -97,14 +116,10 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
       const overlapWidth = overlapRight - overlapLeft;
 
       if (overlapWidth <= 0) {
-        // Complete miss — game over
+        // Complete miss — game over + tower topple
         gameOver = true;
         gameOverTime = 0;
         consecutivePerfects = 0;
-
-        // Miss VFX
-        screenShake.trigger({ intensity: 10, duration: 500 });
-        screenFlash.trigger(withAlpha(t.colors.danger, 0.4), 400);
 
         // The missed block falls straight down
         fallingPieces.push({
@@ -117,6 +132,7 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
           hue,
         });
 
+        triggerTopple(t);
         sendFinalResult();
         return;
       }
@@ -208,12 +224,94 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
       mb.direction = 1;
       mb.x = 0;
 
+      // Bump height-pulse spring
+      heightSpring.target = 0.3;
+
+      // Milestone crossings (no slow-mo — reserved for topple)
+      for (const m of MILESTONES) {
+        if (h === m.height && !crossedMilestones.has(m.height)) {
+          crossedMilestones.add(m.height);
+          screenShake.trigger({ intensity: 6, duration: 220 });
+          screenFlash.trigger(withAlpha(t.colors.gold, 0.25), 140);
+          const rx = blockCenterX;
+          const ry = blockScreenY + BLOCK_HEIGHT / 2;
+          pulseRings.emit({ x: rx, y: ry, color: t.colors.gold, maxRadius: 80, duration: 600, lineWidth: 2 });
+          pulseRings.emit({ x: rx, y: ry, color: t.colors.pink, maxRadius: 55, duration: 500, lineWidth: 2 });
+          particles.emit({
+            count: 35,
+            position: { x: rx, y: ry },
+            velocity: { min: 90, max: 220 },
+            angle: { min: 0, max: Math.PI * 2 },
+            lifetime: { min: 450, max: 850 },
+            size: { start: 3.2, end: 0.5 },
+            color: [t.colors.gold, t.colors.pink, '#ffffff'],
+            opacity: { start: 1, end: 0 },
+            gravity: 80,
+          });
+          floatingText.emit({
+            text: m.text,
+            x: CANVAS_WIDTH / 2,
+            y: CANVAS_HEIGHT / 2 - 20,
+            color: t.colors.gold,
+            fontSize: 20,
+            duration: 950,
+            drift: 40,
+          });
+        }
+      }
+
       // Too narrow to continue
       if (newWidth < 4) {
         gameOver = true;
         gameOverTime = 0;
+        triggerTopple(t);
         sendFinalResult();
       }
+    }
+
+    // Tower topple — on game over, spawn debris for the top N layers
+    function triggerTopple(t: typeof themeRef.current) {
+      if (ending) return;
+      ending = true;
+      // Capture final stats BEFORE we remove layers for the topple
+      finalHeight = layers.length;
+      finalPerfects = layers.filter(l => l.perfect).length;
+      slowMo.trigger(0.35, 500);
+      screenShake.trigger({ intensity: 12, duration: 600 });
+      screenFlash.trigger(withAlpha(t.colors.danger, 0.35), 350);
+
+      const cameraY = Math.max(0, (layers.length - 15) * BLOCK_HEIGHT);
+      const topN = Math.min(layers.length, 8);
+      const pieces: { x: number; y: number; width: number; height: number }[] = [];
+      for (let i = 0; i < topN; i++) {
+        const li = layers.length - 1 - i;
+        const layer = layers[li];
+        const y = CANVAS_HEIGHT - (li + 1) * BLOCK_HEIGHT + cameraY;
+        pieces.push({ x: layer.x, y, width: layer.width, height: BLOCK_HEIGHT - 1 });
+      }
+      // Remove toppled layers from the stack so they don't draw in-place
+      layers.length = Math.max(0, layers.length - topN);
+      topple.emit({
+        pieces,
+        color: withAlpha(t.colors.gold, 0.8),
+        gravity: 900,
+        initialVelocity: {
+          x: { min: -140, max: 140 },
+          y: { min: -260, max: -60 },
+        },
+        rotationSpeed: { min: -8, max: 8 },
+        fadeDelay: 400,
+        fadeDuration: 600,
+      });
+      floatingText.emit({
+        text: 'TOPPLED!',
+        x: CANVAS_WIDTH / 2,
+        y: CANVAS_HEIGHT / 2 - 40,
+        color: t.colors.danger,
+        fontSize: 22,
+        duration: 1300,
+        drift: 20,
+      });
     }
 
     function emitLandingParticles(cx: number, y: number, hue: number, isPerfect: boolean) {
@@ -234,8 +332,9 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
     function sendFinalResult() {
       if (resultSent) return;
       resultSent = true;
-      const h = layers.length;
-      const p = layers.filter(l => l.perfect).length;
+      // Prefer pre-topple snapshot; fall back to current stack (e.g. too-narrow path before triggerTopple ran)
+      const h = finalHeight || layers.length;
+      const p = finalPerfects || layers.filter(l => l.perfect).length;
       onResultRef.current({
         height: h,
         perfectLayers: p,
@@ -270,7 +369,10 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
       const realDt = Math.min(now - lastTime, 50);
       lastTime = now;
       const dtMs = realDt;
-      const dtSec = realDt / 1000;
+
+      // Slow-mo scales simulation dt only; VFX run at real dt
+      const simDtMs = slowMo.update(realDt);
+      const simDtSec = simDtMs / 1000;
 
       const t = themeRef.current;
       const mb = movingBlock;
@@ -278,7 +380,7 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
       // --- Update ---
       if (!gameOver) {
         // Move block
-        mb.x += mb.direction * mb.speed * dtSec;
+        mb.x += mb.direction * mb.speed * simDtSec;
         if (mb.x + mb.width >= CANVAS_WIDTH) {
           mb.x = CANVAS_WIDTH - mb.width;
           mb.direction = -1;
@@ -291,22 +393,28 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
         gameOverTime += dtMs;
       }
 
-      // Update falling pieces
+      // Spring decays back to 0
+      heightSpring.target = 0;
+      heightSpring.update(dtMs);
+
+      // Update falling pieces (use sim dt — they're part of physics)
       for (let i = fallingPieces.length - 1; i >= 0; i--) {
         const fp = fallingPieces[i];
-        fp.vy += 600 * dtSec; // gravity
-        fp.y += fp.vy * dtSec;
-        fp.opacity -= 1.2 * dtSec; // fade out over ~0.8s
+        fp.vy += 600 * simDtSec; // gravity
+        fp.y += fp.vy * simDtSec;
+        fp.opacity -= 1.2 * simDtSec; // fade out over ~0.8s
         if (fp.opacity <= 0 || fp.y > CANVAS_HEIGHT + 50) {
           fallingPieces.splice(i, 1);
         }
       }
 
-      // Update VFX
+      // Update VFX (real dt)
       particles.update(dtMs);
       screenShake.update(dtMs);
       screenFlash.update(dtMs);
       pulseRings.update(dtMs);
+      floatingText.update(dtMs);
+      topple.update(dtMs);
 
       // --- Draw ---
       ctx.fillStyle = t.colors.bg;
@@ -316,18 +424,6 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
 
       const stackTop = CANVAS_HEIGHT - layers.length * BLOCK_HEIGHT;
       const cameraY = Math.max(0, (layers.length - 15) * BLOCK_HEIGHT);
-
-      // Background grid lines (scroll with camera for depth)
-      ctx.strokeStyle = withAlpha(t.colors.textDim, 0.04);
-      ctx.lineWidth = 1;
-      const gridSpacing = 20;
-      const gridOffset = cameraY % gridSpacing;
-      for (let y = -gridOffset; y <= CANVAS_HEIGHT; y += gridSpacing) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(CANVAS_WIDTH, y);
-        ctx.stroke();
-      }
 
       // Draw placed layers
       for (let i = 0; i < layers.length; i++) {
@@ -353,15 +449,17 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
         const glowColor = `hsla(${hue}, 80%, 65%, 0.7)`;
         const streakBonus = Math.min(consecutivePerfects, 10);
         const glowBlur = 8 + streakBonus * 2;
+        const mbx = px(mb.x);
+        const mby = px(y);
 
         drawWithGlow(ctx, glowColor, glowBlur, () => {
           ctx.fillStyle = `hsla(${hue}, 80%, 65%, 0.95)`;
-          ctx.fillRect(mb.x, y, mb.width, BLOCK_HEIGHT - 1);
+          ctx.fillRect(mbx, mby, mb.width, BLOCK_HEIGHT - 1);
         });
 
         // Top highlight
         ctx.fillStyle = `hsla(${hue}, 80%, 80%, 0.4)`;
-        ctx.fillRect(mb.x, y, mb.width, 2);
+        ctx.fillRect(mbx, mby, mb.width, 2);
       }
 
       // Draw falling pieces
@@ -384,8 +482,10 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
       }
 
       // VFX layers
+      topple.draw(ctx);
       particles.draw(ctx);
       pulseRings.draw(ctx);
+      floatingText.draw(ctx);
 
       screenShake.restore(ctx);
 
@@ -394,14 +494,19 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
       // --- HUD (canvas-drawn) ---
       const perfectCount = layers.filter(l => l.perfect).length;
 
-      // Height (top-left)
+      // Height (top-left) — scales with spring on layer increment
       ctx.font = 'bold 13px monospace';
       ctx.textBaseline = 'top';
       ctx.textAlign = 'left';
       ctx.fillStyle = withAlpha(t.colors.text, 0.5);
       ctx.fillText('HT', 10, 10);
+      const hScale = 1 + heightSpring.value;
+      ctx.save();
+      ctx.translate(30, 10);
+      ctx.scale(hScale, hScale);
       ctx.fillStyle = withAlpha(t.colors.text, 0.9);
-      ctx.fillText(`${layers.length}`, 30, 10);
+      ctx.fillText(`${layers.length}`, 0, 0);
+      ctx.restore();
 
       // Perfect count (top-right)
       ctx.textAlign = 'right';
@@ -418,31 +523,32 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
         ctx.fillText(`${consecutivePerfects}x PERFECT`, CANVAS_WIDTH / 2, 10);
       }
 
-      // Game over overlay
+      // Game over summary — floating "TOPPLED!" replaces the title; keep stats only
       if (gameOver) {
-        const fadeIn = Math.min(1, gameOverTime / 400);
-        ctx.fillStyle = `rgba(0, 0, 0, ${0.5 * fadeIn})`;
-        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        // Delay stats until after topple animation begins to settle
+        const statsFade = Math.min(1, Math.max(0, (gameOverTime - 700) / 400));
+        if (statsFade > 0) {
+          ctx.fillStyle = `rgba(0, 0, 0, ${0.4 * statsFade})`;
+          ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-        ctx.globalAlpha = fadeIn;
-        ctx.font = 'bold 18px monospace';
-        ctx.fillStyle = t.colors.gold;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('GAME OVER', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 12);
-
-        ctx.font = '12px monospace';
-        ctx.fillStyle = withAlpha(t.colors.text, 0.5);
-        ctx.fillText(`Height: ${layers.length}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 10);
-        if (perfectCount > 0) {
-          ctx.fillStyle = withAlpha(t.colors.gold, 0.6);
-          ctx.fillText(`Perfect: ${perfectCount}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 28);
+          ctx.globalAlpha = statsFade;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '12px monospace';
+          ctx.fillStyle = withAlpha(t.colors.text, 0.55);
+          const displayHeight = finalHeight || layers.length;
+          const displayPerfects = finalPerfects || perfectCount;
+          ctx.fillText(`Height: ${displayHeight}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 10);
+          if (displayPerfects > 0) {
+            ctx.fillStyle = withAlpha(t.colors.gold, 0.65);
+            ctx.fillText(`Perfect: ${displayPerfects}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 28);
+          }
+          ctx.globalAlpha = 1;
+          ctx.textBaseline = 'top';
         }
-        ctx.globalAlpha = 1;
-        ctx.textBaseline = 'top';
 
-        // Stop loop after death animation completes
-        if (gameOverTime > 1200) {
+        // Stop loop after death animation completes (topple + floating text)
+        if (gameOverTime > 1800) {
           return;
         }
       }

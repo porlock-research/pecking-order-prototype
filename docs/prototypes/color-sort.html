@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Color Sort — Prototype</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1025; color: #fff; font-family: 'SF Mono', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; user-select: none; }
+  h2 { color: #c4a66a; margin-bottom: 8px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; }
+  #hud { display: flex; gap: 24px; margin-bottom: 12px; font-size: 13px; color: rgba(255,255,255,0.6); }
+  #hud span { color: #c4a66a; }
+  canvas { border-radius: 12px; cursor: pointer; }
+  #msg { margin-top: 12px; font-size: 13px; color: rgba(255,255,255,0.5); height: 20px; }
+  #btns { margin-top: 10px; display: flex; gap: 10px; }
+  #btns button { padding: 8px 20px; background: rgba(255,255,255,0.08); color: #c4a66a; border: 1px solid rgba(196,166,106,0.3); border-radius: 8px; font-weight: bold; cursor: pointer; font-family: inherit; }
+  #btns button:hover { background: rgba(196,166,106,0.15); }
+</style>
+</head><body>
+<h2>Color Sort</h2>
+<div id="hud">Moves: <span id="moves">0</span> &nbsp; Sorted: <span id="sorted">0</span>/<span id="total">0</span></div>
+<canvas id="c" width="400" height="340"></canvas>
+<div id="msg">Tap a tube to pick up the top ball, tap another to place it</div>
+<div id="btns">
+  <button onclick="undo()">Undo</button>
+  <button onclick="init()">New Puzzle</button>
+</div>
+
+<script>
+const TUBE_COUNT = 7;
+const COLORS_COUNT = 5;
+const TUBE_CAPACITY = 4;
+const EMPTY_TUBES = 2;
+const BALL_R = 16;
+
+const PALETTE = ['#5b8fb9', '#d4764a', '#6b9f4a', '#c95b8f', '#c4a66a'];
+const PALETTE_NAMES = ['Blue', 'Orange', 'Green', 'Pink', 'Gold'];
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+let tubes, selected, moveCount, history, animating;
+let floatingBall = null; // {color, fromTube, x, y, targetX, targetY, t}
+
+function init() {
+  // Generate solved state, then shuffle
+  tubes = [];
+  for (let i = 0; i < COLORS_COUNT; i++) {
+    tubes.push(Array(TUBE_CAPACITY).fill(i));
+  }
+  for (let i = 0; i < EMPTY_TUBES; i++) {
+    tubes.push([]);
+  }
+
+  // Shuffle by doing random valid moves in reverse
+  for (let i = 0; i < 80; i++) {
+    const fromCandidates = tubes.map((t, idx) => t.length > 0 ? idx : -1).filter(x => x >= 0);
+    const from = fromCandidates[Math.floor(Math.random() * fromCandidates.length)];
+    const toCandidates = tubes.map((t, idx) => t.length < TUBE_CAPACITY && idx !== from ? idx : -1).filter(x => x >= 0);
+    if (toCandidates.length === 0) continue;
+    const to = toCandidates[Math.floor(Math.random() * toCandidates.length)];
+    tubes[to].push(tubes[from].pop());
+  }
+
+  selected = -1;
+  moveCount = 0;
+  history = [];
+  floatingBall = null;
+  animating = false;
+  updateHUD();
+  draw();
+}
+
+function tubeX(i) {
+  const gap = W / (TUBE_COUNT + 1);
+  return gap * (i + 1);
+}
+
+function tubeTop() { return 60; }
+function tubeBottom() { return H - 40; }
+function tubeHeight() { return tubeBottom() - tubeTop(); }
+
+function ballY(tubeIdx, ballIdx) {
+  return tubeBottom() - (ballIdx + 1) * (BALL_R * 2 + 4) + BALL_R;
+}
+
+function updateHUD() {
+  document.getElementById('moves').textContent = moveCount;
+  const sortedCount = tubes.filter(t => t.length === TUBE_CAPACITY && t.every(b => b === t[0])).length;
+  document.getElementById('sorted').textContent = sortedCount;
+  document.getElementById('total').textContent = COLORS_COUNT;
+
+  if (sortedCount === COLORS_COUNT) {
+    document.getElementById('msg').textContent = `Solved in ${moveCount} moves!`;
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  for (let i = 0; i < tubes.length; i++) {
+    const cx = tubeX(i);
+    const isSel = i === selected;
+    const isSorted = tubes[i].length === TUBE_CAPACITY && tubes[i].every(b => b === tubes[i][0]);
+
+    // Tube outline
+    ctx.strokeStyle = isSel ? '#c4a66a' : isSorted ? 'rgba(107,159,74,0.5)' : 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = isSel ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.roundRect(cx - BALL_R - 6, tubeTop() - 4, (BALL_R + 6) * 2, tubeHeight() + 8, [0, 0, 12, 12]);
+    ctx.stroke();
+
+    if (isSorted) {
+      ctx.fillStyle = 'rgba(107,159,74,0.06)';
+      ctx.fill();
+    }
+
+    // Balls
+    for (let j = 0; j < tubes[i].length; j++) {
+      // Skip top ball if this tube is selected (it's floating)
+      if (isSel && j === tubes[i].length - 1 && floatingBall) continue;
+
+      const by = ballY(i, j);
+      drawBall(cx, by, tubes[i][j], 1);
+    }
+  }
+
+  // Floating ball
+  if (floatingBall) {
+    drawBall(floatingBall.x, floatingBall.y, floatingBall.color, 1);
+  }
+}
+
+function drawBall(x, y, colorIdx, alpha) {
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = PALETTE[colorIdx];
+  ctx.beginPath();
+  ctx.arc(x, y, BALL_R, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath();
+  ctx.arc(x - BALL_R * 0.25, y - BALL_R * 0.25, BALL_R * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function canPlace(fromTube, toTube) {
+  if (tubes[toTube].length >= TUBE_CAPACITY) return false;
+  if (tubes[toTube].length === 0) return true;
+  return tubes[toTube][tubes[toTube].length - 1] === tubes[fromTube][tubes[fromTube].length - 1];
+}
+
+function handleClick(e) {
+  if (animating) return;
+  const rect = canvas.getBoundingClientRect();
+  const scale = W / rect.width;
+  const mx = (e.clientX - rect.left) * scale;
+
+  // Find closest tube
+  let closest = -1, closestDist = Infinity;
+  for (let i = 0; i < tubes.length; i++) {
+    const d = Math.abs(mx - tubeX(i));
+    if (d < closestDist) { closestDist = d; closest = i; }
+  }
+  if (closestDist > 40) return;
+
+  if (selected < 0) {
+    // Select a tube
+    if (tubes[closest].length === 0) return;
+    selected = closest;
+    // Float top ball up
+    const cx = tubeX(closest);
+    const topIdx = tubes[closest].length - 1;
+    floatingBall = {
+      color: tubes[closest][topIdx],
+      fromTube: closest,
+      x: cx,
+      y: tubeTop() - 25,
+    };
+    draw();
+  } else if (closest === selected) {
+    // Deselect
+    selected = -1;
+    floatingBall = null;
+    draw();
+  } else {
+    // Try to place
+    if (canPlace(selected, closest)) {
+      const ball = tubes[selected].pop();
+      tubes[closest].push(ball);
+      history.push({ from: selected, to: closest });
+      moveCount++;
+      selected = -1;
+      floatingBall = null;
+      updateHUD();
+      draw();
+    } else {
+      // Can't place — flash
+      document.getElementById('msg').textContent = 'Can only place on same color or empty tube';
+      setTimeout(() => {
+        const sortedCount = tubes.filter(t => t.length === TUBE_CAPACITY && t.every(b => b === t[0])).length;
+        if (sortedCount < COLORS_COUNT) {
+          document.getElementById('msg').textContent = 'Tap a tube to pick up the top ball, tap another to place it';
+        }
+      }, 1500);
+    }
+  }
+}
+
+function undo() {
+  if (history.length === 0 || animating) return;
+  const last = history.pop();
+  const ball = tubes[last.to].pop();
+  tubes[last.from].push(ball);
+  moveCount++;
+  selected = -1;
+  floatingBall = null;
+  updateHUD();
+  draw();
+}
+
+canvas.addEventListener('click', handleClick);
+init();
+</script>
+</body></html>

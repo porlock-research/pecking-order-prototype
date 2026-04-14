@@ -1,0 +1,50 @@
+import React from 'react';
+import type { ArcadeGameProjection, SocialPlayer } from '@pecking-order/shared-types';
+import { Config } from '@pecking-order/shared-types';
+import ArcadeGameWrapper from '../wrappers/ArcadeGameWrapper';
+import FlappyRenderer from './FlappyRenderer';
+
+interface FlappyProps {
+  cartridge: ArcadeGameProjection;
+  playerId: string;
+  roster: Record<string, SocialPlayer>;
+  engine: {
+    sendGameAction: (type: string, payload?: Record<string, any>) => void;
+  };
+  onDismiss?: () => void;
+}
+
+export default function Flappy(props: FlappyProps) {
+  return (
+    <ArcadeGameWrapper
+      {...props}
+      title="Flappy"
+      description="Tap to flap. Hold longer for a stronger flap. Thread the gaps, grab coins, survive the phases."
+      Renderer={FlappyRenderer}
+      renderBreakdown={(result) => {
+        const score = result.score || 0;
+        const coinsCollected = result.coinsCollected || 0;
+        const { scorePerSilver, coinBonus } = Config.game.flappy;
+        const baseSilver = Math.floor(score / scorePerSilver);
+        const bonusSilver = Math.floor(coinsCollected / coinBonus);
+
+        return (
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
+            <div className="flex justify-between">
+              <span className="text-white/50">Score</span>
+              <span className="text-white">{score}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/50">Coins</span>
+              <span className="text-white">{coinsCollected}</span>
+            </div>
+            <div className="border-t border-white/[0.06] pt-2 flex justify-between">
+              <span className="text-white/50">Silver</span>
+              <span className="text-skin-gold">{baseSilver} + {bonusSilver} bonus</span>
+            </div>
+          </div>
+        );
+      }}
+    />
+  );
+}

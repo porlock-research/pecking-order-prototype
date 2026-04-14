@@ -29,4 +29,10 @@ export const GAME_TYPE_INFO: Record<Exclude<GameType, 'NONE'>, GameTypeInfo> = {
   SHOCKWAVE:       { name: 'Shockwave',      description: 'Dodge contracting rings in a neon arena' },
   ORBIT:           { name: 'Orbit',           description: 'Slingshot between gravity wells — timing is everything' },
   BEAT_DROP:       { name: 'Beat Drop',       description: 'Hit notes on the beat, build combos, don\'t miss' },
+  INFLATE:         { name: 'Inflate',         description: 'Push your luck, don\'t pop' },
+  SNAKE:           { name: 'Snake',           description: 'Eat pellets, grow your snake, don\'t crash' },
+  FLAPPY:          { name: 'Flappy',          description: 'Tap to flap, thread the gaps, grab coins' },
+  COLOR_SORT:      { name: 'Color Sort',      description: 'Sort balls into matching tubes' },
+  BLINK:           { name: 'Blink',           description: 'Tap on black, freeze on white — the flash is a trap' },
+  RECALL:          { name: 'Recall',          description: 'Memorize the grid. Tap the numbers in order from memory' },
 };

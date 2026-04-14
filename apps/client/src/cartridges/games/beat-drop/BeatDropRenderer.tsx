@@ -6,8 +6,18 @@ import { withAlpha } from '@pecking-order/ui-kit/cartridge-theme';
 import {
   mulberry32, lerp,
   ParticleEmitter, ScreenShake, ScreenFlash, PulseRingEmitter,
+  FloatingTextEmitter, SpringValue,
   drawWithGlow,
 } from '../shared/canvas-vfx';
+
+const px = (v: number) => Math.round(v);
+
+// Combo milestone ladder — 3 tiers, celebrate sustained runs
+const COMBO_MILESTONES: { combo: number; text: string }[] = [
+  { combo: 10, text: '10 COMBO' },
+  { combo: 25, text: '25 COMBO' },
+  { combo: 50, text: '50 COMBO!' },
+];
 
 // --- Constants ---
 
@@ -143,6 +153,9 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
 
     const rng = mulberry32(seed);
     const laneColors = [t.colors.pink, t.colors.orange, t.colors.info, t.colors.gold];
+    // Show key labels only when a fine pointer (mouse) is the primary input
+    const showKeyLabels = typeof window !== 'undefined'
+      && window.matchMedia?.('(pointer: fine)').matches === true;
 
     // Generate all notes
     const notes = generateNotes(rng, timeLimit, difficulty);
@@ -158,6 +171,9 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
     let totalHits = 0;
     let dead = false;
     let deathTime = 0;
+    let ending = false; // single end-of-game VFX guard
+    let missStreak = 0; // consecutive misses since last hit
+    const crossedMilestones = new Set<number>();
     const lanePressed = [false, false, false, false];
     const feedbacks: HitFeedback[] = [];
 
@@ -169,6 +185,8 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
     const screenShake = new ScreenShake();
     const screenFlash = new ScreenFlash();
     const pulseRings = new PulseRingEmitter();
+    const floatingText = new FloatingTextEmitter();
+    const scoreSpring = new SpringValue({ stiffness: 220, damping: 14 });
 
     // Beat pulse tracking
     let lastBeatTime = 0;
@@ -212,8 +230,50 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
       bestNote.grade = grade;
       totalHits++;
       combo++;
+      missStreak = 0;
       maxCombo = Math.max(maxCombo, combo);
       score += points * comboMultiplier(combo);
+
+      // Score HUD pulse — bigger bump on PERFECT
+      scoreSpring.target = grade === 'PERFECT' ? 0.35 : grade === 'GREAT' ? 0.22 : 0.12;
+
+      // Combo milestone ladder (10 / 25 / 50) — flash + shake + ring + particles + text
+      for (const m of COMBO_MILESTONES) {
+        if (combo === m.combo && !crossedMilestones.has(m.combo)) {
+          crossedMilestones.add(m.combo);
+          const tier = m.combo >= 50 ? 1 : m.combo >= 25 ? 0.7 : 0.5;
+          screenFlash.trigger(withAlpha(t.colors.gold, 0.22 * tier), 140);
+          screenShake.trigger({ intensity: 4 + 3 * tier, duration: 200 });
+          pulseRings.emit({
+            x: CANVAS_WIDTH / 2,
+            y: HIT_LINE_Y,
+            color: t.colors.gold,
+            maxRadius: 90 + 40 * tier,
+            duration: 520,
+            lineWidth: 2,
+          });
+          particles.emit({
+            count: 28 + Math.round(14 * tier),
+            position: { x: CANVAS_WIDTH / 2, y: HIT_LINE_Y },
+            velocity: { min: 80, max: 220 },
+            angle: { min: 0, max: Math.PI * 2 },
+            lifetime: { min: 400, max: 800 },
+            size: { start: 3, end: 0.5 },
+            color: [t.colors.gold, t.colors.pink, '#ffffff'],
+            opacity: { start: 1, end: 0 },
+            gravity: 40,
+          });
+          floatingText.emit({
+            text: m.text,
+            x: CANVAS_WIDTH / 2,
+            y: HIT_LINE_Y - 60,
+            color: t.colors.gold,
+            fontSize: 18 + Math.round(4 * tier),
+            duration: 900,
+            drift: 40,
+          });
+        }
+      }
 
       // If it's a hold note, start tracking
       if (bestNote.duration > 0) {
@@ -285,9 +345,15 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
     function onMiss(lane: number) {
       combo = 0;
       lives--;
+      missStreak++;
 
       const laneX = lane * LANE_WIDTH + LANE_WIDTH / 2;
-      screenShake.trigger({ intensity: 4, duration: 200 });
+      // Escalate shake on consecutive misses (caps at 3+ streak)
+      const streakFactor = Math.min(missStreak, 3);
+      screenShake.trigger({ intensity: 3 + streakFactor * 2, duration: 180 + streakFactor * 60 });
+      if (missStreak >= 3) {
+        screenFlash.trigger(withAlpha(t.colors.danger, 0.18), 120);
+      }
       feedbacks.push({ text: 'MISS', lane, opacity: 1, y: HIT_LINE_Y - 20, color: t.colors.danger });
 
       // Shatter particles downward
@@ -306,9 +372,44 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
       if (lives <= 0) {
         dead = true;
         deathTime = 0;
-        screenFlash.trigger(t.colors.danger, 400);
-        screenShake.trigger({ intensity: 10, duration: 400 });
       }
+    }
+
+    function triggerEnding(reason: 'crashed' | 'timesup') {
+      if (ending) return;
+      ending = true;
+      const color = reason === 'crashed' ? t.colors.danger : t.colors.gold;
+      const text = reason === 'crashed' ? 'CRASHED!' : "TIME'S UP!";
+      screenFlash.trigger(withAlpha(color, 0.35), 400);
+      screenShake.trigger({ intensity: 10, duration: 400 });
+      pulseRings.emit({
+        x: CANVAS_WIDTH / 2,
+        y: HIT_LINE_Y,
+        color,
+        maxRadius: 160,
+        duration: 650,
+        lineWidth: 3,
+      });
+      particles.emit({
+        count: 40,
+        position: { x: CANVAS_WIDTH / 2, y: HIT_LINE_Y },
+        velocity: { min: 120, max: 280 },
+        angle: { min: 0, max: Math.PI * 2 },
+        lifetime: { min: 500, max: 900 },
+        size: { start: 3, end: 0.5 },
+        color: [color, t.colors.text],
+        opacity: { start: 1, end: 0 },
+        gravity: 60,
+      });
+      floatingText.emit({
+        text,
+        x: CANVAS_WIDTH / 2,
+        y: HIT_LINE_Y - 40,
+        color,
+        fontSize: 28,
+        duration: 900,
+        drift: 30,
+      });
     }
 
     function onKeyDown(e: KeyboardEvent) {
@@ -419,20 +520,44 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
         ctx.stroke();
       }
 
-      // Hit line
-      const hitLineGrad = ctx.createLinearGradient(0, HIT_LINE_Y, w, HIT_LINE_Y);
+      // Target window (GOOD_WINDOW stripe) — shows WHEN to tap
+      const windowHeight = (GOOD_WINDOW * 2 * NOTE_SPEED) / 1000;
       for (let i = 0; i < LANE_COUNT; i++) {
-        hitLineGrad.addColorStop(i / LANE_COUNT, withAlpha(laneColors[i], 0.7));
-        hitLineGrad.addColorStop((i + 1) / LANE_COUNT, withAlpha(laneColors[i], 0.7));
+        const laneX = i * LANE_WIDTH;
+        ctx.fillStyle = withAlpha(laneColors[i], 0.12);
+        ctx.fillRect(laneX, HIT_LINE_Y - windowHeight / 2, LANE_WIDTH, windowHeight);
       }
-      ctx.strokeStyle = hitLineGrad;
-      ctx.lineWidth = 3;
-      drawWithGlow(ctx, t.colors.text, 6, () => {
-        ctx.beginPath();
-        ctx.moveTo(0, HIT_LINE_Y);
-        ctx.lineTo(w, HIT_LINE_Y);
-        ctx.stroke();
-      });
+
+      // Hit line — thick, per-lane colored, glowing — the bright "tap here" bar
+      for (let i = 0; i < LANE_COUNT; i++) {
+        const laneX = i * LANE_WIDTH;
+        drawWithGlow(ctx, laneColors[i], 10, () => {
+          ctx.fillStyle = laneColors[i];
+          ctx.fillRect(laneX + 2, HIT_LINE_Y - 3, LANE_WIDTH - 4, 6);
+        });
+      }
+
+      // Tap-zone rectangles below the hit line — large mobile-friendly touch targets
+      const tapZoneTop = HIT_LINE_Y + windowHeight / 2 + 6;
+      const tapZoneBottom = h - 28; // leave room for lives dots
+      for (let i = 0; i < LANE_COUNT; i++) {
+        const laneX = i * LANE_WIDTH;
+        const pressed = lanePressed[i];
+        ctx.fillStyle = withAlpha(laneColors[i], pressed ? 0.35 : 0.1);
+        ctx.fillRect(laneX + 4, tapZoneTop, LANE_WIDTH - 8, tapZoneBottom - tapZoneTop);
+        ctx.strokeStyle = withAlpha(laneColors[i], pressed ? 0.9 : 0.45);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(laneX + 4, tapZoneTop, LANE_WIDTH - 8, tapZoneBottom - tapZoneTop);
+
+        // Key label (desktop only) — hidden on touch devices to keep the lanes clean
+        if (showKeyLabels) {
+          ctx.font = 'bold 18px monospace';
+          ctx.fillStyle = withAlpha(laneColors[i], pressed ? 1 : 0.7);
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(['D', 'F', 'J', 'K'][i], laneX + LANE_WIDTH / 2, (tapZoneTop + tapZoneBottom) / 2);
+        }
+      }
 
       // Draw notes
       const visibleWindowMs = (CANVAS_HEIGHT / NOTE_SPEED) * 1000;
@@ -470,13 +595,23 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
           ctx.roundRect(-NOTE_WIDTH / 2, -NOTE_HEIGHT / 2, NOTE_WIDTH, NOTE_HEIGHT, NOTE_BORDER_RADIUS);
           ctx.fill();
         } else {
-          // Regular note
-          drawWithGlow(ctx, color, 6, () => {
+          // Regular note — glow intensifies when inside hit window
+          const inWindow = Math.abs(timeDiff) <= GOOD_WINDOW;
+          const glow = inWindow ? 20 : 6;
+          drawWithGlow(ctx, color, glow, () => {
             ctx.fillStyle = color;
             ctx.beginPath();
             ctx.roundRect(-NOTE_WIDTH / 2, -NOTE_HEIGHT / 2, NOTE_WIDTH, NOTE_HEIGHT, NOTE_BORDER_RADIUS);
             ctx.fill();
           });
+          // Add a ring when in window — strong visual "TAP NOW!" cue
+          if (inWindow) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(-NOTE_WIDTH / 2 - 3, -NOTE_HEIGHT / 2 - 3, NOTE_WIDTH + 6, NOTE_HEIGHT + 6, NOTE_BORDER_RADIUS + 2);
+            ctx.stroke();
+          }
         }
 
         ctx.restore();
@@ -485,6 +620,7 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
       // VFX layers
       particles.draw(ctx);
       pulseRings.draw(ctx);
+      floatingText.draw(ctx);
 
       screenShake.restore(ctx);
 
@@ -508,34 +644,19 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
       }
       ctx.globalAlpha = 1;
 
-      // Key indicators at bottom
-      for (let i = 0; i < LANE_COUNT; i++) {
-        const kx = i * LANE_WIDTH + (LANE_WIDTH - 36) / 2;
-        const ky = h - 40;
-        const pressed = lanePressed[i];
-        ctx.strokeStyle = withAlpha(laneColors[i], pressed ? 0.8 : 0.3);
-        ctx.fillStyle = pressed ? withAlpha(laneColors[i], 0.2) : 'transparent';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(kx, ky, 36, 28, 6);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.font = '11px monospace';
-        ctx.fillStyle = withAlpha(laneColors[i], pressed ? 0.8 : 0.5);
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(['D', 'F', 'J', 'K'][i], kx + 18, ky + 14);
-      }
-
       // HUD
       ctx.font = '14px monospace';
       ctx.textBaseline = 'top';
 
-      // Score
-      ctx.fillStyle = withAlpha(t.colors.text, 0.5);
+      // Score — spring-pulses on hits
+      const scoreScale = 1 + scoreSpring.value;
+      ctx.save();
+      ctx.translate(px(12), px(12));
+      ctx.scale(scoreScale, scoreScale);
+      ctx.fillStyle = withAlpha(t.colors.text, 0.6);
       ctx.textAlign = 'left';
-      ctx.fillText(`${score}`, 12, 12);
+      ctx.fillText(`${score}`, 0, 0);
+      ctx.restore();
 
       // Combo
       if (combo > 0) {
@@ -565,7 +686,7 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
     let resultSent = false;
 
     function frame(now: number) {
-      const realDt = Math.min(now - lastTime, 50);
+      const realDt = Math.max(0, Math.min(now - lastTime, 50));
       lastTime = now;
 
       if (!dead) {
@@ -599,13 +720,22 @@ export default function BeatDropRenderer({ seed, difficulty, timeLimit, onResult
 
       if (dead) {
         deathTime += realDt;
+        // Fire end-of-game VFX exactly once
+        if (!ending) {
+          triggerEnding(lives <= 0 ? 'crashed' : 'timesup');
+        }
       }
+
+      // Score spring decays back to 0 every frame; hit handlers bump it
+      scoreSpring.target = 0;
+      scoreSpring.update(realDt);
 
       // Update VFX
       particles.update(realDt);
       screenShake.update(realDt);
       screenFlash.update(realDt);
       pulseRings.update(realDt);
+      floatingText.update(realDt);
 
       // Render
       renderGame(realDt);
