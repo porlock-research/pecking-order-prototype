@@ -1,0 +1,22 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: \.worktrees/.+/\.claude/guardrails/
+ADVISORY: |
+  You are about to write a guardrail rule to a WORKTREE copy
+  (.worktrees/*/.claude/guardrails/). Don't.
+
+  Reason: .claude/guardrails/ is gitignored. Rules written in a worktree
+  never propagate back to main or to other worktrees — they die when the
+  worktree is removed. Future sessions on main will never see the
+  guardrail, so the learning is effectively lost.
+
+  This was observed in 2026-04-12: a previous session wrote
+  skill-update-needed.md into .worktrees/arcade-batch-2/.claude/guardrails/
+  and the advisory sat unread until a completely unrelated session in
+  the main checkout happened to surface it — by which time the context
+  was stale.
+
+  How to apply: redirect the write to the MAIN repo path:
+    /Users/manu/Projects/pecking-order/.claude/guardrails/<rule-name>.rule
+
+  Applies equally to skill-update-needed.md, finite-*.rule, broad-*.rule,
+  and any other file under .claude/guardrails/.

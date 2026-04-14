@@ -1,5 +1,5 @@
 MATCH_TOOL: Edit|Write
-MATCH_PATTERN: (arcade|game-cartridges|Renderer\.tsx|onResult)
+MATCH_PATTERN: (onResult\s*\(|onResultRef\.current\s*\(|distance:|accuracyPct:|perfectLayers:|score:\s*|height:)
 ADVISORY: |
   Arcade machine result values are ALL coerced via Math.floor(Number(val) || 0)
   at arcade-machine.ts:139. Any fractional values (e.g., accuracy as 0-1 float)
