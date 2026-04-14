@@ -4,6 +4,23 @@ import * as Sentry from "@sentry/react";
 import { useGameStore } from "../store/useGameStore";
 import { Events } from "@pecking-order/shared-types";
 
+/**
+ * Builds the SEND_SILVER WebSocket payload.
+ *
+ * Intentionally carries no `channelId` — the server resolves an existing DM/GROUP_DM
+ * between sender and target via `resolveExistingChannel`, which skips MAIN entirely.
+ * MAIN now carries the SILVER_TRANSFER capability (Task 1 of the DM-polish plan), so
+ * an accidental `channelId: 'MAIN'` here would authorize silver-in-MAIN on the server.
+ * Keep this function pure and regression-tested.
+ */
+export function buildSilverPayload(amount: number, targetId: string) {
+  return {
+    type: Events.Social.SEND_SILVER,
+    amount,
+    targetId,
+  };
+}
+
 export const useGameEngine = (gameId: string, playerId: string, token?: string | null, party: string = 'game-server') => {
   const sync = useGameStore((s) => s.sync);
   const addChatMessage = useGameStore((s) => s.addChatMessage);
@@ -130,11 +147,7 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
   };
 
   const sendSilver = (amount: number, targetId: string) => {
-    socket.send(JSON.stringify({
-      type: Events.Social.SEND_SILVER,
-      amount,
-      targetId
-    }));
+    socket.send(JSON.stringify(buildSilverPayload(amount, targetId)));
   };
 
   const sendVoteAction = (type: string, targetId: string) => {
