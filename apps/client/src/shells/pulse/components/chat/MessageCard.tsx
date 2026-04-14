@@ -21,7 +21,7 @@ const AVATAR_SIZE = 56;
 
 export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpenReaction }: MessageCardProps) {
   const roster = useGameStore(s => s.roster);
-  const { openAvatarPopover } = usePulse();
+  const { openDM } = usePulse();
   const avatarRef = useRef<HTMLButtonElement>(null);
   const player = roster[message.senderId];
   const playerIndex = Object.keys(roster).indexOf(message.senderId);
@@ -37,9 +37,8 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
   const isWhisper = !!message.whisperTarget;
 
   const handleAvatarClick = () => {
-    if (isSelf) return; // Don't open popover for self
-    const rect = avatarRef.current?.getBoundingClientRect();
-    if (rect) openAvatarPopover(message.senderId, rect);
+    if (isSelf) return;
+    openDM(message.senderId);
   };
 
   const handleReply = () => {
