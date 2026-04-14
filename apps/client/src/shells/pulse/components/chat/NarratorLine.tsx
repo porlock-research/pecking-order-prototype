@@ -40,21 +40,39 @@ export function NarratorLine({ kind, text }: Props) {
   return (
     <div
       style={{
-        padding: '6px 20px',
-        fontSize: 11,
-        fontStyle: 'italic',
-        color: 'var(--pulse-text-3, rgba(255,255,255,0.55))',
-        textAlign: 'center',
-        lineHeight: 1.45,
-        letterSpacing: 0.2,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        flexWrap: 'wrap',
-        columnGap: 4,
-        rowGap: 2,
+        gap: 10,
+        padding: '8px 16px',
       }}
     >
+      <span
+        aria-hidden
+        style={{
+          flex: 1,
+          height: 1,
+          minWidth: 12,
+          background: 'linear-gradient(to right, transparent, var(--pulse-border))',
+        }}
+      />
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          columnGap: 4,
+          rowGap: 2,
+          flexShrink: 1,
+          maxWidth: '70%',
+          fontSize: 11,
+          fontStyle: 'italic',
+          lineHeight: 1.45,
+          letterSpacing: 0.2,
+          color: 'var(--pulse-text-3, rgba(255,255,255,0.55))',
+          textAlign: 'center',
+        }}
+      >
       {segments.map((seg, i) => {
         if (seg.startsWith('**') && seg.endsWith('**')) {
           const inner = seg.slice(2, -2);
@@ -100,6 +118,16 @@ export function NarratorLine({ kind, text }: Props) {
         }
         return <span key={i}>{seg}</span>;
       })}
+      </span>
+      <span
+        aria-hidden
+        style={{
+          flex: 1,
+          height: 1,
+          minWidth: 12,
+          background: 'linear-gradient(to left, transparent, var(--pulse-border))',
+        }}
+      />
     </div>
   );
 }
