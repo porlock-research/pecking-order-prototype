@@ -170,6 +170,14 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     socket.send(JSON.stringify({ type: Events.Social.WHISPER, targetId, text }));
   };
 
+  const acceptDm = (channelId: string) => {
+    socket.send(JSON.stringify({ type: Events.Social.ACCEPT_DM, channelId }));
+  };
+
+  const declineDm = (channelId: string) => {
+    socket.send(JSON.stringify({ type: Events.Social.DECLINE_DM, channelId }));
+  };
+
   const createGroupDm = (memberIds: string[]) => {
     socket.send(JSON.stringify({ type: Events.Social.CREATE_CHANNEL, memberIds }));
   };
@@ -213,6 +221,8 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     sendReaction,
     sendNudge,
     sendWhisper,
+    acceptDm,
+    declineDm,
     sendTyping,
     stopTyping,
   };
