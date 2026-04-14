@@ -26,6 +26,8 @@ const GAME_STAT_CONFIG: Record<string, { key: string; label: string; format?: (v
   [GameTypes.SNAKE]: { key: 'score', label: 'Pellets' },
   [GameTypes.FLAPPY]: { key: 'score', label: 'Score' },
   [GameTypes.COLOR_SORT]: { key: 'sortedTubes', label: 'Sorted' },
+  [GameTypes.BLINK]: { key: 'score', label: 'Score' },
+  [GameTypes.RECALL]: { key: 'highestSize', label: 'Grid', format: v => v > 0 ? `${v}×${v}` : '—' },
 };
 
 interface LeaderboardProps {

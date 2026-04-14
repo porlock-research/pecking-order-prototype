@@ -26,6 +26,8 @@ const GAME_COMPONENTS: Record<string, React.LazyExoticComponent<React.ComponentT
   [GameTypes.SNAKE]: React.lazy(() => import('../../cartridges/games/snake/Snake')),
   [GameTypes.FLAPPY]: React.lazy(() => import('../../cartridges/games/flappy/Flappy')),
   [GameTypes.COLOR_SORT]: React.lazy(() => import('../../cartridges/games/color-sort/ColorSort')),
+  [GameTypes.BLINK]: React.lazy(() => import('../../cartridges/games/blink/Blink')),
+  [GameTypes.RECALL]: React.lazy(() => import('../../cartridges/games/recall/Recall')),
 };
 
 interface GamePanelProps {
