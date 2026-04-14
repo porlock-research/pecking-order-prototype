@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { SocialPlayer } from '@pecking-order/shared-types';
-import { resolveAvatarUrl, resolvePersonaVariant } from '../../../../utils/personaImage';
 import { getPlayerColor } from '../../colors';
+import { PersonaImage, initialsOf } from '../common/PersonaImage';
 
 interface Props {
   player: SocialPlayer;
@@ -15,17 +15,22 @@ interface Props {
 export function DmHero({ player, colorIdx, rank, isLeader, isOnline, onClose }: Props) {
   const color = getPlayerColor(colorIdx);
   const [variant, setVariant] = useState<'headshot' | 'medium' | 'full'>('headshot');
-  const src =
-    variant === 'headshot'
-      ? resolveAvatarUrl(player.avatarUrl)
-      : resolvePersonaVariant(player.avatarUrl, variant);
 
   // Pulse shell uses short bio as pseudo-stereotype (matches CastCard convention).
   const stereotype = player.bio && player.bio.length > 4 && player.bio.length <= 50 ? player.bio : '';
 
   return (
     <div style={{ position: 'relative', width: '100%', height: 280, background: '#111', overflow: 'hidden' }}>
-      {src && <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+      <PersonaImage
+        avatarUrl={player.avatarUrl}
+        cacheKey={player.id}
+        preferredVariant={variant}
+        fallbackChain={['headshot', 'medium', 'full']}
+        initials={initialsOf(player.personaName)}
+        playerColor={color}
+        alt={player.personaName}
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      />
 
       <button onClick={onClose} aria-label="Close DM" style={{
         position: 'absolute', top: 10, left: 10,

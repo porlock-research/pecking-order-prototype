@@ -1,6 +1,6 @@
 import type { SocialPlayer } from '@pecking-order/shared-types';
-import { resolveAvatarUrl } from '../../../../utils/personaImage';
 import { getPlayerColor } from '../../colors';
+import { PersonaImage, initialsOf } from '../common/PersonaImage';
 
 interface Props {
   members: { id: string; player: SocialPlayer; colorIdx: number }[];
@@ -14,14 +14,20 @@ export function DmGroupHero({ members, onClose }: Props) {
   return (
     <div style={{ position: 'relative', width: '100%', height: 280, background: '#111', overflow: 'hidden' }}>
       <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-        {members.map(m => {
-          const src = resolveAvatarUrl(m.player.avatarUrl);
-          return (
-            <div key={m.id} style={{ flex: 1, borderRight: '2px solid var(--pulse-bg)' }}>
-              {src && <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-            </div>
-          );
-        })}
+        {members.map(m => (
+          <div key={m.id} style={{ flex: 1, borderRight: '2px solid var(--pulse-bg)' }}>
+            <PersonaImage
+              avatarUrl={m.player.avatarUrl}
+              cacheKey={m.id}
+              preferredVariant="headshot"
+              fallbackChain={['headshot']}
+              initials={initialsOf(m.player.personaName)}
+              playerColor={getPlayerColor(m.colorIdx)}
+              alt={m.player.personaName}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </div>
+        ))}
       </div>
 
       <button onClick={onClose} aria-label="Close group DM" style={{
