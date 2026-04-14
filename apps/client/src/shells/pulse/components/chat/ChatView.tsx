@@ -223,7 +223,7 @@ export function ChatView() {
         );
       })}
 
-      <TypingIndicator />
+      <TypingIndicator channelId="MAIN" />
 
       {/* Jump to latest */}
       {!autoScroll && (

@@ -4,18 +4,23 @@ import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
 import { PULSE_SPRING } from '../../springs';
 
+interface TypingIndicatorProps {
+  /** Channel id to filter typing events on. Pass 'MAIN' for global chat, a channel id for a DM. */
+  channelId: string;
+}
+
 /**
  * Minimal typing indicator — just text with animated dots.
  * The PulseBar already shows per-player typing status via avatar badges;
  * this provides a focused name-based indicator near the input.
  */
-export function TypingIndicator() {
+export function TypingIndicator({ channelId }: TypingIndicatorProps) {
   const typingPlayers = useGameStore(s => s.typingPlayers);
   const roster = useGameStore(s => s.roster);
   const { playerId } = usePulse();
 
   const typing = Object.entries(typingPlayers)
-    .filter(([pid, channel]) => pid !== playerId && channel === 'MAIN')
+    .filter(([pid, channel]) => pid !== playerId && channel === channelId)
     .map(([pid]) => pid);
 
   if (typing.length === 0) return null;
