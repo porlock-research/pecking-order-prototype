@@ -625,6 +625,151 @@ export const selectCastStripEntries = memoSelector(
   },
 );
 
+// ─── Pulse Phase 4 selectors ─────────────────────────────────────────────
+// Guardrail: selectRevealsToReplay returns a fresh array — wrapped with
+// memoSelector. Other Phase 4 selectors return primitives and are safe
+// unwrapped (see .claude/guardrails/finite-zustand-selector-fresh-objects.rule).
+
+export function selectCartridgeUnread(s: GameState, cartridgeId: string): boolean {
+  const lastSeen = s.lastSeenCartridge[cartridgeId];
+  const actives: any[] = [s.activeVotingCartridge, s.activeGameCartridge, s.activePromptCartridge, s.activeDilemma];
+  const active = actives.find(c => c?.cartridgeId === cartridgeId);
+  if (active) {
+    if (lastSeen === undefined) return true;
+    return (active.updatedAt ?? 0) > lastSeen;
+  }
+  const completed = s.completedCartridges.find(c => c.key === cartridgeId);
+  if (completed) {
+    if (lastSeen === undefined) return true;
+    return (completed.completedAt ?? 0) > lastSeen;
+  }
+  return false;
+}
+
+export function selectSilverUnread(s: GameState, senderId: string): boolean {
+  const lastSeen = s.lastSeenSilverFrom[senderId] ?? 0;
+  const pid = s.playerId;
+  if (!pid) return false;
+  // Ticker convention (factToTicker): involvedPlayerIds = [actorId, targetId] for
+  // SOCIAL.TRANSFER — i.e. [sender, recipient]. Both entries present means a
+  // player-to-player transfer; GM-awards have only [recipient].
+  return s.tickerMessages.some(m => {
+    if (m.category !== 'SOCIAL.TRANSFER') return false;
+    const ids = m.involvedPlayerIds ?? [];
+    if (ids.length < 2) return false;
+    const [sender, recipient] = ids;
+    if (sender !== senderId || recipient !== pid) return false;
+    const ts = typeof m.timestamp === 'number' ? m.timestamp : new Date(m.timestamp as any).getTime();
+    return ts > lastSeen;
+  });
+}
+
+export const selectRevealsToReplay = memoSelector(
+  (s) => [s.roster, s.winner, s.revealsSeen, s.dayIndex],
+  (state: GameState): Array<{kind: 'elimination' | 'winner'; dayIndex?: number}> => {
+    const out: Array<{kind: 'elimination' | 'winner'; dayIndex?: number}> = [];
+    for (const [, r] of Object.entries(state.roster) as Array<[string, any]>) {
+      if (r.status === 'ELIMINATED') {
+        const day = r.eliminatedOnDay ?? state.dayIndex;
+        if (!state.revealsSeen.elimination[day]) {
+          out.push({ kind: 'elimination', dayIndex: day });
+        }
+      }
+    }
+    if (state.winner && !state.revealsSeen.winner) {
+      out.push({ kind: 'winner' });
+    }
+    return out;
+  },
+);
+
+function getDmUnreadCount(s: GameState): number {
+  const pid = s.playerId;
+  if (!pid) return 0;
+  const lrt = s.lastReadTimestamp || {};
+  let count = 0;
+  for (const [chId, ch] of Object.entries(s.channels) as Array<[string, any]>) {
+    if (ch.type !== ChannelTypes.DM && ch.type !== ChannelTypes.GROUP_DM) continue;
+    if (!ch.memberIds.includes(pid)) continue;
+    const lastRead = lrt[chId] ?? 0;
+    const unread = s.chatLog.filter(m =>
+      m.channelId === chId &&
+      m.senderId !== pid &&
+      (m.timestamp ?? 0) > lastRead
+    ).length;
+    count += unread;
+  }
+  return count;
+}
+
+function getCartridgeUnreadCount(s: GameState): number {
+  const ids = new Set<string>();
+  for (const c of [s.activeVotingCartridge, s.activeGameCartridge, s.activePromptCartridge, s.activeDilemma] as any[]) {
+    if (c?.cartridgeId) ids.add(c.cartridgeId);
+  }
+  for (const c of s.completedCartridges) {
+    if (c.key) ids.add(c.key);
+  }
+  let count = 0;
+  for (const id of ids) {
+    if (selectCartridgeUnread(s, id)) count++;
+  }
+  return count;
+}
+
+function getSilverUnreadCount(s: GameState): number {
+  const pid = s.playerId;
+  if (!pid) return 0;
+  const senders = new Set<string>();
+  for (const m of s.tickerMessages) {
+    if (m.category !== 'SOCIAL.TRANSFER') continue;
+    const ids = m.involvedPlayerIds ?? [];
+    if (ids.length < 2) continue;
+    const [sender, recipient] = ids;
+    if (recipient === pid && sender) senders.add(sender);
+  }
+  let count = 0;
+  for (const id of senders) {
+    if (selectSilverUnread(s, id)) count++;
+  }
+  return count;
+}
+
+export function selectAggregatePulseUnread(s: GameState): number {
+  const inviteCount = selectPendingInvitesForMe(s).length;
+  return getDmUnreadCount(s)
+    + inviteCount
+    + getCartridgeUnreadCount(s)
+    + getSilverUnreadCount(s);
+}
+
+/**
+ * Returns the unread treatment to apply to a persona's cast chip.
+ * Priority: invite > dm > silver. Rationale: "wants to start talking" (invite)
+ * outranks "is talking" (dm) outranks "sent you money" (silver) by social
+ * salience — an unanswered invite is the strongest call to action.
+ */
+export function selectCastChipUnreadKind(s: GameState, personaId: string): 'dm' | 'silver' | 'invite' | null {
+  const invites = selectPendingInvitesForMe(s);
+  if (invites.some((ch: any) => ch.createdBy === personaId)) return 'invite';
+
+  const pid = s.playerId;
+  if (pid) {
+    const lrt = s.lastReadTimestamp || {};
+    for (const [chId, ch] of Object.entries(s.channels) as Array<[string, any]>) {
+      if (ch.type !== ChannelTypes.DM) continue;
+      if (!ch.memberIds.includes(personaId) || !ch.memberIds.includes(pid)) continue;
+      const lastRead = lrt[chId] ?? 0;
+      const hasUnread = s.chatLog.some(m =>
+        m.channelId === chId && m.senderId === personaId && (m.timestamp ?? 0) > lastRead
+      );
+      if (hasUnread) return 'dm';
+    }
+  }
+  if (selectSilverUnread(s, personaId)) return 'silver';
+  return null;
+}
+
 export const useGameStore = create<GameState>((set) => ({
   gameId: null,
   dayIndex: 0,
