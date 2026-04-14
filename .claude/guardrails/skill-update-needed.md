@@ -19,3 +19,32 @@ component paths if it's kept post-merge:
 
 The rule fired ~10 times during the Pulse session as I edited reaction-related
 files; the advisory was misleading because the gap had already been filled.
+
+## `finite-stableref-for-mutable-fields.rule` — match pattern too broad
+
+**State:** Rule has `MATCH_PATTERN: apps/client/src/store/useGameStore\.ts$`,
+so it fires on EVERY edit to that file — including pure interface additions,
+selector definitions, and client-only action bodies that never touch the sync
+handler.
+
+During the 2026-04-13 Phase 1.5 implementation session, the rule fired 5+ times
+in succession while I was adding fields, selectors, and actions that had nothing
+to do with the sync merge logic.
+
+**Proposal:** tighten the pattern so the rule only fires when the edit plausibly
+involves the `sync:` action body or a stableRef call. Options:
+
+1. **Pattern on command text (Bash-centric):** not applicable — rule is on Edit/Write.
+2. **Keep the file match + require advisory acknowledgement** — current behavior
+   (noisy).
+3. **Split into two rules:**
+   - One narrow rule targeting `useGameStore\.ts` edits that contain `sync:` or
+     `stableRef` context — would need the guardian hook to support content-aware
+     patterns (it currently matches on path only).
+4. **Accept the noise** — the advisory is short and the cost of missing a real
+   sync-handler bug is high. Pragmatic compromise.
+
+**Recommendation:** option 4 for now, but add a one-line preamble to the advisory:
+"(Rule fires on every edit to this file. Skip if your edit doesn't touch the sync
+handler or add a new server-mutable field.)" — so future agents don't spend cycles
+re-checking.
