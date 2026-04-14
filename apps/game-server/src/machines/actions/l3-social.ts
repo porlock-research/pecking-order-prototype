@@ -100,6 +100,40 @@ export const l3SocialActions = {
     return { channels, chatLog, roster, slotsUsedByPlayer, dmCharsByPlayer };
   }),
 
+  // Side-effect: emit DM_INVITE_SENT when SEND_MSG creates a new DM/GROUP_DM channel.
+  // Fires push notifications to invited recipients (covers invite-mode gap where
+  // emitChatFact's DM_SENT has no target since memberIds only has the sender).
+  // Also feeds the narrator ticker pipeline for fact-driven "started talking to someone"
+  // / "is scheming with someone" lines.
+  // Emits nothing for MAIN messages or messages into an existing channel.
+  emitInitialDmInviteFact: sendParent(({ context, event }: any) => {
+    if (event.type !== Events.Social.SEND_MSG) return { type: 'NOOP' };
+    const lastMsg = context.chatLog[context.chatLog.length - 1];
+    const channelId = lastMsg?.channelId;
+    if (!channelId || channelId === 'MAIN') return { type: 'NOOP' };
+    const channel = context.channels[channelId];
+    if (!channel || channel.createdBy !== event.senderId) return { type: 'NOOP' };
+    // Fire only on channel creation: the first message in this channel is the one we just appended.
+    const priorMessagesInChannel = context.chatLog
+      .slice(0, -1)
+      .some((m: any) => m.channelId === channelId);
+    if (priorMessagesInChannel) return { type: 'NOOP' };
+    const allRecipients = [
+      ...channel.memberIds.filter((id: string) => id !== event.senderId),
+      ...(channel.pendingMemberIds ?? []),
+    ];
+    if (allRecipients.length === 0) return { type: 'NOOP' };
+    return {
+      type: Events.Fact.RECORD,
+      fact: {
+        type: FactTypes.DM_INVITE_SENT,
+        actorId: event.senderId,
+        payload: { channelId, memberIds: allRecipients, kind: 'initial' },
+        timestamp: Date.now(),
+      },
+    };
+  }),
+
   // Side-effect: emit FACT.RECORD to L2 for journaling + sync trigger
   // NOTE: sendParent() runs AFTER assign(), so context.chatLog already has the new message
   emitChatFact: sendParent(({ context, event }: any) => {

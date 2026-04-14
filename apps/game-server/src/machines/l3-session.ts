@@ -171,7 +171,7 @@ export const dailySessionMachine = setup({
                 'SOCIAL.SEND_MSG': [
                   {
                     guard: 'isChannelMessageAllowed',
-                    actions: ['processChannelMessage', 'emitChatFact'],
+                    actions: ['processChannelMessage', 'emitChatFact', 'emitInitialDmInviteFact'],
                   },
                   {
                     guard: ({ context, event }: any) => {
