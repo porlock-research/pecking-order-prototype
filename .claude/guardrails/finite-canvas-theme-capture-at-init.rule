@@ -1,0 +1,54 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/client/src/cartridges/games/.+Renderer\.tsx$
+ADVISORY: |
+  Canvas theme-timing race — discovered in orbit's "no stars first time" bug:
+
+  `useCartridgeTheme(ref)` returns DEFAULT_CARTRIDGE_THEME on first render.
+  `useLayoutEffect` then reads the real CSS vars and calls setTheme(). The
+  component re-renders with the resolved theme, and `themeRef.current` is
+  refreshed.
+
+  BUT — the `gameLoop` useCallback typically depends only on
+  `[seed, difficulty, timeLimit]`, so it does NOT rebuild when theme
+  updates. Any value captured inside gameLoop's outer scope stays stale
+  for the life of the game.
+
+  WRONG — captures whatever theme happened to be resolved at first paint:
+
+      const gameLoop = useCallback(() => {
+        const t = themeRef.current;  // snapshot — stale if useLayoutEffect
+                                     // hadn't resolved yet
+        const stars: Star[] = [];
+        stars.push({ color: t.colors.gold, ... });  // baked forever
+        function renderGame() {
+          ctx.fillStyle = t.colors.bg;  // also stale
+        }
+      }, [seed, difficulty, timeLimit]);
+
+  RIGHT — store theme keys (not resolved colors) on entities, and resolve
+  via `themeRef.current` at point of use:
+
+      interface Star { colorKey: ColorKey; /* ... */ }
+
+      const gameLoop = useCallback(() => {
+        // No `const t = themeRef.current` at this scope.
+        stars.push({ colorKey: 'gold', ... });
+        function renderGame() {
+          const t = themeRef.current;           // per-frame live read
+          ctx.fillStyle = t.colors.bg;
+          // draw star:
+          ctx.fillStyle = t.colors[star.colorKey];
+        }
+        function onCapture(star: Star) {
+          // event-time — use themeRef.current directly
+          screenFlash.trigger(withAlpha(themeRef.current.colors[star.colorKey], 0.2), 200);
+        }
+      });
+
+  Also applies to TrailRenderer color callbacks and any other closure
+  config passed into VFX primitives — they capture at construction
+  time too.
+
+  If you see "wrong colors on first load" / "default colors stuck" /
+  "colors correct only after remount" in any canvas renderer, this is
+  almost certainly the cause.

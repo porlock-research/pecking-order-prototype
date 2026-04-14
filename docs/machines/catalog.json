@@ -373,7 +373,7 @@
     "filePath": "src/machines/l3-session.ts",
     "stats": {
       "stateCount": 16,
-      "transitionCount": 45,
+      "transitionCount": 48,
       "eventTypes": [
         "*",
         "CARTRIDGE.PLAYER_GAME_RESULT",
@@ -399,9 +399,12 @@
         "SOCIAL.ADD_MEMBER",
         "SOCIAL.CREATE_CHANNEL",
         "SOCIAL.DECLINE_DM",
+        "SOCIAL.NUDGE",
+        "SOCIAL.REACT",
         "SOCIAL.SEND_MSG",
         "SOCIAL.SEND_SILVER",
         "SOCIAL.USE_PERK",
+        "SOCIAL.WHISPER",
         "xstate.done.actor.activeDilemmaCartridge",
         "xstate.done.actor.activeGameCartridge",
         "xstate.done.actor.activePromptCartridge",
@@ -442,6 +445,9 @@
           "SOCIAL.ADD_MEMBER",
           "SOCIAL.ACCEPT_DM",
           "SOCIAL.DECLINE_DM",
+          "SOCIAL.REACT",
+          "SOCIAL.NUDGE",
+          "SOCIAL.WHISPER",
           "INTERNAL.OPEN_DMS",
           "INTERNAL.CLOSE_DMS",
           "INTERNAL.OPEN_GROUP_CHAT",
@@ -658,6 +664,21 @@
         "source": "running.social.active",
         "target": "running.social.active",
         "event": "SOCIAL.DECLINE_DM"
+      },
+      {
+        "source": "running.social.active",
+        "target": "running.social.active",
+        "event": "SOCIAL.REACT"
+      },
+      {
+        "source": "running.social.active",
+        "target": "running.social.active",
+        "event": "SOCIAL.NUDGE"
+      },
+      {
+        "source": "running.social.active",
+        "target": "running.social.active",
+        "event": "SOCIAL.WHISPER"
       },
       {
         "source": "running.social.active",
@@ -2893,6 +2914,252 @@
         "source": "roundReveal",
         "target": "completed",
         "event": "xstate.after.ROUND_REVEAL_DELAY.the-split-game.roundReveal"
+      }
+    ]
+  },
+  {
+    "id": "game-shockwave",
+    "group": "Games",
+    "filePath": "packages/game-cartridges/src/machines/shockwave.ts",
+    "stats": {
+      "stateCount": 2,
+      "transitionCount": 8,
+      "eventTypes": [
+        "*",
+        "ALL_COMPLETE",
+        "INTERNAL.END_GAME",
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
+      ],
+      "hasParallelRegions": false,
+      "hasFinalState": true
+    },
+    "states": [
+      {
+        "name": "active",
+        "path": "active",
+        "type": "atomic",
+        "parent": "(root)",
+        "events": [
+          "*",
+          "PLAYER_COMPLETED",
+          "ALL_COMPLETE",
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
+        ]
+      },
+      {
+        "name": "completed",
+        "path": "completed",
+        "type": "final",
+        "parent": "(root)",
+        "events": []
+      }
+    ],
+    "transitions": [
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "PLAYER_COMPLETED"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "ALL_COMPLETE"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
+      }
+    ]
+  },
+  {
+    "id": "game-orbit",
+    "group": "Games",
+    "filePath": "packages/game-cartridges/src/machines/orbit.ts",
+    "stats": {
+      "stateCount": 2,
+      "transitionCount": 8,
+      "eventTypes": [
+        "*",
+        "ALL_COMPLETE",
+        "INTERNAL.END_GAME",
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
+      ],
+      "hasParallelRegions": false,
+      "hasFinalState": true
+    },
+    "states": [
+      {
+        "name": "active",
+        "path": "active",
+        "type": "atomic",
+        "parent": "(root)",
+        "events": [
+          "*",
+          "PLAYER_COMPLETED",
+          "ALL_COMPLETE",
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
+        ]
+      },
+      {
+        "name": "completed",
+        "path": "completed",
+        "type": "final",
+        "parent": "(root)",
+        "events": []
+      }
+    ],
+    "transitions": [
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "PLAYER_COMPLETED"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "ALL_COMPLETE"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
+      }
+    ]
+  },
+  {
+    "id": "game-beat-drop",
+    "group": "Games",
+    "filePath": "packages/game-cartridges/src/machines/beat-drop.ts",
+    "stats": {
+      "stateCount": 2,
+      "transitionCount": 8,
+      "eventTypes": [
+        "*",
+        "ALL_COMPLETE",
+        "INTERNAL.END_GAME",
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
+      ],
+      "hasParallelRegions": false,
+      "hasFinalState": true
+    },
+    "states": [
+      {
+        "name": "active",
+        "path": "active",
+        "type": "atomic",
+        "parent": "(root)",
+        "events": [
+          "*",
+          "PLAYER_COMPLETED",
+          "ALL_COMPLETE",
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
+        ]
+      },
+      {
+        "name": "completed",
+        "path": "completed",
+        "type": "final",
+        "parent": "(root)",
+        "events": []
+      }
+    ],
+    "transitions": [
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "PLAYER_COMPLETED"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "ALL_COMPLETE"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
       }
     ]
   }

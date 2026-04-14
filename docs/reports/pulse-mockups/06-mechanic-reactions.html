@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Pulse — Mechanic Reactions Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; font-family: 'Outfit', sans-serif; color: #f0f0f0; padding: 40px 20px; }
+
+  .page-title { text-align: center; margin-bottom: 8px; }
+  .page-title h1 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; color: #ff3b6f; }
+  .page-title p { font-size: 14px; color: #555; margin-top: 6px; max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.5; }
+
+  .mockup-row {
+    display: flex; gap: 32px; justify-content: center; flex-wrap: wrap;
+    max-width: 1300px; margin: 40px auto;
+  }
+
+  .mockup-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .mockup-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #ff3b6f; }
+  .mockup-sublabel { font-size: 12px; color: #444; max-width: 320px; text-align: center; line-height: 1.4; }
+
+  /* Phone frame */
+  .phone {
+    width: 375px; height: auto; min-height: 480px;
+    background: #0a0a0e; border-radius: 32px;
+    border: 2px solid #1a1a24; padding: 20px 16px;
+    position: relative; overflow: hidden;
+  }
+
+  /* Broadcast ticker */
+  .ticker {
+    height: 28px; display: flex; align-items: center; gap: 16px;
+    font-size: 11px; color: #555; overflow: hidden; margin-bottom: 12px;
+    border-bottom: 1px solid #13131a; padding-bottom: 8px;
+  }
+  .ticker .name { color: #ff3b6f; font-weight: 600; }
+  .ticker img { width: 16px; height: 16px; border-radius: 4px; object-fit: cover; }
+
+  /* Message */
+  .msg { display: flex; gap: 10px; margin-bottom: 4px; position: relative; }
+  .msg-avatar {
+    width: 44px; height: 44px; border-radius: 12px; object-fit: cover; flex-shrink: 0;
+  }
+  .msg-content { flex: 1; min-width: 0; }
+  .msg-header { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; }
+  .msg-name { font-weight: 700; font-size: 13px; }
+  .msg-stereo { font-size: 11px; color: #555; font-weight: 500; }
+  .msg-time { font-size: 10px; color: #444; margin-left: auto; }
+  .msg-text { font-size: 14px; color: #ccc; line-height: 1.45; }
+
+  /* Emoji reaction chips */
+  .reaction-chips { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .reaction-chip {
+    display: flex; align-items: center; gap: 3px;
+    background: #1a1a24; border-radius: 12px; padding: 3px 8px;
+    font-size: 12px; color: #888; cursor: pointer;
+  }
+  .reaction-chip:hover { background: #222230; }
+  .reaction-chip .count { font-weight: 600; font-size: 11px; }
+
+  /* Mechanic reaction chips — special styling */
+  .mechanic-chip {
+    display: flex; align-items: center; gap: 4px;
+    border-radius: 12px; padding: 3px 10px;
+    font-size: 11px; font-weight: 600; cursor: pointer;
+  }
+  .mechanic-chip.silver {
+    background: rgba(255, 215, 0, 0.12); border: 1px solid rgba(255, 215, 0, 0.25); color: #ffd700;
+  }
+  .mechanic-chip.dm {
+    background: rgba(255, 59, 111, 0.10); border: 1px solid rgba(255, 59, 111, 0.20); color: #ff3b6f;
+  }
+  .mechanic-chip.nudge {
+    background: rgba(255, 165, 0, 0.10); border: 1px solid rgba(255, 165, 0, 0.20); color: #ffa500;
+  }
+  .mechanic-chip .chip-avatar {
+    width: 14px; height: 14px; border-radius: 4px; object-fit: cover;
+  }
+
+  /* Floating reaction bar */
+  .reaction-bar {
+    display: flex; align-items: center; gap: 2px;
+    background: #1a1a24; border-radius: 24px; padding: 6px 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+    width: fit-content; margin-bottom: 6px;
+  }
+  .reaction-bar .emoji-btn {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; border-radius: 50%; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .reaction-bar .emoji-btn:hover { background: #2a2a36; }
+  .reaction-bar .divider {
+    width: 1px; height: 24px; background: #2a2a36; margin: 0 4px;
+  }
+  .reaction-bar .action-btn {
+    width: 36px; height: 36px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border-radius: 50%; cursor: pointer; transition: background 0.15s;
+    position: relative;
+  }
+  .reaction-bar .action-btn:hover { background: #2a2a36; }
+  .reaction-bar .action-btn .icon { font-size: 18px; }
+  .reaction-bar .action-btn .label {
+    font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    color: #666; margin-top: -2px;
+  }
+  .reaction-bar .action-btn.silver-btn:hover { background: rgba(255, 215, 0, 0.15); }
+  .reaction-bar .action-btn.dm-btn:hover { background: rgba(255, 59, 111, 0.15); }
+  .reaction-bar .action-btn.nudge-btn:hover { background: rgba(255, 165, 0, 0.15); }
+
+  /* Broadcast event card (existing approach) */
+  .broadcast-card {
+    display: flex; align-items: center; gap: 8px;
+    background: #13131a; border-radius: 12px; padding: 8px 12px;
+    margin: 12px 0;
+  }
+  .broadcast-avatars { display: flex; position: relative; width: 36px; height: 24px; flex-shrink: 0; }
+  .broadcast-avatars img {
+    width: 24px; height: 24px; border-radius: 6px; object-fit: cover;
+    border: 2px solid #0a0a0e; position: absolute;
+  }
+  .broadcast-avatars img:first-child { left: 0; z-index: 2; }
+  .broadcast-avatars img:last-child { left: 14px; z-index: 1; }
+  .broadcast-text { font-size: 12px; color: #666; flex: 1; }
+  .broadcast-text .name { color: #ff3b6f; font-weight: 600; }
+  .broadcast-text .silver-amt { color: #ffd700; font-weight: 700; }
+  .broadcast-icon { font-size: 16px; }
+
+  /* Dimmed overlay for long-press state */
+  .msg-dimmed .msg-text { color: #888; }
+  .msg-highlighted { position: relative; }
+  .msg-highlighted::before {
+    content: ''; position: absolute; inset: -8px -12px;
+    background: rgba(255, 59, 111, 0.04); border-radius: 12px;
+  }
+
+  /* Separator */
+  .sep { height: 1px; background: #13131a; margin: 16px 0; }
+
+  /* Section dividers within phone */
+  .phone-section-label {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;
+    color: #333; text-align: center; margin: 16px 0 10px;
+  }
+
+  /* Comparison arrow */
+  .vs-label {
+    font-size: 24px; font-weight: 900; color: #222; align-self: center;
+    display: flex; align-items: center; padding-top: 60px;
+  }
+
+  /* Annotation callout */
+  .callout {
+    background: #13131a; border-left: 3px solid #ff3b6f; border-radius: 0 8px 8px 0;
+    padding: 8px 12px; margin: 10px 0; font-size: 11px; color: #888; line-height: 1.5;
+  }
+  .callout strong { color: #ff3b6f; }
+
+  /* Bottom input bar */
+  .input-bar {
+    display: flex; align-items: center; gap: 8px;
+    background: #13131a; border-radius: 20px; padding: 8px 14px;
+    margin-top: 16px;
+  }
+  .input-bar .placeholder { font-size: 13px; color: #444; flex: 1; }
+  .input-bar .send-btn {
+    width: 32px; height: 32px; border-radius: 50%; background: #ff3b6f;
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-title">
+  <h1>Mechanic Reactions</h1>
+  <p>Game mechanics (Send Silver, Start DM, Nudge) as contextual message reactions. One-tap actions from the reaction bar, with social proof chips on the message.</p>
+</div>
+
+<!-- ROW 1: REACTION BAR -->
+<div class="mockup-row">
+  <div class="mockup-col">
+    <div class="mockup-label">Reaction Bar</div>
+    <div class="mockup-sublabel">Long-press a message to open. Emoji reactions on the left, game mechanics on the right, separated by a divider.</div>
+    <div class="phone">
+      <div class="ticker">
+        <img src="https://staging-assets.peckingorder.ca/personas/persona-09/headshot.png" alt="">
+        <span><span class="name">Brenda</span> sent <span class="name">Brick</span> 10 silver</span>
+        <span>·</span>
+        <span>2 players are whispering</span>
+      </div>
+
+      <!-- Normal message above -->
+      <div class="msg" style="margin-bottom: 16px; opacity: 0.4;">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-11/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #8b9dc3;">Gary Grumble</span>
+            <span class="msg-stereo">The Retired General</span>
+          </div>
+          <div class="msg-text">Brenda's been quiet... and now she's bribing people? 🤔</div>
+          <div class="reaction-chips">
+            <div class="reaction-chip">😂 <span class="count">3</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating reaction bar -->
+      <div class="reaction-bar">
+        <div class="emoji-btn">😂</div>
+        <div class="emoji-btn">👀</div>
+        <div class="emoji-btn">🔥</div>
+        <div class="emoji-btn">💀</div>
+        <div class="emoji-btn">❤️</div>
+        <div class="divider"></div>
+        <div class="action-btn silver-btn">
+          <span class="icon">💰</span>
+          <span class="label">Silver</span>
+        </div>
+        <div class="action-btn dm-btn">
+          <span class="icon">💬</span>
+          <span class="label">DM</span>
+        </div>
+        <div class="action-btn nudge-btn">
+          <span class="icon">👋</span>
+          <span class="label">Nudge</span>
+        </div>
+      </div>
+
+      <!-- Highlighted message (the one being reacted to) -->
+      <div class="msg msg-highlighted">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-14/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #e8a87c;">Daisy Miller</span>
+            <span class="msg-stereo">The Small Town Girl</span>
+          </div>
+          <div class="msg-text">ok who are we voting for?? this is stressful 😩</div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top: 20px;">
+        <strong>Tap emoji →</strong> adds reaction chip to message<br>
+        <strong>Tap 💰 Silver →</strong> opens Send Silver sheet, pre-filled with Daisy<br>
+        <strong>Tap 💬 DM →</strong> opens DM conversation with Daisy<br>
+        <strong>Tap 👋 Nudge →</strong> sends nudge to Daisy immediately
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup-col">
+    <div class="mockup-label">After Mechanic Reaction</div>
+    <div class="mockup-sublabel">Mechanic reactions leave special tinted chips on the message. Gold for silver, coral for DM, orange for nudge. Each shows who acted.</div>
+    <div class="phone">
+      <div class="ticker">
+        <img src="https://staging-assets.peckingorder.ca/personas/persona-05/headshot.png" alt="">
+        <span><span class="name">Brick</span> sent <span class="name">Daisy</span> 10 silver</span>
+        <span>·</span>
+        <img src="https://staging-assets.peckingorder.ca/personas/persona-12/headshot.png" alt="">
+        <span><span class="name">Luna</span> nudged <span class="name">Gary</span></span>
+      </div>
+
+      <!-- Message with emoji + mechanic chips -->
+      <div class="msg">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-14/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #e8a87c;">Daisy Miller</span>
+            <span class="msg-stereo">The Small Town Girl</span>
+            <span class="msg-time">2m ago</span>
+          </div>
+          <div class="msg-text">ok who are we voting for?? this is stressful 😩</div>
+          <div class="reaction-chips">
+            <!-- Emoji reactions -->
+            <div class="reaction-chip">😂 <span class="count">3</span></div>
+            <div class="reaction-chip">👀 <span class="count">1</span></div>
+            <!-- Mechanic reaction: silver sent -->
+            <div class="mechanic-chip silver">
+              💰
+              <img class="chip-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-05/headshot.png" alt="">
+              <span>Brick sent 10</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- Another message with nudge mechanic chip -->
+      <div class="msg">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-11/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #8b9dc3;">Gary Grumble</span>
+            <span class="msg-stereo">The Retired General</span>
+            <span class="msg-time">5m ago</span>
+          </div>
+          <div class="msg-text">I'm watching everyone very carefully today. 👁️</div>
+          <div class="reaction-chips">
+            <div class="reaction-chip">💀 <span class="count">2</span></div>
+            <div class="mechanic-chip nudge">
+              👋
+              <img class="chip-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-12/headshot.png" alt="">
+              <span>Luna nudged</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- Message with multiple mechanic reactions -->
+      <div class="msg">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-09/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #e85d75;">Brenda Burns</span>
+            <span class="msg-stereo">The Villain</span>
+            <span class="msg-time">8m ago</span>
+          </div>
+          <div class="msg-text">I have a proposal for anyone willing to listen... 💅</div>
+          <div class="reaction-chips">
+            <div class="reaction-chip">👀 <span class="count">4</span></div>
+            <div class="reaction-chip">🔥 <span class="count">1</span></div>
+            <div class="mechanic-chip dm">
+              💬
+              <img class="chip-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-14/headshot.png" alt="">
+              <img class="chip-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-05/headshot.png" alt="" style="margin-left: -4px;">
+              <span>2 DM'd</span>
+            </div>
+            <div class="mechanic-chip silver">
+              💰
+              <img class="chip-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-23/headshot.png" alt="">
+              <span>Dirk sent 25</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>Social proof on the message.</strong> Everyone can see that Brick sent Daisy silver because of her message, that Luna nudged Gary after his warning, and that two people DM'd Brenda after her teaser. The action has context — it's tied to what provoked it.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 2: COMPARISON -->
+<div class="mockup-row">
+  <div class="mockup-col">
+    <div class="mockup-label">Option A: Broadcast Card (current)</div>
+    <div class="mockup-sublabel">Silver transfers appear as separate cards in the chat stream. No connection to which message triggered them.</div>
+    <div class="phone" style="min-height: 400px;">
+      <!-- Message -->
+      <div class="msg">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-14/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #e8a87c;">Daisy Miller</span>
+            <span class="msg-stereo">The Small Town Girl</span>
+          </div>
+          <div class="msg-text">ok who are we voting for?? this is stressful 😩</div>
+          <div class="reaction-chips">
+            <div class="reaction-chip">😂 <span class="count">3</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Broadcast card (existing approach) -->
+      <div class="broadcast-card">
+        <div class="broadcast-avatars">
+          <img src="https://staging-assets.peckingorder.ca/personas/persona-05/headshot.png" alt="">
+          <img src="https://staging-assets.peckingorder.ca/personas/persona-14/headshot.png" alt="">
+        </div>
+        <div class="broadcast-text">
+          <span class="name">Brick</span> sent <span class="name">Daisy</span> <span class="silver-amt">💰 10 silver</span>
+        </div>
+      </div>
+
+      <!-- Another message after -->
+      <div class="msg">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-12/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #b19cd9;">Luna Star</span>
+            <span class="msg-stereo">The Quirky Artist</span>
+          </div>
+          <div class="msg-text">the stars say someone's lying... 🌙</div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top: 24px;">
+        <strong>Limitation:</strong> The silver transfer is a standalone card. Players can see THAT Brick sent Daisy silver, but not WHY. Was it because of her message? A pre-arranged deal? The context is lost.
+      </div>
+    </div>
+  </div>
+
+  <div class="vs-label">vs</div>
+
+  <div class="mockup-col">
+    <div class="mockup-label">Option B: Mechanic Chips (proposed)</div>
+    <div class="mockup-sublabel">Silver transfer appears as a chip on the message that triggered it. The context is preserved — everyone sees the cause and effect.</div>
+    <div class="phone" style="min-height: 400px;">
+      <!-- Message with mechanic chip -->
+      <div class="msg">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-14/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #e8a87c;">Daisy Miller</span>
+            <span class="msg-stereo">The Small Town Girl</span>
+          </div>
+          <div class="msg-text">ok who are we voting for?? this is stressful 😩</div>
+          <div class="reaction-chips">
+            <div class="reaction-chip">😂 <span class="count">3</span></div>
+            <div class="mechanic-chip silver">
+              💰
+              <img class="chip-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-05/headshot.png" alt="">
+              <span>Brick sent 10</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- No broadcast card interrupting the flow -->
+      <div class="msg" style="margin-top: 12px;">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-12/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #b19cd9;">Luna Star</span>
+            <span class="msg-stereo">The Quirky Artist</span>
+          </div>
+          <div class="msg-text">the stars say someone's lying... 🌙</div>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top: 24px;">
+        <strong>Advantage:</strong> The silver is attached to the message that provoked it. The chat stays clean — no broadcast cards breaking conversation flow. The ticker still shows the event for players who aren't reading chat.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROW 3: HYBRID RECOMMENDATION -->
+<div class="mockup-row">
+  <div class="mockup-col">
+    <div class="mockup-label">Recommended: Hybrid</div>
+    <div class="mockup-sublabel">Mechanic chips for reaction-triggered actions (contextual). Broadcast cards only for actions triggered from Cast tab or Silver sheet (no message context). Ticker shows all.</div>
+    <div class="phone" style="min-height: 520px;">
+      <div class="ticker">
+        <img src="https://staging-assets.peckingorder.ca/personas/persona-05/headshot.png" alt="">
+        <span><span class="name">Brick</span> sent <span class="name">Daisy</span> 10 silver</span>
+        <span>·</span>
+        <img src="https://staging-assets.peckingorder.ca/personas/persona-09/headshot.png" alt="">
+        <span><span class="name">Brenda</span> sent <span class="name">Dirk</span> 25 silver</span>
+      </div>
+
+      <!-- Message-triggered silver → chip -->
+      <div class="msg">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-14/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #e8a87c;">Daisy Miller</span>
+            <span class="msg-stereo">The Small Town Girl</span>
+          </div>
+          <div class="msg-text">ok who are we voting for?? this is stressful 😩</div>
+          <div class="reaction-chips">
+            <div class="reaction-chip">😂 <span class="count">3</span></div>
+            <div class="mechanic-chip silver">
+              💰
+              <img class="chip-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-05/headshot.png" alt="">
+              <span>Brick sent 10</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone-section-label">↑ reaction-triggered = chip on message</div>
+
+      <div class="sep"></div>
+
+      <!-- More chat -->
+      <div class="msg">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-12/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #b19cd9;">Luna Star</span>
+            <span class="msg-stereo">The Quirky Artist</span>
+          </div>
+          <div class="msg-text">the stars say someone's lying... 🌙</div>
+          <div class="reaction-chips">
+            <div class="reaction-chip">👀 <span class="count">2</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cast-tab-triggered silver → broadcast card -->
+      <div class="broadcast-card">
+        <div class="broadcast-avatars">
+          <img src="https://staging-assets.peckingorder.ca/personas/persona-09/headshot.png" alt="">
+          <img src="https://staging-assets.peckingorder.ca/personas/persona-23/headshot.png" alt="">
+        </div>
+        <div class="broadcast-text">
+          <span class="name">Brenda</span> sent <span class="name">Dirk</span> <span class="silver-amt">💰 25 silver</span>
+        </div>
+      </div>
+
+      <div class="phone-section-label">↑ cast-tab-triggered = broadcast card</div>
+
+      <div class="sep"></div>
+
+      <div class="msg">
+        <img class="msg-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-11/headshot.png" alt="">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name" style="color: #8b9dc3;">Gary Grumble</span>
+            <span class="msg-stereo">The Retired General</span>
+          </div>
+          <div class="msg-text">I've got my eye on Brenda. Something's not right.</div>
+          <div class="reaction-chips">
+            <div class="reaction-chip">🔥 <span class="count">1</span></div>
+            <div class="mechanic-chip nudge">
+              👋
+              <img class="chip-avatar" src="https://staging-assets.peckingorder.ca/personas/persona-14/headshot.png" alt="">
+              <span>Daisy nudged</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>Rule:</strong> If the action was triggered from a message reaction → chip on that message (contextual social proof). If triggered from Cast tab or bottom sheet (no message context) → broadcast card in the stream. Ticker always shows both.
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

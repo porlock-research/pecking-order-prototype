@@ -1073,4 +1073,122 @@ describe('unified DM channels', () => {
     });
 
   });
+
+  describe('Type promotion on ADD_MEMBER', () => {
+    function create2MemberDm(actor: ReturnType<typeof createL3Actor>) {
+      actor.send({ type: Events.Internal.OPEN_DMS });
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hi',
+        recipientIds: ['p1'],
+      });
+    }
+
+    it('promotes DM → GROUP_DM when adding a 3rd member (non-invite mode)', () => {
+      const actor = createL3Actor();
+      create2MemberDm(actor);
+      const channelId = findDmChannels(actor.getL3Context())[0].id;
+
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p0',
+        channelId,
+        memberIds: ['p2'],
+      });
+
+      const ch = actor.getL3Context().channels[channelId];
+      expect(ch.type).toBe('GROUP_DM');
+      expect(ch.memberIds).toEqual(expect.arrayContaining(['p0', 'p1', 'p2']));
+    });
+
+    it('strips NUDGE capability on promotion', () => {
+      const actor = createL3Actor();
+      create2MemberDm(actor);
+      const channelId = findDmChannels(actor.getL3Context())[0].id;
+
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p0',
+        channelId,
+        memberIds: ['p2'],
+      });
+
+      const ch = actor.getL3Context().channels[channelId];
+      expect(ch.capabilities).not.toContain('NUDGE');
+      expect(ch.capabilities).toContain('INVITE_MEMBER');
+      expect(ch.capabilities).toContain('SILVER_TRANSFER');
+      expect(ch.capabilities).toContain('CHAT');
+    });
+
+    it('GROUP_DM + ADD_MEMBER keeps type GROUP_DM', () => {
+      const actor = createL3Actor(5);
+      actor.send({ type: Events.Internal.OPEN_DMS });
+      // Create a group DM via SEND_MSG with multiple recipients
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hey',
+        recipientIds: ['p1', 'p2'],
+      });
+      const channelId = findDmChannels(actor.getL3Context())[0].id;
+      expect(actor.getL3Context().channels[channelId].type).toBe('GROUP_DM');
+
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p0',
+        channelId,
+        memberIds: ['p3'],
+      });
+
+      expect(actor.getL3Context().channels[channelId].type).toBe('GROUP_DM');
+    });
+
+    it('invite mode: promotion fires when pendingMemberIds push total > 2', () => {
+      const INVITE_MANIFEST = { ...BASE_DAY, requireDmInvite: true };
+      const actor = createL3Actor(4, { manifest: INVITE_MANIFEST });
+      actor.send({ type: Events.Internal.OPEN_DMS });
+
+      actor.send({
+        type: Events.Social.SEND_MSG,
+        senderId: 'p0',
+        content: 'Hi',
+        recipientIds: ['p1'],
+      });
+      actor.send({
+        type: Events.Social.ACCEPT_DM,
+        senderId: 'p1',
+        channelId: findDmChannels(actor.getL3Context())[0].id,
+      });
+
+      const channelId = findDmChannels(actor.getL3Context())[0].id;
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p0',
+        channelId,
+        memberIds: ['p2'],
+      });
+
+      const ch = actor.getL3Context().channels[channelId];
+      expect(ch.type).toBe('GROUP_DM');
+      expect(ch.memberIds).toEqual(expect.arrayContaining(['p0', 'p1']));
+      expect(ch.pendingMemberIds).toContain('p2');
+    });
+
+    it('stable channel id on promotion', () => {
+      const actor = createL3Actor();
+      create2MemberDm(actor);
+      const channelId = findDmChannels(actor.getL3Context())[0].id;
+
+      actor.send({
+        type: Events.Social.ADD_MEMBER,
+        senderId: 'p0',
+        channelId,
+        memberIds: ['p2'],
+      });
+
+      expect(actor.getL3Context().channels[channelId]).toBeDefined();
+      expect(actor.getL3Context().channels[channelId].id).toBe(channelId);
+    });
+  });
 });

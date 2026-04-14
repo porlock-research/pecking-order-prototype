@@ -131,6 +131,12 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
     }
     // Legacy path
     return msg.channel === 'MAIN' || (msg.channel === 'DM' && (msg.senderId === playerId || msg.targetId === playerId));
+  }).map((msg: any) => {
+    // Whisper projection: sender + target see full message, others see redacted
+    if (msg.whisperTarget && msg.senderId !== playerId && msg.whisperTarget !== playerId) {
+      return { ...msg, content: '', redacted: true };
+    }
+    return msg;
   });
 
   const roster = snapshot.context.roster || {};

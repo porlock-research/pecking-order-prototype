@@ -19,6 +19,12 @@ export function buildDemoSyncPayload(
     if (!ch) return msg.channelId === 'MAIN';
     if (ch.type === 'MAIN') return true;
     return ch.memberIds.includes(playerId) || (ch.pendingMemberIds || []).includes(playerId);
+  }).map((msg: any) => {
+    // Whisper projection: sender + target see full message, others see redacted
+    if (msg.whisperTarget && msg.senderId !== playerId && msg.whisperTarget !== playerId) {
+      return { ...msg, content: '', redacted: true };
+    }
+    return msg;
   });
 
   // Filter channels: only those the player belongs to (or is pending)

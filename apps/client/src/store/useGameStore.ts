@@ -75,6 +75,13 @@ interface GameState {
   lastSeenFeedTimestamp: number;
   requestedTab: string | null;
 
+  // Pulse Phase 1.5 additions
+  lastReadTimestamp: Record<string, number>;
+  pickingMode:
+    | null
+    | { kind: 'new-dm'; selected: string[] }
+    | { kind: 'add-member'; channelId: string; selected: string[] };
+
   // Actions
   sync: (data: any) => void;
   addChatMessage: (msg: ChatMessage) => void;
@@ -100,6 +107,14 @@ interface GameState {
   requestNavigation: (tab: string) => void;
   clearNavigation: () => void;
   setSplashVisible: (v: boolean) => void;
+
+  // Pulse Phase 1.5 actions
+  hydrateLastRead: (gameId: string, playerId: string) => void;
+  markChannelRead: (channelId: string) => void;
+  startPicking: () => void;
+  startAddMember: (channelId: string) => void;
+  cancelPicking: () => void;
+  togglePicked: (playerId: string) => void;
 }
 
 // Selectors
@@ -193,6 +208,26 @@ export const selectDmSlots = (state: GameState): { used: number; total: number }
   const total = currentDay?.dmSlotsPerPlayer ?? 5;
   const used = state.dmStats?.slotsUsed ?? 0;
   return { used, total };
+};
+
+export const selectCanAddMemberTo = (state: GameState, channelId: string): boolean => {
+  const channel = state.channels?.[channelId];
+  if (!channel) return false;
+  if (channel.createdBy !== state.playerId) return false;
+  return (channel.capabilities ?? []).includes('INVITE_MEMBER');
+};
+
+export const selectGroupDmTitle = (state: GameState, channelId: string): string => {
+  const channel = state.channels?.[channelId];
+  if (!channel) return '';
+  const otherIds = (channel.memberIds || []).filter((id: string) => id !== state.playerId);
+  const firstNames = otherIds
+    .map((id: string) => state.roster[id]?.personaName?.split(' ')[0] ?? '')
+    .filter((n: string) => n.length > 0);
+  if (firstNames.length <= 3) return firstNames.join(', ');
+  const shown = firstNames.slice(0, 2).join(', ');
+  const overflow = firstNames.length - 2;
+  return `${shown} +${overflow}`;
 };
 
 // --- Vote Results (PT1-UX-005) ---
@@ -342,6 +377,164 @@ export const selectShouldAutoOpenDashboard = (state: GameState): boolean => {
   return state.dayIndex > 0 && state.dashboardSeenForDay !== state.dayIndex;
 };
 
+// ------- Pulse Phase 1.5 selectors -------
+
+export interface CastStripEntry {
+  kind: 'self' | 'player' | 'group';
+  id: string;
+  player?: SocialPlayer;
+  memberIds?: string[];
+  priority: number;
+  unreadCount: number;
+  hasPendingInviteFromThem: boolean;
+  hasOutgoingPendingInvite: boolean;
+  isTypingToYou: boolean;
+  isOnline: boolean;
+  isLeader: boolean;
+}
+
+export const selectUnreadForChannel = (channelId: string) => (state: GameState): number => {
+  const last = state.lastReadTimestamp[channelId] ?? 0;
+  return state.chatLog.filter(m => m.channelId === channelId && m.timestamp > last && m.senderId !== state.playerId).length;
+};
+
+export const selectTotalDmUnread = (state: GameState): number => {
+  const pid = state.playerId;
+  if (!pid) return 0;
+  const dmChannelIds = Object.values(state.channels)
+    .filter(ch => (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.GROUP_DM) && ch.memberIds.includes(pid))
+    .map(ch => ch.id);
+  return dmChannelIds.reduce((sum, cid) => {
+    const last = state.lastReadTimestamp[cid] ?? 0;
+    return sum + state.chatLog.filter(m => m.channelId === cid && m.timestamp > last && m.senderId !== pid).length;
+  }, 0);
+};
+
+export const selectStandings = (state: GameState): { id: string; player: SocialPlayer; rank: number }[] => {
+  return Object.entries(state.roster)
+    .filter(([, p]) => p.status === 'ALIVE')
+    .sort((a, b) => b[1].silver - a[1].silver || a[1].personaName.localeCompare(b[1].personaName))
+    .map(([id, p], i) => ({ id, player: p, rank: i + 1 }));
+};
+
+export const selectIsLeader = (playerId: string) => (state: GameState): boolean => {
+  const standings = selectStandings(state);
+  return standings.length > 0 && standings[0].id === playerId;
+};
+
+export const selectPendingInvitesForMe = (state: GameState): Channel[] => {
+  const pid = state.playerId;
+  if (!pid) return [];
+  return Object.values(state.channels).filter(ch => (ch.pendingMemberIds || []).includes(pid));
+};
+
+export const selectOutgoingInvites = (state: GameState): Channel[] => {
+  const pid = state.playerId;
+  if (!pid) return [];
+  return Object.values(state.channels).filter(ch => ch.createdBy === pid && (ch.pendingMemberIds || []).length > 0);
+};
+
+export const selectDmSlotsRemaining = (state: GameState): { used: number; total: number; remaining: number } => {
+  const { used, total } = selectDmSlots(state);
+  return { used, total, remaining: Math.max(0, total - used) };
+};
+
+/**
+ * Chip tap feasibility: returns 'blocked' when the player can't open a NEW
+ * DM with `chipPlayerId` because slots are exhausted. Re-opening an existing
+ * DM with that person never blocks (no slot consumption).
+ */
+export const selectChipSlotStatus = (state: GameState, chipPlayerId: string): 'ok' | 'blocked' => {
+  const pid = state.playerId;
+  if (!pid || chipPlayerId === pid) return 'ok';
+  const target = state.roster[chipPlayerId];
+  if (!target || target.status !== 'ALIVE') return 'ok';
+  const hasExistingDm = Object.values(state.channels).some(c =>
+    c.type === ChannelTypes.DM && c.memberIds.includes(pid) && c.memberIds.includes(chipPlayerId),
+  );
+  if (hasExistingDm) return 'ok';
+  const { remaining } = selectDmSlotsRemaining(state);
+  return remaining > 0 ? 'ok' : 'blocked';
+};
+
+export const selectCastStripEntries = (state: GameState): CastStripEntry[] => {
+  const pid = state.playerId;
+  if (!pid) return [];
+  const leaderId = selectStandings(state)[0]?.id;
+
+  const pendingByInviterId: Record<string, true> = {};
+  for (const ch of selectPendingInvitesForMe(state)) {
+    const inviterId = ch.createdBy;
+    if (inviterId && inviterId !== pid) pendingByInviterId[inviterId] = true;
+  }
+  const outgoingPendingByRecipientId: Record<string, true> = {};
+  for (const ch of selectOutgoingInvites(state)) {
+    for (const rid of ch.pendingMemberIds || []) outgoingPendingByRecipientId[rid] = true;
+  }
+
+  const entries: CastStripEntry[] = [];
+
+  const selfPlayer = state.roster[pid];
+  if (selfPlayer) {
+    entries.push({
+      kind: 'self', id: pid, player: selfPlayer, priority: 0,
+      unreadCount: 0, hasPendingInviteFromThem: false, hasOutgoingPendingInvite: false,
+      isTypingToYou: false, isOnline: state.onlinePlayers.includes(pid),
+      isLeader: leaderId === pid,
+    });
+  }
+
+  for (const [id, p] of Object.entries(state.roster)) {
+    if (id === pid) continue;
+    if (p.status !== 'ALIVE') continue;
+    const oneOnOneChannel = Object.values(state.channels).find(ch =>
+      ch.type === ChannelTypes.DM && ch.memberIds.includes(pid) && ch.memberIds.includes(id)
+    );
+    const unread = oneOnOneChannel ? selectUnreadForChannel(oneOnOneChannel.id)(state) : 0;
+    const isTyping = oneOnOneChannel ? state.typingPlayers[id] === oneOnOneChannel.id : false;
+    const isOnline = state.onlinePlayers.includes(id);
+    const pending = !!pendingByInviterId[id];
+    const outgoingPending = !!outgoingPendingByRecipientId[id];
+
+    let priority: number;
+    if (pending) priority = 1;
+    else if (unread > 0) priority = 2;
+    else if (isTyping) priority = 3;
+    else if (isOnline) priority = 5;
+    else priority = 7;
+
+    entries.push({
+      kind: 'player', id, player: p, priority,
+      unreadCount: unread, hasPendingInviteFromThem: pending, hasOutgoingPendingInvite: outgoingPending,
+      isTypingToYou: isTyping, isOnline, isLeader: leaderId === id,
+    });
+  }
+
+  for (const ch of Object.values(state.channels)) {
+    if (ch.type !== ChannelTypes.GROUP_DM) continue;
+    if (!ch.memberIds.includes(pid)) continue;
+    const unread = selectUnreadForChannel(ch.id)(state);
+    entries.push({
+      kind: 'group', id: ch.id, memberIds: ch.memberIds,
+      priority: unread > 0 ? 2 : 6,
+      unreadCount: unread, hasPendingInviteFromThem: false, hasOutgoingPendingInvite: false,
+      isTypingToYou: false, isOnline: false, isLeader: false,
+    });
+  }
+
+  entries.sort((a, b) => {
+    if (a.kind === 'self') return -1;
+    if (b.kind === 'self') return 1;
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount;
+    const an = a.player?.personaName || '';
+    const bn = b.player?.personaName || '';
+    return an.localeCompare(bn);
+  });
+
+  return entries;
+};
+
 export const useGameStore = create<GameState>((set) => ({
   gameId: null,
   dayIndex: 0,
@@ -379,6 +572,9 @@ export const useGameStore = create<GameState>((set) => ({
   lastSeenFeedTimestamp: Number(localStorage.getItem('po-lastSeenFeed') || '0'),
   requestedTab: null,
 
+  lastReadTimestamp: {},
+  pickingMode: null,
+
   sync: (data) => set((state) => {
     console.log('[SYNC] Received', {
       state: data.state,
@@ -411,7 +607,7 @@ export const useGameStore = create<GameState>((set) => ({
       gameId: data.context?.gameId || state.gameId,
       dayIndex: data.context?.dayIndex || 0,
       roster: stableRef(state.roster, nextRoster),
-      chatLog: nextChatLog.length === state.chatLog.length ? state.chatLog : nextChatLog,
+      chatLog: stableRef(state.chatLog, nextChatLog),
       channels: stableRef(state.channels, nextChannels),
       groupChatOpen: data.context?.groupChatOpen ?? state.groupChatOpen,
       dmsOpen: data.context?.dmsOpen ?? state.dmsOpen,
@@ -482,4 +678,29 @@ export const useGameStore = create<GameState>((set) => ({
   requestNavigation: (tab) => set({ requestedTab: tab }),
   clearNavigation: () => set({ requestedTab: null }),
   setSplashVisible: (v) => set({ splashVisible: v }),
+
+  hydrateLastRead: (gameId, playerId) => set(() => {
+    try {
+      const raw = localStorage.getItem(`po-pulse-lastRead:${gameId}:${playerId}`);
+      return { lastReadTimestamp: raw ? JSON.parse(raw) : {} };
+    } catch { return { lastReadTimestamp: {} }; }
+  }),
+  markChannelRead: (channelId) => set((state) => {
+    const next = { ...state.lastReadTimestamp, [channelId]: Date.now() };
+    try {
+      if (state.gameId && state.playerId) {
+        localStorage.setItem(`po-pulse-lastRead:${state.gameId}:${state.playerId}`, JSON.stringify(next));
+      }
+    } catch {}
+    return { lastReadTimestamp: next };
+  }),
+  startPicking: () => set({ pickingMode: { kind: 'new-dm', selected: [] } }),
+  startAddMember: (channelId) => set({ pickingMode: { kind: 'add-member', channelId, selected: [] } }),
+  cancelPicking: () => set({ pickingMode: null }),
+  togglePicked: (playerId) => set((state) => {
+    if (!state.pickingMode) return {};
+    const sel = state.pickingMode.selected;
+    const next = sel.includes(playerId) ? sel.filter(id => id !== playerId) : [...sel, playerId];
+    return { pickingMode: { ...state.pickingMode, selected: next } };
+  }),
 }));

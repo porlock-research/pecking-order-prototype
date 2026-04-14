@@ -1,0 +1,16 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: (theme\.colors\.|themeRef\.current.*colors\.|t\.colors\.|colors\[(?!.*\|))
+ADVISORY: |
+  Valid `theme.colors` keys (from CartridgeTheme in
+  packages/ui-kit/src/cartridge-theme.ts):
+
+      gold, pink, danger, green, orange, info,
+      bg, bgSubtle, panel, border, text, textDim
+
+  DO NOT guess common CSS names — these DO NOT exist: surface, accent,
+  primary, secondary, muted, foreground, background, warn, success.
+
+  Typecheck will catch a wrong key but only after you rebuild. Grep or
+  pick from this list the first time.
+
+  If you want a role you don't see (e.g., "surface"), use `panel` or `bgSubtle`.

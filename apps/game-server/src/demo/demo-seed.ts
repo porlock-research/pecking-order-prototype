@@ -142,7 +142,7 @@ export function buildDemoSeed(gameId: string = 'DEMO', assetsBase?: string): Dem
       memberIds: personas.map(p => p.id),
       createdBy: 'system',
       createdAt: now - 86400000 * 3,
-      capabilities: ['CHAT', 'REACTIONS'],
+      capabilities: ['CHAT', 'REACTIONS', 'SILVER_TRANSFER', 'NUDGE', 'WHISPER'],
       constraints: {},
     },
     'demo-dm-p0-p1': {
@@ -151,7 +151,7 @@ export function buildDemoSeed(gameId: string = 'DEMO', assetsBase?: string): Dem
       memberIds: ['p0', 'p1'],
       createdBy: 'p0',
       createdAt: now - 86400000,
-      capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
+      capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE'],
       constraints: { silverCost: 0 },
     },
   };

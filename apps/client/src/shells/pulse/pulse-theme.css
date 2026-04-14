@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+.pulse-shell {
+  /* Pulse palette — warm ink, not pure black */
+  --pulse-bg: #15121a;
+  --pulse-bg-2: #1a1420;
+  --pulse-surface: #1d1826;
+  --pulse-surface-2: #231c2d;
+  --pulse-surface-3: #2a2335;
+  --pulse-text-1: #f2eef5;
+  --pulse-text-2: #a8a2b2;
+  --pulse-text-3: #75707f;
+  --pulse-text-4: #433e4d;
+  --pulse-accent: #ff3b6f;
+  --pulse-accent-glow: rgba(255, 59, 111, 0.16);
+  --pulse-gold: #ffc83d;
+  --pulse-gold-glow: rgba(255, 200, 61, 0.18);
+  --pulse-nudge: #ffa04d;
+  --pulse-whisper: #b069db;
+  --pulse-vote: #4ade80;
+  --pulse-game: #fbbf24;
+  --pulse-prompt: #60a5fa;
+  --pulse-dilemma: #c084fc;
+  --pulse-border: rgba(255, 255, 255, 0.06);
+  --pulse-border-2: rgba(255, 255, 255, 0.1);
+
+  /* Ambient warm background: warm dark base, softer than pure ink */
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(255, 59, 111, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 90% 50% at 30% 100%, rgba(176, 105, 219, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 90% 50% at 70% 100%, rgba(96, 165, 250, 0.04) 0%, transparent 60%),
+    linear-gradient(180deg, var(--pulse-bg) 0%, var(--pulse-bg-2) 100%);
+
+  /* --po-* skin contract for cartridges */
+  --po-bg-deep: var(--pulse-bg);
+  --po-bg-panel: var(--pulse-surface);
+  --po-bg-input: var(--pulse-surface-2);
+  --po-bg-bubble: var(--pulse-surface-3);
+  --po-text: var(--pulse-text-1);
+  --po-text-dim: var(--pulse-text-3);
+  --po-gold: var(--pulse-gold);
+  --po-pink: var(--pulse-accent);
+  --po-border: var(--pulse-border);
+  --po-font-display: 'Outfit', sans-serif;
+  --po-font-body: 'Outfit', sans-serif;
+
+  font-family: 'Outfit', sans-serif;
+  color: var(--pulse-text-1);
+}
+
+.pulse-shell[data-theme="light"] {
+  --pulse-bg: #f2f2f6;
+  --pulse-surface: #f0f0f4;
+  --pulse-surface-2: #e8e8ee;
+  --pulse-surface-3: #e0e0e8;
+  --pulse-text-1: #1a1a22;
+  --pulse-text-2: #666;
+  --pulse-text-3: #999;
+  --pulse-text-4: #ccc;
+  --pulse-border: rgba(0, 0, 0, 0.06);
+}
+
+/* Breathing dot animation for pills */
+@keyframes pulse-breathe {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* Pill urgency pulse */
+@keyframes pulse-pill-urgent {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* Ticker scroll */
+@keyframes pulse-ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Hint pulse for first reaction trigger */
+@keyframes pulse-hint {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 8px 2px var(--pulse-accent); }
+}
+
+/* Gold shimmer for silver events */
+@keyframes pulse-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Shake feedback for out-of-slots chip taps */
+@keyframes pulse-chip-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+/* Message inline actions — hidden by default, shown on hover */
+.pulse-msg-actions {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .pulse-msg-content:hover .pulse-msg-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+@media (hover: none) {
+  /* Touch devices: show subtle hint — tap message to activate */
+  .pulse-msg-content:focus-within .pulse-msg-actions,
+  .pulse-msg-content.pulse-msg-tapped .pulse-msg-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

@@ -16,6 +16,11 @@ export const SHELL_REGISTRY: ShellManifest[] = [
     name: 'Vivid',
     load: () => import('./vivid/VividShell'),
   },
+  {
+    id: 'pulse',
+    name: 'Pulse',
+    load: () => import('./pulse/PulseShell'),
+  },
 ];
 
 const STORAGE_KEY = 'po_shell';

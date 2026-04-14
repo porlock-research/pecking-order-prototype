@@ -4,6 +4,23 @@ import * as Sentry from "@sentry/react";
 import { useGameStore } from "../store/useGameStore";
 import { Events } from "@pecking-order/shared-types";
 
+/**
+ * Builds the SEND_SILVER WebSocket payload.
+ *
+ * Intentionally carries no `channelId` — the server resolves an existing DM/GROUP_DM
+ * between sender and target via `resolveExistingChannel`, which skips MAIN entirely.
+ * MAIN now carries the SILVER_TRANSFER capability (Task 1 of the DM-polish plan), so
+ * an accidental `channelId: 'MAIN'` here would authorize silver-in-MAIN on the server.
+ * Keep this function pure and regression-tested.
+ */
+export function buildSilverPayload(amount: number, targetId: string) {
+  return {
+    type: Events.Social.SEND_SILVER,
+    amount,
+    targetId,
+  };
+}
+
 export const useGameEngine = (gameId: string, playerId: string, token?: string | null, party: string = 'game-server') => {
   const sync = useGameStore((s) => s.sync);
   const addChatMessage = useGameStore((s) => s.addChatMessage);
@@ -40,17 +57,21 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
           level: 'warning',
           data: { code: event.code, reason: event.reason, gameId },
         });
-        // Clear ALL cached tokens for this game to prevent reconnect loop
+        // Clear cached tokens for this game to prevent reconnect loop
         // (covers secret rotation, game cleanup, token expiry)
+        // Clear both po_token_* (localStorage) and po_pwa_* (cookie bridge)
         const code = window.location.pathname.match(/\/game\/([A-Za-z0-9]+)/)?.[1];
         if (code) {
           localStorage.removeItem(`po_token_${code}`);
           document.cookie = `po_token_${code}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+          document.cookie = `po_pwa_${code}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
           caches.open('po-tokens-v1').then(c =>
             c.delete(new Request(`/po-token-cache/po_token_${code}`))
           ).catch(() => {});
         }
-        window.location.replace('/');
+        // Redirect with ?noRecover=1 to prevent cookie recovery from
+        // immediately connecting to another stale game (GH-115)
+        window.location.replace('/?noRecover=1');
       }
     },
     onError(event) {
@@ -99,11 +120,12 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     },
   });
 
-  const sendMessage = (content: string) => {
+  const sendMessage = (content: string, opts?: { replyTo?: string }) => {
     socket.send(JSON.stringify({
       type: Events.Social.SEND_MSG,
       content,
       channelId: 'MAIN',
+      ...(opts?.replyTo ? { replyTo: opts.replyTo } : {}),
     }));
   };
 
@@ -125,11 +147,7 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
   };
 
   const sendSilver = (amount: number, targetId: string) => {
-    socket.send(JSON.stringify({
-      type: Events.Social.SEND_SILVER,
-      amount,
-      targetId
-    }));
+    socket.send(JSON.stringify(buildSilverPayload(amount, targetId)));
   };
 
   const sendVoteAction = (type: string, targetId: string) => {
@@ -144,12 +162,33 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     socket.send(JSON.stringify({ type, ...payload }));
   };
 
-  const sendToChannel = (channelId: string, content: string) => {
+  const sendToChannel = (channelId: string, content: string, opts?: { replyTo?: string }) => {
     socket.send(JSON.stringify({
       type: Events.Social.SEND_MSG,
       content,
       channelId,
+      ...(opts?.replyTo ? { replyTo: opts.replyTo } : {}),
     }));
+  };
+
+  const sendReaction = (messageId: string, emoji: string) => {
+    socket.send(JSON.stringify({ type: Events.Social.REACT, messageId, emoji }));
+  };
+
+  const sendNudge = (targetId: string) => {
+    socket.send(JSON.stringify({ type: Events.Social.NUDGE, targetId }));
+  };
+
+  const sendWhisper = (targetId: string, text: string) => {
+    socket.send(JSON.stringify({ type: Events.Social.WHISPER, targetId, text }));
+  };
+
+  const acceptDm = (channelId: string) => {
+    socket.send(JSON.stringify({ type: Events.Social.ACCEPT_DM, channelId }));
+  };
+
+  const declineDm = (channelId: string) => {
+    socket.send(JSON.stringify({ type: Events.Social.DECLINE_DM, channelId }));
   };
 
   const createGroupDm = (memberIds: string[]) => {
@@ -192,6 +231,11 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     sendGameAction,
     sendActivityAction,
     sendPerk,
+    sendReaction,
+    sendNudge,
+    sendWhisper,
+    acceptDm,
+    declineDm,
     sendTyping,
     stopTyping,
   };

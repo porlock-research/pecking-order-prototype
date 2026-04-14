@@ -1,0 +1,18 @@
+MATCH_TOOL: Bash
+MATCH_PATTERN: (lsof.*-i.*:(5173|8787|3000)|npm run dev|wrangler dev|vite( |$))
+ADVISORY: |
+  Heads up: this monorepo uses git worktrees (.worktrees/*). If a dev server is
+  already running from a DIFFERENT worktree than the one you're editing in, your
+  source changes will appear to have no effect (Vite cache buster timestamp won't
+  update, HMR seems silent, behavior matches old code).
+
+  Always verify before debugging:
+    lsof -i :5173 :8787 :3000 | grep LISTEN
+    lsof -p <pid> | grep cwd
+
+  The `cwd` line shows the directory the process is serving from. If it's not the
+  canonical pecking-order dir (or not your active branch's worktree), kill the
+  processes and restart `npm run dev` from the right location.
+
+  Real session cost: ~30 min lost in the Pulse shell work debugging code that
+  was never being delivered to the browser.

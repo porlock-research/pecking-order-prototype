@@ -1,0 +1,25 @@
+MATCH_TOOL: Bash
+MATCH_PATTERN: git mv .+ _legacy|mkdir.+_legacy|mv .+ _legacy
+ADVISORY: |
+  When parking orphaned code under a `_legacy/` folder as a safety net (instead
+  of deleting outright), its relative imports go stale because the path depth
+  changed. `tsc --noEmit` will then fail with "Cannot find module ../..." errors
+  on every file you moved — even though nothing in the live tree imports them.
+
+  Fix: add `"exclude": ["src/shells/<shell>/_legacy"]` (or equivalent path) to
+  the relevant `tsconfig.json` in the SAME commit. This keeps the parked code
+  on disk as a reference without polluting the type-check surface.
+
+  Wrong (commits but `npm run build` fails):
+    git mv components/TabBar.tsx _legacy/TabBar.tsx
+    git commit -m "chore: park legacy"
+    # next command: npx tsc --noEmit → dozens of TS2307 errors
+
+  Right (commit the exclude together):
+    git mv components/TabBar.tsx _legacy/TabBar.tsx
+    # edit tsconfig.json: add _legacy to exclude
+    git add tsconfig.json
+    git commit -m "chore: park legacy under _legacy/ + exclude from tsc"
+
+  This is a procedural companion to the general "keep work in _legacy/ until
+  playtest passes" pattern — the exclude is non-obvious but non-negotiable.
