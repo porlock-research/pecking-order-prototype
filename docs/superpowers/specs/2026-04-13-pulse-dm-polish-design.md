@@ -27,14 +27,16 @@ Out of scope (either deferred, or covered by the sibling spec):
 
 ## Architecture
 
-**Capabilities as the unified contract.** `ChannelCapability` represents "what you can do in this channel" — a single contract covering UI affordance surfacing and server-side authorization. Designed to absorb future game channels cleanly (new channel type → new caps → chips appear without UI code changes).
+**Capabilities as the primary contract, with one deliberate exception.** `ChannelCapability` represents "what you can do in this channel" — unified UI affordance surfacing + server-side authorization for channel-scoped actions. Designed to absorb future game channels cleanly (new channel type → new caps → chips appear without UI code changes).
 
 Server-side additions:
 1. Extend `ChannelCapability` union with `'NUDGE'` and `'WHISPER'`.
 2. MAIN channel gets `['CHAT', 'REACTIONS', 'SILVER_TRANSFER', 'NUDGE', 'WHISPER']`.
-3. DM channel gets `['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE']` (no whisper — whisper is MAIN-anonymous).
+3. DM channel gets `['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE']`.
 4. GROUP_DM, GAME_DM unchanged.
-5. Harden `isNudgeAllowed` and `isWhisperAllowed` to check `channelHasCapability(..., 'NUDGE' | 'WHISPER')`. Closes the racing-client authorization gap.
+5. Harden `isWhisperAllowed` to check `channelHasCapability(context.channels, 'MAIN', 'WHISPER')`. Whisper is always MAIN-scoped; this adds a consistency check (drop MAIN's WHISPER cap → whispers stop working) without requiring the event to carry `channelId`.
+
+**NUDGE is player-scoped, not channel-scoped (deliberate exception).** `Events.Social.NUDGE` carries `{ senderId, targetId }` with no channel field. Nudges can be initiated from many surfaces (chat chip, DM chip, Cast Strip avatar tap, avatar popover in legacy shells) — channel-scoping would over-constrain the surface area. The `NUDGE` capability is therefore a **UI affordance flag only**: client chip visibility reads it, but `isNudgeAllowed` stays player-scoped (alive + rate-limit). Documented here so future devs don't assume cap = auth universally.
 
 Client-side: one rule for all chips — capability-gated for action chips, channel-type-gated for navigational/keyboard chips. No parallel visibility tables.
 
@@ -69,25 +71,22 @@ capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE'],
 
 `createGroupDmChannel` unchanged: `['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER']` — no NUDGE (1:1 semantics), no WHISPER.
 
-**4. Harden nudge / whisper guards.** Currently `isNudgeAllowed` does not check channel type or capability — a racing client could fire `NUDGE` into a GROUP_DM and the server would accept it. Fix: extend both guards to check capability on the resolved channel. Pseudocode for `isNudgeAllowed`:
+**4. Harden whisper guard.** `isWhisperAllowed` currently checks sender/target alive and non-empty text; it does not consult the capability list. Add a cap check against MAIN (whispers are always MAIN-scoped — the event carries no channelId, and `processWhisper` hard-codes `'MAIN'` when building the message):
 
 ```ts
-isNudgeAllowed: ({ context, event }: any) => {
-  if (event.type !== Events.Social.NUDGE) return false;
-  const { senderId, targetId, channelId } = event;
-  // Capability check first — channelId resolves to the channel the nudge is "in".
-  // For MAIN-initiated nudges, channelId === 'MAIN'. For DM-initiated, it's the DM channelId.
-  if (channelId && !channelHasCapability(context.channels, channelId, 'NUDGE')) return false;
-  // ...existing alive + rate-limit checks unchanged
+isWhisperAllowed: ({ context, event }: any) => {
+  if (event.type !== Events.Social.WHISPER) return false;
+  // Consistency check: if MAIN loses WHISPER capability, whispers are disabled.
+  if (!channelHasCapability(context.channels, 'MAIN', 'WHISPER')) return false;
+  // ...existing senderId/targetId/text checks unchanged
 },
 ```
 
-`isWhisperAllowed` gets the same treatment (`'WHISPER'` cap check). **This is a hard prerequisite**, not a nice-to-have — the capability union is now the authorization source of truth, so every action guard must consult it.
+`isNudgeAllowed` is **not** modified — NUDGE is deliberately player-scoped per the Architecture note. NUDGE capability exists purely as a UI affordance.
 
 **5. Test coverage (required before merge).**
-- `l3-dm-invitations.test.ts` (or new file): assert MAIN channel created with the new caps; assert DM channel created with `NUDGE` cap.
-- New test: `NUDGE` fired with `channelId = groupDmChannelId` → rejected with existing rejection reason.
-- New test: `WHISPER` fired with `channelId = dmChannelId` → rejected.
+- Channel creation tests: assert MAIN created with `NUDGE` + `WHISPER` caps; DM created with `NUDGE` cap.
+- New test: drop MAIN's `WHISPER` cap mid-game (via test harness mutation) → `WHISPER` event rejected.
 - Client test (`apps/client`): `/silver` picker flow from MAIN never emits `SEND_SILVER` with `channel: 'MAIN'` — always routes through a DM channelId.
 
 ### Client change
