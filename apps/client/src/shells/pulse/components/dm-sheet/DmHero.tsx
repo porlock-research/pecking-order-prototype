@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type { SocialPlayer } from '@pecking-order/shared-types';
+import { UserPlus } from '@solar-icons/react';
 import { getPlayerColor } from '../../colors';
 import { PersonaImage, initialsOf } from '../common/PersonaImage';
 import { DmStatusRing } from './DmStatusRing';
+import { useGameStore, selectCanAddMemberTo } from '../../../../store/useGameStore';
 
 interface Props {
   player: SocialPlayer;
@@ -17,6 +19,8 @@ interface Props {
 export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, onClose }: Props) {
   const color = getPlayerColor(colorIdx);
   const [variant, setVariant] = useState<'headshot' | 'medium' | 'full'>('headshot');
+  const canAdd = useGameStore(s => channelId ? selectCanAddMemberTo(s, channelId) : false);
+  const startAddMember = useGameStore(s => s.startAddMember);
 
   // Pulse shell uses short bio as pseudo-stereotype (matches CastCard convention).
   const stereotype = player.bio && player.bio.length > 4 && player.bio.length <= 50 ? player.bio : '';
@@ -43,14 +47,33 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
         display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
       }}>‹</button>
 
-      <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', gap: 6 }}>
-        {(['headshot', 'medium', 'full'] as const).map(v => (
-          <button key={v} onClick={() => setVariant(v)} aria-label={`Show ${v}`} style={{
-            width: 8, height: 8, borderRadius: '50%',
-            border: 'none', padding: 0, cursor: 'pointer',
-            background: variant === v ? '#fff' : 'rgba(255,255,255,0.35)',
-          }} />
-        ))}
+      <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+        {canAdd && channelId && (
+          <button
+            onClick={() => startAddMember(channelId)}
+            aria-label="Add members"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '6px 10px', borderRadius: 14,
+              background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: '#fff', cursor: 'pointer',
+              fontSize: 12, fontWeight: 700,
+            }}
+          >
+            <UserPlus weight="Bold" size={16} />
+            <span>Add</span>
+          </button>
+        )}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {(['headshot', 'medium', 'full'] as const).map(v => (
+            <button key={v} onClick={() => setVariant(v)} aria-label={`Show ${v}`} style={{
+              width: 8, height: 8, borderRadius: '50%',
+              border: 'none', padding: 0, cursor: 'pointer',
+              background: variant === v ? '#fff' : 'rgba(255,255,255,0.35)',
+            }} />
+          ))}
+        </div>
       </div>
 
       {isLeader && (

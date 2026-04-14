@@ -1,15 +1,22 @@
 import type { SocialPlayer } from '@pecking-order/shared-types';
+import { UserPlus } from '@solar-icons/react';
 import { getPlayerColor } from '../../colors';
 import { PersonaImage, initialsOf } from '../common/PersonaImage';
+import { useGameStore, selectCanAddMemberTo, selectGroupDmTitle } from '../../../../store/useGameStore';
 
 interface Props {
   members: { id: string; player: SocialPlayer; colorIdx: number }[];
+  channelId: string | null;
   onClose: () => void;
 }
 
-export function DmGroupHero({ members, onClose }: Props) {
-  const names = members.slice(0, 3).map(m => m.player.personaName.split(' ')[0]).join(', ');
-  const suffix = members.length > 3 ? ` +${members.length - 3}` : '';
+export function DmGroupHero({ members, channelId, onClose }: Props) {
+  const canAdd = useGameStore(s => channelId ? selectCanAddMemberTo(s, channelId) : false);
+  const startAddMember = useGameStore(s => s.startAddMember);
+  const title = useGameStore(s => channelId ? selectGroupDmTitle(s, channelId) : '');
+  const fallbackTitle = members.slice(0, 3).map(m => m.player.personaName.split(' ')[0]).join(', ')
+    + (members.length > 3 ? ` +${members.length - 3}` : '');
+  const displayTitle = title || fallbackTitle;
 
   return (
     <div style={{ position: 'relative', width: '100%', height: 280, background: '#111', overflow: 'hidden' }}>
@@ -38,13 +45,32 @@ export function DmGroupHero({ members, onClose }: Props) {
         fontSize: 20, cursor: 'pointer',
       }}>‹</button>
 
+      {canAdd && channelId && (
+        <button
+          onClick={() => startAddMember(channelId)}
+          aria-label="Add members"
+          style={{
+            position: 'absolute', top: 10, right: 10,
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '6px 10px', borderRadius: 14,
+            background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: '#fff', cursor: 'pointer',
+            fontSize: 12, fontWeight: 700,
+          }}
+        >
+          <UserPlus weight="Bold" size={16} />
+          <span>Add</span>
+        </button>
+      )}
+
       <div style={{
         position: 'absolute', left: 0, right: 0, bottom: 0,
         padding: '40px 16px 14px',
         background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)',
       }}>
         <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: -0.3 }}>
-          {names}{suffix}
+          {displayTitle}
         </div>
         <div style={{
           fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.2,

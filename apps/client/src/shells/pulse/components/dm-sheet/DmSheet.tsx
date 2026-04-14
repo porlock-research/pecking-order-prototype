@@ -75,7 +75,7 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
         }}
       >
         {isGroup && groupMembers.length > 0
-          ? <DmGroupHero members={groupMembers} onClose={onClose} />
+          ? <DmGroupHero members={groupMembers} channelId={channel?.id ?? null} onClose={onClose} />
           : targetPlayer && (
               <DmHero
                 player={targetPlayer}
