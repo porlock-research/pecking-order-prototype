@@ -10,6 +10,8 @@
 
 **Branch:** `feature/pulse-phase4-catchup` (already created; spec committed).
 
+**Critical pattern awareness — Zustand selectors under React 19.** Commit `24b5cf6` landed a `memoSelector(inputs, compute)` helper in `apps/client/src/store/useGameStore.ts` and a guardrail at `.claude/guardrails/finite-zustand-selector-fresh-objects.rule`. **Any selector that returns a fresh object or array literal MUST be wrapped with `memoSelector` or the Pulse shell crashes with "Maximum update depth exceeded" under React 19's `useSyncExternalStore`.** Selectors returning primitives (number/boolean/string/null) or existing state references are safe without wrapping. Phase 4 selectors are added to `useGameStore.ts` directly (matches the `selectStandings`/`selectCastStripEntries` convention), not to a separate file — this keeps `memoSelector` in scope without widening its export surface.
+
 ---
 
 ## Phase 0 — Server Preconditions
@@ -775,8 +777,10 @@ git commit -m "feat(client): add Phase 4 mark* actions with localStorage persist
 ### Task 7: Client store — derived selectors
 
 **Files:**
-- Create: `apps/client/src/store/selectors/phase4.ts`
+- Modify: `apps/client/src/store/useGameStore.ts` (selectors live here, colocated with `selectStandings` et al. — per the commit `24b5cf6` pattern)
 - Test: `apps/client/src/store/__tests__/phase4-selectors.test.ts`
+
+**Pattern reminder:** `selectRevealsToReplay` returns a fresh array → MUST be wrapped with `memoSelector`. The other four return primitives (boolean / number / 'dm'|'silver'|'invite'|null) → do NOT need wrapping.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -790,7 +794,7 @@ import {
   selectRevealsToReplay,
   selectAggregatePulseUnread,
   selectCastChipUnreadKind,
-} from '../selectors/phase4';
+} from '../useGameStore';
 
 beforeEach(() => {
   useGameStore.setState({
@@ -926,11 +930,14 @@ Expected: FAIL — file missing.
 
 - [ ] **Step 3: Implement selectors**
 
-```typescript
-// apps/client/src/store/selectors/phase4.ts
-import type { GameStore } from '../useGameStore';
+Append these to `apps/client/src/store/useGameStore.ts` (below the existing `selectCastStripEntries` / `selectStandings` block, using the same export style). The `memoSelector` helper is already defined in this file.
 
-export function selectCartridgeUnread(s: GameStore, cartridgeId: string): boolean {
+```typescript
+// Phase 4 selectors. selectRevealsToReplay is the only fresh-array selector;
+// it is wrapped with memoSelector (guardrail: finite-zustand-selector-fresh-objects).
+// Other selectors return primitives and do not need wrapping.
+
+export function selectCartridgeUnread(s: GameState, cartridgeId: string): boolean {
   const lastSeen = s.lastSeenCartridge[cartridgeId];
   // Active cartridge?
   const actives = [s.activeVotingCartridge, s.activeGameCartridge, s.activePromptCartridge, s.activeDilemma];
@@ -948,7 +955,7 @@ export function selectCartridgeUnread(s: GameStore, cartridgeId: string): boolea
   return false;
 }
 
-export function selectSilverUnread(s: GameStore, senderId: string): boolean {
+export function selectSilverUnread(s: GameState, senderId: string): boolean {
   const lastSeen = s.lastSeenSilverFrom[senderId] ?? 0;
   return s.tickerMessages.some((m: any) =>
     m.category === 'SILVER' &&
@@ -958,23 +965,26 @@ export function selectSilverUnread(s: GameStore, senderId: string): boolean {
   );
 }
 
-export function selectRevealsToReplay(s: GameStore): Array<{kind: 'elimination' | 'winner'; dayIndex?: number}> {
-  const out: Array<{kind: 'elimination' | 'winner'; dayIndex?: number}> = [];
-  for (const [, r] of Object.entries(s.roster) as Array<[string, any]>) {
-    if (r.status === 'ELIMINATED') {
-      const day = r.eliminatedOnDay ?? s.dayIndex;
-      if (!s.revealsSeen.elimination[day]) {
-        out.push({ kind: 'elimination', dayIndex: day });
+export const selectRevealsToReplay = memoSelector(
+  (s) => [s.roster, s.winner, s.revealsSeen, s.dayIndex],
+  (s: GameState): Array<{kind: 'elimination' | 'winner'; dayIndex?: number}> => {
+    const out: Array<{kind: 'elimination' | 'winner'; dayIndex?: number}> = [];
+    for (const [, r] of Object.entries(s.roster) as Array<[string, any]>) {
+      if (r.status === 'ELIMINATED') {
+        const day = r.eliminatedOnDay ?? s.dayIndex;
+        if (!s.revealsSeen.elimination[day]) {
+          out.push({ kind: 'elimination', dayIndex: day });
+        }
       }
     }
-  }
-  if (s.winner && !s.revealsSeen.winner) {
-    out.push({ kind: 'winner' });
-  }
-  return out;
-}
+    if (s.winner && !s.revealsSeen.winner) {
+      out.push({ kind: 'winner' });
+    }
+    return out;
+  },
+);
 
-function getDmUnreadCount(s: GameStore): number {
+function getDmUnreadCount(s: GameState): number {
   const lrt = s.lastReadTimestamp || {};
   let count = 0;
   for (const [chId, ch] of Object.entries(s.channels) as Array<[string, any]>) {
@@ -991,7 +1001,7 @@ function getDmUnreadCount(s: GameStore): number {
   return count;
 }
 
-function getCartridgeUnreadCount(s: GameStore): number {
+function getCartridgeUnreadCount(s: GameState): number {
   const ids = new Set<string>();
   for (const c of [s.activeVotingCartridge, s.activeGameCartridge, s.activePromptCartridge, s.activeDilemma] as any[]) {
     if (c?.cartridgeId) ids.add(c.cartridgeId);
@@ -1006,7 +1016,7 @@ function getCartridgeUnreadCount(s: GameStore): number {
   return count;
 }
 
-function getSilverUnreadCount(s: GameStore): number {
+function getSilverUnreadCount(s: GameState): number {
   const senders = new Set<string>();
   for (const m of s.tickerMessages as any[]) {
     if (m.category === 'SILVER' && m.payload?.recipientId === s.playerId && m.payload?.senderId) {
@@ -1020,14 +1030,14 @@ function getSilverUnreadCount(s: GameStore): number {
   return count;
 }
 
-export function selectAggregatePulseUnread(s: GameStore): number {
+export function selectAggregatePulseUnread(s: GameState): number {
   return getDmUnreadCount(s)
     + (s.pendingDmInvites?.length ?? 0)
     + getCartridgeUnreadCount(s)
     + getSilverUnreadCount(s);
 }
 
-export function selectCastChipUnreadKind(s: GameStore, personaId: string): 'dm' | 'silver' | 'invite' | null {
+export function selectCastChipUnreadKind(s: GameState, personaId: string): 'dm' | 'silver' | 'invite' | null {
   // Priority: invite > dm > silver (social salience — unanswered invite is strongest CTA)
   if ((s.pendingDmInvites ?? []).some((inv: any) => inv.senderId === personaId)) return 'invite';
   const lrt = s.lastReadTimestamp || {};
@@ -1053,8 +1063,12 @@ Expected: PASS (all cases).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/client/src/store/selectors/phase4.ts apps/client/src/store/__tests__/phase4-selectors.test.ts
-git commit -m "feat(client): Phase 4 derived selectors for unread state across surfaces"
+git add apps/client/src/store/useGameStore.ts apps/client/src/store/__tests__/phase4-selectors.test.ts
+git commit -m "feat(client): Phase 4 derived selectors for unread state across surfaces
+
+selectRevealsToReplay is memoSelector-wrapped (returns fresh array — avoids
+React 19 useSyncExternalStore infinite loop per the finite-zustand-selector-
+fresh-objects guardrail). Other selectors return primitives and are safe unwrapped."
 ```
 
 ---
@@ -1967,7 +1981,7 @@ In `Pill.tsx`, accept `unread: boolean` prop and render a coral 8px dot at top-r
 In `PulseBar.tsx`:
 
 ```tsx
-import { selectCartridgeUnread } from '../../../store/selectors/phase4';
+import { selectCartridgeUnread } from '../../../store/useGameStore';
 import type { DeepLinkIntent } from '@pecking-order/shared-types';
 
 interface Props {
@@ -2082,7 +2096,7 @@ describe('CastChip — silver pip', () => {
 
 - [ ] **Step 3: Add pip + mark-seen hook**
 
-In `CastChip.tsx`, import `selectSilverUnread` from selectors. Render a 10×10 gold circle at top-left when true, `data-testid={\`chip-silver-pip-${personaId}\`}`. In the tap handler (already opens DM), call `useGameStore.getState().markSilverSeen(personaId)` BEFORE `onOpen`.
+In `CastChip.tsx`, import `selectSilverUnread` from `../../../../store/useGameStore`. Render a 10×10 gold circle at top-left when true, `data-testid={\`chip-silver-pip-${personaId}\`}`. In the tap handler (already opens DM), call `useGameStore.getState().markSilverSeen(personaId)` BEFORE `onOpen`.
 
 Coexistence rule: coral unread-count badge (existing) is top-right; silver pip is top-left. They do not conflict.
 
@@ -2162,7 +2176,7 @@ describe('PanelButton — aggregate pip', () => {
 
 - [ ] **Step 3: Wire selector into `PanelButton`**
 
-In `apps/client/src/shells/pulse/components/header/PanelButton.tsx`, import `selectAggregatePulseUnread` from `../../../../store/selectors/phase4`. Render a pip with the returned count; collapse to `9+` when `> 9`; hide entirely when `0`.
+In `apps/client/src/shells/pulse/components/header/PanelButton.tsx`, import `selectAggregatePulseUnread` from `../../../../store/useGameStore`. Use `const count = useGameStore(selectAggregatePulseUnread);` — this selector returns a number (primitive), so it's safe without `memoSelector`. Render a pip with the count; collapse to `9+` when `> 9`; hide entirely when `0`.
 
 - [ ] **Step 4: Run — PASS**
 
@@ -2234,18 +2248,18 @@ describe('useRevealQueue', () => {
 
 ```typescript
 // apps/client/src/shells/pulse/hooks/useRevealQueue.ts
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useGameStore } from '../../../store/useGameStore';
-import { selectRevealsToReplay } from '../../../store/selectors/phase4';
+import { useState, useCallback } from 'react';
+import { useGameStore, selectRevealsToReplay } from '../../../store/useGameStore';
 
 type Reveal = { kind: 'elimination' | 'winner'; dayIndex?: number };
 
 export function useRevealQueue() {
-  const store = useGameStore();
+  // selectRevealsToReplay is memoSelector-wrapped — subscribing directly is safe
+  // and avoids a whole-store subscription (which would re-render on every change).
+  const queue = useGameStore(selectRevealsToReplay);
   const markRevealSeen = useGameStore(s => s.markRevealSeen);
   const [forced, setForced] = useState<Reveal | null>(null);
 
-  const queue = useMemo(() => selectRevealsToReplay(store), [store]);
   const current = forced ?? queue[0] ?? null;
 
   const dismiss = useCallback(() => {
@@ -2522,6 +2536,8 @@ After all tasks complete, verify:
 - [ ] All four `mark*` actions persist to `po-*-${gameId}-${playerId}` localStorage keys
 - [ ] `selectAggregatePulseUnread` sums DM + invite + cartridge + silver correctly
 - [ ] Priority for `selectCastChipUnreadKind` is invite > dm > silver
+- [ ] `selectRevealsToReplay` is wrapped with `memoSelector` (fresh-array selector — guardrail compliance)
+- [ ] No `apps/client/src/store/selectors/phase4.ts` file exists — selectors are colocated in `useGameStore.ts`
 - [ ] Reveals replay force-play honored on push intent (elimination and winner)
 - [ ] Phase 4 server preconditions (§0.1–§0.3) all landed in Phase 0 tasks
 - [ ] Spec §6 Testing coverage: every bullet has at least one corresponding test task
