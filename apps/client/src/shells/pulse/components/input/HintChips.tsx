@@ -16,7 +16,7 @@ const chips: Array<{
   { label: '/nudge',   command: 'nudge',   color: 'var(--pulse-nudge)',   visibility: { kind: 'capability',  cap: 'NUDGE' } },
   { label: '/dm',      command: 'dm',      color: 'var(--pulse-accent)',  visibility: { kind: 'channelType', allow: ['MAIN'] } },
   { label: '/whisper', command: 'whisper', color: 'var(--pulse-whisper)', visibility: { kind: 'capability',  cap: 'WHISPER' } },
-  { label: '@mention', command: 'mention', color: 'var(--pulse-text-2)', visibility: { kind: 'channelType', allow: ['GROUP_DM'] } },
+  { label: '@mention', command: 'mention', color: 'var(--pulse-text-2)', visibility: { kind: 'channelType', allow: ['MAIN', 'GROUP_DM'] } },
 ];
 
 interface HintChipsProps {

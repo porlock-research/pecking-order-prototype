@@ -3,6 +3,7 @@ import { useGameStore } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
 import { HandWaving, ChatCircle } from '../../icons';
 import { PULSE_SPRING, PULSE_TAP } from '../../springs';
+import { PULSE_Z, backdropFor } from '../../zIndex';
 
 interface NudgeConfirmationProps {
   targetId: string | null;
@@ -20,7 +21,7 @@ export function NudgeConfirmation({ targetId, onClose, onDM }: NudgeConfirmation
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 59, background: 'rgba(0,0,0,0.6)' }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: backdropFor(PULSE_Z.modal), background: 'rgba(0,0,0,0.6)' }} />
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -31,7 +32,7 @@ export function NudgeConfirmation({ targetId, onClose, onDM }: NudgeConfirmation
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          zIndex: 60,
+          zIndex: PULSE_Z.modal,
           padding: 32,
           borderRadius: 24,
           background: 'var(--pulse-surface)',

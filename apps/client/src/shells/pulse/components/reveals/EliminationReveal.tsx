@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../../store/useGameStore';
 import { PULSE_SPRING } from '../../springs';
 import { getPlayerColor } from '../../colors';
+import { PULSE_Z } from '../../zIndex';
 
 const SEEN_KEY = 'pulse_elim_seen';
 
@@ -46,7 +47,7 @@ export function EliminationReveal() {
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 70,
+            zIndex: PULSE_Z.reveal,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',

@@ -5,6 +5,7 @@ import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
 import { PULSE_SPRING, PULSE_TAP } from '../../springs';
+import { PULSE_Z, backdropFor } from '../../zIndex';
 
 const AMOUNTS = [5, 10, 25, 50];
 
@@ -33,7 +34,7 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 59, background: 'rgba(0,0,0,0.5)' }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: backdropFor(PULSE_Z.modal), background: 'rgba(0,0,0,0.5)' }} />
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
@@ -44,7 +45,7 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
           bottom: 0,
           left: 0,
           right: 0,
-          zIndex: 60,
+          zIndex: PULSE_Z.modal,
           borderRadius: '20px 20px 0 0',
           background: 'var(--pulse-surface)',
           padding: '20px 20px 32px',

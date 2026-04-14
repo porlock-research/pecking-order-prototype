@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../../store/useGameStore';
 import { PULSE_SPRING } from '../../springs';
+import { PULSE_Z } from '../../zIndex';
 import type { DayPhase } from '@pecking-order/shared-types';
 
 const PHASE_DISPLAY: Record<string, { icon: string; title: string; subtitle: string }> = {
@@ -47,7 +48,7 @@ export function PhaseTransition() {
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 70,
+            zIndex: PULSE_Z.reveal,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',

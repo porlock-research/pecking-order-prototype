@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, type MouseEvent } from 'react';
 import { Smiley, Reply } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
@@ -7,6 +7,7 @@ import { StatusRing } from '../StatusRing';
 import { ReactionBar } from './ReactionBar';
 import { ReactionChips } from './ReactionChips';
 import { MentionRenderer } from '../input/MentionRenderer';
+import { resolveAvatarUrl } from '../../../../utils/personaImage';
 import type { ChatMessage } from '@pecking-order/shared-types';
 
 interface MessageCardProps {
@@ -33,15 +34,23 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
   const replyMsg = message.replyTo ? chatLog.find(m => m.id === message.replyTo) : null;
   const replyPlayer = replyMsg ? roster[replyMsg.senderId] : null;
 
-  // Whisper indicator
+  // Whisper indicator — resolve recipient player for label + avatar
   const isWhisper = !!message.whisperTarget;
+  const whisperTarget = message.whisperTarget ? roster[message.whisperTarget] : null;
+  const whisperTargetIndex = message.whisperTarget ? Object.keys(roster).indexOf(message.whisperTarget) : 0;
+  const whisperTargetAvatar = whisperTarget ? resolveAvatarUrl(whisperTarget.avatarUrl) : null;
+
+  // Tap-to-reveal action buttons on touch devices (no hover available).
+  // The pulse-msg-tapped class hooks into the CSS rule at pulse-theme.css:115.
+  const [tapped, setTapped] = useState(false);
 
   const handleAvatarClick = () => {
     if (isSelf) return;
     openDM(message.senderId);
   };
 
-  const handleReply = () => {
+  const handleReply = (e: MouseEvent) => {
+    e.stopPropagation();
     window.dispatchEvent(new CustomEvent('pulse:reply', { detail: { message } }));
   };
 
@@ -90,7 +99,8 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
       {/* Content column: bubble + chips outside */}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
       <div
-        className="pulse-msg-content"
+        className={tapped ? 'pulse-msg-content pulse-msg-tapped' : 'pulse-msg-content'}
+        onClick={() => setTapped(v => !v)}
         style={{
           width: '100%',
           minWidth: 0,
@@ -124,7 +134,21 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
             <span style={{ fontWeight: 700, fontSize: 15, color, letterSpacing: -0.1 }}>{player?.personaName}</span>
             {isWhisper && (
-              <span style={{ fontSize: 11, color: 'var(--pulse-whisper)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>whisper</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--pulse-whisper)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                whisper{whisperTarget ? ' to' : ''}
+                {whisperTargetAvatar && (
+                  <img
+                    src={whisperTargetAvatar}
+                    alt=""
+                    style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover', marginLeft: 2 }}
+                  />
+                )}
+                {whisperTarget && (
+                  <span style={{ color: getPlayerColor(whisperTargetIndex), textTransform: 'none', fontWeight: 700 }}>
+                    {whisperTarget.personaName}
+                  </span>
+                )}
+              </span>
             )}
           </div>
         )}

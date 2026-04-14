@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectPendingInvitesForMe, selectStandings } from '../../../../store/useGameStore';
+import { PULSE_Z, backdropFor } from '../../zIndex';
 import { Podium } from './Podium';
 import { StandingsRest } from './StandingsRest';
 import { InviteRow } from './InviteRow';
@@ -23,7 +24,7 @@ export function SocialPanel({ onClose }: Props) {
         onClick={onClose}
         style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
-          backdropFilter: 'blur(5px)', zIndex: 80,
+          backdropFilter: 'blur(5px)', zIndex: backdropFor(PULSE_Z.drawer),
         }}
       />
       <motion.div
@@ -36,7 +37,7 @@ export function SocialPanel({ onClose }: Props) {
           borderTop: '1px solid var(--pulse-border)',
           boxShadow: '0 -6px 20px rgba(0,0,0,0.35)',
           display: 'flex', flexDirection: 'column',
-          zIndex: 81, overflowY: 'auto',
+          zIndex: PULSE_Z.drawer, overflowY: 'auto',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>

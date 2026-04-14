@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectStandings } from '../../../../store/useGameStore';
+import { PULSE_Z, backdropFor } from '../../zIndex';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import { DmHero } from './DmHero';
 import { DmGroupHero } from './DmGroupHero';
@@ -66,7 +67,7 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
         onClick={onClose}
         style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
-          backdropFilter: 'blur(5px)', zIndex: 80,
+          backdropFilter: 'blur(5px)', zIndex: backdropFor(PULSE_Z.drawer),
         }}
       />
       <motion.div
@@ -79,7 +80,7 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
           borderTop: '1px solid var(--pulse-border)',
           boxShadow: '0 -6px 20px rgba(0,0,0,0.35)',
           display: 'flex', flexDirection: 'column',
-          zIndex: 81, overflow: 'hidden',
+          zIndex: PULSE_Z.drawer, overflow: 'hidden',
         }}
       >
         {isGroup && groupMembers.length > 0
