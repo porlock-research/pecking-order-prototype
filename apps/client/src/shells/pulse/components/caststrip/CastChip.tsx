@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import type { CastStripEntry } from '../../../../store/useGameStore';
-import { useGameStore } from '../../../../store/useGameStore';
+import { useGameStore, selectChipSlotStatus } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
 import { resolveAvatarUrl } from '../../../../utils/personaImage';
 
@@ -15,6 +16,8 @@ interface Props {
 export function CastChip({ entry, onTap, pickingMode, picked, pickable }: Props) {
   const { player, isOnline, isTypingToYou, hasPendingInviteFromThem, unreadCount, isLeader } = entry;
   const roster = useGameStore(s => s.roster);
+  const slotStatus = useGameStore(s => selectChipSlotStatus(s, entry.id));
+  const [shaking, setShaking] = useState(false);
   const colorIdx = useMemo(() => Object.keys(roster).indexOf(entry.id), [roster, entry.id]);
   const color = getPlayerColor(colorIdx);
   const avatar = resolveAvatarUrl(player?.avatarUrl);
@@ -22,6 +25,16 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable }: Props)
   const isSelf = entry.kind === 'self';
   const dimmed = !isOnline && !isSelf && !hasPendingInviteFromThem;
   const disabledInPicking = pickingMode && !pickable && !isSelf;
+
+  const handleTap = () => {
+    if (!isSelf && !pickingMode && slotStatus === 'blocked') {
+      setShaking(true);
+      toast.error('Out of DM slots for today');
+      window.setTimeout(() => setShaking(false), 350);
+      return;
+    }
+    onTap(entry);
+  };
 
   let edgeColor: string | null = null;
   let glowColor: string | null = null;
@@ -38,7 +51,7 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable }: Props)
 
   return (
     <button
-      onClick={() => onTap(entry)}
+      onClick={handleTap}
       disabled={disabledInPicking}
       style={{
         position: 'relative',
@@ -53,6 +66,7 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable }: Props)
         filter: dimmed ? 'saturate(0.6)' : 'none',
         scrollSnapAlign: 'start',
         transition: 'transform 0.12s ease, opacity 0.3s ease, filter 0.3s ease',
+        animation: shaking ? 'pulse-chip-shake 350ms ease-in-out' : undefined,
       }}
     >
       <div

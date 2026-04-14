@@ -418,6 +418,24 @@ export const selectDmSlotsRemaining = (state: GameState): { used: number; total:
   return { used, total, remaining: Math.max(0, total - used) };
 };
 
+/**
+ * Chip tap feasibility: returns 'blocked' when the player can't open a NEW
+ * DM with `chipPlayerId` because slots are exhausted. Re-opening an existing
+ * DM with that person never blocks (no slot consumption).
+ */
+export const selectChipSlotStatus = (state: GameState, chipPlayerId: string): 'ok' | 'blocked' => {
+  const pid = state.playerId;
+  if (!pid || chipPlayerId === pid) return 'ok';
+  const target = state.roster[chipPlayerId];
+  if (!target || target.status !== 'ALIVE') return 'ok';
+  const hasExistingDm = Object.values(state.channels).some(c =>
+    c.type === ChannelTypes.DM && c.memberIds.includes(pid) && c.memberIds.includes(chipPlayerId),
+  );
+  if (hasExistingDm) return 'ok';
+  const { remaining } = selectDmSlotsRemaining(state);
+  return remaining > 0 ? 'ok' : 'blocked';
+};
+
 export const selectCastStripEntries = (state: GameState): CastStripEntry[] => {
   const pid = state.playerId;
   if (!pid) return [];

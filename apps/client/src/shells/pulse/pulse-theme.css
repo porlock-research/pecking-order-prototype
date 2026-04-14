@@ -90,6 +90,13 @@
   100% { background-position: -200% 0; }
 }
 
+/* Shake feedback for out-of-slots chip taps */
+@keyframes pulse-chip-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
 /* Message inline actions — hidden by default, shown on hover */
 .pulse-msg-actions {
   opacity: 0;
