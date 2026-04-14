@@ -83,8 +83,8 @@ Three server-side additions are required before Phase 4 client surfaces can be b
 The 60-minute filter sits on top of a 20-item server cap. A returning player after 4 hours in an active game may receive only 20 messages worth of history regardless of time.
 
 **Required:** Implementation plan first **verifies** what `tickerHistory` actually delivers on reconnect after a 4-hour gap in a simulated busy game. If the 20-count cap is the bottleneck for narrator/silver backfill:
-- **Convert the server broadcast buffer to time-based retention** (last 60 minutes, unbounded count within that window) with a safety cap (e.g., 500 entries) to prevent unbounded memory in pathological cases.
-- Size analysis to include in the plan: 60 minutes × 10 players × rough event rate → bytes estimate.
+- **Convert the server broadcast buffer to time-based retention** (last 60 minutes, unbounded count within that window) with a safety cap to prevent unbounded memory in pathological cases.
+- Size analysis to include in the plan: a busy 10-player game at ~1 event/player/min could produce ~600 entries in 60 minutes, so the cap must be sized against realistic worst-case load rather than defaulted to a round number. A provisional 500 was suggested in early drafting but is **not** a spec-locked value — the plan author must dimension it against measured event rates or an honest upper bound.
 
 If verification shows the 20-count cap is not the bottleneck (e.g., games are slow enough), this preamble step is skipped and documented.
 
@@ -94,7 +94,7 @@ One concept — "unread" / "unseen" — rendered across nine surface types.
 
 ### Naming harmonization
 
-Four parallel seen-state fields already exist (`lastReadTimestamp`, `dashboardSeenForDay`, `welcomeSeen`, `lastSeenFeedTimestamp`). Phase 4 adds three more. To keep the family coherent:
+Four parallel seen-state fields already exist (`lastReadTimestamp`, `dashboardSeenForDay`, `welcomeSeen`, `lastSeenFeedTimestamp`). `welcomeSeen` and `lastSeenFeedTimestamp` are shell-agnostic (hydrated in the shared SYNC reducer at `useGameStore.ts:628`); `dashboardSeenForDay` is Vivid-specific. Phase 4 adds three more. To keep the family coherent:
 
 - **`lastReadTimestamp`** (Plan A, entrenched, unchanged) — per-channel chat reads
 - **`lastSeenCartridge`** (new, Phase 4) — per-`cartridgeId` viewings
@@ -111,7 +111,7 @@ Three of the four new/existing Phase 4 names use the `lastSeen*` / `*Seen` conve
 | 2 | Cast chip (group DM) | Same as 1:1, by group `channelId` | Open group DM sheet *(exists)* | Same | Same |
 | 3 | Cast chip (pending invite) | Pending invite from sender *(exists, Plan B)* | Accept or Decline *(exists)* | Server state via SYNC | Server |
 | 4 | Cast chip (silver received) | Ticker `SILVER` entry targeting current player with `timestamp > lastSeenSilverFrom[senderId]` | Open the sender's DM sheet | `tickerMessages` (category `SILVER`) | `lastSeenSilverFrom` in localStorage |
-| 5 | Pulse pill (any lifecycle) | `cartridge.updatedAt > lastSeenCartridge[cartridgeId]` OR the pill transitioned to `completed` and `cartridgeId` has no entry in `lastSeenCartridge` | Tap pill → intent routes to `cartridge_active` / `cartridge_result` handler | `cartridgeId` + `updatedAt` from §0 preamble | `lastSeenCartridge` in localStorage |
+| 5 | Pulse pill (any lifecycle) | Any of: (a) `cartridge.updatedAt > lastSeenCartridge[cartridgeId]`; (b) pill transitioned to `completed` and `cartridgeId` has no entry in `lastSeenCartridge`; (c) pill is `completed` and `completedAt > lastSeenCartridge[cartridgeId]` — results are a distinct content beat, so a cartridge seen mid-activity re-raises the dot when its results land | Tap pill → intent routes to `cartridge_active` / `cartridge_result` handler | `cartridgeId` + `updatedAt` + `completedAt` from §0 preamble | `lastSeenCartridge` in localStorage |
 | 6 | Chat feed divider (MAIN) | First MAIN message with `ts > lastReadTimestamp['MAIN']` | Divider scrolls off top of viewport → `markChannelRead('MAIN')` | `chatLog['MAIN']` + `lastReadTimestamp['MAIN']` | Derived per mount from persisted `lastReadTimestamp['MAIN']` |
 | 7 | Elimination reveal | Any `roster[id].status === 'ELIMINATED'` not recorded in `revealsSeen.elimination[dayIndex]` | Reveal dismissed | Roster diff (pattern already used in `EliminationReveal.tsx:19-20`); `dayIndex` from `roster[id].eliminatedOnDay` if present, else current `dayIndex` at observation time | `revealsSeen.elimination[dayIndex] = true` in localStorage |
 | 8 | Winner reveal | `winner` field set and `revealsSeen.winner !== true` | Reveal dismissed | `state.winner` from store | `revealsSeen.winner = true` in localStorage |
@@ -180,7 +180,7 @@ type DeepLinkIntent =
 4. **Shell** (Pulse's `PulseShell`) uses a new `useDeepLinkIntent` hook that subscribes to `DEEP_LINK_INTENT` messages and reads the `?intent=` fallback on first mount. Per-intent routing:
    - `dm` → open DM sheet for `channelId`
    - `dm_invite` → open DM sheet for the sender (which renders the pending-invite state, per Phase 1.5)
-   - `cartridge_active` / `cartridge_result` → **interim behavior while overlay is deferred:** scroll the target pill into view in the PulseBar, flash a coral highlight on it for ~1.2s, announce via a toast (`"Tap to view {label}"`), and mark the cartridge seen. When the overlay ships, the handler is replaced with a direct overlay-open call. The push payload format does not change.
+   - `cartridge_active` / `cartridge_result` → **interim behavior while overlay is deferred:** branches on intent origin. **Push-driven** (the user tapped a notification): scroll the target pill into view, flash a coral highlight for ~1.2s, announce via a toast (`"Tap to view {label}"`), and mark the cartridge seen. **Manual** (the user tapped the pill themselves): skip scroll/toast — the pill is already where the user's finger was — just mark the cartridge seen. The handler receives an `origin: 'push' | 'manual'` flag from the caller. When the overlay ships, both branches collapse into a direct overlay-open call. The push payload format does not change.
    - `elimination_reveal` → force-play the elimination reveal for `dayIndex`, ignoring `revealsSeen`
    - `winner_reveal` → force-play the winner reveal, ignoring `revealsSeen`
    - `main` → no-op (default landing)
@@ -242,7 +242,10 @@ selectCartridgeUnread: (cartridgeId: string) => boolean
 selectSilverUnread: (senderId: string) => boolean
 selectRevealsToReplay: () => Array<{kind: 'elimination' | 'winner', dayIndex?: number}>
 selectAggregatePulseUnread: () => number           // for ☰ pip
-selectCastChipUnreadKind: (personaId: string) => 'dm' | 'silver' | 'invite' | null  // priority-ordered for the chip treatment
+selectCastChipUnreadKind: (personaId: string) => 'dm' | 'silver' | 'invite' | null
+// Priority order: invite > DM > silver. Rationale: "wants to start talking" (invite)
+// outranks "is talking" (DM) outranks "sent you money" (silver) by social salience —
+// an unanswered invite is the strongest call to action.
 ```
 
 ### Engine / hook additions
@@ -442,7 +445,7 @@ Mirroring the rigor of the 2026-04-13 sibling specs (polish, flow-extensions). T
 - URL-addressable deep links.
 - Scroll-position-based read inference beyond the single MAIN-channel chat divider.
 - Pulse cartridge overlay UI (separate phase per 2026-04-12 §11).
-- Refactor of pre-existing `dashboardSeenForDay` / `welcomeSeen` / `lastSeenFeedTimestamp` (Vivid-shell concerns; out of Pulse's scope for this spec).
+- Refactor of pre-existing `dashboardSeenForDay` / `welcomeSeen` / `lastSeenFeedTimestamp` (touching them adds scope without benefit for the Phase 4 goals; they're documented in the glossary so future maintainers don't introduce a fifth name).
 - A shared `UnreadBadge` component (optional to create in plan; not required).
 - Adding `START_GAME` / `START_ACTIVITY` to `phasePushPayload` (unrelated dead enum values; flagged for a separate cleanup).
 - Fixing the `goldPayouts` missing-from-client-interface gap (unrelated live bug; flagged for a separate cleanup).
@@ -453,9 +456,9 @@ Mirroring the rigor of the 2026-04-13 sibling specs (polish, flow-extensions). T
 - **`lastSeenCartridge`** — Phase 4, per-`cartridgeId` timestamp of last cartridge view.
 - **`lastSeenSilverFrom`** — Phase 4, per-sender-playerId timestamp of last silver acknowledgement.
 - **`revealsSeen`** — Phase 4, device-local record of elimination (per `dayIndex`) and winner reveals dismissed.
-- **`lastSeenFeedTimestamp`** — pre-existing, ticker-feed view marker. **Not** used by Phase 4.
+- **`lastSeenFeedTimestamp`** — pre-existing, shell-agnostic ticker-feed view marker. **Not** used by Phase 4.
 - **`dashboardSeenForDay`** — pre-existing, Vivid-shell dashboard marker. **Not** used by Phase 4.
-- **`welcomeSeen`** — pre-existing, first-session welcome modal flag. **Not** used by Phase 4.
+- **`welcomeSeen`** — pre-existing, shell-agnostic first-session welcome flag. **Not** used by Phase 4.
 - **`cartridgeId`** — Phase 4 (§0.1), stable identifier `${kind}-${dayIndex}-${typeKey}` usable across active and completed lifecycle states.
 - **`CartridgeKind`** — `'voting' | 'game' | 'prompt' | 'dilemma'` (lowercase, four values). Activities map to `prompt`.
 - **Intent** — semantic deep-link target object (`{kind, ...targetFields}`) carried in push `data.intent`, not the URL.
