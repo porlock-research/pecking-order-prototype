@@ -50,6 +50,13 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
         .filter((m): m is { id: string; player: typeof roster[string]; colorIdx: number } => !!m.player)
     : [];
 
+  const groupPendingMembers = isGroup && channel
+    ? (channel.pendingMemberIds ?? [])
+        .filter(id => id !== playerId)
+        .map(id => ({ id, player: roster[id], colorIdx: Object.keys(roster).indexOf(id) }))
+        .filter((m): m is { id: string; player: typeof roster[string]; colorIdx: number } => !!m.player)
+    : [];
+
   return (
     <>
       <motion.div
@@ -75,7 +82,7 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
         }}
       >
         {isGroup && groupMembers.length > 0
-          ? <DmGroupHero members={groupMembers} channelId={channel?.id ?? null} onClose={onClose} />
+          ? <DmGroupHero members={groupMembers} pendingMembers={groupPendingMembers} channelId={channel?.id ?? null} onClose={onClose} />
           : targetPlayer && (
               <DmHero
                 player={targetPlayer}
