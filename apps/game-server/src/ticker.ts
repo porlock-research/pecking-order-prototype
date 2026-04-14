@@ -175,15 +175,19 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
       const actor = name(fact.actorId);
       const totalPartners = memberIds.length;
       let text: string;
+      // Markdown-style **bold** wraps persona names and counts. Client NarratorLine
+      // parser styles these with the accent color and renders an inline avatar when
+      // the bolded token matches a roster persona name. Per v1-narrator-intrigue.md
+      // these lines are public intrigue — actor is public, target is NEVER named.
       if (kind === 'add_member') {
-        text = `${actor} pulled someone else into their chat`;
+        text = `**${actor}** pulled someone else into their chat`;
       } else if (totalPartners >= 4) {
         // Initial alliance formation (4+ invited = 5+ total incl. actor)
-        text = `${totalPartners + 1} players formed an alliance headed by ${actor}`;
+        text = `**${totalPartners + 1} players** formed an alliance headed by **${actor}**`;
       } else if (totalPartners >= 2) {
-        text = `${actor} is scheming with someone`;
+        text = `**${actor}** is scheming with someone`;
       } else {
-        text = `${actor} started talking to someone`;
+        text = `**${actor}** started talking to someone`;
       }
       return {
         id: crypto.randomUUID(),
