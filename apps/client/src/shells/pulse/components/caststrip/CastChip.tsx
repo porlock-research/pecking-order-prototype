@@ -11,9 +11,10 @@ interface Props {
   pickingMode: boolean;
   picked: boolean;
   pickable: boolean;
+  locked?: boolean;
 }
 
-export function CastChip({ entry, onTap, pickingMode, picked, pickable }: Props) {
+export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked = false }: Props) {
   const { player, isOnline, isTypingToYou, hasPendingInviteFromThem, unreadCount, isLeader } = entry;
   const roster = useGameStore(s => s.roster);
   const slotStatus = useGameStore(s => selectChipSlotStatus(s, entry.id));
@@ -27,6 +28,7 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable }: Props)
   const disabledInPicking = pickingMode && !pickable && !isSelf;
 
   const handleTap = () => {
+    if (locked) return;
     if (!isSelf && !pickingMode && slotStatus === 'blocked') {
       setShaking(true);
       toast.error('Out of DM slots for today');
@@ -161,7 +163,7 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable }: Props)
         </span>
       )}
 
-      {pickingMode && picked && (
+      {pickingMode && picked && !locked && (
         <>
           <span style={{
             position: 'absolute', inset: 0, borderRadius: 14,
@@ -175,6 +177,16 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable }: Props)
             border: '3px solid var(--pulse-bg)', fontSize: 12, fontWeight: 900,
           }}>✓</span>
         </>
+      )}
+
+      {locked && (
+        <span style={{
+          position: 'absolute', top: -6, right: -6,
+          padding: '2px 6px', borderRadius: 9,
+          background: 'rgba(20,20,26,0.85)', color: 'var(--pulse-text-2)',
+          fontSize: 9, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase',
+          border: '2px solid var(--pulse-bg)', pointerEvents: 'none',
+        }}>In</span>
       )}
     </button>
   );

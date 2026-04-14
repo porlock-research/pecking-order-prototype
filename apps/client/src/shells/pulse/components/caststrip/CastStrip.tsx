@@ -8,11 +8,20 @@ export function CastStrip() {
   const entries = useGameStore(useShallow(selectCastStripEntries));
   const pickingMode = useGameStore(s => s.pickingMode);
   const togglePicked = useGameStore(s => s.togglePicked);
+  const channels = useGameStore(s => s.channels);
   const { openDM, openSocialPanel } = usePulse();
+
+  const lockedIds = (() => {
+    if (pickingMode?.kind !== 'add-member') return new Set<string>();
+    const ch = channels?.[pickingMode.channelId];
+    if (!ch) return new Set<string>();
+    return new Set<string>([...(ch.memberIds ?? []), ...(ch.pendingMemberIds ?? [])]);
+  })();
 
   const handleTap = (entry: CastStripEntry) => {
     if (pickingMode) {
       if (entry.kind === 'self' || entry.kind === 'group') return;
+      if (lockedIds.has(entry.id)) return;
       togglePicked(entry.id);
       return;
     }
@@ -47,7 +56,8 @@ export function CastStrip() {
             if (pickingMode) return null;
             return <GroupChip key={entry.id} entry={entry} onTap={handleTap} />;
           }
-          const pickable = !!pickingMode && entry.kind === 'player';
+          const locked = lockedIds.has(entry.id);
+          const pickable = !!pickingMode && entry.kind === 'player' && !locked;
           const picked = pickingMode?.selected.includes(entry.id) ?? false;
           return (
             <CastChip
@@ -57,6 +67,7 @@ export function CastStrip() {
               pickingMode={!!pickingMode}
               picked={picked}
               pickable={pickable}
+              locked={locked}
             />
           );
         })}
