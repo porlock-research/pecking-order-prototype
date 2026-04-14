@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { MessageCard } from './MessageCard';
@@ -6,8 +6,66 @@ import { BroadcastCard } from './BroadcastCard';
 import { WhisperCard } from './WhisperCard';
 import { SilverTransferCard } from './SilverTransferCard';
 import { TypingIndicator } from './TypingIndicator';
-import { DayPhases, GAME_MASTER_ID, TickerCategories } from '@pecking-order/shared-types';
+import { NarratorLine } from './NarratorLine';
+import { ChannelTypes, DayPhases, GAME_MASTER_ID, TickerCategories } from '@pecking-order/shared-types';
 import type { TickerMessage } from '@pecking-order/shared-types';
+
+interface NarratorItem {
+  id: string;
+  kind: 'talking' | 'scheming' | 'alliance';
+  text: string;
+  timestamp: number;
+}
+
+function useNarratorLines(): NarratorItem[] {
+  const channels = useGameStore(s => s.channels);
+  const roster = useGameStore(s => s.roster);
+  const playerId = useGameStore(s => s.playerId);
+
+  return useMemo(() => {
+    const items: NarratorItem[] = [];
+    for (const ch of Object.values(channels)) {
+      if (ch.type === ChannelTypes.DM) {
+        const accepted = (ch.memberIds || []).length >= 2 && (ch.pendingMemberIds || []).length === 0;
+        if (!accepted || !ch.createdBy || ch.createdBy === playerId) continue;
+        const inviter = roster[ch.createdBy];
+        if (!inviter) continue;
+        items.push({
+          id: `talk-${ch.id}`, kind: 'talking', timestamp: ch.createdAt,
+          text: `${inviter.personaName} started talking to someone`,
+        });
+      }
+      if (ch.type === ChannelTypes.GROUP_DM) {
+        const memberCount = (ch.memberIds || []).length;
+        if (memberCount >= 4) {
+          const leader = ch.createdBy ? roster[ch.createdBy] : null;
+          items.push({
+            id: `alliance-${ch.id}`, kind: 'alliance', timestamp: ch.createdAt,
+            text: `${memberCount} players formed an alliance${leader ? ` headed by ${leader.personaName}` : ''}`,
+          });
+        } else if (memberCount >= 2) {
+          const names = (ch.memberIds || [])
+            .map(id => roster[id]?.personaName?.split(' ')[0])
+            .filter((n): n is string => !!n);
+          const [a, b] = names;
+          if (a && b) {
+            items.push({
+              id: `scheme-${ch.id}`, kind: 'scheming', timestamp: ch.createdAt,
+              text: `${a} and ${b} started scheming`,
+            });
+          }
+        }
+      }
+    }
+    // Rate-limit: keep one narrator line per minute bucket (earliest wins)
+    const buckets = new Map<number, NarratorItem>();
+    for (const item of items.sort((a, b) => a.timestamp - b.timestamp)) {
+      const bucket = Math.floor(item.timestamp / 60000);
+      if (!buckets.has(bucket)) buckets.set(bucket, item);
+    }
+    return Array.from(buckets.values());
+  }, [channels, roster, playerId]);
+}
 
 export function ChatView() {
   const chatLog = useGameStore(s => s.chatLog);
@@ -31,14 +89,18 @@ export function ChatView() {
       || t.category === TickerCategories.SOCIAL_NUDGE,
   );
 
-  // Interleave messages and social events by timestamp
+  const narratorLines = useNarratorLines();
+
+  // Interleave messages, social events, and narrator lines by timestamp
   type TimelineEntry =
     | { type: 'msg'; data: any; ts: number }
-    | { type: 'social'; data: TickerMessage; ts: number };
+    | { type: 'social'; data: TickerMessage; ts: number }
+    | { type: 'narrator'; data: NarratorItem; ts: number };
 
   const timeline: TimelineEntry[] = [
     ...mainMessages.map(m => ({ type: 'msg' as const, data: m, ts: m.timestamp })),
     ...socialEvents.map(t => ({ type: 'social' as const, data: t, ts: t.timestamp })),
+    ...narratorLines.map(n => ({ type: 'narrator' as const, data: n, ts: n.timestamp })),
   ].sort((a, b) => a.ts - b.ts);
 
   // Auto-scroll on new entries
@@ -101,6 +163,15 @@ export function ChatView() {
       )}
 
       {grouped.map(({ entry, showHeader }) => {
+        if (entry.type === 'narrator') {
+          return (
+            <NarratorLine
+              key={entry.data.id}
+              kind={entry.data.kind}
+              text={entry.data.text}
+            />
+          );
+        }
         // Social event from ticker (silver, nudge, perk) — inline broadcast card
         if (entry.type === 'social') {
           const t = entry.data;

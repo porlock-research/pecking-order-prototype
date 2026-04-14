@@ -4,7 +4,6 @@ import type { ShellProps } from '../types';
 import type { GameEngine } from '../types';
 import { useGameStore } from '../../store/useGameStore';
 import { AmbientBackground } from './components/AmbientBackground';
-import { Ticker } from './components/Ticker';
 import { PulseBar } from './components/PulseBar';
 import { TabBar } from './components/TabBar';
 import { ChatView } from './components/chat/ChatView';
@@ -83,7 +82,6 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
         }}
       >
         <AmbientBackground />
-        <Ticker />
         <PulseHeader onCompose={startPicking} onOpenPanel={openSocialPanel} />
         {pickingActive && <PickingBanner />}
         <CastStrip />
