@@ -14,7 +14,7 @@ import { PulseInput } from './components/input/PulseInput';
 import { AvatarPopover } from './components/popover/AvatarPopover';
 import { SendSilverSheet } from './components/popover/SendSilverSheet';
 import { NudgeConfirmation } from './components/popover/NudgeConfirmation';
-import { DMView } from './components/dm/DMView';
+import { DmSheet } from './components/dm-sheet/DmSheet';
 import { EliminationReveal } from './components/reveals/EliminationReveal';
 import { WinnerReveal } from './components/reveals/WinnerReveal';
 import { PhaseTransition } from './components/reveals/PhaseTransition';
@@ -37,8 +37,6 @@ export function usePulse() {
 
 export default function PulseShell({ playerId, engine, token }: ShellProps) {
   const [activeTab, setActiveTab] = useState<'chat' | 'cast'>('chat');
-  const phase = useGameStore(s => s.phase);
-  const channels = useGameStore(s => s.channels);
   const gameId = useGameStore(s => s.gameId);
   const hydrateLastRead = useGameStore(s => s.hydrateLastRead);
 
@@ -65,15 +63,6 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
     setDmIsGroup(isGroup);
   }, []);
   const openSocialPanel = useCallback(() => setSocialPanelOpen(true), []);
-
-  // Resolve DM channel for the current dmTarget (may not exist yet — first DM creates it)
-  const dmChannel = dmTarget
-    ? Object.values(channels).find(ch =>
-        ch.type === 'DM' &&
-        ch.memberIds.includes(playerId) &&
-        ch.memberIds.includes(dmTarget)
-      )
-    : null;
 
   return (
     <PulseContext.Provider value={{ engine, playerId, openAvatarPopover, openSendSilver, openNudge, openDM, openSocialPanel }}>
@@ -124,13 +113,16 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
             />
           )}
         </AnimatePresence>
-        {dmTarget && (
-          <DMView
-            channelId={dmChannel?.id ?? null}
-            targetId={dmTarget}
-            onBack={() => setDmTarget(null)}
-          />
-        )}
+        <AnimatePresence>
+          {dmTarget && (
+            <DmSheet
+              key={`${dmTarget}-${dmIsGroup}`}
+              targetId={dmTarget}
+              isGroup={dmIsGroup}
+              onClose={() => { setDmTarget(null); setDmIsGroup(false); }}
+            />
+          )}
+        </AnimatePresence>
 
         <EliminationReveal />
         <WinnerReveal />
