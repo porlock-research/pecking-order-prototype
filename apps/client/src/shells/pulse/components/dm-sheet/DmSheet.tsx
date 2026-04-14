@@ -10,6 +10,7 @@ import { DmInput } from './DmInput';
 import { DmEmptyState } from './DmEmptyState';
 import { DmPendingState } from './DmPendingState';
 import { DmWaitingBanner } from './DmWaitingBanner';
+import { TypingIndicator } from '../chat/TypingIndicator';
 
 interface Props {
   targetId: string;            // playerId (1:1) or channelId (group)
@@ -82,6 +83,7 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
                 rank={targetRank}
                 isLeader={targetIsLeader}
                 isOnline={targetIsOnline}
+                channelId={channel?.id ?? null}
                 onClose={onClose}
               />
             )}
@@ -112,6 +114,8 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
             }
 
             {outgoingPending && targetPlayer && <DmWaitingBanner targetName={targetPlayer.personaName} />}
+
+            {channel && <TypingIndicator channelId={channel.id} />}
 
             <DmInput
               channelId={channel?.id ?? null}

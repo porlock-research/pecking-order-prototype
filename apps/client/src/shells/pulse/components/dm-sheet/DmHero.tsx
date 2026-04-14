@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { SocialPlayer } from '@pecking-order/shared-types';
 import { getPlayerColor } from '../../colors';
 import { PersonaImage, initialsOf } from '../common/PersonaImage';
+import { DmStatusRing } from './DmStatusRing';
 
 interface Props {
   player: SocialPlayer;
@@ -9,10 +10,11 @@ interface Props {
   rank: number | null;
   isLeader: boolean;
   isOnline: boolean;
+  channelId: string | null;
   onClose: () => void;
 }
 
-export function DmHero({ player, colorIdx, rank, isLeader, isOnline, onClose }: Props) {
+export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, onClose }: Props) {
   const color = getPlayerColor(colorIdx);
   const [variant, setVariant] = useState<'headshot' | 'medium' | 'full'>('headshot');
 
@@ -70,7 +72,21 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, onClose }: 
         position: 'absolute', left: 0, right: 0, bottom: 0,
         padding: '40px 16px 14px',
         background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)',
+        display: 'flex', alignItems: 'flex-end', gap: 12,
       }}>
+        <DmStatusRing partnerId={player.id} channelId={channelId} color={color} size={52}>
+          <PersonaImage
+            avatarUrl={player.avatarUrl}
+            cacheKey={`${player.id}:ring`}
+            preferredVariant="headshot"
+            fallbackChain={['headshot']}
+            initials={initialsOf(player.personaName)}
+            playerColor={color}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        </DmStatusRing>
+        <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 28, fontWeight: 800, color, letterSpacing: -0.3,
           textShadow: '0 1px 4px rgba(0,0,0,0.9)',
@@ -99,6 +115,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, onClose }: 
               padding: '3px 9px', borderRadius: 10, fontSize: 10, fontWeight: 700,
             }}>#{rank} · {player.silver} silver</span>
           )}
+        </div>
         </div>
       </div>
     </div>
