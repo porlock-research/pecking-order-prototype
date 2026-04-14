@@ -1,8 +1,17 @@
 import { useState, createContext, useContext, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
 import './pulse-theme.css';
 import type { ShellProps } from '../types';
 import type { GameEngine } from '../types';
 import { useGameStore } from '../../store/useGameStore';
+
+const DM_REJECTION_LABELS: Record<string, string> = {
+  DMS_CLOSED: 'DMs are closed right now',
+  INVALID_MEMBERS: 'Invalid members',
+  TARGET_ELIMINATED: 'That player has been eliminated',
+  GROUP_LIMIT: 'Group DM limit reached',
+  UNAUTHORIZED: 'Only the creator can add members',
+};
 import { AmbientBackground } from './components/AmbientBackground';
 import { PulseBar } from './components/PulseBar';
 import { ChatView } from './components/chat/ChatView';
@@ -46,6 +55,15 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
   useEffect(() => {
     if (gameId && playerId) hydrateLastRead(gameId, playerId);
   }, [gameId, playerId, hydrateLastRead]);
+
+  // Surface DM/channel rejections as toasts (e.g., creator-only ADD_MEMBER guard).
+  const dmRejection = useGameStore(s => s.dmRejection);
+  const clearDmRejection = useGameStore(s => s.clearDmRejection);
+  useEffect(() => {
+    if (!dmRejection) return;
+    toast.error(DM_REJECTION_LABELS[dmRejection.reason] ?? dmRejection.reason);
+    clearDmRejection();
+  }, [dmRejection, clearDmRejection]);
 
   // Overlay state
   const [silverTarget, setSilverTarget] = useState<string | null>(null);
