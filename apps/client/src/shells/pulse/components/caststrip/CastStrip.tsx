@@ -11,7 +11,7 @@ export function CastStrip() {
   const { openDM, openSocialPanel } = usePulse();
 
   const handleTap = (entry: CastStripEntry) => {
-    if (pickingMode.active) {
+    if (pickingMode) {
       if (entry.kind === 'self' || entry.kind === 'group') return;
       togglePicked(entry.id);
       return;
@@ -44,17 +44,17 @@ export function CastStrip() {
       }}>
         {entries.map(entry => {
           if (entry.kind === 'group') {
-            if (pickingMode.active) return null;
+            if (pickingMode) return null;
             return <GroupChip key={entry.id} entry={entry} onTap={handleTap} />;
           }
-          const pickable = pickingMode.active && entry.kind === 'player';
-          const picked = pickingMode.selected.includes(entry.id);
+          const pickable = !!pickingMode && entry.kind === 'player';
+          const picked = pickingMode?.selected.includes(entry.id) ?? false;
           return (
             <CastChip
               key={entry.id}
               entry={entry}
               onTap={handleTap}
-              pickingMode={pickingMode.active}
+              pickingMode={!!pickingMode}
               picked={picked}
               pickable={pickable}
             />

@@ -40,7 +40,7 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
   const gameId = useGameStore(s => s.gameId);
   const hydrateLastRead = useGameStore(s => s.hydrateLastRead);
   const startPicking = useGameStore(s => s.startPicking);
-  const pickingActive = useGameStore(s => s.pickingMode.active);
+  const pickingActive = useGameStore(s => s.pickingMode !== null);
 
   // Hydrate Phase 1.5 lastReadTimestamp from localStorage, namespaced per (gameId, playerId)
   useEffect(() => {

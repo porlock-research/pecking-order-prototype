@@ -77,10 +77,10 @@ interface GameState {
 
   // Pulse Phase 1.5 additions
   lastReadTimestamp: Record<string, number>;
-  pickingMode: {
-    active: boolean;
-    selected: string[];
-  };
+  pickingMode:
+    | null
+    | { kind: 'new-dm'; selected: string[] }
+    | { kind: 'add-member'; channelId: string; selected: string[] };
 
   // Actions
   sync: (data: any) => void;
@@ -112,6 +112,7 @@ interface GameState {
   hydrateLastRead: (gameId: string, playerId: string) => void;
   markChannelRead: (channelId: string) => void;
   startPicking: () => void;
+  startAddMember: (channelId: string) => void;
   cancelPicking: () => void;
   togglePicked: (playerId: string) => void;
 }
@@ -552,7 +553,7 @@ export const useGameStore = create<GameState>((set) => ({
   requestedTab: null,
 
   lastReadTimestamp: {},
-  pickingMode: { active: false, selected: [] },
+  pickingMode: null,
 
   sync: (data) => set((state) => {
     console.log('[SYNC] Received', {
@@ -673,11 +674,13 @@ export const useGameStore = create<GameState>((set) => ({
     } catch {}
     return { lastReadTimestamp: next };
   }),
-  startPicking: () => set({ pickingMode: { active: true, selected: [] } }),
-  cancelPicking: () => set({ pickingMode: { active: false, selected: [] } }),
+  startPicking: () => set({ pickingMode: { kind: 'new-dm', selected: [] } }),
+  startAddMember: (channelId) => set({ pickingMode: { kind: 'add-member', channelId, selected: [] } }),
+  cancelPicking: () => set({ pickingMode: null }),
   togglePicked: (playerId) => set((state) => {
+    if (!state.pickingMode) return {};
     const sel = state.pickingMode.selected;
     const next = sel.includes(playerId) ? sel.filter(id => id !== playerId) : [...sel, playerId];
-    return { pickingMode: { active: true, selected: next } };
+    return { pickingMode: { ...state.pickingMode, selected: next } };
   }),
 }));

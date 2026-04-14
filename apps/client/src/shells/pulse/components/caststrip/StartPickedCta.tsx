@@ -8,13 +8,20 @@ export function StartPickedCta() {
   const cancelPicking = useGameStore(s => s.cancelPicking);
   const { engine, openDM } = usePulse();
 
-  if (!pickingMode.active || pickingMode.selected.length === 0) return null;
+  if (!pickingMode || pickingMode.selected.length === 0) return null;
 
-  const label = pickingMode.selected.length === 1
-    ? `Start chat with ${roster[pickingMode.selected[0]]?.personaName ?? ''}`
-    : `Start group with ${pickingMode.selected.length}`;
+  const label = pickingMode.kind === 'add-member'
+    ? `Add ${pickingMode.selected.length}`
+    : pickingMode.selected.length === 1
+      ? `Start chat with ${roster[pickingMode.selected[0]]?.personaName ?? ''}`
+      : `Start group with ${pickingMode.selected.length}`;
 
   const go = () => {
+    if (pickingMode.kind === 'add-member') {
+      engine.addMember(pickingMode.channelId, pickingMode.selected);
+      cancelPicking();
+      return;
+    }
     if (pickingMode.selected.length === 1) {
       // Defer first-message creation to when the user actually types.
       // Opens the DmSheet with no resolved channel → DmInput will call
