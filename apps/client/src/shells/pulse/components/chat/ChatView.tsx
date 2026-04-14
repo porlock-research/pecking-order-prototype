@@ -5,6 +5,7 @@ import { MessageCard } from './MessageCard';
 import { BroadcastCard } from './BroadcastCard';
 import { WhisperCard } from './WhisperCard';
 import { SilverTransferCard } from './SilverTransferCard';
+import { NudgeTransferCard } from './NudgeTransferCard';
 import { TypingIndicator } from './TypingIndicator';
 import { NarratorLine } from './NarratorLine';
 import { DayPhases, GAME_MASTER_ID, TickerCategories } from '@pecking-order/shared-types';
@@ -22,11 +23,6 @@ function socialInviteToNarratorKind(t: TickerMessage): 'talking' | 'scheming' | 
   return 'talking';
 }
 
-function narratorKindFor(t: TickerMessage): 'talking' | 'scheming' | 'alliance' | 'nudge' {
-  if (t.category === TickerCategories.SOCIAL_NUDGE) return 'nudge';
-  return socialInviteToNarratorKind(t);
-}
-
 export function ChatView() {
   const chatLog = useGameStore(s => s.chatLog);
   const tickerMessages = useGameStore(s => s.tickerMessages);
@@ -42,18 +38,18 @@ export function ChatView() {
   );
 
   // Social events from ticker that should render as inline broadcast cards
-  // (silver transfers, perks — these are facts, not chat messages)
+  // (silver transfers, nudges, perks — these are facts, not chat messages).
+  // Nudges get a dedicated transfer-style card; perks fall back to BroadcastCard.
   const socialEvents: TickerMessage[] = tickerMessages.filter(
     t => t.category === TickerCategories.SOCIAL_TRANSFER
+      || t.category === TickerCategories.SOCIAL_NUDGE
       || t.category === TickerCategories.SOCIAL_PERK,
   );
 
-  // Narrator lines come from SOCIAL_INVITE and SOCIAL_NUDGE ticker events (fact-driven).
-  // Same public-intrigue treatment as invite narrator lines (bold-token markdown
-  // → inline avatar + accented name).
+  // Narrator lines come from SOCIAL_INVITE ticker events (fact-driven).
+  // Public intrigue copy only — never names targets, never viewer-relative.
   const narratorTickers: TickerMessage[] = tickerMessages.filter(
-    t => t.category === TickerCategories.SOCIAL_INVITE
-      || t.category === TickerCategories.SOCIAL_NUDGE,
+    t => t.category === TickerCategories.SOCIAL_INVITE,
   );
 
   // Interleave messages, social events, and narrator lines by timestamp
@@ -132,7 +128,7 @@ export function ChatView() {
           return (
             <NarratorLine
               key={entry.data.id}
-              kind={narratorKindFor(entry.data)}
+              kind={socialInviteToNarratorKind(entry.data)}
               text={entry.data.text}
             />
           );
@@ -150,7 +146,17 @@ export function ChatView() {
               />
             );
           }
-          // Other social events (nudge, perk) use the simpler broadcast card
+          // Nudges get a matching avatar-based pill (same grammar as silver).
+          if (t.category === TickerCategories.SOCIAL_NUDGE) {
+            return (
+              <NudgeTransferCard
+                key={`social-${t.timestamp}-${t.text.slice(0, 20)}`}
+                text={t.text}
+                timestamp={t.timestamp}
+              />
+            );
+          }
+          // Other social events (perk) use the simpler broadcast card
           return (
             <BroadcastCard
               key={`social-${t.timestamp}-${t.text.slice(0, 20)}`}
