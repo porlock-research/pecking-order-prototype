@@ -1,0 +1,32 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: (apps/game-server/src/(machines/actions/l3-social|push-triggers|ticker|machine-actions)\.ts|apps/client/src/shells/.+/(dm-sheet|conversations)/.+\.tsx?)$
+ADVISORY: |
+  Invite mode gotcha — `pendingMemberIds` is NOT `memberIds`.
+
+  When `context.requireDmInvite === true`, a freshly-created DM channel looks
+  like this:
+
+    { memberIds: [senderId], pendingMemberIds: [recipientId], ... }
+
+  The recipient is NOT a full member yet — they become one only after
+  ACCEPT_DM. Code that reads `channel.memberIds` to drive behavior (fact
+  targets, push recipients, UI lists, capability checks) silently ignores
+  pending members in invite mode.
+
+  This bit us 2026-04-14: `emitChatFact` computed push targets from
+  `memberIds` only, so initial DM invites in invite mode never notified the
+  recipient. Fix was `emitInitialDmInviteFact` emitting DM_INVITE_SENT with
+  `[...memberIds, ...pendingMemberIds]` as the recipient set.
+
+  When editing any code that iterates channel membership for a user-visible
+  effect, ask: "in invite mode, should this include pending members?"
+
+  Usually yes — unless the effect is explicitly gated on acceptance (e.g.,
+  sending a message into the channel). Examples requiring pending inclusion:
+  - Push notifications for invites
+  - Narrator/ticker recipient lists
+  - "Who's in this conversation" UI
+  - Promotion threshold checks (see addMemberToChannel — already handled)
+
+  The canonical "all stakeholders" one-liner:
+    [...channel.memberIds, ...(channel.pendingMemberIds ?? [])]

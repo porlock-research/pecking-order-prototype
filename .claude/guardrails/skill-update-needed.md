@@ -26,7 +26,11 @@ files; the advisory was misleading because the gap had already been filled.
 it fires on EVERY edit to any Pulse `.tsx` file — HintChips, DmStatusRing,
 PersonaImage, DmInput, DmSheet, CastChip, MentionRenderer, TypingIndicator,
 ChatView, etc. During the 2026-04-13 Plan A (DM polish) session the advisory
-fired ~15 times, zero of which touched `stereotype` or `bio`.
+fired ~15 times, zero of which touched `stereotype` or `bio`. Re-hit in the
+2026-04-14 Plan B session — fired ~18 additional times on CastStrip,
+StartPickedCta, PickingBanner, CastChip, DmHero, DmGroupHero, DmSheet,
+PulseShell, ChatView edits, still zero `stereotype`/`bio` touches. The noise
+is reliable across sessions and growing.
 
 The advisory text itself is accurate and useful — the problem is activation.
 The rule should only fire on edits that plausibly reference persona metadata:
@@ -55,7 +59,10 @@ handler.
 
 During the 2026-04-13 Phase 1.5 implementation session, the rule fired 5+ times
 in succession while I was adding fields, selectors, and actions that had nothing
-to do with the sync merge logic.
+to do with the sync merge logic. Re-hit in the 2026-04-14 Plan B session — fired
+4+ additional times on pickingMode interface/action migration and
+selectCanAddMemberTo/selectGroupDmTitle selector additions, none of which
+touched the sync handler.
 
 **Proposal:** tighten the pattern so the rule only fires when the edit plausibly
 involves the `sync:` action body or a stableRef call. Options:
