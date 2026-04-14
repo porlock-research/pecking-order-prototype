@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes, DayPhases } from '@pecking-order/shared-types';
-import type { DayPhase } from '@pecking-order/shared-types';
+import type { DayPhase, DeepLinkIntent } from '@pecking-order/shared-types';
 
 /**
  * Keep the previous reference if the new value is structurally identical.
@@ -13,6 +13,42 @@ function stableRef<T>(prev: T, next: T): T {
     if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
   } catch { /* non-serializable — use next */ }
   return next;
+}
+
+/**
+ * Inline hydration of Pulse Phase 4 seen-state maps. Used by the SYNC reducer
+ * (parallel to welcomeSeen's inline read) so the returned patch object
+ * preserves the current maps when gameId or playerId isn't known yet.
+ * Malformed JSON is swallowed — first-mount must never crash.
+ */
+function hydratePhase4Maps(
+  gameId: string | null,
+  playerId: string | null,
+  state: { lastSeenCartridge: Record<string, number>; lastSeenSilverFrom: Record<string, number>; revealsSeen: { elimination: Record<number, boolean>; winner: boolean } },
+) {
+  if (!gameId || !playerId) {
+    return {
+      lastSeenCartridge: state.lastSeenCartridge,
+      lastSeenSilverFrom: state.lastSeenSilverFrom,
+      revealsSeen: state.revealsSeen,
+    };
+  }
+  const scope = `${gameId}-${playerId}`;
+  const read = <T>(key: string, fallback: T): T => {
+    try {
+      const raw = localStorage.getItem(`po-${key}-${scope}`);
+      return raw ? (JSON.parse(raw) as T) : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+  // stableRef collapses identical-content reads back to the previous reference
+  // so SYNC doesn't trigger unnecessary downstream re-renders.
+  return {
+    lastSeenCartridge: stableRef(state.lastSeenCartridge, read('lastSeenCartridge', state.lastSeenCartridge)),
+    lastSeenSilverFrom: stableRef(state.lastSeenSilverFrom, read('lastSeenSilverFrom', state.lastSeenSilverFrom)),
+    revealsSeen: stableRef(state.revealsSeen, read('revealsSeen', state.revealsSeen)),
+  };
 }
 
 /**
@@ -109,6 +145,14 @@ interface GameState {
     | { kind: 'new-dm'; selected: string[] }
     | { kind: 'add-member'; channelId: string; selected: string[] };
 
+  // Pulse Phase 4 additions — device-local seen state + deep-link intent retry
+  lastSeenCartridge: Record<string, number>;        // cartridgeId → ts
+  lastSeenSilverFrom: Record<string, number>;       // senderPlayerId → ts
+  revealsSeen: { elimination: Record<number, boolean>; winner: boolean };
+  pendingIntent: DeepLinkIntent | null;
+  pendingIntentAttempts: number;
+  pendingIntentFirstReceivedAt: number | null;
+
   // Actions
   sync: (data: any) => void;
   addChatMessage: (msg: ChatMessage) => void;
@@ -142,6 +186,9 @@ interface GameState {
   startAddMember: (channelId: string) => void;
   cancelPicking: () => void;
   togglePicked: (playerId: string) => void;
+
+  // Pulse Phase 4 actions
+  hydratePhase4FromStorage: () => void;
 }
 
 // Selectors
@@ -613,6 +660,14 @@ export const useGameStore = create<GameState>((set) => ({
   lastReadTimestamp: {},
   pickingMode: null,
 
+  // Pulse Phase 4 initial state (hydrated from localStorage once gameId+playerId known)
+  lastSeenCartridge: {},
+  lastSeenSilverFrom: {},
+  revealsSeen: { elimination: {}, winner: false },
+  pendingIntent: null,
+  pendingIntentAttempts: 0,
+  pendingIntentFirstReceivedAt: null,
+
   sync: (data) => set((state) => {
     console.log('[SYNC] Received', {
       state: data.state,
@@ -665,6 +720,9 @@ export const useGameStore = create<GameState>((set) => ({
       playerActivity: stableRef(state.playerActivity, data.context?.playerActivity ?? state.playerActivity),
       welcomeSeen: localStorage.getItem(`po-welcomeSeen-${data.context?.gameId || state.gameId}`) === 'true' || state.welcomeSeen,
       showcaseData: stableRef(state.showcaseData, data.context?.showcase ?? state.showcaseData),
+      // Pulse Phase 4 — hydrate seen-state maps from localStorage inline (like welcomeSeen above).
+      // Only rehydrate when we have both gameId and playerId; otherwise preserve current state.
+      ...hydratePhase4Maps(data.context?.gameId || state.gameId, state.playerId, state),
     };
   }),
 
@@ -740,5 +798,25 @@ export const useGameStore = create<GameState>((set) => ({
     const sel = state.pickingMode.selected;
     const next = sel.includes(playerId) ? sel.filter(id => id !== playerId) : [...sel, playerId];
     return { pickingMode: { ...state.pickingMode, selected: next } };
+  }),
+
+  // Pulse Phase 4 — load seen-state maps from localStorage keyed by (gameId, playerId).
+  // No-op if either id is missing. Malformed JSON is swallowed so first-mount doesn't crash.
+  hydratePhase4FromStorage: () => set((state) => {
+    if (!state.gameId || !state.playerId) return {};
+    const scope = `${state.gameId}-${state.playerId}`;
+    const read = <T>(key: string, fallback: T): T => {
+      try {
+        const raw = localStorage.getItem(`po-${key}-${scope}`);
+        return raw ? (JSON.parse(raw) as T) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    return {
+      lastSeenCartridge: read('lastSeenCartridge', {}),
+      lastSeenSilverFrom: read('lastSeenSilverFrom', {}),
+      revealsSeen: read('revealsSeen', { elimination: {}, winner: false }),
+    };
   }),
 }));
