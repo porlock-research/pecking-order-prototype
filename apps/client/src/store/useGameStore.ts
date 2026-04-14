@@ -210,6 +210,26 @@ export const selectDmSlots = (state: GameState): { used: number; total: number }
   return { used, total };
 };
 
+export const selectCanAddMemberTo = (state: GameState, channelId: string): boolean => {
+  const channel = state.channels?.[channelId];
+  if (!channel) return false;
+  if (channel.createdBy !== state.playerId) return false;
+  return (channel.capabilities ?? []).includes('INVITE_MEMBER');
+};
+
+export const selectGroupDmTitle = (state: GameState, channelId: string): string => {
+  const channel = state.channels?.[channelId];
+  if (!channel) return '';
+  const otherIds = (channel.memberIds || []).filter((id: string) => id !== state.playerId);
+  const firstNames = otherIds
+    .map((id: string) => state.roster[id]?.personaName?.split(' ')[0] ?? '')
+    .filter((n: string) => n.length > 0);
+  if (firstNames.length <= 3) return firstNames.join(', ');
+  const shown = firstNames.slice(0, 2).join(', ');
+  const overflow = firstNames.length - 2;
+  return `${shown} +${overflow}`;
+};
+
 // --- Vote Results (PT1-UX-005) ---
 
 export interface VoteResultEntry {
