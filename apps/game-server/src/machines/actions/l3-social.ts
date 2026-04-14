@@ -595,9 +595,12 @@ export const l3SocialGuards = {
     return true;
   },
 
-  // Guard: whisper target must be alive, text non-empty
+  // Guard: whisper target must be alive, text non-empty, and MAIN must carry the WHISPER cap
   isWhisperAllowed: ({ context, event }: any) => {
     if (event.type !== Events.Social.WHISPER) return false;
+    // Consistency check: whispers require MAIN to carry the WHISPER capability.
+    // Drop the cap (test harness / future feature flag) → whispers are disabled.
+    if (!channelHasCapability(context.channels, 'MAIN', 'WHISPER')) return false;
     const { senderId, targetId, text } = event;
     if (senderId === targetId) return false;
     if (!text || text.length === 0) return false;
