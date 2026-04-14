@@ -427,6 +427,9 @@ export const SocialPlayerSchema = z.object({
   gold: z.number().int().default(0),
   realUserId: z.string().optional(),
   qaAnswers: z.array(QaEntrySchema).optional(),
+  /** Day on which the player was eliminated. Populated at elimination time.
+   *  Used by Pulse Phase 4 reveal replay keying (revealsSeen.elimination[dayIndex]). */
+  eliminatedOnDay: z.number().int().optional(),
 });
 
 export const ChatMessageSchema = z.object({

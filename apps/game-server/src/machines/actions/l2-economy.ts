@@ -86,9 +86,12 @@ export const l2EconomyActions = {
     const { playerId, reason } = event;
     const player = context.roster[playerId];
     if (!player || player.status === 'ELIMINATED') return;
-    // 1. Mutate roster
+    // 1. Mutate roster — stamp eliminatedOnDay for Pulse Phase 4 reveal replay.
     enqueue.assign({
-      roster: { ...context.roster, [playerId]: { ...player, status: 'ELIMINATED' } },
+      roster: {
+        ...context.roster,
+        [playerId]: { ...player, status: 'ELIMINATED', eliminatedOnDay: context.dayIndex },
+      },
     });
     // 2. Emit fact for ticker, push, D1 persistence
     enqueue.raise({
@@ -97,7 +100,7 @@ export const l2EconomyActions = {
         type: FactTypes.ELIMINATION,
         actorId: 'GAME_MASTER',
         targetId: playerId,
-        payload: { mechanism: 'GM_OVERRIDE', reason: reason || 'Eliminated by Game Master' },
+        payload: { mechanism: 'GM_OVERRIDE', reason: reason || 'Eliminated by Game Master', dayIndex: context.dayIndex },
         timestamp: Date.now(),
       },
     } as any);

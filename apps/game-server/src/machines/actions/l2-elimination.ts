@@ -17,8 +17,9 @@ export const l2EliminationActions = {
     // Elimination (normal vote or FINALS loser)
     if (pending?.eliminatedId && rosterUpdate[pending.eliminatedId]) {
       const id = pending.eliminatedId;
-      log('info', 'L2', 'Eliminating player', { playerId: id });
-      rosterUpdate[id] = { ...rosterUpdate[id], status: PlayerStatuses.ELIMINATED };
+      log('info', 'L2', 'Eliminating player', { playerId: id, dayIndex: context.dayIndex });
+      // Stamp eliminatedOnDay for Pulse Phase 4 reveal replay keying.
+      rosterUpdate[id] = { ...rosterUpdate[id], status: PlayerStatuses.ELIMINATED, eliminatedOnDay: context.dayIndex };
       rosterChanged = true;
       enqueue.raise({
         type: Events.Fact.RECORD,
@@ -26,7 +27,7 @@ export const l2EliminationActions = {
           type: FactTypes.ELIMINATION,
           actorId: 'SYSTEM',
           targetId: id,
-          payload: { mechanism: pending.mechanism, summary: pending.summary },
+          payload: { mechanism: pending.mechanism, summary: pending.summary, dayIndex: context.dayIndex },
           timestamp: Date.now(),
         },
       } as any);
