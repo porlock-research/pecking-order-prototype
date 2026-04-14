@@ -246,13 +246,30 @@ export function buildDebugSummary(snapshot: any, l3Snapshot: any): string {
 
 // --- Side-effect functions ---
 
+/** Time-based ticker retention window: last 60 minutes of entries.
+ * Replaces the prior count-based 20-message cap so 4-hour-gap returning players
+ * receive meaningful narrator/silver backfill (Pulse Phase 4 §0.3). */
+const TICKER_RETENTION_MS = 60 * 60 * 1000;
+/** Safety cap for pathological high-throughput games. Realistic worst case:
+ * ~10 players × ~3 events/player/min × 60 min ≈ 1800 entries; 2000 gives headroom. */
+const TICKER_SAFETY_CAP = 2000;
+
 /** Broadcast a ticker message to all connected clients and append to history buffer. Returns updated history. */
 export function broadcastTicker(
   msg: TickerMessage,
   tickerHistory: TickerMessage[],
   getConnections: () => Iterable<Connection>,
 ): TickerMessage[] {
-  const updated = [...tickerHistory, msg].slice(-20);
+  const cutoff = Date.now() - TICKER_RETENTION_MS;
+  const appended = [...tickerHistory, msg];
+  const withinWindow = appended.filter(m => {
+    const ts = typeof m.timestamp === 'number' ? m.timestamp : new Date(m.timestamp as any).getTime();
+    return ts >= cutoff;
+  });
+  const updated = withinWindow.length > TICKER_SAFETY_CAP
+    ? withinWindow.slice(-TICKER_SAFETY_CAP)
+    : withinWindow;
+
   const payload = JSON.stringify({ type: Events.Ticker.UPDATE, message: msg });
   for (const ws of getConnections()) {
     ws.send(payload);
