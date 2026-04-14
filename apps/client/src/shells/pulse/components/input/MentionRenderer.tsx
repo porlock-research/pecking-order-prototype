@@ -1,5 +1,6 @@
 import { useGameStore } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
+import { usePulse } from '../../PulseShell';
 
 interface MentionRendererProps {
   text: string;
@@ -7,6 +8,7 @@ interface MentionRendererProps {
 
 export function MentionRenderer({ text }: MentionRendererProps) {
   const roster = useGameStore(s => s.roster);
+  const { openDM } = usePulse();
 
   // Parse @Name patterns and render as styled spans
   const parts: Array<{ type: 'text' | 'mention'; value: string; playerId?: string }> = [];
@@ -51,17 +53,24 @@ export function MentionRenderer({ text }: MentionRendererProps) {
       {parts.map((part, idx) => {
         if (part.type === 'mention' && part.playerId) {
           const playerIndex = Object.keys(roster).indexOf(part.playerId);
+          const pid = part.playerId;
           return (
-            <span
+            <button
               key={idx}
+              onClick={() => openDM(pid)}
               style={{
+                appearance: 'none',
+                background: 'none',
+                border: 'none',
+                padding: 0,
                 color: getPlayerColor(playerIndex),
                 fontWeight: 700,
                 cursor: 'pointer',
+                font: 'inherit',
               }}
             >
               {part.value}
-            </span>
+            </button>
           );
         }
         return <span key={idx}>{part.value}</span>;
