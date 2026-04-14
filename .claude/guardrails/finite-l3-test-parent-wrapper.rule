@@ -1,0 +1,41 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/game-server/src/machines/__tests__/.+\.test\.ts$
+ADVISORY: |
+  Testing `dailySessionMachine` (L3) directly with `createActor()` will throw
+  "Unable to send event to actor '#_parent'" the moment any action calls
+  `sendParent(...)` — L3 has several (INTERNAL.READY, PUSH.PHASE, Events.Fact.RECORD).
+
+  The canonical workaround is the parentWrapper pattern in
+  `apps/game-server/src/machines/__tests__/l3-dm-invitations.test.ts:36-84`:
+
+    const parentWrapper = setup({
+      types: { context: {} as { l3Ref: any }, events: {} as any, input: {} as {...} },
+      actors: { l3: dailySessionMachine },
+    }).createMachine({
+      id: 'test-parent',
+      context: { l3Ref: null },
+      initial: 'running',
+      states: {
+        running: {
+          invoke: { id: 'l3-session', src: 'l3', input: ({ event }: any) => event.input || {} },
+          on: { '*': {} },  // swallow facts/rejections the child emits upward
+        },
+        done: { type: 'final' },
+      },
+    } as any);
+
+    function createL3Actor() {
+      const parentActor = createActor(parentWrapper, { input: {...} });
+      parentActor.start();
+      return {
+        send: (e) => parentActor.getSnapshot().children['l3-session']?.send(e),
+        getL3Context: () => parentActor.getSnapshot().children['l3-session']?.getSnapshot().context,
+      };
+    }
+
+  For pure context-shape tests (no sendParent triggered), `buildL3Context(input)` is
+  exported from `l3-session.ts` and is simpler — see `l3-social-limits.test.ts`.
+
+  Rule of thumb:
+  - Testing initial context / selector over context → `buildL3Context` directly.
+  - Testing event handling / guards / actions → parentWrapper + `createL3Actor` helper.

@@ -20,6 +20,32 @@ component paths if it's kept post-merge:
 The rule fired ~10 times during the Pulse session as I edited reaction-related
 files; the advisory was misleading because the gap had already been filled.
 
+## `finite-pulse-bio-as-stereotype.rule` — match pattern too broad
+
+**State:** Rule has `MATCH_PATTERN: apps/client/src/shells/pulse/.+\.tsx$`, so
+it fires on EVERY edit to any Pulse `.tsx` file — HintChips, DmStatusRing,
+PersonaImage, DmInput, DmSheet, CastChip, MentionRenderer, TypingIndicator,
+ChatView, etc. During the 2026-04-13 Plan A (DM polish) session the advisory
+fired ~15 times, zero of which touched `stereotype` or `bio`.
+
+The advisory text itself is accurate and useful — the problem is activation.
+The rule should only fire on edits that plausibly reference persona metadata:
+
+**Option A — content-aware pattern:** fire only when the edit body contains
+`stereotype`, `bio`, or renders a name+label combo. Would need the guardian
+hook to match on edit content, not path.
+
+**Option B — narrower path pattern:** restrict to files that historically use
+the bio-as-stereotype pattern (CastCard, DmHero, and any future profile
+widgets). Rough list: `(CastCard|DmHero|DmBioQuote|PlayerProfile).*\.tsx$`.
+
+**Option C — accept the noise.** Cost of missing a real TS2339 from a wrong
+`player.stereotype` is low (type-check catches it immediately). Rule is mostly
+redundant with `tsc --noEmit`.
+
+**Recommendation:** option B — narrow the pattern to the 3-4 components that
+render the pseudo-stereotype. Matches how the codebase actually uses it.
+
 ## `finite-stableref-for-mutable-fields.rule` — match pattern too broad
 
 **State:** Rule has `MATCH_PATTERN: apps/client/src/store/useGameStore\.ts$`,
