@@ -1,0 +1,19 @@
+MATCH_TOOL: Write
+MATCH_PATTERN: \.superpowers/brainstorm/.*/content/.*\.html
+ADVISORY: |
+  Brainstorm visual companion — known traps:
+
+  1. KEEP HTML SIMPLE. Complex CSS (deep nesting, pseudo-elements, animations,
+     absolute positioning) breaks rendering in the companion frame. Prefer flat
+     class hierarchies, inline styles for one-offs, minimal CSS. If a mockup
+     renders broken, simplify the CSS rather than debugging the frame template.
+
+  2. SERVER ONLY SERVES HTML. No images, fonts, or other assets from subdirectories.
+     For local images: use external URLs (CDN, Google Fonts) or base64 data URIs
+     (<100KB). Relative src paths like "personas/foo.png" will 404.
+
+  3. SERVER DIES FREQUENTLY (often before the 30-min timeout). Before writing
+     content, check that $STATE_DIR/server-info exists. If the server has died:
+     restart with start-server.sh, note the NEW port and session directory, copy
+     content to the new session's content/ directory. Old session files are orphaned.
+     Always tell the user the updated URL after a restart.

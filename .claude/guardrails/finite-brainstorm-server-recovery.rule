@@ -1,8 +1,0 @@
-MATCH_TOOL: Write
-MATCH_PATTERN: \.superpowers/brainstorm/.*/content/.*\.html
-ADVISORY: |
-  The brainstorm visual companion server dies frequently (often well before the 30-min timeout).
-  Before writing content, check that $STATE_DIR/server-info exists. If the server has restarted,
-  you'll need to: (1) restart with start-server.sh, (2) note the NEW port and session directory,
-  (3) copy or rewrite content to the new session's content/ directory. The old session's files
-  are orphaned. Always tell the user the updated URL after a restart.
