@@ -5,6 +5,8 @@ import { getPlayerColor } from '../../colors';
 import { PersonaImage, initialsOf } from '../common/PersonaImage';
 import { DmStatusRing } from './DmStatusRing';
 import { useGameStore, selectCanAddMemberTo } from '../../../../store/useGameStore';
+import { usePulse } from '../../PulseShell';
+import { HandWaving } from '../../icons';
 
 interface Props {
   player: SocialPlayer;
@@ -21,6 +23,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
   const [variant, setVariant] = useState<'headshot' | 'medium' | 'full'>('headshot');
   const canAdd = useGameStore(s => channelId ? selectCanAddMemberTo(s, channelId) : false);
   const startAddMember = useGameStore(s => s.startAddMember);
+  const { openNudge } = usePulse();
 
   // Pulse shell uses short bio as pseudo-stereotype (matches CastCard convention).
   const stereotype = player.bio && player.bio.length > 4 && player.bio.length <= 50 ? player.bio : '';
@@ -48,6 +51,21 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
       }}>‹</button>
 
       <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          onClick={() => openNudge(player.id)}
+          aria-label={`Nudge ${player.personaName}`}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '6px 10px', borderRadius: 14,
+            background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            color: '#fff', cursor: 'pointer',
+            fontSize: 12, fontWeight: 700,
+          }}
+        >
+          <HandWaving size={16} weight="fill" color="var(--pulse-nudge)" />
+          <span>Nudge</span>
+        </button>
         {canAdd && channelId && (
           <button
             onClick={() => startAddMember(channelId)}

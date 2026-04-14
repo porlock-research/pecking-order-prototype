@@ -14,6 +14,7 @@ const JOURNALABLE_TYPES = [
   // this entry, SOCIAL_INVITE ticker messages and DM-invite push notifications are silently
   // dropped. Confirmed via local Pulse test: 2026-04-14.
   FactTypes.DM_INVITE_SENT,
+  FactTypes.NUDGE,
 ];
 
 /** Returns true if the fact type should be persisted to the D1 journal. */

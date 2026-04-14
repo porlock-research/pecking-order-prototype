@@ -169,6 +169,17 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
         involvedPlayerIds: dilemmaPlayerIds,
       };
     }
+    case FactTypes.NUDGE: {
+      const actor = name(fact.actorId);
+      const target = name(fact.targetId);
+      return {
+        id: crypto.randomUUID(),
+        text: `**${actor}** nudged **${target}**`,
+        category: TickerCategories.SOCIAL_NUDGE,
+        timestamp: fact.timestamp,
+        involvedPlayerIds: [fact.actorId, fact.targetId].filter(Boolean),
+      };
+    }
     case FactTypes.DM_INVITE_SENT: {
       const kind = fact.payload?.kind ?? 'initial';
       const memberIds: string[] = fact.payload?.memberIds ?? [];

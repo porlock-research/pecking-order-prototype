@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { TickerCategories } from '@pecking-order/shared-types';
 import type { CastStripEntry } from '../../../../store/useGameStore';
 import { useGameStore, selectChipSlotStatus } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
@@ -19,6 +20,32 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
   const roster = useGameStore(s => s.roster);
   const slotStatus = useGameStore(s => selectChipSlotStatus(s, entry.id));
   const [shaking, setShaking] = useState(false);
+
+  // Recipient-facing nudge effect: shake the sender's chip when a SOCIAL_NUDGE
+  // ticker arrives where actor===this chip's player and target===me. Selector
+  // returns a primitive timestamp so Zustand equality is stable.
+  const latestIncomingNudgeTs = useGameStore(s => {
+    const me = s.playerId;
+    if (!me || entry.id === me) return 0;
+    const msgs = s.tickerMessages;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i];
+      if (m.category !== TickerCategories.SOCIAL_NUDGE) continue;
+      const ids = m.involvedPlayerIds;
+      if (ids?.[0] === entry.id && ids?.[1] === me) return m.timestamp;
+    }
+    return 0;
+  });
+  const seenNudgeTs = useRef(latestIncomingNudgeTs);
+  useEffect(() => {
+    if (latestIncomingNudgeTs > seenNudgeTs.current) {
+      seenNudgeTs.current = latestIncomingNudgeTs;
+      setShaking(true);
+      const id = window.setTimeout(() => setShaking(false), 400);
+      return () => window.clearTimeout(id);
+    }
+  }, [latestIncomingNudgeTs]);
+
   const colorIdx = useMemo(() => Object.keys(roster).indexOf(entry.id), [roster, entry.id]);
   const color = getPlayerColor(colorIdx);
   const avatar = resolveAvatarUrl(player?.avatarUrl);

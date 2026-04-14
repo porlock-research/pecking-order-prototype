@@ -18,7 +18,6 @@ import { ChatView } from './components/chat/ChatView';
 import { CastStrip } from './components/caststrip/CastStrip';
 import { PulseInput } from './components/input/PulseInput';
 import { SendSilverSheet } from './components/popover/SendSilverSheet';
-import { NudgeConfirmation } from './components/popover/NudgeConfirmation';
 import { DmSheet } from './components/dm-sheet/DmSheet';
 import { SocialPanel } from './components/social-panel/SocialPanel';
 import { PulseHeader } from './components/header/PulseHeader';
@@ -67,16 +66,23 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
 
   // Overlay state
   const [silverTarget, setSilverTarget] = useState<string | null>(null);
-  const [nudgeTarget, setNudgeTarget] = useState<string | null>(null);
   const [dmTarget, setDmTarget] = useState<string | null>(null);
   const [dmIsGroup, setDmIsGroup] = useState(false);
   const [socialPanelOpen, setSocialPanelOpen] = useState(false);
 
   const openSendSilver = useCallback((targetId: string) => setSilverTarget(targetId), []);
-  const openNudge = useCallback((targetId: string) => setNudgeTarget(targetId), []);
+  // Nudge fires immediately + toasts; the recipient's cast chip shakes via the
+  // SOCIAL_NUDGE ticker arriving on their client. No modal confirmation — it was
+  // cosmetic and (worse) the previous code never actually called engine.sendNudge.
+  const openNudge = useCallback((targetId: string) => {
+    engine.sendNudge(targetId);
+    const name = useGameStore.getState().roster[targetId]?.personaName ?? 'them';
+    toast.success(`Nudged ${name}`);
+  }, [engine]);
   const openDM = useCallback((targetId: string, isGroup = false) => {
     setDmTarget(targetId);
     setDmIsGroup(isGroup);
+    setSocialPanelOpen(false);
   }, []);
   const openSocialPanel = useCallback(() => setSocialPanelOpen(true), []);
 
@@ -106,15 +112,6 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
         <AnimatePresence>
           {silverTarget && (
             <SendSilverSheet targetId={silverTarget} onClose={() => setSilverTarget(null)} />
-          )}
-        </AnimatePresence>
-        <AnimatePresence>
-          {nudgeTarget && (
-            <NudgeConfirmation
-              targetId={nudgeTarget}
-              onClose={() => setNudgeTarget(null)}
-              onDM={id => { setNudgeTarget(null); openDM(id); }}
-            />
           )}
         </AnimatePresence>
         <AnimatePresence>
