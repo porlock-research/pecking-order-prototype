@@ -1,5 +1,5 @@
 import { useState, createContext, useContext, useCallback, useEffect } from 'react';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import './pulse-theme.css';
 import type { ShellProps } from '../types';
 import type { GameEngine } from '../types';
@@ -137,6 +137,7 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
         <EliminationReveal />
         <WinnerReveal />
         <PhaseTransition />
+        <Toaster position="top-center" theme="dark" richColors closeButton={false} />
       </div>
     </PulseContext.Provider>
   );

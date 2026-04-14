@@ -22,6 +22,11 @@ function socialInviteToNarratorKind(t: TickerMessage): 'talking' | 'scheming' | 
   return 'talking';
 }
 
+function narratorKindFor(t: TickerMessage): 'talking' | 'scheming' | 'alliance' | 'nudge' {
+  if (t.category === TickerCategories.SOCIAL_NUDGE) return 'nudge';
+  return socialInviteToNarratorKind(t);
+}
+
 export function ChatView() {
   const chatLog = useGameStore(s => s.chatLog);
   const tickerMessages = useGameStore(s => s.tickerMessages);
@@ -37,17 +42,18 @@ export function ChatView() {
   );
 
   // Social events from ticker that should render as inline broadcast cards
-  // (silver transfers, nudges — these are facts, not chat messages)
+  // (silver transfers, perks — these are facts, not chat messages)
   const socialEvents: TickerMessage[] = tickerMessages.filter(
     t => t.category === TickerCategories.SOCIAL_TRANSFER
-      || t.category === TickerCategories.SOCIAL_PERK
-      || t.category === TickerCategories.SOCIAL_NUDGE,
+      || t.category === TickerCategories.SOCIAL_PERK,
   );
 
-  // Narrator lines come from SOCIAL_INVITE ticker events (fact-driven).
-  // Public intrigue copy only — never names targets, never viewer-relative.
+  // Narrator lines come from SOCIAL_INVITE and SOCIAL_NUDGE ticker events (fact-driven).
+  // Same public-intrigue treatment as invite narrator lines (bold-token markdown
+  // → inline avatar + accented name).
   const narratorTickers: TickerMessage[] = tickerMessages.filter(
-    t => t.category === TickerCategories.SOCIAL_INVITE,
+    t => t.category === TickerCategories.SOCIAL_INVITE
+      || t.category === TickerCategories.SOCIAL_NUDGE,
   );
 
   // Interleave messages, social events, and narrator lines by timestamp
@@ -126,7 +132,7 @@ export function ChatView() {
           return (
             <NarratorLine
               key={entry.data.id}
-              kind={socialInviteToNarratorKind(entry.data)}
+              kind={narratorKindFor(entry.data)}
               text={entry.data.text}
             />
           );

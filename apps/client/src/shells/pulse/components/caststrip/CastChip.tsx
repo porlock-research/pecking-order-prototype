@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { TickerCategories } from '@pecking-order/shared-types';
 import type { CastStripEntry } from '../../../../store/useGameStore';
 import { useGameStore, selectChipSlotStatus } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
 import { resolveAvatarUrl } from '../../../../utils/personaImage';
+import { HandWaving } from '../../icons';
 
 interface Props {
   entry: CastStripEntry;
@@ -16,42 +16,31 @@ interface Props {
 }
 
 export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked = false }: Props) {
-  const { player, isOnline, isTypingToYou, hasPendingInviteFromThem, unreadCount, isLeader } = entry;
+  const { player, isOnline, isTypingToYou, hasPendingInviteFromThem, unreadCount, isLeader, lastNudgeFromThemTs, hasUnseenNudgeFromThem } = entry;
   const roster = useGameStore(s => s.roster);
   const slotStatus = useGameStore(s => selectChipSlotStatus(s, entry.id));
+  const markNudgeSeen = useGameStore(s => s.markNudgeSeen);
   const [shaking, setShaking] = useState(false);
 
-  // Recipient-facing nudge effect: shake the sender's chip when a SOCIAL_NUDGE
-  // ticker arrives where actor===this chip's player and target===me. Selector
-  // returns a primitive timestamp so Zustand equality is stable.
-  const latestIncomingNudgeTs = useGameStore(s => {
-    const me = s.playerId;
-    if (!me || entry.id === me) return 0;
-    const msgs = s.tickerMessages;
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      const m = msgs[i];
-      if (m.category !== TickerCategories.SOCIAL_NUDGE) continue;
-      const ids = m.involvedPlayerIds;
-      if (ids?.[0] === entry.id && ids?.[1] === me) return m.timestamp;
-    }
-    return 0;
-  });
-  const seenNudgeTs = useRef(latestIncomingNudgeTs);
+  // Shake once when a newer nudge timestamp arrives for this chip. The ts comes
+  // from selectCastStripEntries reading tickerMessages — so it works live AND
+  // for offline→online replay (ticker history is sent on connect).
+  const seenNudgeTs = useRef(lastNudgeFromThemTs);
   useEffect(() => {
-    if (latestIncomingNudgeTs > seenNudgeTs.current) {
-      seenNudgeTs.current = latestIncomingNudgeTs;
+    if (lastNudgeFromThemTs > seenNudgeTs.current) {
+      seenNudgeTs.current = lastNudgeFromThemTs;
       setShaking(true);
-      const id = window.setTimeout(() => setShaking(false), 400);
+      const id = window.setTimeout(() => setShaking(false), 500);
       return () => window.clearTimeout(id);
     }
-  }, [latestIncomingNudgeTs]);
+  }, [lastNudgeFromThemTs]);
 
   const colorIdx = useMemo(() => Object.keys(roster).indexOf(entry.id), [roster, entry.id]);
   const color = getPlayerColor(colorIdx);
   const avatar = resolveAvatarUrl(player?.avatarUrl);
 
   const isSelf = entry.kind === 'self';
-  const dimmed = !isOnline && !isSelf && !hasPendingInviteFromThem;
+  const dimmed = !isOnline && !isSelf && !hasPendingInviteFromThem && !hasUnseenNudgeFromThem;
   const disabledInPicking = pickingMode && !pickable && !isSelf;
 
   const handleTap = () => {
@@ -62,6 +51,7 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
       window.setTimeout(() => setShaking(false), 350);
       return;
     }
+    if (hasUnseenNudgeFromThem) markNudgeSeen(entry.id);
     onTap(entry);
   };
 
@@ -70,6 +60,8 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
   let pulse = false;
   if (hasPendingInviteFromThem) {
     edgeColor = '#ff8c42'; glowColor = 'rgba(255,140,66,0.55)'; pulse = true;
+  } else if (hasUnseenNudgeFromThem) {
+    edgeColor = 'var(--pulse-nudge)'; glowColor = 'rgba(255,160,77,0.55)'; pulse = true;
   } else if (unreadCount > 0) {
     edgeColor = 'var(--pulse-accent)'; glowColor = 'rgba(255,59,111,0.35)';
   } else if (isTypingToYou) {
@@ -149,6 +141,21 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
           <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden>
             <path d="M1 9 L2 3 L5 6 L7 1 L9 6 L12 3 L13 9 Z" fill="#ffd700" />
           </svg>
+        </span>
+      )}
+
+      {hasUnseenNudgeFromThem && !hasPendingInviteFromThem && (
+        <span style={{
+          position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)',
+          display: 'inline-flex', alignItems: 'center', gap: 3,
+          background: 'var(--pulse-nudge)', color: '#1a1422',
+          fontSize: 8, fontWeight: 800, letterSpacing: 0.5,
+          padding: '2px 6px', borderRadius: 8,
+          textTransform: 'uppercase', animation: 'pulse-breathe 1.4s ease-in-out infinite',
+          pointerEvents: 'none', whiteSpace: 'nowrap',
+        }}>
+          <HandWaving size={10} weight="fill" />
+          Nudge
         </span>
       )}
 

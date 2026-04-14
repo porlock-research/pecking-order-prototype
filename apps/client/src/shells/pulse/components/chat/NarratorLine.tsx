@@ -3,7 +3,7 @@ import { PersonaImage } from '../common/PersonaImage';
 import { getPlayerColor } from '../../colors';
 
 interface Props {
-  kind: 'talking' | 'scheming' | 'alliance';
+  kind: 'talking' | 'scheming' | 'alliance' | 'nudge';
   /** Text may contain `**markdown**` bold tokens. Bold tokens that match a persona
    *  name in the current roster render with an inline 16px avatar + accented bold
    *  text. Non-matching bold tokens (e.g. "5 players") render accented bold only.
@@ -22,6 +22,7 @@ export function NarratorLine({ kind, text }: Props) {
   const accent =
     kind === 'scheming' ? '#b07aff' :
     kind === 'alliance' ? '#ffd700' :
+    kind === 'nudge' ? 'var(--pulse-nudge)' :
     'var(--pulse-accent)';
 
   // Pre-compute name → { id, avatarUrl } map so we can lookup per bold token.

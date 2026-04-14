@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes, DayPhases } from '@pecking-order/shared-types';
+import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes, DayPhases, TickerCategories } from '@pecking-order/shared-types';
 import type { DayPhase, DeepLinkIntent } from '@pecking-order/shared-types';
 
 /**
@@ -24,12 +24,18 @@ function stableRef<T>(prev: T, next: T): T {
 function hydratePhase4Maps(
   gameId: string | null,
   playerId: string | null,
-  state: { lastSeenCartridge: Record<string, number>; lastSeenSilverFrom: Record<string, number>; revealsSeen: { elimination: Record<number, boolean>; winner: boolean } },
+  state: {
+    lastSeenCartridge: Record<string, number>;
+    lastSeenSilverFrom: Record<string, number>;
+    lastSeenNudgeFrom: Record<string, number>;
+    revealsSeen: { elimination: Record<number, boolean>; winner: boolean };
+  },
 ) {
   if (!gameId || !playerId) {
     return {
       lastSeenCartridge: state.lastSeenCartridge,
       lastSeenSilverFrom: state.lastSeenSilverFrom,
+      lastSeenNudgeFrom: state.lastSeenNudgeFrom,
       revealsSeen: state.revealsSeen,
     };
   }
@@ -47,6 +53,7 @@ function hydratePhase4Maps(
   return {
     lastSeenCartridge: stableRef(state.lastSeenCartridge, read('lastSeenCartridge', state.lastSeenCartridge)),
     lastSeenSilverFrom: stableRef(state.lastSeenSilverFrom, read('lastSeenSilverFrom', state.lastSeenSilverFrom)),
+    lastSeenNudgeFrom: stableRef(state.lastSeenNudgeFrom, read('lastSeenNudgeFrom', state.lastSeenNudgeFrom)),
     revealsSeen: stableRef(state.revealsSeen, read('revealsSeen', state.revealsSeen)),
   };
 }
@@ -148,6 +155,7 @@ interface GameState {
   // Pulse Phase 4 additions — device-local seen state + deep-link intent retry
   lastSeenCartridge: Record<string, number>;        // cartridgeId → ts
   lastSeenSilverFrom: Record<string, number>;       // senderPlayerId → ts
+  lastSeenNudgeFrom: Record<string, number>;        // senderPlayerId → ts
   revealsSeen: { elimination: Record<number, boolean>; winner: boolean };
   pendingIntent: DeepLinkIntent | null;
   pendingIntentAttempts: number;
@@ -191,6 +199,7 @@ interface GameState {
   hydratePhase4FromStorage: () => void;
   markCartridgeSeen: (cartridgeId: string) => void;
   markSilverSeen: (senderId: string) => void;
+  markNudgeSeen: (senderId: string) => void;
   markRevealSeen: (kind: 'elimination' | 'winner', dayIndex?: number) => void;
   setPendingIntent: (intent: DeepLinkIntent | null) => void;
   incrementIntentAttempts: () => void;
@@ -474,6 +483,10 @@ export interface CastStripEntry {
   isTypingToYou: boolean;
   isOnline: boolean;
   isLeader: boolean;
+  /** Latest SOCIAL_NUDGE ts from this player toward me (0 if none in history). */
+  lastNudgeFromThemTs: number;
+  /** True when lastNudgeFromThemTs > lastSeenNudgeFrom[id] (persisted per-sender). */
+  hasUnseenNudgeFromThem: boolean;
 }
 
 export const selectUnreadForChannel = (channelId: string) => (state: GameState): number => {
@@ -545,7 +558,7 @@ export const selectChipSlotStatus = (state: GameState, chipPlayerId: string): 'o
 };
 
 export const selectCastStripEntries = memoSelector(
-  (s) => [s.playerId, s.roster, s.channels, s.chatLog, s.onlinePlayers, s.typingPlayers, s.lastReadTimestamp],
+  (s) => [s.playerId, s.roster, s.channels, s.chatLog, s.onlinePlayers, s.typingPlayers, s.lastReadTimestamp, s.tickerMessages, s.lastSeenNudgeFrom],
   (state: GameState): CastStripEntry[] => {
   const pid = state.playerId;
   if (!pid) return [];
@@ -561,6 +574,18 @@ export const selectCastStripEntries = memoSelector(
     for (const rid of ch.pendingMemberIds || []) outgoingPendingByRecipientId[rid] = true;
   }
 
+  // Latest SOCIAL_NUDGE ts per sender toward me, walking ticker history once.
+  const latestNudgeBySender: Record<string, number> = {};
+  for (const m of state.tickerMessages) {
+    if (m.category !== TickerCategories.SOCIAL_NUDGE) continue;
+    const ids = m.involvedPlayerIds;
+    if (!ids || ids[1] !== pid) continue;
+    const senderId = ids[0];
+    if (!senderId) continue;
+    const ts = typeof m.timestamp === 'number' ? m.timestamp : 0;
+    if (ts > (latestNudgeBySender[senderId] ?? 0)) latestNudgeBySender[senderId] = ts;
+  }
+
   const entries: CastStripEntry[] = [];
 
   const selfPlayer = state.roster[pid];
@@ -570,6 +595,7 @@ export const selectCastStripEntries = memoSelector(
       unreadCount: 0, hasPendingInviteFromThem: false, hasOutgoingPendingInvite: false,
       isTypingToYou: false, isOnline: state.onlinePlayers.includes(pid),
       isLeader: leaderId === pid,
+      lastNudgeFromThemTs: 0, hasUnseenNudgeFromThem: false,
     });
   }
 
@@ -584,9 +610,12 @@ export const selectCastStripEntries = memoSelector(
     const isOnline = state.onlinePlayers.includes(id);
     const pending = !!pendingByInviterId[id];
     const outgoingPending = !!outgoingPendingByRecipientId[id];
+    const lastNudgeTs = latestNudgeBySender[id] ?? 0;
+    const unseenNudge = lastNudgeTs > 0 && lastNudgeTs > (state.lastSeenNudgeFrom[id] ?? 0);
 
     let priority: number;
     if (pending) priority = 1;
+    else if (unseenNudge) priority = 1;
     else if (unread > 0) priority = 2;
     else if (isTyping) priority = 3;
     else if (isOnline) priority = 5;
@@ -596,6 +625,7 @@ export const selectCastStripEntries = memoSelector(
       kind: 'player', id, player: p, priority,
       unreadCount: unread, hasPendingInviteFromThem: pending, hasOutgoingPendingInvite: outgoingPending,
       isTypingToYou: isTyping, isOnline, isLeader: leaderId === id,
+      lastNudgeFromThemTs: lastNudgeTs, hasUnseenNudgeFromThem: unseenNudge,
     });
   }
 
@@ -608,6 +638,7 @@ export const selectCastStripEntries = memoSelector(
       priority: unread > 0 ? 2 : 6,
       unreadCount: unread, hasPendingInviteFromThem: false, hasOutgoingPendingInvite: false,
       isTypingToYou: false, isOnline: false, isLeader: false,
+      lastNudgeFromThemTs: 0, hasUnseenNudgeFromThem: false,
     });
   }
 
@@ -813,6 +844,7 @@ export const useGameStore = create<GameState>((set) => ({
   // Pulse Phase 4 initial state (hydrated from localStorage once gameId+playerId known)
   lastSeenCartridge: {},
   lastSeenSilverFrom: {},
+  lastSeenNudgeFrom: {},
   revealsSeen: { elimination: {}, winner: false },
   pendingIntent: null,
   pendingIntentAttempts: 0,
@@ -966,6 +998,7 @@ export const useGameStore = create<GameState>((set) => ({
     return {
       lastSeenCartridge: read('lastSeenCartridge', {}),
       lastSeenSilverFrom: read('lastSeenSilverFrom', {}),
+      lastSeenNudgeFrom: read('lastSeenNudgeFrom', {}),
       revealsSeen: read('revealsSeen', { elimination: {}, winner: false }),
     };
   }),
@@ -988,6 +1021,16 @@ export const useGameStore = create<GameState>((set) => ({
       }
     } catch {}
     return { lastSeenSilverFrom: next };
+  }),
+
+  markNudgeSeen: (senderId) => set((state) => {
+    const next = { ...state.lastSeenNudgeFrom, [senderId]: Date.now() };
+    try {
+      if (state.gameId && state.playerId) {
+        localStorage.setItem(`po-lastSeenNudgeFrom-${state.gameId}-${state.playerId}`, JSON.stringify(next));
+      }
+    } catch {}
+    return { lastSeenNudgeFrom: next };
   }),
 
   markRevealSeen: (kind, dayIndex) => set((state) => {
