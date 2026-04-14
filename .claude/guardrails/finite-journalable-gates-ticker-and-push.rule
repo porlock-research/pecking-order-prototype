@@ -1,0 +1,23 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/game-server/src/(d1-persistence|machine-actions)\.ts$
+ADVISORY: |
+  `isJournalable` in d1-persistence.ts gates more than D1 persistence — it is the
+  upstream guard in machine-actions.ts `persistFactToD1` that also controls whether
+  `factToTicker` and `handleFactPush` run for the fact.
+
+  Practical consequence: a fact type missing from JOURNALABLE_TYPES has its ticker
+  message silently dropped AND its push notification silently dropped. Discovered
+  2026-04-14 while debugging why Pulse narrator lines ("Luna Star started talking
+  to someone") were not rendering for first-DM creation — DM_INVITE_SENT was not
+  in the list.
+
+  Rules:
+    - If a new fact type needs to drive a ticker message (factToTicker returns a
+      TickerMessage for it) OR a push notification (handleFactPush cases on it),
+      it MUST be added to JOURNALABLE_TYPES.
+    - Do not remove DM_INVITE_SENT from JOURNALABLE_TYPES without also refactoring
+      persistFactToD1 so ticker/push don't share the same early return.
+
+  Long-term fix (not yet applied): split the gate — D1 persistence uses
+  `isJournalable`, ticker and push each get their own guards so semantics are
+  independent. If you're doing that refactor, remove this guardrail.

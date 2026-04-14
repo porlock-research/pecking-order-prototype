@@ -9,6 +9,11 @@ const JOURNALABLE_TYPES = [
   FactTypes.SILVER_TRANSFER, FactTypes.VOTE_CAST, FactTypes.ELIMINATION, FactTypes.DM_SENT,
   FactTypes.POWER_USED, FactTypes.PERK_USED, FactTypes.GAME_RESULT, FactTypes.PLAYER_GAME_RESULT,
   FactTypes.WINNER_DECLARED, FactTypes.PROMPT_RESULT, FactTypes.CHAT_MSG, FactTypes.DILEMMA_RESULT,
+  // Narrator/push pipeline relies on this reaching machine-actions.ts persistFactToD1 — the
+  // isJournalable gate also controls whether factToTicker and handleFactPush run. Without
+  // this entry, SOCIAL_INVITE ticker messages and DM-invite push notifications are silently
+  // dropped. Confirmed via local Pulse test: 2026-04-14.
+  FactTypes.DM_INVITE_SENT,
 ];
 
 /** Returns true if the fact type should be persisted to the D1 journal. */
