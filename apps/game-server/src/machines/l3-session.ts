@@ -37,6 +37,12 @@ export interface DailyContext {
   nudgesThisDay: Record<string, boolean>;
   dmSlotsPerPlayer: number;
   requireDmInvite: boolean;
+  /** Per-cartridge-child wallclock timestamp, updated whenever L3 forwards an event
+   *  into that child. Used by sync.ts to populate `updatedAt` on the SYNC projection
+   *  so clients can detect mid-activity changes for unread signalling.
+   *  Keys match the XState child id strings: 'activeVotingCartridge' | 'activeGameCartridge'
+   *  | 'activePromptCartridge' | 'activeDilemmaCartridge'. */
+  cartridgeUpdatedAt: Record<string, number>;
 }
 
 export type DailyEvent =
@@ -121,6 +127,7 @@ export function buildL3Context(input: { dayIndex: number; roster: Record<string,
     nudgesThisDay: {},
     requireDmInvite: input.manifest?.requireDmInvite ?? false,
     dmSlotsPerPlayer: input.manifest?.dmSlotsPerPlayer ?? 5,
+    cartridgeUpdatedAt: {},
   };
 }
 
@@ -247,10 +254,10 @@ export const dailySessionMachine = setup({
                 },
                 'GAME.CHANNEL.CREATE': { actions: 'createGameChannel' },
                 'GAME.CHANNEL.DESTROY': { actions: 'destroyGameChannels' },
-                'INTERNAL.END_GAME': { actions: ['forwardToGameChild', sendParent({ type: 'PUSH.PHASE', trigger: 'END_GAME' } as any)] },
+                'INTERNAL.END_GAME': { actions: ['forwardToGameChild', 'bumpGameUpdatedAt', sendParent({ type: 'PUSH.PHASE', trigger: 'END_GAME' } as any)] },
                 '*': {
                   guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Game.PREFIX) && !event.type.startsWith(Events.Game.CHANNEL_PREFIX),
-                  actions: 'forwardToGameChild',
+                  actions: ['forwardToGameChild', 'bumpGameUpdatedAt'],
                 }
               }
             },
@@ -261,10 +268,10 @@ export const dailySessionMachine = setup({
                   target: 'groupChat',
                   actions: 'forwardVoteResultToL2'
                 },
-                'INTERNAL.CLOSE_VOTING': { actions: 'forwardToVotingChild' },
+                'INTERNAL.CLOSE_VOTING': { actions: ['forwardToVotingChild', 'bumpVotingUpdatedAt'] },
                 '*': {
                   guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Vote.PREFIX),
-                  actions: 'forwardToVotingChild',
+                  actions: ['forwardToVotingChild', 'bumpVotingUpdatedAt'],
                 }
               }
             }
@@ -294,11 +301,11 @@ export const dailySessionMachine = setup({
                 // handled by completed's xstate.done.actor handler.
                 'INTERNAL.END_ACTIVITY': {
                   target: 'completed',
-                  actions: ['forwardToPromptChild', sendParent({ type: 'PUSH.PHASE', trigger: 'END_ACTIVITY' } as any)],
+                  actions: ['forwardToPromptChild', 'bumpPromptUpdatedAt', sendParent({ type: 'PUSH.PHASE', trigger: 'END_ACTIVITY' } as any)],
                 },
                 '*': {
                   guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX),
-                  actions: 'forwardToPromptChild',
+                  actions: ['forwardToPromptChild', 'bumpPromptUpdatedAt'],
                 }
               }
             },
@@ -335,11 +342,11 @@ export const dailySessionMachine = setup({
                 },
                 'INTERNAL.END_DILEMMA': {
                   target: 'completed',
-                  actions: ['forwardToDilemmaChild', sendParent({ type: 'PUSH.PHASE', trigger: 'END_DILEMMA' } as any)]
+                  actions: ['forwardToDilemmaChild', 'bumpDilemmaUpdatedAt', sendParent({ type: 'PUSH.PHASE', trigger: 'END_DILEMMA' } as any)]
                 },
                 '*': {
                   guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Dilemma.PREFIX),
-                  actions: 'forwardToDilemmaChild',
+                  actions: ['forwardToDilemmaChild', 'bumpDilemmaUpdatedAt'],
                 }
               }
             },

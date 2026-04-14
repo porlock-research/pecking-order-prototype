@@ -61,6 +61,12 @@ export const l3GameActions = {
     result: (event as any).output as GameOutput,
   })),
   forwardToGameChild: sendTo('activeGameCartridge', ({ event }: any) => event),
+  bumpGameUpdatedAt: assign({
+    cartridgeUpdatedAt: ({ context }: any) => ({
+      ...context.cartridgeUpdatedAt,
+      activeGameCartridge: Date.now(),
+    }),
+  }),
   stopPreviousGameCartridge: enqueueActions(({ context, enqueue }: any) => {
     if (context.activeGameCartridgeRef) {
       enqueue.stopChild('activeGameCartridge');

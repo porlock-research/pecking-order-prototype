@@ -117,6 +117,30 @@ export function resolveDayPhase(snapshotValue: any, l3Value?: any): DayPhase {
   return DayPhases.PREGAME;
 }
 
+function typeKeyFor(kind: 'voting' | 'game' | 'prompt' | 'dilemma', cartridge: any): string {
+  if (!cartridge) return 'UNKNOWN';
+  switch (kind) {
+    case 'voting': return cartridge.mechanism || 'UNKNOWN';
+    case 'game': return cartridge.gameType || 'UNKNOWN';
+    case 'prompt': return cartridge.promptType || 'UNKNOWN';
+    case 'dilemma': return cartridge.dilemmaType || 'UNKNOWN';
+  }
+}
+
+function decorateCartridge(
+  cartridge: any,
+  kind: 'voting' | 'game' | 'prompt' | 'dilemma',
+  dayIndex: number,
+  updatedAt: number | undefined,
+): any {
+  if (!cartridge) return null;
+  return {
+    ...cartridge,
+    cartridgeId: `${kind}-${dayIndex}-${typeKeyFor(kind, cartridge)}`,
+    updatedAt: updatedAt ?? Date.now(),
+  };
+}
+
 /** Build the per-player SYSTEM.SYNC message object. */
 export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers?: string[]): any {
   const { snapshot, l3Context, chatLog, cartridges } = deps;
@@ -167,6 +191,13 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
 
   const activeGameCartridge = projectGameCartridge(cartridges.rawGameCartridge, playerId);
 
+  const dayIdx = snapshot.context.dayIndex ?? 0;
+  const updatedAtMap = l3Context.cartridgeUpdatedAt || {};
+  const decoratedVoting = decorateCartridge(cartridges.activeVotingCartridge, 'voting', dayIdx, updatedAtMap.activeVotingCartridge);
+  const decoratedGame = decorateCartridge(activeGameCartridge, 'game', dayIdx, updatedAtMap.activeGameCartridge);
+  const decoratedPrompt = decorateCartridge(projectPromptCartridge(cartridges.activePromptCartridge), 'prompt', dayIdx, updatedAtMap.activePromptCartridge);
+  const decoratedDilemma = decorateCartridge(projectDilemmaCartridge(cartridges.activeDilemmaCartridge), 'dilemma', dayIdx, updatedAtMap.activeDilemmaCartridge);
+
   const perkOverrides = l3Context.perkOverrides || {};
   const overrides = perkOverrides[playerId] || { extraPartners: 0, extraChars: 0 };
   const dmStats = {
@@ -202,10 +233,10 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       channels: playerChannels,
       groupChatOpen: l3Context.groupChatOpen ?? false,
       dmsOpen: l3Context.dmsOpen ?? false,
-      activeVotingCartridge: cartridges.activeVotingCartridge,
-      activeGameCartridge,
-      activePromptCartridge: projectPromptCartridge(cartridges.activePromptCartridge),
-      activeDilemmaCartridge: projectDilemmaCartridge(cartridges.activeDilemmaCartridge),
+      activeVotingCartridge: decoratedVoting,
+      activeGameCartridge: decoratedGame,
+      activePromptCartridge: decoratedPrompt,
+      activeDilemmaCartridge: decoratedDilemma,
       winner: snapshot.context.winner,
       goldPool: snapshot.context.goldPool ?? 0,
       goldPayouts: snapshot.context.goldPayouts ?? [],

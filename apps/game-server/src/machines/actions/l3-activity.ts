@@ -73,6 +73,12 @@ export const l3ActivityActions = {
     };
   }),
   forwardToPromptChild: sendTo('activePromptCartridge', ({ event }: any) => event),
+  bumpPromptUpdatedAt: assign({
+    cartridgeUpdatedAt: ({ context }: any) => ({
+      ...context.cartridgeUpdatedAt,
+      activePromptCartridge: Date.now(),
+    }),
+  }),
   stopPreviousPromptCartridge: enqueueActions(({ context, enqueue }: any) => {
     if (context.activePromptCartridgeRef) {
       enqueue.stopChild('activePromptCartridge');

@@ -6,6 +6,12 @@ import { log } from '../../log';
 
 export const l3VotingActions = {
   forwardToVotingChild: sendTo('activeVotingCartridge', ({ event }: any) => event),
+  bumpVotingUpdatedAt: assign({
+    cartridgeUpdatedAt: ({ context }: any) => ({
+      ...context.cartridgeUpdatedAt,
+      activeVotingCartridge: Date.now(),
+    }),
+  }),
   spawnVotingCartridge: assign({
     activeVotingCartridgeRef: ({ context, spawn }: any) => {
       const voteType = context.manifest?.voteType || 'MAJORITY';

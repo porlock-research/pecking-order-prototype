@@ -53,6 +53,12 @@ export const l3DilemmaActions = {
     result: (event as any).output as DilemmaOutput,
   })),
   forwardToDilemmaChild: sendTo('activeDilemmaCartridge', ({ event }: any) => event),
+  bumpDilemmaUpdatedAt: assign({
+    cartridgeUpdatedAt: ({ context }: any) => ({
+      ...context.cartridgeUpdatedAt,
+      activeDilemmaCartridge: Date.now(),
+    }),
+  }),
   stopPreviousDilemmaCartridge: enqueueActions(({ context, enqueue }: any) => {
     if (context.activeDilemmaCartridgeRef) {
       enqueue.stopChild('activeDilemmaCartridge');
