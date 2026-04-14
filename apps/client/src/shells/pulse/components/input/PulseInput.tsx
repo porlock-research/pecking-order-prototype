@@ -19,6 +19,7 @@ import type { ChatMessage } from '@pecking-order/shared-types';
 export function PulseInput() {
   const { engine, playerId, openDM, openNudge } = usePulse();
   const phase = useGameStore(s => s.phase);
+  const mainCapabilities = useGameStore(s => s.channels?.['MAIN']?.capabilities);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -209,7 +210,11 @@ export function PulseInput() {
               />
             </div>
           )}
-          <HintChips onSelect={selectCommand} />
+          <HintChips
+            onSelect={selectCommand}
+            channelType="MAIN"
+            capabilities={mainCapabilities}
+          />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
             <input
               ref={inputRef}
