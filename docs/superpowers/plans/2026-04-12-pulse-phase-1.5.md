@@ -54,6 +54,14 @@ Surfaced by the review — out of Phase 1.5 scope but real needs:
 - Status ring + typing indicator in DM sheet header (cheap; consider promoting if Task 4 has slack)
 - Narrator-line threshold validation (current: 2 = scheming, 4+ = alliance, coral/purple/gold) — observe real games before locking in
 
+### Additional deferrals found during implementation (2026-04-13)
+
+Small spec items intentionally skipped during Task 4/5/6 execution — each ~30 lines; all folded into Phase 2:
+- **DM sheet input missing `/silver /nudge /whisper` hint chips** (spec §2). `DmInput.tsx` is a plain text input today. Spec wants hint chips above the input that default target to the DM partner (1:1) and show a picker (group).
+- **Out-of-slots shake + toast** (spec §2). When `selectDmSlotsRemaining().remaining === 0` and the player taps a chip they don't already have an open DM with, the chip should CSS-shake and a toast "Out of DM slots for today" should appear. Currently relies on server-side rejection with no client feedback.
+- **@mention tap → openDM** (spec §7). `MentionRenderer.tsx` renders styled `@Name` text but has no tap handler. Needs wrapping in a button that calls `openDM(mentionedPlayerId)` for consistency with the one-rule grammar.
+- **Gallery variant 404 fallback** (`DmHero.tsx`). `resolvePersonaVariant` points at `medium.png` / `full.png` — if the CDN 404s, the image breaks with no fallback. Needs an `onError` handler that falls back to the headshot variant.
+
 **User workflow constraints:**
 - Ask before merging or pushing. Never push/merge without explicit approval.
 - Always run `npm run build` in `apps/client` (and any touched app) before committing. Fix all type errors.
