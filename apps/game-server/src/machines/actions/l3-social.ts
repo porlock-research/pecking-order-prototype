@@ -439,7 +439,7 @@ export const l3SocialActions = {
       fact: {
         type: FactTypes.DM_INVITE_SENT,
         actorId: event.senderId,
-        payload: { channelId: event.channelId, memberIds: event.memberIds },
+        payload: { channelId: event.channelId, memberIds: event.memberIds, kind: 'add_member' },
         timestamp: Date.now(),
       },
     };
