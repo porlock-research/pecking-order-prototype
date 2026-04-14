@@ -507,7 +507,10 @@ export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LI
 export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM']);
 export type ChannelType = z.infer<typeof ChannelTypeSchema>;
 
-export type ChannelCapability = 'CHAT' | 'SILVER_TRANSFER' | 'INVITE_MEMBER' | 'REACTIONS' | 'REPLIES' | 'GAME_ACTIONS';
+export type ChannelCapability =
+  | 'CHAT' | 'SILVER_TRANSFER' | 'INVITE_MEMBER' | 'REACTIONS' | 'REPLIES' | 'GAME_ACTIONS'
+  | 'NUDGE'     // MAIN + 1:1 DM — UI affordance flag (NUDGE event is player-scoped)
+  | 'WHISPER';  // MAIN only — whisper is MAIN-anonymous
 
 export interface Channel {
   id: string;

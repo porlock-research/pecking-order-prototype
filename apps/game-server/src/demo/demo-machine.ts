@@ -78,7 +78,7 @@ export const demoMachine = setup({
             memberIds: allMembers,
             createdBy: event.senderId,
             createdAt: Date.now(),
-            capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
+            capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE'],
             constraints: { silverCost: 0 }, // free in demo
           };
         }

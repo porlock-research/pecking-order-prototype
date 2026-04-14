@@ -47,7 +47,9 @@ export const l3SocialActions = {
             pendingMemberIds: recipientIds,
             createdBy: senderId,
             createdAt: Date.now(),
-            capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
+            capabilities: channelType === 'DM'
+              ? ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE']
+              : ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
           };
         } else {
           channels[channelId] = {
@@ -56,7 +58,9 @@ export const l3SocialActions = {
             memberIds: [senderId, ...recipientIds],
             createdBy: senderId,
             createdAt: Date.now(),
-            capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
+            capabilities: channelType === 'DM'
+              ? ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE']
+              : ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
           };
         }
         // Sender consumes a slot for new conversation
