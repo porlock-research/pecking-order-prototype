@@ -169,6 +169,31 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
         involvedPlayerIds: dilemmaPlayerIds,
       };
     }
+    case FactTypes.DM_INVITE_SENT: {
+      const kind = fact.payload?.kind ?? 'initial';
+      const memberIds: string[] = fact.payload?.memberIds ?? [];
+      const actor = name(fact.actorId);
+      const totalPartners = memberIds.length;
+      let text: string;
+      if (kind === 'add_member') {
+        text = `${actor} pulled someone else into their chat`;
+      } else if (totalPartners >= 4) {
+        // Initial alliance formation (4+ invited = 5+ total incl. actor)
+        text = `${totalPartners + 1} players formed an alliance headed by ${actor}`;
+      } else if (totalPartners >= 2) {
+        text = `${actor} is scheming with someone`;
+      } else {
+        text = `${actor} started talking to someone`;
+      }
+      return {
+        id: crypto.randomUUID(),
+        text,
+        category: TickerCategories.SOCIAL_INVITE,
+        timestamp: fact.timestamp,
+        involvedPlayerIds: [fact.actorId, ...memberIds],
+        kind,
+      };
+    }
     default:
       return null;
   }

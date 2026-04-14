@@ -604,6 +604,9 @@ export interface TickerMessage {
   category: TickerCategory;
   timestamp: number;
   involvedPlayerIds?: string[];
+  // Optional structured discriminator for category variants (e.g. SOCIAL_INVITE
+  // needs to distinguish 'initial' DM creation from 'add_member').
+  kind?: string;
 }
 
 // --- Game Phase (server-projected, consumed by all shells) ---
