@@ -189,6 +189,11 @@ interface GameState {
 
   // Pulse Phase 4 actions
   hydratePhase4FromStorage: () => void;
+  markCartridgeSeen: (cartridgeId: string) => void;
+  markSilverSeen: (senderId: string) => void;
+  markRevealSeen: (kind: 'elimination' | 'winner', dayIndex?: number) => void;
+  setPendingIntent: (intent: DeepLinkIntent | null) => void;
+  incrementIntentAttempts: () => void;
 }
 
 // Selectors
@@ -819,4 +824,50 @@ export const useGameStore = create<GameState>((set) => ({
       revealsSeen: read('revealsSeen', { elimination: {}, winner: false }),
     };
   }),
+
+  markCartridgeSeen: (cartridgeId) => set((state) => {
+    const next = { ...state.lastSeenCartridge, [cartridgeId]: Date.now() };
+    try {
+      if (state.gameId && state.playerId) {
+        localStorage.setItem(`po-lastSeenCartridge-${state.gameId}-${state.playerId}`, JSON.stringify(next));
+      }
+    } catch {}
+    return { lastSeenCartridge: next };
+  }),
+
+  markSilverSeen: (senderId) => set((state) => {
+    const next = { ...state.lastSeenSilverFrom, [senderId]: Date.now() };
+    try {
+      if (state.gameId && state.playerId) {
+        localStorage.setItem(`po-lastSeenSilverFrom-${state.gameId}-${state.playerId}`, JSON.stringify(next));
+      }
+    } catch {}
+    return { lastSeenSilverFrom: next };
+  }),
+
+  markRevealSeen: (kind, dayIndex) => set((state) => {
+    const next = kind === 'elimination'
+      ? { ...state.revealsSeen, elimination: { ...state.revealsSeen.elimination, [dayIndex as number]: true } }
+      : { ...state.revealsSeen, winner: true };
+    try {
+      if (state.gameId && state.playerId) {
+        localStorage.setItem(`po-revealsSeen-${state.gameId}-${state.playerId}`, JSON.stringify(next));
+      }
+    } catch {}
+    return { revealsSeen: next };
+  }),
+
+  setPendingIntent: (intent) => set((state) => {
+    if (intent === null) {
+      return { pendingIntent: null, pendingIntentAttempts: 0, pendingIntentFirstReceivedAt: null };
+    }
+    return {
+      pendingIntent: intent,
+      pendingIntentFirstReceivedAt: state.pendingIntentFirstReceivedAt ?? Date.now(),
+    };
+  }),
+
+  incrementIntentAttempts: () => set((state) => ({
+    pendingIntentAttempts: state.pendingIntentAttempts + 1,
+  })),
 }));
