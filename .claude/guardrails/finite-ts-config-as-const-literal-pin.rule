@@ -1,0 +1,22 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: (let\s+\w+\s*=\s*Config\.|let\s+\w+\s*=\s*\w+\.(startSize|maxSize|timeLimitMs|silverBySize|maxLives|colorsCount|roundsPerGold))
+ADVISORY: |
+  `Config` in packages/shared-types/src/config.ts is `as const`, so every leaf
+  literal value is pinned to its narrow literal type (e.g. `3`, `60_000`).
+
+  If you assign one to a `let` that you then re-assign to a different value, TS
+  will error: "Type '4' is not assignable to type '3'".
+
+  WRONG:
+      let currentSize = Config.game.recall.startSize; // type pins to literal `3`
+      currentSize = 4;  // TS2322 error
+
+  RIGHT — explicit type annotation:
+      let currentSize: number = Config.game.recall.startSize;
+
+  Or extract the value once and convert:
+      const START_SIZE: number = Config.game.recall.startSize;
+      let currentSize = START_SIZE;
+
+  This ALSO hits `as const` arrays (silverBySize, prizePool) used as `readonly number[]` —
+  indexing returns `number | undefined`, so use nullish fallback: `arr[i] ?? 0`.

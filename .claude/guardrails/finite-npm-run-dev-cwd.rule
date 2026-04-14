@@ -1,0 +1,25 @@
+MATCH_TOOL: Bash
+MATCH_PATTERN: (^|&&|;|\|\|)\s*npm run dev(\s|$)
+ADVISORY: |
+  `npm run dev` runs turborepo from the current working directory, which
+  selects tasks based on that directory's package.json:
+
+  - From repo root / worktree root: starts ALL dev tasks (lobby :3000,
+    client :5173, game-server :8787) — usually what you want.
+  - From `apps/game-server`: starts ONLY wrangler dev (8787-8788). No
+    client vite, no lobby.
+  - From `apps/client`: starts ONLY vite (5173).
+  - From `apps/lobby`: starts ONLY next dev (3000).
+
+  Real session cost: typechecked from `apps/game-server`, then ran
+  `npm run dev` without cd, silently started wrangler instead of vite.
+  Had to kill it and restart from `apps/client`.
+
+  If you want a specific app, be explicit:
+      cd apps/client && npm run dev -- --port 5175
+
+  If you want everything, cd to the repo/worktree root first.
+
+  This is distinct from the "wrong worktree" trap (see
+  finite-dev-server-wrong-worktree). This one is "wrong app WITHIN the
+  correct worktree."

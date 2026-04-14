@@ -1,22 +1,33 @@
 MATCH_TOOL: Edit|Write|Agent
-MATCH_PATTERN: (arcade.*spec|arcade.*design|arcade.*plan|new.*game.*cartridge|batch.*arcade)
+MATCH_PATTERN: (arcade.*spec|arcade.*design|arcade.*plan|new.*game.*cartridge|batch.*arcade|shared-types/src/(index\.ts|config\.ts|game-type-info\.ts|cycle-defaults\.ts)|game-cartridges/src/machines/(index\.ts|[a-z-]+\.ts)|GameDevHarness\.tsx)
 ADVISORY: |
-  When writing or reviewing an arcade game spec/plan, verify ALL integration
-  points are explicitly addressed. Specs consistently miss items from this list:
+  Adding or reviewing a new arcade game cartridge — verify ALL 10 integration
+  touchpoints are addressed. Easy to forget the client-side ones because the
+  game appears to "work" in GameDevHarness which has its own separate registry.
 
-  REQUIRED (8 registration touchpoints):
+  REAL-GAME flow requires:
+
+  SHARED TYPES (4):
   1. GameTypeSchema in packages/shared-types/src/index.ts
   2. GAME_TYPE_INFO in packages/shared-types/src/game-type-info.ts (name + description)
   3. Config.game.<name> in packages/shared-types/src/config.ts (timeLimitMs + reward divisors)
-  4. GAME_POOL in packages/shared-types/src/cycle-defaults.ts (minPlayers + array position)
+  4. GAME_POOL in packages/shared-types/src/cycle-defaults.ts (minPlayers)
+
+  CARTRIDGE (3 — note DUAL barrel):
   5. Machine file in packages/game-cartridges/src/machines/<name>.ts
-  6. GAME_REGISTRY in packages/game-cartridges/src/machines/index.ts
-  7. GAME_COMPONENTS in apps/client/src/components/panels/GamePanel.tsx (lazy import)
-  8. GAME_STAT_CONFIG in apps/client/src/cartridges/games/shared/Leaderboard.tsx
+  6. GAME_REGISTRY + export in packages/game-cartridges/src/machines/index.ts
+  7. Re-export in packages/game-cartridges/src/index.ts (the outer barrel)
+
+  CLIENT (3 — all easy to miss, harness bypasses these):
+  8. GAME_COMPONENTS in apps/client/src/components/panels/GamePanel.tsx (lazy import) — without this, the real game panel renders nothing for the new type
+  9. GAME_STAT_CONFIG in apps/client/src/cartridges/games/shared/Leaderboard.tsx — without this, leaderboard shows no stat for the game
+  10. GameDevHarness.tsx — GameType union + GAME_DEFS + ARCADE_TYPES array (for local dev)
 
   COMMONLY MISSED:
+  - Client ONLY harness wiring (#10): game will not surface in /dev/games without it
+  - Client production wiring (#8, #9): game "works" in harness but breaks in real-game flow
   - LIVE_GAMES exclusion (confirm NOT in set — solo arcade games are never live)
-  - Event factory confirmation (Events.Game.start/result work for new types without registration)
+  - Client ClientEvent union in shared-types/src/index.ts (GAME.X.START / GAME.X.RESULT types)
   - DemoServer impact check (apps/game-server/src/demo/)
   - renderBreakdown prop on wrapper component
   - GAME_STAT_CONFIG should use a distinctive stat, not generic "score"
