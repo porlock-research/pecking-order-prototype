@@ -21,6 +21,7 @@ export { buildPhaseInfo } from './phase-info';
 export type { PhaseInfo } from './phase-info';
 export { buildDayBriefingMessages } from './gm-briefings';
 export { getChannelHints } from './channel-hints';
+export type { CartridgeKind, DeepLinkIntent } from './push';
 export { DilemmaTypeSchema, type DilemmaType, type DilemmaCartridgeInput, type DilemmaOutput } from './dilemma-types';
 import { DilemmaTypeSchema } from './dilemma-types';
 import type { TickerCategory } from './events';
