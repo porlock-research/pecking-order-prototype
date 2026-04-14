@@ -842,7 +842,7 @@ export const useGameStore = create<GameState>((set) => ({
     // Use stableRef to preserve old references when data hasn't changed.
     // This prevents cascading re-renders across the entire component tree
     // when a SYNC arrives but the player-visible data is identical.
-    const nextRoster = data.context?.roster || {};
+    const nextRoster = data.context?.roster ?? state.roster;
     const nextChatLog = data.context?.chatLog?.length ? data.context.chatLog : state.chatLog;
     const nextChannels = data.context?.channels ?? state.channels;
 
