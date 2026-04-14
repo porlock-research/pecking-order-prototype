@@ -1,8 +1,10 @@
-import { useGameStore, selectDmSlotsRemaining } from '../../../../store/useGameStore';
+import { useGameStore, selectDmSlots } from '../../../../store/useGameStore';
 
 export function PickingBanner() {
   const pickingMode = useGameStore(s => s.pickingMode);
-  const { remaining } = useGameStore(selectDmSlotsRemaining);
+  const used = useGameStore(s => selectDmSlots(s).used);
+  const total = useGameStore(s => selectDmSlots(s).total);
+  const remaining = Math.max(0, total - used);
   const cancelPicking = useGameStore(s => s.cancelPicking);
 
   if (!pickingMode) return null;

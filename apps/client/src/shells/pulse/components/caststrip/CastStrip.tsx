@@ -1,11 +1,10 @@
-import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectCastStripEntries, type CastStripEntry } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { CastChip } from './CastChip';
 import { GroupChip } from './GroupChip';
 
 export function CastStrip() {
-  const entries = useGameStore(useShallow(selectCastStripEntries));
+  const entries = useGameStore(selectCastStripEntries);
   const pickingMode = useGameStore(s => s.pickingMode);
   const togglePicked = useGameStore(s => s.togglePicked);
   const channels = useGameStore(s => s.channels);

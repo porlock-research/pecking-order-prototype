@@ -1,0 +1,40 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/client/src/(store/useGameStore\.ts|shells/.*\.tsx?)$
+ADVISORY: |
+  React 19 + Zustand gotcha that crashes the Pulse shell with "Maximum update
+  depth exceeded" / "getSnapshot should be cached to avoid an infinite loop":
+
+  A Zustand selector that BUILDS a new object or array literal on every call
+  returns a fresh reference each render. Zustand compares with `Object.is`, so
+  the snapshot looks "changed" → React re-renders → selector runs again →
+  new reference → infinite loop.
+
+  WRONG (fresh object/array every call):
+    export const selectStandings = (state) =>
+      Object.entries(state.roster).map(([id, p], i) => ({ id, player: p, rank: i + 1 }));
+
+  `useShallow` DOES NOT fix this for arrays that contain fresh object literals —
+  it compares array items by `Object.is`, so fresh inner objects still fail.
+
+  RIGHT — wrap the selector with `memoSelector` (defined in useGameStore.ts).
+  Declare the state slices the selector reads; the cache returns the same
+  reference until one of those inputs changes identity:
+
+    export const selectStandings = memoSelector(
+      (s) => [s.roster],
+      (state) => Object.entries(state.roster).map(([id, p], i) => ({ id, player: p, rank: i + 1 })),
+    );
+
+  Include EVERY state field the selector reads (directly or via nested
+  selectors) in the inputs tuple — a missing input means stale data.
+
+  For consumers: once the selector is memoized at the source, just use
+  `useGameStore(selectX)` — no `useShallow` or `useMemo` needed at the call
+  site. Do NOT return primitives from inside a fresh object (e.g.
+  `useGameStore(s => selectX(s).length)` recomputes the whole selector each
+  render; prefer a dedicated primitive selector or memoize the source).
+
+  Rule: any selector exported from useGameStore.ts that returns a NEW object
+  or array literal MUST be wrapped with `memoSelector`. Selectors that return
+  a primitive (number/boolean/string) or an existing state reference do not
+  need wrapping.

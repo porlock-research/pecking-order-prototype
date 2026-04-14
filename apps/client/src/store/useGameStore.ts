@@ -15,6 +15,33 @@ function stableRef<T>(prev: T, next: T): T {
   return next;
 }
 
+/**
+ * Memoize a selector by a tuple of input references. Returns the cached
+ * result until any input identity changes. Critical for selectors that
+ * build fresh objects/arrays — a fresh reference each call triggers a
+ * React 19 `useSyncExternalStore` infinite loop.
+ */
+function memoSelector<T>(
+  inputs: (state: GameState) => readonly unknown[],
+  compute: (state: GameState) => T,
+): (state: GameState) => T {
+  let lastInputs: readonly unknown[] | null = null;
+  let lastResult: T;
+  return (state) => {
+    const next = inputs(state);
+    if (
+      lastInputs &&
+      next.length === lastInputs.length &&
+      next.every((v, i) => v === lastInputs![i])
+    ) {
+      return lastResult;
+    }
+    lastInputs = next;
+    lastResult = compute(state);
+    return lastResult;
+  };
+}
+
 interface DmThread {
   partnerId: string;
   channelId: string;
@@ -121,36 +148,37 @@ interface GameState {
 export const selectMainChat = (state: GameState): ChatMessage[] =>
   state.chatLog.filter(m => m.channelId === 'MAIN' || (!m.channelId && m.channel === 'MAIN'));
 
-export const selectDmThreads = (state: GameState): DmThread[] => {
-  const pid = state.playerId;
-  if (!pid) return [];
+export const selectDmThreads = memoSelector(
+  (s) => [s.playerId, s.channels, s.chatLog],
+  (state: GameState): DmThread[] => {
+    const pid = state.playerId;
+    if (!pid) return [];
 
-  // Channel-based: derive threads from DM + GROUP_DM channels
-  const dmChannels = Object.values(state.channels).filter(
-    ch => (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.GROUP_DM) && ch.memberIds.includes(pid)
-  );
+    const dmChannels = Object.values(state.channels).filter(
+      ch => (ch.type === ChannelTypes.DM || ch.type === ChannelTypes.GROUP_DM) && ch.memberIds.includes(pid)
+    );
 
-  return dmChannels.map(ch => {
-    const isGroup = ch.type === ChannelTypes.GROUP_DM;
-    const partnerId = isGroup
-      ? ch.id  // For groups, use channelId as the thread key
-      : (ch.memberIds.find(id => id !== pid) || ch.memberIds[0]);
-    const messages = state.chatLog
-      .filter(m => m.channelId === ch.id)
-      .sort((a, b) => a.timestamp - b.timestamp);
-    return {
-      partnerId,
-      channelId: ch.id,
-      messages,
-      lastTimestamp: messages.length > 0 ? messages[messages.length - 1].timestamp : ch.createdAt,
-      isGroup,
-      memberIds: isGroup ? ch.memberIds : undefined,
-    };
-  })
-  // Group threads appear even if empty (just created); 1-to-1 only if messages exist
-  .filter(t => t.isGroup || t.messages.length > 0)
-  .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
-};
+    return dmChannels.map(ch => {
+      const isGroup = ch.type === ChannelTypes.GROUP_DM;
+      const partnerId = isGroup
+        ? ch.id
+        : (ch.memberIds.find(id => id !== pid) || ch.memberIds[0]);
+      const messages = state.chatLog
+        .filter(m => m.channelId === ch.id)
+        .sort((a, b) => a.timestamp - b.timestamp);
+      return {
+        partnerId,
+        channelId: ch.id,
+        messages,
+        lastTimestamp: messages.length > 0 ? messages[messages.length - 1].timestamp : ch.createdAt,
+        isGroup,
+        memberIds: isGroup ? ch.memberIds : undefined,
+      };
+    })
+    .filter(t => t.isGroup || t.messages.length > 0)
+    .sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+  },
+);
 
 export const selectSortedPlayers = (state: GameState): {
   alive: [string, SocialPlayer][];
@@ -202,13 +230,16 @@ export const selectRequireDmInvite = (state: GameState): boolean => {
   return currentDay?.requireDmInvite ?? false;
 };
 
-export const selectDmSlots = (state: GameState): { used: number; total: number } => {
-  if (!state.manifest?.days) return { used: 0, total: 5 };
-  const currentDay = state.manifest.days[state.dayIndex - 1];
-  const total = currentDay?.dmSlotsPerPlayer ?? 5;
-  const used = state.dmStats?.slotsUsed ?? 0;
-  return { used, total };
-};
+export const selectDmSlots = memoSelector(
+  (s) => [s.manifest, s.dayIndex, s.dmStats],
+  (state: GameState): { used: number; total: number } => {
+    if (!state.manifest?.days) return { used: 0, total: 5 };
+    const currentDay = state.manifest.days[state.dayIndex - 1];
+    const total = currentDay?.dmSlotsPerPlayer ?? 5;
+    const used = state.dmStats?.slotsUsed ?? 0;
+    return { used, total };
+  },
+);
 
 export const selectCanAddMemberTo = (state: GameState, channelId: string): boolean => {
   const channel = state.channels?.[channelId];
@@ -410,34 +441,38 @@ export const selectTotalDmUnread = (state: GameState): number => {
   }, 0);
 };
 
-export const selectStandings = (state: GameState): { id: string; player: SocialPlayer; rank: number }[] => {
-  return Object.entries(state.roster)
-    .filter(([, p]) => p.status === 'ALIVE')
-    .sort((a, b) => b[1].silver - a[1].silver || a[1].personaName.localeCompare(b[1].personaName))
-    .map(([id, p], i) => ({ id, player: p, rank: i + 1 }));
-};
+export const selectStandings = memoSelector(
+  (s) => [s.roster],
+  (state: GameState): { id: string; player: SocialPlayer; rank: number }[] => {
+    return Object.entries(state.roster)
+      .filter(([, p]) => p.status === 'ALIVE')
+      .sort((a, b) => b[1].silver - a[1].silver || a[1].personaName.localeCompare(b[1].personaName))
+      .map(([id, p], i) => ({ id, player: p, rank: i + 1 }));
+  },
+);
 
 export const selectIsLeader = (playerId: string) => (state: GameState): boolean => {
   const standings = selectStandings(state);
   return standings.length > 0 && standings[0].id === playerId;
 };
 
-export const selectPendingInvitesForMe = (state: GameState): Channel[] => {
-  const pid = state.playerId;
-  if (!pid) return [];
-  return Object.values(state.channels).filter(ch => (ch.pendingMemberIds || []).includes(pid));
-};
+export const selectPendingInvitesForMe = memoSelector(
+  (s) => [s.playerId, s.channels],
+  (state: GameState): Channel[] => {
+    const pid = state.playerId;
+    if (!pid) return [];
+    return Object.values(state.channels).filter(ch => (ch.pendingMemberIds || []).includes(pid));
+  },
+);
 
-export const selectOutgoingInvites = (state: GameState): Channel[] => {
-  const pid = state.playerId;
-  if (!pid) return [];
-  return Object.values(state.channels).filter(ch => ch.createdBy === pid && (ch.pendingMemberIds || []).length > 0);
-};
-
-export const selectDmSlotsRemaining = (state: GameState): { used: number; total: number; remaining: number } => {
-  const { used, total } = selectDmSlots(state);
-  return { used, total, remaining: Math.max(0, total - used) };
-};
+export const selectOutgoingInvites = memoSelector(
+  (s) => [s.playerId, s.channels],
+  (state: GameState): Channel[] => {
+    const pid = state.playerId;
+    if (!pid) return [];
+    return Object.values(state.channels).filter(ch => ch.createdBy === pid && (ch.pendingMemberIds || []).length > 0);
+  },
+);
 
 /**
  * Chip tap feasibility: returns 'blocked' when the player can't open a NEW
@@ -453,11 +488,13 @@ export const selectChipSlotStatus = (state: GameState, chipPlayerId: string): 'o
     c.type === ChannelTypes.DM && c.memberIds.includes(pid) && c.memberIds.includes(chipPlayerId),
   );
   if (hasExistingDm) return 'ok';
-  const { remaining } = selectDmSlotsRemaining(state);
-  return remaining > 0 ? 'ok' : 'blocked';
+  const { used, total } = selectDmSlots(state);
+  return total - used > 0 ? 'ok' : 'blocked';
 };
 
-export const selectCastStripEntries = (state: GameState): CastStripEntry[] => {
+export const selectCastStripEntries = memoSelector(
+  (s) => [s.playerId, s.roster, s.channels, s.chatLog, s.onlinePlayers, s.typingPlayers, s.lastReadTimestamp],
+  (state: GameState): CastStripEntry[] => {
   const pid = state.playerId;
   if (!pid) return [];
   const leaderId = selectStandings(state)[0]?.id;
@@ -533,7 +570,8 @@ export const selectCastStripEntries = (state: GameState): CastStripEntry[] => {
   });
 
   return entries;
-};
+  },
+);
 
 export const useGameStore = create<GameState>((set) => ({
   gameId: null,

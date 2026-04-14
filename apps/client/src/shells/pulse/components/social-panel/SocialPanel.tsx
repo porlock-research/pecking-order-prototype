@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectPendingInvitesForMe, selectStandings } from '../../../../store/useGameStore';
 import { Podium } from './Podium';
 import { StandingsRest } from './StandingsRest';
@@ -8,10 +9,10 @@ import { ConversationsList } from './ConversationsList';
 interface Props { onClose: () => void; }
 
 export function SocialPanel({ onClose }: Props) {
-  const pendingInvites = useGameStore(selectPendingInvitesForMe);
+  const pendingInvites = useGameStore(useShallow(selectPendingInvitesForMe));
   const roster = useGameStore(s => s.roster);
   const playerId = useGameStore(s => s.playerId);
-  const standings = useGameStore(selectStandings);
+  const standings = useGameStore(useShallow(selectStandings));
   const myRank = standings.find(s => s.id === playerId)?.rank ?? null;
 
   return (

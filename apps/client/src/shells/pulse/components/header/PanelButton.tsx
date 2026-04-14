@@ -4,7 +4,7 @@ interface Props { onClick: () => void; }
 
 export function PanelButton({ onClick }: Props) {
   const unread = useGameStore(selectTotalDmUnread);
-  const invites = useGameStore(selectPendingInvitesForMe).length;
+  const invites = useGameStore(s => selectPendingInvitesForMe(s).length);
   const total = unread + invites;
 
   return (

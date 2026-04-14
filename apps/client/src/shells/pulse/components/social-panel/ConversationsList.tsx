@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectDmThreads } from '../../../../store/useGameStore';
 import { resolveAvatarUrl } from '../../../../utils/personaImage';
 import { getPlayerColor } from '../../colors';
@@ -17,7 +18,7 @@ const pipStyle: CSSProperties = {
 };
 
 export function ConversationsList() {
-  const threads = useGameStore(selectDmThreads);
+  const threads = useGameStore(useShallow(selectDmThreads));
   const roster = useGameStore(s => s.roster);
   const lastReadTimestamp = useGameStore(s => s.lastReadTimestamp);
   const playerId = useGameStore(s => s.playerId);

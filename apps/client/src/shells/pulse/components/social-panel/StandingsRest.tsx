@@ -1,10 +1,11 @@
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectStandings } from '../../../../store/useGameStore';
 import { resolveAvatarUrl } from '../../../../utils/personaImage';
 import { getPlayerColor } from '../../colors';
 import { usePulse } from '../../PulseShell';
 
 export function StandingsRest() {
-  const standings = useGameStore(selectStandings).slice(3);
+  const standings = useGameStore(useShallow(s => selectStandings(s).slice(3)));
   const roster = useGameStore(s => s.roster);
   const playerId = useGameStore(s => s.playerId);
   const { openDM } = usePulse();

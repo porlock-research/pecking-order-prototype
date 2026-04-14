@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectStandings } from '../../../../store/useGameStore';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import { DmHero } from './DmHero';
@@ -23,7 +24,7 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
   const playerId = useGameStore(s => s.playerId) as string;
   const channels = useGameStore(s => s.channels);
   const onlinePlayers = useGameStore(s => s.onlinePlayers);
-  const standings = useGameStore(selectStandings);
+  const standings = useGameStore(useShallow(selectStandings));
 
   const channel = useMemo(() => {
     if (isGroup) return channels[targetId] ?? null;

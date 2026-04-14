@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectStandings } from '../../../../store/useGameStore';
 import { resolveAvatarUrl } from '../../../../utils/personaImage';
 import { getPlayerColor } from '../../colors';
@@ -58,7 +59,7 @@ function Slot({ entry, rank, onTap, colorIdx }: SlotProps) {
 }
 
 export function Podium() {
-  const standings = useGameStore(selectStandings).slice(0, 3);
+  const standings = useGameStore(useShallow(s => selectStandings(s).slice(0, 3)));
   const roster = useGameStore(s => s.roster);
   const { openDM } = usePulse();
 

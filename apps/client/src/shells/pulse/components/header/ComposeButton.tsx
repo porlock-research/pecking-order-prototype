@@ -1,10 +1,11 @@
-import { useGameStore, selectDmSlotsRemaining } from '../../../../store/useGameStore';
+import { useGameStore, selectDmSlots } from '../../../../store/useGameStore';
 
 interface Props { onClick: () => void; }
 
 export function ComposeButton({ onClick }: Props) {
-  const { used, total, remaining } = useGameStore(selectDmSlotsRemaining);
-  const depleted = remaining <= 0;
+  const used = useGameStore(s => selectDmSlots(s).used);
+  const total = useGameStore(s => selectDmSlots(s).total);
+  const depleted = total - used <= 0;
   return (
     <button
       onClick={depleted ? undefined : onClick}
