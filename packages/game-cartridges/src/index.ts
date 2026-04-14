@@ -25,5 +25,7 @@ export {
   touchScreenMachine, theSplitMachine,
   shockwaveMachine, orbitMachine, beatDropMachine,
   inflateMachine, snakeMachine, flappyMachine, colorSortMachine,
+  blinkMachine,
+  recallMachine,
   GAME_REGISTRY,
 } from './machines';

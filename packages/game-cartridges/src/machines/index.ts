@@ -27,6 +27,8 @@ export { inflateMachine } from './inflate';
 export { snakeMachine } from './snake';
 export { flappyMachine } from './flappy';
 export { colorSortMachine } from './color-sort';
+export { blinkMachine } from './blink';
+export { recallMachine } from './recall';
 
 import { gapRunMachine } from './gap-run';
 import { gridPushMachine } from './grid-push';
@@ -51,6 +53,8 @@ import { inflateMachine } from './inflate';
 import { snakeMachine } from './snake';
 import { flappyMachine } from './flappy';
 import { colorSortMachine } from './color-sort';
+import { blinkMachine } from './blink';
+import { recallMachine } from './recall';
 
 export const GAME_REGISTRY = {
   GAP_RUN: gapRunMachine,
@@ -76,4 +80,6 @@ export const GAME_REGISTRY = {
   SNAKE: snakeMachine,
   FLAPPY: flappyMachine,
   COLOR_SORT: colorSortMachine,
+  BLINK: blinkMachine,
+  RECALL: recallMachine,
 } as const;

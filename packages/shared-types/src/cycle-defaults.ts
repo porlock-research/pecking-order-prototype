@@ -45,6 +45,8 @@ const GAME_POOL: MechanicSpec<GameType>[] = [
   { type: 'SNAKE', minPlayers: 2 },
   { type: 'FLAPPY', minPlayers: 2 },
   { type: 'COLOR_SORT', minPlayers: 2 },
+  { type: 'BLINK', minPlayers: 2 },
+  { type: 'RECALL', minPlayers: 2 },
 ];
 
 // Activities: icebreaker → suspense → fun → deeper social → opinion → deduction.

@@ -166,6 +166,21 @@ export const Config = {
       solvedBonus: 5,
       scorePerGold: 100,
     },
+    blink: {
+      timeLimitMs: 30_000,
+      scorePerSilver: 10,
+      scorePerGold: 50,
+      whitePenalty: 3,
+      minStateMs: 220,
+    },
+    recall: {
+      timeLimitMs: 90_000,
+      startSize: 3,
+      maxSize: 6,
+      // Silver awarded cumulatively: 3×3=1, 4×4=2, 5×5=4, 6×6=8 → 15 total if cleared
+      silverBySize: [0, 0, 0, 1, 2, 4, 8] as readonly number[],
+      fullClearGold: 1,
+    },
   },
   dilemma: {
     silverParticipation: 5,

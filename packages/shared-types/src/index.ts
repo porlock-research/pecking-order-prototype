@@ -91,6 +91,7 @@ export const GameTypeSchema = z.enum([
   "TOUCH_SCREEN",
   "SHOCKWAVE", "ORBIT", "BEAT_DROP",
   "INFLATE", "SNAKE", "FLAPPY", "COLOR_SORT",
+  "BLINK", "RECALL",
   "NONE",
 ]);
 export type GameType = z.infer<typeof GameTypeSchema>;
@@ -649,6 +650,14 @@ export type SimonSaysClientEvent =
 export type AimTrainerClientEvent =
   | { type: 'GAME.AIM_TRAINER.START' }
   | { type: 'GAME.AIM_TRAINER.RESULT'; targetsHit: number; totalTargets: number; score: number; timeElapsed: number };
+
+export type BlinkClientEvent =
+  | { type: 'GAME.BLINK.START' }
+  | { type: 'GAME.BLINK.RESULT'; score: number; blackTaps: number; whiteTaps: number; longestStreak: number; timeElapsed: number };
+
+export type RecallClientEvent =
+  | { type: 'GAME.RECALL.START' }
+  | { type: 'GAME.RECALL.RESULT'; roundsCleared: number; highestSize: number; fullClear: number; timeElapsed: number };
 
 export type BetBetBetClientEvent =
   | { type: 'GAME.BET_BET_BET.SUBMIT'; amount: number };
