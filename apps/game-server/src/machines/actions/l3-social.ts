@@ -413,13 +413,26 @@ export const l3SocialActions = {
     if (!channel) return {};
 
     const isInviteMode = context.requireDmInvite;
+    const updatedMemberIds = isInviteMode
+      ? channel.memberIds
+      : [...channel.memberIds, ...newMemberIds];
+    const updatedPendingIds = isInviteMode
+      ? [...(channel.pendingMemberIds ?? []), ...newMemberIds]
+      : channel.pendingMemberIds;
+
+    const totalMembers = updatedMemberIds.length + (updatedPendingIds?.length ?? 0);
+    const shouldPromote = channel.type === 'DM' && totalMembers > 2;
+
+    const promotedCaps = shouldPromote
+      ? (channel.capabilities ?? []).filter((c: ChannelCapability) => c !== 'NUDGE')
+      : channel.capabilities;
 
     channels[channelId] = {
       ...channel,
-      ...(isInviteMode
-        ? { pendingMemberIds: [...(channel.pendingMemberIds || []), ...newMemberIds] }
-        : { memberIds: [...channel.memberIds, ...newMemberIds] }
-      ),
+      memberIds: updatedMemberIds,
+      pendingMemberIds: updatedPendingIds,
+      capabilities: promotedCaps,
+      ...(shouldPromote ? { type: 'GROUP_DM' as const } : {}),
     };
 
     let chatLog = context.chatLog;
