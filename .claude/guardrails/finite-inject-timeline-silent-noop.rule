@@ -1,0 +1,37 @@
+MATCH_TOOL: Bash|Edit|Write
+MATCH_PATTERN: apps/game-server/src/machines/actions/l3-(games|activity|dilemma)\.ts$|INJECT_TIMELINE_EVENT
+ADVISORY: |
+  `INJECT_TIMELINE_EVENT` silently no-ops when the current day manifest has
+  `NONE` for the relevant type. The spawn actions read the manifest field FIRST
+  and fall back to event payload second:
+
+    spawnGameCartridge        → context.manifest.gameType      || payload.gameType
+    spawnPromptCartridge      → context.manifest.activityType  || payload.promptType
+    spawnDilemmaCartridge     → context.manifest.dilemmaType   || payload.dilemmaType
+
+  If the manifest's typed field is `'NONE'`, it wins and is then rejected by the
+  registry check — the spawn returns null and logs an error but the admin HTTP
+  response still returns `{status: "OK"}`. No pill appears, no error surfaces to
+  the caller. Common pitfall when spinning up local diagnostics — "I POSTed
+  START_GAME but nothing happened."
+
+  Behavior discovered 2026-04-14 while trying to populate the Pulse bar with an
+  active game cartridge in a test game whose day 1 manifest had
+  `gameType: NONE`, `activityType: NONE`.
+
+  To spawn a cartridge for diagnostics reliably:
+    1. Create the game with a real type on the target day (e.g., gameType=TRIVIA)
+    2. OR edit the manifest in DO SQL snapshots before the session resumes
+    3. OR use `OPEN_VOTING` — voting uses the manifest's `voteType`, which is
+       almost never `NONE` (all games need a vote mechanism), so it's the most
+       reliable spawn for a quick pulse-bar demo.
+
+  Admin endpoint recap (the call itself is correct):
+    POST http://localhost:8787/parties/game-server/<gameId>/admin
+    Authorization: Bearer dev-secret-change-me
+    Body: {"type":"INJECT_TIMELINE_EVENT","action":"START_GAME","payload":{"gameType":"TRIVIA"}}
+
+  If you're writing code in one of the spawn action files and want to change
+  precedence, note that several integration tests rely on manifest-first
+  precedence for dynamic-day Game Master scheduling. Don't flip the order
+  without updating the GM integration test suite.
