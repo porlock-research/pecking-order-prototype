@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChartBar, GameController, ChatCircleDots, Scales } from '../icons';
 import { PULSE_SPRING, PULSE_TAP } from '../springs';
@@ -60,9 +61,10 @@ interface PillProps {
   pill: PillState;
   mini?: boolean;
   onTap?: () => void;
+  buttonRef?: (el: HTMLButtonElement | null) => void;
 }
 
-export function Pill({ pill, mini, onTap }: PillProps) {
+export function Pill({ pill, mini, onTap, buttonRef }: PillProps) {
   const Icon = PILL_ICONS[pill.kind] || ChatCircleDots;
   const kindColor = PILL_COLORS[pill.kind] || 'var(--pulse-accent)';
   const styles = lifecycleStyles(pill.lifecycle);
@@ -70,8 +72,23 @@ export function Pill({ pill, mini, onTap }: PillProps) {
   const showBadge = pill.lifecycle === 'needs-action' || pill.lifecycle === 'urgent';
   const isActive = pill.lifecycle !== 'completed' && pill.lifecycle !== 'upcoming';
 
+  // Pill ignition: one-shot animation when transitioning upcoming/starting → just-started.
+  const prevLifecycle = useRef(pill.lifecycle);
+  const [igniting, setIgniting] = useState(false);
+  useEffect(() => {
+    const prev = prevLifecycle.current;
+    prevLifecycle.current = pill.lifecycle;
+    if ((prev === 'upcoming' || prev === 'starting') && pill.lifecycle === 'just-started') {
+      setIgniting(true);
+      const t = setTimeout(() => setIgniting(false), 450);
+      return () => clearTimeout(t);
+    }
+  }, [pill.lifecycle]);
+
   return (
     <motion.button
+      ref={buttonRef}
+      className={igniting ? 'pulse-pill-ignition' : undefined}
       whileTap={PULSE_TAP.pill}
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: styles.opacity ?? 1, scale: 1 }}
