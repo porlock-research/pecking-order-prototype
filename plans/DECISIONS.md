@@ -1979,3 +1979,20 @@ This document tracks significant architectural decisions, their context, and con
     *   Vote attribution visible in completed cards across all voting mechanics.
     *   Cartridge text is readable on dark backgrounds without touching individual game renderers.
 
+
+## [ADR-130] Shell-Agnostic Cartridge Focus Intent (`focusedCartridge`)
+*   **Date:** 2026-04-15
+*   **Status:** Accepted
+*   **Context:** The Pulse shell needed a full-screen cartridge overlay for pill taps and Phase 4 push deep-links (`cartridge_active` / `cartridge_result` intents). The overlay is a Pulse-specific surface — Vivid has its own `CartridgeTakeover`, Classic could route to a tab instead. We needed a way for all three shells to express "the player wants to focus on this cartridge" without coupling the shared Zustand store to any one shell's rendering choice.
+*   **Decision:**
+    1.  Add `focusedCartridge: { cartridgeId, cartridgeKind, origin: 'manual' | 'push' } | null` to the shared store (`apps/client/src/store/useGameStore.ts`). Session-scoped, not persisted to localStorage.
+    2.  Actions: `focusCartridge(id, kind, origin)` / `unfocusCartridge()`. Direct `set()` calls — no SYNC reducer coupling.
+    3.  The slice expresses **intent**, not presentation. Each shell decides how to render: Pulse mounts a `CartridgeOverlay`, other shells may scroll/highlight or swap tabs.
+    4.  Coordinates (origin rects for the Pulse scale-from-origin entry animation) stay **Pulse-local** in a module-level ref (`usePillOrigin.ts`) — never in the store. Pure presentation must not leak into shell-agnostic state.
+    5.  Phase 4's `useDeepLinkIntent` handler (when it lands) collapses `cartridge_active` / `cartridge_result` intents to `focusCartridge(...)` — no shell-specific branching in the intent resolver.
+*   **Consequences:**
+    *   Push deep-links, pill taps, and future intent sources all converge on one action. Adding a new entry point is a one-liner.
+    *   Overlay state survives the intent layer — `useDeepLinkIntent` doesn't need to know about overlay mounting/unmounting.
+    *   Other shells can opt in incrementally. Vivid could wire its existing `CartridgeTakeover` to read `focusedCartridge` with no server or store changes.
+    *   Establishes the precedent for other "attention" surfaces. The comparable PulseShell-local state (`silverTarget`, `dmTarget`, `socialPanelOpen`) is acknowledged in-spec as a migration candidate but deferred — lifting them wasn't load-bearing for this work.
+    *   Spec: `docs/superpowers/specs/2026-04-14-pulse-cartridge-overlay-design.md` §1.

@@ -2064,3 +2064,37 @@ Cross-referencing spec sections to tasks:
 | §11 Plan-Level items | Noted inline where they surface (CartridgeResultCard comment, resolveDeadline helper) |
 
 Gaps: none. Every spec requirement has a corresponding task.
+
+## Handoff — 2026-04-15 13:30
+
+**Completed this session (Tasks 1–14 of the plan):**
+
+- Task 1 — CARTRIDGE_INFO map with 43 v1 entries (`732ffb1`)
+- Task 2 — `useCountdownWithUrgency` sibling hook (`bc26cf4`)
+- Task 3 — `'starting'` lifecycle detection in `usePillStates` (`4bdd966`)
+- Task 4 — `focusedCartridge` store slice + tests (`543e24a`)
+- Tasks 5–8 — `PULSE_SPRING.exit`, `usePillOrigin` ref, pill tap wiring, pill ignition animation (`b2be72f`)
+- Tasks 9–14 — overlay components + mount in PulseShell (`ece02ca`)
+- Post-demo fix — pretty pill labels through `CARTRIDGE_INFO` for all four kinds and completed cartridges; Playwright spec committed (`3f8a9f7`)
+
+All 17 client unit tests passing. Build clean.
+
+**Known uncommitted working-tree edits that belong to the user, not the next agent:**
+
+- Root `CLAUDE.md`, `apps/client/CLAUDE.md`, `apps/lobby/CLAUDE.md` — shell CLAUDE.md hierarchy restructure
+- Untracked per-shell CLAUDE.md files under `apps/client/src/shells/{classic,pulse,vivid}/`
+- `.claude/guardrails/finite-claude-md-placement.rule`
+- `docs/machines/*.json`, `docs/reports/engagement-*.html` — regen/report artifacts
+
+Leave those alone.
+
+**Next step — pick in priority order:**
+
+1.  **Task 15** (small): manual reveal layering verification. With the overlay open, fire an `ELIMINATE_PLAYER` via the admin endpoint; confirm the elimination reveal layers above the overlay (z-80 vs 60) and dismissing returns to overlay with state intact. ~2 min.
+2.  **Task 16** (small): run the committed Playwright spec: `npx playwright test e2e/tests/pulse-cartridge-overlay.spec.ts --headed`. Tighten selectors if any flake.
+3.  **Investigate "only 2 pills showing"** in the demo game. User reported during a PM demo that a 3-cartridge game (vote + TRIVIA + WOULD_YOU_RATHER) only showed 2 pills. Likely a spawn race in the admin-inject sequence (see `/tmp/po-create-demo.cjs`); confirm via WS SYNC (GET /state only shows L2).
+4.  **Resume Phase 4 Tasks 8–19**: push + SW intent plumbing + per-surface UI + reveals. `useDeepLinkIntent` doesn't exist yet; when it lands it should call `focusCartridge(...)` for `cartridge_active` / `cartridge_result` intents (the overlay is ready).
+
+**Branch:** `feature/pulse-phase4-catchup`. NOT pushed. NOT merged. Don't push or merge without explicit user approval.
+
+**Local dev:** `npm run dev` from repo root (client :5173, game-server :8787, lobby :3000). Admin endpoint: `POST http://localhost:8787/parties/game-server/<gameId>/admin` with `Authorization: Bearer dev-secret-change-me`.

@@ -81,3 +81,35 @@ involves the `sync:` action body or a stableRef call. Options:
 "(Rule fires on every edit to this file. Skip if your edit doesn't touch the sync
 handler or add a new server-mutable field.)" — so future agents don't spend cycles
 re-checking.
+
+## `finite-zustand-selector-fresh-objects.rule` — match pattern too broad
+
+**State:** Rule fired on EVERY edit to the Pulse shell tree AND `useGameStore.ts`
+during the 2026-04-14/15 cartridge overlay session — 30+ times across the
+session. It fired on:
+
+- A pure CSS keyframe edit (`pulse-theme.css`)
+- A springs config export (`springs.ts`)
+- A module-level ref helper with no Zustand involvement (`usePillOrigin.ts`)
+- A presentational component that only reads primitives from the store
+- Pure type/interface additions to `useGameStore.ts`
+- Edits that wrote plain string labels into a memoized array
+
+Zero of those edits introduced a selector returning a fresh object or array.
+The advisory text is valuable (the pitfall is real — `memoSelector` exists
+precisely because of it) but the activation pattern is too broad to be
+useful as a per-edit reminder.
+
+**Proposal:** same family of fixes as the `finite-pulse-bio-as-stereotype`
+and `finite-stableref-for-mutable-fields` entries above:
+
+- Option A — content-aware: fire only when the edit body introduces a new
+  `export const select...` or a call inside `useGameStore(s => ...)` that
+  constructs a literal object/array.
+- Option B — narrower path: restrict to edits that touch lines containing
+  `useGameStore(` or `memoSelector(`.
+- Option C — accept the noise, prepend a "Skip if your edit doesn't create
+  a new selector" hint to the advisory body.
+
+**Recommendation:** Option C short-term (one-line edit to the advisory).
+Option A long-term when the guardian hook supports content-aware matching.
