@@ -1,5 +1,11 @@
 import { useMemo } from 'react';
+import { CARTRIDGE_INFO } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../store/useGameStore';
+
+function prettyLabel(typeKey: string | undefined, fallback: string): string {
+  if (!typeKey) return fallback;
+  return CARTRIDGE_INFO[typeKey]?.displayName ?? fallback;
+}
 
 export type PillLifecycle = 'upcoming' | 'starting' | 'just-started' | 'needs-action' | 'urgent' | 'in-progress' | 'completed';
 
@@ -48,7 +54,7 @@ export function usePillStates(): PillState[] {
       pills.push({
         id: 'voting',
         kind: 'voting',
-        label: voting.mechanism || 'Vote',
+        label: prettyLabel(voting.mechanism || voting.voteType, 'Vote'),
         lifecycle: voting.phase === 'REVEAL' || voting.phase === 'WINNER' ? 'completed'
           : castCount > 0 ? 'in-progress'
           : 'needs-action',
@@ -62,7 +68,7 @@ export function usePillStates(): PillState[] {
       pills.push({
         id: 'game',
         kind: 'game',
-        label: game.gameType || 'Game',
+        label: prettyLabel(game.gameType, 'Game'),
         lifecycle: game.phase === 'COMPLETED' ? 'completed'
           : game.phase === 'PLAYING' || game.phase === 'ACTIVE' ? 'in-progress'
           : 'just-started',
@@ -74,7 +80,7 @@ export function usePillStates(): PillState[] {
       pills.push({
         id: 'prompt',
         kind: 'prompt',
-        label: prompt.promptType || 'Activity',
+        label: prettyLabel(prompt.promptType, 'Activity'),
         lifecycle: prompt.phase === 'RESULTS' ? 'completed'
           : 'needs-action',
         cartridgeData: prompt,
@@ -85,7 +91,7 @@ export function usePillStates(): PillState[] {
       pills.push({
         id: 'dilemma',
         kind: 'dilemma',
-        label: dilemma.dilemmaType || 'Dilemma',
+        label: prettyLabel(dilemma.dilemmaType, 'Dilemma'),
         lifecycle: dilemma.phase === 'REVEAL' ? 'completed'
           : 'needs-action',
         cartridgeData: dilemma,
@@ -97,10 +103,11 @@ export function usePillStates(): PillState[] {
       for (const c of completed) {
         const existingId = c.kind === 'voting' ? 'voting' : c.kind;
         if (!pills.some(p => p.id === existingId)) {
+          const typeKey = c.snapshot?.mechanism || c.snapshot?.gameType || c.snapshot?.promptType || c.snapshot?.dilemmaType || '';
           pills.push({
-            id: `completed-${c.kind}-${c.snapshot?.mechanism || c.snapshot?.gameType || ''}`,
+            id: `completed-${c.kind}-${typeKey}`,
             kind: c.kind,
-            label: c.snapshot?.mechanism || c.snapshot?.gameType || c.kind,
+            label: prettyLabel(typeKey, c.kind),
             lifecycle: 'completed',
           });
         }
