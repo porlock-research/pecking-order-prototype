@@ -63,7 +63,7 @@ This spec covers **Spec A only**:
 
 ### Existing GM actor (unchanged structure)
 
-`game-master.ts` defines an XState actor spawned once at `preGame` for DYNAMIC manifests only (`spawnGameMasterIfDynamic` at `l2-day-resolution.ts:39-60`). States: `pregame → tournament → postgame`. Events: `GAME_MASTER.RESOLVE_DAY`, `DAY_ENDED`, `GAME_ENDED`, `FACT.RECORD`, `ADMIN.OVERRIDE_NEXT_DAY`. Long-lived; persisted via XState snapshot through the DO `snapshots` table. This shell remains.
+`game-master.ts` defines an XState actor spawned once at `preGame` for DYNAMIC manifests only (`spawnGameMasterIfDynamic` at `l2-day-resolution.ts:39-60`). States: `pregame → tournament → postgame`. Events: `GAME_MASTER.RESOLVE_DAY`, `GAME_MASTER.DAY_ENDED`, `GAME_ENDED`, `FACT.RECORD`, `ADMIN.OVERRIDE_NEXT_DAY`. Long-lived; persisted via XState snapshot through the DO `snapshots` table. This shell remains.
 
 ### New chassis pieces
 
@@ -130,12 +130,14 @@ Reuses existing `idx_journal_game_type_actor` and `idx_journal_game_day` indexes
 
 **Public line (`EMIT_TICKER_LINE`):**
 1. Module emits action from `onResolveDay`.
-2. `handleEmitTickerLine` raises `Events.Fact.RECORD` with `{ type: FactTypes.GM_OBSERVATION, actorId: 'GAME_MASTER', targetId?: playerId, payload: { text, kind, observedIds, push: true } }`.
+2. `handleEmitTickerLine` raises `Events.Fact.RECORD` with `{ type: FactTypes.GM_OBSERVATION, actorId: 'GAME_MASTER', targetId?: playerId, payload: { text, kind, observedIds, push } }`. `push` is set per-row (see catalog); not a hard-coded default.
 3. `isJournalable` includes `GM_OBSERVATION` → fact persists to `GameJournal` + runs `factToTicker` + runs `handleFactPush`.
-4. `factToTicker` branch returns `payload.text` verbatim (templates already rendered).
+4. `factToTicker` branch returns a `TickerMessage` with `category: TickerCategories.SOCIAL_NARRATION` (new — see below) and `text: payload.text` verbatim (templates pre-rendered).
 5. `broadcastTicker` pushes `Events.Ticker.UPDATE` to connected clients.
-6. `handleFactPush` sends a push notification by default (`payload.push === true`); module can override per-line with `push: false` for low-signal observations.
-7. Pulse's `NarratorLine.tsx` renders, picking up inline avatars for bolded names that match a roster `personaName`. Bio descriptors render bold but avatar-less.
+6. `handleFactPush` inspects `payload.push`; sends a push only when `true`.
+7. Pulse's `ChatView.tsx` narrator filter is extended: `narratorTickers` now matches `SOCIAL_INVITE || SOCIAL_NARRATION`. `NarratorLine.tsx` gains a new `kind: 'observation'` with a neutral accent color. Bolded names matching a roster `personaName` render with inline avatars; bio descriptors render bold but avatar-less. Classic/Vivid shells render the ticker line through their existing ticker paths — no additional shell work required for Spec A.
+
+**New ticker category:** `TickerCategories.SOCIAL_NARRATION = 'SOCIAL.NARRATION'` added to `packages/shared-types/src/events.ts`. Pulse ChatView filter extended. No other shell changes.
 
 **Private nudge (`NUDGE_DM`):**
 1. Module emits action from `onResolveDay` or `onPhaseImminent`.
@@ -150,17 +152,20 @@ Reuses existing `idx_journal_game_type_actor` and `idx_journal_game_day` indexes
 
 All thresholds live in `Config.gm.socialObserver`. Module scores each candidate observation, picks top N (default 6) per day, emits as `EMIT_TICKER_LINE` actions in `onResolveDay`.
 
-| # | Kind | Trigger (default) | Names | DM-derived? |
-|---|---|---|---|---|
-| 1 | `DM_FANOUT` | distinct DM partners today ≥ 4 | Obscured | Yes |
-| 2 | `DM_BURST` | total DM messages sent today ≥ 20 | Obscured | Yes |
-| 3 | `SILVER_FANOUT` | distinct silver recipients today ≥ 3 | Named | No |
-| 4 | `SILVER_BURST` | total silver sent today ≥ 100 | Named | No |
-| 5 | `PERK_BURST` | perks used today ≥ 2 | Named | No |
-| 6 | `RECONNECT_LOOP` | distinct session opens today ≥ 5 | Named | No |
-| 7 | `ONLINE_MARATHON` | minutes active today ≥ 180 | Named | No |
-| 8 | `ARCADE_RETRY` | same arcade attempts today ≥ 3 | Named | No |
-| 9 | `VOTE_OUTLIER` | votes received in a voting cartridge ≥ ceil(alive/2), **evaluated after voting closes** | Named | No |
+| # | Kind | Trigger (default) | Names | DM-derived? | Push default |
+|---|---|---|---|---|---|
+| 1 | `DM_FANOUT` | distinct DM partners today ≥ 4 | Obscured | Yes | false |
+| 2 | `DM_BURST` | total DM messages sent today ≥ 20 | Obscured | Yes | false |
+| 3 | `SILVER_FANOUT` | distinct silver recipients today ≥ 3 | Named | No | false |
+| 4 | `SILVER_BURST` | total silver sent today ≥ 100 | Named | No | true |
+| 5 | `PERK_BURST` | perks used today ≥ 2 | Named | No | true |
+| 6 | `RECONNECT_LOOP` | distinct session opens today ≥ 5 | Named | No | false |
+| 7 | `ARCADE_RETRY` | same arcade attempts today ≥ 3 | Named | No | false |
+| 8 | `VOTE_OUTLIER` | votes received in a voting cartridge ≥ ceil(alive/2), **evaluated after voting closes** | Named | No | true |
+
+**`ONLINE_MARATHON` removed from v1.** Would require session duration (connect + disconnect + accumulation), not just connect counts. Revisit in a follow-up spec once presence duration tracking is modeled.
+
+**Push-default rationale.** Ambient observations (`DM_FANOUT`, `DM_BURST`, `SILVER_FANOUT`, `RECONNECT_LOOP`, `ARCADE_RETRY`) render in the ticker but don't push; players see them when they open the app. Rare, high-signal observations (`SILVER_BURST`, `PERK_BURST`, `VOTE_OUTLIER`) push. Even worst-case with all kinds firing and hitting the daily cap, push count is bounded at ~3/day for GM observations — on top of the existing DM/vote/phase pushes. Nudges always push; they are GM-addressed DMs whose delivery vehicle is the push.
 
 **Selection algorithm:**
 1. Collect all candidates. Each gets an `intensity` score (count above threshold, normalized 0–1 per kind).
@@ -190,8 +195,8 @@ SILVER_FANOUT: [
 **Type-level safety for DM observations:**
 
 ```ts
-type DmObservationTemplate   = (d: { descriptor: string; count: number }) => string;
-type PublicObservationTemplate = (d: { actorName: string; count: number }) => string;
+type DmObservationTemplate    = (d: { descriptor: string; count: number }) => string;
+type NamedObservationTemplate = (d: { actorName: string; count: number }) => string;
 ```
 
 DM templates cannot accept a playerId — making accidental name leaks a compile error.
@@ -253,7 +258,15 @@ export function obscureDmPartner(
 Selection order:
 
 1. If `roster[playerId].persona.gmDescriptors` is a non-empty array of strings → pick one via `rng`. *(New optional field added to persona schema. Personas without it fall through.)*
-2. Else, if `roster[playerId].qaAnswers` is non-empty → pick a random `qaEntry`, extract a 3–7-word noun-phrase fragment from `qaEntry.answer` via a simple heuristic (strip leading pronouns/articles, take first comma-bounded clause, cap at 7 words). Exact heuristic finalized in the plan.
+2. Else, if `roster[playerId].qaAnswers` is non-empty → pick a random `qaEntry` via `rng`, extract a fragment from `qaEntry.answer` using the following exact pipeline:
+   1. Take `answer`. Split on sentence-ending punctuation (`.!?`); keep the first sentence.
+   2. Split that on commas; keep the first clause.
+   3. Trim whitespace. Tokenize on whitespace.
+   4. Drop leading tokens while the lowercased token is in the stop-set `{i, my, the, a, an, this, that, it, its, i'm, i've, well, so, and, but, honestly, maybe, usually, sometimes, always, never}`.
+   5. If the remaining sequence is fewer than 3 tokens, fall through to step 3 (generic bank).
+   6. Cap at 7 tokens. Lowercase the first remaining token (cosmetic consistency). Preserve the rest verbatim.
+   7. If the first remaining token is recognized as a verb form (ends in `-ing`, `-ed`, or is in the small bank `{like, love, hate, prefer, enjoy, avoid, fear, trust}`), prepend `"the one who "`. Otherwise prepend `"the "`.
+   8. Final check: if the fragment contains any roster `personaName` as a substring (case-insensitive), discard and fall through to the generic bank. Prevents a bio that references another player from leaking that player's name.
 3. Else → fall back to a generic bank (`"a quiet one"`, `"someone new"`, `"one of the newer faces"`).
 
 **Never uses `personaName`** regardless of path.
@@ -296,7 +309,6 @@ gm: {
       silverBurstTotal: 100,
       perkBurstCount: 2,
       reconnectLoopCount: 5,
-      onlineMarathonMinutes: 180,
       arcadeRetryCount: 3,
       voteOutlierFraction: 0.5,
       silenceHours: 4,
@@ -327,7 +339,7 @@ All magic numbers live here. Module code references `Config.gm.socialObserver.*`
 
 ### Ruleset flag
 
-`PeckingOrderRuleset.gm.enableSocialObserver: boolean` (default `true` for DYNAMIC manifests). Admins can disable per-game for baseline playtests.
+`PeckingOrderRuleset.gm.enableSocialObserver: boolean` (default `true` for DYNAMIC manifests). Admins can disable per-game for baseline playtests. **STATIC manifests ignore the flag** — no GM actor is spawned there (spawn guard in `l2-day-resolution.ts:41`), and lifting that constraint is out of scope for Spec A.
 
 ## Guardrails enforcement
 
@@ -382,11 +394,13 @@ Prepped Axiom queries (documented in `docs/reports/gm-observer-dashboard.md`):
 - `apps/game-server/src/ticker.ts` — `GM_OBSERVATION` branch in `factToTicker`
 - `apps/game-server/src/d1-persistence.ts` — add `GM_OBSERVATION` to `JOURNALABLE_TYPES`
 - `apps/game-server/src/push-triggers.ts` — `GM_OBSERVATION` branch in `handleFactPush` (respects `payload.push`)
-- `apps/game-server/src/demo/` — register `socialObserver` alongside `inactivity`
+- `apps/game-server/src/demo/` — **currently does not spawn a GM actor** (verified: no `inactivity` or `GameMaster` references in `demo-machine.ts`, `demo-server.ts`, `demo-sync.ts`, `demo-seed.ts`). Spec A leaves demo behavior unchanged unless a follow-up explicitly wants demo games to showcase GM content. If that's desired, the plan should add a separate task to spawn GM in demo and seed a fact stream large enough to trip thresholds.
 - `apps/game-server/src/machines/__tests__/game-master.test.ts` — extensions for registry + `moduleStates` round-trip + pre-hook failure path
 - `apps/game-server/src/__tests__/journalable-facts.test.ts` — include `GM_OBSERVATION`
 - `apps/game-server/src/__tests__/ticker.test.ts` — `GM_OBSERVATION` branch
-- `packages/shared-types/src/events.ts` — `FactTypes.GM_OBSERVATION`; `FactTypes.PRESENCE_CONNECT` (non-journalable, internal-only — see Presence data source section)
+- `packages/shared-types/src/events.ts` — `FactTypes.GM_OBSERVATION`; `FactTypes.PRESENCE_CONNECT` (non-journalable, internal-only — see Presence data source section); `TickerCategories.SOCIAL_NARRATION`
+- `apps/client/src/shells/pulse/components/chat/ChatView.tsx` — extend `narratorTickers` filter to include `SOCIAL_NARRATION`; route to `NarratorLine` with `kind='observation'`
+- `apps/client/src/shells/pulse/components/chat/NarratorLine.tsx` — add `kind: 'observation'` with neutral accent color
 - `packages/shared-types/src/index.ts` — `GameMasterActionTypes.EMIT_TICKER_LINE`, `NUDGE_DM`; `PeckingOrderRuleset.gm.enableSocialObserver`; `Persona.gmDescriptors?: string[]`
 - `packages/shared-types/src/config.ts` — `Config.gm.socialObserver` block
 - `apps/lobby/app/` — persona import path to accept optional `gmDescriptors` field (no UI changes required in v1; admin can edit via JSON)
@@ -493,7 +507,7 @@ Implementation: in `server.ts` connection handler, when WS opens, push `PRESENCE
 - [ ] All integration tests pass
 - [ ] Playwright e2e `gm-observer.spec.ts` green
 - [ ] Snapshot compat shim test passes
-- [ ] DemoServer updated with `socialObserver` registered
+- [ ] DemoServer state confirmed unchanged, OR (if user wants) a separate "showcase in demo" task landed
 - [ ] `docs/reports/gm-observer-dashboard.md` committed with Axiom queries
 - [ ] Spec B (LLM) stub committed at `docs/superpowers/specs/2026-04-15-gm-intelligence-spec-b-llm-stub.md`
 - [ ] Spec C (Confession) stub committed at `docs/superpowers/specs/2026-04-15-gm-intelligence-spec-c-confession-stub.md`
