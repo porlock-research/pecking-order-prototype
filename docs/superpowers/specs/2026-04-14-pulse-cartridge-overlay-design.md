@@ -284,8 +284,10 @@ apps/client/src/shells/pulse/components/cartridge-overlay/
 ```
 apps/client/src/store/useGameStore.ts
   - Add focusedCartridge slice + focusCartridge / unfocusCartridge actions
-  - Coordination: opening focused cartridge closes DM sheet + Social panel, and vice versa
   - memoSelector wrapping per finite-zustand-selector-fresh-objects.rule
+  - Note: no auto-close coordination with silverTarget / dmTarget / socialPanelOpen.
+    Per §2 "Coordination" — surfaces stack at the same z-tier and dismiss through
+    their own paths. Do not add effect-based coordination in this phase.
 
 apps/client/src/shells/pulse/components/PulseBar.tsx
   - Pass onTap to Pill; tap captures origin rect then calls focusCartridge
@@ -320,17 +322,19 @@ apps/client/src/hooks/useDeepLinkIntent.ts  (Phase 4 — when it lands)
 docs/superpowers/specs/2026-04-14-pulse-phase4-catchup-design.md
   - Update §2 delivery #4 paragraph noting the interim behavior is now the overlay path
 
-apps/client/CLAUDE.md
-  - Add Pulse to the shell list (currently only Vivid + Classic are documented)
-  - Add a Pulse Shell conventions section: Outfit font, --pulse-* CSS vars,
-    @solar-icons/react with weight="Bold", PULSE_SPRING / PULSE_TAP from springs.ts,
-    PULSE_Z stack from zIndex.ts, no Tailwind, no emoji, persona avatars always visible
-  - Scope the "Results inline, not fullscreen" rule to Vivid (it predates Pulse and
-    references the Vivid-only Today tab). Pulse explicitly uses a full-screen overlay
-    per this spec.
-  - Scope or replace the generic z-index stack documented in CLAUDE.md — Pulse has
-    its own PULSE_Z contract that overrides the legacy reveals(70) > context(60) > drawers(50)
-    numbering
+CLAUDE.md hierarchy — no changes needed in this phase.
+  - The hierarchy was restructured on 2026-04-14. Pulse conventions now live in
+    apps/client/src/shells/pulse/CLAUDE.md (already exists and already documents
+    cartridge overlay rules: "Pills are doors," no swipe-down, overlay owns all
+    touches, completed → CartridgeResultCard).
+  - The legacy "results inline" rule has already been scoped to Vivid in
+    apps/client/src/shells/vivid/CLAUDE.md. The legacy z-index stack has moved
+    to the same file.
+  - apps/client/CLAUDE.md no longer carries shell-specific rules; it lists the
+    shells and points to per-shell CLAUDE.md files.
+  - Implementation should verify the Pulse CLAUDE.md still accurately describes
+    the final overlay behavior after this phase ships, and touch it up if any
+    conventions drift (e.g., if PULSE_SPRING.exit lands as a new export).
 ```
 
 ### Delete
