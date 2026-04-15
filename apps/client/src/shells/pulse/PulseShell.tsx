@@ -26,6 +26,7 @@ import { StartPickedCta } from './components/caststrip/StartPickedCta';
 import { EliminationReveal } from './components/reveals/EliminationReveal';
 import { WinnerReveal } from './components/reveals/WinnerReveal';
 import { PhaseTransition } from './components/reveals/PhaseTransition';
+import { CartridgeOverlay } from './components/cartridge-overlay/CartridgeOverlay';
 import { AnimatePresence } from 'framer-motion';
 
 // Context to provide engine + playerId + overlay actions to all Pulse children.
@@ -69,6 +70,9 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
   const [dmTarget, setDmTarget] = useState<string | null>(null);
   const [dmIsGroup, setDmIsGroup] = useState(false);
   const [socialPanelOpen, setSocialPanelOpen] = useState(false);
+
+  // Cartridge overlay — store-driven (shell-agnostic intent + Pulse rendering)
+  const focusedCartridge = useGameStore(s => s.focusedCartridge);
 
   const openSendSilver = useCallback((targetId: string) => setSilverTarget(targetId), []);
   // Nudge fires immediately + toasts; the recipient's cast chip shakes via the
@@ -139,6 +143,10 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
 
         <AnimatePresence>
           {pickingActive && <StartPickedCta />}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {focusedCartridge && <CartridgeOverlay key="cartridge-overlay" />}
         </AnimatePresence>
 
         <EliminationReveal />
