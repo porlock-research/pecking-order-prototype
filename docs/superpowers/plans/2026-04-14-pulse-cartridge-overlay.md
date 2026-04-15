@@ -2098,3 +2098,21 @@ Leave those alone.
 **Branch:** `feature/pulse-phase4-catchup`. NOT pushed. NOT merged. Don't push or merge without explicit user approval.
 
 **Local dev:** `npm run dev` from repo root (client :5173, game-server :8787, lobby :3000). Admin endpoint: `POST http://localhost:8787/parties/game-server/<gameId>/admin` with `Authorization: Bearer dev-secret-change-me`.
+
+## Handoff — 2026-04-15
+
+CLAUDE.md hierarchy restructure landed this session (commit `041269c`) — the per-shell files now exist and the placement guardrail (`finite-claude-md-placement.rule`) is live. The plan's prior handoff listed those as uncommitted user edits; they're now committed and on main.
+
+**Three spec-hygiene fixes in `2026-04-14-pulse-cartridge-overlay-design.md` are pending and should be addressed before any new task in this plan touches the affected files:**
+
+1. **§9 contradicts §2 on DM/Social coordination.** §2 explicitly says "v1 does **not** auto-close [DM sheet + Social panel] on focus and vice versa." §9 Files to Modify still instructs `Coordination: opening focused cartridge closes DM sheet + Social panel, and vice versa`. §2's no-auto-close is the correct decision; §9 needs the line removed. Don't write coordination code; let the three surfaces stack at z-tier and dismiss via their own paths.
+
+2. **§9 CLAUDE.md instructions are stale.** The block telling implementers to "Add Pulse to the shell list" / "Add a Pulse Shell conventions section" / "Scope the Results inline rule" in `apps/client/CLAUDE.md` is **already done** in the right place (`apps/client/src/shells/pulse/CLAUDE.md`). Don't follow §9's CLAUDE.md instructions verbatim — they predate the hierarchy restructure.
+
+3. **§9 references wrong icon library for Pulse.** Spec says "@solar-icons/react with weight='Bold'". Pulse actually uses **Phosphor Icons (Fill weight)** via `./icons.ts`. See `apps/client/src/shells/pulse/CLAUDE.md` for the current convention.
+
+These three are documented in the project memory `project_cartridge_overlay_pending_fixes.md` for cross-session visibility.
+
+**Status of the plan itself unchanged from prior handoff:** Tasks 15 (manual reveal layering verification) and 16 (Playwright spec run) are the smallest next steps. The "only 2 pills showing" demo bug and Phase 4 Tasks 8–19 remain as written.
+
+**Branch:** `feature/pulse-phase4-catchup`. NOT pushed. NOT merged.
