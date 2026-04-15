@@ -3,7 +3,7 @@ import { toast, Toaster } from 'sonner';
 import './pulse-theme.css';
 import type { ShellProps } from '../types';
 import type { GameEngine } from '../types';
-import { useGameStore } from '../../store/useGameStore';
+import { useGameStore, selectHaveINudged } from '../../store/useGameStore';
 
 const DM_REJECTION_LABELS: Record<string, string> = {
   DMS_CLOSED: 'DMs are closed right now',
@@ -74,9 +74,16 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
   // Nudge fires immediately + toasts; the recipient's cast chip shakes via the
   // SOCIAL_NUDGE ticker arriving on their client. No modal confirmation — it was
   // cosmetic and (worse) the previous code never actually called engine.sendNudge.
+  // Mirror the server's per-day guard client-side so we don't toast a false
+  // success when the server would silently drop the event.
   const openNudge = useCallback((targetId: string) => {
+    const state = useGameStore.getState();
+    const name = state.roster[targetId]?.personaName ?? 'them';
+    if (selectHaveINudged(state, targetId)) {
+      toast.message(`Already nudged ${name} today`);
+      return;
+    }
     engine.sendNudge(targetId);
-    const name = useGameStore.getState().roster[targetId]?.personaName ?? 'them';
     toast.success(`Nudged ${name}`);
   }, [engine]);
   const openDM = useCallback((targetId: string, isGroup = false) => {

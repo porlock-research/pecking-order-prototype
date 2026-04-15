@@ -487,6 +487,8 @@ export interface CastStripEntry {
   lastNudgeFromThemTs: number;
   /** True when lastNudgeFromThemTs > lastSeenNudgeFrom[id] (persisted per-sender). */
   hasUnseenNudgeFromThem: boolean;
+  /** True if I have already nudged this player today (server rate-limits one/day). */
+  iHaveNudgedThem: boolean;
 }
 
 export const selectUnreadForChannel = (channelId: string) => (state: GameState): number => {
@@ -544,6 +546,22 @@ export const selectOutgoingInvites = memoSelector(
  * DM with `chipPlayerId` because slots are exhausted. Re-opening an existing
  * DM with that person never blocks (no slot consumption).
  */
+/**
+ * True if the current player has already nudged `targetId` within the visible
+ * ticker window. Mirrors the server's per-day nudge guard so the UI can
+ * disable the affordance up-front instead of waiting for a silent server drop.
+ */
+export const selectHaveINudged = (state: GameState, targetId: string): boolean => {
+  const pid = state.playerId;
+  if (!pid || pid === targetId) return false;
+  for (const m of state.tickerMessages) {
+    if (m.category !== TickerCategories.SOCIAL_NUDGE) continue;
+    const ids = m.involvedPlayerIds;
+    if (ids?.[0] === pid && ids?.[1] === targetId) return true;
+  }
+  return false;
+};
+
 export const selectChipSlotStatus = (state: GameState, chipPlayerId: string): 'ok' | 'blocked' => {
   const pid = state.playerId;
   if (!pid || chipPlayerId === pid) return 'ok';
@@ -574,16 +592,23 @@ export const selectCastStripEntries = memoSelector(
     for (const rid of ch.pendingMemberIds || []) outgoingPendingByRecipientId[rid] = true;
   }
 
-  // Latest SOCIAL_NUDGE ts per sender toward me, walking ticker history once.
+  // Walk ticker history once for nudges involving me. Two maps:
+  // - latestNudgeBySender: latest ts of nudges received from each sender
+  // - nudgedByMe: set of targetIds I've already nudged (server allows 1/day)
   const latestNudgeBySender: Record<string, number> = {};
+  const nudgedByMe: Record<string, true> = {};
   for (const m of state.tickerMessages) {
     if (m.category !== TickerCategories.SOCIAL_NUDGE) continue;
     const ids = m.involvedPlayerIds;
-    if (!ids || ids[1] !== pid) continue;
-    const senderId = ids[0];
-    if (!senderId) continue;
+    if (!ids) continue;
+    const [senderId, targetId] = ids;
     const ts = typeof m.timestamp === 'number' ? m.timestamp : 0;
-    if (ts > (latestNudgeBySender[senderId] ?? 0)) latestNudgeBySender[senderId] = ts;
+    if (targetId === pid && senderId) {
+      if (ts > (latestNudgeBySender[senderId] ?? 0)) latestNudgeBySender[senderId] = ts;
+    }
+    if (senderId === pid && targetId) {
+      nudgedByMe[targetId] = true;
+    }
   }
 
   const entries: CastStripEntry[] = [];
@@ -596,6 +621,7 @@ export const selectCastStripEntries = memoSelector(
       isTypingToYou: false, isOnline: state.onlinePlayers.includes(pid),
       isLeader: leaderId === pid,
       lastNudgeFromThemTs: 0, hasUnseenNudgeFromThem: false,
+      iHaveNudgedThem: false,
     });
   }
 
@@ -626,6 +652,7 @@ export const selectCastStripEntries = memoSelector(
       unreadCount: unread, hasPendingInviteFromThem: pending, hasOutgoingPendingInvite: outgoingPending,
       isTypingToYou: isTyping, isOnline, isLeader: leaderId === id,
       lastNudgeFromThemTs: lastNudgeTs, hasUnseenNudgeFromThem: unseenNudge,
+      iHaveNudgedThem: !!nudgedByMe[id],
     });
   }
 
@@ -639,6 +666,7 @@ export const selectCastStripEntries = memoSelector(
       unreadCount: unread, hasPendingInviteFromThem: false, hasOutgoingPendingInvite: false,
       isTypingToYou: false, isOnline: false, isLeader: false,
       lastNudgeFromThemTs: 0, hasUnseenNudgeFromThem: false,
+      iHaveNudgedThem: false,
     });
   }
 

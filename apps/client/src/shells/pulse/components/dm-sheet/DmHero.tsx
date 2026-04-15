@@ -4,7 +4,7 @@ import { UserPlus } from '@solar-icons/react';
 import { getPlayerColor } from '../../colors';
 import { PersonaImage, initialsOf } from '../common/PersonaImage';
 import { DmStatusRing } from './DmStatusRing';
-import { useGameStore, selectCanAddMemberTo } from '../../../../store/useGameStore';
+import { useGameStore, selectCanAddMemberTo, selectHaveINudged } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { HandWaving } from '../../icons';
 
@@ -23,6 +23,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
   const [variant, setVariant] = useState<'headshot' | 'medium' | 'full'>('headshot');
   const canAdd = useGameStore(s => channelId ? selectCanAddMemberTo(s, channelId) : false);
   const startAddMember = useGameStore(s => s.startAddMember);
+  const alreadyNudged = useGameStore(s => selectHaveINudged(s, player.id));
   const { openNudge } = usePulse();
 
   // Pulse shell uses short bio as pseudo-stereotype (matches CastCard convention).
@@ -52,19 +53,23 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
 
       <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
         <button
-          onClick={() => openNudge(player.id)}
-          aria-label={`Nudge ${player.personaName}`}
+          onClick={() => { if (!alreadyNudged) openNudge(player.id); }}
+          disabled={alreadyNudged}
+          aria-label={alreadyNudged ? `Already nudged ${player.personaName} today` : `Nudge ${player.personaName}`}
+          title={alreadyNudged ? 'Already nudged today' : undefined}
           style={{
             display: 'flex', alignItems: 'center', gap: 4,
             padding: '6px 10px', borderRadius: 14,
             background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255,255,255,0.12)',
-            color: '#fff', cursor: 'pointer',
+            color: alreadyNudged ? 'rgba(255,255,255,0.5)' : '#fff',
+            cursor: alreadyNudged ? 'not-allowed' : 'pointer',
+            opacity: alreadyNudged ? 0.7 : 1,
             fontSize: 12, fontWeight: 700,
           }}
         >
-          <HandWaving size={16} weight="fill" color="var(--pulse-nudge)" />
-          <span>Nudge</span>
+          <HandWaving size={16} weight="fill" color={alreadyNudged ? 'rgba(255,160,77,0.5)' : 'var(--pulse-nudge)'} />
+          <span>{alreadyNudged ? 'Nudged' : 'Nudge'}</span>
         </button>
         {canAdd && channelId && (
           <button
