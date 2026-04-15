@@ -1,20 +1,38 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft } from '../../icons';
+import { TickerCategories } from '@pecking-order/shared-types';
+import { ArrowLeft, HandWaving } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
 import { PULSE_SPRING } from '../../springs';
 import type { SocialPlayer } from '@pecking-order/shared-types';
+import type { Command } from '../../hooks/useCommandBuilder';
 
 interface PlayerPickerProps {
   breadcrumb: string;
+  command?: Command;
   onSelect: (player: SocialPlayer, playerId: string) => void;
   onBack: () => void;
 }
 
-export function PlayerPicker({ breadcrumb, onSelect, onBack }: PlayerPickerProps) {
+export function PlayerPicker({ breadcrumb, command, onSelect, onBack }: PlayerPickerProps) {
   const roster = useGameStore(s => s.roster);
+  const tickerMessages = useGameStore(s => s.tickerMessages);
   const { playerId } = usePulse();
+
+  // Server allows each sender to nudge each target once per day. Mirror that
+  // locally from tickerMessages so the picker can mark/disable used targets.
+  const alreadyNudged = useMemo<Record<string, true>>(() => {
+    if (command !== 'nudge' || !playerId) return {};
+    const m: Record<string, true> = {};
+    for (const t of tickerMessages) {
+      if (t.category !== TickerCategories.SOCIAL_NUDGE) continue;
+      const ids = t.involvedPlayerIds;
+      if (ids?.[0] === playerId && ids?.[1]) m[ids[1]] = true;
+    }
+    return m;
+  }, [command, playerId, tickerMessages]);
 
   const players = Object.entries(roster).filter(
     ([id, p]) => id !== playerId && p.status === 'ALIVE',
@@ -37,14 +55,19 @@ export function PlayerPicker({ breadcrumb, onSelect, onBack }: PlayerPickerProps
 
       {/* 3-column portrait grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-        {players.map(([id, player], i) => (
+        {players.map(([id, player], i) => {
+          const disabled = !!alreadyNudged[id];
+          return (
           <motion.button
             key={id}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ ...PULSE_SPRING.snappy, delay: i * 0.03 }}
-            onClick={() => onSelect(player, id)}
+            onClick={() => { if (!disabled) onSelect(player, id); }}
+            disabled={disabled}
+            aria-label={disabled ? `Already nudged ${player.personaName} today` : undefined}
             style={{
+              position: 'relative',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -53,7 +76,9 @@ export function PlayerPicker({ breadcrumb, onSelect, onBack }: PlayerPickerProps
               borderRadius: 12,
               background: 'var(--pulse-surface-2)',
               border: '1px solid var(--pulse-border)',
-              cursor: 'pointer',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled ? 0.55 : 1,
+              filter: disabled ? 'saturate(0.6)' : 'none',
               overflow: 'hidden',
             }}
           >
@@ -68,8 +93,27 @@ export function PlayerPicker({ breadcrumb, onSelect, onBack }: PlayerPickerProps
             }}>
               {player.personaName}
             </span>
+            {disabled && (
+              <span
+                style={{
+                  position: 'absolute', top: 6, left: 6,
+                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                  padding: '2px 6px', borderRadius: 8,
+                  background: 'rgba(20,20,26,0.85)',
+                  color: 'var(--pulse-nudge)',
+                  fontSize: 9, fontWeight: 800, letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                  border: '1px solid rgba(255,160,77,0.35)',
+                  pointerEvents: 'none',
+                }}
+              >
+                <HandWaving size={10} weight="fill" />
+                Nudged
+              </span>
+            )}
           </motion.button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

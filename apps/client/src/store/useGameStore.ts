@@ -487,8 +487,6 @@ export interface CastStripEntry {
   lastNudgeFromThemTs: number;
   /** True when lastNudgeFromThemTs > lastSeenNudgeFrom[id] (persisted per-sender). */
   hasUnseenNudgeFromThem: boolean;
-  /** True if I have already nudged this player today (server rate-limits one/day). */
-  iHaveNudgedThem: boolean;
 }
 
 export const selectUnreadForChannel = (channelId: string) => (state: GameState): number => {
@@ -592,23 +590,16 @@ export const selectCastStripEntries = memoSelector(
     for (const rid of ch.pendingMemberIds || []) outgoingPendingByRecipientId[rid] = true;
   }
 
-  // Walk ticker history once for nudges involving me. Two maps:
-  // - latestNudgeBySender: latest ts of nudges received from each sender
-  // - nudgedByMe: set of targetIds I've already nudged (server allows 1/day)
+  // Latest SOCIAL_NUDGE ts per sender toward me, walking ticker history once.
   const latestNudgeBySender: Record<string, number> = {};
-  const nudgedByMe: Record<string, true> = {};
   for (const m of state.tickerMessages) {
     if (m.category !== TickerCategories.SOCIAL_NUDGE) continue;
     const ids = m.involvedPlayerIds;
-    if (!ids) continue;
-    const [senderId, targetId] = ids;
+    if (!ids || ids[1] !== pid) continue;
+    const senderId = ids[0];
+    if (!senderId) continue;
     const ts = typeof m.timestamp === 'number' ? m.timestamp : 0;
-    if (targetId === pid && senderId) {
-      if (ts > (latestNudgeBySender[senderId] ?? 0)) latestNudgeBySender[senderId] = ts;
-    }
-    if (senderId === pid && targetId) {
-      nudgedByMe[targetId] = true;
-    }
+    if (ts > (latestNudgeBySender[senderId] ?? 0)) latestNudgeBySender[senderId] = ts;
   }
 
   const entries: CastStripEntry[] = [];
@@ -621,7 +612,6 @@ export const selectCastStripEntries = memoSelector(
       isTypingToYou: false, isOnline: state.onlinePlayers.includes(pid),
       isLeader: leaderId === pid,
       lastNudgeFromThemTs: 0, hasUnseenNudgeFromThem: false,
-      iHaveNudgedThem: false,
     });
   }
 
@@ -652,7 +642,6 @@ export const selectCastStripEntries = memoSelector(
       unreadCount: unread, hasPendingInviteFromThem: pending, hasOutgoingPendingInvite: outgoingPending,
       isTypingToYou: isTyping, isOnline, isLeader: leaderId === id,
       lastNudgeFromThemTs: lastNudgeTs, hasUnseenNudgeFromThem: unseenNudge,
-      iHaveNudgedThem: !!nudgedByMe[id],
     });
   }
 
@@ -666,7 +655,6 @@ export const selectCastStripEntries = memoSelector(
       unreadCount: unread, hasPendingInviteFromThem: false, hasOutgoingPendingInvite: false,
       isTypingToYou: false, isOnline: false, isLeader: false,
       lastNudgeFromThemTs: 0, hasUnseenNudgeFromThem: false,
-      iHaveNudgedThem: false,
     });
   }
 

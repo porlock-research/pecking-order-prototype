@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked = false }: Props) {
-  const { player, isOnline, isTypingToYou, hasPendingInviteFromThem, unreadCount, isLeader, lastNudgeFromThemTs, hasUnseenNudgeFromThem, iHaveNudgedThem } = entry;
+  const { player, isOnline, isTypingToYou, hasPendingInviteFromThem, unreadCount, isLeader, lastNudgeFromThemTs, hasUnseenNudgeFromThem } = entry;
   const roster = useGameStore(s => s.roster);
   const slotStatus = useGameStore(s => selectChipSlotStatus(s, entry.id));
   const markNudgeSeen = useGameStore(s => s.markNudgeSeen);
@@ -179,26 +179,6 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           border: '2px solid var(--pulse-bg)',
         }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
-      )}
-
-      {iHaveNudgedThem && !isSelf && !hasUnseenNudgeFromThem && (
-        <span
-          title="You nudged them today"
-          style={{
-            position: 'absolute', bottom: -4, left: -4,
-            display: 'inline-flex', alignItems: 'center', gap: 2,
-            background: 'rgba(20,20,26,0.85)',
-            color: 'rgba(255,160,77,0.85)',
-            fontSize: 8, fontWeight: 800, letterSpacing: 0.4,
-            padding: '2px 5px', borderRadius: 8,
-            textTransform: 'uppercase',
-            border: '1.5px solid var(--pulse-bg)',
-            pointerEvents: 'none',
-          }}
-        >
-          <HandWaving size={9} weight="fill" />
-          Nudged
-        </span>
       )}
 
       {isTypingToYou && (

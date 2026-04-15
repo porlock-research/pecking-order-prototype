@@ -159,6 +159,7 @@ export function PulseInput() {
       {commandMode.mode === 'player-picker' && (
         <PlayerPicker
           breadcrumb={getBreadcrumb()}
+          command={commandMode.command}
           onSelect={handlePlayerSelect}
           onBack={back}
         />
