@@ -107,29 +107,47 @@ export function usePillStates(): PillState[] {
       }
     }
 
-    // Upcoming pills from current day's manifest timeline (PRE_SCHEDULED only — ADMIN events have no fixed times)
+    // Timeline-driven pills from current day (PRE_SCHEDULED only — ADMIN events have no fixed times).
+    // Emits 'upcoming' for future events; 'starting' for past-due events whose active slot
+    // hasn't populated yet (ADR-128 SYNC gap).
     const day = manifest?.days?.[dayIndex - 1] ?? manifest?.days?.[dayIndex];
     if (day?.timeline && manifest?.scheduling === 'PRE_SCHEDULED') {
       const now = Date.now();
       for (const ev of day.timeline as any[]) {
         const kind = ACTION_TO_KIND[ev.action];
         if (!kind) continue;
-        // Parse time — ISO or HH:MM
         let eventTime: number | null = null;
         if (ev.time?.includes('T')) {
           eventTime = new Date(ev.time).getTime();
         }
-        if (eventTime === null || eventTime <= now) continue;
-        // Don't add upcoming if the kind is already active
-        if (pills.some(p => p.kind === kind && p.lifecycle !== 'completed')) continue;
+        if (eventTime === null) continue;
 
-        pills.push({
-          id: `upcoming-${ev.action}-${ev.time}`,
-          kind,
-          label: ACTION_LABELS[ev.action] || kind,
-          lifecycle: 'upcoming',
-          timeRemaining: Math.floor((eventTime - now) / 1000),
-        });
+        // Skip if an active pill of this kind already exists.
+        const alreadyActiveOfKind = pills.some(
+          p => p.kind === kind && p.lifecycle !== 'completed' && p.lifecycle !== 'upcoming',
+        );
+        if (alreadyActiveOfKind) continue;
+
+        if (eventTime > now) {
+          pills.push({
+            id: `upcoming-${ev.action}-${ev.time}`,
+            kind,
+            label: ACTION_LABELS[ev.action] || kind,
+            lifecycle: 'upcoming',
+            timeRemaining: Math.floor((eventTime - now) / 1000),
+          });
+        } else {
+          // Past-due event with no active slot populated yet — ADR-128 SYNC gap.
+          // Emit a 'starting' pill so the overlay can render the info splash with
+          // "Starting now…" microcopy; it auto-swaps to the playable view when
+          // the active slot arrives on the next SYNC.
+          pills.push({
+            id: `starting-${ev.action}-${ev.time}`,
+            kind,
+            label: ACTION_LABELS[ev.action] || kind,
+            lifecycle: 'starting',
+          });
+        }
       }
     }
 
