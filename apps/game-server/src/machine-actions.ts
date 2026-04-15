@@ -129,7 +129,7 @@ export function buildActionOverrides(ctx: ActionContext) {
       const dayManifest = manifest?.days?.find((d: any) => d.dayIndex === context.dayIndex);
       const result = phasePushPayload(trigger, context.dayIndex, dayManifest);
       if (result) {
-        const p = pushBroadcast(buildPushContext(ctx), result.payload, result.ttl).catch(err =>
+        const p = pushBroadcast(buildPushContext(ctx), result.payload, result.ttl, undefined, result.intent).catch(err =>
           log('error', 'L1', 'Push phase broadcast error', { error: String(err) })
         );
         ctx.waitUntil(p);

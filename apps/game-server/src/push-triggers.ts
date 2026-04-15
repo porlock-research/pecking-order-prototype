@@ -124,33 +124,41 @@ export function phasePushPayload(
   trigger: string,
   dayIndex: number,
   dayManifest?: DailyManifest | null,
-): { payload: Record<string, string>; ttl: number } | null {
-  const gameLabel = GAME_LABELS[dayManifest?.gameType || ''] || 'Game';
-  const voteLabel = VOTE_LABELS[dayManifest?.voteType || ''] || 'Voting';
+): { payload: Record<string, string>; ttl: number; intent: DeepLinkIntent } | null {
+  const gameType = dayManifest?.gameType || 'UNKNOWN';
+  const voteType = dayManifest?.voteType || 'UNKNOWN';
+  const promptType = (dayManifest as any)?.promptType || 'UNKNOWN';
+  const gameLabel = GAME_LABELS[gameType] || 'Game';
+  const voteLabel = VOTE_LABELS[voteType] || 'Voting';
 
   switch (trigger) {
     case 'DAY_START':
-      return { payload: { title: `Day ${dayIndex}`, body: `A new day dawns at Pecking Order. Today's vote: ${voteLabel}` }, ttl: EVENT_TTL };
+      return { payload: { title: `Day ${dayIndex}`, body: `A new day dawns at Pecking Order. Today's vote: ${voteLabel}` }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     case 'VOTING':
-      return { payload: { title: voteLabel, body: `Day ${dayIndex} voting is open — cast your vote now` }, ttl: EVENT_TTL };
+      return { payload: { title: voteLabel, body: `Day ${dayIndex} voting is open — cast your vote now` }, ttl: EVENT_TTL,
+               intent: { kind: 'cartridge_active', cartridgeId: `voting-${dayIndex}-${voteType}`, cartridgeKind: 'voting' } };
     case 'NIGHT_SUMMARY':
-      return { payload: { title: "Night has fallen", body: `Day ${dayIndex} results are in...` }, ttl: EVENT_TTL };
+      return { payload: { title: "Night has fallen", body: `Day ${dayIndex} results are in...` }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     case 'DAILY_GAME':
-      return { payload: { title: `${gameLabel} Time`, body: `Today's game is ${gameLabel} — jump in and play` }, ttl: EVENT_TTL };
+      return { payload: { title: `${gameLabel} Time`, body: `Today's game is ${gameLabel} — jump in and play` }, ttl: EVENT_TTL,
+               intent: { kind: 'cartridge_active', cartridgeId: `game-${dayIndex}-${gameType}`, cartridgeKind: 'game' } };
     case 'ACTIVITY':
-      return { payload: { title: "Activity Time", body: `A new activity is live — earn some silver` }, ttl: EVENT_TTL };
+      return { payload: { title: "Activity Time", body: `A new activity is live — earn some silver` }, ttl: EVENT_TTL,
+               intent: { kind: 'cartridge_active', cartridgeId: `prompt-${dayIndex}-${promptType}`, cartridgeKind: 'prompt' } };
     case 'OPEN_DMS':
-      return { payload: { title: "DMs Open", body: "Send private messages, form alliances, make deals" }, ttl: EVENT_TTL };
+      return { payload: { title: "DMs Open", body: "Send private messages, form alliances, make deals" }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     case 'CLOSE_DMS':
-      return { payload: { title: "DMs Closed", body: "Private messages are closed for the day" }, ttl: EVENT_TTL };
+      return { payload: { title: "DMs Closed", body: "Private messages are closed for the day" }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     case 'OPEN_GROUP_CHAT':
-      return { payload: { title: "Group Chat Open", body: "The floor is open — make your case" }, ttl: EVENT_TTL };
+      return { payload: { title: "Group Chat Open", body: "The floor is open — make your case" }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     case 'CLOSE_GROUP_CHAT':
-      return { payload: { title: "Group Chat Closed", body: "The group chat has closed for the day" }, ttl: EVENT_TTL };
+      return { payload: { title: "Group Chat Closed", body: "The group chat has closed for the day" }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     case 'END_GAME':
-      return { payload: { title: `${gameLabel} Complete`, body: "Results are in — check how you did" }, ttl: EVENT_TTL };
+      return { payload: { title: `${gameLabel} Complete`, body: "Results are in — check how you did" }, ttl: EVENT_TTL,
+               intent: { kind: 'cartridge_result', cartridgeId: `game-${dayIndex}-${gameType}` } };
     case 'END_ACTIVITY':
-      return { payload: { title: "Activity Complete", body: "Results are in — see who earned silver" }, ttl: EVENT_TTL };
+      return { payload: { title: "Activity Complete", body: "Results are in — see who earned silver" }, ttl: EVENT_TTL,
+               intent: { kind: 'cartridge_result', cartridgeId: `prompt-${dayIndex}-${promptType}` } };
     default:
       return null;
   }
