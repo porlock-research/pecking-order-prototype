@@ -1,5 +1,5 @@
 MATCH_TOOL: Edit|Write
-MATCH_PATTERN: apps/client/src/shells/pulse/.+\.tsx$
+MATCH_PATTERN: apps/client/src/shells/pulse/.*(CastCard|DmHero|DmBioQuote|PlayerProfile).*\.tsx$
 ADVISORY: |
   Pulse shell convention: there is NO `stereotype` field on SocialPlayer.
 
