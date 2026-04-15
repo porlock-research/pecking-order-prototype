@@ -8,7 +8,7 @@
  * Dedup is handled by XState — each state transition fires exactly once,
  * so each push fires exactly once. No client-side tag dedup needed.
  */
-import type { PushTrigger, GameManifest, DailyManifest } from "@pecking-order/shared-types";
+import type { PushTrigger, GameManifest, DailyManifest, DeepLinkIntent } from "@pecking-order/shared-types";
 import { DEFAULT_PUSH_CONFIG, FactTypes } from "@pecking-order/shared-types";
 import { getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { sendPushNotification } from "./push-send";
@@ -79,6 +79,7 @@ export async function pushToPlayer(
   playerId: string,
   payload: Record<string, string>,
   ttl?: number,
+  intent?: DeepLinkIntent,
 ): Promise<void> {
   const pushKey = pushKeyForPlayer(playerId, ctx.roster);
   const sub = await getPushSubscriptionD1(ctx.db, pushKey);
@@ -89,7 +90,8 @@ export async function pushToPlayer(
 
   // Construct game URL from clientHost + inviteCode
   const url = ctx.inviteCode ? `${ctx.clientHost}/game/${ctx.inviteCode}` : ctx.clientHost;
-  const enriched = { ...payload, url };
+  const enriched: Record<string, string> = { ...payload, url };
+  if (intent) enriched.intent = JSON.stringify(intent);
 
   console.log(`[L1] [Push] Sending to ${playerId}: ${payload.body}`);
   const result = await sendPushNotification(sub, enriched, ctx.vapidPrivateJwk, undefined, ttl);
@@ -105,12 +107,13 @@ export async function pushBroadcast(
   payload: Record<string, string>,
   ttl?: number,
   excludePlayerIds?: string[],
+  intent?: DeepLinkIntent,
 ): Promise<void> {
   const exclude = new Set(excludePlayerIds);
   const playerIds = Object.keys(ctx.roster).filter(pid => !exclude.has(pid));
   console.log(`[L1] [Push] Broadcasting to ${playerIds.length} players: ${payload.body}`);
   await Promise.allSettled(
-    playerIds.map((pid) => pushToPlayer(ctx, pid, payload, ttl)),
+    playerIds.map((pid) => pushToPlayer(ctx, pid, payload, ttl, intent)),
   );
 }
 
