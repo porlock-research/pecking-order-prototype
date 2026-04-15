@@ -1,0 +1,29 @@
+MATCH_TOOL: Bash
+MATCH_PATTERN: (\.claude/projects/.+\.jsonl|DiagnosticReports|last-prompt|away_summary)
+ADVISORY: |
+  You're investigating a "crashed" session. Before telling the user a prompt
+  was lost or work was uncommitted, check the commit history first — the
+  previous agent may have completed the work before the session ended.
+
+  Known facts about session JSONL structure:
+  - `last-prompt` field = the last SUBMITTED prompt, persisted so the next
+    session can surface it. NOT an unsent draft.
+  - `away_summary` fires after ~3 min of idle, regardless of exit cause.
+    Does NOT indicate a crash.
+  - A normal `stop_hook_summary` on the final assistant turn + no macOS
+    DiagnosticReport usually means clean exit (user closed the terminal),
+    not a crash.
+
+  Investigative order:
+  1. `git log --since="<session start>" --oneline` — did commits land?
+  2. `git show <last-commit>` — does the diff match what the user described
+     in the trailing `last-prompt`? If yes, the work is done; don't claim
+     otherwise.
+  3. Check DiagnosticReports/ for the session date — absent = likely clean
+     exit, not a crash.
+
+  Most common root cause per user (2026-04-14): accidentally closing the
+  terminal window. Lead with that hypothesis before invoking "crash".
+
+  Real session cost: wrongly told the user their prompt was lost when the
+  commit right there in `git log` had already implemented it.
