@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { SocialPlayer, ChatMessage, DmRejectionReason, TickerMessage, PerkType, GameHistoryEntry, Channel, ChannelTypes, DayPhases, TickerCategories } from '@pecking-order/shared-types';
-import type { DayPhase, DeepLinkIntent } from '@pecking-order/shared-types';
+import type { DayPhase, DeepLinkIntent, CartridgeKind } from '@pecking-order/shared-types';
 
 /**
  * Keep the previous reference if the new value is structurally identical.
@@ -161,6 +161,15 @@ interface GameState {
   pendingIntentAttempts: number;
   pendingIntentFirstReceivedAt: number | null;
 
+  // Cartridge overlay — shell-agnostic attention intent (session-scoped, not persisted).
+  // Per spec §2, no auto-coordination with silverTarget/dmTarget/socialPanelOpen —
+  // surfaces stack at the same z-tier and dismiss through their own paths.
+  focusedCartridge: {
+    cartridgeId: string;
+    cartridgeKind: CartridgeKind;
+    origin: 'manual' | 'push';
+  } | null;
+
   // Actions
   sync: (data: any) => void;
   addChatMessage: (msg: ChatMessage) => void;
@@ -203,6 +212,8 @@ interface GameState {
   markRevealSeen: (kind: 'elimination' | 'winner', dayIndex?: number) => void;
   setPendingIntent: (intent: DeepLinkIntent | null) => void;
   incrementIntentAttempts: () => void;
+  focusCartridge: (cartridgeId: string, cartridgeKind: CartridgeKind, origin: 'manual' | 'push') => void;
+  unfocusCartridge: () => void;
 }
 
 // Selectors
@@ -865,6 +876,7 @@ export const useGameStore = create<GameState>((set) => ({
   pendingIntent: null,
   pendingIntentAttempts: 0,
   pendingIntentFirstReceivedAt: null,
+  focusedCartridge: null,
 
   sync: (data) => set((state) => {
     console.log('[SYNC] Received', {
@@ -1074,4 +1086,12 @@ export const useGameStore = create<GameState>((set) => ({
   incrementIntentAttempts: () => set((state) => ({
     pendingIntentAttempts: state.pendingIntentAttempts + 1,
   })),
+
+  focusCartridge: (cartridgeId, cartridgeKind, origin) => {
+    set({ focusedCartridge: { cartridgeId, cartridgeKind, origin } });
+  },
+
+  unfocusCartridge: () => {
+    set({ focusedCartridge: null });
+  },
 }));
