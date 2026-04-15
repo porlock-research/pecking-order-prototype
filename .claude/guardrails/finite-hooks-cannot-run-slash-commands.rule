@@ -1,0 +1,21 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: \.claude/(settings(\.local)?\.json|hooks/.+\.(sh|js|ts))$
+ADVISORY: |
+  Hooks run SHELL COMMANDS, not model turns. They cannot:
+    - Invoke slash commands (/reflect, /exit, etc.)
+    - Make the model take another turn of reasoning/tool-use
+    - Run agents except via `type: agent`/`type: prompt` hooks — and those
+      are restricted to PreToolUse | PostToolUse | PermissionRequest only.
+
+  So `SessionEnd` / `Stop` cannot "auto-run /reflect", "auto-run /commit",
+  or anything that needs LLM reasoning. The best they can do is print a
+  `systemMessage` or write a file that the next session surfaces.
+
+  If a user asks "can we fire X automatically when the session ends?":
+    - Shell task (git status check, log rotation, cache clear) → SessionEnd ✓
+    - LLM task (review session, draft a handoff, decide to commit) → NO. Use a
+      UserPromptSubmit nudge to remind the user to invoke the slash command
+      while they're still in a live turn.
+
+  `additionalContext` injection is only available on UserPromptSubmit,
+  PreToolUse, SessionStart — not Stop/SessionEnd. Don't try to bolt it on.
