@@ -182,7 +182,7 @@ export const l2DayResolutionActions = {
             type: FactTypes.ELIMINATION,
             actorId: 'GAME_MASTER',
             targetId: action.playerId,
-            payload: { mechanism: 'INACTIVITY', reason: action.reason },
+            payload: { mechanism: 'INACTIVITY', reason: action.reason, dayIndex: context.dayIndex },
             timestamp: Date.now(),
           },
         } as any);

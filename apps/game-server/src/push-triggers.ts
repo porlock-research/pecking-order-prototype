@@ -170,46 +170,53 @@ export function handleFactPush(
     return pushBroadcast(ctx, {
       title: name(fact.actorId),
       body: (fact.payload?.content || '').slice(0, 100),
-    }, EVENT_TTL, [fact.actorId]).catch(err => console.error('[L1] [Push] Error:', err));
+    }, EVENT_TTL, [fact.actorId], { kind: 'main' }).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.DM_SENT) {
     if (!isPushEnabled(manifest, 'DM_SENT')) return;
     const snippet = (fact.payload?.content || '').slice(0, 100);
     const payload = { title: name(fact.actorId), body: snippet || 'Sent you a message' };
+    const channelId = fact.payload?.channelId as string | undefined;
+    const intent: DeepLinkIntent | undefined = channelId ? { kind: 'dm', channelId } : undefined;
 
     // Group DM: push to all target members
     const targetIds: string[] | undefined = fact.payload?.targetIds;
     if (targetIds && targetIds.length > 0) {
       return Promise.allSettled(
-        targetIds.map((tid: string) => pushToPlayer(ctx, tid, payload, DM_TTL))
+        targetIds.map((tid: string) => pushToPlayer(ctx, tid, payload, DM_TTL, intent))
       ).then(() => {}).catch(err => console.error('[L1] [Push] Error:', err));
     }
     // 1:1 DM: push to single target
     if (fact.targetId) {
-      return pushToPlayer(ctx, fact.targetId, payload, DM_TTL)
+      return pushToPlayer(ctx, fact.targetId, payload, DM_TTL, intent)
         .catch(err => console.error('[L1] [Push] Error:', err));
     }
     return;
   } else if (fact.type === FactTypes.ELIMINATION) {
     if (!isPushEnabled(manifest, 'ELIMINATION')) return;
+    const dayIndex = fact.payload?.dayIndex as number | undefined;
+    const intent: DeepLinkIntent | undefined = dayIndex !== undefined
+      ? { kind: 'elimination_reveal', dayIndex }
+      : undefined;
     return pushBroadcast(ctx, {
       title: 'Pecking Order',
       body: `${name(fact.targetId || fact.actorId)} has been eliminated!`,
-    }, ELIMINATION_TTL).catch(err => console.error('[L1] [Push] Error:', err));
+    }, ELIMINATION_TTL, undefined, intent).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.WINNER_DECLARED) {
     if (!isPushEnabled(manifest, 'WINNER_DECLARED')) return;
     return pushBroadcast(ctx, {
       title: 'Pecking Order',
       body: `${name(fact.targetId || fact.actorId)} wins!`,
-    }, WINNER_TTL).catch(err => console.error('[L1] [Push] Error:', err));
+    }, WINNER_TTL, undefined, { kind: 'winner_reveal' }).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.DM_INVITE_SENT && fact.payload?.memberIds) {
     if (!isPushEnabled(manifest, 'DM_SENT')) return;  // reuse DM_SENT toggle
     const memberIds = fact.payload.memberIds as string[];
+    const intent: DeepLinkIntent = { kind: 'dm_invite', senderId: fact.actorId };
     return Promise.all(
       memberIds.map((memberId: string) =>
         pushToPlayer(ctx, memberId, {
           title: name(fact.actorId),
           body: `${name(fact.actorId)} invited you to chat`,
-        }, DM_TTL)
+        }, DM_TTL, intent)
       )
     ).then(() => {}).catch(err => console.error('[L1] [Push] Error:', err));
   }
