@@ -12,6 +12,8 @@ export { DILEMMA_TYPE_INFO } from './dilemma-type-info';
 export type { DilemmaTypeInfo } from './dilemma-type-info';
 export { GAME_TYPE_INFO } from './game-type-info';
 export type { GameTypeInfo } from './game-type-info';
+export { CARTRIDGE_INFO } from './cartridge-info';
+export type { CartridgeInfoEntry } from './cartridge-info';
 export { ACTIVITY_TYPE_INFO } from './activity-type-info';
 export type { ActivityTypeInfo } from './activity-type-info';
 export { ACTION_INFO, renderActionInfo } from './action-info';
