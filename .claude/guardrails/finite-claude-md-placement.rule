@@ -1,0 +1,34 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: (^|/)CLAUDE\.md$
+ADVISORY: |
+  Before adding or modifying a rule in CLAUDE.md, apply the placement rubric:
+
+    "What's the smallest directory where violating this rule actually causes harm?"
+
+  That's the file it belongs in. The hierarchy in this repo:
+
+    /CLAUDE.md                                  ← monorepo-wide (tech stack, commands)
+    /apps/<app>/CLAUDE.md                       ← app-wide (cross-shell, cross-surface)
+    /apps/client/src/shells/<shell>/CLAUDE.md   ← shell-specific conventions
+
+  Telltale signs a rule is misplaced (belongs deeper):
+    - References a UI element only one shell has ("Today tab", "Cast Strip")
+    - Hard-codes values that have a shell-specific constant nearby
+      (e.g., z-index 70 when PULSE_Z.reveal exists)
+    - Says "use library X" when shells diverge on that choice
+    - References a file path under a shell directory
+
+  When in doubt, place deeper. A rule in a shell's CLAUDE.md only loads for
+  agents working in that shell's directory tree — it can't create false
+  positives elsewhere. A rule in apps/client/CLAUDE.md fires for every
+  client session regardless of which shell the agent is working on.
+
+  Existing per-shell CLAUDE.md files (as of 2026-04-14):
+    apps/client/src/shells/pulse/CLAUDE.md
+    apps/client/src/shells/vivid/CLAUDE.md
+    apps/client/src/shells/classic/CLAUDE.md
+
+  Real cost avoided: stale Vivid-specific rules at the client app level
+  ("Results inline, not fullscreen" + legacy z-index stack) were wrongly
+  cited against a Pulse design spec that explicitly prescribed a full-screen
+  cartridge overlay, producing a bogus review blocker.

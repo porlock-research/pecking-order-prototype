@@ -8,42 +8,28 @@ The client is a premium messaging app that happens to be a game — not a game w
 
 - **State**: Zustand store (`src/store/useGameStore.ts`). `playerId` is NOT set from SYNC — must call `setPlayerId()` explicitly.
 - **WebSocket**: PartySocket via `useGameEngine` hook. Connects to `/parties/game-server/{gameId}`.
-- **Shells**: `ShellLoader` lazy-loads from `shells/registry.ts`. Select via `?shell=immersive|classic|vivid`.
+- **Shells**: `ShellLoader` lazy-loads from `shells/registry.ts`. Select via `?shell=classic|immersive|vivid|pulse`. Each shell documents its own conventions in `src/shells/<name>/CLAUDE.md`.
 
-## Shell Conventions
+## Shell-Agnostic UI Rules
 
-**Vivid shell** (primary):
-- Inline styles with `--vivid-*` CSS variables (NOT Tailwind classes)
-- `@solar-icons/react` icons with `weight="Bold"`
-- Springs from `shells/vivid/springs.ts`
-
-**Classic shell**:
-- Tailwind classes
-- lucide-react icons
-
-**Vaul Portal trap**: `Drawer.Portal` renders outside shell DOM tree — CSS custom properties don't resolve. Use explicit hex values inside portals.
-
-## UI Rules
-
-- **No emoji** — use `@solar-icons/react` (vivid) or lucide-react (classic). Emoji look inconsistent across platforms.
+- **No emoji** — use each shell's icon library. Emoji look inconsistent across platforms.
 - **Persona avatars always visible** — never replace player avatars with status icons. Use overlay indicators (badges, borders, opacity) on the avatar instead.
-- **Results inline, not fullscreen** — completed activity results render inline in the Today tab. Fullscreen takeover ONLY for arcade games (they need the canvas).
 - **Cards must be consistent** — across all states (upcoming, live, completed). Don't make upcoming cards look disabled.
 
-## CSS
+## Vaul Portal Gotcha
 
-Tailwind + `@pecking-order/ui-kit` preset. Shell-specific CSS variables (e.g., `--vivid-*`).
+`Drawer.Portal` renders outside shell DOM tree — CSS custom properties don't resolve inside it. Use explicit hex values inside portals.
 
-**Overlay z-index stack**: dramatic reveals (70) > context menu (60) > drawers/header (50) > toasts (sonner) > base (0).
+## CSS Stack
 
-**Background system**: Radial vignette gradients + grid use single `background-image` declaration. Adding `bg-grid-pattern` alongside `bg-radial-vignette` overwrites one or the other.
+Tailwind + `@pecking-order/ui-kit` preset is available. Individual shells opt in (Classic) or define their own style conventions with CSS variables (Vivid, Pulse). See each shell's CLAUDE.md.
 
 ## Libraries
 
-- **Icons**: `@solar-icons/react` (vivid), lucide-react (classic/admin)
+- **Icons**: per-shell choice (see each shell's CLAUDE.md)
 - **Motion**: framer-motion
 - **Toasts**: sonner
-- **Drawers**: vaul
+- **Drawers**: vaul (watch for the Portal CSS-var gotcha above)
 
 ## PWA
 

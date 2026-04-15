@@ -20,4 +20,4 @@ PlaytestSignups stores encrypted PII only (`email_encrypted`, `phone_encrypted`,
 
 - Lobby UI converts local time → UTC via `new Date(datetimeLocal).toISOString()` before sending to server.
 - Player slots are 1-indexed (`p1`, `p2`, ...). Lobby creates slots starting at 1.
-- Channel types: MAIN, DM, GROUP_DM, GAME_DM, PRIVATE.
+- Channel types: MAIN, DM, GROUP_DM, GAME_DM.

@@ -7,12 +7,12 @@ Turborepo monorepo. Cloudflare Workers (PartyServer/Durable Objects), XState v5.
 ## Monorepo
 
 - `apps/game-server` — Cloudflare Worker + PartyServer DO (L1-L4 XState machines), port 8787
-- `apps/client` — React 19 + Vite SPA (game shells: Classic, Immersive, Vivid), port 5173
+- `apps/client` — React 19 + Vite SPA (game shells: Classic, Immersive, Vivid, Pulse), port 5173
 - `apps/lobby` — Next.js 15 on Cloudflare (game creation, invites, admin dashboard), port 3000
 - `apps/nudge-worker` — Push notification delivery worker
 - `apps/sentry-tunnel` — Error reporting proxy
 - `packages/shared-types` — Event constants (`Events.*`), Zod schemas, manifest types. **Always import constants from here.**
-- `packages/game-cartridges` — 19 game mini-game XState machines (arcade factory + sync decisions + trivia + live)
+- `packages/game-cartridges` — XState machines for games/votes/prompts/dilemmas. See `packages/game-cartridges/CLAUDE.md` for registry layout and current count.
 - `packages/auth` — JWT creation/verification (jose)
 - `packages/ui-kit` — Tailwind preset + theme CSS variables
 
@@ -58,7 +58,7 @@ Per-app: `cd apps/<name> && npm run dev|build|test`
 - **Cartridge termination**: NEVER kill spawned children directly. Forward termination event → child calculates results → final state → `xstate.done.actor.*` → parent handles.
 - **Player IDs**: `p${slot_index}` — **1-indexed** (e.g., `p1`, `p2`). Lobby creates slots starting at 1.
 - **DO persistence**: SQL `snapshots` table (key/value/updated_at). No KV for new features.
-- **Channel types**: MAIN, DM, GROUP_DM, GAME_DM, PRIVATE. PRIVATE channels use UUID IDs and mutable membership (DM invite flow, ADR-096).
+- **Channel types**: MAIN, DM, GROUP_DM, GAME_DM. DM channels use UUID IDs and mutable membership (DM invite flow, ADR-096).
 - **DM invite flow**: Config-driven via `requireDmInvite` on manifest. Per-recipient `PendingInvite` records. Slot tracking via `slotsUsedByPlayer`. Facts: `DM_INVITE_SENT`, `DM_INVITE_ACCEPTED`, `DM_INVITE_DECLINED`.
 - **Presence**: Ephemeral in L1 (`connectedPlayers`), NOT in XState context.
 - **Logging**: `log(level, component, event, data?)` — structured JSON output (Axiom + Workers Logs)
