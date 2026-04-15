@@ -3162,5 +3162,497 @@
         "event": "SYNC_AFTER_RESULT"
       }
     ]
+  },
+  {
+    "id": "game-inflate",
+    "group": "Games",
+    "filePath": "packages/game-cartridges/src/machines/inflate.ts",
+    "stats": {
+      "stateCount": 2,
+      "transitionCount": 8,
+      "eventTypes": [
+        "*",
+        "ALL_COMPLETE",
+        "INTERNAL.END_GAME",
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
+      ],
+      "hasParallelRegions": false,
+      "hasFinalState": true
+    },
+    "states": [
+      {
+        "name": "active",
+        "path": "active",
+        "type": "atomic",
+        "parent": "(root)",
+        "events": [
+          "*",
+          "PLAYER_COMPLETED",
+          "ALL_COMPLETE",
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
+        ]
+      },
+      {
+        "name": "completed",
+        "path": "completed",
+        "type": "final",
+        "parent": "(root)",
+        "events": []
+      }
+    ],
+    "transitions": [
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "PLAYER_COMPLETED"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "ALL_COMPLETE"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
+      }
+    ]
+  },
+  {
+    "id": "game-snake",
+    "group": "Games",
+    "filePath": "packages/game-cartridges/src/machines/snake.ts",
+    "stats": {
+      "stateCount": 2,
+      "transitionCount": 8,
+      "eventTypes": [
+        "*",
+        "ALL_COMPLETE",
+        "INTERNAL.END_GAME",
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
+      ],
+      "hasParallelRegions": false,
+      "hasFinalState": true
+    },
+    "states": [
+      {
+        "name": "active",
+        "path": "active",
+        "type": "atomic",
+        "parent": "(root)",
+        "events": [
+          "*",
+          "PLAYER_COMPLETED",
+          "ALL_COMPLETE",
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
+        ]
+      },
+      {
+        "name": "completed",
+        "path": "completed",
+        "type": "final",
+        "parent": "(root)",
+        "events": []
+      }
+    ],
+    "transitions": [
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "PLAYER_COMPLETED"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "ALL_COMPLETE"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
+      }
+    ]
+  },
+  {
+    "id": "game-flappy",
+    "group": "Games",
+    "filePath": "packages/game-cartridges/src/machines/flappy.ts",
+    "stats": {
+      "stateCount": 2,
+      "transitionCount": 8,
+      "eventTypes": [
+        "*",
+        "ALL_COMPLETE",
+        "INTERNAL.END_GAME",
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
+      ],
+      "hasParallelRegions": false,
+      "hasFinalState": true
+    },
+    "states": [
+      {
+        "name": "active",
+        "path": "active",
+        "type": "atomic",
+        "parent": "(root)",
+        "events": [
+          "*",
+          "PLAYER_COMPLETED",
+          "ALL_COMPLETE",
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
+        ]
+      },
+      {
+        "name": "completed",
+        "path": "completed",
+        "type": "final",
+        "parent": "(root)",
+        "events": []
+      }
+    ],
+    "transitions": [
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "PLAYER_COMPLETED"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "ALL_COMPLETE"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
+      }
+    ]
+  },
+  {
+    "id": "game-color-sort",
+    "group": "Games",
+    "filePath": "packages/game-cartridges/src/machines/color-sort.ts",
+    "stats": {
+      "stateCount": 2,
+      "transitionCount": 8,
+      "eventTypes": [
+        "*",
+        "ALL_COMPLETE",
+        "INTERNAL.END_GAME",
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
+      ],
+      "hasParallelRegions": false,
+      "hasFinalState": true
+    },
+    "states": [
+      {
+        "name": "active",
+        "path": "active",
+        "type": "atomic",
+        "parent": "(root)",
+        "events": [
+          "*",
+          "PLAYER_COMPLETED",
+          "ALL_COMPLETE",
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
+        ]
+      },
+      {
+        "name": "completed",
+        "path": "completed",
+        "type": "final",
+        "parent": "(root)",
+        "events": []
+      }
+    ],
+    "transitions": [
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "PLAYER_COMPLETED"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "ALL_COMPLETE"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
+      }
+    ]
+  },
+  {
+    "id": "game-blink",
+    "group": "Games",
+    "filePath": "packages/game-cartridges/src/machines/blink.ts",
+    "stats": {
+      "stateCount": 2,
+      "transitionCount": 8,
+      "eventTypes": [
+        "*",
+        "ALL_COMPLETE",
+        "INTERNAL.END_GAME",
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
+      ],
+      "hasParallelRegions": false,
+      "hasFinalState": true
+    },
+    "states": [
+      {
+        "name": "active",
+        "path": "active",
+        "type": "atomic",
+        "parent": "(root)",
+        "events": [
+          "*",
+          "PLAYER_COMPLETED",
+          "ALL_COMPLETE",
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
+        ]
+      },
+      {
+        "name": "completed",
+        "path": "completed",
+        "type": "final",
+        "parent": "(root)",
+        "events": []
+      }
+    ],
+    "transitions": [
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "PLAYER_COMPLETED"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "ALL_COMPLETE"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
+      }
+    ]
+  },
+  {
+    "id": "game-recall",
+    "group": "Games",
+    "filePath": "packages/game-cartridges/src/machines/recall.ts",
+    "stats": {
+      "stateCount": 2,
+      "transitionCount": 8,
+      "eventTypes": [
+        "*",
+        "ALL_COMPLETE",
+        "INTERNAL.END_GAME",
+        "PLAYER_COMPLETED",
+        "SYNC_AFTER_RESULT"
+      ],
+      "hasParallelRegions": false,
+      "hasFinalState": true
+    },
+    "states": [
+      {
+        "name": "active",
+        "path": "active",
+        "type": "atomic",
+        "parent": "(root)",
+        "events": [
+          "*",
+          "PLAYER_COMPLETED",
+          "ALL_COMPLETE",
+          "INTERNAL.END_GAME",
+          "SYNC_AFTER_RESULT"
+        ]
+      },
+      {
+        "name": "completed",
+        "path": "completed",
+        "type": "final",
+        "parent": "(root)",
+        "events": []
+      }
+    ],
+    "transitions": [
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "*"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "PLAYER_COMPLETED"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "ALL_COMPLETE"
+      },
+      {
+        "source": "active",
+        "target": "completed",
+        "event": "INTERNAL.END_GAME"
+      },
+      {
+        "source": "active",
+        "target": "active",
+        "event": "SYNC_AFTER_RESULT"
+      }
+    ]
   }
 ]
