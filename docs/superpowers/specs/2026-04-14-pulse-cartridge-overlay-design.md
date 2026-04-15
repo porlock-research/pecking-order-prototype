@@ -117,7 +117,7 @@ The plan can pick either; the constraint is **the rect must not enter `useGameSt
 **Header bar (~44px):**
 - Left: `‹` close button (38×38 hit area, glass-blur background, matches DM sheet's back button).
 - Center: cartridge label (e.g., "Executioner Vote") with a 6×6 kind-color dot prefix. Label sourced from `CARTRIDGE_INFO[typeKey].displayName`, falling back to `typeKey`.
-- Right: countdown timer for active cartridges with a deadline (mono font, kind color when normal, `--pulse-accent` (red) under 1 minute). Hidden for upcoming (deadline irrelevant) and completed (no clock).
+- Right: countdown timer for active cartridges with a deadline (mono font, kind color when normal, `--pulse-accent` (red) under 1 minute). Hidden for upcoming (deadline irrelevant) and completed (no clock). **Hook contract:** the existing `useCountdown` / `useActivityCountdown` hooks return a label string only — no urgency flag. The plan must extend them to return `{ label: string; urgent: boolean }` (or add a sibling hook). Parsing the label string for "0:" prefix is fragile and out of scope for this overlay; it's a small hook addition.
 
 **Cartridge content area:** `flex: 1; overflow: auto`. Routes by lifecycle state — see §3.
 
@@ -125,7 +125,9 @@ The plan can pick either; the constraint is **the rect must not enter `useGameSt
 
 **Scrim:** `position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(5px)`. Tapping it (only the top 40px is reachable; the rest is occluded by the sheet) calls `unfocusCartridge()`. Single backdrop-filter, not stacked, per spec §Anti-Patterns.
 
-**Z-index:** Overlay renders at `PULSE_Z.drawer` (60), backdrop at `backdropFor(drawer)` (59). Same tier as DM sheet and Social panel — they don't co-exist with the overlay (opening the overlay closes them and vice versa, enforced in `focusCartridge`).
+**Z-index:** Overlay renders at `PULSE_Z.drawer` (60), backdrop at `backdropFor(drawer)` (59). Same tier as DM sheet and Social panel.
+
+**Coordination with DM sheet and Social panel:** Those two surfaces are PulseShell-local state (`silverTarget`, `dmTarget`, `socialPanelOpen`); the new `focusedCartridge` is store state. v1 does **not** auto-close them on focus and vice versa — the three surfaces stack at the same z-tier, each dismissable through its own path (scrim tap, back button, programmatic). Lifting the locals into the store for unified coordination is deferred (§11). In practice the only stack that occurs is overlay-on-top-of-DM (player taps a pill from inside an open DM), which dismisses cleanly when the overlay closes. If playtesting surfaces a usability problem, add coordination then.
 
 ## 3. Lifecycle-State Content Matrix
 
@@ -141,6 +143,18 @@ The plan can pick either; the constraint is **the rect must not enter `useGameSt
 The "starting" gap is **content, not a placeholder.** A player who taps a pill at the moment voting opens sees the info splash, then watches it transition into the playable view as the cartridge data arrives. No spinner.
 
 The `CartridgeResultCard` is a new Pulse-specific component. Cartridge panels do have internal result views, but they're tuned for inline-in-Today rendering (Vivid pattern) and don't all support a clean overlay frame. v1 builds a thin Pulse-native card that reads the `CompletedCartridge` snapshot and renders a kind-themed summary (winner, tally, ranking). The exact field set is per-kind (voting → eliminated player + tally; game → top-3 leaderboard; prompt → response highlights; dilemma → reveal). Plan-phase task to enumerate the per-kind result schema.
+
+### Routing constraint
+
+The shell-agnostic cartridge panels (`VotingPanel`, `GamePanel`, `PromptPanel`, `DilemmaPanel`) read **active** cartridge state directly from the store (`useGameStore(s => s.activeVotingCartridge)` etc.) — they do not accept a snapshot via props. They render whatever's currently active.
+
+This means **completed cartridges must never route through the panel layer.** The lifecycle router in `CartridgeOverlay` branches strictly:
+
+- `upcoming` / `starting` → `CartridgeInfoSplash` (manifest-driven, no cartridge data)
+- `just-started` / `needs-action` / `urgent` / `in-progress` → `PlayableCartridgeMount` (active-only)
+- `completed` → `CartridgeResultCard` (snapshot from `completedCartridges`, never the panel layer)
+
+Edge case to test: player taps a `completed` pill (e.g., Day 1 voting) while an `active` cartridge of the same kind exists (Day 2 voting). The router must produce `CartridgeResultCard` for Day 1, not the active Day 2 panel. `cartridgeId` (per Phase 4 §0.1: `${kind}-${dayIndex}-${typeKey}`) disambiguates.
 
 ## 4. CARTRIDGE_INFO Content Map
 
@@ -280,6 +294,19 @@ apps/client/src/shells/pulse/components/Pill.tsx
   - Wire onTap (already typed; just needs to actually call it from PulseBar)
   - Add ignition animation on lifecycle transition upcoming → just-started
 
+apps/client/src/shells/pulse/hooks/usePillStates.ts
+  - Detect ADR-128 SYNC gap: a manifest timeline entry has fired (eventTime <= now)
+    but the corresponding active cartridge slot is still null
+  - Assign 'starting' lifecycle during the gap; auto-swap to 'just-started' when
+    the slot populates
+  - Without this, the spec's "Starting now…" splash treatment never fires —
+    the union currently includes 'starting' but no producer assigns it
+
+apps/client/src/hooks/useCountdown.ts (and useActivityCountdown)
+  - Extend return shape: { label: string; urgent: boolean }
+  - urgent = true when remaining time < 60s
+  - Header countdown reads `urgent` to switch to red coloring
+
 apps/client/src/shells/pulse/PulseShell.tsx
   - Mount <CartridgeOverlay /> alongside DmSheet, SocialPanel
   - Wrap in AnimatePresence for entry/exit
@@ -292,11 +319,45 @@ apps/client/src/hooks/useDeepLinkIntent.ts  (Phase 4 — when it lands)
 
 docs/superpowers/specs/2026-04-14-pulse-phase4-catchup-design.md
   - Update §2 delivery #4 paragraph noting the interim behavior is now the overlay path
+
+apps/client/CLAUDE.md
+  - Add Pulse to the shell list (currently only Vivid + Classic are documented)
+  - Add a Pulse Shell conventions section: Outfit font, --pulse-* CSS vars,
+    @solar-icons/react with weight="Bold", PULSE_SPRING / PULSE_TAP from springs.ts,
+    PULSE_Z stack from zIndex.ts, no Tailwind, no emoji, persona avatars always visible
+  - Scope the "Results inline, not fullscreen" rule to Vivid (it predates Pulse and
+    references the Vivid-only Today tab). Pulse explicitly uses a full-screen overlay
+    per this spec.
+  - Scope or replace the generic z-index stack documented in CLAUDE.md — Pulse has
+    its own PULSE_Z contract that overrides the legacy reveals(70) > context(60) > drawers(50)
+    numbering
 ```
 
 ### Delete
 
 None.
+
+## 9a. Testing
+
+Matches the rigor of the revised Phase 4 spec and the 2026-04-13 sibling specs. The plan enumerates each as a vitest test and/or a Playwright e2e step.
+
+**Unit (vitest, `apps/client/src/shells/pulse/components/cartridge-overlay/__tests__/`):**
+
+- **Lifecycle routing.** Given a `cartridgeId` and store state with the cartridge in each lifecycle state (upcoming, starting, just-started, in-progress, completed, missing), `CartridgeOverlay` renders the correct inner component (`CartridgeInfoSplash` / `PlayableCartridgeMount` / `CartridgeResultCard` / nothing+toast).
+- **Active vs completed disambiguation.** Day-1-completed voting and Day-2-active voting both present in store; tapping the Day-1 pill produces the result card, not the Day-2 active panel. Driven by `cartridgeId` matching, not kind matching.
+- **Missing cartridge.** Push intent with stale `cartridgeId` → toast fires, `focusedCartridge` cleared, no overlay rendered.
+- **Origin-rect one-shot.** Pill writes rect → overlay reads it → ref cleared. A subsequent re-render of the overlay does not re-animate from the same rect.
+- **Pill ignition.** Transition `upcoming` → `just-started` (forced by store update in test) triggers the ignition class/animation on the Pill.
+- **`usePillStates` 'starting' detection.** Manifest timeline entry with `eventTime <= now` and corresponding active slot still null → pill lifecycle = `'starting'`. When slot populates, lifecycle = `'just-started'`.
+- **Countdown urgency.** `useCountdown` returns `{ urgent: false }` at >60s remaining and `{ urgent: true }` at <60s.
+
+**Integration / Playwright (`e2e/tests/pulse-cartridge-overlay.spec.ts`):**
+
+- **Manual tap, full lifecycle.** Create a test game with an upcoming vote; tap pill → splash visible. Advance to active via `INJECT_TIMELINE_EVENT` → splash swaps to playable view in the same overlay (no reopen). Cast vote → live status. Inject elimination/completion → result card swaps in place.
+- **Reveal layering.** Open overlay; trigger an elimination reveal (admin endpoint). Reveal renders above; dismissal returns to overlay (overlay's content state preserved).
+- **Phase 4 push intent → focusCartridge.** Simulate a `cartridge_active` intent arriving via SW postMessage; overlay opens with `origin: 'push'` (no scale animation), `markCartridgeSeen` called.
+- **Dismissal paths.** Header `‹` button, scrim tap on top 40px — both call `unfocusCartridge`, fade-out animates, overlay unmounts.
+- **No-swipe guarantee.** Drag-down from inside overlay content (e.g., on a vote button) does not dismiss. (Not strictly testable as a positive assertion, but covered by absence of any drag handler — a static review item in the plan.)
 
 ## 10. Success Criteria
 
@@ -310,7 +371,17 @@ None.
 - Players reach a v1 cartridge with authored `CARTRIDGE_INFO` content; cartridges without authored content render the terse fallback splash without crashing.
 - Phase 4 Tasks 8–19 can resume immediately on top of this work — `cartridge_active` / `cartridge_result` intents have a real surface to route to.
 
-## 11. Open / Deferred for Future Phases
+## 11. Plan-Level Items (no spec revision needed)
+
+These are decisions that surface during plan authoring but don't affect the design. Listed so they're not lost:
+
+- **`CompletedCartridgeSnapshot` schema enumeration.** `CompletedCartridge.snapshot` is typed `any`. The per-kind result cards need a typed discriminated union — voting tally, game leaderboard, prompt highlights, dilemma reveal. Plan preamble task: enumerate by inspecting `data.context.completedPhases` in the L3 machine and the four cartridge kinds' final-state outputs.
+- **`PULSE_SPRING.exit` numerical values.** Spec says "softer than `snappy`"; plan authors the actual stiffness/damping/mass.
+- **Back-to-back push intent semantics.** If intent B arrives while overlay is animating in for intent A, intent B replaces A (overlay snaps to B's content, no animation queue). Document explicitly in `useDeepLinkIntent`.
+- **`activeDilemma` vs `activeDilemmaCartridge` naming mismatch.** The store uses `activeDilemma` (per `usePillStates.ts:37`); other slots use the `activeXCartridge` pattern. The `cartridgeId` generator (`${kind}-${dayIndex}-${typeKey}`) must use the client-side kind string `'dilemma'` regardless of slot name. Plan should not "fix" the slot name — out of scope.
+- **Header swipe-down (deferred for v1).** Players will instinctively try swipe-down. A swipe limited to the 44px header strip would match DM-sheet vocabulary without colliding with cartridge touches. Plan author's call whether to add as a low-risk extra; v1 spec position is "no swipe" and that's defensible.
+
+## 12. Open / Deferred for Future Phases
 
 - Mini-bar for inter-cartridge navigation (defer until playtesters reach for it).
 - Chat peek at the bottom of the overlay.
