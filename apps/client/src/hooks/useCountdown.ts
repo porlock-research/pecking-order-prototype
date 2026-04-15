@@ -62,3 +62,36 @@ export function useCountdown(target: 'group' | 'dm'): string | null {
   }
   return `${pad(minutes)}:${pad(seconds)}`;
 }
+
+export interface CountdownResult {
+  label: string | null;
+  urgent: boolean;
+}
+
+/**
+ * Sibling of useCountdown that takes a raw target timestamp and returns both
+ * the formatted label and an urgent flag (< 60s remaining). Used by the Pulse
+ * cartridge overlay header so red-coloring isn't driven by string parsing.
+ */
+export function useCountdownWithUrgency(targetTimestamp: number | null): CountdownResult {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!targetTimestamp) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [targetTimestamp]);
+
+  if (!targetTimestamp) return { label: null, urgent: false };
+  const diff = Math.max(0, targetTimestamp - now);
+  if (diff <= 0) return { label: null, urgent: false };
+
+  const hours = Math.floor(diff / 3600000);
+  const minutes = Math.floor((diff % 3600000) / 60000);
+  const seconds = Math.floor((diff % 60000) / 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const label = hours > 0
+    ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+    : `${pad(minutes)}:${pad(seconds)}`;
+  return { label, urgent: diff < 60_000 };
+}
