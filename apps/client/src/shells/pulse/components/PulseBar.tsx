@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { useGameStore } from '../../../store/useGameStore';
+import { useGameStore, selectCartridgeUnread } from '../../../store/useGameStore';
 import { usePillStates, type PillState } from '../hooks/usePillStates';
 import { usePillOrigin } from './cartridge-overlay/usePillOrigin';
 import { Pill } from './Pill';
@@ -12,7 +12,14 @@ import { Pill } from './Pill';
 export function PulseBar() {
   const pills = usePillStates();
   const focusCartridge = useGameStore(s => s.focusCartridge);
+  const markCartridgeSeen = useGameStore(s => s.markCartridgeSeen);
   const dayIndex = useGameStore(s => s.dayIndex);
+  // Subscribe to lastSeenCartridge so the unread dot re-evaluates when the
+  // cartridge is marked seen. Other fields read by selectCartridgeUnread
+  // (activeVoting/Game/Prompt/Dilemma, completedCartridges) are already
+  // subscribed to via usePillStates above, so this single extra subscription
+  // covers the full set of inputs.
+  useGameStore(s => s.lastSeenCartridge);
   const { set: setPillOrigin } = usePillOrigin();
   const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -22,6 +29,7 @@ export function PulseBar() {
     const el = pillRefs.current[pill.id];
     if (el) setPillOrigin(el.getBoundingClientRect());
     const cartridgeId = pillToCartridgeId(pill, dayIndex);
+    markCartridgeSeen(cartridgeId);
     focusCartridge(cartridgeId, pill.kind, 'manual');
   };
 
@@ -42,14 +50,20 @@ export function PulseBar() {
         scrollbarWidth: 'none',
       }}
     >
-      {pills.map(pill => (
-        <Pill
-          key={pill.id}
-          pill={pill}
-          onTap={() => handleTap(pill)}
-          buttonRef={(el) => { pillRefs.current[pill.id] = el; }}
-        />
-      ))}
+      {pills.map(pill => {
+        const cartridgeId = pillToCartridgeId(pill, dayIndex);
+        const unread = selectCartridgeUnread(useGameStore.getState(), cartridgeId);
+        return (
+          <Pill
+            key={pill.id}
+            pill={pill}
+            cartridgeId={cartridgeId}
+            unread={unread}
+            onTap={() => handleTap(pill)}
+            buttonRef={(el) => { pillRefs.current[pill.id] = el; }}
+          />
+        );
+      })}
     </div>
   );
 }

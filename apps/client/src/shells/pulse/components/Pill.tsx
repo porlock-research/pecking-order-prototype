@@ -62,9 +62,11 @@ interface PillProps {
   mini?: boolean;
   onTap?: () => void;
   buttonRef?: (el: HTMLButtonElement | null) => void;
+  unread?: boolean;
+  cartridgeId?: string;
 }
 
-export function Pill({ pill, mini, onTap, buttonRef }: PillProps) {
+export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: PillProps) {
   const Icon = PILL_ICONS[pill.kind] || ChatCircleDots;
   const kindColor = PILL_COLORS[pill.kind] || 'var(--pulse-accent)';
   const styles = lifecycleStyles(pill.lifecycle);
@@ -89,6 +91,7 @@ export function Pill({ pill, mini, onTap, buttonRef }: PillProps) {
     <motion.button
       ref={buttonRef}
       className={igniting ? 'pulse-pill-ignition' : undefined}
+      data-pill-cartridge-id={cartridgeId}
       whileTap={PULSE_TAP.pill}
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: styles.opacity ?? 1, scale: 1 }}
@@ -154,6 +157,22 @@ export function Pill({ pill, mini, onTap, buttonRef }: PillProps) {
         >
           !
         </span>
+      )}
+      {unread && cartridgeId && (
+        <span
+          data-testid={`pill-unread-${cartridgeId}`}
+          style={{
+            position: 'absolute',
+            top: -3,
+            left: -3,
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: 'var(--pulse-accent)',
+            boxShadow: '0 0 6px var(--pulse-accent)',
+            border: '1.5px solid var(--pulse-bg)',
+          }}
+        />
       )}
     </motion.button>
   );
