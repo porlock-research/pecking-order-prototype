@@ -5,7 +5,10 @@
 # Rule files live in .claude/guardrails/*.rule
 # Format:
 #   MATCH_TOOL: <regex matching tool name, e.g. Bash|Edit>
-#   MATCH_PATTERN: <regex matching tool input>
+#   MATCH_PATTERN: <regex matching tool input (command or file path)>
+#   MATCH_CONTENT: <optional regex matching proposed edit content — fires
+#                   only when the new_string (Edit) / content (Write) body
+#                   matches. Lets rules be content-aware, not path-only.>
 #   ADVISORY: |
 #     Advisory text shown to the agent
 #     Can be multiline
@@ -29,6 +32,7 @@ for rule in "$GUARDRAILS_DIR"/*.rule; do
   # Parse rule fields
   MATCH_TOOL=$(grep '^MATCH_TOOL:' "$rule" | sed 's/^MATCH_TOOL: *//')
   MATCH_PATTERN=$(grep '^MATCH_PATTERN:' "$rule" | sed 's/^MATCH_PATTERN: *//')
+  MATCH_CONTENT=$(grep '^MATCH_CONTENT:' "$rule" | sed 's/^MATCH_CONTENT: *//')
 
   # Check tool name match (skip rule if tool doesn't match)
   if [ -n "$MATCH_TOOL" ]; then
@@ -37,12 +41,14 @@ for rule in "$GUARDRAILS_DIR"/*.rule; do
     fi
   fi
 
-  # Check pattern match against command, file path, or full input
+  # Check pattern match against command, file path, or full input.
+  # Suppress grep stderr so a malformed pattern in one rule doesn't pollute
+  # every invocation; it just fails-closed (treated as no-match) for that rule.
   if [ -n "$MATCH_PATTERN" ]; then
     MATCHED=false
-    if [ -n "$COMMAND" ] && echo "$COMMAND" | grep -qE "$MATCH_PATTERN"; then
+    if [ -n "$COMMAND" ] && echo "$COMMAND" | grep -qE "$MATCH_PATTERN" 2>/dev/null; then
       MATCHED=true
-    elif [ -n "$FILE_PATH" ] && echo "$FILE_PATH" | grep -qE "$MATCH_PATTERN"; then
+    elif [ -n "$FILE_PATH" ] && echo "$FILE_PATH" | grep -qE "$MATCH_PATTERN" 2>/dev/null; then
       MATCHED=true
     fi
 
@@ -51,8 +57,26 @@ for rule in "$GUARDRAILS_DIR"/*.rule; do
     fi
   fi
 
-  # Extract advisory text (everything after "ADVISORY: |" line, with leading 2-space indent stripped)
-  ADVISORY=$(sed -n '/^ADVISORY:/,/^$/ { /^ADVISORY:/d; s/^  //; p; }' "$rule")
+  # Optional: content-aware filter. Fires only when the proposed edit body
+  # (new_string for Edit, content for Write) matches MATCH_CONTENT. Gives
+  # rules a way to be precise about *what changed*, not just *where*.
+  if [ -n "$MATCH_CONTENT" ]; then
+    CONTENT=""
+    case "$TOOL_NAME" in
+      Edit) CONTENT=$(echo "$INPUT" | jq -r '.tool_input.new_string // empty' 2>/dev/null) ;;
+      Write) CONTENT=$(echo "$INPUT" | jq -r '.tool_input.content // empty' 2>/dev/null) ;;
+    esac
+    if [ -z "$CONTENT" ] || ! echo "$CONTENT" | grep -qE "$MATCH_CONTENT" 2>/dev/null; then
+      continue
+    fi
+  fi
+
+  # Extract advisory text: everything from the "ADVISORY: |" line to EOF,
+  # with the 2-space YAML block-scalar indent stripped. Reading to EOF (not
+  # stopping at the first blank line) lets advisories contain empty lines
+  # between paragraphs. Rule files have ADVISORY as the last field by
+  # convention.
+  ADVISORY=$(sed -n '/^ADVISORY:/,$ { /^ADVISORY:/d; s/^  //; p; }' "$rule")
 
   if [ -n "$ADVISORY" ]; then
     RULE_NAME=$(basename "$rule" .rule)
