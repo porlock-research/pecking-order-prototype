@@ -141,13 +141,10 @@ export function PulseInput() {
     return `${labels[commandMode.command] || ''} — pick a player`;
   };
 
-  if (!isSocialPhase) {
-    return (
-      <div style={{ padding: '12px', textAlign: 'center', color: 'var(--pulse-text-3)', fontSize: 12, fontStyle: 'italic', borderTop: '1px solid var(--pulse-border)' }}>
-        Chat opens at dawn
-      </div>
-    );
-  }
+  // When chat is closed the ChatView renders its own "Chat opens at dawn"
+  // notice in the empty chat area. Hiding the input bar here avoids a
+  // duplicate copy of the same message stacked at the bottom of the viewport.
+  if (!isSocialPhase) return null;
 
   return (
     <div style={{ borderTop: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)', position: 'relative', zIndex: 5 }}>
