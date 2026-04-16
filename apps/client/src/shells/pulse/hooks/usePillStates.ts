@@ -148,9 +148,11 @@ export function usePillStates(): PillState[] {
       const typeKey = promptTypeKey(prompt);
       const cartridgeId = cartridgeIdFor('prompt', dayIndex, typeKey);
       const thisCompleted = todayCompletedIds.has(cartridgeId);
-      const playerActed = playerId
-        ? Boolean(prompt.stances?.[playerId] || prompt.responses?.[playerId] || prompt.submissions?.[playerId])
-        : false;
+      // Use the uniform `participated` projection (projections.ts). Each
+      // prompt type stores submissions under a different field — some
+      // stripped from SYNC during active phases — so the client must not
+      // depend on any single type-specific field.
+      const playerActed = playerId ? Boolean(prompt.participated?.[playerId]) : false;
       pills.push({
         id: cartridgeId,
         kind: 'prompt',
@@ -170,7 +172,11 @@ export function usePillStates(): PillState[] {
       const typeKey = dilemmaTypeKey(dilemma);
       const cartridgeId = cartridgeIdFor('dilemma', dayIndex, typeKey);
       const thisCompleted = todayCompletedIds.has(cartridgeId);
-      const playerActed = playerId ? Boolean(dilemma.decisions?.[playerId]) : false;
+      // `decisions` is stripped from the projection during COLLECTING —
+      // use the uniform `participated` (mirrored as `submitted`) field.
+      const playerActed = playerId
+        ? Boolean(dilemma.participated?.[playerId] || dilemma.submitted?.[playerId])
+        : false;
       pills.push({
         id: cartridgeId,
         kind: 'dilemma',

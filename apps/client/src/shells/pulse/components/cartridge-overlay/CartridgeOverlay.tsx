@@ -30,11 +30,18 @@ export function CartridgeOverlay() {
   const { engine } = usePulse();
   const { consume } = usePillOrigin();
 
-  // Resolve which pill in the current list represents the focused cartridge.
-  // Match priority: by kind alone — there's at most one active or completed
-  // cartridge per kind in the pills list at any time.
+  // Resolve which pill represents the focused cartridge. Match priority:
+  //   1. Exact cartridgeId match — required when a push intent for a prior
+  //      day's cartridge arrives (e.g., voting-1-BUBBLE push landing on
+  //      Day 2 where the active voting pill is voting-2-MAJORITY). Without
+  //      this, the overlay would open the wrong cartridge's data under the
+  //      original push intent's label.
+  //   2. Kind fallback — when no id match is present (e.g., first-tap from
+  //      a pill that was rendered before the server echoed cartridgeId).
   const match = useMemo<PillState | undefined>(() => {
     if (!focused) return undefined;
+    const byId = pills.find(p => p.id === focused.cartridgeId);
+    if (byId) return byId;
     return pills.find(p => p.kind === focused.cartridgeKind);
   }, [focused, pills]);
 

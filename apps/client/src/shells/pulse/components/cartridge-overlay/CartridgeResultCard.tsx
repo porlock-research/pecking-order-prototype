@@ -47,7 +47,23 @@ export function CartridgeResultCard({ cartridgeId, kind }: Props) {
   const dotColor = KIND_COLORS[kind];
   const title = KIND_TITLES[kind];
 
-  const snap: any = entry?.snapshot ?? activeForKind?.results ?? activeForKind ?? null;
+  // Fallback chain: completed entry wins. When missing (REVEAL-gap window
+  // before L2 writes completedPhases), merge the active cartridge context
+  // with its `results` — dilemmas and prompts expose their type field on
+  // context, not inside results, so a naive `?? results ?? active` would
+  // drop `dilemmaType`/`promptType` when results is truthy.
+  //
+  // Only use the active-slot fallback when its decorated cartridgeId matches
+  // the requested one. Without this check, a stale push intent targeting
+  // Day N-1's cartridge could surface Day N's active-slot data under the
+  // wrong cartridgeId header.
+  const useActiveFallback =
+    !entry
+    && activeForKind
+    && (activeForKind as any).cartridgeId === cartridgeId;
+
+  const snap: any = entry?.snapshot
+    ?? (useActiveFallback ? { ...activeForKind, ...(activeForKind!.results ?? {}) } : null);
 
   if (!snap) {
     return (

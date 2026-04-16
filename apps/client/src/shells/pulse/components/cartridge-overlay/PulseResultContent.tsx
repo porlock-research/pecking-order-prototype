@@ -16,13 +16,6 @@ import { Crown, Skull, Lightning, Eye, Fire } from '../../icons';
  * persona photos over gradients.
  */
 
-const KIND_COLOR: Record<CartridgeKind, string> = {
-  voting: 'var(--pulse-vote)',
-  game: 'var(--pulse-game)',
-  prompt: 'var(--pulse-prompt)',
-  dilemma: 'var(--pulse-dilemma)',
-};
-
 function ordinal(n: number): string {
   const s = ['th', 'st', 'nd', 'rd'];
   const v = n % 100;
@@ -180,26 +173,28 @@ function VotingResult({ snapshot, roster, playerId }: {
     ? silverRanking.map(r => [r.id, r.silver] as [string, number])
     : Object.entries(tallies).sort(([, a], [, b]) => b - a);
 
-  // Voter attribution reverse map
-  const votersFor: Record<string, string[]> = {};
-  const allVoterIds = new Set<string>();
-  if (votes) {
-    for (const [voterId, targetId] of Object.entries(votes)) {
-      if (!votersFor[targetId]) votersFor[targetId] = [];
-      votersFor[targetId].push(voterId);
-      allVoterIds.add(voterId);
+  // Voter attribution reverse map + abstainer detection, both computed in
+  // a single pass so the memo deps can reference stable inputs instead of
+  // a per-render Set.
+  const { votersFor, abstainers } = useMemo(() => {
+    const votersForMap: Record<string, string[]> = {};
+    const voterSet = new Set<string>();
+    if (votes) {
+      for (const [voterId, targetId] of Object.entries(votes)) {
+        if (!votersForMap[targetId]) votersForMap[targetId] = [];
+        votersForMap[targetId].push(voterId);
+        voterSet.add(voterId);
+      }
     }
-  }
-
-  const abstainers: string[] = useMemo(() => {
-    if (!votes || isSecondToLast) return [];
-    const out: string[] = [];
-    for (const pid of Object.keys(roster)) {
-      const wasEliminatedBefore = roster[pid]?.status === 'ELIMINATED' && pid !== eliminatedId;
-      if (!wasEliminatedBefore && !allVoterIds.has(pid)) out.push(pid);
+    const abs: string[] = [];
+    if (votes && !isSecondToLast) {
+      for (const pid of Object.keys(roster)) {
+        const wasEliminatedBefore = roster[pid]?.status === 'ELIMINATED' && pid !== eliminatedId;
+        if (!wasEliminatedBefore && !voterSet.has(pid)) abs.push(pid);
+      }
     }
-    return out;
-  }, [votes, isSecondToLast, roster, eliminatedId, allVoterIds]);
+    return { votersFor: votersForMap, abstainers: abs };
+  }, [votes, isSecondToLast, roster, eliminatedId]);
 
   const mechanicOneLiner = mechanism
     ? (VOTE_TYPE_INFO as Record<string, { oneLiner?: string }>)[mechanism]?.oneLiner

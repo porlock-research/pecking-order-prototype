@@ -43,7 +43,30 @@ describe('buildSyncPayload — cartridgeId + updatedAt', () => {
     expect(sync.context.activeVotingCartridge.updatedAt).toBe(1700000000000);
   });
 
-  it('uses UNKNOWN typeKey when mechanism absent', () => {
+  it('falls back to voteType when mechanism absent', () => {
+    // Voting machine contexts expose voteType (not mechanism); the older
+    // code path only checked cartridge.mechanism and every cartridgeId
+    // came out as voting-N-UNKNOWN. Guard the voteType fallback with a
+    // regression case so the mismatch can't re-open silently.
+    const cartridges = {
+      activeVotingCartridge: { voteType: 'MAJORITY', votes: {}, eligibleVoters: ['p1'] },
+      rawGameCartridge: null,
+      activePromptCartridge: null,
+      activeDilemmaCartridge: null,
+    };
+    const sync = buildSyncPayload(
+      {
+        snapshot: makeFakeL2Snapshot({ dayIndex: 2 }),
+        l3Context: { cartridgeUpdatedAt: {} },
+        chatLog: [],
+        cartridges,
+      },
+      'p1',
+    );
+    expect(sync.context.activeVotingCartridge.cartridgeId).toBe('voting-2-MAJORITY');
+  });
+
+  it('uses UNKNOWN typeKey when both mechanism and voteType absent', () => {
     const cartridges = {
       activeVotingCartridge: { votes: {} },
       rawGameCartridge: null,
