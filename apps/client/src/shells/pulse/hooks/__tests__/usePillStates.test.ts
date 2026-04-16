@@ -151,6 +151,75 @@ describe('usePillStates — multi-day completion handling', () => {
   });
 });
 
+describe('usePillStates — upcoming pill labels from manifest day fields', () => {
+  beforeEach(() => {
+    useGameStore.setState({
+      playerId: 'p1',
+      activeVotingCartridge: null,
+      activeGameCartridge: null,
+      activePromptCartridge: null,
+      activeDilemma: null,
+      completedCartridges: [],
+      manifest: null,
+      dayIndex: 1,
+    } as any);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-14T12:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('renders a specific label for an upcoming Activity when the day has activityType', () => {
+    useGameStore.setState({
+      manifest: {
+        scheduling: 'PRE_SCHEDULED',
+        days: [{
+          activityType: 'WOULD_YOU_RATHER',
+          timeline: [{ action: 'START_ACTIVITY', time: '2026-04-14T12:05:00Z' }],
+        }],
+      } as any,
+    });
+    const { result } = renderHook(() => usePillStates());
+    expect(result.current).toHaveLength(1);
+    expect(result.current[0].lifecycle).toBe('upcoming');
+    expect(result.current[0].cartridgeData).toEqual({ promptType: 'WOULD_YOU_RATHER' });
+    // Label should be CARTRIDGE_INFO['WOULD_YOU_RATHER'].displayName, not 'Activity'
+    expect(result.current[0].label).not.toBe('Activity');
+  });
+
+  it('renders a specific label for an upcoming Vote when the day has voteType', () => {
+    useGameStore.setState({
+      manifest: {
+        scheduling: 'PRE_SCHEDULED',
+        days: [{
+          voteType: 'EXECUTIONER',
+          timeline: [{ action: 'OPEN_VOTING', time: '2026-04-14T12:05:00Z' }],
+        }],
+      } as any,
+    });
+    const { result } = renderHook(() => usePillStates());
+    expect(result.current[0].cartridgeData).toEqual({ voteType: 'EXECUTIONER' });
+    expect(result.current[0].label).not.toBe('Vote');
+  });
+
+  it('falls back to generic label when day field is NONE', () => {
+    useGameStore.setState({
+      manifest: {
+        scheduling: 'PRE_SCHEDULED',
+        days: [{
+          activityType: 'NONE',
+          timeline: [{ action: 'START_ACTIVITY', time: '2026-04-14T12:05:00Z' }],
+        }],
+      } as any,
+    });
+    const { result } = renderHook(() => usePillStates());
+    expect(result.current[0].cartridgeData).toBeUndefined();
+    expect(result.current[0].label).toBe('Activity');
+  });
+});
+
 describe('usePillStates — per-player needs-action', () => {
   beforeEach(() => {
     useGameStore.setState({

@@ -34,6 +34,28 @@ const ACTION_LABELS: Record<string, string> = {
   START_DILEMMA: 'Dilemma',
 };
 
+/** Pull the day-level type field for a given action kind from the manifest day. */
+function dayTypeKeyFor(kind: PillState['kind'], day: any): string | undefined {
+  switch (kind) {
+    case 'voting': return day?.voteType && day.voteType !== 'NONE' ? day.voteType : undefined;
+    case 'game': return day?.gameType && day.gameType !== 'NONE' ? day.gameType : undefined;
+    case 'prompt': return day?.activityType && day.activityType !== 'NONE' ? day.activityType : undefined;
+    case 'dilemma': return day?.dilemmaType && day.dilemmaType !== 'NONE' ? day.dilemmaType : undefined;
+  }
+}
+
+/** Build a minimal cartridgeData object for upcoming/starting pills so the
+ *  overlay's info splash can render the specific CARTRIDGE_INFO entry. */
+function upcomingCartridgeData(kind: PillState['kind'], typeKey: string | undefined): any {
+  if (!typeKey) return undefined;
+  switch (kind) {
+    case 'voting': return { voteType: typeKey };
+    case 'game': return { gameType: typeKey };
+    case 'prompt': return { promptType: typeKey };
+    case 'dilemma': return { dilemmaType: typeKey };
+  }
+}
+
 /** Build the cartridgeId `${kind}-${dayIndex}-${typeKey}` scheme. */
 function cartridgeIdFor(kind: PillState['kind'], dayIndex: number, typeKey: string | undefined): string {
   return `${kind}-${dayIndex}-${typeKey || 'UNKNOWN'}`;
@@ -206,20 +228,28 @@ export function usePillStates(): PillState[] {
         const alreadyRepresented = pills.some(p => p.kind === kind);
         if (alreadyRepresented) continue;
 
+        // Resolve the day-level type so the overlay splash can render the
+        // specific CARTRIDGE_INFO entry instead of a generic "Activity"/"Vote".
+        const typeKey = dayTypeKeyFor(kind, day);
+        const label = prettyLabel(typeKey, ACTION_LABELS[ev.action] || kind);
+        const cartridgeData = upcomingCartridgeData(kind, typeKey);
+
         if (eventTime > now) {
           pills.push({
             id: `upcoming-${ev.action}-${ev.time}`,
             kind,
-            label: ACTION_LABELS[ev.action] || kind,
+            label,
             lifecycle: 'upcoming',
             timeRemaining: Math.floor((eventTime - now) / 1000),
+            cartridgeData,
           });
         } else {
           pills.push({
             id: `starting-${ev.action}-${ev.time}`,
             kind,
-            label: ACTION_LABELS[ev.action] || kind,
+            label,
             lifecycle: 'starting',
+            cartridgeData,
           });
         }
       }
