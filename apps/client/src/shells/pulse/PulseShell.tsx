@@ -8,6 +8,7 @@ import { useDeepLinkIntent } from '../../hooks/useDeepLinkIntent';
 import { useRevealQueue } from './hooks/useRevealQueue';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import type { DeepLinkIntent, CartridgeKind } from '@pecking-order/shared-types';
+import { HandWaving } from './icons';
 import { PULSE_Z } from './zIndex';
 
 const DM_REJECTION_LABELS: Record<string, string> = {
@@ -144,7 +145,11 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
       return;
     }
     engine.sendNudge(targetId);
-    toast.success(`Nudged ${name}`);
+    // Sender celebration — brief haptic + orange-iconed toast.
+    try { navigator.vibrate?.(15); } catch { /* no-op */ }
+    toast.success(`Nudged ${name}`, {
+      icon: <HandWaving size={18} weight="fill" style={{ color: 'var(--pulse-nudge)' }} />,
+    });
   }, [engine]);
   const openDM = useCallback((targetId: string, isGroup = false) => {
     setDmTarget(targetId);

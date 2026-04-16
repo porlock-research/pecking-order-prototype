@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import type { SocialPlayer } from '@pecking-order/shared-types';
 import { getPlayerColor } from '../../colors';
 import { PersonaImage, initialsOf } from '../common/PersonaImage';
@@ -20,10 +21,12 @@ interface Props {
 export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, onClose }: Props) {
   const color = getPlayerColor(colorIdx);
   const [variant, setVariant] = useState<'headshot' | 'medium' | 'full'>('headshot');
+  const [waveToken, setWaveToken] = useState(0);
   const canAdd = useGameStore(s => channelId ? selectCanAddMemberTo(s, channelId) : false);
   const startAddMember = useGameStore(s => s.startAddMember);
   const alreadyNudged = useGameStore(s => selectHaveINudged(s, player.id));
   const { openNudge } = usePulse();
+  const reduce = useReducedMotion();
 
   // Pulse shell uses short bio as pseudo-stereotype (matches CastCard convention).
   const stereotype = player.bio && player.bio.length > 4 && player.bio.length <= 50 ? player.bio : '';
@@ -52,7 +55,11 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
 
       <div style={{ position: 'absolute', top: 'var(--pulse-space-md)', right: 'var(--pulse-space-md)', display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)' }}>
         <button
-          onClick={() => { if (!alreadyNudged) openNudge(player.id); }}
+          onClick={() => {
+            if (alreadyNudged) return;
+            setWaveToken(t => t + 1);
+            openNudge(player.id);
+          }}
           disabled={alreadyNudged}
           aria-label={alreadyNudged ? `Already nudged ${player.personaName} today` : `Nudge ${player.personaName}`}
           style={{
@@ -66,7 +73,15 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
             fontSize: 12, fontWeight: 700,
           }}
         >
-          <HandWaving size={16} weight="fill" color={alreadyNudged ? 'rgba(255,160,77,0.5)' : 'var(--pulse-nudge)'} />
+          <motion.span
+            key={waveToken}
+            initial={{ rotate: 0 }}
+            animate={reduce || waveToken === 0 ? { rotate: 0 } : { rotate: [0, -22, 18, -14, 10, 0] }}
+            transition={reduce ? {} : { duration: 0.55, ease: 'easeInOut' }}
+            style={{ display: 'inline-flex', transformOrigin: '70% 80%' }}
+          >
+            <HandWaving size={16} weight="fill" color={alreadyNudged ? 'rgba(255,160,77,0.5)' : 'var(--pulse-nudge)'} />
+          </motion.span>
           <span>{alreadyNudged ? 'Nudged' : 'Nudge'}</span>
         </button>
         {canAdd && channelId && (

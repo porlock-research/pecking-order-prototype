@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { HandWaving } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
@@ -18,6 +18,7 @@ interface Props {
  */
 export function NudgeTransferCard({ text }: Props) {
   const roster = useGameStore(s => s.roster);
+  const reduce = useReducedMotion();
 
   // Strip markdown bold markers and parse: "SENDER nudged RECIPIENT"
   const plain = text.replace(/\*\*/g, '');
@@ -52,16 +53,30 @@ export function NudgeTransferCard({ text }: Props) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={PULSE_SPRING.gentle}
+      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.88 }}
+      animate={
+        reduce
+          ? { opacity: 1 }
+          : {
+              opacity: 1,
+              scale: [0.88, 1.04, 1],
+              // Kinetic wobble — "nudge = poke" physicalized. Fires once.
+              x: [0, -4, 4, -3, 3, 0],
+              boxShadow: [
+                '0 0 0 0 rgba(255,160,77,0)',
+                '0 0 16px 2px rgba(255,160,77,0.45)',
+                '0 0 0 0 rgba(255,160,77,0)',
+              ],
+            }
+      }
+      transition={reduce ? { duration: 0.2 } : { duration: 0.7, ease: [0.2, 0.9, 0.3, 1] }}
       style={{
         display: 'inline-flex',
         alignSelf: 'flex-start',
         alignItems: 'center',
-        gap: 8,
-        padding: '4px 12px 4px 4px',
-        margin: '3px 0',
+        gap: 'var(--pulse-space-sm)',
+        padding: 'var(--pulse-space-xs) var(--pulse-space-md) var(--pulse-space-xs) var(--pulse-space-xs)',
+        margin: 'var(--pulse-space-2xs) 0',
         borderRadius: 999,
         background: 'rgba(255,160,77,0.06)',
         border: '1px solid rgba(255,160,77,0.18)',
@@ -107,7 +122,14 @@ export function NudgeTransferCard({ text }: Props) {
         <span style={{ fontWeight: 700, color: recipientColor }}>{recipientName}</span>
       </div>
 
-      <HandWaving size={12} weight="fill" color="var(--pulse-nudge)" style={{ flexShrink: 0 }} />
+      <motion.span
+        initial={{ rotate: 0 }}
+        animate={reduce ? { rotate: 0 } : { rotate: [0, -18, 16, -12, 10, 0] }}
+        transition={reduce ? {} : { duration: 0.55, delay: 0.18, ease: 'easeInOut' }}
+        style={{ display: 'inline-flex', transformOrigin: '70% 80%', flexShrink: 0 }}
+      >
+        <HandWaving size={12} weight="fill" color="var(--pulse-nudge)" />
+      </motion.span>
     </motion.div>
   );
 }
