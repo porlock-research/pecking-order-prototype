@@ -4,6 +4,8 @@ import { clientsClaim } from 'workbox-core';
 import { registerRoute } from 'workbox-routing';
 import { CacheFirst } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
+import type { DeepLinkIntent } from '@pecking-order/shared-types';
+import { parseIntentFromData, buildIntentUrl } from './sw-intent-helpers';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -60,12 +62,13 @@ self.addEventListener('push', (event) => {
   try {
     const data = event.data.json();
     const title = data.title || 'Pecking Order';
+    const intent = parseIntentFromData(data);
     const options: NotificationOptions = {
       body: data.body || '',
       icon: '/icons/icon-192.png',
       badge: '/icons/badge-72.png',
       requireInteraction: true,
-      data: { url: data.url || self.location.origin },
+      data: { url: data.url || self.location.origin, intent },
     };
 
     // If push includes a game token, store in Cache API for token recovery
@@ -92,25 +95,32 @@ self.addEventListener('push', (event) => {
   }
 });
 
-// Notification click handler — focus or open game tab
+// Notification click handler — focus existing window and postMessage the
+// DeepLinkIntent, or open a new window with the intent encoded in ?intent=.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const targetUrl = (event.notification.data?.url as string) || self.location.origin;
-  console.log('[SW] Notification clicked, target:', targetUrl);
+  const intent = (event.notification.data?.intent as DeepLinkIntent | null) ?? null;
+  console.log('[SW] Notification clicked, target:', targetUrl, 'intent:', intent);
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
       console.log('[SW] Found', clients.length, 'client window(s)');
-      // Navigate an existing same-origin window (reuses PWA window)
       for (const client of clients) {
-        if (new URL(client.url).origin === self.location.origin && 'navigate' in client) {
-          return (client as WindowClient).navigate(targetUrl).then(c => c?.focus());
+        if (new URL(client.url).origin === self.location.origin) {
+          if ('navigate' in client) {
+            await (client as WindowClient).navigate(targetUrl);
+          }
+          const focused = await (client as WindowClient).focus();
+          if (intent) focused.postMessage({ type: 'DEEP_LINK_INTENT', intent });
+          return;
         }
       }
-      // Otherwise open a new tab/window
-      console.log('[SW] No existing window, opening new');
-      return self.clients.openWindow(targetUrl);
+      // Cold start: carry intent in URL so the hook can pick it up on mount
+      const openUrl = intent ? buildIntentUrl(targetUrl, intent) : targetUrl;
+      console.log('[SW] No existing window, opening:', openUrl);
+      return self.clients.openWindow(openUrl);
     }).catch((err) => console.error('[SW] Notification click navigation failed:', err)),
   );
 });
