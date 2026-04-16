@@ -14,6 +14,7 @@ beforeEach(() => {
     winner: null,
     dayIndex: 3,
     revealsSeen: { elimination: {}, winner: false },
+    forcedReveal: null,
   } as any);
 });
 

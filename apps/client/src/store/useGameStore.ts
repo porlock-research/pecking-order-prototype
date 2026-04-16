@@ -214,6 +214,10 @@ interface GameState {
   incrementIntentAttempts: () => void;
   focusCartridge: (cartridgeId: string, cartridgeKind: CartridgeKind, origin: 'manual' | 'push') => void;
   unfocusCartridge: () => void;
+  // Reveal queue — forcedReveal overrides the automatic queue from selectRevealsToReplay.
+  // Module-level state so useRevealQueue instances across components see the same value.
+  forcedReveal: { kind: 'elimination' | 'winner'; dayIndex?: number } | null;
+  setForcedReveal: (reveal: { kind: 'elimination' | 'winner'; dayIndex?: number } | null) => void;
 }
 
 // Selectors
@@ -1100,4 +1104,7 @@ export const useGameStore = create<GameState>((set) => ({
   unfocusCartridge: () => {
     set({ focusedCartridge: null });
   },
+
+  forcedReveal: null,
+  setForcedReveal: (reveal) => set({ forcedReveal: reveal }),
 }));
