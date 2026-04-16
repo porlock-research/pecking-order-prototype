@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../../store/useGameStore';
+import { useRevealQueue } from '../../hooks/useRevealQueue';
 import { PULSE_SPRING } from '../../springs';
 import { getPlayerColor } from '../../colors';
 import { PULSE_Z } from '../../zIndex';
@@ -8,22 +9,22 @@ import { PULSE_Z } from '../../zIndex';
 export function WinnerReveal() {
   const winner = useGameStore(s => s.winner);
   const roster = useGameStore(s => s.roster);
-  const [visible, setVisible] = useState(false);
-  const shownRef = useRef(false);
+  const { current, dismiss } = useRevealQueue();
+  const confettiFired = useRef(false);
+
+  const showing = current?.kind === 'winner' && winner;
 
   useEffect(() => {
-    if (winner && !shownRef.current) {
-      shownRef.current = true;
-      setVisible(true);
-      // Fire confetti
+    if (showing && !confettiFired.current) {
+      confettiFired.current = true;
       import('canvas-confetti').then(mod => {
         const confetti = mod.default;
         confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
       }).catch(() => {});
     }
-  }, [winner]);
+  }, [showing]);
 
-  if (!winner || !visible) return null;
+  if (!showing || !winner) return null;
 
   const player = roster[winner.playerId];
   const playerIndex = Object.keys(roster).indexOf(winner.playerId);
@@ -31,10 +32,11 @@ export function WinnerReveal() {
   return (
     <AnimatePresence>
       <motion.div
+        data-testid="winner-reveal"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={() => setVisible(false)}
+        onClick={dismiss}
         style={{
           position: 'fixed',
           inset: 0,
