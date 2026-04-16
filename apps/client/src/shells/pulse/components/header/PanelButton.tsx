@@ -1,11 +1,9 @@
-import { useGameStore, selectTotalDmUnread, selectPendingInvitesForMe } from '../../../../store/useGameStore';
+import { useGameStore, selectAggregatePulseUnread } from '../../../../store/useGameStore';
 
 interface Props { onClick: () => void; }
 
 export function PanelButton({ onClick }: Props) {
-  const unread = useGameStore(selectTotalDmUnread);
-  const invites = useGameStore(s => selectPendingInvitesForMe(s).length);
-  const total = unread + invites;
+  const total = useGameStore(selectAggregatePulseUnread);
 
   return (
     <button
@@ -24,7 +22,7 @@ export function PanelButton({ onClick }: Props) {
         <rect x="2" y="12" width="14" height="2" rx="1" fill="currentColor" />
       </svg>
       {total > 0 && (
-        <span style={{
+        <span data-testid="panel-unread-pip" style={{
           position: 'absolute', top: -6, right: -6,
           background: 'var(--pulse-accent)', color: '#fff',
           fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 8,
