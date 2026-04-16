@@ -11,10 +11,18 @@ The guardian hook (`.claude/hooks/guardian.sh`) scans `*.rule` files in this dir
 ```
 MATCH_TOOL: Edit|Write|Bash     ← regex matching tool name
 MATCH_PATTERN: some/path/regex  ← regex matching file path or command
+MATCH_CONTENT: some/regex       ← OPTIONAL; regex against proposed edit body
+                                   (Edit: new_string, Write: content). Lets
+                                   rules be content-aware, not path-only.
 ADVISORY: |
   Advisory text injected into agent context.
   Can be multiline. Indent with 2 spaces.
+  Blank lines between paragraphs are preserved.
 ```
+
+All MATCH_* fields use `grep -E` (extended regex, BSD on macOS). Avoid PCRE
+features like lookaround (`(?=...)`, `(?!...)`) — they silently fail. The
+guardian suppresses grep's stderr, so a bad regex just never matches.
 
 ## Naming convention
 

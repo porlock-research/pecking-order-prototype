@@ -29,3 +29,28 @@ files; the advisory was misleading because the gap had already been filled.
 
 Long-term: if the guardian hook gains content-aware matching, revisit the two
 preamble-only rules for stricter activation.
+
+## `finite-cartridge-theme-color-keys.rule` — broken regex + wrong match target
+
+**State:** Discovered while authoring `finite-no-raw-event-strings` on 2026-04-15.
+
+Two compounding bugs:
+
+1. `MATCH_PATTERN: (theme\.colors\.|themeRef\.current.*colors\.|t\.colors\.|colors\[(?!.*\|))`
+   uses a PCRE negative lookahead `(?!...)`, which BSD grep -E (macOS default)
+   does not support. Invocations spammed `grep: repetition-operator operand
+   invalid` to stderr before the guardian started suppressing it (commit
+   da15b73).
+2. The pattern is intended to match CONTENT (`theme.colors.*` usages in code)
+   but was placed in `MATCH_PATTERN`, which the guardian compares against file
+   paths — so it would never have matched anyway, even with valid regex.
+
+**Fix (now straightforward with da15b73's `MATCH_CONTENT`):**
+- Move the pattern to `MATCH_CONTENT`.
+- Add a `MATCH_PATTERN` for file scope (e.g. `packages/game-cartridges/.+\.tsx?$`).
+- Rewrite without lookahead — drop the `colors[(?!.*\|)` clause or express it
+  positively (e.g. `colors\[[^|]+\]`).
+
+**Recommendation:** low urgency — the rule has been a silent no-op for weeks
+and no bugs have surfaced. Fix opportunistically next time someone's in
+this area.
