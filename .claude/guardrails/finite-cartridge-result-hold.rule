@@ -1,0 +1,15 @@
+---
+trigger: file_edit
+glob: apps/game-server/src/machines/l3-session.ts
+---
+
+ADR-126 RESULT-HOLD DESIGN: Cartridge actors (game, voting, prompt, dilemma)
+intentionally stay alive in their final state after `xstate.done.actor.*` fires.
+This is NOT a cleanup bug — it's how the client renders results via SYNC.
+
+Do NOT add `stopChild` or `cleanupXxxCartridge` to `xstate.done.actor.*` handlers.
+Cleanup only happens when: (a) the day ends, or (b) a new same-type cartridge spawns
+(via `stopPreviousXxxCartridge` in the entry action).
+
+The client must detect completion from the final-state snapshot content, not from
+the absence of the active slot. See ADR-126 in plans/DECISIONS.md.
