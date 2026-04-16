@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ChartBar, GameController, ChatCircleDots, Scales } from '../icons';
 import { PULSE_SPRING, PULSE_TAP } from '../springs';
 import type { PillState, PillLifecycle } from '../hooks/usePillStates';
@@ -24,7 +24,8 @@ function lifecycleStyles(lifecycle: PillLifecycle) {
       return {
         background: 'var(--pulse-surface-2)',
         border: '1px dashed var(--pulse-text-4)',
-        opacity: 0.5,
+        // Breathing opacity — "coming, don't forget me" instead of "disabled".
+        animation: 'pulse-pill-upcoming 3s ease-in-out infinite',
       };
     case 'starting':
     case 'just-started':
@@ -73,6 +74,8 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
   const showDot = pill.lifecycle === 'just-started' || pill.lifecycle === 'starting';
   const showBadge = pill.lifecycle === 'needs-action' || pill.lifecycle === 'urgent';
   const isActive = pill.lifecycle !== 'completed' && pill.lifecycle !== 'upcoming';
+  const isInProgress = pill.lifecycle === 'in-progress';
+  const reduce = useReducedMotion();
 
   // Pill ignition: one-shot animation when transitioning upcoming/starting → just-started.
   const prevLifecycle = useRef(pill.lifecycle);
@@ -94,6 +97,13 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
       data-pill-cartridge-id={cartridgeId}
       aria-label={mini ? pill.label : undefined}
       whileTap={PULSE_TAP.pill}
+      // Pointer-device hover lift with a kind-color halo. framer-motion only
+      // fires whileHover on pointer enter, so touch devices don't get a
+      // stuck-hover state on tap.
+      whileHover={reduce ? undefined : {
+        y: -2,
+        boxShadow: `0 6px 14px color-mix(in oklch, ${kindColor} 35%, transparent)`,
+      }}
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: styles.opacity ?? 1, scale: 1 }}
       transition={PULSE_SPRING.snappy}
@@ -120,7 +130,16 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
         } : {}),
       }}
     >
-      <Icon size={mini ? 14 : 16} weight="fill" />
+      <motion.span
+        // In-progress heartbeat — subtle scale breath signals "something
+        // is happening inside this cartridge right now". Only runs while
+        // in-progress; other lifecycles keep the icon still.
+        animate={isInProgress && !reduce ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+        transition={isInProgress && !reduce ? { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } : { duration: 0 }}
+        style={{ display: 'inline-flex', flexShrink: 0 }}
+      >
+        <Icon size={mini ? 14 : 16} weight="fill" />
+      </motion.span>
       {!mini && <span>{pill.label}</span>}
       {pill.progress && !mini && (
         <span style={{ color: 'var(--pulse-text-2)', fontSize: 10 }}>{pill.progress}</span>

@@ -96,6 +96,17 @@
   50% { transform: scale(1.02); }
 }
 
+/* Upcoming pill breathing — reads as "coming, don't forget me" instead of
+   "disabled". Subtle enough to not steal attention from the active pill. */
+@keyframes pulse-pill-upcoming {
+  0%, 100% { opacity: 0.42; }
+  50%      { opacity: 0.62; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-pill-ignition,
+  [style*="pulse-pill-upcoming"] { animation: none !important; opacity: 0.55 !important; }
+}
+
 /* One-shot ignition: fires when a pill transitions upcoming/starting → just-started. */
 @keyframes pulse-pill-ignition {
   0%   { transform: scale(1);    box-shadow: none; }
