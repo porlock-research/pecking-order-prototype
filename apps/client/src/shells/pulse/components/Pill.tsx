@@ -79,15 +79,24 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
   const isUnreadCompleted = isCompleted && !!unread;
   const reduce = useReducedMotion();
 
-  // Pill ignition: one-shot animation when transitioning upcoming/starting → just-started.
-  // Pill landing: one-shot animation when any active lifecycle → completed (results are in).
+  // Pill ignition: one-shot animation when transitioning from a pre-active
+  // lifecycle (upcoming/starting) into any active lifecycle (just-started,
+  // needs-action, in-progress, urgent). Broadened from "only → just-started"
+  // so voting/prompt/dilemma that land directly in needs-action also ignite.
+  // Pill landing: one-shot animation when any active lifecycle → completed.
   const prevLifecycle = useRef(pill.lifecycle);
   const [igniting, setIgniting] = useState(false);
   const [landing, setLanding] = useState(false);
   useEffect(() => {
     const prev = prevLifecycle.current;
     prevLifecycle.current = pill.lifecycle;
-    if ((prev === 'upcoming' || prev === 'starting') && pill.lifecycle === 'just-started') {
+    const wasPreActive = prev === 'upcoming' || prev === 'starting';
+    const isNowActiveNonStarting =
+      pill.lifecycle === 'just-started' ||
+      pill.lifecycle === 'needs-action' ||
+      pill.lifecycle === 'in-progress' ||
+      pill.lifecycle === 'urgent';
+    if (wasPreActive && isNowActiveNonStarting) {
       setIgniting(true);
       const t = setTimeout(() => setIgniting(false), 450);
       return () => clearTimeout(t);

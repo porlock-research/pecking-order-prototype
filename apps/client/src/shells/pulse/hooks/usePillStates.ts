@@ -120,25 +120,34 @@ export function usePillStates(): PillState[] {
       const typeKey = gameTypeKey(game);
       const cartridgeId = cartridgeIdFor('game', dayIndex, typeKey);
       const thisCompleted = todayCompletedIds.has(cartridgeId);
-      // Async games (trivia/arcade) expose per-player `status` and
-      // `allPlayerResults` on completion; sync-decision games expose `phase`.
-      // Match today's completedCartridges entry by exact cartridgeId — the
-      // previous `some(c.kind === 'game')` check was too broad and misclassified
-      // Day N+1's active game as completed if any earlier game finished.
+      // Async games (trivia/arcade) expose per-player `status` dict and
+      // `allPlayerResults` on completion; sync-decision games expose a
+      // top-level `phase`. Check both.
+      //
+      // The earlier `game.status === 'PLAYING'` comparison was broken for
+      // async games (status is a per-player dict, not a string), and the
+      // default fallthrough was `just-started` — which made every active
+      // async game render a breathing dot instead of the needs-action
+      // exclamation badge that voting/prompt/dilemma use. Aligned with
+      // the other classifiers: default to needs-action, flip to in-progress
+      // once the player has entered, completed once done.
+      const perPlayerStatus = playerId ? (game.status as any)?.[playerId] : undefined;
+      const playerActed = perPlayerStatus === 'PLAYING' || perPlayerStatus === 'COMPLETED';
       const gameLifecycle: PillLifecycle =
         thisCompleted
           || game.phase === 'COMPLETED' || game.phase === 'REVEAL'
-          || game.status === 'COMPLETED' || game.allPlayerResults
+          || game.allPlayerResults
           ? 'completed'
-        : game.phase === 'PLAYING' || game.phase === 'ACTIVE' || game.status === 'PLAYING'
+        : game.phase === 'PLAYING' || game.phase === 'ACTIVE' || playerActed
           ? 'in-progress'
-        : 'just-started';
+        : 'needs-action';
 
       pills.push({
         id: cartridgeId,
         kind: 'game',
         label: prettyLabel(typeKey, 'Game'),
         lifecycle: gameLifecycle,
+        playerActed,
         cartridgeData: game,
       });
     }
