@@ -113,10 +113,17 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
   // Unread-completed override — kind-themed, full opacity, "tap me to see
   // the results" energy. Replaces the dim archive state (which is correct
   // for read-completed pills, but wrong when there are unclaimed results).
+  // Values tuned to read obviously-distinct from the calm archive state,
+  // not subtle — unread results are the load-bearing signal here.
   const unreadCompletedStyle = isUnreadCompleted ? {
-    background: `color-mix(in oklch, ${kindColor} 14%, var(--pulse-surface))`,
-    border: `1px solid color-mix(in oklch, ${kindColor} 55%, transparent)`,
+    background: `color-mix(in oklch, ${kindColor} 28%, var(--pulse-surface))`,
+    border: `1.5px solid color-mix(in oklch, ${kindColor} 80%, transparent)`,
     opacity: 1,
+    // Static baseline glow — reliable even when the CSS ambient keyframe
+    // is fighting with framer-motion's whileHover box-shadow. The keyframe
+    // still modulates this on top when it wins; when it doesn't, the pill
+    // still reads as kind-themed and glowing.
+    boxShadow: `0 0 10px color-mix(in oklch, ${kindColor} 40%, transparent)`,
   } : {};
 
   return (
@@ -126,13 +133,13 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
       data-pill-cartridge-id={cartridgeId}
       aria-label={mini ? pill.label : undefined}
       whileTap={PULSE_TAP.pill}
-      // Pointer-device hover lift with a kind-color halo. framer-motion only
-      // fires whileHover on pointer enter, so touch devices don't get a
-      // stuck-hover state on tap.
-      whileHover={reduce ? undefined : {
-        y: -2,
-        boxShadow: `0 6px 14px color-mix(in oklch, ${kindColor} 35%, transparent)`,
-      }}
+      // Pointer-device hover lift. framer-motion only fires whileHover on
+      // pointer enter, so touch devices don't get a stuck-hover state on
+      // tap. Box-shadow is owned by the kind-themed static style (for
+      // unread-completed) or the CSS ambient keyframe — if hover animated
+      // box-shadow too, framer-motion would take over the property and
+      // kill whatever else was driving it.
+      whileHover={reduce ? undefined : { y: -2 }}
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: unreadCompletedStyle.opacity ?? styles.opacity ?? 1, scale: 1 }}
       transition={PULSE_SPRING.snappy}
