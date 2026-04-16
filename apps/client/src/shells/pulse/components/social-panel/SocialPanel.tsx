@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectPendingInvitesForMe, selectStandings } from '../../../../store/useGameStore';
+import { PULSE_SPRING } from '../../springs';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import { Podium } from './Podium';
 import { StandingsRest } from './StandingsRest';
@@ -20,16 +21,20 @@ export function SocialPanel({ onClose }: Props) {
     <>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
+        transition={PULSE_SPRING.exit}
         onClick={onClose}
+        aria-hidden="true"
         style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
           backdropFilter: 'blur(5px)', zIndex: backdropFor(PULSE_Z.drawer),
         }}
       />
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Social panel"
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ duration: 0.28, ease: [0.2, 0.9, 0.3, 1] }}
+        transition={PULSE_SPRING.page}
         style={{
           position: 'fixed', top: 40, left: 0, right: 0, bottom: 0,
           background: 'var(--pulse-bg)',
@@ -51,10 +56,11 @@ export function SocialPanel({ onClose }: Props) {
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             padding: '12px 16px 0',
           }}>
-            <span style={{
+            <h2 style={{
+              margin: 0,
               fontSize: 14, fontWeight: 900, letterSpacing: 1.5,
               textTransform: 'uppercase', color: 'var(--pulse-text-1)',
-            }}>Standings</span>
+            }}>Standings</h2>
             {myRank && (
               <span style={{
                 fontSize: 11, color: 'var(--pulse-accent)', fontWeight: 700,
@@ -68,16 +74,17 @@ export function SocialPanel({ onClose }: Props) {
 
         {pendingInvites.length > 0 && (
           <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{
+            <h3 style={{
+              margin: 0,
               fontSize: 11, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase',
               color: 'var(--pulse-text-3)', display: 'flex', alignItems: 'center', gap: 6,
             }}>
               Pending Invites
-              <span style={{
-                background: 'var(--pulse-accent)', color: '#fff',
+              <span aria-hidden="true" style={{
+                background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
                 fontSize: 10, padding: '1px 6px', borderRadius: 8,
               }}>{pendingInvites.length}</span>
-            </div>
+            </h3>
             {pendingInvites.map(ch => {
               const inviter = ch.createdBy ? roster[ch.createdBy] : null;
               if (!inviter) return null;
@@ -87,10 +94,11 @@ export function SocialPanel({ onClose }: Props) {
         )}
 
         <div style={{ padding: '12px 16px 0' }}>
-          <div style={{
+          <h3 style={{
+            margin: 0,
             fontSize: 11, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase',
             color: 'var(--pulse-text-3)',
-          }}>Conversations</div>
+          }}>Conversations</h3>
         </div>
         <ConversationsList />
       </motion.div>

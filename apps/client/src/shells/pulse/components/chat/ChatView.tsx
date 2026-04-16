@@ -1,6 +1,7 @@
-import { Fragment, useRef, useEffect, useState, useCallback } from 'react';
+import { Fragment, useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
+import { PULSE_Z } from '../../zIndex';
 import { MessageCard } from './MessageCard';
 import { BroadcastCard } from './BroadcastCard';
 import { WhisperCard } from './WhisperCard';
@@ -42,12 +43,12 @@ export function ChatView() {
 
   // First unread MAIN message timestamp — divider anchors here.
   // null if every MAIN message has been read or there are none.
-  const firstUnreadMainTs = (() => {
+  const firstUnreadMainTs = useMemo(() => {
     for (const m of mainMessages) {
       if (m.timestamp > mainLastRead) return m.timestamp;
     }
     return null;
-  })();
+  }, [mainMessages, mainLastRead]);
 
   const handleDividerCleared = useCallback(() => {
     markChannelRead('MAIN');
@@ -242,14 +243,14 @@ export function ChatView() {
             padding: '6px 16px',
             borderRadius: 20,
             background: 'var(--pulse-accent)',
-            color: '#fff',
+            color: 'var(--pulse-on-accent)',
             border: 'none',
             fontSize: 11,
             fontWeight: 600,
             cursor: 'pointer',
             fontFamily: 'var(--po-font-body)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            zIndex: 5,
+            zIndex: PULSE_Z.elevated,
           }}
         >
           Jump to latest

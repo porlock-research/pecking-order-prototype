@@ -1,4 +1,5 @@
 import { useGameStore, selectDmSlots } from '../../../../store/useGameStore';
+import { PULSE_Z } from '../../zIndex';
 
 export function PickingBanner() {
   const pickingMode = useGameStore(s => s.pickingMode);
@@ -18,7 +19,7 @@ export function PickingBanner() {
       background: 'rgba(255,59,111,0.12)',
       borderBottom: '1px solid rgba(255,59,111,0.25)',
       color: 'var(--pulse-accent)', fontSize: 12, fontWeight: 600,
-      position: 'relative', zIndex: 3,
+      position: 'relative', zIndex: PULSE_Z.flow,
     }}>
       <span>
         {isAddMode ? 'Add to conversation' : 'Pick 1 to chat · 2+ for a group'}

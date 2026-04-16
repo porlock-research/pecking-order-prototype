@@ -74,6 +74,9 @@ export function SilverTransferCard({ text }: SilverTransferCardProps) {
           <img
             src={sender.avatarUrl}
             alt=""
+            loading="lazy"
+            width={22}
+            height={22}
             style={{
               position: 'absolute',
               left: 0,
@@ -92,6 +95,9 @@ export function SilverTransferCard({ text }: SilverTransferCardProps) {
           <img
             src={recipient.avatarUrl}
             alt=""
+            loading="lazy"
+            width={22}
+            height={22}
             style={{
               position: 'absolute',
               left: 10,

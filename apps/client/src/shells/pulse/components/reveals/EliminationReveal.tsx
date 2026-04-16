@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../../../store/useGameStore';
 import { useRevealQueue } from '../../hooks/useRevealQueue';
@@ -8,6 +9,20 @@ import { PULSE_Z } from '../../zIndex';
 export function EliminationReveal() {
   const roster = useGameStore(s => s.roster);
   const { current, dismiss } = useRevealQueue();
+
+  const isShowing = current?.kind === 'elimination';
+
+  useEffect(() => {
+    if (!isShowing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        dismiss();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isShowing, dismiss]);
 
   if (!current || current.kind !== 'elimination') return null;
 
@@ -21,6 +36,9 @@ export function EliminationReveal() {
     <AnimatePresence>
       <motion.div
         data-testid="elimination-reveal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${player.personaName} eliminated`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -43,7 +61,10 @@ export function EliminationReveal() {
           animate={{ scale: 1, filter: 'grayscale(1)' }}
           transition={{ duration: 0.5 }}
           src={player.avatarUrl}
-          alt={player.personaName}
+          alt=""
+          loading="lazy"
+          width={160}
+          height={200}
           style={{
             width: 160,
             height: 200,

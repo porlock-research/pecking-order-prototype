@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
 import { PULSE_SPRING } from '../../springs';
+import { PULSE_Z } from '../../zIndex';
 
 interface MentionAutocompleteProps {
   query: string;
@@ -40,7 +41,7 @@ export function MentionAutocomplete({ query, onSelect, excludeId }: MentionAutoc
         borderRadius: 14,
         boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
         overflow: 'hidden',
-        zIndex: 30,
+        zIndex: PULSE_Z.popup,
       }}
     >
       {matches.map(([id, p]) => {
@@ -69,6 +70,9 @@ export function MentionAutocomplete({ query, onSelect, excludeId }: MentionAutoc
             <img
               src={p.avatarUrl}
               alt=""
+              loading="lazy"
+              width={28}
+              height={28}
               style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover', objectPosition: 'center top', flexShrink: 0 }}
             />
             <span style={{ fontSize: 14, fontWeight: 700, color }}>{p.personaName}</span>

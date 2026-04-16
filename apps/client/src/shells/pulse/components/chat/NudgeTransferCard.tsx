@@ -73,6 +73,9 @@ export function NudgeTransferCard({ text }: Props) {
           <img
             src={sender.avatarUrl}
             alt=""
+            loading="lazy"
+            width={22}
+            height={22}
             style={{
               position: 'absolute', left: 0, top: 0,
               width: 22, height: 22, borderRadius: 6,
@@ -85,6 +88,9 @@ export function NudgeTransferCard({ text }: Props) {
           <img
             src={recipient.avatarUrl}
             alt=""
+            loading="lazy"
+            width={22}
+            height={22}
             style={{
               position: 'absolute', left: 10, top: 0,
               width: 22, height: 22, borderRadius: 6,

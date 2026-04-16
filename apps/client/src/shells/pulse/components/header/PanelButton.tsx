@@ -10,8 +10,8 @@ export function PanelButton({ onClick }: Props) {
       onClick={onClick}
       aria-label="Open social panel"
       style={{
-        position: 'relative', width: 34, height: 34,
-        borderRadius: 8, border: '1px solid var(--pulse-border)',
+        position: 'relative', width: 44, height: 44,
+        borderRadius: 10, border: '1px solid var(--pulse-border)',
         background: 'var(--pulse-surface)', color: 'var(--pulse-text-1)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
@@ -22,9 +22,9 @@ export function PanelButton({ onClick }: Props) {
         <rect x="2" y="12" width="14" height="2" rx="1" fill="currentColor" />
       </svg>
       {total > 0 && (
-        <span data-testid="panel-unread-pip" style={{
+        <span data-testid="panel-unread-pip" aria-hidden="true" style={{
           position: 'absolute', top: -6, right: -6,
-          background: 'var(--pulse-accent)', color: '#fff',
+          background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
           fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 8,
           minWidth: 16, textAlign: 'center', border: '2px solid var(--pulse-bg)',
         }}>{total > 9 ? '9+' : total}</span>

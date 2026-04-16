@@ -21,8 +21,15 @@
   --pulse-game: #fbbf24;
   --pulse-prompt: #60a5fa;
   --pulse-dilemma: #c084fc;
+  --pulse-online: #2ecc71;
+  --pulse-pending: #ff8c42;
+  --pulse-on-accent: #fff;
+  --pulse-on-gold: #111;
   --pulse-border: rgba(255, 255, 255, 0.06);
   --pulse-border-2: rgba(255, 255, 255, 0.1);
+
+  /* Hero image heights — phone default, tablet overrides in media query below. */
+  --pulse-hero-height: clamp(220px, 32dvh, 300px);
 
   /* Ambient warm background: warm dark base, softer than pure ink */
   background:
@@ -79,7 +86,7 @@
   100% { transform: scale(1);    box-shadow: none; }
 }
 .pulse-pill-ignition {
-  animation: pulse-pill-ignition 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: pulse-pill-ignition 420ms cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
 /* Ticker scroll */
@@ -105,6 +112,26 @@
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-4px); }
   40%, 80% { transform: translateX(4px); }
+}
+
+/* Focus ring for keyboard users on any interactive surface whose inline
+   styles remove the browser default (chiefly <input> / <textarea>).
+   !important wins over inline `outline: none` on components. */
+.pulse-shell :focus-visible {
+  outline: 2px solid var(--pulse-accent) !important;
+  outline-offset: 2px;
+}
+.pulse-shell input:focus-visible,
+.pulse-shell textarea:focus-visible {
+  outline: 2px solid var(--pulse-accent) !important;
+  outline-offset: 0;
+}
+
+/* Tablet breakpoint — scale up surfaces at 768px+. Phone-first stays primary. */
+@media (min-width: 768px) {
+  .pulse-shell {
+    --pulse-hero-height: clamp(280px, 36dvh, 360px);
+  }
 }
 
 /* Message inline actions — hidden by default, shown on hover */

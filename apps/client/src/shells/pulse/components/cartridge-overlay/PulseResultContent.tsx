@@ -575,9 +575,9 @@ function PromptResult({ snapshot, roster, playerId }: {
       {snapshot.promptText && (
         <blockquote
           style={{
-            margin: 0, padding: '12px 14px', borderRadius: 12,
-            background: 'var(--pulse-surface-2)',
-            borderLeft: '3px solid var(--pulse-prompt)',
+            margin: 0, padding: '14px 16px', borderRadius: 12,
+            background: 'color-mix(in oklch, var(--pulse-prompt) 8%, var(--pulse-surface-2))',
+            border: '1px solid color-mix(in oklch, var(--pulse-prompt) 22%, transparent)',
             fontSize: 14, lineHeight: 1.5, fontStyle: 'italic',
             color: 'var(--pulse-text-1)', fontFamily: 'var(--po-font-body)',
           }}

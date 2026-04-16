@@ -24,6 +24,18 @@ export function WinnerReveal() {
     }
   }, [showing]);
 
+  useEffect(() => {
+    if (!showing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        dismiss();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showing, dismiss]);
+
   if (!showing || !winner) return null;
 
   const player = roster[winner.playerId];
@@ -33,6 +45,9 @@ export function WinnerReveal() {
     <AnimatePresence>
       <motion.div
         data-testid="winner-reveal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${player?.personaName ?? 'Winner'} wins`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -49,20 +64,23 @@ export function WinnerReveal() {
           cursor: 'pointer',
         }}
       >
-        <div style={{ fontSize: 48, marginBottom: 12 }}>{'👑'}</div>
+        <div aria-hidden="true" style={{ fontSize: 48, marginBottom: 12 }}>{'👑'}</div>
         <motion.img
           initial={{ scale: 0.9 }}
           animate={{ scale: 1 }}
           transition={PULSE_SPRING.bouncy}
           src={player?.avatarUrl}
-          alt={player?.personaName}
+          alt=""
+          loading="lazy"
+          width={160}
+          height={200}
           style={{
             width: 160,
             height: 200,
             borderRadius: 20,
             objectFit: 'cover',
             marginBottom: 20,
-            boxShadow: '0 0 40px rgba(255, 215, 0, 0.4)',
+            boxShadow: '0 0 40px var(--pulse-gold-glow)',
           }}
         />
         <div style={{ fontWeight: 800, fontSize: 24, color: getPlayerColor(playerIndex), fontFamily: 'var(--po-font-display)', marginBottom: 4 }}>

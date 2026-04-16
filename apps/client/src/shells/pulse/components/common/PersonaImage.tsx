@@ -66,7 +66,7 @@ export function PersonaImage({
       <div
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: playerColor, color: '#fff', fontWeight: 700, fontSize: 32,
+          background: playerColor, color: 'var(--pulse-on-accent)', fontWeight: 700, fontSize: 32,
           ...style,
         }}
         aria-label={alt}
@@ -87,6 +87,7 @@ export function PersonaImage({
     <img
       src={src}
       alt={alt ?? ''}
+      loading="lazy"
       style={style}
       onLoad={() => knownGoodVariant.set(cacheKey, current)}
       onError={() => setIndex(i => Math.min(i + 1, chain.length - 1))}

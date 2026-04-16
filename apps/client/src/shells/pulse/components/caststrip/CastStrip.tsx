@@ -1,5 +1,7 @@
+import { useCallback, useMemo } from 'react';
 import { useGameStore, selectCastStripEntries, type CastStripEntry } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
+import { PULSE_Z } from '../../zIndex';
 import { CastChip } from './CastChip';
 import { GroupChip } from './GroupChip';
 
@@ -10,14 +12,14 @@ export function CastStrip() {
   const channels = useGameStore(s => s.channels);
   const { openDM, openSocialPanel } = usePulse();
 
-  const lockedIds = (() => {
+  const lockedIds = useMemo(() => {
     if (pickingMode?.kind !== 'add-member') return new Set<string>();
     const ch = channels?.[pickingMode.channelId];
     if (!ch) return new Set<string>();
     return new Set<string>([...(ch.memberIds ?? []), ...(ch.pendingMemberIds ?? [])]);
-  })();
+  }, [pickingMode, channels]);
 
-  const handleTap = (entry: CastStripEntry) => {
+  const handleTap = useCallback((entry: CastStripEntry) => {
     if (pickingMode) {
       if (entry.kind === 'self' || entry.kind === 'group') return;
       if (lockedIds.has(entry.id)) return;
@@ -29,7 +31,7 @@ export function CastStrip() {
       return;
     }
     openDM(entry.id, entry.kind === 'group');
-  };
+  }, [pickingMode, lockedIds, togglePicked, openSocialPanel, openDM]);
 
   if (entries.length === 0) return null;
 
@@ -42,7 +44,7 @@ export function CastStrip() {
       `,
       borderBottom: '1px solid var(--pulse-border)',
       boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-      position: 'relative', zIndex: 2,
+      position: 'relative', zIndex: PULSE_Z.flow,
     }}>
       <div style={{
         display: 'flex', gap: 10, padding: '0 14px',

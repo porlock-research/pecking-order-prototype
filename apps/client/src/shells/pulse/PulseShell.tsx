@@ -8,6 +8,7 @@ import { useDeepLinkIntent } from '../../hooks/useDeepLinkIntent';
 import { useRevealQueue } from './hooks/useRevealQueue';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import type { DeepLinkIntent, CartridgeKind } from '@pecking-order/shared-types';
+import { PULSE_Z } from './zIndex';
 
 const DM_REJECTION_LABELS: Record<string, string> = {
   DMS_CLOSED: 'DMs are closed right now',
@@ -169,9 +170,9 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
         {pickingActive && <PickingBanner />}
         <CastStrip />
         <PulseBar />
-        <div style={{ flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+        <main style={{ flex: 1, overflow: 'hidden', position: 'relative', zIndex: PULSE_Z.base }}>
           <ChatView />
-        </div>
+        </main>
         <PulseInput />
 
         {/* Overlays */}

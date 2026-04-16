@@ -1,7 +1,7 @@
 import type { SocialPlayer } from '@pecking-order/shared-types';
-import { UserPlus } from '@solar-icons/react';
 import { getPlayerColor } from '../../colors';
 import { PersonaImage, initialsOf } from '../common/PersonaImage';
+import { UserPlus } from '../../icons';
 import { useGameStore, selectCanAddMemberTo, selectGroupDmTitle } from '../../../../store/useGameStore';
 
 interface Props {
@@ -20,7 +20,7 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
   const displayTitle = title || fallbackTitle;
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: 280, background: '#111', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', width: '100%', height: 'var(--pulse-hero-height)', background: 'var(--pulse-bg)', overflow: 'hidden' }}>
       <div style={{ display: 'flex', width: '100%', height: '100%' }}>
         {[...members, ...pendingMembers].map(m => {
           const isPending = pendingMembers.some(p => p.id === m.id);
@@ -52,10 +52,11 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
 
       <button onClick={onClose} aria-label="Close group DM" style={{
         position: 'absolute', top: 10, left: 10,
-        width: 38, height: 38, borderRadius: 19,
+        width: 44, height: 44, borderRadius: 22,
         background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255,255,255,0.12)', color: '#fff',
+        border: '1px solid rgba(255,255,255,0.12)', color: 'var(--pulse-on-accent)',
         fontSize: 20, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>‹</button>
 
       {canAdd && channelId && (
@@ -65,14 +66,14 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
           style={{
             position: 'absolute', top: 10, right: 10,
             display: 'flex', alignItems: 'center', gap: 4,
-            padding: '6px 10px', borderRadius: 14,
+            padding: '8px 12px', borderRadius: 14,
             background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255,255,255,0.12)',
-            color: '#fff', cursor: 'pointer',
+            color: 'var(--pulse-on-accent)', cursor: 'pointer',
             fontSize: 12, fontWeight: 700,
           }}
         >
-          <UserPlus weight="Bold" size={16} />
+          <UserPlus weight="bold" size={16} />
           <span>Add</span>
         </button>
       )}
@@ -82,9 +83,9 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
         padding: '40px 16px 14px',
         background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)',
       }}>
-        <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', letterSpacing: -0.3 }}>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--pulse-on-accent)', letterSpacing: -0.3 }}>
           {displayTitle}
-        </div>
+        </h2>
         <div style={{
           fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.2,
           color: 'rgba(255,255,255,0.75)', marginTop: 2,

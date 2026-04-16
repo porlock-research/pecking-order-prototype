@@ -6,19 +6,21 @@ interface ReactionTriggerProps {
   onOpen: () => void;
 }
 
-export function ReactionTrigger({ messageId, isOpen, onOpen }: ReactionTriggerProps) {
+export function ReactionTrigger({ messageId: _messageId, isOpen, onOpen }: ReactionTriggerProps) {
   return (
     <button
       onClick={(e) => {
         e.stopPropagation();
         onOpen();
       }}
+      aria-label="React to message"
+      aria-expanded={isOpen}
       style={{
         position: 'absolute',
-        top: 0,
-        right: 0,
-        width: 28,
-        height: 28,
+        top: -4,
+        right: -4,
+        width: 36,
+        height: 36,
         borderRadius: '50%',
         border: 'none',
         cursor: 'pointer',
@@ -28,7 +30,7 @@ export function ReactionTrigger({ messageId, isOpen, onOpen }: ReactionTriggerPr
         background: isOpen ? 'var(--pulse-accent-glow)' : 'transparent',
         color: isOpen ? 'var(--pulse-accent)' : 'var(--pulse-text-3)',
         opacity: isOpen ? 1 : undefined,
-        transition: 'all 0.15s ease',
+        transition: 'background 150ms ease, color 150ms ease, opacity 150ms ease',
       }}
       className="pulse-reaction-trigger"
     >

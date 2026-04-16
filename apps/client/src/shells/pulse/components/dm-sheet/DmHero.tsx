@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import type { SocialPlayer } from '@pecking-order/shared-types';
-import { UserPlus } from '@solar-icons/react';
 import { getPlayerColor } from '../../colors';
 import { PersonaImage, initialsOf } from '../common/PersonaImage';
 import { DmStatusRing } from './DmStatusRing';
 import { useGameStore, selectCanAddMemberTo, selectHaveINudged } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
-import { HandWaving } from '../../icons';
+import { HandWaving, UserPlus } from '../../icons';
 
 interface Props {
   player: SocialPlayer;
@@ -30,7 +29,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
   const stereotype = player.bio && player.bio.length > 4 && player.bio.length <= 50 ? player.bio : '';
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: 280, background: '#111', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', width: '100%', height: 'var(--pulse-hero-height)', background: 'var(--pulse-bg)', overflow: 'hidden' }}>
       <PersonaImage
         avatarUrl={player.avatarUrl}
         cacheKey={player.id}
@@ -44,10 +43,10 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
 
       <button onClick={onClose} aria-label="Close DM" style={{
         position: 'absolute', top: 10, left: 10,
-        width: 38, height: 38, borderRadius: 19,
+        width: 44, height: 44, borderRadius: 22,
         background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
         border: '1px solid rgba(255,255,255,0.12)',
-        color: '#fff', fontSize: 20,
+        color: 'var(--pulse-on-accent)', fontSize: 20,
         display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
       }}>‹</button>
 
@@ -56,13 +55,12 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
           onClick={() => { if (!alreadyNudged) openNudge(player.id); }}
           disabled={alreadyNudged}
           aria-label={alreadyNudged ? `Already nudged ${player.personaName} today` : `Nudge ${player.personaName}`}
-          title={alreadyNudged ? 'Already nudged today' : undefined}
           style={{
             display: 'flex', alignItems: 'center', gap: 4,
-            padding: '6px 10px', borderRadius: 14,
+            padding: '8px 12px', borderRadius: 14,
             background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255,255,255,0.12)',
-            color: alreadyNudged ? 'rgba(255,255,255,0.5)' : '#fff',
+            color: alreadyNudged ? 'rgba(255,255,255,0.5)' : 'var(--pulse-on-accent)',
             cursor: alreadyNudged ? 'not-allowed' : 'pointer',
             opacity: alreadyNudged ? 0.7 : 1,
             fontSize: 12, fontWeight: 700,
@@ -77,39 +75,45 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
             aria-label="Add members"
             style={{
               display: 'flex', alignItems: 'center', gap: 4,
-              padding: '6px 10px', borderRadius: 14,
+              padding: '8px 12px', borderRadius: 14,
               background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
               border: '1px solid rgba(255,255,255,0.12)',
-              color: '#fff', cursor: 'pointer',
+              color: 'var(--pulse-on-accent)', cursor: 'pointer',
               fontSize: 12, fontWeight: 700,
             }}
           >
-            <UserPlus weight="Bold" size={16} />
+            <UserPlus weight="bold" size={16} />
             <span>Add</span>
           </button>
         )}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div role="group" aria-label="Photo variant" style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '0 6px' }}>
           {(['headshot', 'medium', 'full'] as const).map(v => (
-            <button key={v} onClick={() => setVariant(v)} aria-label={`Show ${v}`} style={{
-              width: 8, height: 8, borderRadius: '50%',
+            <button key={v} onClick={() => setVariant(v)} aria-label={`Show ${v} photo`} aria-pressed={variant === v} style={{
+              width: 24, height: 24, borderRadius: '50%',
               border: 'none', padding: 0, cursor: 'pointer',
-              background: variant === v ? '#fff' : 'rgba(255,255,255,0.35)',
-            }} />
+              background: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span aria-hidden="true" style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: variant === v ? 'var(--pulse-on-accent)' : 'rgba(255,255,255,0.35)',
+              }} />
+            </button>
           ))}
         </div>
       </div>
 
       {isLeader && (
-        <span style={{
+        <span aria-hidden="true" style={{
           position: 'absolute', top: 14, left: 60,
           width: 28, height: 28, borderRadius: '50%',
           background: 'rgba(0,0,0,0.7)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 0 12px rgba(255,215,0,0.7)',
-          border: '1.5px solid rgba(255,215,0,0.9)',
+          boxShadow: '0 0 12px rgba(255,200,61,0.7)',
+          border: '1.5px solid rgba(255,200,61,0.9)',
         }}>
           <svg width="16" height="12" viewBox="0 0 14 10" aria-hidden>
-            <path d="M1 9 L2 3 L5 6 L7 1 L9 6 L12 3 L13 9 Z" fill="#ffd700" />
+            <path d="M1 9 L2 3 L5 6 L7 1 L9 6 L12 3 L13 9 Z" fill="#ffc83d" />
           </svg>
         </span>
       )}
@@ -147,17 +151,17 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
           {isOnline && (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
-              background: 'rgba(46,204,113,0.25)', color: '#2ecc71',
+              background: 'rgba(46,204,113,0.25)', color: 'var(--pulse-online)',
               padding: '3px 9px', borderRadius: 10, fontSize: 10, fontWeight: 700,
             }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2ecc71' }} />
+              <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pulse-online)' }} />
               Online
             </span>
           )}
           {rank !== null && (
             <span style={{
-              background: isLeader ? 'rgba(255,215,0,0.2)' : 'rgba(255,59,111,0.2)',
-              color: isLeader ? '#ffd700' : 'var(--pulse-accent)',
+              background: isLeader ? 'rgba(255,200,61,0.2)' : 'rgba(255,59,111,0.2)',
+              color: isLeader ? 'var(--pulse-gold)' : 'var(--pulse-accent)',
               padding: '3px 9px', borderRadius: 10, fontSize: 10, fontWeight: 700,
             }}>#{rank} · {player.silver} silver</span>
           )}

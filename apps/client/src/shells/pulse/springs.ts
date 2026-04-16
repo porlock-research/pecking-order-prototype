@@ -12,4 +12,5 @@ export const PULSE_TAP = {
   button: { scale: 0.95 },
   card: { scale: 0.97 },
   pill: { scale: 0.98 },
+  reaction: { scale: 1.15 },
 } as const;

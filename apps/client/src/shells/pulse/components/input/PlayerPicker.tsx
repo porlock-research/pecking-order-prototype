@@ -44,7 +44,14 @@ export function PlayerPicker({ breadcrumb, command, onSelect, onBack }: PlayerPi
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <button
           onClick={onBack}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-2)', display: 'flex' }}
+          aria-label="Back"
+          style={{
+            width: 36, height: 36,
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--pulse-text-2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 8,
+          }}
         >
           <ArrowLeft size={20} weight="bold" />
         </button>
@@ -84,7 +91,10 @@ export function PlayerPicker({ breadcrumb, command, onSelect, onBack }: PlayerPi
           >
             <img
               src={player.avatarUrl}
-              alt={player.personaName}
+              alt=""
+              loading="lazy"
+              width={100}
+              height={100}
               style={{ width: '100%', height: 100, borderRadius: 8, objectFit: 'cover', objectPosition: 'center 25%' }}
             />
             <span style={{

@@ -30,9 +30,10 @@ export function StandingsRest() {
           >
             <span style={{ width: 22, fontSize: 11, color: 'var(--pulse-text-3)', fontWeight: 700 }}>#{entry.rank}</span>
             <img src={resolveAvatarUrl(entry.player.avatarUrl) || ''} alt=""
+              loading="lazy" width={28} height={28}
               style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />
             <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color }}>{entry.player.personaName}</span>
-            <span style={{ fontSize: 12, color: '#ffd700', fontWeight: 700 }}>{entry.player.silver}</span>
+            <span style={{ fontSize: 12, color: 'var(--pulse-gold)', fontWeight: 700 }}>{entry.player.silver}</span>
           </button>
         );
       })}

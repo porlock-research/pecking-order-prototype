@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { usePulse } from '../../PulseShell';
-import { PULSE_SPRING } from '../../springs';
+import { PULSE_SPRING, PULSE_TAP } from '../../springs';
+import { PULSE_Z, backdropFor } from '../../zIndex';
 import type { ChatMessage } from '@pecking-order/shared-types';
 
 const EMOJIS = ['😂', '👀', '🔥', '💀', '❤️'];
@@ -25,10 +26,11 @@ export function ReactionBar({ messageId, message: _message, isSelf, onClose }: R
       {/* Invisible backdrop to dismiss */}
       <div
         onClick={onClose}
+        aria-hidden="true"
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 50,
+          zIndex: backdropFor(PULSE_Z.reactionBar),
         }}
       />
       <motion.div
@@ -51,26 +53,27 @@ export function ReactionBar({ messageId, message: _message, isSelf, onClose }: R
           background: 'var(--pulse-surface-3)',
           border: '1px solid var(--pulse-border-2)',
           boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
-          zIndex: 51,
+          zIndex: PULSE_Z.reactionBar,
           transformOrigin: isSelf ? 'left center' : 'right center',
         }}
       >
         {EMOJIS.map(emoji => (
           <motion.button
             key={emoji}
-            whileTap={{ scale: 1.4 }}
+            whileTap={PULSE_TAP.reaction}
             transition={PULSE_SPRING.pop}
             onClick={(e) => {
               e.stopPropagation();
               handleReact(emoji);
             }}
+            aria-label={`React with ${emoji}`}
             style={{
-              width: 28,
-              height: 24,
+              width: 36,
+              height: 36,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 18,
+              fontSize: 20,
               background: 'none',
               border: 'none',
               cursor: 'pointer',

@@ -26,6 +26,7 @@ export {
   Lock,
   HandWaving,
   PlusCircle,
+  UserPlus,
 
   // Feedback
   Smiley,

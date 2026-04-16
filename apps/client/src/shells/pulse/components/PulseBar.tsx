@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useGameStore, selectCartridgeUnread } from '../../../store/useGameStore';
 import { usePillStates, type PillState } from '../hooks/usePillStates';
+import { PULSE_Z } from '../zIndex';
 import { usePillOrigin } from './cartridge-overlay/usePillOrigin';
 import { Pill } from './Pill';
 
@@ -44,7 +45,7 @@ export function PulseBar() {
         overflowX: 'auto',
         overflowY: 'hidden',
         position: 'relative',
-        zIndex: 2,
+        zIndex: PULSE_Z.flow,
         borderBottom: '1px solid var(--pulse-border)',
         background: 'var(--pulse-surface)',
         scrollbarWidth: 'none',

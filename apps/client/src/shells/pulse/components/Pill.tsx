@@ -92,6 +92,7 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
       ref={buttonRef}
       className={igniting ? 'pulse-pill-ignition' : undefined}
       data-pill-cartridge-id={cartridgeId}
+      aria-label={mini ? pill.label : undefined}
       whileTap={PULSE_TAP.pill}
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: styles.opacity ?? 1, scale: 1 }}
@@ -139,6 +140,7 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
       )}
       {showBadge && (
         <span
+          aria-hidden="true"
           style={{
             position: 'absolute',
             top: -4,
@@ -146,8 +148,8 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
             width: 16,
             height: 16,
             borderRadius: '50%',
-            background: '#ff3b3b',
-            color: '#fff',
+            background: 'var(--pulse-accent)',
+            color: 'var(--pulse-on-accent)',
             fontSize: 9,
             fontWeight: 700,
             display: 'flex',

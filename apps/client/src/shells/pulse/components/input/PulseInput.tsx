@@ -5,6 +5,7 @@ import { usePulse } from '../../PulseShell';
 import { useGameStore } from '../../../../store/useGameStore';
 import { useCommandBuilder } from '../../hooks/useCommandBuilder';
 import { PULSE_TAP } from '../../springs';
+import { PULSE_Z } from '../../zIndex';
 import { HintChips } from './HintChips';
 import { CommandPicker } from './CommandPicker';
 import { PlayerPicker } from './PlayerPicker';
@@ -147,7 +148,7 @@ export function PulseInput() {
   if (!isSocialPhase) return null;
 
   return (
-    <div style={{ borderTop: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)', position: 'relative', zIndex: 5 }}>
+    <div style={{ borderTop: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)', position: 'relative', zIndex: PULSE_Z.flow }}>
       {/* Command overlays */}
       {commandMode.mode === 'command-picker' && (
         <CommandPicker onSelect={selectCommand} onClose={cancel} />
@@ -238,9 +239,10 @@ export function PulseInput() {
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 onClick={handleSend}
+                aria-label="Send message"
                 style={{
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
@@ -248,10 +250,10 @@ export function PulseInput() {
                   background: 'var(--pulse-accent)',
                   border: 'none',
                   cursor: 'pointer',
-                  color: '#fff',
+                  color: 'var(--pulse-on-accent)',
                 }}
               >
-                <PaperPlaneTilt size={16} weight="fill" />
+                <PaperPlaneTilt size={18} weight="fill" />
               </motion.button>
             )}
           </div>
@@ -275,12 +277,13 @@ export function PulseInput() {
             }}
           />
           <motion.button whileTap={PULSE_TAP.button} onClick={handleSend} disabled={!text.trim()}
+            aria-label="Send reply"
             style={{
-              width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: text.trim() ? 'var(--pulse-accent)' : 'var(--pulse-surface-2)',
-              border: 'none', cursor: text.trim() ? 'pointer' : 'default', color: '#fff',
+              border: 'none', cursor: text.trim() ? 'pointer' : 'default', color: 'var(--pulse-on-accent)',
             }}>
-            <PaperPlaneTilt size={16} weight="fill" />
+            <PaperPlaneTilt size={18} weight="fill" />
           </motion.button>
         </div>
       )}

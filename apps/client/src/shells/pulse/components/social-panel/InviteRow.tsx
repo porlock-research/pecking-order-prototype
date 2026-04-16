@@ -15,6 +15,7 @@ export function InviteRow({ channel, inviter }: Props) {
     }}>
       <div style={{ display: 'flex', gap: 10 }}>
         <img src={resolveAvatarUrl(inviter.avatarUrl) || ''} alt=""
+          loading="lazy" width={40} height={40}
           style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--pulse-text-1)' }}>
@@ -27,7 +28,7 @@ export function InviteRow({ channel, inviter }: Props) {
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={() => engine.acceptDm(channel.id)} style={{
-          flex: 1, background: '#2ecc71', color: '#fff', border: 'none',
+          flex: 1, background: 'var(--pulse-online)', color: 'var(--pulse-on-accent)', border: 'none',
           padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: 'pointer',
         }}>Accept</button>
         <button onClick={() => engine.declineDm(channel.id)} style={{

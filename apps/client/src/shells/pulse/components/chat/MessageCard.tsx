@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent } from 'react';
+import { memo, useRef, useState, type MouseEvent } from 'react';
 import { Smiley, Reply } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
@@ -20,7 +20,7 @@ interface MessageCardProps {
 
 const AVATAR_SIZE = 56;
 
-export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpenReaction }: MessageCardProps) {
+function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenReaction }: MessageCardProps) {
   const roster = useGameStore(s => s.roster);
   const { openDM } = usePulse();
   const avatarRef = useRef<HTMLButtonElement>(null);
@@ -70,6 +70,7 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
         <button
           ref={avatarRef}
           onClick={handleAvatarClick}
+          aria-label={isSelf ? undefined : `Open DM with ${player?.personaName ?? 'player'}`}
           style={{
             background: 'none',
             border: 'none',
@@ -81,7 +82,10 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
           <StatusRing playerId={message.senderId} size={AVATAR_SIZE}>
             <img
               src={player?.avatarUrl}
-              alt={player?.personaName || ''}
+              alt=""
+              loading="lazy"
+              width={AVATAR_SIZE}
+              height={AVATAR_SIZE}
               style={{
                 width: AVATAR_SIZE,
                 height: AVATAR_SIZE,
@@ -119,13 +123,12 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
               }
             : isWhisper
               ? {
-                  background: 'rgba(155, 89, 182, 0.08)',
-                  borderLeft: '3px solid var(--pulse-whisper)',
+                  background: 'rgba(155, 89, 182, 0.12)',
+                  border: '1px solid rgba(176, 105, 219, 0.22)',
                 }
               : {
                   background: 'var(--pulse-surface)',
                   border: '1px solid var(--pulse-border)',
-                  borderLeft: `3px solid ${color}`,
                 }),
         }}
       >
@@ -154,25 +157,31 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
         )}
 
         {/* Reply indicator */}
-        {replyMsg && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '4px 10px',
-              marginBottom: 6,
-              borderLeft: `3px solid ${getPlayerColor(Object.keys(roster).indexOf(replyMsg.senderId))}`,
-              fontSize: 12,
-              color: 'var(--pulse-text-3)',
-            }}
-          >
-            <span style={{ fontWeight: 700, marginRight: 4 }}>{replyPlayer?.personaName}</span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {replyMsg.content.slice(0, 60)}
-            </span>
-          </div>
-        )}
+        {replyMsg && (() => {
+          const replyColor = getPlayerColor(Object.keys(roster).indexOf(replyMsg.senderId));
+          return (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 8px',
+                marginBottom: 6,
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: 8,
+                fontSize: 12,
+                color: 'var(--pulse-text-3)',
+                minWidth: 0,
+              }}
+            >
+              <Reply size={11} weight="bold" style={{ color: replyColor, flexShrink: 0 }} />
+              <span style={{ fontWeight: 700, color: replyColor, flexShrink: 0 }}>{replyPlayer?.personaName}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                {replyMsg.content.slice(0, 60)}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Message text */}
         <div style={{ fontSize: 15, color: isSelf ? 'var(--pulse-text-1)' : 'var(--pulse-text-1)', lineHeight: 1.45 }}>
@@ -197,28 +206,29 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
         >
           <button
             onClick={handleReply}
-            title="Reply"
+            aria-label="Reply to message"
             style={{
-              width: 24, height: 24, border: 'none', background: 'transparent',
+              width: 32, height: 32, border: 'none', background: 'transparent',
               cursor: 'pointer', color: 'var(--pulse-text-2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               borderRadius: 10,
             }}
           >
-            <Reply size={14} weight="bold" />
+            <Reply size={16} weight="bold" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onOpenReaction(message.id); }}
-            title="React"
+            aria-label="React to message"
+            aria-expanded={isBarOpen}
             style={{
-              width: 24, height: 24, border: 'none',
+              width: 32, height: 32, border: 'none',
               background: isBarOpen ? 'var(--pulse-accent-glow)' : 'transparent',
               cursor: 'pointer', color: isBarOpen ? 'var(--pulse-accent)' : 'var(--pulse-text-2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               borderRadius: 10,
             }}
           >
-            <Smiley size={14} weight="fill" />
+            <Smiley size={16} weight="fill" />
           </button>
         </div>
 
@@ -238,3 +248,5 @@ export function MessageCard({ message, showHeader, isSelf, openReactionId, onOpe
     </div>
   );
 }
+
+export const MessageCard = memo(MessageCardInner);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { CastStripEntry } from '../../../../store/useGameStore';
 import { useGameStore, selectChipSlotStatus } from '../../../../store/useGameStore';
@@ -15,7 +15,7 @@ interface Props {
   locked?: boolean;
 }
 
-export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked = false }: Props) {
+function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = false }: Props) {
   const { player, isOnline, isTypingToYou, hasPendingInviteFromThem, unreadCount, isLeader, lastNudgeFromThemTs, hasUnseenNudgeFromThem, hasUnseenSilver } = entry;
   const roster = useGameStore(s => s.roster);
   const slotStatus = useGameStore(s => selectChipSlotStatus(s, entry.id));
@@ -61,7 +61,7 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
   let glowColor: string | null = null;
   let pulse = false;
   if (hasPendingInviteFromThem) {
-    edgeColor = '#ff8c42'; glowColor = 'rgba(255,140,66,0.55)'; pulse = true;
+    edgeColor = 'var(--pulse-pending)'; glowColor = 'rgba(255,140,66,0.55)'; pulse = true;
   } else if (hasUnseenNudgeFromThem) {
     edgeColor = 'var(--pulse-nudge)'; glowColor = 'rgba(255,160,77,0.55)'; pulse = true;
   } else if (unreadCount > 0) {
@@ -72,10 +72,22 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
     edgeColor = 'rgba(46,204,113,0.6)';
   }
 
+  const ariaStatusBits = [
+    hasPendingInviteFromThem ? 'pending invite' : null,
+    hasUnseenNudgeFromThem ? 'unread nudge' : null,
+    hasUnseenSilver ? 'unread silver' : null,
+    unreadCount > 0 ? `${unreadCount} unread` : null,
+    isTypingToYou ? 'typing' : null,
+  ].filter(Boolean).join(', ');
+  const ariaLabel = isSelf
+    ? `You (${player?.personaName ?? ''})`
+    : `${player?.personaName ?? 'Player'}${ariaStatusBits ? `, ${ariaStatusBits}` : ''}`;
+
   return (
     <button
       onClick={handleTap}
       disabled={disabledInPicking}
+      aria-label={ariaLabel}
       style={{
         position: 'relative',
         width: 72, height: 100,
@@ -102,7 +114,7 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
           animation: pulse ? 'pulse-breathe 1.4s ease-in-out infinite' : undefined,
         }}
       >
-        {avatar && <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+        {avatar && <img src={avatar} alt="" loading="lazy" width={72} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
         <div style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
           padding: '14px 6px 5px',
@@ -137,11 +149,11 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
           width: 22, height: 22, borderRadius: '50%',
           background: 'rgba(0,0,0,0.7)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 0 10px rgba(255,215,0,0.6)',
-          border: '1.5px solid rgba(255,215,0,0.8)',
+          boxShadow: '0 0 10px rgba(255,200,61,0.6)',
+          border: '1.5px solid rgba(255,200,61,0.8)',
         }}>
           <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden>
-            <path d="M1 9 L2 3 L5 6 L7 1 L9 6 L12 3 L13 9 Z" fill="#ffd700" />
+            <path d="M1 9 L2 3 L5 6 L7 1 L9 6 L12 3 L13 9 Z" fill="#ffc83d" />
           </svg>
         </span>
       )}
@@ -164,7 +176,7 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
       {hasPendingInviteFromThem && (
         <span style={{
           position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)',
-          background: '#ff8c42', color: '#fff',
+          background: 'var(--pulse-pending)', color: 'var(--pulse-on-accent)',
           fontSize: 8, fontWeight: 800, letterSpacing: 0.5,
           padding: '2px 6px', borderRadius: 8,
           textTransform: 'uppercase', animation: 'pulse-breathe 1.4s ease-in-out infinite',
@@ -178,8 +190,8 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
           style={{
             position: 'absolute', top: -2, left: -2,
             width: 10, height: 10, borderRadius: '50%',
-            background: 'var(--pulse-gold, #ffd700)',
-            boxShadow: '0 0 6px rgba(255,215,0,0.6)',
+            background: 'var(--pulse-gold)',
+            boxShadow: '0 0 6px rgba(255,200,61,0.6)',
             border: '2px solid var(--pulse-bg)',
           }}
         />
@@ -240,3 +252,5 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
     </button>
   );
 }
+
+export const CastChip = memo(CastChipInner);
