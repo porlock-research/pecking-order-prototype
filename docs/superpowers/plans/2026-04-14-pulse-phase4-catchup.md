@@ -2562,3 +2562,22 @@ Two commits on the branch (`481a261`, `da15b73`) are from a parallel session wor
 **Next step:** T14–T18 (per-surface UI + PulseShell integration). Start on the **same branch**. **First, spot-check T11/T12/T13 for drift or mistakes** — T13 specifically went through a rollback cycle. Then, for T14–T18, check each surface's current state before executing the plan verbatim — the cartridge overlay shipped after this plan was written and touched pill behavior (`focusedCartridge` slice, pill ignition, `Pill.tsx`, `PulseBar.tsx`). T19 is manual verification for the user.
 
 **State:** working tree clean on `feature/pulse-phase4-push-intent`. No dev server running. `HintChips.test.tsx` still has a pre-existing unrelated failure (documented in memory). game-server 389 tests green, client 108/109 green.
+
+---
+
+## Handoff — 2026-04-16 14:00
+
+T8–T18 all landed and merged to `main` (local only, not pushed). T19 is the only open item: manual in-browser verification of the full push → deep-link → surface round-trip across two browser profiles. The plan's scenarios A–E are unchanged.
+
+This session fixed 10 real bugs found during integration testing + via a parallel agent's pill analysis:
+  - Server: `typeKeyFor` voteType fallback (sync.ts:123); spawn actions now bump `cartridgeUpdatedAt` (l3-session.ts:246/265/292/337); uniform `participated` projection for prompts+dilemmas (projections.ts)
+  - Client: cartridgeId-keyed pill classifier (usePillStates), forcedReveal store slice (useGameStore, useRevealQueue), overlay matches cartridgeId first then kind, CartridgeResultCard active-slot fallback with cartridgeId guard, duplicate "Chat opens at dawn" removed, B6 rich per-kind result content (PulseResultContent.tsx)
+
+**Still open as a follow-up:**
+- T19 manual verification (user, browser)
+- Timeline HH:MM format in usePillStates.ts (calendar presets only handle ISO-with-T)
+- Overlay a11y (role=dialog, focus trap, Escape handler)
+- Prompt/dilemma `playerActed` vitest coverage
+- First-render playerId=null race (voting pills flash needs-action briefly)
+
+**State:** on `main` (branch merged + deleted), 30 commits ahead of `origin/main`, not pushed. No dev server running. 390 server + 126 client tests green (pre-existing HintChips failure unchanged).

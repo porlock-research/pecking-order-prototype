@@ -2116,3 +2116,24 @@ These three are documented in the project memory `project_cartridge_overlay_pend
 **Status of the plan itself unchanged from prior handoff:** Tasks 15 (manual reveal layering verification) and 16 (Playwright spec run) are the smallest next steps. The "only 2 pills showing" demo bug and Phase 4 Tasks 8–19 remain as written.
 
 **Branch:** `feature/pulse-phase4-catchup`. NOT pushed. NOT merged.
+
+---
+
+## Handoff — 2026-04-16 14:00
+
+Tasks 1–14 all shipped. **T15 (manual reveal layering)** and **T16 (Playwright e2e smoke)** remain.
+
+T16's spec file already exists at `e2e/tests/pulse-cartridge-overlay.spec.ts` — it was committed on an earlier branch. Running it needs a one-time `npx playwright install` to fetch the Chromium binary (the Playwright MCP uses its own browser and doesn't install the CLI binary). Three tests: pill-tap opens panel, header-close closes, scrim-tap closes.
+
+T15 (reveal layering with overlay open) is manual — spec §7 z-index check. Fire an elimination via admin endpoint while the overlay is open and confirm the reveal stacks above it.
+
+Phase 4 end-to-end (including overlay usage for push-intent routing) is verified live on a 3-day SMOKE_TEST game — the overlay's result card path now works correctly for:
+  - Active cartridges in REVEAL/WINNER phase (pre-nightSummary)
+  - Completed cartridges post-nightSummary
+  - FINALS voting with both winner + eliminated rendered
+  - Multi-day games (Day N+1 active doesn't get misclassified by Day N completed)
+  - Stale push intents (cartridgeId-first match in overlay)
+
+The CartridgeResultCard body was replaced with a rich `PulseResultContent` component (~500 lines) covering voting/game/prompt/dilemma with tallies, voter attribution, leaderboards, stance bars, dilemma banners. See commit `0ef6dc2`.
+
+**State:** merged to `main` locally, not pushed. No dev server running.
