@@ -101,16 +101,6 @@ export function CartridgeResultCard({ cartridgeId, kind }: Props) {
       <div style={{ width: '100%', maxWidth: 440 }}>
         <PulseResultContent kind={kind} snapshot={snap} />
       </div>
-
-      <p
-        style={{
-          marginTop: 4,
-          fontSize: 11, color: 'var(--pulse-text-3)',
-          fontStyle: 'italic', textAlign: 'center',
-        }}
-      >
-        Full details in chat.
-      </p>
     </div>
   );
 }
