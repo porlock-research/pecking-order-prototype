@@ -3,7 +3,11 @@ import { toast, Toaster } from 'sonner';
 import './pulse-theme.css';
 import type { ShellProps } from '../types';
 import type { GameEngine } from '../types';
-import { useGameStore, selectHaveINudged } from '../../store/useGameStore';
+import { useGameStore, selectHaveINudged, selectPendingInvitesForMe } from '../../store/useGameStore';
+import { useDeepLinkIntent } from '../../hooks/useDeepLinkIntent';
+import { useRevealQueue } from './hooks/useRevealQueue';
+import { ChannelTypes } from '@pecking-order/shared-types';
+import type { DeepLinkIntent, CartridgeKind } from '@pecking-order/shared-types';
 
 const DM_REJECTION_LABELS: Record<string, string> = {
   DMS_CLOSED: 'DMs are closed right now',
@@ -73,6 +77,57 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
 
   // Cartridge overlay — store-driven (shell-agnostic intent + Pulse rendering)
   const focusedCartridge = useGameStore(s => s.focusedCartridge);
+
+  // Deep-link intent routing (push notifications → shell surfaces)
+  const focusCartridge = useGameStore(s => s.focusCartridge);
+  const markCartridgeSeen = useGameStore(s => s.markCartridgeSeen);
+  const { forcePlay } = useRevealQueue();
+
+  const resolveIntent = useCallback((intent: DeepLinkIntent, _origin: 'push'): boolean => {
+    const state = useGameStore.getState();
+    switch (intent.kind) {
+      case 'main':
+        return true;
+      case 'dm': {
+        const ch = state.channels[intent.channelId];
+        if (!ch) return false;
+        const targetId = ch.memberIds.find((m: string) => m !== playerId);
+        if (!targetId) return false;
+        setDmTarget(targetId);
+        setDmIsGroup(ch.type === ChannelTypes.GROUP_DM);
+        setSocialPanelOpen(false);
+        return true;
+      }
+      case 'dm_invite': {
+        const inviteChannels = selectPendingInvitesForMe(state);
+        const match = inviteChannels.find((ch: any) => ch.createdBy === intent.senderId);
+        if (!match) return false;
+        setDmTarget(intent.senderId);
+        setDmIsGroup(false);
+        setSocialPanelOpen(false);
+        return true;
+      }
+      case 'cartridge_active': {
+        markCartridgeSeen(intent.cartridgeId);
+        focusCartridge(intent.cartridgeId, intent.cartridgeKind, 'push');
+        return true;
+      }
+      case 'cartridge_result': {
+        markCartridgeSeen(intent.cartridgeId);
+        const kind = (intent.cartridgeId.split('-')[0] ?? 'voting') as CartridgeKind;
+        focusCartridge(intent.cartridgeId, kind, 'push');
+        return true;
+      }
+      case 'elimination_reveal':
+        forcePlay({ kind: 'elimination', dayIndex: intent.dayIndex });
+        return true;
+      case 'winner_reveal':
+        forcePlay({ kind: 'winner' });
+        return true;
+    }
+  }, [playerId, focusCartridge, markCartridgeSeen, forcePlay]);
+
+  useDeepLinkIntent(resolveIntent);
 
   const openSendSilver = useCallback((targetId: string) => setSilverTarget(targetId), []);
   // Nudge fires immediately + toasts; the recipient's cast chip shakes via the
