@@ -16,10 +16,11 @@ interface Props {
 }
 
 export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked = false }: Props) {
-  const { player, isOnline, isTypingToYou, hasPendingInviteFromThem, unreadCount, isLeader, lastNudgeFromThemTs, hasUnseenNudgeFromThem } = entry;
+  const { player, isOnline, isTypingToYou, hasPendingInviteFromThem, unreadCount, isLeader, lastNudgeFromThemTs, hasUnseenNudgeFromThem, hasUnseenSilver } = entry;
   const roster = useGameStore(s => s.roster);
   const slotStatus = useGameStore(s => selectChipSlotStatus(s, entry.id));
   const markNudgeSeen = useGameStore(s => s.markNudgeSeen);
+  const markSilverSeen = useGameStore(s => s.markSilverSeen);
   const [shaking, setShaking] = useState(false);
 
   // Shake once when a newer nudge timestamp arrives for this chip. The ts comes
@@ -52,6 +53,7 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
       return;
     }
     if (hasUnseenNudgeFromThem) markNudgeSeen(entry.id);
+    if (hasUnseenSilver) markSilverSeen(entry.id);
     onTap(entry);
   };
 
@@ -168,6 +170,19 @@ export function CastChip({ entry, onTap, pickingMode, picked, pickable, locked =
           textTransform: 'uppercase', animation: 'pulse-breathe 1.4s ease-in-out infinite',
           pointerEvents: 'none', whiteSpace: 'nowrap',
         }}>Invite</span>
+      )}
+
+      {hasUnseenSilver && !hasPendingInviteFromThem && !hasUnseenNudgeFromThem && (
+        <span
+          data-testid={`chip-silver-pip-${entry.id}`}
+          style={{
+            position: 'absolute', top: -2, left: -2,
+            width: 10, height: 10, borderRadius: '50%',
+            background: 'var(--pulse-gold, #ffd700)',
+            boxShadow: '0 0 6px rgba(255,215,0,0.6)',
+            border: '2px solid var(--pulse-bg)',
+          }}
+        />
       )}
 
       {unreadCount > 0 && !hasPendingInviteFromThem && (

@@ -498,6 +498,7 @@ export interface CastStripEntry {
   lastNudgeFromThemTs: number;
   /** True when lastNudgeFromThemTs > lastSeenNudgeFrom[id] (persisted per-sender). */
   hasUnseenNudgeFromThem: boolean;
+  hasUnseenSilver: boolean;
 }
 
 export const selectUnreadForChannel = (channelId: string) => (state: GameState): number => {
@@ -585,7 +586,7 @@ export const selectChipSlotStatus = (state: GameState, chipPlayerId: string): 'o
 };
 
 export const selectCastStripEntries = memoSelector(
-  (s) => [s.playerId, s.roster, s.channels, s.chatLog, s.onlinePlayers, s.typingPlayers, s.lastReadTimestamp, s.tickerMessages, s.lastSeenNudgeFrom],
+  (s) => [s.playerId, s.roster, s.channels, s.chatLog, s.onlinePlayers, s.typingPlayers, s.lastReadTimestamp, s.tickerMessages, s.lastSeenNudgeFrom, s.lastSeenSilverFrom],
   (state: GameState): CastStripEntry[] => {
   const pid = state.playerId;
   if (!pid) return [];
@@ -623,6 +624,7 @@ export const selectCastStripEntries = memoSelector(
       isTypingToYou: false, isOnline: state.onlinePlayers.includes(pid),
       isLeader: leaderId === pid,
       lastNudgeFromThemTs: 0, hasUnseenNudgeFromThem: false,
+      hasUnseenSilver: false,
     });
   }
 
@@ -648,11 +650,14 @@ export const selectCastStripEntries = memoSelector(
     else if (isOnline) priority = 5;
     else priority = 7;
 
+    const unseenSilver = selectSilverUnread(state, id);
+
     entries.push({
       kind: 'player', id, player: p, priority,
       unreadCount: unread, hasPendingInviteFromThem: pending, hasOutgoingPendingInvite: outgoingPending,
       isTypingToYou: isTyping, isOnline, isLeader: leaderId === id,
       lastNudgeFromThemTs: lastNudgeTs, hasUnseenNudgeFromThem: unseenNudge,
+      hasUnseenSilver: unseenSilver,
     });
   }
 
@@ -666,6 +671,7 @@ export const selectCastStripEntries = memoSelector(
       unreadCount: unread, hasPendingInviteFromThem: false, hasOutgoingPendingInvite: false,
       isTypingToYou: false, isOnline: false, isLeader: false,
       lastNudgeFromThemTs: 0, hasUnseenNudgeFromThem: false,
+      hasUnseenSilver: false,
     });
   }
 
