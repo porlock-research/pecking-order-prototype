@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { Fragment, useRef, useEffect, useState, useCallback } from 'react';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { MessageCard } from './MessageCard';
@@ -8,6 +8,7 @@ import { SilverTransferCard } from './SilverTransferCard';
 import { NudgeTransferCard } from './NudgeTransferCard';
 import { TypingIndicator } from './TypingIndicator';
 import { NarratorLine } from './NarratorLine';
+import { ChatDivider } from './ChatDivider';
 import { DayPhases, GAME_MASTER_ID, TickerCategories } from '@pecking-order/shared-types';
 import type { TickerMessage } from '@pecking-order/shared-types';
 
@@ -27,6 +28,8 @@ export function ChatView() {
   const chatLog = useGameStore(s => s.chatLog);
   const tickerMessages = useGameStore(s => s.tickerMessages);
   const phase = useGameStore(s => s.phase);
+  const mainLastRead = useGameStore(s => s.lastReadTimestamp?.MAIN ?? 0);
+  const markChannelRead = useGameStore(s => s.markChannelRead);
   const { playerId } = usePulse();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -36,6 +39,19 @@ export function ChatView() {
   const mainMessages = chatLog.filter(
     m => m.channelId === 'MAIN' || (!m.channelId && m.channel === 'MAIN'),
   );
+
+  // First unread MAIN message timestamp — divider anchors here.
+  // null if every MAIN message has been read or there are none.
+  const firstUnreadMainTs = (() => {
+    for (const m of mainMessages) {
+      if (m.timestamp > mainLastRead) return m.timestamp;
+    }
+    return null;
+  })();
+
+  const handleDividerCleared = useCallback(() => {
+    markChannelRead('MAIN');
+  }, [markChannelRead]);
 
   // Social events from ticker that should render as inline broadcast cards
   // (silver transfers, nudges, perks — these are facts, not chat messages).
@@ -123,7 +139,18 @@ export function ChatView() {
         </div>
       )}
 
-      {grouped.map(({ entry, showHeader }) => {
+      {grouped.map(({ entry, showHeader }, i) => {
+        // Insert the "New" divider before the first unread MAIN message
+        // (only possible before an entry of type 'msg' with channelId MAIN).
+        const isFirstUnreadMain =
+          firstUnreadMainTs !== null &&
+          entry.type === 'msg' &&
+          (entry.data.channelId === 'MAIN' || (!entry.data.channelId && entry.data.channel === 'MAIN')) &&
+          entry.data.timestamp === firstUnreadMainTs;
+        const divider = isFirstUnreadMain
+          ? <ChatDivider key={`divider-${i}`} onCleared={handleDividerCleared} />
+          : null;
+
         if (entry.type === 'narrator') {
           return (
             <NarratorLine
@@ -174,23 +201,25 @@ export function ChatView() {
         const msg = entry.data;
         // Redacted whisper
         if (msg.whisperTarget && msg.redacted) {
-          return <WhisperCard key={msg.id} message={msg} />;
+          return <Fragment key={msg.id}>{divider}<WhisperCard message={msg} /></Fragment>;
         }
 
         // Broadcast event cards (system messages, GM briefings)
         if (msg.senderId === 'SYSTEM' || msg.senderId === 'GM' || msg.senderId === GAME_MASTER_ID) {
-          return <BroadcastCard key={msg.id} message={msg} />;
+          return <Fragment key={msg.id}>{divider}<BroadcastCard message={msg} /></Fragment>;
         }
 
         return (
-          <MessageCard
-            key={msg.id}
-            message={msg}
-            showHeader={showHeader}
-            isSelf={msg.senderId === playerId}
-            openReactionId={openReactionId}
-            onOpenReaction={setOpenReactionId}
-          />
+          <Fragment key={msg.id}>
+            {divider}
+            <MessageCard
+              message={msg}
+              showHeader={showHeader}
+              isSelf={msg.senderId === playerId}
+              openReactionId={openReactionId}
+              onOpenReaction={setOpenReactionId}
+            />
+          </Fragment>
         );
       })}
 
