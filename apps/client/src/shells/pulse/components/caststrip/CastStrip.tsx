@@ -37,7 +37,11 @@ export function CastStrip() {
 
   return (
     <div style={{
-      padding: '14px 0 16px',
+      // Vertical padding moved INTO the scroll container below — `overflow-x:
+      // auto` forces `overflow-y: auto` per CSS spec, clipping badges that
+      // project above/below the chip (e.g. the YOU badge at top: -8). The
+      // scroller needs breathing room inside its clip rect to show them.
+      padding: '2px 0 6px',
       background: `
         radial-gradient(ellipse at top, rgba(255,59,111,0.07), transparent 60%),
         linear-gradient(to bottom, var(--pulse-surface), var(--pulse-bg))
@@ -47,8 +51,12 @@ export function CastStrip() {
       position: 'relative', zIndex: PULSE_Z.flow,
     }}>
       <div style={{
-        display: 'flex', gap: 10, padding: '0 14px',
-        overflowX: 'auto', overflowY: 'visible',
+        display: 'flex', gap: 'var(--pulse-space-sm)',
+        // Top 12 fits the "You" badge (top: -8) + 4px safety. Bottom 10 fits
+        // the typing badge (bottom: -3) + 7px safety so the chip's gap-to-
+        // chat below still reads clean. Horizontal padding is the edge gutter.
+        padding: 'var(--pulse-space-md) var(--pulse-space-md) 10px',
+        overflowX: 'auto',
         scrollSnapType: 'x mandatory',
         scrollbarWidth: 'none',
       }}>
