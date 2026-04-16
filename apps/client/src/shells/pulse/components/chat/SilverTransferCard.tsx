@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Coins } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
@@ -16,6 +16,7 @@ interface SilverTransferCardProps {
  */
 export function SilverTransferCard({ text }: SilverTransferCardProps) {
   const roster = useGameStore(s => s.roster);
+  const reduce = useReducedMotion();
 
   // Parse: "NAME sent AMOUNT silver to NAME"
   const match = text.match(/^(.+?)\s+sent\s+(\d+)\s+silver\s+to\s+(.+?)$/i);
@@ -52,16 +53,30 @@ export function SilverTransferCard({ text }: SilverTransferCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={PULSE_SPRING.gentle}
+      className={reduce ? undefined : 'pulse-silver-arrive'}
+      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.88, x: -8 }}
+      animate={
+        reduce
+          ? { opacity: 1 }
+          : {
+              opacity: 1,
+              x: 0,
+              scale: [0.88, 1.04, 1],
+              boxShadow: [
+                '0 0 0 0 rgba(255,200,61,0)',
+                '0 0 18px 2px rgba(255,200,61,0.45)',
+                '0 0 0 0 rgba(255,200,61,0)',
+              ],
+            }
+      }
+      transition={reduce ? { duration: 0.2 } : { duration: 0.7, times: [0, 0.5, 1], ease: [0.2, 0.9, 0.3, 1] }}
       style={{
         display: 'inline-flex',
         alignSelf: 'flex-start',
         alignItems: 'center',
-        gap: 8,
-        padding: '4px 10px 4px 4px',
-        margin: '3px 0',
+        gap: 'var(--pulse-space-sm)',
+        padding: 'var(--pulse-space-xs) var(--pulse-space-sm) var(--pulse-space-xs) var(--pulse-space-xs)',
+        margin: 'var(--pulse-space-2xs) 0',
         borderRadius: 999,
         background: 'rgba(255,200,61,0.05)',
         border: '1px solid rgba(255,200,61,0.15)',

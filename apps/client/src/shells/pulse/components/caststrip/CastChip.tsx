@@ -193,6 +193,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
             background: 'var(--pulse-gold)',
             boxShadow: '0 0 6px rgba(255,200,61,0.6)',
             border: '2px solid var(--pulse-bg)',
+            animation: 'pulse-breathe 1.8s ease-in-out infinite',
           }}
         />
       )}

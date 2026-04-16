@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from '../../icons';
+import { toast } from 'sonner';
+import { Coins, X } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
@@ -29,6 +30,11 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
   const handleSend = () => {
     if (!amount || amount > balance) return;
     engine.sendSilver(amount, targetId);
+    // Sender celebration — brief haptic + gold-iconed toast.
+    try { navigator.vibrate?.(15); } catch { /* no-op */ }
+    toast.success(`${amount} silver → ${target?.personaName ?? 'player'}`, {
+      icon: <Coins size={18} weight="fill" style={{ color: 'var(--pulse-gold)' }} />,
+    });
     onClose();
   };
 
