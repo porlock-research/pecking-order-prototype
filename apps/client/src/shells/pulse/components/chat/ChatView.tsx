@@ -119,10 +119,9 @@ export function ChatView() {
         flex: 1,
         overflowY: 'auto',
         overflowX: 'hidden',
-        padding: '8px 12px',
+        padding: 'var(--pulse-space-sm) var(--pulse-space-md)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 2,
         height: '100%',
       }}
     >

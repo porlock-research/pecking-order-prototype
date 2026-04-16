@@ -214,7 +214,7 @@ export function PulseInput() {
             channelType="MAIN"
             capabilities={mainCapabilities}
           />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)', padding: 'var(--pulse-space-md) var(--pulse-space-md)' }}>
             <input
               ref={inputRef}
               value={text}
@@ -223,7 +223,7 @@ export function PulseInput() {
               placeholder="Message..."
               style={{
                 flex: 1,
-                padding: '10px 14px',
+                padding: 'var(--pulse-space-md) var(--pulse-space-lg)',
                 borderRadius: 12,
                 background: 'var(--pulse-surface-2)',
                 border: '1px solid var(--pulse-border)',
@@ -262,7 +262,7 @@ export function PulseInput() {
 
       {/* Reply mode also shows input */}
       {commandMode.mode === 'reply' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)', padding: 'var(--pulse-space-md) var(--pulse-space-md)' }}>
           <input
             ref={inputRef}
             value={text}
@@ -271,7 +271,7 @@ export function PulseInput() {
             placeholder="Reply..."
             autoFocus
             style={{
-              flex: 1, padding: '10px 14px', borderRadius: 12,
+              flex: 1, padding: 'var(--pulse-space-md) var(--pulse-space-lg)', borderRadius: 12,
               background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)',
               color: 'var(--pulse-text-1)', fontSize: 14, fontFamily: 'var(--po-font-body)', outline: 'none',
             }}

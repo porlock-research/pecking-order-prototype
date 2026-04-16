@@ -11,18 +11,18 @@ export function PulseHeader({ onCompose, onOpenPanel }: Props) {
   return (
     <header style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '8px 12px',
+      padding: 'var(--pulse-space-sm) var(--pulse-space-md)',
       background: 'var(--pulse-surface)', borderBottom: '1px solid var(--pulse-border)',
       position: 'relative', zIndex: PULSE_Z.flow,
     }}>
       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--pulse-text-1)' }}>
         Day {dayIndex || 1}
         <span style={{
-          fontSize: 11, color: 'var(--pulse-text-3)', marginLeft: 8,
+          fontSize: 11, color: 'var(--pulse-text-3)', marginLeft: 'var(--pulse-space-sm)',
           textTransform: 'lowercase', fontWeight: 500,
         }}>· {String(phase || 'morning').toLowerCase()}</span>
       </div>
-      <div style={{ display: 'flex', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 'var(--pulse-space-sm)' }}>
         <ComposeButton onClick={onCompose} />
         <PanelButton onClick={onOpenPanel} />
       </div>

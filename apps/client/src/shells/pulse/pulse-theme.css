@@ -31,6 +31,19 @@
   /* Hero image heights — phone default, tablet overrides in media query below. */
   --pulse-hero-height: clamp(220px, 32dvh, 300px);
 
+  /* Spacing scale — 4pt base with strategic breaks.
+     Mirrored numerically in ./spacing.ts for places that need numbers
+     (framer-motion, computed layouts). Prefer the CSS vars in inline
+     styles: padding: 'var(--pulse-space-sm) var(--pulse-space-md)'. */
+  --pulse-space-2xs: 2px;   /* hairline — grouped siblings */
+  --pulse-space-xs: 4px;    /* intra-element — icon + label */
+  --pulse-space-sm: 8px;    /* tight grouping */
+  --pulse-space-md: 12px;   /* related elements */
+  --pulse-space-lg: 16px;   /* section padding */
+  --pulse-space-xl: 24px;   /* section separation */
+  --pulse-space-2xl: 32px;  /* major section break */
+  --pulse-space-3xl: 48px;  /* page-level division */
+
   /* Ambient warm background: warm dark base, softer than pure ink */
   background:
     radial-gradient(ellipse 100% 60% at 50% 0%, rgba(255, 59, 111, 0.08) 0%, transparent 50%),

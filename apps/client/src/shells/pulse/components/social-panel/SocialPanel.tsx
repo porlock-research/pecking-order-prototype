@@ -45,44 +45,61 @@ export function SocialPanel({ onClose }: Props) {
           zIndex: PULSE_Z.drawer, overflowY: 'auto',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
-          <span style={{ width: 40, height: 4, background: 'var(--pulse-border)', borderRadius: 2 }} />
+        {/* Drag affordance */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--pulse-space-sm) 0' }}>
+          <span aria-hidden="true" style={{ width: 40, height: 4, background: 'var(--pulse-border)', borderRadius: 2 }} />
         </div>
-        <div style={{
-          background: 'radial-gradient(ellipse at top, rgba(255,215,0,0.08), transparent 60%), var(--pulse-surface)',
+
+        {/* STANDINGS — featured (largest type, gold ambient tint, generous padding) */}
+        <section style={{
+          background: 'radial-gradient(ellipse at top, rgba(255,200,61,0.08), transparent 60%), var(--pulse-surface)',
           borderBottom: '1px solid var(--pulse-border)',
+          paddingBottom: 'var(--pulse-space-md)',
         }}>
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '12px 16px 0',
+            padding: 'var(--pulse-space-lg) var(--pulse-space-lg) var(--pulse-space-sm)',
           }}>
             <h2 style={{
               margin: 0,
-              fontSize: 14, fontWeight: 900, letterSpacing: 1.5,
+              fontSize: 17, fontWeight: 900, letterSpacing: 2,
               textTransform: 'uppercase', color: 'var(--pulse-text-1)',
             }}>Standings</h2>
             {myRank && (
               <span style={{
                 fontSize: 11, color: 'var(--pulse-accent)', fontWeight: 700,
-                background: 'rgba(255,59,111,0.15)', padding: '3px 9px', borderRadius: 10,
+                background: 'rgba(255,59,111,0.15)',
+                padding: 'var(--pulse-space-2xs) var(--pulse-space-sm)',
+                borderRadius: 10,
               }}>You · #{myRank}</span>
             )}
           </div>
           <Podium />
           <StandingsRest />
-        </div>
+        </section>
 
+        {/* PENDING INVITES — action (accent-tinted container to demand attention) */}
         {pendingInvites.length > 0 && (
-          <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <section style={{
+            margin: 'var(--pulse-space-lg) var(--pulse-space-md) 0',
+            padding: 'var(--pulse-space-md) var(--pulse-space-md) var(--pulse-space-md)',
+            background: 'color-mix(in oklch, var(--pulse-pending) 10%, var(--pulse-surface))',
+            border: '1px solid color-mix(in oklch, var(--pulse-pending) 32%, transparent)',
+            borderRadius: 14,
+            display: 'flex', flexDirection: 'column', gap: 'var(--pulse-space-sm)',
+          }}>
             <h3 style={{
               margin: 0,
-              fontSize: 11, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase',
-              color: 'var(--pulse-text-3)', display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 12, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase',
+              color: 'var(--pulse-pending)',
+              display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-xs)',
             }}>
               Pending Invites
               <span aria-hidden="true" style={{
-                background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
-                fontSize: 10, padding: '1px 6px', borderRadius: 8,
+                background: 'var(--pulse-pending)', color: 'var(--pulse-on-accent)',
+                fontSize: 10,
+                padding: 'var(--pulse-space-2xs) var(--pulse-space-sm)',
+                borderRadius: 8,
               }}>{pendingInvites.length}</span>
             </h3>
             {pendingInvites.map(ch => {
@@ -90,17 +107,20 @@ export function SocialPanel({ onClose }: Props) {
               if (!inviter) return null;
               return <InviteRow key={ch.id} channel={ch} inviter={inviter} />;
             })}
-          </div>
+          </section>
         )}
 
-        <div style={{ padding: '12px 16px 0' }}>
-          <h3 style={{
-            margin: 0,
-            fontSize: 11, fontWeight: 800, letterSpacing: 1.5, textTransform: 'uppercase',
-            color: 'var(--pulse-text-3)',
-          }}>Conversations</h3>
-        </div>
-        <ConversationsList />
+        {/* CONVERSATIONS — utility (quietest label; list carries its own rhythm) */}
+        <section>
+          <div style={{ padding: 'var(--pulse-space-xl) var(--pulse-space-lg) var(--pulse-space-xs)' }}>
+            <h3 style={{
+              margin: 0,
+              fontSize: 10, fontWeight: 700, letterSpacing: 1.6, textTransform: 'uppercase',
+              color: 'var(--pulse-text-4)',
+            }}>Conversations</h3>
+          </div>
+          <ConversationsList />
+        </section>
       </motion.div>
     </>
   );

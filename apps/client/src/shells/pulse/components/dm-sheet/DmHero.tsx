@@ -42,7 +42,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
       />
 
       <button onClick={onClose} aria-label="Close DM" style={{
-        position: 'absolute', top: 10, left: 10,
+        position: 'absolute', top: 'var(--pulse-space-md)', left: 'var(--pulse-space-md)',
         width: 44, height: 44, borderRadius: 22,
         background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
         border: '1px solid rgba(255,255,255,0.12)',
@@ -50,14 +50,14 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
         display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
       }}>‹</button>
 
-      <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ position: 'absolute', top: 'var(--pulse-space-md)', right: 'var(--pulse-space-md)', display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)' }}>
         <button
           onClick={() => { if (!alreadyNudged) openNudge(player.id); }}
           disabled={alreadyNudged}
           aria-label={alreadyNudged ? `Already nudged ${player.personaName} today` : `Nudge ${player.personaName}`}
           style={{
-            display: 'flex', alignItems: 'center', gap: 4,
-            padding: '8px 12px', borderRadius: 14,
+            display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-xs)',
+            padding: 'var(--pulse-space-sm) var(--pulse-space-md)', borderRadius: 14,
             background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255,255,255,0.12)',
             color: alreadyNudged ? 'rgba(255,255,255,0.5)' : 'var(--pulse-on-accent)',
@@ -74,8 +74,8 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
             onClick={() => startAddMember(channelId)}
             aria-label="Add members"
             style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              padding: '8px 12px', borderRadius: 14,
+              display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-xs)',
+              padding: 'var(--pulse-space-sm) var(--pulse-space-md)', borderRadius: 14,
               background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
               border: '1px solid rgba(255,255,255,0.12)',
               color: 'var(--pulse-on-accent)', cursor: 'pointer',
@@ -86,7 +86,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
             <span>Add</span>
           </button>
         )}
-        <div role="group" aria-label="Photo variant" style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '0 6px' }}>
+        <div role="group" aria-label="Photo variant" style={{ display: 'flex', gap: 'var(--pulse-space-sm)', alignItems: 'center', padding: '0 var(--pulse-space-xs)' }}>
           {(['headshot', 'medium', 'full'] as const).map(v => (
             <button key={v} onClick={() => setVariant(v)} aria-label={`Show ${v} photo`} aria-pressed={variant === v} style={{
               width: 24, height: 24, borderRadius: '50%',

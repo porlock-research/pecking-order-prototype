@@ -59,8 +59,11 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
       style={{
         display: 'flex',
         flexDirection: isSelf ? 'row-reverse' : 'row',
-        gap: 10,
-        padding: '4px 0',
+        gap: 'var(--pulse-space-sm)',
+        // Rhythm: new-sender messages get a breath above; same-sender
+        // continuations stay tight. Creates visual grouping without
+        // changing message identity.
+        padding: showHeader ? 'var(--pulse-space-sm) 0 var(--pulse-space-2xs)' : 'var(--pulse-space-2xs) 0',
         position: 'relative',
         alignItems: 'flex-start',
       }}
