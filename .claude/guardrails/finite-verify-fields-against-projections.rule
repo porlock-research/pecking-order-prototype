@@ -1,0 +1,26 @@
+---
+trigger: file_edit
+glob: apps/client/src/shells/*/hooks/*.ts,apps/client/src/store/useGameStore.ts
+---
+
+VERIFY CLIENT FIELD READS AGAINST SERVER PROJECTIONS.
+
+Cartridge SYNC projections in `apps/game-server/src/projections.ts` strip sensitive
+fields by phase. Before writing client code that reads a cartridge field
+(e.g. `prompt.stances`, `dilemma.decisions`, `voting.votes`), verify the field
+exists in the projection for the relevant phase:
+
+- CONFESSION: `confessions` STRIPPED during COLLECTING/VOTING; `votes` only during VOTING
+- GUESS_WHO: `answers` STRIPPED during ANSWERING; `guesses` STRIPPED during GUESSING
+- DILEMMA: `decisions` STRIPPED during COLLECTING; `submitted: Record<playerId, bool>` is the pre-REVEAL signal
+- WOULD_YOU_RATHER: uses `choices`, NOT `stances`/`responses`
+- HOT_TAKE / PLAYER_PICK / PREDICTION: use `stances` / `responses`
+
+If you need a uniform "did this player act" signal across prompt/dilemma types,
+prefer reading an existing `submitted`-style field OR propose a new
+`participated: Record<playerId, boolean>` projection — DO NOT invent fields
+like `submissions` that don't exist in any machine.
+
+Grep `apps/game-server/src/machines/cartridges/` for the machine shape, then
+grep `apps/game-server/src/projections.ts` for the projection shape, BEFORE
+proposing a client-side field read.
