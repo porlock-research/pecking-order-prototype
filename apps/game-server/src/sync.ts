@@ -120,7 +120,7 @@ export function resolveDayPhase(snapshotValue: any, l3Value?: any): DayPhase {
 function typeKeyFor(kind: 'voting' | 'game' | 'prompt' | 'dilemma', cartridge: any): string {
   if (!cartridge) return 'UNKNOWN';
   switch (kind) {
-    case 'voting': return cartridge.mechanism || 'UNKNOWN';
+    case 'voting': return cartridge.mechanism || cartridge.voteType || 'UNKNOWN';
     case 'game': return cartridge.gameType || 'UNKNOWN';
     case 'prompt': return cartridge.promptType || 'UNKNOWN';
     case 'dilemma': return cartridge.dilemmaType || 'UNKNOWN';

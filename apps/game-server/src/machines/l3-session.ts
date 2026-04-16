@@ -243,7 +243,7 @@ export const dailySessionMachine = setup({
               }
             },
             dailyGame: {
-              entry: ['stopPreviousGameCartridge', 'spawnGameCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'DAILY_GAME' } as any)],
+              entry: ['stopPreviousGameCartridge', 'spawnGameCartridge', 'bumpGameUpdatedAt', sendParent({ type: 'PUSH.PHASE', trigger: 'DAILY_GAME' } as any)],
               on: {
                 'xstate.done.actor.activeGameCartridge': {
                   target: 'groupChat',
@@ -262,7 +262,7 @@ export const dailySessionMachine = setup({
               }
             },
             voting: {
-              entry: ['stopPreviousVotingCartridge', 'spawnVotingCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'VOTING' } as any)],
+              entry: ['stopPreviousVotingCartridge', 'spawnVotingCartridge', 'bumpVotingUpdatedAt', sendParent({ type: 'PUSH.PHASE', trigger: 'VOTING' } as any)],
               on: {
                 'xstate.done.actor.activeVotingCartridge': {
                   target: 'groupChat',
@@ -289,7 +289,7 @@ export const dailySessionMachine = setup({
               }
             },
             playing: {
-              entry: ['stopPreviousPromptCartridge', 'spawnPromptCartridge', sendParent({ type: 'PUSH.PHASE', trigger: 'ACTIVITY' } as any)],
+              entry: ['stopPreviousPromptCartridge', 'spawnPromptCartridge', 'bumpPromptUpdatedAt', sendParent({ type: 'PUSH.PHASE', trigger: 'ACTIVITY' } as any)],
               on: {
                 // Natural completion: all players responded → child reaches final state
                 'xstate.done.actor.activePromptCartridge': {
@@ -334,7 +334,7 @@ export const dailySessionMachine = setup({
               }
             },
             dilemmaActive: {
-              entry: ['stopPreviousDilemmaCartridge', 'spawnDilemmaCartridge', 'injectDilemmaGmMessage', sendParent({ type: 'PUSH.PHASE', trigger: 'DILEMMA' } as any)],
+              entry: ['stopPreviousDilemmaCartridge', 'spawnDilemmaCartridge', 'bumpDilemmaUpdatedAt', 'injectDilemmaGmMessage', sendParent({ type: 'PUSH.PHASE', trigger: 'DILEMMA' } as any)],
               on: {
                 'xstate.done.actor.activeDilemmaCartridge': {
                   target: 'completed',
