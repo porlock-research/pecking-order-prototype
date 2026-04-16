@@ -75,11 +75,15 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
   const showBadge = pill.lifecycle === 'needs-action' || pill.lifecycle === 'urgent';
   const isActive = pill.lifecycle !== 'completed' && pill.lifecycle !== 'upcoming';
   const isInProgress = pill.lifecycle === 'in-progress';
+  const isCompleted = pill.lifecycle === 'completed';
+  const isUnreadCompleted = isCompleted && !!unread;
   const reduce = useReducedMotion();
 
   // Pill ignition: one-shot animation when transitioning upcoming/starting → just-started.
+  // Pill landing: one-shot animation when any active lifecycle → completed (results are in).
   const prevLifecycle = useRef(pill.lifecycle);
   const [igniting, setIgniting] = useState(false);
+  const [landing, setLanding] = useState(false);
   useEffect(() => {
     const prev = prevLifecycle.current;
     prevLifecycle.current = pill.lifecycle;
@@ -88,12 +92,37 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
       const t = setTimeout(() => setIgniting(false), 450);
       return () => clearTimeout(t);
     }
+    if (prev !== 'completed' && pill.lifecycle === 'completed') {
+      setLanding(true);
+      const t = setTimeout(() => setLanding(false), 500);
+      return () => clearTimeout(t);
+    }
   }, [pill.lifecycle]);
+
+  // Priority: ignition > landing > ambient unread glow. They are
+  // mutually exclusive in time anyway (landing fires once into completed,
+  // then the ambient glow takes over while unread).
+  const animationClass = igniting
+    ? 'pulse-pill-ignition'
+    : landing
+      ? 'pulse-pill-landing'
+      : isUnreadCompleted
+        ? 'pulse-pill-completed-unread'
+        : undefined;
+
+  // Unread-completed override — kind-themed, full opacity, "tap me to see
+  // the results" energy. Replaces the dim archive state (which is correct
+  // for read-completed pills, but wrong when there are unclaimed results).
+  const unreadCompletedStyle = isUnreadCompleted ? {
+    background: `color-mix(in oklch, ${kindColor} 14%, var(--pulse-surface))`,
+    border: `1px solid color-mix(in oklch, ${kindColor} 55%, transparent)`,
+    opacity: 1,
+  } : {};
 
   return (
     <motion.button
       ref={buttonRef}
-      className={igniting ? 'pulse-pill-ignition' : undefined}
+      className={animationClass}
       data-pill-cartridge-id={cartridgeId}
       aria-label={mini ? pill.label : undefined}
       whileTap={PULSE_TAP.pill}
@@ -105,7 +134,7 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
         boxShadow: `0 6px 14px color-mix(in oklch, ${kindColor} 35%, transparent)`,
       }}
       initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: styles.opacity ?? 1, scale: 1 }}
+      animate={{ opacity: unreadCompletedStyle.opacity ?? styles.opacity ?? 1, scale: 1 }}
       transition={PULSE_SPRING.snappy}
       onClick={onTap}
       style={{
@@ -118,16 +147,20 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
         fontSize: mini ? 10 : 11,
         fontWeight: 700,
         fontFamily: 'var(--po-font-body)',
-        color: isActive ? kindColor : 'var(--pulse-text-2)',
+        color: isActive || isUnreadCompleted ? kindColor : 'var(--pulse-text-2)',
         whiteSpace: 'nowrap',
         position: 'relative',
         letterSpacing: 0.3,
         textTransform: 'uppercase',
+        // --pill-glow drives both the landing burst and the ambient
+        // completed-unread keyframe via var() in pulse-theme.css.
+        ...((landing || isUnreadCompleted) ? { ['--pill-glow' as string]: kindColor } : {}),
         ...styles,
         ...(isActive ? {
           background: `${kindColor}14`,
           border: `1px solid ${kindColor}40`,
         } : {}),
+        ...unreadCompletedStyle,
       }}
     >
       <motion.span
