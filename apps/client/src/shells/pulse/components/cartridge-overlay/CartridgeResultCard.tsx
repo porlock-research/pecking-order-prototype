@@ -23,11 +23,29 @@ const KIND_COLORS: Record<CartridgeKind, string> = {
  * for completed cartridges. Do NOT fall through to PlayableCartridgeMount.
  */
 export function CartridgeResultCard({ cartridgeId, kind }: Props) {
+  // There's a timing gap between a cartridge reaching its final state and L2
+  // recording it in completedPhases — L2 writes the entry at nightSummary
+  // (recordCompleted{Voting,Game,Prompt,Dilemma}), not the moment the child
+  // finalizes. During that gap the cartridge actor is still alive in its
+  // REVEAL/WINNER state (ADR-126 result-hold) and already carries the result
+  // data on its context. Fall back to the matching active slot so the card
+  // renders immediately when the pill flips to 'completed', without waiting
+  // for the nightSummary writeback.
   const entry = useGameStore(s => s.completedCartridges.find(c => c.key === cartridgeId));
+  const activeForKind = useGameStore(s =>
+    kind === 'voting'  ? s.activeVotingCartridge
+    : kind === 'game'  ? s.activeGameCartridge
+    : kind === 'prompt'? s.activePromptCartridge
+    : s.activeDilemma
+  );
   const roster = useGameStore(s => s.roster);
   const dotColor = KIND_COLORS[kind];
 
-  if (!entry) {
+  // Build the snapshot source: completed entry wins when present; otherwise
+  // project the relevant fields out of the active cartridge context.
+  const snap: any = entry?.snapshot ?? activeForKind?.results ?? activeForKind ?? null;
+
+  if (!snap) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <p style={{ color: 'var(--pulse-text-3)', fontStyle: 'italic' }}>Result unavailable.</p>
@@ -35,11 +53,9 @@ export function CartridgeResultCard({ cartridgeId, kind }: Props) {
     );
   }
 
-  const snap: any = entry.snapshot ?? {};
-
   // Best-effort field resolution — see spec §11 plan item for typed schema work.
-  const eliminated: string | undefined = snap.eliminatedPlayerId || snap.eliminated?.playerId;
-  const winner: string | undefined = snap.winnerPlayerId || snap.winner?.playerId;
+  const eliminated: string | undefined = snap.eliminatedPlayerId || snap.eliminatedId || snap.eliminated?.playerId;
+  const winner: string | undefined = snap.winnerPlayerId || snap.winnerId || snap.winner?.playerId;
   const silverRewards: Record<string, number> = snap.silverRewards || {};
   const topScorers = Object.entries(silverRewards)
     .sort((a, b) => b[1] - a[1])
