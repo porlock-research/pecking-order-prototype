@@ -1,9 +1,9 @@
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/useGameStore';
 import { DilemmaPhases, DILEMMA_TYPE_INFO } from '@pecking-order/shared-types';
 import type { DilemmaType } from '@pecking-order/shared-types';
-import { VIVID_SPRING } from '../../shells/vivid/springs';
-import { HandMoney, UsersGroupRounded, Gift, QuestionCircle } from '@solar-icons/react';
+import { HandCoins, Users, Gift, HelpCircle } from 'lucide-react';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
 import SilverGambitInput from './SilverGambitInput';
 import SpotlightInput from './SpotlightInput';
@@ -11,17 +11,17 @@ import GiftOrGriefInput from './GiftOrGriefInput';
 import DilemmaReveal from './DilemmaReveal';
 
 /* ------------------------------------------------------------------ */
-/*  Icon map                                                           */
+/*  Icon map — shell-agnostic lucide-react set                         */
 /* ------------------------------------------------------------------ */
 
-const DILEMMA_ICON: Record<string, React.ComponentType<any>> = {
-  SILVER_GAMBIT: HandMoney,
-  SPOTLIGHT: UsersGroupRounded,
+const DILEMMA_ICON: Record<string, React.ComponentType<{ size?: number; strokeWidth?: number; color?: string }>> = {
+  SILVER_GAMBIT: HandCoins,
+  SPOTLIGHT: Users,
   GIFT_OR_GRIEF: Gift,
 };
 
 /* ------------------------------------------------------------------ */
-/*  Participation strip (VoterStrip-style)                             */
+/*  Participation strip (mirrors VoterStrip pattern)                   */
 /* ------------------------------------------------------------------ */
 
 function ParticipationStrip({
@@ -41,12 +41,11 @@ function ParticipationStrip({
     remaining === 0
       ? `${total} of ${total} decided`
       : remaining === 1
-        ? 'Waiting for 1 more...'
+        ? 'Waiting for 1 more…'
         : `${submittedCount} of ${total} decided`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-      {/* Avatar row */}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
         {eligiblePlayers.map((pid) => {
           const player = roster[pid];
@@ -54,15 +53,22 @@ function ParticipationStrip({
           return (
             <div
               key={pid}
-              style={{ position: 'relative', opacity: didSubmit ? 1 : 0.5 }}
+              style={{
+                position: 'relative',
+                opacity: didSubmit ? 1 : 0.5,
+                transition: 'opacity 0.25s ease',
+              }}
             >
               <div
                 style={{
                   borderRadius: '50%',
-                  border: didSubmit ? '2px solid #2d6a4f' : '2px solid #9B8E7E',
+                  border: didSubmit
+                    ? '2px solid var(--po-green, #2d6a4f)'
+                    : '2px solid var(--po-border, rgba(255,255,255,0.12))',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  transition: 'border 0.25s ease',
                 }}
               >
                 <PersonaAvatar
@@ -71,20 +77,21 @@ function ParticipationStrip({
                   size={20}
                 />
               </div>
-              {/* Green checkmark badge */}
               {didSubmit && (
                 <div
+                  aria-hidden="true"
                   style={{
                     position: 'absolute',
                     bottom: -2,
                     right: -2,
-                    width: 8,
-                    height: 8,
+                    width: 9,
+                    height: 9,
                     borderRadius: '50%',
-                    background: '#2d6a4f',
+                    background: 'var(--po-green, #2d6a4f)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    border: '1px solid var(--po-bg-panel, rgba(0,0,0,0.4))',
                   }}
                 >
                   <svg
@@ -97,7 +104,7 @@ function ParticipationStrip({
                     <path
                       d="M0.5 2L1.8 3.2L4.2 0.8"
                       stroke="white"
-                      strokeWidth={0.8}
+                      strokeWidth={0.9}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
@@ -109,14 +116,15 @@ function ParticipationStrip({
         })}
       </div>
 
-      {/* Status text */}
       <span
         style={{
-          fontFamily: 'var(--vivid-font-mono)',
+          fontFamily: 'var(--po-font-display)',
           fontSize: 10,
-          color: '#9B8E7E',
+          color: 'var(--po-text-dim)',
           textTransform: 'uppercase',
-          letterSpacing: '0.05em',
+          letterSpacing: '0.1em',
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
         }}
       >
         {statusText}
@@ -148,7 +156,7 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
     howItWorks: '',
     actionVerb: 'decided',
   };
-  const IconComponent = DILEMMA_ICON[dilemmaType] || QuestionCircle;
+  const IconComponent = DILEMMA_ICON[dilemmaType] || HelpCircle;
   const hasSubmitted = submitted?.[playerId] ?? false;
 
   return (
@@ -158,12 +166,12 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
         initial={{ opacity: 0, y: 16, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -16, scale: 0.97 }}
-        transition={VIVID_SPRING.bouncy}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         style={{
           borderRadius: 16,
-          background: 'var(--vivid-bg-elevated, #FFFBF4)',
-          border: '1px solid rgba(184, 132, 10, 0.18)',
-          boxShadow: '0 4px 20px rgba(139, 115, 85, 0.1)',
+          background: 'var(--po-bg-panel)',
+          border: '1px solid color-mix(in oklch, var(--po-gold) 22%, transparent)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
           overflow: 'hidden',
           margin: '10px 0',
         }}
@@ -173,44 +181,44 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
           style={{
             display: 'flex',
             alignItems: 'center',
-            padding: '10px 14px',
-            borderBottom: '1px solid rgba(184, 132, 10, 0.1)',
-            background: 'rgba(184, 132, 10, 0.04)',
-            gap: 8,
+            padding: '12px 16px',
+            borderBottom: '1px solid color-mix(in oklch, var(--po-gold) 12%, transparent)',
+            background: 'color-mix(in oklch, var(--po-gold) 6%, transparent)',
+            gap: 10,
           }}
         >
-          <IconComponent size={18} weight="Bold" color="#B8840A" />
+          <IconComponent size={18} strokeWidth={2.25} color="var(--po-gold)" />
           <span
             style={{
-              fontFamily: 'var(--vivid-font-display)',
+              fontFamily: 'var(--po-font-display)',
               fontSize: 13,
               fontWeight: 800,
-              color: '#B8840A',
+              color: 'var(--po-gold)',
               textTransform: 'uppercase',
-              letterSpacing: '0.04em',
+              letterSpacing: '0.08em',
               flex: 1,
             }}
           >
             {info.name}
           </span>
-          {/* Compact submitted indicator when already submitted */}
           {phase === DilemmaPhases.COLLECTING && hasSubmitted && (
             <span
               style={{
-                fontFamily: 'var(--vivid-font-body)',
-                fontSize: 11,
-                fontWeight: 600,
-                color: '#2D6A4F',
+                fontFamily: 'var(--po-font-display)',
+                fontSize: 10,
+                fontWeight: 700,
+                color: 'var(--po-green, #2d6a4f)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
               }}
             >
-              You {info.actionVerb}!
+              You {info.actionVerb}
             </span>
           )}
         </div>
 
         {/* Body */}
-        <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Participation strip */}
+        <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {phase === DilemmaPhases.COLLECTING && (
             <ParticipationStrip
               eligiblePlayers={eligiblePlayers || []}
@@ -219,7 +227,6 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
             />
           )}
 
-          {/* Decision input — only show when not yet submitted */}
           {phase === DilemmaPhases.COLLECTING && !hasSubmitted && (
             <DilemmaInput
               dilemmaType={dilemmaType}
@@ -230,7 +237,6 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
             />
           )}
 
-          {/* Reveal area */}
           {phase === DilemmaPhases.REVEAL && decisions && results && (
             <DilemmaReveal
               dilemmaType={dilemmaType}
@@ -290,15 +296,15 @@ function DilemmaInput({
           style={{
             padding: '12px 16px',
             borderRadius: 12,
-            background: 'rgba(139, 115, 85, 0.06)',
+            background: 'var(--po-bg-glass, rgba(255,255,255,0.04))',
             textAlign: 'center',
           }}
         >
           <span
             style={{
-              fontFamily: 'var(--vivid-font-mono, monospace)',
+              fontFamily: 'var(--po-font-body)',
               fontSize: 12,
-              color: '#9B8E7E',
+              color: 'var(--po-text-dim)',
             }}
           >
             Unknown dilemma type: {dilemmaType}

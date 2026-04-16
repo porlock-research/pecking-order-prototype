@@ -7,6 +7,11 @@ interface VoterStripProps {
   roster: Record<string, SocialPlayer>;
 }
 
+/**
+ * Shell-agnostic voter-progress strip — shows avatar of each eligible
+ * voter with a dim/voted state and a running tally. Uses only the --po-*
+ * design contract.
+ */
 export function VoterStrip({ eligibleVoters, votes, roster }: VoterStripProps) {
   const votedCount = eligibleVoters.filter((id) => id in votes).length;
   const total = eligibleVoters.length;
@@ -16,7 +21,7 @@ export function VoterStrip({ eligibleVoters, votes, roster }: VoterStripProps) {
     remaining === 0
       ? `${total} of ${total} voted`
       : remaining === 1
-        ? 'Waiting for 1 more...'
+        ? 'Waiting for 1 more…'
         : `${votedCount} of ${total} voted`;
 
   return (
@@ -25,7 +30,7 @@ export function VoterStrip({ eligibleVoters, votes, roster }: VoterStripProps) {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 6,
+        gap: 8,
       }}
     >
       {/* Avatar row */}
@@ -47,17 +52,19 @@ export function VoterStrip({ eligibleVoters, votes, roster }: VoterStripProps) {
               style={{
                 position: 'relative',
                 opacity: hasVoted ? 1 : 0.5,
+                transition: 'opacity 0.25s ease',
               }}
             >
               <div
                 style={{
                   borderRadius: '50%',
                   border: hasVoted
-                    ? '2px solid #2d6a4f'
-                    : '2px solid #555',
+                    ? '2px solid var(--po-green, #2d6a4f)'
+                    : '2px solid var(--po-border, rgba(255,255,255,0.12))',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  transition: 'border 0.25s ease',
                 }}
               >
                 <PersonaAvatar
@@ -66,20 +73,22 @@ export function VoterStrip({ eligibleVoters, votes, roster }: VoterStripProps) {
                   size={20}
                 />
               </div>
-              {/* Green checkmark badge */}
+              {/* Voted checkmark badge */}
               {hasVoted && (
                 <div
+                  aria-hidden="true"
                   style={{
                     position: 'absolute',
                     bottom: -2,
                     right: -2,
-                    width: 8,
-                    height: 8,
+                    width: 9,
+                    height: 9,
                     borderRadius: '50%',
-                    background: '#2d6a4f',
+                    background: 'var(--po-green, #2d6a4f)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    border: '1px solid var(--po-bg-panel, rgba(0,0,0,0.4))',
                   }}
                 >
                   <svg
@@ -92,7 +101,7 @@ export function VoterStrip({ eligibleVoters, votes, roster }: VoterStripProps) {
                     <path
                       d="M0.5 2L1.8 3.2L4.2 0.8"
                       stroke="white"
-                      strokeWidth={0.8}
+                      strokeWidth={0.9}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
@@ -107,11 +116,13 @@ export function VoterStrip({ eligibleVoters, votes, roster }: VoterStripProps) {
       {/* Status text */}
       <span
         style={{
-          fontFamily: 'var(--vivid-font-mono)',
+          fontFamily: 'var(--po-font-display)',
           fontSize: 10,
-          color: '#9B8E7E',
+          color: 'var(--po-text-dim)',
           textTransform: 'uppercase',
-          letterSpacing: '0.05em',
+          letterSpacing: '0.1em',
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
         }}
       >
         {statusText}

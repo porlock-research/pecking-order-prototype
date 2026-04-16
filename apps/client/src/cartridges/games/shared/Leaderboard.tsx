@@ -36,6 +36,11 @@ interface LeaderboardProps {
   gameType?: string;
 }
 
+/**
+ * Shell-agnostic leaderboard — uses only --po-* design contract so it
+ * adopts whichever shell wraps the game cartridge. The winning row picks
+ * up --po-gold; the current player's row gets a gold-tinted highlight.
+ */
 export function Leaderboard({ allPlayerResults, currentPlayerId, gameType }: LeaderboardProps) {
   const statConfig = gameType ? GAME_STAT_CONFIG[gameType] : undefined;
   const roster = useGameStore(s => s.roster);
@@ -45,20 +50,22 @@ export function Leaderboard({ allPlayerResults, currentPlayerId, gameType }: Lea
   return (
     <div style={{ padding: '0 4px' }}>
       <p style={{
-        fontSize: 9, fontWeight: 700,
-        color: 'rgba(255,255,255,0.4)',
+        fontSize: 10, fontWeight: 800,
+        color: 'var(--po-text-dim)',
         textTransform: 'uppercase',
-        letterSpacing: '0.08em',
-        marginBottom: 8,
-        fontFamily: 'var(--vivid-font-mono)',
+        letterSpacing: '0.16em',
+        marginBottom: 10,
+        marginTop: 0,
+        fontFamily: 'var(--po-font-display)',
         textAlign: 'center',
       }}>
         Leaderboard
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {allPlayerResults.map((entry, rank) => {
           const player = roster[entry.playerId];
           const isMe = entry.playerId === currentPlayerId;
+          const isWinner = rank === 0;
 
           return (
             <div
@@ -66,18 +73,24 @@ export function Leaderboard({ allPlayerResults, currentPlayerId, gameType }: Lea
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '8px 10px',
+                gap: 10,
+                padding: '8px 12px',
                 borderRadius: 10,
-                background: isMe ? 'rgba(196,166,106,0.1)' : 'rgba(139,115,85,0.06)',
-                border: isMe ? '1px solid rgba(196,166,106,0.25)' : '1px solid transparent',
+                background: isMe
+                  ? 'color-mix(in oklch, var(--po-gold) 10%, transparent)'
+                  : 'var(--po-bg-glass, rgba(255,255,255,0.04))',
+                border: isMe
+                  ? '1px solid color-mix(in oklch, var(--po-gold) 28%, transparent)'
+                  : '1px solid transparent',
+                transition: 'background 0.25s ease',
               }}
             >
               <span style={{
                 width: 20, textAlign: 'center',
-                fontSize: 12, fontWeight: 800,
-                color: rank === 0 ? 'var(--vivid-phase-accent)' : 'rgba(255,255,255,0.4)',
-                fontFamily: 'var(--vivid-font-mono)',
+                fontSize: 13, fontWeight: 800,
+                color: isWinner ? 'var(--po-gold)' : 'var(--po-text-dim)',
+                fontFamily: 'var(--po-font-display)',
+                fontVariantNumeric: 'tabular-nums',
               }}>
                 {rank + 1}
               </span>
@@ -89,35 +102,51 @@ export function Leaderboard({ allPlayerResults, currentPlayerId, gameType }: Lea
               />
 
               <span style={{
-                flex: 1, fontSize: 12, fontWeight: 600,
-                color: isMe ? 'var(--vivid-phase-accent)' : 'var(--vivid-text-base)',
-                fontFamily: 'var(--vivid-font-display)',
+                flex: 1, fontSize: 13, fontWeight: 600,
+                color: isMe ? 'var(--po-gold)' : 'var(--po-text)',
+                fontFamily: 'var(--po-font-body)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                minWidth: 0,
               }}>
                 {isMe ? 'You' : (player?.personaName || entry.playerId)}
               </span>
 
               {statConfig && entry.result?.[statConfig.key] != null && (
                 <span style={{
-                  fontSize: 11, fontWeight: 600,
-                  color: 'rgba(255,255,255,0.5)',
-                  fontFamily: 'var(--vivid-font-mono)',
+                  fontSize: 11, fontWeight: 700,
+                  color: 'var(--po-text-dim)',
+                  fontFamily: 'var(--po-font-display)',
+                  fontVariantNumeric: 'tabular-nums',
+                  letterSpacing: 0.2,
+                  flexShrink: 0,
                 }}>
                   {statConfig.format
                     ? statConfig.format(entry.result[statConfig.key])
                     : entry.result[statConfig.key]}{' '}
-                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
+                  <span style={{
+                    fontSize: 9,
+                    color: 'var(--po-text-dim)',
+                    opacity: 0.7,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                  }}>
                     {statConfig.label}
                   </span>
                 </span>
               )}
 
               <span style={{
-                fontSize: 11, fontWeight: 700,
-                color: 'var(--vivid-phase-accent)',
-                fontFamily: 'var(--vivid-font-mono)',
-                background: 'rgba(196,166,106,0.15)',
+                fontSize: 11, fontWeight: 800,
+                color: 'var(--po-gold)',
+                fontFamily: 'var(--po-font-display)',
+                fontVariantNumeric: 'tabular-nums',
+                background: 'color-mix(in oklch, var(--po-gold) 16%, transparent)',
                 borderRadius: 12,
-                padding: '2px 8px',
+                padding: '3px 9px',
+                flexShrink: 0,
+                letterSpacing: 0.2,
               }}>
                 +{entry.silverReward}
               </span>
