@@ -24,7 +24,6 @@ const ACTION_TO_KIND: Record<string, PillState['kind']> = {
   OPEN_VOTING: 'voting',
   START_GAME: 'game',
   START_ACTIVITY: 'prompt',
-  INJECT_PROMPT: 'prompt',
   START_DILEMMA: 'dilemma',
 };
 
@@ -32,7 +31,6 @@ const ACTION_LABELS: Record<string, string> = {
   OPEN_VOTING: 'Vote',
   START_GAME: 'Game',
   START_ACTIVITY: 'Activity',
-  INJECT_PROMPT: 'Prompt',
   START_DILEMMA: 'Dilemma',
 };
 
@@ -65,13 +63,27 @@ export function usePillStates(): PillState[] {
     }
 
     if (game) {
+      // Game lifecycle detection varies by cartridge type:
+      //   - Sync decision games expose `phase` ('COLLECTING'/'REVEAL'/etc.)
+      //   - Async per-player games (trivia, arcade) expose per-player `status`
+      //     ('NOT_STARTED'/'PLAYING'/'COMPLETED') and `allPlayerResults` on finish
+      //   - completedCartridges catches any game that L2 has already finalized
+      const gameInCompleted = completed?.some(c => c.kind === 'game');
+      const gameLifecycle: PillLifecycle =
+        game.phase === 'COMPLETED' || game.phase === 'REVEAL'
+          || game.status === 'COMPLETED' || game.allPlayerResults
+          || gameInCompleted
+          ? 'completed'
+        : game.phase === 'PLAYING' || game.phase === 'ACTIVE'
+          || game.status === 'PLAYING'
+          ? 'in-progress'
+        : 'just-started';
+
       pills.push({
         id: 'game',
         kind: 'game',
         label: prettyLabel(game.gameType, 'Game'),
-        lifecycle: game.phase === 'COMPLETED' ? 'completed'
-          : game.phase === 'PLAYING' || game.phase === 'ACTIVE' ? 'in-progress'
-          : 'just-started',
+        lifecycle: gameLifecycle,
         cartridgeData: game,
       });
     }
