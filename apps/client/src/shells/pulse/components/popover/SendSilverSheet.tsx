@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
-import { Coins, X } from '../../icons';
+import { X } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
@@ -30,11 +29,13 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
   const handleSend = () => {
     if (!amount || amount > balance) return;
     engine.sendSilver(amount, targetId);
-    // Sender celebration — brief haptic + gold-iconed toast.
-    try { navigator.vibrate?.(15); } catch { /* no-op */ }
-    toast.success(`${amount} silver → ${target?.personaName ?? 'player'}`, {
-      icon: <Coins size={18} weight="fill" style={{ color: 'var(--pulse-gold)' }} />,
-    });
+    // Sender celebration — haptic + SilverBurst overdrive layer (coin shower
+    // + "+N silver" float). Toast dropped in favor of the burst; the public
+    // SOCIAL_TRANSFER chat card still carries the announcement for a11y.
+    try { navigator.vibrate?.(25); } catch { /* no-op */ }
+    window.dispatchEvent(new CustomEvent('pulse:silver-burst', {
+      detail: { amount, recipient: target?.personaName ?? 'player' },
+    }));
     onClose();
   };
 

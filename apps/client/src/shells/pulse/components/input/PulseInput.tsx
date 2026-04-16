@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Coins, PaperPlaneTilt } from '../../icons';
+import { PaperPlaneTilt } from '../../icons';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
 import { usePulse } from '../../PulseShell';
 import { useGameStore } from '../../../../store/useGameStore';
 import { useCommandBuilder } from '../../hooks/useCommandBuilder';
@@ -127,11 +126,12 @@ export function PulseInput() {
   const handleSilverSend = useCallback(() => {
     if (commandMode.mode !== 'preview') return;
     engine.sendSilver(commandMode.amount, commandMode.playerId);
-    // Sender celebration — brief haptic + gold-iconed toast.
-    try { navigator.vibrate?.(15); } catch { /* no-op */ }
-    toast.success(`${commandMode.amount} silver → ${commandMode.player.personaName}`, {
-      icon: <Coins size={18} weight="fill" style={{ color: 'var(--pulse-gold)' }} />,
-    });
+    // Sender celebration — haptic + SilverBurst overdrive layer. Toast
+    // dropped; SOCIAL_TRANSFER chat card carries the announcement.
+    try { navigator.vibrate?.(25); } catch { /* no-op */ }
+    window.dispatchEvent(new CustomEvent('pulse:silver-burst', {
+      detail: { amount: commandMode.amount, recipient: commandMode.player.personaName },
+    }));
     cancel();
   }, [commandMode, engine, cancel]);
 
