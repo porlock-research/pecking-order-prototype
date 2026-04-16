@@ -1,8 +1,10 @@
 import { memo, useRef, useState, type MouseEvent } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Smiley, Reply } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
+import { PULSE_SPRING } from '../../springs';
 import { StatusRing } from '../StatusRing';
 import { ReactionBar } from './ReactionBar';
 import { ReactionChips } from './ReactionChips';
@@ -23,6 +25,7 @@ const AVATAR_SIZE = 56;
 function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenReaction }: MessageCardProps) {
   const roster = useGameStore(s => s.roster);
   const { openDM } = usePulse();
+  const reduce = useReducedMotion();
   const avatarRef = useRef<HTMLButtonElement>(null);
   const player = roster[message.senderId];
   const playerIndex = Object.keys(roster).indexOf(message.senderId);
@@ -54,8 +57,21 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
     window.dispatchEvent(new CustomEvent('pulse:reply', { detail: { message } }));
   };
 
+  // Own-sent messages arrive with a tactile scale-pop. Others' messages
+  // render plain — adding ceremony to every incoming line would turn chat
+  // into a firework show. The sender's own messages are the only ones
+  // worth rewarding here (they just tapped send).
+  const ownSendMotion = isSelf && !reduce
+    ? {
+        initial: { opacity: 0, scale: 0.92, x: 8 },
+        animate: { opacity: 1, scale: 1, x: 0 },
+        transition: PULSE_SPRING.snappy,
+      }
+    : {};
+
   return (
-    <div
+    <motion.div
+      {...ownSendMotion}
       style={{
         display: 'flex',
         flexDirection: isSelf ? 'row-reverse' : 'row',
@@ -248,7 +264,7 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
         {/* Reaction chips — always OUTSIDE the bubble, aligned with content side */}
         <ReactionChips message={message} />
       </div>
-    </div>
+    </motion.div>
   );
 }
 
