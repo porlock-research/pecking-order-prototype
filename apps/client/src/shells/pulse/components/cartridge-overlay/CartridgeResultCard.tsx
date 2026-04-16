@@ -78,11 +78,16 @@ export function CartridgeResultCard({ cartridgeId, kind }: Props) {
       style={{
         flex: 1,
         overflow: 'auto',
-        padding: '28px 20px 40px',
+        // Kind-tinted ambient backdrop anchors the finale. Radial fade at top
+        // so the chip + title sit in a pool of kind-color, body stays calm.
+        background: `radial-gradient(ellipse 80% 40% at 50% 0%, color-mix(in oklch, ${dotColor} 12%, transparent) 0%, transparent 70%)`,
+        paddingTop: 'var(--pulse-space-xl)',
+        paddingLeft: 'var(--pulse-space-lg)',
+        paddingRight: 'var(--pulse-space-lg)',
+        paddingBottom: 'var(--pulse-space-3xl)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 14,
         color: 'var(--pulse-text-1)',
       }}
     >
@@ -90,25 +95,34 @@ export function CartridgeResultCard({ cartridgeId, kind }: Props) {
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 8,
-          padding: '5px 12px',
+          gap: 'var(--pulse-space-sm)',
+          padding: 'var(--pulse-space-2xs) var(--pulse-space-md)',
+          marginBottom: 'var(--pulse-space-sm)',
           borderRadius: 999,
           background: `${dotColor}1A`,
           border: `1px solid ${dotColor}40`,
           fontSize: 10,
           fontWeight: 800,
-          letterSpacing: 1,
+          letterSpacing: 1.4,
           textTransform: 'uppercase',
           color: dotColor,
+          fontFamily: 'var(--po-font-body)',
         }}
       >
+        <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 8px ${dotColor}` }} />
         Completed
       </span>
 
       <h1
         style={{
-          fontSize: 24, fontWeight: 900, margin: 0,
-          textAlign: 'center', fontFamily: 'var(--po-font-display)',
+          fontSize: 'clamp(28px, 6vw, 36px)',
+          fontWeight: 700,
+          letterSpacing: -0.8,
+          lineHeight: 1.05,
+          margin: 0,
+          marginBottom: 'var(--pulse-space-xl)',
+          textAlign: 'center',
+          fontFamily: 'var(--po-font-display)',
         }}
       >
         {title}
