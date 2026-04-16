@@ -187,7 +187,14 @@ export function usePillStates(): PillState[] {
 
     // Today's completed cartridges not already represented by an active slot
     // (active slots keep their refs live per ADR-126 result-hold, but can be
-    // absent mid-day-transition; render completed-only pills to fill the gap).
+    // absent after gameSummary teardown; render completed-only pills to fill
+    // the gap).
+    //
+    // Attach cartridgeData with the appropriate type field so PulseBar's
+    // `pillToCartridgeId` reconstructs the same cartridgeId the server uses
+    // (`${kind}-${dayIndex}-${typeKey}`). Without cartridgeData, PulseBar
+    // falls back to 'UNKNOWN' and the overlay's focusCartridge lookup fails
+    // against completedCartridges.
     for (const c of todayCompleted) {
       if (!pills.some(p => p.id === c.key)) {
         const typeKey =
@@ -197,11 +204,19 @@ export function usePillStates(): PillState[] {
           c.snapshot?.promptType ||
           c.snapshot?.dilemmaType ||
           '';
+        const cartridgeData =
+          typeKey
+            ? c.kind === 'voting' ? { mechanism: typeKey, voteType: typeKey, ...c.snapshot }
+            : c.kind === 'game' ? { gameType: typeKey, ...c.snapshot }
+            : c.kind === 'prompt' ? { promptType: typeKey, ...c.snapshot }
+            : { dilemmaType: typeKey, ...c.snapshot }
+            : c.snapshot;
         pills.push({
           id: c.key,
           kind: c.kind,
           label: prettyLabel(typeKey, c.kind),
           lifecycle: 'completed',
+          cartridgeData,
         });
       }
     }

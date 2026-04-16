@@ -101,6 +101,19 @@ export function CartridgeResultCard({ cartridgeId, kind }: Props) {
 
       <h1 style={{ fontSize: 26, fontWeight: 900, margin: 0, textAlign: 'center' }}>{title}</h1>
 
+      {/* FINALS-style voting includes both a winner and an eliminated runner-up;
+          regular voting only has an eliminated. Show whatever is present. */}
+      {kind === 'voting' && winner && roster[winner] && (
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontSize: 12, color: 'var(--pulse-text-3)', margin: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
+            Winner
+          </p>
+          <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--pulse-gold, #ffd700)', margin: '6px 0 0' }}>
+            {roster[winner].personaName}
+          </p>
+        </div>
+      )}
+
       {kind === 'voting' && eliminated && roster[eliminated] && (
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: 12, color: 'var(--pulse-text-3)', margin: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
