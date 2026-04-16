@@ -1,5 +1,6 @@
 import type { CartridgeKind } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../../store/useGameStore';
+import { PulseResultContent } from './PulseResultContent';
 
 interface Props {
   cartridgeId: string;
@@ -13,24 +14,29 @@ const KIND_COLORS: Record<CartridgeKind, string> = {
   dilemma: 'var(--pulse-dilemma)',
 };
 
+const KIND_TITLES: Record<CartridgeKind, string> = {
+  voting: 'Vote Resolved',
+  game: 'Game Over',
+  prompt: 'Activity Resolved',
+  dilemma: 'Dilemma Revealed',
+};
+
 /**
- * Pulse-native result summary for a completed cartridge. v1 renders a basic
- * kind-themed card pulling the most-obvious summary fields from the
- * CompletedCartridge.snapshot (typed `any` today — see spec §11 plan item
- * "CompletedCartridgeSnapshot schema enumeration").
+ * Pulse-native result summary for a completed cartridge. Renders a kind-themed
+ * header (Completed chip, title) then hands off to PulseResultContent for the
+ * per-kind rich body — tallies, voter attribution, leaderboards, stance bars,
+ * dilemma outcome banners.
  *
  * Per spec §3 "Routing constraint": this component MUST be the only path
  * for completed cartridges. Do NOT fall through to PlayableCartridgeMount.
+ *
+ * Source priority: completedCartridges entry (written at nightSummary) wins
+ * when present. During the window between the cartridge finalizing and L2
+ * writing the entry, the active cartridge slot is still alive in REVEAL/WINNER
+ * phase (per ADR-126 result-hold) with results populated — fall back to that
+ * so the card renders immediately.
  */
 export function CartridgeResultCard({ cartridgeId, kind }: Props) {
-  // There's a timing gap between a cartridge reaching its final state and L2
-  // recording it in completedPhases — L2 writes the entry at nightSummary
-  // (recordCompleted{Voting,Game,Prompt,Dilemma}), not the moment the child
-  // finalizes. During that gap the cartridge actor is still alive in its
-  // REVEAL/WINNER state (ADR-126 result-hold) and already carries the result
-  // data on its context. Fall back to the matching active slot so the card
-  // renders immediately when the pill flips to 'completed', without waiting
-  // for the nightSummary writeback.
   const entry = useGameStore(s => s.completedCartridges.find(c => c.key === cartridgeId));
   const activeForKind = useGameStore(s =>
     kind === 'voting'  ? s.activeVotingCartridge
@@ -38,11 +44,9 @@ export function CartridgeResultCard({ cartridgeId, kind }: Props) {
     : kind === 'prompt'? s.activePromptCartridge
     : s.activeDilemma
   );
-  const roster = useGameStore(s => s.roster);
   const dotColor = KIND_COLORS[kind];
+  const title = KIND_TITLES[kind];
 
-  // Build the snapshot source: completed entry wins when present; otherwise
-  // project the relevant fields out of the active cartridge context.
   const snap: any = entry?.snapshot ?? activeForKind?.results ?? activeForKind ?? null;
 
   if (!snap) {
@@ -53,133 +57,58 @@ export function CartridgeResultCard({ cartridgeId, kind }: Props) {
     );
   }
 
-  // Best-effort field resolution — see spec §11 plan item for typed schema work.
-  const eliminated: string | undefined = snap.eliminatedPlayerId || snap.eliminatedId || snap.eliminated?.playerId;
-  const winner: string | undefined = snap.winnerPlayerId || snap.winnerId || snap.winner?.playerId;
-  const silverRewards: Record<string, number> = snap.silverRewards || {};
-  const topScorers = Object.entries(silverRewards)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
-
-  const title =
-    kind === 'voting'  ? 'Vote Resolved'
-    : kind === 'game'  ? 'Game Over'
-    : kind === 'prompt'? 'Activity Resolved'
-    : 'Dilemma Revealed';
-
   return (
     <div
       style={{
         flex: 1,
         overflow: 'auto',
-        padding: '32px 24px',
+        padding: '28px 20px 40px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 20,
+        gap: 14,
         color: 'var(--pulse-text-1)',
       }}
     >
-      <div
+      <span
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: 8,
-          padding: '6px 14px',
+          padding: '5px 12px',
           borderRadius: 999,
           background: `${dotColor}1A`,
           border: `1px solid ${dotColor}40`,
-          fontSize: 11,
-          fontWeight: 700,
+          fontSize: 10,
+          fontWeight: 800,
           letterSpacing: 1,
           textTransform: 'uppercase',
           color: dotColor,
         }}
       >
         Completed
+      </span>
+
+      <h1
+        style={{
+          fontSize: 24, fontWeight: 900, margin: 0,
+          textAlign: 'center', fontFamily: 'var(--po-font-display)',
+        }}
+      >
+        {title}
+      </h1>
+
+      <div style={{ width: '100%', maxWidth: 440 }}>
+        <PulseResultContent kind={kind} snapshot={snap} />
       </div>
 
-      <h1 style={{ fontSize: 26, fontWeight: 900, margin: 0, textAlign: 'center' }}>{title}</h1>
-
-      {/* FINALS-style voting includes both a winner and an eliminated runner-up;
-          regular voting only has an eliminated. Show whatever is present. */}
-      {kind === 'voting' && winner && roster[winner] && (
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 12, color: 'var(--pulse-text-3)', margin: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Winner
-          </p>
-          <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--pulse-gold, #ffd700)', margin: '6px 0 0' }}>
-            {roster[winner].personaName}
-          </p>
-        </div>
-      )}
-
-      {kind === 'voting' && eliminated && roster[eliminated] && (
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 12, color: 'var(--pulse-text-3)', margin: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Eliminated
-          </p>
-          <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--pulse-accent)', margin: '6px 0 0' }}>
-            {roster[eliminated].personaName}
-          </p>
-        </div>
-      )}
-
-      {(kind === 'game' || kind === 'dilemma') && winner && roster[winner] && (
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 12, color: 'var(--pulse-text-3)', margin: 0, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Winner
-          </p>
-          <p style={{ fontSize: 20, fontWeight: 800, color: dotColor, margin: '6px 0 0' }}>
-            {roster[winner].personaName}
-          </p>
-        </div>
-      )}
-
-      {topScorers.length > 0 && (
-        <div
-          style={{
-            width: '100%',
-            maxWidth: 360,
-            padding: 16,
-            borderRadius: 14,
-            background: 'var(--pulse-surface-2)',
-            border: '1px solid var(--pulse-border)',
-          }}
-        >
-          <div
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
-              color: 'var(--pulse-text-3)',
-              marginBottom: 10,
-            }}
-          >
-            Top rewards
-          </div>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {topScorers.map(([pid, amt], i) => (
-              <li
-                key={pid}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  fontSize: 13,
-                  color: 'var(--pulse-text-1)',
-                }}
-              >
-                <span>{i + 1}. {roster[pid]?.personaName ?? pid}</span>
-                <span style={{ color: 'var(--pulse-gold, #ffd700)', fontWeight: 700 }}>+{amt} silver</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <p style={{ fontSize: 12, color: 'var(--pulse-text-3)', fontStyle: 'italic', margin: 0, textAlign: 'center' }}>
+      <p
+        style={{
+          marginTop: 4,
+          fontSize: 11, color: 'var(--pulse-text-3)',
+          fontStyle: 'italic', textAlign: 'center',
+        }}
+      >
         Full details in chat.
       </p>
     </div>
