@@ -110,20 +110,30 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
         ? 'pulse-pill-completed-unread'
         : undefined;
 
-  // Unread-completed override — kind-themed, full opacity, "tap me to see
-  // the results" energy. Replaces the dim archive state (which is correct
-  // for read-completed pills, but wrong when there are unclaimed results).
-  // Values tuned to read obviously-distinct from the calm archive state,
-  // not subtle — unread results are the load-bearing signal here.
-  const unreadCompletedStyle = isUnreadCompleted ? {
-    background: `color-mix(in oklch, ${kindColor} 28%, var(--pulse-surface))`,
-    border: `1.5px solid color-mix(in oklch, ${kindColor} 80%, transparent)`,
-    opacity: 1,
-    // Static baseline glow — reliable even when the CSS ambient keyframe
-    // is fighting with framer-motion's whileHover box-shadow. The keyframe
-    // still modulates this on top when it wins; when it doesn't, the pill
-    // still reads as kind-themed and glowing.
-    boxShadow: `0 0 10px color-mix(in oklch, ${kindColor} 40%, transparent)`,
+  // Completed pills always keep kind-color identity — they hold results
+  // the user needs to be able to see and tap. The previous dim/gray
+  // archive state (opacity 0.6, surface bg, text-2 color) read as
+  // "disabled" even when unread. Two registers:
+  //
+  //   - Unread-completed ("results waiting"): strong kind-tinted bg,
+  //     near-solid border, static glow, full opacity.
+  //   - Read-completed ("viewable history"): subtle kind-tint, softer
+  //     border, calmer opacity — but still kind-owned, never gray.
+  //
+  // Both override the lifecycleStyles('completed') defaults.
+  const completedStyle = isCompleted ? {
+    background: isUnreadCompleted
+      ? `color-mix(in oklch, ${kindColor} 28%, var(--pulse-surface))`
+      : `color-mix(in oklch, ${kindColor} 8%, var(--pulse-surface))`,
+    border: isUnreadCompleted
+      ? `1.5px solid color-mix(in oklch, ${kindColor} 80%, transparent)`
+      : `1px solid color-mix(in oklch, ${kindColor} 32%, transparent)`,
+    opacity: isUnreadCompleted ? 1 : 0.85,
+    ...(isUnreadCompleted ? {
+      // Static baseline glow so the kind signal reads even if the
+      // CSS ambient keyframe is fighting with framer-motion.
+      boxShadow: `0 0 10px color-mix(in oklch, ${kindColor} 40%, transparent)`,
+    } : {}),
   } : {};
 
   return (
@@ -141,7 +151,7 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
       // kill whatever else was driving it.
       whileHover={reduce ? undefined : { y: -2 }}
       initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: unreadCompletedStyle.opacity ?? styles.opacity ?? 1, scale: 1 }}
+      animate={{ opacity: completedStyle.opacity ?? styles.opacity ?? 1, scale: 1 }}
       transition={PULSE_SPRING.snappy}
       onClick={onTap}
       style={{
@@ -154,7 +164,9 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
         fontSize: mini ? 10 : 11,
         fontWeight: 700,
         fontFamily: 'var(--po-font-body)',
-        color: isActive || isUnreadCompleted ? kindColor : 'var(--pulse-text-2)',
+        // All completed pills (read or unread) keep kind color on text so
+        // they read as "results for a voting/game/prompt" — never gray.
+        color: isActive || isCompleted ? kindColor : 'var(--pulse-text-2)',
         whiteSpace: 'nowrap',
         position: 'relative',
         letterSpacing: 0.3,
@@ -167,7 +179,7 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
           background: `${kindColor}14`,
           border: `1px solid ${kindColor}40`,
         } : {}),
-        ...unreadCompletedStyle,
+        ...completedStyle,
       }}
     >
       <motion.span
