@@ -1996,3 +1996,21 @@ This document tracks significant architectural decisions, their context, and con
     *   Other shells can opt in incrementally. Vivid could wire its existing `CartridgeTakeover` to read `focusedCartridge` with no server or store changes.
     *   Establishes the precedent for other "attention" surfaces. The comparable PulseShell-local state (`silverTarget`, `dmTarget`, `socialPanelOpen`) is acknowledged in-spec as a migration candidate but deferred — lifting them wasn't load-bearing for this work.
     *   Spec: `docs/superpowers/specs/2026-04-14-pulse-cartridge-overlay-design.md` §1.
+
+## [ADR-131] DeepLinkIntent Delivery Pipeline (Server → SW → Client)
+*   **Date:** 2026-04-15
+*   **Status:** Accepted
+*   **Context:** Phase 4 needed push notifications to deep-link into specific surfaces (DM channel, DM-invite flow, cartridge overlay, elimination/winner reveals) rather than dropping the player into chat-root. The pipeline spans three environments (Workers → service worker → DOM) with different failure modes; a consistent end-to-end contract avoids each environment inventing its own intent shape.
+*   **Decision:**
+    1.  Typed union `DeepLinkIntent` lives in `packages/shared-types/src/push.ts`. Kinds: `main | dm | dm_invite | cartridge_active | cartridge_result | elimination_reveal | winner_reveal`.
+    2.  **Server (`push-triggers.ts`):** `pushToPlayer` / `pushBroadcast` take an optional `intent?: DeepLinkIntent`. Serialized as `payload.intent = JSON.stringify(intent)` — the Web Push payload is `Record<string,string>` so the union must be a single string field. Fact-driven pushes (`handleFactPush`) and phase-driven pushes (`phasePushPayload`) build their own intents; callers pass `undefined` when no intent applies.
+    3.  **Service worker (`sw.ts` + `sw-intent-helpers.ts`):** `parseIntentFromData` validates the incoming string against a `VALID_KINDS` allowlist and returns `null` on malformed input (never throws). The parsed intent is stashed on `notification.data.intent`. On `notificationclick`, the handler focuses an existing same-origin client and `postMessage({ type: 'DEEP_LINK_INTENT', intent })`; for cold-start clients where no window exists, the intent is encoded into the URL via `buildIntentUrl(baseUrl, intent)` which base64-encodes the JSON and appends `?intent=` (or `&intent=`) so the next skill can read it on mount.
+    4.  **Client (`useDeepLinkIntent` hook):** two sources — `?intent=` read on mount (cold-start path), `DEEP_LINK_INTENT` postMessage subscription (warm path). Both call a single `resolve(intent, origin)` callback. Unresolved intents are stashed on the store as `pendingIntent` with `pendingIntentAttempts` + `pendingIntentFirstReceivedAt`; the hook retries bounded by `MAX_ATTEMPTS=3` and `MAX_AGE_MS=10_000` so an intent that arrives before SYNC hydrates still dispatches, but never loops forever.
+    5.  `?intent=` is stripped from history via `replaceState` after consumption so reload doesn't re-fire.
+    6.  `elimination_reveal` carries `dayIndex` (reveal replay key). All three `ELIMINATION` fact emitters now populate `payload.dayIndex` — the GM-inactivity emitter at `l2-day-resolution.ts:186` was backfilled as part of this work.
+*   **Consequences:**
+    *   Single typed contract across Workers, SW, and DOM. New intent kinds require: shared-types union update, server-side construction in `handleFactPush` / `phasePushPayload`, SW allowlist entry, client resolver branch.
+    *   Cold-start and warm-start paths converge on `resolve(intent, 'push')`. Manual UI taps can call the same resolver with `origin: 'manual'` — no intent-source branching in consumers.
+    *   SW failure-to-parse is silent (`null` → no intent on notification), so a malformed server payload degrades to the original no-deep-link behavior, not a broken notification.
+    *   The 10-second / 3-attempt retry bound is a deliberate floor — SYNC hydration can take seconds on a cold start; the bound gives it time but caps the tail.
+    *   Plan: `docs/superpowers/plans/2026-04-14-pulse-phase4-catchup.md` Tasks 8–12.

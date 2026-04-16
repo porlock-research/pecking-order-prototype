@@ -54,3 +54,34 @@ Two compounding bugs:
 **Recommendation:** low urgency — the rule has been a silent no-op for weeks
 and no bugs have surfaced. Fix opportunistically next time someone's in
 this area.
+
+## `finite-narrator-lines-fact-driven.rule` — over-broad file match
+
+**State:** fires on ANY `ChatView.tsx` edit. Phase 4 T13 session (2026-04-15) hit
+it ~6 times while wiring an unread divider (`ChatDivider`) that has nothing to do
+with narrator content. The rule body is useful; the trigger is too broad.
+
+**Fix with `MATCH_CONTENT`:** scope activation to edits that actually touch
+narrator-adjacent code. Suggested content patterns:
+  - `useNarratorLines`
+  - `channels\.filter|Object\.values\(channels\)`
+  - `SOCIAL_INVITE`
+  - `createdBy|memberIds\.length`
+  - `NarratorLine\b`
+
+Keep the file scope (`ChatView.tsx`, `NarratorLine.tsx`, `factToTicker`) as
+`MATCH_PATTERN` for locality, but require `MATCH_CONTENT` match to fire.
+
+## `finite-invite-mode-pending-members.rule` — over-broad file match
+
+**State:** fires on every `push-triggers.ts` edit. Phase 4 T8–T10 (2026-04-15) hit
+it ~5 times while threading `DeepLinkIntent` through push helpers — unrelated to
+channel invite-mode semantics.
+
+**Fix with `MATCH_CONTENT`:** only fire when the edit touches member-list fields
+specifically. Suggested:
+  - `pendingMemberIds`
+  - `channels\[.*\]\.(memberIds|pendingMemberIds)`
+  - `addChannelMember|createChannel\b`
+
+File-path scope remains useful; gate activation on content presence.

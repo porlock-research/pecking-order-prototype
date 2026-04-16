@@ -2543,3 +2543,22 @@ After all tasks complete, verify:
 - [ ] Spec §6 Testing coverage: every bullet has at least one corresponding test task
 
 If any line is un-checkable, return to that task before declaring the plan complete.
+
+## Handoff — 2026-04-15 17:30
+
+**Completed this session:** T8–T13 on branch `feature/pulse-phase4-push-intent` (not merged, not pushed).
+
+| Commit | Task | Notes |
+|---|---|---|
+| `5b07575` | T8 — intent threading through `pushToPlayer` / `pushBroadcast` | clean |
+| `6e9014d` | T9 — fact-push intents (DM/invite/elim/winner) + **`dayIndex` backfill on `l2-day-resolution.ts:186`** | clean |
+| `2446369` | T10 — phase-push intents | clean |
+| `57b0358` | T11 — SW intent parsing + notificationclick routing | clean |
+| `bcf6221` | T12 — `useDeepLinkIntent` hook (URL + postMessage + retry) | clean |
+| `1c3be59` | T13 — `ChatDivider` IO-based unread marker | **flailed on ChatView.tsx integration — review carefully** |
+
+Two commits on the branch (`481a261`, `da15b73`) are from a parallel session working on guardrail infra — not Phase 4 work.
+
+**Next step:** T14–T18 (per-surface UI + PulseShell integration). Start on the **same branch**. **First, spot-check T11/T12/T13 for drift or mistakes** — T13 specifically went through a rollback cycle. Then, for T14–T18, check each surface's current state before executing the plan verbatim — the cartridge overlay shipped after this plan was written and touched pill behavior (`focusedCartridge` slice, pill ignition, `Pill.tsx`, `PulseBar.tsx`). T19 is manual verification for the user.
+
+**State:** working tree clean on `feature/pulse-phase4-push-intent`. No dev server running. `HintChips.test.tsx` still has a pre-existing unrelated failure (documented in memory). game-server 389 tests green, client 108/109 green.
