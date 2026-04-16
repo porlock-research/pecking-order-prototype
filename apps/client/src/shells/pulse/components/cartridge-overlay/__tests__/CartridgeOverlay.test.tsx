@@ -86,6 +86,7 @@ describe('CartridgeOverlay', () => {
       completedCartridges: [{
         kind: 'voting',
         key: 'voting-1-EXECUTIONER',
+        dayIndex: 1,
         completedAt: Date.now(),
         snapshot: { mechanism: 'EXECUTIONER', eliminatedPlayerId: 'p2' },
       }] as any,

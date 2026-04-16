@@ -98,6 +98,8 @@ export interface CompletedCartridge {
   kind: 'voting' | 'game' | 'prompt' | 'dilemma';
   snapshot: any;   // L2 result data (mechanism, gameType, silverRewards, etc.)
   completedAt: number;
+  /** Day this cartridge was completed on (1-indexed). */
+  dayIndex: number;
   key: string;
 }
 
@@ -905,6 +907,7 @@ export const useGameStore = create<GameState>((set) => ({
         kind,
         snapshot: p,
         completedAt: p.completedAt,
+        dayIndex: p.dayIndex,
         key: `${kind}-${p.dayIndex}-${typeKey}`,
       };
     });

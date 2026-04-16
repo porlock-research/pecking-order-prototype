@@ -34,6 +34,24 @@ const ACTION_LABELS: Record<string, string> = {
   START_DILEMMA: 'Dilemma',
 };
 
+/** Build the cartridgeId `${kind}-${dayIndex}-${typeKey}` scheme. */
+function cartridgeIdFor(kind: PillState['kind'], dayIndex: number, typeKey: string | undefined): string {
+  return `${kind}-${dayIndex}-${typeKey || 'UNKNOWN'}`;
+}
+
+function votingTypeKey(c: any): string | undefined {
+  return c?.mechanism || c?.voteType;
+}
+function gameTypeKey(c: any): string | undefined {
+  return c?.gameType;
+}
+function promptTypeKey(c: any): string | undefined {
+  return c?.promptType;
+}
+function dilemmaTypeKey(c: any): string | undefined {
+  return c?.dilemmaType;
+}
+
 export function usePillStates(): PillState[] {
   const voting = useGameStore(s => s.activeVotingCartridge);
   const game = useGameStore(s => s.activeGameCartridge);
@@ -42,93 +60,137 @@ export function usePillStates(): PillState[] {
   const completed = useGameStore(s => s.completedCartridges);
   const manifest = useGameStore(s => s.manifest);
   const dayIndex = useGameStore(s => s.dayIndex);
+  const playerId = useGameStore(s => s.playerId);
 
   return useMemo(() => {
     const pills: PillState[] = [];
+    // Only today's completed cartridges are relevant to the pill bar.
+    // completedCartridges accumulates across the whole game; without this filter
+    // Day 1's pills would bleed into Day 2+.
+    const todayCompleted = (completed ?? []).filter(c => c.dayIndex === dayIndex);
+    const todayCompletedIds = new Set(todayCompleted.map(c => c.key));
 
+    // Active voting
     if (voting) {
+      const typeKey = votingTypeKey(voting);
+      const cartridgeId = cartridgeIdFor('voting', dayIndex, typeKey);
       const totalVoters = voting.eligibleVoters?.length ?? 0;
       const castCount = Object.keys(voting.votes || {}).length;
+      const playerActed = playerId ? Boolean(voting.votes?.[playerId]) : false;
+      const thisCompleted = todayCompletedIds.has(cartridgeId);
       pills.push({
-        id: 'voting',
+        id: cartridgeId,
         kind: 'voting',
-        label: prettyLabel(voting.mechanism || voting.voteType, 'Vote'),
-        lifecycle: voting.phase === 'REVEAL' || voting.phase === 'WINNER' ? 'completed'
-          : castCount > 0 ? 'in-progress'
-          : 'needs-action',
+        label: prettyLabel(typeKey, 'Vote'),
+        lifecycle: thisCompleted || voting.phase === 'REVEAL' || voting.phase === 'WINNER'
+          ? 'completed'
+          : playerActed
+            ? 'in-progress'
+            : 'needs-action',
         progress: totalVoters > 0 ? `${castCount}/${totalVoters}` : undefined,
-        playerActed: false, // Will be refined when we have playerId context
+        playerActed,
         cartridgeData: voting,
       });
     }
 
+    // Active game
     if (game) {
-      // Game lifecycle detection varies by cartridge type:
-      //   - Sync decision games expose `phase` ('COLLECTING'/'REVEAL'/etc.)
-      //   - Async per-player games (trivia, arcade) expose per-player `status`
-      //     ('NOT_STARTED'/'PLAYING'/'COMPLETED') and `allPlayerResults` on finish
-      //   - completedCartridges catches any game that L2 has already finalized
-      const gameInCompleted = completed?.some(c => c.kind === 'game');
+      const typeKey = gameTypeKey(game);
+      const cartridgeId = cartridgeIdFor('game', dayIndex, typeKey);
+      const thisCompleted = todayCompletedIds.has(cartridgeId);
+      // Async games (trivia/arcade) expose per-player `status` and
+      // `allPlayerResults` on completion; sync-decision games expose `phase`.
+      // Match today's completedCartridges entry by exact cartridgeId — the
+      // previous `some(c.kind === 'game')` check was too broad and misclassified
+      // Day N+1's active game as completed if any earlier game finished.
       const gameLifecycle: PillLifecycle =
-        game.phase === 'COMPLETED' || game.phase === 'REVEAL'
+        thisCompleted
+          || game.phase === 'COMPLETED' || game.phase === 'REVEAL'
           || game.status === 'COMPLETED' || game.allPlayerResults
-          || gameInCompleted
           ? 'completed'
-        : game.phase === 'PLAYING' || game.phase === 'ACTIVE'
-          || game.status === 'PLAYING'
+        : game.phase === 'PLAYING' || game.phase === 'ACTIVE' || game.status === 'PLAYING'
           ? 'in-progress'
         : 'just-started';
 
       pills.push({
-        id: 'game',
+        id: cartridgeId,
         kind: 'game',
-        label: prettyLabel(game.gameType, 'Game'),
+        label: prettyLabel(typeKey, 'Game'),
         lifecycle: gameLifecycle,
         cartridgeData: game,
       });
     }
 
+    // Active prompt
     if (prompt) {
+      const typeKey = promptTypeKey(prompt);
+      const cartridgeId = cartridgeIdFor('prompt', dayIndex, typeKey);
+      const thisCompleted = todayCompletedIds.has(cartridgeId);
+      const playerActed = playerId
+        ? Boolean(prompt.stances?.[playerId] || prompt.responses?.[playerId] || prompt.submissions?.[playerId])
+        : false;
       pills.push({
-        id: 'prompt',
+        id: cartridgeId,
         kind: 'prompt',
-        label: prettyLabel(prompt.promptType, 'Activity'),
-        lifecycle: prompt.phase === 'RESULTS' ? 'completed'
-          : 'needs-action',
+        label: prettyLabel(typeKey, 'Activity'),
+        lifecycle: thisCompleted || prompt.phase === 'RESULTS'
+          ? 'completed'
+          : playerActed
+            ? 'in-progress'
+            : 'needs-action',
+        playerActed,
         cartridgeData: prompt,
       });
     }
 
+    // Active dilemma
     if (dilemma) {
+      const typeKey = dilemmaTypeKey(dilemma);
+      const cartridgeId = cartridgeIdFor('dilemma', dayIndex, typeKey);
+      const thisCompleted = todayCompletedIds.has(cartridgeId);
+      const playerActed = playerId ? Boolean(dilemma.decisions?.[playerId]) : false;
       pills.push({
-        id: 'dilemma',
+        id: cartridgeId,
         kind: 'dilemma',
-        label: prettyLabel(dilemma.dilemmaType, 'Dilemma'),
-        lifecycle: dilemma.phase === 'REVEAL' ? 'completed'
-          : 'needs-action',
+        label: prettyLabel(typeKey, 'Dilemma'),
+        lifecycle: thisCompleted || dilemma.phase === 'REVEAL'
+          ? 'completed'
+          : playerActed
+            ? 'in-progress'
+            : 'needs-action',
+        playerActed,
         cartridgeData: dilemma,
       });
     }
 
-    // Add completed cartridges not already represented
-    if (completed) {
-      for (const c of completed) {
-        const existingId = c.kind === 'voting' ? 'voting' : c.kind;
-        if (!pills.some(p => p.id === existingId)) {
-          const typeKey = c.snapshot?.mechanism || c.snapshot?.gameType || c.snapshot?.promptType || c.snapshot?.dilemmaType || '';
-          pills.push({
-            id: `completed-${c.kind}-${typeKey}`,
-            kind: c.kind,
-            label: prettyLabel(typeKey, c.kind),
-            lifecycle: 'completed',
-          });
-        }
+    // Today's completed cartridges not already represented by an active slot
+    // (active slots keep their refs live per ADR-126 result-hold, but can be
+    // absent mid-day-transition; render completed-only pills to fill the gap).
+    for (const c of todayCompleted) {
+      if (!pills.some(p => p.id === c.key)) {
+        const typeKey =
+          c.snapshot?.mechanism ||
+          c.snapshot?.voteType ||
+          c.snapshot?.gameType ||
+          c.snapshot?.promptType ||
+          c.snapshot?.dilemmaType ||
+          '';
+        pills.push({
+          id: c.key,
+          kind: c.kind,
+          label: prettyLabel(typeKey, c.kind),
+          lifecycle: 'completed',
+        });
       }
     }
 
-    // Timeline-driven pills from current day (PRE_SCHEDULED only — ADMIN events have no fixed times).
-    // Emits 'upcoming' for future events; 'starting' for past-due events whose active slot
-    // hasn't populated yet (ADR-128 SYNC gap).
+    // Timeline-driven pills from current day (PRE_SCHEDULED only — ADMIN events
+    // have no fixed times). Emits 'upcoming' for future events; 'starting' for
+    // past-due events whose active slot hasn't populated yet (ADR-128 SYNC gap).
+    //
+    // Suppress any upcoming/starting pill whose kind already has an ACTIVE or
+    // COMPLETED representation (completed included: a Day N completed cartridge
+    // makes any past-due timeline entry for that kind redundant).
     const day = manifest?.days?.[dayIndex - 1] ?? manifest?.days?.[dayIndex];
     if (day?.timeline && manifest?.scheduling === 'PRE_SCHEDULED') {
       const now = Date.now();
@@ -141,11 +203,8 @@ export function usePillStates(): PillState[] {
         }
         if (eventTime === null) continue;
 
-        // Skip if an active pill of this kind already exists.
-        const alreadyActiveOfKind = pills.some(
-          p => p.kind === kind && p.lifecycle !== 'completed' && p.lifecycle !== 'upcoming',
-        );
-        if (alreadyActiveOfKind) continue;
+        const alreadyRepresented = pills.some(p => p.kind === kind);
+        if (alreadyRepresented) continue;
 
         if (eventTime > now) {
           pills.push({
@@ -156,10 +215,6 @@ export function usePillStates(): PillState[] {
             timeRemaining: Math.floor((eventTime - now) / 1000),
           });
         } else {
-          // Past-due event with no active slot populated yet — ADR-128 SYNC gap.
-          // Emit a 'starting' pill so the overlay can render the info splash with
-          // "Starting now…" microcopy; it auto-swaps to the playable view when
-          // the active slot arrives on the next SYNC.
           pills.push({
             id: `starting-${ev.action}-${ev.time}`,
             kind,
@@ -171,5 +226,5 @@ export function usePillStates(): PillState[] {
     }
 
     return pills;
-  }, [voting, game, prompt, dilemma, completed, manifest, dayIndex]);
+  }, [voting, game, prompt, dilemma, completed, manifest, dayIndex, playerId]);
 }
