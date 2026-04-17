@@ -1,0 +1,30 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/client/src/cartridges/.+\.tsx?$
+MATCH_CONTENT: (skin-[a-z]|var\(--pulse-|var\(--vivid-|bg-glass|text-glow)
+ADVISORY: |
+  Cartridge files must be SHELL-AGNOSTIC. The tokens you're using belong
+  to a specific shell:
+
+    skin-*      → Tailwind preset bound to a shell (Classic/Vivid-era)
+    --pulse-*   → Pulse shell theme
+    --vivid-*   → Vivid shell theme
+    bg-glass    → legacy glass class
+    text-glow   → legacy glow class
+
+  Use the `--po-*` design contract instead — each shell maps it to its
+  own tokens. Current --po-* keys (see apps/client/src/shells/pulse/pulse-theme.css):
+
+    --po-bg-deep, --po-bg-panel, --po-bg-input, --po-bg-bubble, --po-bg-glass
+    --po-text, --po-text-dim
+    --po-gold, --po-pink, --po-orange, --po-green, --po-blue, --po-violet
+    --po-border
+    --po-font-display, --po-font-body
+
+  For color mixing use `color-mix(in oklch, var(--po-<key>) N%, transparent)`.
+  If you need a tone that's not mapped, extend the --po-* contract in ALL
+  shell theme files (classic, vivid, pulse) — never inline a shell-specific
+  token in a cartridge.
+
+  ALSO: do NOT use native `<select>` for persona pickers. Always a custom
+  avatar-row / grid — personas must be visible. See PersonaPicker in
+  apps/client/src/cartridges/prompts/PromptShell.tsx for the shared pattern.
