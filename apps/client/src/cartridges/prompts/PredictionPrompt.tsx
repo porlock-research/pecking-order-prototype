@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
-import { Crosshair } from 'lucide-react';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import {
+  PROMPT_ACCENT,
+  PromptShell,
+  PersonaPicker,
+  LockedInReceipt,
+  WinnerSpread,
+  SilverEarned,
+  SectionLabel,
+} from './PromptShell';
 
 interface PredictionCartridge {
   promptType: 'PREDICTION';
@@ -25,163 +33,205 @@ interface PredictionPromptProps {
   };
 }
 
-export default function PredictionPrompt({ cartridge, playerId, roster, engine }: PredictionPromptProps) {
+export default function PredictionPrompt({
+  cartridge,
+  playerId,
+  roster,
+  engine,
+}: PredictionPromptProps) {
   const { promptText, phase, eligibleVoters, responses, results } = cartridge;
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const hasResponded = playerId in responses;
   const respondedCount = Object.keys(responses).length;
   const totalEligible = eligibleVoters.length;
+  const accent = PROMPT_ACCENT.PREDICTION;
 
   const name = (id: string) => roster[id]?.personaName || id;
+  const firstName = (id: string) => name(id).split(' ')[0];
 
-  const handleSubmit = (targetId: string) => {
-    if (hasResponded || phase !== PromptPhases.ACTIVE) return;
-    setSelectedTarget(targetId);
-    engine.sendActivityAction(ActivityEvents.PROMPT.SUBMIT, { targetId });
+  const handleConfirm = () => {
+    if (!selectedTarget || hasResponded || phase !== PromptPhases.ACTIVE) return;
+    engine.sendActivityAction(ActivityEvents.PROMPT.SUBMIT, { targetId: selectedTarget });
   };
 
-  const targets = eligibleVoters.filter(id => id !== playerId);
+  const targets = eligibleVoters.filter((id) => id !== playerId);
+
+  const status =
+    phase === PromptPhases.RESULTS
+      ? 'Results'
+      : respondedCount === totalEligible
+        ? 'All in'
+        : `${respondedCount}/${totalEligible} in`;
 
   return (
-    <div className="mx-4 my-2 rounded-xl bg-glass border border-white/[0.06] overflow-hidden slide-up-in shadow-card">
-      {/* Header */}
-      <div className="px-4 py-3 bg-skin-pink/5 border-b border-white/[0.06] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-2.5 py-0.5 text-skin-pink uppercase tracking-widest">
-            Prediction
-          </span>
-          <span className="text-xs font-mono text-skin-dim">
-            {respondedCount}/{totalEligible} responded
-          </span>
-        </div>
-        {hasResponded && (
-          <span className="text-[10px] font-mono text-skin-green uppercase tracking-wider">Submitted</span>
-        )}
-      </div>
-
-      {/* Active Phase */}
-      {phase === PromptPhases.ACTIVE && (
-        <div className="p-4 space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
-              <Crosshair size={14} className="text-skin-pink" />
-            </div>
-            <p className="text-sm font-bold text-skin-base leading-relaxed pt-1">
-              {promptText}
-            </p>
-          </div>
-
-          {!hasResponded ? (
-            <div className="grid grid-cols-1 gap-2">
-              {targets.map(targetId => {
-                const player = roster[targetId];
-                if (!player) return null;
-                const isSelected = selectedTarget === targetId;
-                return (
-                  <button
-                    key={targetId}
-                    onClick={() => handleSubmit(targetId)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all text-sm
-                      ${isSelected
-                        ? 'bg-skin-pink/20 border-skin-pink/50 text-skin-pink'
-                        : 'bg-white/[0.03] border-white/[0.06] text-skin-base hover:bg-white/[0.06] hover:border-white/10 active:scale-[0.98]'
-                      }`}
-                  >
-                    <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={32} />
-                    <span className="font-medium">{player.personaName}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-skin-dim">
-                You predicted <span className="font-bold text-skin-pink">{name(responses[playerId])}</span>
-              </p>
-              <p className="text-xs text-skin-dim mt-1 font-mono">Waiting for others...</p>
-            </div>
-          )}
-        </div>
+    <PromptShell
+      type="PREDICTION"
+      accentColor={accent}
+      status={status}
+      statusBadge={phase === PromptPhases.ACTIVE && hasResponded ? 'Submitted' : undefined}
+      promptText={promptText}
+      helper={
+        phase === PromptPhases.ACTIVE && !hasResponded
+          ? 'Who’s it going to be? Matching the crowd earns bonus silver.'
+          : undefined
+      }
+      eligibleIds={phase === PromptPhases.ACTIVE ? eligibleVoters : undefined}
+      respondedIds={phase === PromptPhases.ACTIVE ? Object.keys(responses) : undefined}
+      roster={roster}
+    >
+      {phase === PromptPhases.ACTIVE && !hasResponded && (
+        <PersonaPicker
+          candidates={targets}
+          roster={roster}
+          accentColor={accent}
+          selectedId={selectedTarget}
+          onSelect={setSelectedTarget}
+          ctaLabel="Predict"
+          onConfirm={handleConfirm}
+        />
       )}
 
-      {/* Results Phase */}
-      {phase === PromptPhases.RESULTS && results && (
-        <div className="p-4 space-y-4 animate-fade-in">
-          <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
-            Predictions
-          </p>
+      {phase === PromptPhases.ACTIVE && hasResponded && (
+        <LockedInReceipt
+          accentColor={accent}
+          label="You predicted"
+          value={firstName(responses[playerId])}
+        />
+      )}
 
+      {phase === PromptPhases.RESULTS && results && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {results.mostPicked && (
-            <div className="text-center py-3 rounded-lg bg-skin-pink/5 border border-skin-pink/10">
-              <p className="text-xs text-skin-dim uppercase tracking-wider mb-1">Most Predicted</p>
-              <p className="text-lg font-bold text-skin-pink">
-                {name(results.mostPicked.playerId)}
-              </p>
-              <p className="text-xs text-skin-dim">
-                {results.mostPicked.count} {results.mostPicked.count === 1 ? 'prediction' : 'predictions'}
-              </p>
-            </div>
+            <WinnerSpread
+              player={roster[results.mostPicked.playerId]}
+              accentColor={accent}
+              label="Most Predicted"
+              name={firstName(results.mostPicked.playerId)}
+              sublabel={`${results.mostPicked.count} ${
+                results.mostPicked.count === 1 ? 'vote' : 'votes'
+              }`}
+            />
           )}
 
           {results.consensusVoters.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-skin-dim uppercase tracking-wider font-mono">Consensus Bonus (+10 silver)</p>
-              <div className="flex flex-wrap gap-1.5">
-                {results.consensusVoters.map(id => (
-                  <span key={id} className={`px-2.5 py-1 rounded-lg text-xs font-mono border ${id === playerId ? 'bg-skin-pink/10 border-skin-pink/30 text-skin-pink' : 'bg-white/[0.02] border-white/[0.04] text-skin-dim'}`}>
-                    {name(id)}
-                  </span>
-                ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <SectionLabel accentColor={accent}>With the crowd · +10 each</SectionLabel>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {results.consensusVoters.map((id) => {
+                  const p = roster[id];
+                  const isMe = id === playerId;
+                  return (
+                    <span
+                      key={id}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '4px 10px 4px 4px',
+                        borderRadius: 9999,
+                        background: isMe
+                          ? `color-mix(in oklch, ${accent} 18%, transparent)`
+                          : 'var(--po-bg-glass, rgba(255,255,255,0.04))',
+                        border: `1px solid color-mix(in oklch, ${accent} ${
+                          isMe ? 42 : 18
+                        }%, transparent)`,
+                      }}
+                    >
+                      <PersonaAvatar
+                        avatarUrl={p?.avatarUrl}
+                        personaName={p?.personaName}
+                        size={22}
+                      />
+                      <span
+                        style={{
+                          fontFamily: 'var(--po-font-body)',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: isMe ? accent : 'var(--po-text)',
+                        }}
+                      >
+                        {isMe ? 'You' : firstName(id)}
+                      </span>
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* All predictions */}
-          <div className="space-y-1 pt-1">
-            <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
-              All predictions
-            </p>
-            {Object.entries(responses).map(([voterId, targetId]) => {
-              const voter = roster[voterId];
-              const target = roster[targetId];
-              const isMe = voterId === playerId;
-              return (
-                <div
-                  key={voterId}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${isMe ? 'bg-skin-gold/5 border border-skin-gold/15' : ''}`}
-                >
-                  <PersonaAvatar
-                    avatarUrl={voter?.avatarUrl}
-                    personaName={voter?.personaName}
-                    size={20}
-                  />
-                  <span className={`text-xs ${isMe ? 'font-bold text-skin-gold' : 'text-skin-dim'}`}>
-                    {isMe ? 'You' : (voter?.personaName || voterId)}
-                  </span>
-                  <span className="text-xs text-skin-dim/40 mx-1">&rarr;</span>
-                  <PersonaAvatar
-                    avatarUrl={target?.avatarUrl}
-                    personaName={target?.personaName}
-                    size={20}
-                  />
-                  <span className="text-xs text-skin-dim">
-                    {target?.personaName || targetId}
-                  </span>
-                </div>
-              );
-            })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <SectionLabel>All predictions</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {Object.entries(responses).map(([voterId, targetId]) => {
+                const voter = roster[voterId];
+                const target = roster[targetId];
+                const isMe = voterId === playerId;
+                return (
+                  <div
+                    key={voterId}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '6px 10px',
+                      borderRadius: 10,
+                      background: isMe
+                        ? `color-mix(in oklch, ${accent} 10%, transparent)`
+                        : 'transparent',
+                      border: isMe
+                        ? `1px solid color-mix(in oklch, ${accent} 26%, transparent)`
+                        : '1px solid transparent',
+                    }}
+                  >
+                    <PersonaAvatar
+                      avatarUrl={voter?.avatarUrl}
+                      personaName={voter?.personaName}
+                      size={28}
+                    />
+                    <span
+                      style={{
+                        fontFamily: 'var(--po-font-body)',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: isMe ? accent : 'var(--po-text)',
+                      }}
+                    >
+                      {isMe ? 'You' : firstName(voterId)}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: 'var(--po-font-display)',
+                        fontSize: 13,
+                        color: 'var(--po-text-dim)',
+                        margin: '0 2px',
+                      }}
+                    >
+                      →
+                    </span>
+                    <PersonaAvatar
+                      avatarUrl={target?.avatarUrl}
+                      personaName={target?.personaName}
+                      size={28}
+                    />
+                    <span
+                      style={{
+                        fontFamily: 'var(--po-font-body)',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: 'var(--po-text)',
+                      }}
+                    >
+                      {firstName(targetId)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {results.silverRewards[playerId] != null && (
-            <div className="text-center py-2">
-              <p className="text-xs font-mono text-skin-dim uppercase tracking-widest mb-1">You Earned</p>
-              <p className="text-2xl font-bold font-mono text-skin-gold text-glow">
-                +{results.silverRewards[playerId]} silver
-              </p>
-            </div>
-          )}
+          <SilverEarned amount={results.silverRewards[playerId] ?? 0} />
         </div>
       )}
-    </div>
+    </PromptShell>
   );
 }

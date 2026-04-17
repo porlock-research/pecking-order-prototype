@@ -78,9 +78,9 @@ export default function GiftOrGriefInput({
           <span
             style={{
               fontFamily: 'var(--po-font-display)',
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: 700,
-              letterSpacing: '0.18em',
+              letterSpacing: '0.22em',
               color: 'var(--po-text-dim)',
               textTransform: 'uppercase',
             }}
@@ -90,9 +90,9 @@ export default function GiftOrGriefInput({
           <span
             style={{
               fontFamily: 'var(--po-font-display)',
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: 700,
-              letterSpacing: -0.3,
+              letterSpacing: -0.4,
               color: accentColor,
             }}
           >

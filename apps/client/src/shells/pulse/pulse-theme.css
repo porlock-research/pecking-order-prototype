@@ -60,7 +60,12 @@
   --po-text-dim: var(--pulse-text-3);
   --po-gold: var(--pulse-gold);
   --po-pink: var(--pulse-accent);
+  --po-orange: var(--pulse-nudge);
+  --po-green: var(--pulse-vote);
+  --po-blue: var(--pulse-prompt);
+  --po-violet: var(--pulse-dilemma);
   --po-border: var(--pulse-border);
+  --po-bg-glass: var(--pulse-surface-2);
   /* Typography — Clash Display (display) + Satoshi (body).
      Display: reality-TV title card energy — bold, modular, character-rich.
      Body: clean geometric sans with warmth, not IBM-Plex austere.

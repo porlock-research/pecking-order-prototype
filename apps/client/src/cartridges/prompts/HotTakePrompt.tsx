@@ -1,8 +1,14 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
-import { Flame } from 'lucide-react';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import {
+  PROMPT_ACCENT,
+  PromptShell,
+  LockedInReceipt,
+  SilverEarned,
+  SectionLabel,
+} from './PromptShell';
 
 interface HotTakeCartridge {
   promptType: 'HOT_TAKE';
@@ -33,6 +39,7 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
   const hasResponded = playerId in stances;
   const respondedCount = Object.keys(stances).length;
   const totalEligible = eligibleVoters.length;
+  const accent = PROMPT_ACCENT.HOT_TAKE;
   const reduce = useReducedMotion();
 
   const handleStance = (stance: 'AGREE' | 'DISAGREE') => {
@@ -40,242 +47,321 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
     engine.sendActivityAction(ActivityEvents.HOTTAKE.RESPOND, { stance });
   };
 
+  const status =
+    phase === PromptPhases.RESULTS
+      ? 'Results'
+      : respondedCount === totalEligible
+        ? 'All in'
+        : `${respondedCount}/${totalEligible} in`;
+
   return (
-    <motion.div
-      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: [0.2, 0.9, 0.3, 1] }}
-      className="mx-4 my-2 rounded-xl bg-skin-glass border border-skin-base overflow-hidden shadow-card"
+    <PromptShell
+      type="HOT_TAKE"
+      accentColor={accent}
+      status={status}
+      statusBadge={phase === PromptPhases.ACTIVE && hasResponded ? 'Submitted' : undefined}
+      promptText={promptText}
+      helper={
+        phase === PromptPhases.ACTIVE && !hasResponded
+          ? 'Pick a side — being in the minority earns bonus silver.'
+          : undefined
+      }
+      eligibleIds={phase === PromptPhases.ACTIVE ? eligibleVoters : undefined}
+      respondedIds={phase === PromptPhases.ACTIVE ? Object.keys(stances) : undefined}
+      roster={roster}
     >
-      {/* Header */}
-      <div className="px-4 py-3 bg-skin-pink/[0.06] border-b border-skin-base flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-display tracking-widest bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-3 py-0.5 text-skin-pink uppercase font-bold">
-            Hot Take
-          </span>
-          <span className="text-xs font-display tracking-wide text-skin-dim tabular-nums">
-            {respondedCount}/{totalEligible} responded
-          </span>
-        </div>
-        {hasResponded && (
-          <motion.span
-            initial={reduce ? undefined : { opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.25 }}
-            className="text-[10px] font-display tracking-widest text-skin-green uppercase font-bold"
-          >
-            Submitted
-          </motion.span>
-        )}
-      </div>
-
-      {/* Active Phase */}
-      {phase === PromptPhases.ACTIVE && (
-        <div className="p-5 space-y-5">
-          {/* Prompt statement — hero surface */}
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-skin-pink/10 border border-skin-pink/25 flex items-center justify-center shrink-0 shadow-[0_0_14px_color-mix(in_oklch,var(--po-pink)_25%,transparent)]">
-              <Flame size={18} strokeWidth={2.25} className="text-skin-pink" />
-            </div>
-            <p
-              className="font-display text-skin-base leading-snug italic pt-1"
-              style={{ fontSize: 'clamp(16px, 4vw, 19px)', letterSpacing: -0.2 }}
-            >
-              &ldquo;{promptText}&rdquo;
-            </p>
-          </div>
-
-          {!hasResponded ? (
-            <div className="grid grid-cols-2 gap-3">
-              {/* AGREE — pre-colored green tint, not neutral white */}
-              <motion.button
-                onClick={() => handleStance('AGREE')}
-                whileTap={reduce ? undefined : { scale: 0.96 }}
-                whileHover={reduce ? undefined : { y: -2 }}
-                className="px-4 py-4 rounded-lg border bg-skin-green/[0.06] border-skin-green/30 text-skin-base hover:bg-skin-green/15 hover:border-skin-green/60 transition-colors text-sm font-bold text-center font-display uppercase tracking-wide"
-              >
-                Agree
-              </motion.button>
-              {/* DISAGREE — pre-colored pink tint */}
-              <motion.button
-                onClick={() => handleStance('DISAGREE')}
-                whileTap={reduce ? undefined : { scale: 0.96 }}
-                whileHover={reduce ? undefined : { y: -2 }}
-                className="px-4 py-4 rounded-lg border bg-skin-pink/[0.06] border-skin-pink/30 text-skin-base hover:bg-skin-pink/15 hover:border-skin-pink/60 transition-colors text-sm font-bold text-center font-display uppercase tracking-wide"
-              >
-                Disagree
-              </motion.button>
-            </div>
-          ) : (
-            <motion.div
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="text-center py-3"
-            >
-              <p className="text-sm text-skin-dim">
-                You voted{' '}
-                <span
-                  className={
-                    stances[playerId] === 'AGREE'
-                      ? 'font-bold text-skin-green font-display tracking-wide'
-                      : 'font-bold text-skin-pink font-display tracking-wide'
-                  }
-                >
-                  {stances[playerId]}
-                </span>
-              </p>
-              <p className="text-xs text-skin-dim mt-1.5 font-display tracking-wider uppercase opacity-75">
-                Waiting for others…
-              </p>
-            </motion.div>
-          )}
+      {phase === PromptPhases.ACTIVE && !hasResponded && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <StanceButton
+            onClick={() => handleStance('AGREE')}
+            label="Agree"
+            color="var(--po-green)"
+          />
+          <StanceButton
+            onClick={() => handleStance('DISAGREE')}
+            label="Disagree"
+            color="var(--po-pink)"
+          />
         </div>
       )}
 
-      {/* Results Phase */}
+      {phase === PromptPhases.ACTIVE && hasResponded && (
+        <LockedInReceipt
+          accentColor={stances[playerId] === 'AGREE' ? 'var(--po-green)' : 'var(--po-pink)'}
+          label="You voted"
+          value={stances[playerId] === 'AGREE' ? 'Agree' : 'Disagree'}
+        />
+      )}
+
       {phase === PromptPhases.RESULTS && results && (
-        <motion.div
-          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="p-5 space-y-5"
-        >
-          {/* Prompt restated */}
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-skin-pink/10 border border-skin-pink/25 flex items-center justify-center shrink-0">
-              <Flame size={18} strokeWidth={2.25} className="text-skin-pink" />
-            </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <StanceBar
+            leftLabel="Agree"
+            leftCount={results.agreeCount}
+            rightLabel="Disagree"
+            rightCount={results.disagreeCount}
+            leftColor="var(--po-green)"
+            rightColor="var(--po-pink)"
+            minority={
+              results.minorityStance === 'AGREE'
+                ? 'left'
+                : results.minorityStance === 'DISAGREE'
+                  ? 'right'
+                  : null
+            }
+            reduce={reduce ?? false}
+          />
+
+          {results.minorityStance && (
             <p
-              className="font-display text-skin-base leading-snug italic pt-1"
-              style={{ fontSize: 'clamp(16px, 4vw, 19px)', letterSpacing: -0.2 }}
+              style={{
+                margin: 0,
+                textAlign: 'center',
+                fontFamily: 'var(--po-font-display)',
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: 'var(--po-gold)',
+              }}
             >
-              &ldquo;{results.statement || promptText}&rdquo;
+              Minority bonus · {results.minorityStance === 'AGREE' ? 'Agree' : 'Disagree'} · +10 silver
             </p>
-          </div>
-
-          <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-widest font-display">
-            Results
-          </p>
-
-          <div className="space-y-2">
-            {(() => {
-              const total = results.agreeCount + results.disagreeCount;
-              const pctAgree = total > 0 ? Math.round((results.agreeCount / total) * 100) : 50;
-              const pctDisagree = 100 - pctAgree;
-              const agreeIsMinority = results.minorityStance === 'AGREE';
-              const disagreeIsMinority = results.minorityStance === 'DISAGREE';
-              return (
-                <>
-                  <div className="flex justify-between text-xs font-display tracking-wide uppercase text-skin-dim tabular-nums">
-                    <span>Agree ({results.agreeCount})</span>
-                    <span>Disagree ({results.disagreeCount})</span>
-                  </div>
-                  <div className="flex rounded-lg overflow-hidden h-9 border border-skin-base">
-                    <motion.div
-                      initial={reduce ? { width: `${pctAgree}%` } : { width: 0 }}
-                      animate={{ width: `${pctAgree}%` }}
-                      transition={{ duration: 0.6, ease: 'easeOut', delay: 0.15 }}
-                      className={`flex items-center justify-center text-xs font-display font-bold tracking-wide ${
-                        agreeIsMinority
-                          ? 'bg-skin-gold/30 text-skin-gold'
-                          : 'bg-skin-green/20 text-skin-green'
-                      }`}
-                    >
-                      {pctAgree > 10 ? `${pctAgree}%` : ''}
-                    </motion.div>
-                    <motion.div
-                      initial={reduce ? { width: `${pctDisagree}%` } : { width: 0 }}
-                      animate={{ width: `${pctDisagree}%` }}
-                      transition={{ duration: 0.6, ease: 'easeOut', delay: 0.15 }}
-                      className={`flex items-center justify-center text-xs font-display font-bold tracking-wide ${
-                        disagreeIsMinority
-                          ? 'bg-skin-gold/30 text-skin-gold'
-                          : 'bg-skin-pink/20 text-skin-pink'
-                      }`}
-                    >
-                      {pctDisagree > 10 ? `${pctDisagree}%` : ''}
-                    </motion.div>
-                  </div>
-                  {results.minorityStance && (
-                    <p className="text-center text-xs font-display tracking-wider uppercase text-skin-gold font-bold">
-                      Minority bonus: {results.minorityStance} (+10 silver)
-                    </p>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-
-          {/* Individual stances — who said what */}
-          <div className="space-y-1 pt-2">
-            <p className="text-[10px] font-display tracking-[0.2em] uppercase text-skin-dim/60 text-center mb-2 font-bold">
-              Who said what
-            </p>
-            {Object.keys(stances).length === 0 && (
-              <p className="text-xs text-skin-dim/50 text-center py-2 italic">
-                No responses
-              </p>
-            )}
-            {Object.entries(stances).map(([pid, stance]) => {
-              const player = roster[pid];
-              const isMe = pid === playerId;
-              return (
-                <div
-                  key={pid}
-                  className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition-colors ${
-                    isMe ? 'bg-skin-gold/[0.08] border border-skin-gold/20' : ''
-                  }`}
-                >
-                  <PersonaAvatar
-                    avatarUrl={player?.avatarUrl}
-                    personaName={player?.personaName}
-                    size={22}
-                  />
-                  <span
-                    className={`text-xs flex-1 ${
-                      isMe ? 'font-bold text-skin-gold' : 'text-skin-dim'
-                    }`}
-                  >
-                    {isMe ? 'You' : player?.personaName || pid}
-                  </span>
-                  <span
-                    className={`text-xs font-display font-bold tracking-wide ${
-                      stance === 'AGREE' ? 'text-skin-green' : 'text-skin-pink'
-                    }`}
-                  >
-                    {stance}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Silver reward — hero moment */}
-          {results.silverRewards[playerId] != null && (
-            <motion.div
-              initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
-              animate={reduce ? { opacity: 1 } : { opacity: 1, scale: [0.9, 1.08, 1] }}
-              transition={{ duration: 0.55, times: [0, 0.55, 1], delay: 0.4 }}
-              className="text-center py-3"
-            >
-              <p className="text-[10px] font-display tracking-[0.24em] uppercase text-skin-dim mb-1.5 font-bold">
-                You Earned
-              </p>
-              <p
-                className="font-display font-bold text-skin-gold"
-                style={{
-                  fontSize: 'clamp(28px, 7vw, 36px)',
-                  letterSpacing: -0.8,
-                  textShadow: '0 0 24px color-mix(in oklch, var(--po-gold) 40%, transparent)',
-                }}
-              >
-                +{results.silverRewards[playerId]} silver
-              </p>
-            </motion.div>
           )}
-        </motion.div>
+
+          {Object.keys(stances).length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <SectionLabel>Who said what</SectionLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {Object.entries(stances).map(([pid, stance]) => {
+                  const player = roster[pid];
+                  const isMe = pid === playerId;
+                  const stanceColor = stance === 'AGREE' ? 'var(--po-green)' : 'var(--po-pink)';
+                  return (
+                    <StanceRow
+                      key={pid}
+                      player={player}
+                      isMe={isMe}
+                      name={player?.personaName || pid}
+                      tagLabel={stance === 'AGREE' ? 'Agree' : 'Disagree'}
+                      tagColor={stanceColor}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <SilverEarned amount={results.silverRewards[playerId] ?? 0} />
+        </div>
       )}
-    </motion.div>
+    </PromptShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Local primitives                                                   */
+/* ------------------------------------------------------------------ */
+
+function StanceButton({
+  onClick,
+  label,
+  color,
+}: {
+  onClick: () => void;
+  label: string;
+  color: string;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.button
+      onClick={onClick}
+      whileTap={reduce ? undefined : { scale: 0.96 }}
+      whileHover={reduce ? undefined : { y: -2 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      style={{
+        padding: '18px 12px',
+        borderRadius: 14,
+        background: `color-mix(in oklch, ${color} 10%, var(--po-bg-glass, rgba(255,255,255,0.03)))`,
+        border: `1.5px solid color-mix(in oklch, ${color} 38%, transparent)`,
+        cursor: 'pointer',
+        fontFamily: 'var(--po-font-display)',
+        fontSize: 15,
+        fontWeight: 800,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        color: color,
+        boxShadow: `0 0 14px color-mix(in oklch, ${color} 18%, transparent)`,
+        transition: 'background 0.2s, border-color 0.2s, box-shadow 0.2s',
+      }}
+    >
+      {label}
+    </motion.button>
+  );
+}
+
+function StanceBar({
+  leftLabel,
+  leftCount,
+  rightLabel,
+  rightCount,
+  leftColor,
+  rightColor,
+  minority,
+  reduce,
+}: {
+  leftLabel: string;
+  leftCount: number;
+  rightLabel: string;
+  rightCount: number;
+  leftColor: string;
+  rightColor: string;
+  minority: 'left' | 'right' | null;
+  reduce: boolean;
+}) {
+  const total = leftCount + rightCount;
+  const pctLeft = total > 0 ? Math.round((leftCount / total) * 100) : 50;
+  const pctRight = 100 - pctLeft;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        <span style={{ color: leftColor }}>
+          {leftLabel} · {leftCount}
+        </span>
+        <span style={{ color: rightColor }}>
+          {rightCount} · {rightLabel}
+        </span>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          height: 36,
+          borderRadius: 10,
+          overflow: 'hidden',
+          border: '1px solid var(--po-border, rgba(255,255,255,0.08))',
+        }}
+      >
+        <motion.div
+          initial={reduce ? { width: `${pctLeft}%` } : { width: '50%' }}
+          animate={{ width: `${pctLeft}%` }}
+          transition={{ duration: 0.65, ease: 'easeOut', delay: 0.15 }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: `color-mix(in oklch, ${leftColor} 22%, transparent)`,
+            color: leftColor,
+            fontFamily: 'var(--po-font-display)',
+            fontWeight: 800,
+            fontSize: 13,
+            letterSpacing: 0.2,
+            fontVariantNumeric: 'tabular-nums',
+            outline: minority === 'left' ? `2px solid var(--po-gold)` : 'none',
+            outlineOffset: -2,
+          }}
+        >
+          {pctLeft > 10 ? `${pctLeft}%` : ''}
+        </motion.div>
+        <motion.div
+          initial={reduce ? { width: `${pctRight}%` } : { width: '50%' }}
+          animate={{ width: `${pctRight}%` }}
+          transition={{ duration: 0.65, ease: 'easeOut', delay: 0.15 }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: `color-mix(in oklch, ${rightColor} 22%, transparent)`,
+            color: rightColor,
+            fontFamily: 'var(--po-font-display)',
+            fontWeight: 800,
+            fontSize: 13,
+            letterSpacing: 0.2,
+            fontVariantNumeric: 'tabular-nums',
+            outline: minority === 'right' ? `2px solid var(--po-gold)` : 'none',
+            outlineOffset: -2,
+          }}
+        >
+          {pctRight > 10 ? `${pctRight}%` : ''}
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+function StanceRow({
+  player,
+  isMe,
+  name,
+  tagLabel,
+  tagColor,
+}: {
+  player?: SocialPlayer;
+  isMe: boolean;
+  name: string;
+  tagLabel: string;
+  tagColor: string;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '7px 10px',
+        borderRadius: 10,
+        background: isMe
+          ? 'color-mix(in oklch, var(--po-gold) 8%, transparent)'
+          : 'var(--po-bg-glass, rgba(255,255,255,0.03))',
+        border: isMe
+          ? '1px solid color-mix(in oklch, var(--po-gold) 26%, transparent)'
+          : '1px solid var(--po-border, rgba(255,255,255,0.05))',
+      }}
+    >
+      <PersonaAvatar
+        avatarUrl={player?.avatarUrl}
+        personaName={player?.personaName}
+        size={36}
+      />
+      <span
+        style={{
+          flex: 1,
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 13,
+          fontWeight: 700,
+          color: isMe ? 'var(--po-gold)' : 'var(--po-text)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {isMe ? 'You' : name}
+      </span>
+      <span
+        style={{
+          padding: '3px 10px',
+          borderRadius: 9999,
+          background: `color-mix(in oklch, ${tagColor} 18%, transparent)`,
+          color: tagColor,
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: 0.2,
+          textTransform: 'uppercase',
+        }}
+      >
+        {tagLabel}
+      </span>
+    </div>
   );
 }

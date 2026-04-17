@@ -130,7 +130,7 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
   //     border, calmer opacity — but still kind-owned, never gray.
   //
   // Both override the lifecycleStyles('completed') defaults.
-  const completedStyle = isCompleted ? {
+  const completedStyle: React.CSSProperties = isCompleted ? {
     background: isUnreadCompleted
       ? `color-mix(in oklch, ${kindColor} 28%, var(--pulse-surface))`
       : `color-mix(in oklch, ${kindColor} 8%, var(--pulse-surface))`,

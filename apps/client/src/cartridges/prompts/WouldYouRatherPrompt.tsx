@@ -1,7 +1,14 @@
 import React from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
-import { Scale } from 'lucide-react';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import {
+  PROMPT_ACCENT,
+  PromptShell,
+  LockedInReceipt,
+  SilverEarned,
+  SectionLabel,
+} from './PromptShell';
 
 interface WyrCartridge {
   promptType: 'WOULD_YOU_RATHER';
@@ -21,7 +28,7 @@ interface WyrCartridge {
   } | null;
 }
 
-interface WouldYouRatherPromptProps {
+interface WyrPromptProps {
   cartridge: WyrCartridge;
   playerId: string;
   roster: Record<string, SocialPlayer>;
@@ -30,167 +37,380 @@ interface WouldYouRatherPromptProps {
   };
 }
 
-export default function WouldYouRatherPrompt({ cartridge, playerId, roster, engine }: WouldYouRatherPromptProps) {
+export default function WouldYouRatherPrompt({
+  cartridge,
+  playerId,
+  roster,
+  engine,
+}: WyrPromptProps) {
   const { promptText, phase, optionA, optionB, eligibleVoters, choices, results } = cartridge;
   const hasResponded = playerId in choices;
   const respondedCount = Object.keys(choices).length;
   const totalEligible = eligibleVoters.length;
+  const accent = PROMPT_ACCENT.WOULD_YOU_RATHER;
+  const reduce = useReducedMotion();
 
   const handleChoose = (choice: 'A' | 'B') => {
     if (hasResponded || phase !== PromptPhases.ACTIVE) return;
     engine.sendActivityAction(ActivityEvents.WYR.CHOOSE, { choice });
   };
 
+  const status =
+    phase === PromptPhases.RESULTS
+      ? 'Results'
+      : respondedCount === totalEligible
+        ? 'All in'
+        : `${respondedCount}/${totalEligible} in`;
+
+  // Accent-contrasting second color for side B so A/B read as a duality,
+  // not a monochrome duplicate.
+  const accentB = 'var(--po-orange)';
+
   return (
-    <div className="mx-4 my-2 rounded-xl bg-glass border border-white/[0.06] overflow-hidden slide-up-in shadow-card">
-      {/* Header */}
-      <div className="px-4 py-3 bg-skin-pink/5 border-b border-white/[0.06] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-2.5 py-0.5 text-skin-pink uppercase tracking-widest">
-            Would You Rather
+    <PromptShell
+      type="WOULD_YOU_RATHER"
+      accentColor={accent}
+      status={status}
+      statusBadge={phase === PromptPhases.ACTIVE && hasResponded ? 'Submitted' : undefined}
+      promptText={promptText}
+      helper={
+        phase === PromptPhases.ACTIVE && !hasResponded
+          ? 'Pick one — no changing your mind.'
+          : undefined
+      }
+      eligibleIds={phase === PromptPhases.ACTIVE ? eligibleVoters : undefined}
+      respondedIds={phase === PromptPhases.ACTIVE ? Object.keys(choices) : undefined}
+      roster={roster}
+    >
+      {phase === PromptPhases.ACTIVE && !hasResponded && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <OptionButton
+            letter="A"
+            text={optionA}
+            color={accent}
+            onClick={() => handleChoose('A')}
+          />
+          <span
+            style={{
+              alignSelf: 'center',
+              fontFamily: 'var(--po-font-display)',
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: '0.3em',
+              color: 'var(--po-text-dim)',
+              opacity: 0.6,
+            }}
+          >
+            OR
           </span>
-          <span className="text-xs font-mono text-skin-dim">
-            {respondedCount}/{totalEligible} responded
-          </span>
-        </div>
-        {hasResponded && (
-          <span className="text-[10px] font-mono text-skin-green uppercase tracking-wider">Submitted</span>
-        )}
-      </div>
-
-      {/* Active Phase */}
-      {phase === PromptPhases.ACTIVE && (
-        <div className="p-4 space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
-              <Scale size={14} className="text-skin-pink" />
-            </div>
-            <p className="text-sm font-bold text-skin-base leading-relaxed pt-1">
-              {promptText}
-            </p>
-          </div>
-
-          {!hasResponded ? (
-            <div className="grid grid-cols-1 gap-3">
-              <button
-                onClick={() => handleChoose('A')}
-                className="px-4 py-4 rounded-lg border bg-white/[0.03] border-white/[0.06] text-skin-base hover:bg-skin-pink/10 hover:border-skin-pink/30 active:scale-[0.98] transition-all text-sm font-medium text-left"
-              >
-                <span className="text-skin-pink font-mono text-xs mr-2">A.</span>
-                {optionA}
-              </button>
-              <div className="text-center text-xs font-mono text-skin-dim/40 uppercase tracking-widest">or</div>
-              <button
-                onClick={() => handleChoose('B')}
-                className="px-4 py-4 rounded-lg border bg-white/[0.03] border-white/[0.06] text-skin-base hover:bg-skin-pink/10 hover:border-skin-pink/30 active:scale-[0.98] transition-all text-sm font-medium text-left"
-              >
-                <span className="text-skin-pink font-mono text-xs mr-2">B.</span>
-                {optionB}
-              </button>
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-skin-dim">
-                You chose <span className="font-bold text-skin-pink">{choices[playerId] === 'A' ? optionA : optionB}</span>
-              </p>
-              <p className="text-xs text-skin-dim mt-1 font-mono">Waiting for others...</p>
-            </div>
-          )}
+          <OptionButton
+            letter="B"
+            text={optionB}
+            color={accentB}
+            onClick={() => handleChoose('B')}
+          />
         </div>
       )}
 
-      {/* Results Phase */}
+      {phase === PromptPhases.ACTIVE && hasResponded && (
+        <LockedInReceipt
+          accentColor={choices[playerId] === 'A' ? accent : accentB}
+          label="You picked"
+          value={choices[playerId] === 'A' ? optionA : optionB}
+        />
+      )}
+
       {phase === PromptPhases.RESULTS && results && (
-        <div className="p-4 space-y-4 animate-fade-in">
-          {/* Show the question in results */}
-          <p className="text-center text-sm font-bold text-skin-base italic leading-relaxed">
-            Would you rather...
-          </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <DualBar
+            leftText={results.optionA}
+            leftCount={results.countA}
+            leftColor={accent}
+            rightText={results.optionB}
+            rightCount={results.countB}
+            rightColor={accentB}
+            minority={
+              results.minorityChoice === 'A'
+                ? 'left'
+                : results.minorityChoice === 'B'
+                  ? 'right'
+                  : null
+            }
+            reduce={reduce ?? false}
+          />
 
-          <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
-            Results
-          </p>
-
-          {/* Percentage Bar */}
-          <div className="space-y-2">
-            {(() => {
-              const total = results.countA + results.countB;
-              const pctA = total > 0 ? Math.round((results.countA / total) * 100) : 50;
-              const pctB = 100 - pctA;
-              const aIsMinority = results.minorityChoice === 'A';
-              const bIsMinority = results.minorityChoice === 'B';
-              return (
-                <>
-                  <div className="flex justify-between text-xs font-mono text-skin-dim">
-                    <span>{results.optionA}</span>
-                    <span>{results.optionB}</span>
-                  </div>
-                  <div className="flex rounded-lg overflow-hidden h-8 border border-white/[0.06]">
-                    <div
-                      className={`flex items-center justify-center text-xs font-mono font-bold transition-all ${aIsMinority ? 'bg-skin-gold/30 text-skin-gold' : 'bg-skin-pink/20 text-skin-pink'}`}
-                      style={{ width: `${pctA}%` }}
-                    >
-                      {pctA}%
-                    </div>
-                    <div
-                      className={`flex items-center justify-center text-xs font-mono font-bold transition-all ${bIsMinority ? 'bg-skin-gold/30 text-skin-gold' : 'bg-skin-pink/20 text-skin-pink'}`}
-                      style={{ width: `${pctB}%` }}
-                    >
-                      {pctB}%
-                    </div>
-                  </div>
-                  {results.minorityChoice && (
-                    <p className="text-center text-xs font-mono text-skin-gold">
-                      Minority bonus: {results.minorityChoice === 'A' ? results.optionA : results.optionB} (+10 silver)
-                    </p>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-
-          {/* Individual choices */}
-          <div className="space-y-1 pt-1">
-            <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
-              Who chose what
+          {results.minorityChoice && (
+            <p
+              style={{
+                margin: 0,
+                textAlign: 'center',
+                fontFamily: 'var(--po-font-display)',
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: 'var(--po-gold)',
+              }}
+            >
+              Minority bonus · +10 silver
             </p>
-            {Object.keys(choices).length === 0 && (
-              <p className="text-xs text-skin-dim/40 text-center py-2 font-mono">No responses</p>
-            )}
-            {Object.entries(choices).map(([pid, choice]) => {
-              const player = roster[pid];
-              const isMe = pid === playerId;
-              return (
-                <div
-                  key={pid}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${isMe ? 'bg-skin-gold/5 border border-skin-gold/15' : ''}`}
-                >
-                  <PersonaAvatar
-                    avatarUrl={player?.avatarUrl}
-                    personaName={player?.personaName}
-                    size={20}
-                  />
-                  <span className={`text-xs flex-1 ${isMe ? 'font-bold text-skin-gold' : 'text-skin-dim'}`}>
-                    {isMe ? 'You' : (player?.personaName || pid)}
-                  </span>
-                  <span className="text-xs font-mono font-bold text-skin-pink">
-                    {choice === 'A' ? results.optionA : results.optionB}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          )}
 
-          {results.silverRewards[playerId] != null && (
-            <div className="text-center py-2">
-              <p className="text-xs font-mono text-skin-dim uppercase tracking-widest mb-1">You Earned</p>
-              <p className="text-2xl font-bold font-mono text-skin-gold text-glow">
-                +{results.silverRewards[playerId]} silver
-              </p>
+          {Object.keys(choices).length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <SectionLabel>Who chose what</SectionLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {Object.entries(choices).map(([pid, choice]) => {
+                  const player = roster[pid];
+                  const isMe = pid === playerId;
+                  const color = choice === 'A' ? accent : accentB;
+                  const text = choice === 'A' ? results.optionA : results.optionB;
+                  return (
+                    <ChoiceRow
+                      key={pid}
+                      player={player}
+                      isMe={isMe}
+                      name={player?.personaName || pid}
+                      pickLabel={text}
+                      pickColor={color}
+                    />
+                  );
+                })}
+              </div>
             </div>
           )}
+
+          <SilverEarned amount={results.silverRewards[playerId] ?? 0} />
         </div>
       )}
+    </PromptShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function OptionButton({
+  letter,
+  text,
+  color,
+  onClick,
+}: {
+  letter: string;
+  text: string;
+  color: string;
+  onClick: () => void;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.button
+      onClick={onClick}
+      whileTap={reduce ? undefined : { scale: 0.98 }}
+      whileHover={reduce ? undefined : { y: -1 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '44px 1fr',
+        alignItems: 'center',
+        gap: 12,
+        padding: '14px 14px 14px 10px',
+        borderRadius: 14,
+        background: `color-mix(in oklch, ${color} 8%, var(--po-bg-glass, rgba(255,255,255,0.03)))`,
+        border: `1.5px solid color-mix(in oklch, ${color} 32%, transparent)`,
+        cursor: 'pointer',
+        textAlign: 'left',
+        boxShadow: `0 0 12px color-mix(in oklch, ${color} 15%, transparent)`,
+        transition: 'background 0.2s, border-color 0.2s',
+      }}
+    >
+      <span
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: color,
+          color: 'var(--po-text-inverted, #111)',
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 17,
+          fontWeight: 800,
+          letterSpacing: -0.5,
+        }}
+      >
+        {letter}
+      </span>
+      <span
+        style={{
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 15,
+          fontWeight: 600,
+          lineHeight: 1.3,
+          color: 'var(--po-text)',
+          letterSpacing: 0.1,
+        }}
+      >
+        {text}
+      </span>
+    </motion.button>
+  );
+}
+
+function DualBar({
+  leftText,
+  leftCount,
+  leftColor,
+  rightText,
+  rightCount,
+  rightColor,
+  minority,
+  reduce,
+}: {
+  leftText: string;
+  leftCount: number;
+  leftColor: string;
+  rightText: string;
+  rightCount: number;
+  rightColor: string;
+  minority: 'left' | 'right' | null;
+  reduce: boolean;
+}) {
+  const total = leftCount + rightCount;
+  const pctLeft = total > 0 ? Math.round((leftCount / total) * 100) : 50;
+  const pctRight = 100 - pctLeft;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div
+        style={{
+          display: 'flex',
+          height: 36,
+          borderRadius: 10,
+          overflow: 'hidden',
+          border: '1px solid var(--po-border, rgba(255,255,255,0.08))',
+        }}
+      >
+        <motion.div
+          initial={reduce ? { width: `${pctLeft}%` } : { width: '50%' }}
+          animate={{ width: `${pctLeft}%` }}
+          transition={{ duration: 0.65, ease: 'easeOut', delay: 0.15 }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: `color-mix(in oklch, ${leftColor} 22%, transparent)`,
+            color: leftColor,
+            fontFamily: 'var(--po-font-display)',
+            fontWeight: 800,
+            fontSize: 13,
+            fontVariantNumeric: 'tabular-nums',
+            outline: minority === 'left' ? '2px solid var(--po-gold)' : 'none',
+            outlineOffset: -2,
+          }}
+        >
+          {pctLeft > 10 ? `${pctLeft}%` : ''}
+        </motion.div>
+        <motion.div
+          initial={reduce ? { width: `${pctRight}%` } : { width: '50%' }}
+          animate={{ width: `${pctRight}%` }}
+          transition={{ duration: 0.65, ease: 'easeOut', delay: 0.15 }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: `color-mix(in oklch, ${rightColor} 22%, transparent)`,
+            color: rightColor,
+            fontFamily: 'var(--po-font-display)',
+            fontWeight: 800,
+            fontSize: 13,
+            fontVariantNumeric: 'tabular-nums',
+            outline: minority === 'right' ? '2px solid var(--po-gold)' : 'none',
+            outlineOffset: -2,
+          }}
+        >
+          {pctRight > 10 ? `${pctRight}%` : ''}
+        </motion.div>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 12,
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 12,
+          fontWeight: 600,
+        }}
+      >
+        <span style={{ color: leftColor, maxWidth: '48%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {leftText}
+        </span>
+        <span style={{ color: rightColor, maxWidth: '48%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }}>
+          {rightText}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ChoiceRow({
+  player,
+  isMe,
+  name,
+  pickLabel,
+  pickColor,
+}: {
+  player?: SocialPlayer;
+  isMe: boolean;
+  name: string;
+  pickLabel: string;
+  pickColor: string;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '7px 10px',
+        borderRadius: 10,
+        background: isMe
+          ? 'color-mix(in oklch, var(--po-gold) 8%, transparent)'
+          : 'var(--po-bg-glass, rgba(255,255,255,0.03))',
+        border: isMe
+          ? '1px solid color-mix(in oklch, var(--po-gold) 26%, transparent)'
+          : '1px solid var(--po-border, rgba(255,255,255,0.05))',
+      }}
+    >
+      <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={36} />
+      <span
+        style={{
+          flex: 1,
+          minWidth: 0,
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 13,
+          fontWeight: 700,
+          color: isMe ? 'var(--po-gold)' : 'var(--po-text)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {isMe ? 'You' : name}
+      </span>
+      <span
+        style={{
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: 0.1,
+          color: pickColor,
+          maxWidth: '45%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {pickLabel}
+      </span>
     </div>
   );
 }

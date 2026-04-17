@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import type { CartridgeKind } from '@pecking-order/shared-types';
 import { VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../../store/useGameStore';
 import { PersonaImage, initialsOf } from '../common/PersonaImage';
 import { getPlayerColor } from '../../colors';
-import { Crown, Skull, Lightning, Eye, Fire } from '../../icons';
+import { Crown, Skull, Lightning, Eye, Fire, Coins, Heart } from '../../icons';
 
 /**
  * Rich per-kind result content for the Pulse cartridge overlay.
@@ -791,6 +792,174 @@ function MinorityTag() {
 
 // ─── dilemma ──────────────────────────────────────────────────────────────
 
+/**
+ * DilemmaHero — cinematic winner portrait. The payoff of a dilemma should
+ * land as a face + a word, not a banner full of text. Big persona image,
+ * themed aura, display-face name.
+ */
+function DilemmaHero({
+  pid,
+  roster,
+  accent,
+  label,
+  sublabel,
+  icon,
+}: {
+  pid: string;
+  roster: Record<string, RosterEntry>;
+  accent: string;
+  label: string;
+  sublabel?: React.ReactNode;
+  icon?: React.ReactNode;
+}) {
+  const player = roster[pid];
+  const name = player?.personaName ?? pid;
+  const firstName = name.split(' ')[0];
+  const rosterKeys = Object.keys(roster);
+  const idx = Math.max(0, rosterKeys.indexOf(pid));
+  const reduce = useReducedMotion() ?? false;
+
+  return (
+    <motion.div
+      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 8 }}
+      animate={reduce ? { opacity: 1 } : { opacity: 1, scale: [0.9, 1.04, 1], y: 0 }}
+      transition={{ duration: 0.65, ease: [0.2, 0.9, 0.3, 1] }}
+      style={{
+        position: 'relative',
+        padding: '22px 18px 20px',
+        borderRadius: 18,
+        background: `radial-gradient(120% 120% at 50% 0%, color-mix(in oklch, ${accent} 24%, transparent) 0%, color-mix(in oklch, ${accent} 8%, transparent) 55%, var(--pulse-surface-2)) 100%`,
+        border: `1.5px solid color-mix(in oklch, ${accent} 48%, transparent)`,
+        boxShadow: `0 0 42px color-mix(in oklch, ${accent} 32%, transparent), 0 0 96px color-mix(in oklch, ${accent} 14%, transparent)`,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 10,
+        overflow: 'hidden',
+      }}
+    >
+      {/* soft atmospheric halo */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: '-40% -10% auto -10%',
+          height: '80%',
+          background: `radial-gradient(60% 60% at 50% 30%, color-mix(in oklch, ${accent} 28%, transparent) 0%, transparent 70%)`,
+          filter: 'blur(10px)',
+          pointerEvents: 'none',
+        }}
+      />
+      {/* portrait with conic ring */}
+      <motion.div
+        initial={reduce ? undefined : { scale: 0.9 }}
+        animate={reduce ? undefined : { scale: 1 }}
+        transition={{ duration: 0.6, delay: 0.15, ease: [0.2, 0.9, 0.3, 1] }}
+        style={{
+          position: 'relative',
+          width: 124,
+          height: 124,
+          borderRadius: '50%',
+          padding: 3,
+          background: `conic-gradient(from 180deg, ${accent}, color-mix(in oklch, ${accent} 40%, transparent), ${accent})`,
+          boxShadow: `0 0 28px color-mix(in oklch, ${accent} 55%, transparent), 0 0 64px color-mix(in oklch, ${accent} 20%, transparent)`,
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: '50%',
+            overflow: 'hidden',
+            background: 'var(--pulse-surface-2)',
+          }}
+        >
+          <PersonaImage
+            avatarUrl={player?.avatarUrl}
+            cacheKey={pid}
+            preferredVariant="headshot"
+            initials={initialsOf(name)}
+            playerColor={getPlayerColor(idx)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            alt={name}
+          />
+        </div>
+        {icon && (
+          <div
+            style={{
+              position: 'absolute',
+              right: -2,
+              bottom: -2,
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              background: accent,
+              border: '2.5px solid var(--pulse-surface-2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--pulse-text-inverted, #111)',
+              boxShadow: `0 0 14px color-mix(in oklch, ${accent} 60%, transparent)`,
+            }}
+          >
+            {icon}
+          </div>
+        )}
+      </motion.div>
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          position: 'relative',
+        }}
+      >
+        <span
+          style={{
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '0.28em',
+            color: accent,
+            textTransform: 'uppercase',
+            textShadow: `0 0 12px color-mix(in oklch, ${accent} 45%, transparent)`,
+          }}
+        >
+          {label}
+        </span>
+        <span
+          style={{
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 'clamp(24px, 6vw, 30px)',
+            fontWeight: 800,
+            letterSpacing: -0.6,
+            lineHeight: 1.05,
+            color: 'var(--pulse-text-1)',
+          }}
+        >
+          {firstName}
+        </span>
+        {sublabel && (
+          <span
+            style={{
+              marginTop: 4,
+              fontFamily: 'var(--po-font-body)',
+              fontSize: 13,
+              fontWeight: 600,
+              color: accent,
+              letterSpacing: 0.1,
+            }}
+          >
+            {sublabel}
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 function DilemmaResult({ snapshot, roster, playerId }: {
   snapshot: any; roster: Record<string, RosterEntry>; playerId: string | null;
 }) {
@@ -811,12 +980,14 @@ function DilemmaResult({ snapshot, roster, playerId }: {
       />
     );
   } else if (snapshot.dilemmaType === 'SILVER_GAMBIT') {
-    outcome = summary.allDonated ? (
-      <OutcomeBanner
-        tone="win"
-        title="Everyone donated!"
-        body={summary.winnerId ? (<><strong style={{ color: 'var(--pulse-gold)' }}>{getName(summary.winnerId)}</strong> wins {summary.jackpot} silver</>) : null}
-        icon={<Crown size={16} weight="fill" />}
+    outcome = summary.allDonated && summary.winnerId ? (
+      <DilemmaHero
+        pid={summary.winnerId}
+        roster={roster}
+        accent="var(--pulse-gold)"
+        label="Jackpot"
+        sublabel={`wins ${summary.jackpot} silver`}
+        icon={<Coins size={18} weight="fill" />}
       />
     ) : (
       <OutcomeBanner
@@ -828,11 +999,13 @@ function DilemmaResult({ snapshot, roster, playerId }: {
     );
   } else if (snapshot.dilemmaType === 'SPOTLIGHT') {
     outcome = summary.unanimous && summary.targetId ? (
-      <OutcomeBanner
-        tone="win"
-        title="Unanimous!"
-        body={<><strong style={{ color: 'var(--pulse-gold)' }}>{getName(summary.targetId)}</strong> gets 20 silver</>}
-        icon={<Crown size={16} weight="fill" />}
+      <DilemmaHero
+        pid={summary.targetId}
+        roster={roster}
+        accent="var(--pulse-accent)"
+        label="Spotlight"
+        sublabel="Unanimous — +20 silver"
+        icon={<Crown size={18} weight="fill" />}
       />
     ) : (
       <OutcomeBanner
@@ -846,9 +1019,22 @@ function DilemmaResult({ snapshot, roster, playerId }: {
     const giftedIds: string[] = summary.giftedIds ?? [];
     const grievedIds: string[] = summary.grievedIds ?? [];
     const sorted = Object.entries(nominations).sort((a, b) => (b[1] as number) - (a[1] as number));
+    const featuredId: string | undefined = giftedIds[0] || grievedIds[0];
+    const featuredIsGift = !!giftedIds[0];
 
     outcome = sorted.length > 0 ? (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {featuredId && (
+          <DilemmaHero
+            pid={featuredId}
+            roster={roster}
+            accent={featuredIsGift ? 'var(--pulse-vote)' : 'var(--pulse-accent)'}
+            label={featuredIsGift ? 'Gifted' : 'Grieved'}
+            sublabel={featuredIsGift ? '+10 silver' : '−10 silver'}
+            icon={featuredIsGift ? <Heart size={18} weight="fill" /> : <Fire size={18} weight="fill" />}
+          />
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {sorted.map(([pid, count]) => {
           const isGifted = giftedIds.includes(pid);
           const isGrieved = grievedIds.includes(pid);
@@ -875,6 +1061,7 @@ function DilemmaResult({ snapshot, roster, playerId }: {
             </div>
           );
         })}
+        </div>
       </div>
     ) : null;
   }

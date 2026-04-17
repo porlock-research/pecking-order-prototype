@@ -66,9 +66,9 @@ export default function SilverGambitInput({ engine }: SilverGambitInputProps) {
           <span
             style={{
               fontFamily: 'var(--po-font-display)',
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: 700,
-              letterSpacing: '0.18em',
+              letterSpacing: '0.22em',
               color: 'var(--po-text-dim)',
               textTransform: 'uppercase',
             }}
@@ -78,10 +78,11 @@ export default function SilverGambitInput({ engine }: SilverGambitInputProps) {
           <span
             style={{
               fontFamily: 'var(--po-font-display)',
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: 700,
-              letterSpacing: -0.2,
+              letterSpacing: -0.3,
               color: accent,
+              lineHeight: 1.25,
             }}
           >
             {isDonate ? 'Donated — fingers crossed.' : 'Keeping your silver safe.'}
@@ -119,7 +120,7 @@ function ChoiceButton({
   reduce,
 }: {
   onClick: () => void;
-  Icon: React.ComponentType<{ size?: number; strokeWidth?: number; color?: string }>;
+  Icon: React.ComponentType<any>;
   label: string;
   accent: string;
   reduce: boolean;
