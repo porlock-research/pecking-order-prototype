@@ -34,27 +34,28 @@ export function ReactionBar({ messageId, message: _message, isSelf, onClose }: R
         }}
       />
       <motion.div
-        initial={{ opacity: 0, scale: 0.85, y: 4 }}
+        initial={{ opacity: 0, scale: 0.9, y: -2 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.85 }}
+        exit={{ opacity: 0, scale: 0.9 }}
         transition={PULSE_SPRING.pop}
         style={{
-          // Replaces the action-trigger bar in EXACT same position.
-          // Self messages have triggers on the LEFT (row-reverse layout),
-          // others on the RIGHT — picker mirrors that placement.
-          position: 'absolute',
-          top: -14,
-          [isSelf ? 'left' : 'right']: 8,
+          // Inline trailing: appears in the same flow slot as the action row,
+          // below the message. Aligned to the content-side edge.
+          // position:relative required for zIndex to take effect above the
+          // fixed backdrop (see .claude/guardrails/finite-zindex-needs-position).
+          position: 'relative',
           display: 'flex',
           alignItems: 'center',
           gap: 1,
+          marginTop: 4,
           padding: '2px 4px',
-          borderRadius: 14,
+          borderRadius: 12,
           background: 'var(--pulse-surface-3)',
           border: '1px solid var(--pulse-border-2)',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
+          // Pink-tinted layered glow — replaces generic drop shadow.
+          boxShadow: '0 0 0 1px rgba(255, 59, 111, 0.18), 0 8px 28px -8px rgba(255, 59, 111, 0.35)',
           zIndex: PULSE_Z.reactionBar,
-          transformOrigin: isSelf ? 'left center' : 'right center',
+          transformOrigin: isSelf ? 'right center' : 'left center',
         }}
       >
         {EMOJIS.map(emoji => (

@@ -224,23 +224,30 @@
   }
 }
 
-/* Message inline actions — hidden by default, shown on hover */
+/* Message inline actions — collapse to zero space when hidden, expand on
+   hover (desktop) or tap (touch). Inline layout, not absolute, so they can
+   never overlap adjacent rows. The `.pulse-msg-group` wrapper is the hover
+   scope since actions are a sibling of the message content, not a child. */
 .pulse-msg-actions {
+  max-height: 0;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  margin-top: 0 !important;
+  padding: 0 !important;
+  border-width: 0 !important;
+  overflow: hidden;
   pointer-events: none;
+  transition: max-height 0.18s ease, opacity 0.15s ease, margin-top 0.18s ease, padding 0.18s ease;
 }
-@media (hover: hover) {
-  .pulse-msg-content:hover .pulse-msg-actions {
-    opacity: 1;
-    pointer-events: auto;
-  }
-}
-@media (hover: none) {
-  /* Touch devices: show subtle hint — tap message to activate */
-  .pulse-msg-content:focus-within .pulse-msg-actions,
-  .pulse-msg-content.pulse-msg-tapped .pulse-msg-actions {
-    opacity: 1;
-    pointer-events: auto;
-  }
+/* Expand rule — matches desktop hover, keyboard focus, and the tap-to-toggle
+   class. Kept outside of media queries so the tapped class works on any
+   device (including touch laptops that report both hover:hover + coarse). */
+.pulse-msg-group:hover .pulse-msg-actions,
+.pulse-msg-group:focus-within .pulse-msg-actions,
+.pulse-msg-group .pulse-msg-content.pulse-msg-tapped ~ .pulse-msg-actions {
+  max-height: 36px;
+  opacity: 1;
+  margin-top: 4px !important;
+  padding: 2px !important;
+  border-width: 1px !important;
+  pointer-events: auto;
 }

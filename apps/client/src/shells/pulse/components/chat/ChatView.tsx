@@ -225,36 +225,59 @@ export function ChatView() {
 
       <TypingIndicator channelId="MAIN" />
 
-      {/* Jump to latest */}
-      {!autoScroll && (
-        <button
-          onClick={() => {
-            if (scrollRef.current) {
-              scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-              setAutoScroll(true);
-            }
-          }}
-          style={{
-            position: 'absolute',
-            bottom: 8,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '6px 16px',
-            borderRadius: 20,
-            background: 'var(--pulse-accent)',
-            color: 'var(--pulse-on-accent)',
-            border: 'none',
-            fontSize: 11,
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontFamily: 'var(--po-font-body)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            zIndex: PULSE_Z.elevated,
-          }}
-        >
-          Jump to latest
-        </button>
-      )}
+      {/* Jump to latest — pink-glow pill, shows unread count when present */}
+      {!autoScroll && (() => {
+        const unreadCount = firstUnreadMainTs
+          ? mainMessages.filter(m => m.timestamp >= firstUnreadMainTs).length
+          : 0;
+        return (
+          <button
+            onClick={() => {
+              if (scrollRef.current) {
+                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                setAutoScroll(true);
+              }
+            }}
+            style={{
+              position: 'absolute',
+              bottom: 8,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 14px',
+              borderRadius: 999,
+              background: 'var(--pulse-accent)',
+              color: 'var(--pulse-on-accent)',
+              border: 'none',
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: 0.1,
+              cursor: 'pointer',
+              fontFamily: 'var(--po-font-body)',
+              // Pink-tinted layered glow instead of generic drop shadow —
+              // the button earns its accent weight.
+              boxShadow:
+                '0 0 0 1px rgba(255, 59, 111, 0.4), 0 10px 28px -8px rgba(255, 59, 111, 0.55)',
+              zIndex: PULSE_Z.elevated,
+            }}
+          >
+            {unreadCount > 0 ? `${unreadCount} new` : 'Jump to latest'}
+            <span
+              style={{
+                display: 'inline-block',
+                width: 0,
+                height: 0,
+                borderLeft: '4px solid transparent',
+                borderRight: '4px solid transparent',
+                borderTop: '5px solid currentColor',
+                marginBottom: -1,
+              }}
+            />
+          </button>
+        );
+      })()}
     </div>
   );
 }

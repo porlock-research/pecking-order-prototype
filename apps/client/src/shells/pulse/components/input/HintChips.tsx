@@ -39,22 +39,36 @@ export function HintChips({ onSelect, channelType = 'MAIN', capabilities = [] }:
       {visible.map(h => (
         <motion.button
           key={h.label}
-          whileTap={{ scale: 0.95 }}
+          whileTap={{ scale: 0.94 }}
           onClick={() => onSelect(h.command)}
           style={{
-            padding: '5px 11px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '5px 11px 5px 9px',
             borderRadius: 14,
             fontSize: 11,
             fontWeight: 700,
             fontFamily: 'var(--po-font-body)',
-            background: `${h.color}14`,
-            border: `1px solid ${h.color}33`,
-            color: h.color,
+            background: 'var(--pulse-surface-2)',
+            border: '1px solid var(--pulse-border)',
+            color: 'var(--pulse-text-2)',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             flexShrink: 0,
           }}
         >
+          {/* Leading dot carries the command's accent — hue is type-identity,
+              not decoration, so only one pixel-scale worth of color per chip. */}
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: h.color,
+              flexShrink: 0,
+            }}
+          />
           {h.label}
         </motion.button>
       ))}

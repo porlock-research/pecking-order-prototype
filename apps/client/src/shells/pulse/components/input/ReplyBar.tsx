@@ -18,20 +18,21 @@ export function ReplyBar({ message, onCancel }: ReplyBarProps) {
     <div
       style={{
         display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '6px 12px',
+        alignItems: 'stretch',
+        gap: 10,
+        padding: '8px 12px',
         background: 'var(--pulse-surface-2)',
         fontSize: 12,
         fontFamily: 'var(--po-font-body)',
+        borderTop: '1px solid rgba(255, 59, 111, 0.18)',
       }}
     >
-      <Reply size={12} weight="bold" style={{ color, flexShrink: 0 }} />
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontWeight: 600, color, flexShrink: 0 }}>
-          {player?.personaName}
+      <div style={{ width: 2, borderRadius: 1, background: color, flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--pulse-accent)', textTransform: 'uppercase', letterSpacing: 1 }}>
+          Replying to <span style={{ color, textTransform: 'none', letterSpacing: 0 }}>{player?.personaName}</span>
         </span>
-        <span style={{ color: 'var(--pulse-text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+        <span style={{ color: 'var(--pulse-text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
           {message.content.slice(0, 60)}
         </span>
       </div>

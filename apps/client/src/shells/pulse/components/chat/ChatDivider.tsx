@@ -32,14 +32,24 @@ export function ChatDivider({ onCleared }: Props) {
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
-        padding: '8px 0',
+        gap: 10,
+        padding: '10px 0 8px',
         color: 'var(--pulse-accent)',
       }}
     >
-      <div style={{ flex: 1, height: 1, background: 'var(--pulse-accent)', opacity: 0.6 }} />
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>New</div>
-      <div style={{ flex: 1, height: 1, background: 'var(--pulse-accent)', opacity: 0.6 }} />
+      <div style={{ flex: 1, height: 1, background: 'var(--pulse-accent)', opacity: 0.5 }} />
+      <div
+        style={{
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+        }}
+      >
+        New
+      </div>
+      <div style={{ flex: 1, height: 1, background: 'var(--pulse-accent)', opacity: 0.5 }} />
     </div>
   );
 }

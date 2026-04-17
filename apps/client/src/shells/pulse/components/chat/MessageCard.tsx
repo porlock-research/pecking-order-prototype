@@ -20,7 +20,7 @@ interface MessageCardProps {
   onOpenReaction: (id: string | null) => void;
 }
 
-const AVATAR_SIZE = 56;
+const AVATAR_SIZE = 44;
 
 function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenReaction }: MessageCardProps) {
   const roster = useGameStore(s => s.roster);
@@ -43,8 +43,12 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
   const whisperTargetIndex = message.whisperTarget ? Object.keys(roster).indexOf(message.whisperTarget) : 0;
   const whisperTargetAvatar = whisperTarget ? resolveAvatarUrl(whisperTarget.avatarUrl) : null;
 
+  // Only self + whisper render as bordered bubbles. Other players' plain
+  // messages read as inline text anchored to the persona photo — this is
+  // the rhythm choice that keeps the feed from looking like a wall of cards.
+  const hasBubble = isSelf || isWhisper;
+
   // Tap-to-reveal action buttons on touch devices (no hover available).
-  // The pulse-msg-tapped class hooks into the CSS rule at pulse-theme.css:115.
   const [tapped, setTapped] = useState(false);
 
   const handleAvatarClick = () => {
@@ -57,17 +61,19 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
     window.dispatchEvent(new CustomEvent('pulse:reply', { detail: { message } }));
   };
 
-  // Own-sent messages arrive with a tactile scale-pop. Others' messages
-  // render plain — adding ceremony to every incoming line would turn chat
-  // into a firework show. The sender's own messages are the only ones
-  // worth rewarding here (they just tapped send).
   const ownSendMotion = isSelf && !reduce
     ? {
-        initial: { opacity: 0, scale: 0.92, x: 8 },
+        initial: { opacity: 0, scale: 0.94, x: 6 },
         animate: { opacity: 1, scale: 1, x: 0 },
         transition: PULSE_SPRING.snappy,
       }
     : {};
+
+  const bubbleStyle = isSelf
+    ? { background: 'rgba(255, 59, 111, 0.10)', border: '1px solid rgba(255, 59, 111, 0.20)' }
+    : isWhisper
+      ? { background: 'rgba(176, 105, 219, 0.10)', border: '1px solid rgba(176, 105, 219, 0.22)' }
+      : { background: 'transparent', border: 'none' };
 
   return (
     <motion.div
@@ -76,15 +82,13 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
         display: 'flex',
         flexDirection: isSelf ? 'row-reverse' : 'row',
         gap: 'var(--pulse-space-sm)',
-        // Rhythm: new-sender messages get a breath above; same-sender
-        // continuations stay tight. Creates visual grouping without
-        // changing message identity.
-        padding: showHeader ? 'var(--pulse-space-sm) 0 var(--pulse-space-2xs)' : 'var(--pulse-space-2xs) 0',
+        // New-sender headers breathe; continuations stay tight. Hierarchy through rhythm.
+        padding: showHeader ? 'var(--pulse-space-md) 0 var(--pulse-space-2xs)' : 'var(--pulse-space-2xs) 0',
         position: 'relative',
         alignItems: 'flex-start',
       }}
     >
-      {/* Avatar */}
+      {/* Avatar — only on header (new-sender) rows */}
       {showHeader ? (
         <button
           ref={avatarRef}
@@ -108,7 +112,7 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
               style={{
                 width: AVATAR_SIZE,
                 height: AVATAR_SIZE,
-                borderRadius: 14,
+                borderRadius: 12,
                 objectFit: 'cover',
                 objectPosition: 'center top',
               }}
@@ -119,139 +123,128 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
         <div style={{ width: AVATAR_SIZE, flexShrink: 0 }} />
       )}
 
-      {/* Content column: bubble + chips outside */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
-      <div
-        className={tapped ? 'pulse-msg-content pulse-msg-tapped' : 'pulse-msg-content'}
-        onClick={() => setTapped(v => !v)}
-        style={{
-          width: '100%',
-          minWidth: 0,
-          position: 'relative',
-          // Every message gets its own bubble so grouped messages from the
-          // same sender are still visually distinct.
-          // - Self: coral-tinted bubble
-          // - Whisper: purple-tinted bubble with left accent
-          // - Other: subtle surface bubble with player-color left accent
-          borderRadius: 16,
-          padding: '10px 14px',
-          ...(isSelf
-            ? {
-                background: 'linear-gradient(135deg, rgba(255,59,111,0.14) 0%, rgba(255,59,111,0.06) 100%)',
-                border: '1px solid rgba(255,59,111,0.18)',
-              }
-            : isWhisper
-              ? {
-                  background: 'rgba(155, 89, 182, 0.12)',
-                  border: '1px solid rgba(176, 105, 219, 0.22)',
-                }
-              : {
-                  background: 'var(--pulse-surface)',
-                  border: '1px solid var(--pulse-border)',
-                }),
-        }}
-      >
-        {/* Name plate */}
-        {showHeader && (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
-            <span style={{ fontWeight: 700, fontSize: 15, color, letterSpacing: -0.1 }}>{player?.personaName}</span>
-            {isWhisper && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--pulse-whisper)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                whisper{whisperTarget ? ' to' : ''}
-                {whisperTargetAvatar && (
-                  <img
-                    src={whisperTargetAvatar}
-                    alt=""
-                    style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover', marginLeft: 2 }}
-                  />
-                )}
-                {whisperTarget && (
-                  <span style={{ color: getPlayerColor(whisperTargetIndex), textTransform: 'none', fontWeight: 700 }}>
-                    {whisperTarget.personaName}
-                  </span>
-                )}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Reply indicator */}
-        {replyMsg && (() => {
-          const replyColor = getPlayerColor(Object.keys(roster).indexOf(replyMsg.senderId));
-          return (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 8px',
-                marginBottom: 6,
-                background: 'rgba(255,255,255,0.03)',
-                borderRadius: 8,
-                fontSize: 12,
-                color: 'var(--pulse-text-3)',
-                minWidth: 0,
-              }}
-            >
-              <Reply size={11} weight="bold" style={{ color: replyColor, flexShrink: 0 }} />
-              <span style={{ fontWeight: 700, color: replyColor, flexShrink: 0 }}>{replyPlayer?.personaName}</span>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
-                {replyMsg.content.slice(0, 60)}
-              </span>
+      {/* Content column — bubble for self/whisper, inline text otherwise */}
+      <div className="pulse-msg-group" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
+        <div
+          className={tapped ? 'pulse-msg-content pulse-msg-tapped' : 'pulse-msg-content'}
+          onClick={() => setTapped(v => !v)}
+          style={{
+            maxWidth: '100%',
+            minWidth: 0,
+            position: 'relative',
+            borderRadius: hasBubble ? 14 : 0,
+            padding: hasBubble ? '8px 12px' : 0,
+            ...bubbleStyle,
+          }}
+        >
+          {/* Name plate (non-self, new-sender) */}
+          {showHeader && !isSelf && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color, letterSpacing: -0.1 }}>{player?.personaName}</span>
+              {isWhisper && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--pulse-whisper)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  whisper{whisperTarget ? ' to' : ''}
+                  {whisperTargetAvatar && (
+                    <img
+                      src={whisperTargetAvatar}
+                      alt=""
+                      style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover', marginLeft: 2 }}
+                    />
+                  )}
+                  {whisperTarget && (
+                    <span style={{ color: getPlayerColor(whisperTargetIndex), textTransform: 'none', fontWeight: 700 }}>
+                      {whisperTarget.personaName}
+                    </span>
+                  )}
+                </span>
+              )}
             </div>
-          );
-        })()}
+          )}
 
-        {/* Message text */}
-        <div style={{ fontSize: 15, color: isSelf ? 'var(--pulse-text-1)' : 'var(--pulse-text-1)', lineHeight: 1.45 }}>
-          <MentionRenderer text={message.content} />
+          {/* Reply quote — flat vertical bar + quoted text, no nested card */}
+          {replyMsg && (() => {
+            const replyColor = getPlayerColor(Object.keys(roster).indexOf(replyMsg.senderId));
+            return (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'stretch',
+                  gap: 8,
+                  marginBottom: 4,
+                  minWidth: 0,
+                }}
+              >
+                <div style={{ width: 2, borderRadius: 1, background: replyColor, flexShrink: 0 }} />
+                <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1, paddingTop: 1 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: replyColor, letterSpacing: 0.2 }}>
+                    {replyPlayer?.personaName}
+                  </span>
+                  <span style={{
+                    fontSize: 12,
+                    color: 'var(--pulse-text-3)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {replyMsg.content.slice(0, 60)}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Message text */}
+          <div style={{ fontSize: 15, color: 'var(--pulse-text-1)', lineHeight: 1.45 }}>
+            <MentionRenderer text={message.content} />
+          </div>
         </div>
 
-        {/* Inline action buttons (reply + emoji) — visible on hover/tap, hidden when picker open */}
+        {/* Inline trailing action row — appears below message on hover/tap.
+            Positioned inline (not floating absolute) so it can never overlap
+            the previous row. Aligned to the content-side edge. */}
         <div
           className="pulse-msg-actions"
           style={{
-            position: 'absolute',
-            top: -14,
-            [isSelf ? 'left' : 'right']: 8,
             display: isBarOpen ? 'none' : 'flex',
             gap: 2,
+            marginTop: 4,
             padding: '2px',
-            borderRadius: 12,
-            background: 'var(--pulse-surface-3)',
+            borderRadius: 10,
+            background: 'var(--pulse-surface-2)',
             border: '1px solid var(--pulse-border)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            // Tinted inner-glow instead of generic drop-shadow.
+            boxShadow: '0 0 0 1px rgba(255, 59, 111, 0.06), 0 6px 20px -8px rgba(255, 59, 111, 0.25)',
           }}
         >
           <button
             onClick={handleReply}
             aria-label="Reply to message"
             style={{
-              width: 32, height: 32, border: 'none', background: 'transparent',
+              width: 28, height: 28, border: 'none', background: 'transparent',
               cursor: 'pointer', color: 'var(--pulse-text-2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 10,
+              borderRadius: 8,
             }}
           >
-            <Reply size={16} weight="bold" />
+            <Reply size={14} weight="bold" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onOpenReaction(message.id); }}
             aria-label="React to message"
             aria-expanded={isBarOpen}
             style={{
-              width: 32, height: 32, border: 'none',
+              width: 28, height: 28, border: 'none',
               background: isBarOpen ? 'var(--pulse-accent-glow)' : 'transparent',
               cursor: 'pointer', color: isBarOpen ? 'var(--pulse-accent)' : 'var(--pulse-text-2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 10,
+              borderRadius: 8,
             }}
           >
-            <Smiley size={16} weight="fill" />
+            <Smiley size={14} weight="fill" />
           </button>
         </div>
 
-        {/* Reaction bar (floating) */}
+        {/* Reaction bar (inline, below message, replaces action row when open) */}
         {isBarOpen && (
           <ReactionBar
             messageId={message.id}
@@ -260,8 +253,8 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
             onClose={() => onOpenReaction(null)}
           />
         )}
-      </div>
-        {/* Reaction chips — always OUTSIDE the bubble, aligned with content side */}
+
+        {/* Reaction chips — below bubble, aligned with content side */}
         <ReactionChips message={message} />
       </div>
     </motion.div>

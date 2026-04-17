@@ -12,39 +12,38 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
   const isGM = message.senderId === GAME_MASTER_ID;
 
   if (isGM) {
-    // GM messages get distinct treatment — hosts announcements matter
     return (
       <motion.div
-        initial={{ opacity: 0, y: -8, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={PULSE_SPRING.bouncy}
+        initial={{ opacity: 0, y: -4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={PULSE_SPRING.gentle}
         style={{
           display: 'flex',
           alignItems: 'flex-start',
-          gap: 12,
-          padding: '14px 16px',
-          margin: '8px 0',
-          borderRadius: 14,
-          background: 'linear-gradient(135deg, rgba(255,59,111,0.1) 0%, rgba(255,59,111,0.02) 100%)',
-          border: '1px solid rgba(255,59,111,0.25)',
+          gap: 10,
+          padding: '10px 12px',
+          margin: '6px 0',
+          borderRadius: 12,
+          background: 'rgba(255, 59, 111, 0.07)',
+          border: '1px solid rgba(255, 59, 111, 0.18)',
           fontFamily: 'var(--po-font-body)',
         }}
       >
         <div
           style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: 'var(--pulse-accent)', color: '#fff',
+            width: 24, height: 24, borderRadius: 7,
+            background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}
         >
-          <Broadcast size={18} weight="fill" />
+          <Broadcast size={13} weight="fill" />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--pulse-accent)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--pulse-accent)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>
             Game Master
           </div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--pulse-text-1)', lineHeight: 1.45 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--pulse-text-1)', lineHeight: 1.4 }}>
             {message.content}
           </div>
         </div>
@@ -52,30 +51,25 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
     );
   }
 
-  // Regular broadcast events (silver, etc.)
   const isGold = message.content.toLowerCase().includes('silver');
   return (
     <motion.div
-      initial={{ opacity: 0, x: -20, scale: 0.95 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      transition={PULSE_SPRING.bouncy}
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={PULSE_SPRING.gentle}
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        padding: '10px 14px',
-        margin: '4px 0',
-        borderRadius: 12,
-        fontSize: 13,
+        padding: '8px 12px',
+        margin: '3px 0',
+        borderRadius: 10,
+        fontSize: 12,
         fontWeight: 500,
-        color: 'var(--pulse-text-1)',
+        color: 'var(--pulse-text-2)',
         fontFamily: 'var(--po-font-body)',
-        background: isGold
-          ? 'linear-gradient(90deg, rgba(255,215,0,0.04) 0%, rgba(255,215,0,0.1) 50%, rgba(255,215,0,0.04) 100%)'
-          : 'var(--pulse-surface-2)',
-        backgroundSize: isGold ? '200% 100%' : undefined,
-        animation: isGold ? 'pulse-shimmer 2s ease forwards' : undefined,
-        border: isGold ? '1px solid rgba(255,215,0,0.2)' : '1px solid var(--pulse-border)',
+        background: isGold ? 'rgba(255, 200, 61, 0.06)' : 'var(--pulse-surface-2)',
+        border: isGold ? '1px solid rgba(255, 200, 61, 0.18)' : '1px solid var(--pulse-border)',
       }}
     >
       <span>{message.content}</span>
