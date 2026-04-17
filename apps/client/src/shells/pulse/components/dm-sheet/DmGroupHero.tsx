@@ -1,7 +1,7 @@
 import type { SocialPlayer } from '@pecking-order/shared-types';
 import { getPlayerColor } from '../../colors';
 import { PersonaImage, initialsOf } from '../common/PersonaImage';
-import { UserPlus } from '../../icons';
+import { UserPlus, ArrowLeft } from '../../icons';
 import { useGameStore, selectCanAddMemberTo, selectGroupDmTitle } from '../../../../store/useGameStore';
 
 interface Props {
@@ -55,9 +55,11 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
         width: 44, height: 44, borderRadius: 22,
         background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
         border: '1px solid rgba(255,255,255,0.12)', color: 'var(--pulse-on-accent)',
-        fontSize: 20, cursor: 'pointer',
+        cursor: 'pointer', padding: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>‹</button>
+      }}>
+        <ArrowLeft size={20} weight="bold" />
+      </button>
 
       {canAdd && channelId && (
         <button
@@ -83,7 +85,15 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
         padding: '40px 16px 14px',
         background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)',
       }}>
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--pulse-on-accent)', letterSpacing: -0.3 }}>
+        <h2 style={{
+          margin: 0,
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 'clamp(26px, 7vw, 36px)',
+          fontWeight: 700,
+          color: 'var(--pulse-on-accent)',
+          letterSpacing: '-0.04em',
+          lineHeight: 0.98,
+        }}>
           {displayTitle}
         </h2>
         <div style={{

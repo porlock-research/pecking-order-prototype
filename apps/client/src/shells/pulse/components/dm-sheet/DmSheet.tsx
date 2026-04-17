@@ -82,8 +82,7 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
           position: 'fixed', top: 40, left: 0, right: 0, bottom: 0,
           background: 'var(--pulse-bg)',
           borderTopLeftRadius: 20, borderTopRightRadius: 20,
-          borderTop: '1px solid var(--pulse-border)',
-          boxShadow: '0 -6px 20px rgba(0,0,0,0.35)',
+          borderTop: '1px solid var(--pulse-border-2)',
           display: 'flex', flexDirection: 'column',
           zIndex: PULSE_Z.drawer, overflow: 'hidden',
         }}
@@ -119,7 +118,7 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
         ) : (
           <>
             {channel
-              ? <DmMessages channelId={channel.id} />
+              ? <DmMessages channelId={channel.id} isGroup={isGroup} />
               : <DmEmptyState
                   isGroup={isGroup}
                   targetName={targetPlayer?.personaName ?? ''}

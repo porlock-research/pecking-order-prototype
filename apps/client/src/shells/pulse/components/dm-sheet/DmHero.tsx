@@ -6,7 +6,7 @@ import { PersonaImage, initialsOf } from '../common/PersonaImage';
 import { DmStatusRing } from './DmStatusRing';
 import { useGameStore, selectCanAddMemberTo, selectHaveINudged } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
-import { HandWaving, UserPlus } from '../../icons';
+import { HandWaving, UserPlus, Coins, ArrowLeft } from '../../icons';
 
 interface Props {
   player: SocialPlayer;
@@ -49,9 +49,12 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
         width: 44, height: 44, borderRadius: 22,
         background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
         border: '1px solid rgba(255,255,255,0.12)',
-        color: 'var(--pulse-on-accent)', fontSize: 20,
+        color: 'var(--pulse-on-accent)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-      }}>‹</button>
+        padding: 0,
+      }}>
+        <ArrowLeft size={20} weight="bold" />
+      </button>
 
       <div style={{ position: 'absolute', top: 'var(--pulse-space-md)', right: 'var(--pulse-space-md)', display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)' }}>
         <button
@@ -152,17 +155,23 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
           />
         </DmStatusRing>
         <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 28, fontWeight: 800, color, letterSpacing: -0.3,
-          textShadow: '0 1px 4px rgba(0,0,0,0.9)',
-        }}>{player.personaName}</div>
+        <h2 style={{
+          margin: 0,
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 'clamp(30px, 8vw, 40px)',
+          fontWeight: 700,
+          color,
+          letterSpacing: '-0.04em',
+          lineHeight: 0.98,
+          textShadow: '0 1px 6px rgba(0,0,0,0.9)',
+        }}>{player.personaName}</h2>
         {stereotype && (
           <div style={{
             fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.2,
             color: 'rgba(255,255,255,0.75)', marginTop: 2,
           }}>{stereotype}</div>
         )}
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <div style={{ display: 'flex', gap: 6, marginTop: 10, alignItems: 'center' }}>
           {isOnline && (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -175,11 +184,26 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
           )}
           {rank !== null && (
             <span style={{
-              background: isLeader ? 'rgba(255,200,61,0.2)' : 'rgba(255,59,111,0.2)',
-              color: isLeader ? 'var(--pulse-gold)' : 'var(--pulse-accent)',
-              padding: '3px 9px', borderRadius: 10, fontSize: 10, fontWeight: 700,
-            }}>#{rank} · {player.silver} silver</span>
+              background: 'rgba(255,59,111,0.2)',
+              color: 'var(--pulse-accent)',
+              padding: '3px 8px', borderRadius: 10, fontSize: 10, fontWeight: 800,
+              letterSpacing: 0.2,
+            }}>#{rank}</span>
           )}
+          {/* Silver gets its own pill — gold because silver IS the gold signal.
+              Separating rank (metadata) from silver (currency datum) lets the
+              player's own SilverPip on the header visually rhyme with it. */}
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            background: 'rgba(255,200,61,0.14)',
+            color: 'var(--pulse-gold)',
+            padding: '3px 8px 3px 7px', borderRadius: 10, fontSize: 11, fontWeight: 800,
+            border: '1px solid rgba(255,200,61,0.3)',
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            <Coins size={11} weight="fill" />
+            {player.silver}
+          </span>
         </div>
         </div>
       </div>

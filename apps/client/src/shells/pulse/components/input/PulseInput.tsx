@@ -217,11 +217,13 @@ export function PulseInput() {
               />
             </div>
           )}
-          <HintChips
-            onSelect={selectCommand}
-            channelType="MAIN"
-            capabilities={mainCapabilities}
-          />
+          <div style={{ padding: '6px 12px 2px' }}>
+            <HintChips
+              onSelect={selectCommand}
+              channelType="MAIN"
+              capabilities={mainCapabilities}
+            />
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)', padding: 'var(--pulse-space-md) var(--pulse-space-md)' }}>
             <input
               ref={inputRef}

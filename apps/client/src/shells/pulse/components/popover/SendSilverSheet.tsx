@@ -114,19 +114,24 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
           ))}
         </div>
 
-        {/* Send button */}
+        {/* Send button — flat gold. The real celebration is SilverBurst after
+            tap; the button itself stays calm so the burst owns the drama.
+            One-shot sheen on mount (pulse-silver-arrive) glints the CTA into
+            view, then settles. */}
         <motion.button
           whileTap={PULSE_TAP.button}
           onClick={handleSend}
           disabled={!amount || amount > balance}
+          className={amount ? 'pulse-silver-arrive' : undefined}
           style={{
             width: '100%',
             padding: 14,
             borderRadius: 14,
             fontSize: 15,
-            fontWeight: 700,
+            fontWeight: 800,
+            letterSpacing: 0.1,
             fontFamily: 'var(--po-font-body)',
-            background: amount ? 'linear-gradient(135deg, var(--pulse-gold), #e6c200)' : 'var(--pulse-surface-2)',
+            background: amount ? 'var(--pulse-gold)' : 'var(--pulse-surface-2)',
             color: amount ? 'var(--pulse-on-gold)' : 'var(--pulse-text-4)',
             border: 'none',
             cursor: amount ? 'pointer' : 'not-allowed',

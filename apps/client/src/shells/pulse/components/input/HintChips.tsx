@@ -35,7 +35,7 @@ export function HintChips({ onSelect, channelType = 'MAIN', capabilities = [] }:
   if (visible.length === 0) return null;
 
   return (
-    <div style={{ display: 'flex', gap: 6, padding: '6px 12px 2px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+    <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
       {visible.map(h => (
         <motion.button
           key={h.label}

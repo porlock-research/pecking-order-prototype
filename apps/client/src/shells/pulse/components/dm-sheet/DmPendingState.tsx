@@ -20,7 +20,7 @@ export function DmPendingState({ channelId, inviterName, onClose }: Props) {
       <button
         onClick={() => engine.acceptDm(channelId)}
         style={{
-          width: '100%', background: 'var(--pulse-accent)', color: '#fff', border: 'none',
+          width: '100%', background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)', border: 'none',
           padding: '12px 16px', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: 'pointer',
         }}
       >Accept</button>

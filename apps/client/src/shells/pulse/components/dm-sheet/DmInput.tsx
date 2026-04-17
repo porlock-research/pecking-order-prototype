@@ -5,6 +5,7 @@ import { ChannelTypes } from '@pecking-order/shared-types';
 import { usePulse } from '../../PulseShell';
 import { useGameStore } from '../../../../store/useGameStore';
 import { HintChips } from '../input/HintChips';
+import { SilverPip } from '../common/SilverPip';
 import type { Command } from '../../hooks/useCommandBuilder';
 
 interface Props {
@@ -20,17 +21,20 @@ const DEFAULT_DM_CAPS: ChannelCapability[] = ['CHAT', 'SILVER_TRANSFER', 'INVITE
 const DEFAULT_GROUP_CAPS: ChannelCapability[] = ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'];
 
 export function DmInput({ channelId, recipientIds, placeholderName, disabled }: Props) {
-  const { engine, openSendSilver, openNudge } = usePulse();
+  const { engine, openSendSilver, openNudge, playerId } = usePulse();
   const channel = useGameStore(s => (channelId ? s.channels[channelId] : undefined));
+  const ownSilver = useGameStore(s => s.roster[playerId]?.silver ?? 0);
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
 
   const isGroup = recipientIds.length > 1;
   const channelType: ChannelType = channel?.type ?? (isGroup ? ChannelTypes.GROUP_DM : ChannelTypes.DM);
   const capabilities = channel?.capabilities ?? (isGroup ? DEFAULT_GROUP_CAPS : DEFAULT_DM_CAPS);
+  const noSilver = ownSilver === 0;
+  const sendDisabled = disabled || noSilver;
 
   const submit = () => {
-    if (!text.trim() || disabled) return;
+    if (!text.trim() || sendDisabled) return;
     if (channelId) {
       engine.sendToChannel(channelId, text.trim());
     } else {
@@ -65,11 +69,30 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
       borderTop: '1px solid var(--pulse-border)',
       background: 'var(--pulse-surface)',
     }}>
-      <HintChips
-        onSelect={handleChip}
-        channelType={channelType}
-        capabilities={capabilities}
-      />
+      {/* Pip + hint chips share a row — pip sits leftmost, in the same
+          metadata register as the chips. Silver cost is type-identity here,
+          not a separate HUD. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 2px' }}>
+        <SilverPip variant="compose" />
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          <HintChips
+            onSelect={handleChip}
+            channelType={channelType}
+            capabilities={capabilities}
+          />
+        </div>
+      </div>
+      {noSilver && (
+        <div style={{
+          padding: '4px 12px 6px',
+          fontSize: 11,
+          color: 'var(--pulse-pending)',
+          fontWeight: 600,
+          fontFamily: 'var(--po-font-body)',
+        }}>
+          Out of silver — play today's game to earn more.
+        </div>
+      )}
       <div style={{ padding: '8px 12px' }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
@@ -81,8 +104,8 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') submit(); }}
-            disabled={disabled}
-            placeholder={`Message ${placeholderName}…`}
+            disabled={sendDisabled}
+            placeholder={noSilver ? 'Out of silver' : `Message ${placeholderName}…`}
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
               color: 'var(--pulse-text-1)', fontSize: 14, fontFamily: 'inherit',
@@ -90,12 +113,12 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
           />
           <button
             onClick={submit}
-            disabled={disabled || !text.trim()}
+            disabled={sendDisabled || !text.trim()}
             style={{
-              background: 'var(--pulse-accent)', color: '#fff',
+              background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
               border: 'none', borderRadius: 16, padding: '6px 14px',
               fontWeight: 700, cursor: 'pointer',
-              opacity: (disabled || !text.trim()) ? 0.5 : 1,
+              opacity: (sendDisabled || !text.trim()) ? 0.5 : 1,
             }}
           >Send</button>
         </div>
