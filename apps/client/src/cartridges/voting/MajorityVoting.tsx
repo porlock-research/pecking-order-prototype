@@ -38,7 +38,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
           tone={info.mechanismTone}
           haloVariant="fade"
           subtitle={eliminatedId ? info.eliminatedSubtitle : info.noEliminationCopy}
-          label={eliminatedId ? 'Eliminated' : undefined}
+          label={eliminatedId ? info.revealLabel : undefined}
         />
         <VotingTallyGrid
           tallies={revealTallies}
@@ -46,6 +46,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
           accent={accent}
           eliminatedId={eliminatedId}
           unitLabel="votes"
+          selfVotedFor={votes[playerId] ?? null}
         />
       </div>
     );
@@ -57,6 +58,7 @@ export default function MajorityVoting({ cartridge, playerId, roster, engine }: 
       header={
         <VotingHeader
           mechanismName={info.name}
+          moodSubtitle={info.moodSubtitle}
           cta={info.cta}
           howItWorks={info.howItWorks}
           accentColor={accent}

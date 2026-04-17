@@ -16,6 +16,12 @@ interface VotingTallyGridProps {
   immuneIds?: string[];
   /** Optional unit label appended after each count — e.g. "saves", "votes". Default: blank. */
   unitLabel?: string;
+  /** Current player id — annotates the row they voted on with "your vote". */
+  selfVotedFor?: string | null;
+  /** FINALS mode — non-winner rows dim + desaturate so the winner row owns attention. */
+  dimNonWinner?: boolean;
+  /** Per-row stagger entrance (bottom→top), for "runners-up settle to the strip" feel. */
+  rowStagger?: boolean;
 }
 
 /**
@@ -36,6 +42,9 @@ export function VotingTallyGrid({
   winnerId,
   immuneIds,
   unitLabel,
+  selfVotedFor,
+  dimNonWinner,
+  rowStagger,
 }: VotingTallyGridProps) {
   const reduce = useReducedMotion();
   const immune = new Set(immuneIds ?? []);
@@ -43,11 +52,18 @@ export function VotingTallyGrid({
 
   if (sorted.length === 0) return null;
 
+  // When staggered we animate each row individually — wrapper doesn't animate.
+  const wrapperMotion = rowStagger && !reduce
+    ? {}
+    : {
+        initial: reduce ? { opacity: 0 } : { opacity: 0, y: 6 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.4, delay: 0.45 },
+      };
+
   return (
     <motion.div
-      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.45 }}
+      {...wrapperMotion}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -55,21 +71,42 @@ export function VotingTallyGrid({
         padding: '0 4px',
       }}
     >
-      {sorted.map(([playerId, count]) => {
+      {sorted.map(([playerId, count], idx) => {
         const player = roster[playerId];
         const isEliminated = playerId === eliminatedId;
         const isWinner = playerId === winnerId;
         const isImmune = immune.has(playerId);
+        const isSelfVote = !!selfVotedFor && playerId === selfVotedFor;
         const firstName = player?.personaName?.split(' ')[0] ?? playerId;
+        // In FINALS "dim non-winner" mode, runners-up fade back so the crowned row owns attention.
+        const dim = !!dimNonWinner && !!winnerId && !isWinner;
+        // Row stagger — bottom-up sequence so rows "settle" into place.
+        const rowDelay = rowStagger && !reduce ? 0.15 + (sorted.length - 1 - idx) * 0.06 : 0;
+
+        const rowMotion = rowStagger && !reduce
+          ? {
+              initial: { opacity: 0, y: 8 },
+              animate: { opacity: dim ? 0.55 : 1, y: 0 },
+              transition: { duration: 0.35, delay: rowDelay, ease: 'easeOut' as const },
+            }
+          : dim
+            ? { animate: { opacity: 0.55 } }
+            : {};
 
         return (
-          <div
+          <motion.div
             key={playerId}
+            {...rowMotion}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 10,
               padding: '4px 6px',
+              borderRadius: 8,
+              background: isSelfVote
+                ? `color-mix(in oklch, ${accent} 8%, transparent)`
+                : 'transparent',
+              filter: dim ? 'grayscale(30%) saturate(0.85)' : undefined,
             }}
           >
             <div
@@ -108,7 +145,7 @@ export function VotingTallyGrid({
               style={{
                 fontFamily: 'var(--po-font-body)',
                 fontSize: 13,
-                fontWeight: 600,
+                fontWeight: isSelfVote ? 700 : 600,
                 color: isEliminated ? 'var(--po-text-dim)' : 'var(--po-text)',
                 flex: 1,
                 minWidth: 0,
@@ -123,9 +160,9 @@ export function VotingTallyGrid({
                   style={{
                     marginLeft: 6,
                     fontFamily: 'var(--po-font-display)',
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: 800,
-                    letterSpacing: '0.2em',
+                    letterSpacing: '0.18em',
                     color: 'var(--po-gold)',
                     textTransform: 'uppercase',
                   }}
@@ -133,15 +170,30 @@ export function VotingTallyGrid({
                   immune
                 </span>
               )}
+              {isSelfVote && (
+                <span
+                  style={{
+                    marginLeft: 6,
+                    fontFamily: 'var(--po-font-display)',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: '0.18em',
+                    color: accent,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  your vote
+                </span>
+              )}
             </span>
             <span
               style={{
                 fontFamily: 'var(--po-font-display)',
-                fontSize: 12,
-                fontWeight: 700,
+                fontSize: 15,
+                fontWeight: 800,
                 fontVariantNumeric: 'tabular-nums',
                 color: accent,
-                letterSpacing: '0.04em',
+                letterSpacing: '0.02em',
               }}
             >
               {count as number}
@@ -160,7 +212,7 @@ export function VotingTallyGrid({
                 </span>
               )}
             </span>
-          </div>
+          </motion.div>
         );
       })}
     </motion.div>

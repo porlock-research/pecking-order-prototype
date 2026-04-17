@@ -8,6 +8,8 @@ import { AvatarPicker } from './shared/AvatarPicker';
 import { VotingResultHero } from './shared/VotingResultHero';
 import { VotingTallyGrid } from './shared/VotingTallyGrid';
 import { VOTE_ACCENT, VOTE_ACCENT_SECONDARY } from './shared/voting-tokens';
+import { PULSE_SPRING } from '../../shells/pulse/springs';
+import { Heart } from '../../shells/pulse/icons';
 
 interface TrustPairsVotingProps {
   cartridge: any;
@@ -56,9 +58,9 @@ export default function TrustPairsVoting({
           subjectPlayer={eliminatedPlayer}
           accent={betrayAccent}
           tone={info.mechanismTone}
-          haloVariant="fade"
+          haloVariant="rupture"
           subtitle={eliminatedId ? info.eliminatedSubtitle : info.noEliminationCopy}
-          label={eliminatedId ? 'Betrayed' : undefined}
+          label={eliminatedId ? info.revealLabel : undefined}
         />
         {Object.keys(revealTallies).length > 0 && (
           <VotingTallyGrid
@@ -68,6 +70,7 @@ export default function TrustPairsVoting({
             eliminatedId={eliminatedId}
             immuneIds={immune}
             unitLabel="votes"
+            selfVotedFor={votePicks?.[playerId] ?? null}
           />
         )}
       </div>
@@ -109,7 +112,8 @@ export default function TrustPairsVoting({
       accentColor={beatAccent}
       header={
         <VotingHeader
-          mechanismName={`${info.name} · ${beatLabel}`}
+          mechanismName={`${info.name} \u00b7 ${beatLabel}`}
+          moodSubtitle={info.moodSubtitle}
           cta={beatCta}
           howItWorks={info.howItWorks}
           accentColor={beatAccent}
@@ -142,7 +146,7 @@ export default function TrustPairsVoting({
           key="trust-beat"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={{ type: 'spring', ...PULSE_SPRING.snappy }}
         >
           <AvatarPicker
             eligibleTargets={trustTargets}
@@ -165,7 +169,7 @@ export default function TrustPairsVoting({
           key="betray-beat"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={{ type: 'spring', ...PULSE_SPRING.snappy }}
         >
           <AvatarPicker
             eligibleTargets={betrayTargets}
@@ -267,7 +271,7 @@ function MutualPairsHero({
     <motion.div
       initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.55, ease: [0.2, 0.9, 0.3, 1] }}
+      transition={reduce ? { duration: 0.25 } : { type: 'spring', ...PULSE_SPRING.page }}
       style={{
         padding: '18px 16px 18px',
         borderRadius: 18,
@@ -310,20 +314,72 @@ function MutualPairsHero({
               }}
             >
               <PairAvatar player={a} accent={accent} />
-              <span
-                style={{
-                  fontFamily: 'var(--po-font-display)',
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: accent,
-                }}
-              >
-                +
-              </span>
+              <TrustBond accent={accent} reduce={!!reduce} />
               <PairAvatar player={b} accent={accent} />
             </motion.div>
           );
         })}
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Pair-bond glyph between two mutual-trust portraits. Two interlocking
+ * accent-colored rings with a filled heart at their intersection —
+ * reads as "joined, bonded, safe" at small size. Pulses once on mount.
+ */
+function TrustBond({ accent, reduce }: { accent: string; reduce: boolean }) {
+  return (
+    <motion.div
+      aria-hidden="true"
+      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
+      animate={reduce ? { opacity: 1 } : { opacity: 1, scale: [0.6, 1.15, 1] }}
+      transition={{ duration: 0.55, ease: [0.2, 0.9, 0.3, 1], delay: 0.2 }}
+      style={{
+        position: 'relative',
+        width: 26,
+        height: 20,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}
+    >
+      <svg viewBox="0 0 26 20" width={26} height={20} aria-hidden="true" style={{ overflow: 'visible' }}>
+        {/* Two interlocking rings */}
+        <circle
+          cx={9}
+          cy={10}
+          r={6}
+          fill="none"
+          stroke={accent}
+          strokeWidth={1.8}
+          style={{ filter: `drop-shadow(0 0 4px color-mix(in oklch, ${accent} 55%, transparent))` }}
+        />
+        <circle
+          cx={17}
+          cy={10}
+          r={6}
+          fill="none"
+          stroke={accent}
+          strokeWidth={1.8}
+          style={{ filter: `drop-shadow(0 0 4px color-mix(in oklch, ${accent} 55%, transparent))` }}
+        />
+      </svg>
+      {/* Heart at the ring intersection */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Heart size={10} weight="fill" color={accent as any} />
       </div>
     </motion.div>
   );

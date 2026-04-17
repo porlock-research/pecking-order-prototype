@@ -32,14 +32,14 @@ export function PodiumRow({ ids, roster, selfId }: PodiumRowProps) {
       <span
         style={{
           fontFamily: 'var(--po-font-display)',
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 800,
-          letterSpacing: '0.26em',
+          letterSpacing: '0.22em',
           color: 'var(--po-gold)',
           textTransform: 'uppercase',
         }}
       >
-        At risk · the podium
+        At risk \u00b7 the podium
       </span>
       <div
         style={{
@@ -54,8 +54,8 @@ export function PodiumRow({ ids, roster, selfId }: PodiumRowProps) {
           if (!player) return null;
           const firstName = player.personaName?.split(' ')[0] ?? id;
           const isSelf = id === selfId;
-          // Visual elevation: #1 sits highest, #2 and #3 step down a bit
-          const lift = i === 0 ? 0 : i === 1 ? 6 : 10;
+          // Visual elevation: #1 is LIFTED (Olympic podium shape), #2/#3 sit at baseline.
+          const lift = i === 0 ? -10 : i === 1 ? -2 : 0;
           return (
             <div
               key={id}

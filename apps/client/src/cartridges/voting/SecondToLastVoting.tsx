@@ -4,6 +4,7 @@ import { PersonaAvatar } from '../../components/PersonaAvatar';
 import { VotingShell } from './shared/VotingShell';
 import { VotingHeader } from './shared/VotingHeader';
 import { VOTE_ACCENT } from './shared/voting-tokens';
+import { PULSE_SPRING } from '../../shells/pulse/springs';
 
 interface SecondToLastVotingProps {
   cartridge: any;
@@ -33,7 +34,8 @@ export default function SecondToLastVoting({
         header={
           <VotingHeader
             mechanismName={info.name}
-            cta="Counting the silver."
+            moodSubtitle={info.moodSubtitle}
+            cta="Counting the silver\u2026"
             howItWorks={info.howItWorks}
             accentColor={accent}
           />
@@ -53,6 +55,9 @@ export default function SecondToLastVoting({
         eliminatedId={eliminatedId}
         selfId={playerId}
         reduce={reduce}
+        mechanismName={info.name}
+        moodSubtitle={info.moodSubtitle}
+        revealLabel={info.revealLabel}
         eliminatedSubtitle={info.eliminatedSubtitle}
       />
     </div>
@@ -66,6 +71,9 @@ function SilverLadder({
   eliminatedId,
   selfId,
   reduce,
+  mechanismName,
+  moodSubtitle,
+  revealLabel,
   eliminatedSubtitle,
 }: {
   ranking: Array<{ id: string; silver: number }>;
@@ -74,13 +82,16 @@ function SilverLadder({
   eliminatedId: string | null;
   selfId: string;
   reduce: boolean | null;
+  mechanismName: string;
+  moodSubtitle: string;
+  revealLabel: string;
   eliminatedSubtitle: string;
 }) {
   return (
     <motion.div
       initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={reduce ? { duration: 0.25 } : { type: 'spring', ...PULSE_SPRING.page }}
       style={{
         padding: '16px 14px 18px',
         borderRadius: 18,
@@ -109,7 +120,7 @@ function SilverLadder({
             textTransform: 'uppercase',
           }}
         >
-          Second to Last
+          {mechanismName}
         </span>
         <span
           style={{
@@ -120,7 +131,7 @@ function SilverLadder({
             letterSpacing: 0.1,
           }}
         >
-          Fate, not choice
+          {moodSubtitle}
         </span>
       </div>
 
@@ -210,32 +221,32 @@ function SilverLadder({
                   <span
                     style={{
                       fontFamily: 'var(--po-font-display)',
-                      fontSize: 9,
+                      fontSize: 10,
                       fontWeight: 800,
-                      letterSpacing: '0.2em',
+                      letterSpacing: '0.22em',
                       color: 'var(--po-pink)',
                       textTransform: 'uppercase',
                     }}
                   >
-                    {eliminatedSubtitle}
+                    {revealLabel} \u00b7 {eliminatedSubtitle}
                   </span>
                 )}
               </div>
               <span
                 style={{
                   fontFamily: 'var(--po-font-display)',
-                  fontSize: 12,
-                  fontWeight: 700,
+                  fontSize: 14,
+                  fontWeight: 800,
                   fontVariantNumeric: 'tabular-nums',
-                  color: 'var(--po-text-dim)',
-                  letterSpacing: '0.04em',
+                  color: isEliminated ? 'var(--po-pink)' : 'var(--po-text-dim)',
+                  letterSpacing: '0.02em',
                 }}
               >
                 {entry.silver}
                 <span
                   style={{
-                    marginLeft: 3,
-                    fontSize: 9,
+                    marginLeft: 4,
+                    fontSize: 10,
                     letterSpacing: '0.18em',
                     textTransform: 'uppercase',
                   }}

@@ -49,12 +49,15 @@ export default function ExecutionerVoting({
           subjectPlayer={eliminatedPlayer}
           accent={accent}
           tone={info.mechanismTone}
-          haloVariant="fade"
+          haloVariant="spotlight"
           subtitle={eliminatedId ? info.eliminatedSubtitle : info.noEliminationCopy}
-          label={eliminatedId ? 'Eliminated' : undefined}
+          label={eliminatedId ? info.revealLabel : undefined}
           secondarySubject={
             executionerPlayer
-              ? { player: executionerPlayer, caption: 'The executioner' }
+              ? {
+                  player: executionerPlayer,
+                  caption: info.executionerRevealCaption ?? 'The executioner',
+                }
               : undefined
           }
         />
@@ -102,6 +105,7 @@ export default function ExecutionerVoting({
         header={
           <VotingHeader
             mechanismName={info.name}
+            moodSubtitle={info.moodSubtitle}
             cta={isExecutioner ? pickCta : 'The executioner is choosing.'}
             howItWorks={info.howItWorks}
             accentColor={accent}

@@ -37,8 +37,12 @@ export function VotingShell({ accentColor, header, engagement, children }: Votin
         borderRadius: 18,
         overflow: 'hidden',
         background: `linear-gradient(180deg, color-mix(in oklch, ${accentColor} 8%, var(--po-bg-panel, rgba(0,0,0,0.3))) 0%, var(--po-bg-panel, rgba(0,0,0,0.3)) 60%)`,
-        border: `1px solid color-mix(in oklch, ${accentColor} 22%, transparent)`,
-        boxShadow: '0 6px 24px rgba(0,0,0,0.2)',
+        boxShadow: [
+          // Colored inner-glow picks up the mechanism accent (replaces generic drop-shadow)
+          `inset 0 0 0 1px color-mix(in oklch, ${accentColor} 26%, transparent)`,
+          `inset 0 24px 48px -24px color-mix(in oklch, ${accentColor} 28%, transparent)`,
+          `0 8px 28px -8px color-mix(in oklch, ${accentColor} 18%, transparent)`,
+        ].join(', '),
       }}
     >
       <div

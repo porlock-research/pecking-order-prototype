@@ -29,14 +29,14 @@ export function ImmuneRow({ ids, roster }: ImmuneRowProps) {
       <span
         style={{
           fontFamily: 'var(--po-font-display)',
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 800,
-          letterSpacing: '0.26em',
+          letterSpacing: '0.22em',
           color: 'var(--po-gold)',
           textTransform: 'uppercase',
         }}
       >
-        Immune
+        Immune \u00b7 top silver
       </span>
       <div
         style={{

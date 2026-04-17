@@ -45,7 +45,7 @@ export default function PodiumSacrificeVoting({
           tone={info.mechanismTone}
           haloVariant="frame"
           subtitle={eliminatedId ? info.eliminatedSubtitle : info.noEliminationCopy}
-          label={eliminatedId ? 'Sacrificed' : undefined}
+          label={eliminatedId ? info.revealLabel : undefined}
         />
         <VotingTallyGrid
           tallies={revealTallies}
@@ -53,6 +53,7 @@ export default function PodiumSacrificeVoting({
           accent={accent}
           eliminatedId={eliminatedId}
           unitLabel="saves"
+          selfVotedFor={votes[playerId] ?? null}
         />
       </div>
     );
@@ -64,6 +65,7 @@ export default function PodiumSacrificeVoting({
       header={
         <VotingHeader
           mechanismName={info.name}
+          moodSubtitle={info.moodSubtitle}
           cta={info.cta}
           howItWorks={info.howItWorks}
           accentColor={accent}

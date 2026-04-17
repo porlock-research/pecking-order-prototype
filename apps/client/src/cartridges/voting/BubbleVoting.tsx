@@ -38,9 +38,9 @@ export default function BubbleVoting({ cartridge, playerId, roster, engine }: Bu
           subjectPlayer={eliminatedPlayer}
           accent={accent}
           tone={info.mechanismTone}
-          haloVariant="fade"
+          haloVariant="burst"
           subtitle={eliminatedId ? info.eliminatedSubtitle : info.noEliminationCopy}
-          label={eliminatedId ? 'Eliminated' : undefined}
+          label={eliminatedId ? info.revealLabel : undefined}
         />
         <VotingTallyGrid
           tallies={revealTallies}
@@ -49,6 +49,7 @@ export default function BubbleVoting({ cartridge, playerId, roster, engine }: Bu
           eliminatedId={eliminatedId}
           immuneIds={immune}
           unitLabel="saves"
+          selfVotedFor={votes[playerId] ?? null}
         />
       </div>
     );
@@ -60,6 +61,7 @@ export default function BubbleVoting({ cartridge, playerId, roster, engine }: Bu
       header={
         <VotingHeader
           mechanismName={info.name}
+          moodSubtitle={info.moodSubtitle}
           cta={info.cta}
           howItWorks={info.howItWorks}
           accentColor={accent}

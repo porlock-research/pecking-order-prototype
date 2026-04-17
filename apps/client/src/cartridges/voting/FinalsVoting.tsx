@@ -1,5 +1,5 @@
 import { SocialPlayer, VotingPhases, VoteEvents, VOTE_TYPE_INFO } from '@pecking-order/shared-types';
-import { Crown } from 'lucide-react';
+import { Crown } from '../../shells/pulse/icons';
 import { VotingShell, IneligibleNote } from './shared/VotingShell';
 import { VotingHeader } from './shared/VotingHeader';
 import { VoterStrip } from './shared/VoterStrip';
@@ -40,9 +40,9 @@ export default function FinalsVoting({ cartridge, playerId, roster, engine }: Fi
           tone="celebratory"
           haloVariant="crown"
           subtitle={info.winnerSubtitle ?? 'Winner'}
-          label="Crowned"
+          label={info.revealLabel}
           Icon={Crown}
-          portraitSize={128}
+          portraitSize={160}
         />
         <VotingTallyGrid
           tallies={voteCounts}
@@ -50,6 +50,9 @@ export default function FinalsVoting({ cartridge, playerId, roster, engine }: Fi
           accent={accent}
           winnerId={winnerId}
           unitLabel="votes"
+          selfVotedFor={votes[playerId] ?? null}
+          dimNonWinner
+          rowStagger
         />
       </div>
     );
@@ -62,6 +65,7 @@ export default function FinalsVoting({ cartridge, playerId, roster, engine }: Fi
       header={
         <VotingHeader
           mechanismName={info.name}
+          moodSubtitle={info.moodSubtitle}
           cta={info.cta}
           howItWorks={info.howItWorks}
           accentColor={accent}

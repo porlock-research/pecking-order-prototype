@@ -38,7 +38,7 @@ export default function ShieldVoting({ cartridge, playerId, roster, engine }: Sh
           tone={info.mechanismTone}
           haloVariant="shield"
           subtitle={eliminatedId ? info.eliminatedSubtitle : info.noEliminationCopy}
-          label={eliminatedId ? 'Eliminated' : undefined}
+          label={eliminatedId ? info.revealLabel : undefined}
         />
         <VotingTallyGrid
           tallies={revealSaves}
@@ -46,6 +46,7 @@ export default function ShieldVoting({ cartridge, playerId, roster, engine }: Sh
           accent={accent}
           eliminatedId={eliminatedId}
           unitLabel="saves"
+          selfVotedFor={votes[playerId] ?? null}
         />
       </div>
     );
@@ -57,6 +58,7 @@ export default function ShieldVoting({ cartridge, playerId, roster, engine }: Sh
       header={
         <VotingHeader
           mechanismName={info.name}
+          moodSubtitle={info.moodSubtitle}
           cta={info.cta}
           howItWorks={info.howItWorks}
           accentColor={accent}
