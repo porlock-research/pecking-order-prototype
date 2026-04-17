@@ -20,6 +20,17 @@ const DILEMMA_ICON: Record<string, React.ComponentType<{ size?: number; strokeWi
   GIFT_OR_GRIEF: Gift,
 };
 
+/**
+ * Per-dilemma accent — each type gets its own identity color so the
+ * dilemma bar doesn't read as a monotonous block of gold. All values
+ * resolve to --po-* tokens so they adapt per shell.
+ */
+const DILEMMA_ACCENT: Record<string, string> = {
+  SILVER_GAMBIT: 'var(--po-gold)',   // money theme
+  SPOTLIGHT:     'var(--po-pink)',   // drama, the chosen one
+  GIFT_OR_GRIEF: 'var(--po-orange, var(--po-gold))', // ambiguous warmth, fallback to gold
+};
+
 /* ------------------------------------------------------------------ */
 /*  Participation strip (mirrors VoterStrip pattern)                   */
 /* ------------------------------------------------------------------ */
@@ -157,6 +168,7 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
     actionVerb: 'decided',
   };
   const IconComponent = DILEMMA_ICON[dilemmaType] || HelpCircle;
+  const accentColor = DILEMMA_ACCENT[dilemmaType] || 'var(--po-gold)';
   const hasSubmitted = submitted?.[playerId] ?? false;
 
   return (
@@ -170,32 +182,32 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
         style={{
           borderRadius: 16,
           background: 'var(--po-bg-panel)',
-          border: '1px solid color-mix(in oklch, var(--po-gold) 22%, transparent)',
+          border: `1px solid color-mix(in oklch, ${accentColor} 22%, transparent)`,
           boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
           overflow: 'hidden',
           margin: '10px 0',
         }}
       >
-        {/* Slim header: icon + dilemma name */}
+        {/* Slim header: icon + dilemma name — accent per type */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             padding: '12px 16px',
-            borderBottom: '1px solid color-mix(in oklch, var(--po-gold) 12%, transparent)',
-            background: 'color-mix(in oklch, var(--po-gold) 6%, transparent)',
+            borderBottom: `1px solid color-mix(in oklch, ${accentColor} 14%, transparent)`,
+            background: `color-mix(in oklch, ${accentColor} 7%, transparent)`,
             gap: 10,
           }}
         >
-          <IconComponent size={18} strokeWidth={2.25} color="var(--po-gold)" />
+          <IconComponent size={18} strokeWidth={2.25} color={accentColor} />
           <span
             style={{
               fontFamily: 'var(--po-font-display)',
               fontSize: 13,
               fontWeight: 800,
-              color: 'var(--po-gold)',
+              color: accentColor,
               textTransform: 'uppercase',
-              letterSpacing: '0.08em',
+              letterSpacing: '0.1em',
               flex: 1,
             }}
           >
@@ -234,6 +246,7 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
               eligiblePlayers={eligiblePlayers || []}
               roster={roster}
               engine={engine}
+              accentColor={accentColor}
             />
           )}
 
@@ -262,12 +275,14 @@ function DilemmaInput({
   eligiblePlayers,
   roster,
   engine,
+  accentColor,
 }: {
   dilemmaType: string;
   playerId: string;
   eligiblePlayers: string[];
   roster: Record<string, any>;
   engine: { sendActivityAction: (type: string, payload?: Record<string, any>) => void };
+  accentColor: string;
 }) {
   switch (dilemmaType) {
     case 'SILVER_GAMBIT':
@@ -279,6 +294,7 @@ function DilemmaInput({
           eligiblePlayers={eligiblePlayers}
           roster={roster}
           engine={engine}
+          accentColor={accentColor}
         />
       );
     case 'GIFT_OR_GRIEF':
@@ -288,6 +304,7 @@ function DilemmaInput({
           eligiblePlayers={eligiblePlayers}
           roster={roster}
           engine={engine}
+          accentColor={accentColor}
         />
       );
     default:

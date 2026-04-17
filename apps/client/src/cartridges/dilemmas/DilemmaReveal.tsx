@@ -1,8 +1,11 @@
 import { motion } from 'framer-motion';
 import type { SocialPlayer } from '@pecking-order/shared-types';
-import { WadOfMoney, HeartBroken, StarShine, Gift, Danger } from '@solar-icons/react';
-import { VIVID_SPRING } from '../../shells/vivid/springs';
+import { Coins, HeartCrack, Sparkles, Gift, AlertTriangle } from 'lucide-react';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+
+// Local spring — matches the Vivid "bouncy" feel without a cross-shell
+// import. Keeping the cartridge shell-agnostic.
+const BOUNCY_SPRING = { type: 'spring' as const, stiffness: 400, damping: 25 };
 
 interface DilemmaRevealProps {
   dilemmaType: string;
@@ -37,7 +40,7 @@ export default function DilemmaReveal({ dilemmaType, decisions, results, roster,
       {/* Header */}
       <motion.div
         variants={staggerItem}
-        transition={VIVID_SPRING.bouncy}
+        transition={BOUNCY_SPRING}
         style={{
           textAlign: 'center',
           padding: '8px 0',
@@ -45,10 +48,10 @@ export default function DilemmaReveal({ dilemmaType, decisions, results, roster,
       >
         <span
           style={{
-            fontFamily: 'var(--vivid-font-display)',
+            fontFamily: 'var(--po-font-display)',
             fontSize: 11,
             fontWeight: 800,
-            color: '#B8840A',
+            color: 'var(--po-gold)',
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
           }}
@@ -77,7 +80,7 @@ export default function DilemmaReveal({ dilemmaType, decisions, results, roster,
       {silverRewards[playerId] != null && silverRewards[playerId] !== 0 && (
         <motion.div
           variants={staggerItem}
-          transition={VIVID_SPRING.bouncy}
+          transition={BOUNCY_SPRING}
           style={{
             textAlign: 'center',
             padding: '10px 0',
@@ -85,10 +88,10 @@ export default function DilemmaReveal({ dilemmaType, decisions, results, roster,
         >
           <span
             style={{
-              fontFamily: 'var(--vivid-font-mono)',
+              fontFamily: 'var(--po-font-display)',
               fontSize: 10,
               fontWeight: 700,
-              color: '#9B8E7E',
+              color: 'var(--po-text-dim)',
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
               display: 'block',
@@ -99,10 +102,10 @@ export default function DilemmaReveal({ dilemmaType, decisions, results, roster,
           </span>
           <span
             style={{
-              fontFamily: 'var(--vivid-font-display)',
+              fontFamily: 'var(--po-font-display)',
               fontSize: 22,
               fontWeight: 800,
-              color: silverRewards[playerId] > 0 ? '#B8840A' : '#9D174D',
+              color: silverRewards[playerId] > 0 ? 'var(--po-gold)' : 'var(--po-pink, #9D174D)',
             }}
           >
             {silverRewards[playerId] > 0 ? '+' : ''}
@@ -120,24 +123,24 @@ function TimedOutReveal({ summary }: { summary: Record<string, any> }) {
   return (
     <motion.div
       variants={staggerItem}
-      transition={VIVID_SPRING.bouncy}
+      transition={BOUNCY_SPRING}
       style={{
         textAlign: 'center',
         padding: '14px 16px',
         borderRadius: 12,
-        background: 'rgba(139, 115, 85, 0.06)',
-        border: '1px solid rgba(139, 115, 85, 0.12)',
+        background: 'var(--po-bg-glass, rgba(255,255,255,0.04))',
+        border: '1px solid var(--po-border, rgba(255,255,255,0.08))',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
-        <Danger size={28} weight="Bold" />
+        <AlertTriangle size={28} strokeWidth={2.25} />
       </div>
       <div
         style={{
-          fontFamily: 'var(--vivid-font-display)',
+          fontFamily: 'var(--po-font-display)',
           fontSize: 14,
           fontWeight: 700,
-          color: '#9B8E7E',
+          color: 'var(--po-text-dim)',
           lineHeight: 1.4,
         }}
       >
@@ -145,9 +148,9 @@ function TimedOutReveal({ summary }: { summary: Record<string, any> }) {
       </div>
       <div
         style={{
-          fontFamily: 'var(--vivid-font-body)',
+          fontFamily: 'var(--po-font-body)',
           fontSize: 12,
-          color: '#9B8E7E',
+          color: 'var(--po-text-dim)',
           marginTop: 4,
         }}
       >
@@ -175,24 +178,24 @@ function SilverGambitReveal({
   const outcomeBox = summary.allDonated ? (
     <motion.div
       variants={staggerItem}
-      transition={VIVID_SPRING.bouncy}
+      transition={BOUNCY_SPRING}
       style={{
         textAlign: 'center',
         padding: '14px 16px',
         borderRadius: 12,
-        background: 'rgba(45, 106, 79, 0.06)',
-        border: '1px solid rgba(45, 106, 79, 0.15)',
+        background: 'color-mix(in oklch, var(--po-green) 8%, transparent)',
+        border: '1px solid color-mix(in oklch, var(--po-green) 22%, transparent)',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
-        <WadOfMoney size={28} weight="Bold" />
+        <Coins size={28} strokeWidth={2.25} />
       </div>
       <div
         style={{
-          fontFamily: 'var(--vivid-font-display)',
+          fontFamily: 'var(--po-font-display)',
           fontSize: 14,
           fontWeight: 700,
-          color: '#2D6A4F',
+          color: 'var(--po-green, #2D6A4F)',
           lineHeight: 1.4,
         }}
       >
@@ -200,37 +203,37 @@ function SilverGambitReveal({
       </div>
       <div
         style={{
-          fontFamily: 'var(--vivid-font-body)',
+          fontFamily: 'var(--po-font-body)',
           fontSize: 13,
-          color: '#3D2E1F',
+          color: 'var(--po-text)',
           marginTop: 4,
         }}
       >
-        <strong style={{ color: '#B8840A' }}>{name(summary.winnerId)}</strong> wins the jackpot of{' '}
-        <strong style={{ color: '#B8840A' }}>{summary.jackpot} silver</strong>!
+        <strong style={{ color: 'var(--po-gold)' }}>{name(summary.winnerId)}</strong> wins the jackpot of{' '}
+        <strong style={{ color: 'var(--po-gold)' }}>{summary.jackpot} silver</strong>!
       </div>
     </motion.div>
   ) : (
     <motion.div
       variants={staggerItem}
-      transition={VIVID_SPRING.bouncy}
+      transition={BOUNCY_SPRING}
       style={{
         textAlign: 'center',
         padding: '14px 16px',
         borderRadius: 12,
-        background: 'rgba(157, 23, 77, 0.06)',
-        border: '1px solid rgba(157, 23, 77, 0.15)',
+        background: 'color-mix(in oklch, var(--po-pink) 8%, transparent)',
+        border: '1px solid color-mix(in oklch, var(--po-pink) 22%, transparent)',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
-        <HeartBroken size={28} weight="Bold" />
+        <HeartCrack size={28} strokeWidth={2.25} />
       </div>
       <div
         style={{
-          fontFamily: 'var(--vivid-font-display)',
+          fontFamily: 'var(--po-font-display)',
           fontSize: 14,
           fontWeight: 700,
-          color: '#9D174D',
+          color: 'var(--po-pink, #9D174D)',
           lineHeight: 1.4,
         }}
       >
@@ -238,9 +241,9 @@ function SilverGambitReveal({
       </div>
       <div
         style={{
-          fontFamily: 'var(--vivid-font-body)',
+          fontFamily: 'var(--po-font-body)',
           fontSize: 12,
-          color: '#9B8E7E',
+          color: 'var(--po-text-dim)',
           marginTop: 4,
         }}
       >
@@ -256,7 +259,7 @@ function SilverGambitReveal({
       {decisionEntries.length > 0 && (
         <motion.div
           variants={staggerItem}
-          transition={VIVID_SPRING.bouncy}
+          transition={BOUNCY_SPRING}
           style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}
         >
           {decisionEntries.map(([pid, dec]) => {
@@ -271,7 +274,7 @@ function SilverGambitReveal({
                   gap: 8,
                   padding: '6px 10px',
                   borderRadius: 8,
-                  background: isDonate ? 'rgba(45, 106, 79, 0.05)' : 'rgba(157, 23, 77, 0.05)',
+                  background: isDonate ? 'color-mix(in oklch, var(--po-green) 6%, transparent)' : 'color-mix(in oklch, var(--po-pink) 6%, transparent)',
                 }}
               >
                 <PersonaAvatar
@@ -281,10 +284,10 @@ function SilverGambitReveal({
                 />
                 <span
                   style={{
-                    fontFamily: 'var(--vivid-font-body)',
+                    fontFamily: 'var(--po-font-body)',
                     fontSize: 12,
                     fontWeight: 600,
-                    color: '#3D2E1F',
+                    color: 'var(--po-text)',
                     flex: 1,
                   }}
                 >
@@ -292,10 +295,10 @@ function SilverGambitReveal({
                 </span>
                 <span
                   style={{
-                    fontFamily: 'var(--vivid-font-mono)',
+                    fontFamily: 'var(--po-font-display)',
                     fontSize: 11,
                     fontWeight: 700,
-                    color: isDonate ? '#2D6A4F' : '#9D174D',
+                    color: isDonate ? 'var(--po-green, #2D6A4F)' : 'var(--po-pink, #9D174D)',
                     textTransform: 'uppercase',
                   }}
                 >
@@ -328,24 +331,24 @@ function SpotlightReveal({
   const outcomeBox = summary.unanimous && summary.targetId ? (
     <motion.div
       variants={staggerItem}
-      transition={VIVID_SPRING.bouncy}
+      transition={BOUNCY_SPRING}
       style={{
         textAlign: 'center',
         padding: '14px 16px',
         borderRadius: 12,
-        background: 'rgba(184, 132, 10, 0.06)',
-        border: '1px solid rgba(184, 132, 10, 0.15)',
+        background: 'color-mix(in oklch, var(--po-gold) 8%, transparent)',
+        border: '1px solid color-mix(in oklch, var(--po-gold) 22%, transparent)',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
-        <StarShine size={28} weight="Bold" />
+        <Sparkles size={28} strokeWidth={2.25} />
       </div>
       <div
         style={{
-          fontFamily: 'var(--vivid-font-display)',
+          fontFamily: 'var(--po-font-display)',
           fontSize: 14,
           fontWeight: 700,
-          color: '#B8840A',
+          color: 'var(--po-gold)',
           lineHeight: 1.4,
         }}
       >
@@ -353,36 +356,36 @@ function SpotlightReveal({
       </div>
       <div
         style={{
-          fontFamily: 'var(--vivid-font-body)',
+          fontFamily: 'var(--po-font-body)',
           fontSize: 13,
-          color: '#3D2E1F',
+          color: 'var(--po-text)',
           marginTop: 4,
         }}
       >
-        <strong style={{ color: '#B8840A' }}>{name(summary.targetId)}</strong> gets 20 silver!
+        <strong style={{ color: 'var(--po-gold)' }}>{name(summary.targetId)}</strong> gets 20 silver!
       </div>
     </motion.div>
   ) : (
     <motion.div
       variants={staggerItem}
-      transition={VIVID_SPRING.bouncy}
+      transition={BOUNCY_SPRING}
       style={{
         textAlign: 'center',
         padding: '14px 16px',
         borderRadius: 12,
-        background: 'rgba(139, 115, 85, 0.06)',
-        border: '1px solid rgba(139, 115, 85, 0.12)',
+        background: 'var(--po-bg-glass, rgba(255,255,255,0.04))',
+        border: '1px solid var(--po-border, rgba(255,255,255,0.08))',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
-        <Danger size={28} weight="Bold" />
+        <AlertTriangle size={28} strokeWidth={2.25} />
       </div>
       <div
         style={{
-          fontFamily: 'var(--vivid-font-display)',
+          fontFamily: 'var(--po-font-display)',
           fontSize: 14,
           fontWeight: 700,
-          color: '#9B8E7E',
+          color: 'var(--po-text-dim)',
           lineHeight: 1.4,
         }}
       >
@@ -390,9 +393,9 @@ function SpotlightReveal({
       </div>
       <div
         style={{
-          fontFamily: 'var(--vivid-font-body)',
+          fontFamily: 'var(--po-font-body)',
           fontSize: 12,
-          color: '#9B8E7E',
+          color: 'var(--po-text-dim)',
           marginTop: 4,
         }}
       >
@@ -408,7 +411,7 @@ function SpotlightReveal({
       {decisionEntries.length > 0 && (
         <motion.div
           variants={staggerItem}
-          transition={VIVID_SPRING.bouncy}
+          transition={BOUNCY_SPRING}
           style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}
         >
           {decisionEntries.map(([pid, dec]) => {
@@ -424,7 +427,7 @@ function SpotlightReveal({
                   gap: 8,
                   padding: '6px 10px',
                   borderRadius: 8,
-                  background: 'rgba(184, 132, 10, 0.04)',
+                  background: 'color-mix(in oklch, var(--po-gold) 5%, transparent)',
                 }}
               >
                 <PersonaAvatar
@@ -434,19 +437,19 @@ function SpotlightReveal({
                 />
                 <span
                   style={{
-                    fontFamily: 'var(--vivid-font-body)',
+                    fontFamily: 'var(--po-font-body)',
                     fontSize: 12,
                     fontWeight: 600,
-                    color: '#3D2E1F',
+                    color: 'var(--po-text)',
                   }}
                 >
                   {name(pid)}
                 </span>
                 <span
                   style={{
-                    fontFamily: 'var(--vivid-font-mono)',
+                    fontFamily: 'var(--po-font-display)',
                     fontSize: 11,
-                    color: '#9B8E7E',
+                    color: 'var(--po-text-dim)',
                   }}
                 >
                   →
@@ -460,10 +463,10 @@ function SpotlightReveal({
                 )}
                 <span
                   style={{
-                    fontFamily: 'var(--vivid-font-body)',
+                    fontFamily: 'var(--po-font-body)',
                     fontSize: 12,
                     fontWeight: 600,
-                    color: '#B8840A',
+                    color: 'var(--po-gold)',
                   }}
                 >
                   {targetId ? name(targetId) : '—'}
@@ -514,7 +517,7 @@ function GiftOrGriefReveal({
       {/* Nomination breakdown */}
       <motion.div
         variants={staggerItem}
-        transition={VIVID_SPRING.bouncy}
+        transition={BOUNCY_SPRING}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -532,16 +535,16 @@ function GiftOrGriefReveal({
                 padding: '8px 12px',
                 borderRadius: 10,
                 background: isGifted
-                  ? 'rgba(45, 106, 79, 0.06)'
+                  ? 'color-mix(in oklch, var(--po-green) 8%, transparent)'
                   : isGrieved
-                    ? 'rgba(157, 23, 77, 0.06)'
-                    : 'rgba(139, 115, 85, 0.04)',
+                    ? 'color-mix(in oklch, var(--po-pink) 8%, transparent)'
+                    : 'var(--po-bg-glass, rgba(255,255,255,0.03))',
                 border: `1px solid ${
                   isGifted
-                    ? 'rgba(45, 106, 79, 0.15)'
+                    ? 'color-mix(in oklch, var(--po-green) 22%, transparent)'
                     : isGrieved
-                      ? 'rgba(157, 23, 77, 0.15)'
-                      : 'rgba(139, 115, 85, 0.08)'
+                      ? 'color-mix(in oklch, var(--po-pink) 22%, transparent)'
+                      : 'var(--po-border, rgba(255,255,255,0.06))'
                 }`,
               }}
             >
@@ -549,33 +552,33 @@ function GiftOrGriefReveal({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span
                     style={{
-                      fontFamily: 'var(--vivid-font-body)',
+                      fontFamily: 'var(--po-font-body)',
                       fontSize: 13,
                       fontWeight: 600,
-                      color: isGifted ? '#2D6A4F' : isGrieved ? '#9D174D' : '#3D2E1F',
+                      color: isGifted ? 'var(--po-green, #2D6A4F)' : isGrieved ? 'var(--po-pink, #9D174D)' : 'var(--po-text)',
                     }}
                   >
                     {name(pid)}
                   </span>
                   {isGifted && (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#2D6A4F' }}>
-                      <Gift size={14} weight="Bold" />
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--po-green, #2D6A4F)' }}>
+                      <Gift size={14} strokeWidth={2.25} />
                       <span style={{ fontSize: 12, fontWeight: 700 }}>+10</span>
                     </span>
                   )}
                   {isGrieved && (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#9D174D' }}>
-                      <Danger size={14} weight="Bold" />
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'var(--po-pink, #9D174D)' }}>
+                      <AlertTriangle size={14} strokeWidth={2.25} />
                       <span style={{ fontSize: 12, fontWeight: 700 }}>-10</span>
                     </span>
                   )}
                 </div>
                 <span
                   style={{
-                    fontFamily: 'var(--vivid-font-mono)',
+                    fontFamily: 'var(--po-font-display)',
                     fontSize: 12,
                     fontWeight: 700,
-                    color: '#9B8E7E',
+                    color: 'var(--po-text-dim)',
                   }}
                 >
                   {count} {count === 1 ? 'vote' : 'votes'}
@@ -589,14 +592,14 @@ function GiftOrGriefReveal({
                     gap: 4,
                     marginTop: 4,
                     paddingTop: 4,
-                    borderTop: '1px solid rgba(139, 115, 85, 0.08)',
+                    borderTop: '1px solid var(--po-border, rgba(255,255,255,0.06))',
                   }}
                 >
                   <span
                     style={{
-                      fontFamily: 'var(--vivid-font-body)',
+                      fontFamily: 'var(--po-font-body)',
                       fontSize: 11,
-                      color: '#9B8E7E',
+                      color: 'var(--po-text-dim)',
                     }}
                   >
                     from
@@ -612,9 +615,9 @@ function GiftOrGriefReveal({
                         />
                         <span
                           style={{
-                            fontFamily: 'var(--vivid-font-body)',
+                            fontFamily: 'var(--po-font-body)',
                             fontSize: 11,
-                            color: '#9B8E7E',
+                            color: 'var(--po-text-dim)',
                           }}
                         >
                           {name(nid)}
