@@ -1,138 +1,105 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Info } from 'lucide-react';
+import { useCartridgeStage } from '../../CartridgeStageContext';
 
 interface VotingHeaderProps {
-  header: string;
+  /** Short mechanism name (info.name from VOTE_TYPE_INFO) — e.g. "Majority Vote". */
+  mechanismName: string;
+  /** Call-to-action — e.g. "Who should go?" */
   cta: string;
-  oneLiner: string;
+  /** Full rules text — always visible inline, hidden when staged (host renders externally). */
   howItWorks: string;
-  /** Accent color — passed in so voting types can theme themselves. */
+  /** Accent color, expected to be a CSS var like 'var(--po-orange)'. */
   accentColor: string;
 }
 
 /**
- * Shell-agnostic voting header — renders the rules banner, mechanism
- * label, and CTA. Uses only the --po-* design contract so it adopts
- * whichever shell it's rendered in (Pulse / Vivid / Classic / Immersive).
+ * Shell-agnostic voting header — mirrors PromptShell's header pattern.
+ *
+ * - Mechanism label + CTA always render (cartridge identity).
+ * - HowItWorks panel renders inline ONLY when not staged. When staged on
+ *   the Pulse cartridge stage, the stage host renders HOW IT WORKS as a
+ *   distinct neutral card above the cartridge — keeping the cartridge
+ *   itself tight (header + action belong together).
+ *
+ * Always-open: rules card is never collapsed. Playtester feedback: no
+ * veterans yet, hiding rules behind a button costs comprehension.
  */
-export function VotingHeader({
-  header,
-  cta,
-  oneLiner,
-  howItWorks,
-  accentColor,
-}: VotingHeaderProps) {
-  const [expanded, setExpanded] = useState(false);
+export function VotingHeader({ mechanismName, cta, howItWorks, accentColor }: VotingHeaderProps) {
+  const { staged } = useCartridgeStage();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Collapsible rules banner */}
-      <div
-        style={{
-          background: 'var(--po-bg-glass, rgba(255,255,255,0.04))',
-          borderRadius: 10,
-          padding: '8px 12px',
-          border: '1px solid var(--po-border, rgba(255,255,255,0.06))',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-          }}
-        >
-          <span
-            style={{
-              fontFamily: 'var(--po-font-body)',
-              fontSize: 12,
-              color: 'var(--po-text-dim)',
-              lineHeight: 1.45,
-              flex: 1,
-            }}
-          >
-            {oneLiner}
-          </span>
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 4,
-              cursor: 'pointer',
-              color: 'var(--po-text-dim)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              borderRadius: 6,
-            }}
-            aria-label={expanded ? 'Hide rules' : 'Show rules'}
-            aria-expanded={expanded}
-          >
-            <Info size={16} strokeWidth={2.25} />
-          </button>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {expanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25, ease: [0.2, 0.9, 0.3, 1] }}
-              style={{ overflow: 'hidden' }}
-            >
-              <p
-                style={{
-                  fontFamily: 'var(--po-font-body)',
-                  fontSize: 12,
-                  color: 'var(--po-text-dim)',
-                  lineHeight: 1.55,
-                  marginTop: 8,
-                  paddingTop: 8,
-                  borderTop: '1px solid var(--po-border, rgba(255,255,255,0.06))',
-                  margin: 0,
-                }}
-              >
-                {howItWorks}
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Mechanism label — display font, accent-colored, uppercase */}
-      <h3
+      {/* Mechanism label — display font, accent, tight tracking. */}
+      <span
         style={{
           fontFamily: 'var(--po-font-display)',
-          fontSize: 14,
-          fontWeight: 700,
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: '0.22em',
           color: accentColor,
           textTransform: 'uppercase',
-          letterSpacing: '0.14em',
-          textAlign: 'center',
-          margin: 0,
+          alignSelf: 'flex-start',
         }}
       >
-        {header}
-      </h3>
+        {mechanismName}
+      </span>
 
-      {/* CTA — body font, primary text color, readable */}
+      {/* CTA — primary statement of intent. */}
       <p
         style={{
-          fontFamily: 'var(--po-font-body)',
-          fontSize: 14,
-          fontWeight: 500,
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 'clamp(20px, 5vw, 26px)',
+          fontWeight: 600,
+          lineHeight: 1.15,
+          letterSpacing: -0.4,
           color: 'var(--po-text)',
-          textAlign: 'center',
           margin: 0,
-          lineHeight: 1.4,
         }}
       >
         {cta}
+      </p>
+
+      {/* HowItWorks — only inline when not staged. */}
+      {!staged && <HowItWorks text={howItWorks} accentColor={accentColor} />}
+    </div>
+  );
+}
+
+function HowItWorks({ text, accentColor }: { text: string; accentColor: string }) {
+  return (
+    <div
+      style={{
+        padding: '12px 14px 13px',
+        borderRadius: 12,
+        background: `color-mix(in oklch, ${accentColor} 9%, var(--po-bg-glass, rgba(255,255,255,0.04)))`,
+        border: `1px solid color-mix(in oklch, ${accentColor} 26%, transparent)`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: '0.26em',
+          color: accentColor,
+          textTransform: 'uppercase',
+        }}
+      >
+        How it works
+      </span>
+      <p
+        style={{
+          margin: 0,
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 13,
+          lineHeight: 1.45,
+          color: 'var(--po-text)',
+          fontWeight: 500,
+        }}
+      >
+        {text}
       </p>
     </div>
   );

@@ -1,3 +1,5 @@
+import { motion, useReducedMotion } from 'framer-motion';
+import { useCartridgeStage } from '../../CartridgeStageContext';
 import { PersonaAvatar } from '../../../components/PersonaAvatar';
 import type { SocialPlayer } from '@pecking-order/shared-types';
 
@@ -5,24 +7,50 @@ interface VoterStripProps {
   eligibleVoters: string[];
   votes: Record<string, string>;
   roster: Record<string, SocialPlayer>;
+  /** Mechanism accent — used for the engaged-state ring + glow. */
+  accentColor: string;
+  /** Current player id, so we can mark "you" in the row. */
+  selfId?: string;
 }
 
 /**
- * Shell-agnostic voter-progress strip — shows avatar of each eligible
- * voter with a dim/voted state and a running tally. Uses only the --po-*
- * design contract.
+ * Shell-agnostic voter-progress strip.
+ *
+ * Engagement grammar (canonical, matches DilemmaCard / PromptShell):
+ *   - Voted    → conic-gradient ring in mechanism accent + soft glow, full opacity
+ *   - Waiting  → 1.5px dashed neutral ring + 0.55 opacity + breathing pulse
+ *                (opacity oscillates 0.55 → 0.85 → 0.55 over 2.4s) + saturate(0.8)
+ *
+ * Self-marker: the current player gets a tiny accent dot under their avatar.
+ *
+ * Status text uses tabular-nums + named callouts when ≤2 holdouts remain.
+ * Wrapped with role="status" + aria-live="polite" for SR users.
+ *
+ * Hidden when staged: the Pulse stage renders a bigger cast strip below
+ * the cartridge already (mirrors PromptShell behavior).
  */
-export function VoterStrip({ eligibleVoters, votes, roster }: VoterStripProps) {
-  const votedCount = eligibleVoters.filter((id) => id in votes).length;
+export function VoterStrip({
+  eligibleVoters,
+  votes,
+  roster,
+  accentColor,
+  selfId,
+}: VoterStripProps) {
+  const { staged } = useCartridgeStage();
+  const reduce = useReducedMotion();
+  if (staged) return null;
+
+  const votedSet = new Set(Object.keys(votes));
   const total = eligibleVoters.length;
+  const votedCount = eligibleVoters.filter((id) => votedSet.has(id)).length;
   const remaining = total - votedCount;
 
-  const statusText =
-    remaining === 0
-      ? `${total} of ${total} voted`
-      : remaining === 1
-        ? 'Waiting for 1 more…'
-        : `${votedCount} of ${total} voted`;
+  const holdoutNames = eligibleVoters
+    .filter((id) => !votedSet.has(id))
+    .map((id) => roster[id]?.personaName?.split(' ')[0] ?? null)
+    .filter((n): n is string => !!n);
+
+  const statusText = formatStatus(votedCount, total, remaining, holdoutNames);
 
   return (
     <div
@@ -33,7 +61,6 @@ export function VoterStrip({ eligibleVoters, votes, roster }: VoterStripProps) {
         gap: 8,
       }}
     >
-      {/* Avatar row */}
       <div
         style={{
           display: 'flex',
@@ -44,89 +71,92 @@ export function VoterStrip({ eligibleVoters, votes, roster }: VoterStripProps) {
       >
         {eligibleVoters.map((voterId) => {
           const player = roster[voterId];
-          const hasVoted = voterId in votes;
-
+          if (!player) return null;
+          const did = votedSet.has(voterId);
+          const isSelf = voterId === selfId;
           return (
             <div
               key={voterId}
+              title={player.personaName}
               style={{
-                position: 'relative',
-                opacity: hasVoted ? 1 : 0.5,
-                transition: 'opacity 0.25s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2,
               }}
             >
-              <div
+              <motion.div
+                animate={did || reduce ? { opacity: did ? 1 : 0.55 } : { opacity: [0.55, 0.85, 0.55] }}
+                transition={did || reduce ? { duration: 0.25 } : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
                 style={{
                   borderRadius: '50%',
-                  border: hasVoted
-                    ? '2px solid var(--po-green, #2d6a4f)'
-                    : '2px solid var(--po-border, rgba(255,255,255,0.12))',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'border 0.25s ease',
+                  padding: 1.5,
+                  background: did
+                    ? `conic-gradient(from 180deg, ${accentColor}, color-mix(in oklch, ${accentColor} 40%, transparent), ${accentColor})`
+                    : 'transparent',
+                  border: did
+                    ? 'none'
+                    : '1.5px dashed color-mix(in oklch, var(--po-text) 25%, transparent)',
+                  filter: did ? 'none' : 'grayscale(35%) saturate(0.8)',
+                  boxShadow: did
+                    ? `0 0 14px color-mix(in oklch, ${accentColor} 30%, transparent)`
+                    : undefined,
                 }}
               >
                 <PersonaAvatar
-                  avatarUrl={player?.avatarUrl}
-                  personaName={player?.personaName}
-                  size={20}
+                  avatarUrl={player.avatarUrl}
+                  personaName={player.personaName}
+                  size={36}
                 />
-              </div>
-              {/* Voted checkmark badge */}
-              {hasVoted && (
-                <div
+              </motion.div>
+              {isSelf && (
+                <span
                   aria-hidden="true"
                   style={{
-                    position: 'absolute',
-                    bottom: -2,
-                    right: -2,
-                    width: 9,
-                    height: 9,
+                    width: 4,
+                    height: 4,
                     borderRadius: '50%',
-                    background: 'var(--po-green, #2d6a4f)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px solid var(--po-bg-panel, rgba(0,0,0,0.4))',
+                    background: accentColor,
+                    marginTop: 1,
                   }}
-                >
-                  <svg
-                    width={5}
-                    height={4}
-                    viewBox="0 0 5 4"
-                    fill="none"
-                    style={{ display: 'block' }}
-                  >
-                    <path
-                      d="M0.5 2L1.8 3.2L4.2 0.8"
-                      stroke="white"
-                      strokeWidth={0.9}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
+                />
               )}
             </div>
           );
         })}
       </div>
 
-      {/* Status text */}
       <span
+        role="status"
+        aria-live="polite"
         style={{
           fontFamily: 'var(--po-font-display)',
-          fontSize: 10,
+          fontSize: 11,
           color: 'var(--po-text-dim)',
           textTransform: 'uppercase',
-          letterSpacing: '0.1em',
+          letterSpacing: '0.16em',
           fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
+          textAlign: 'center',
         }}
       >
         {statusText}
       </span>
     </div>
   );
+}
+
+function formatStatus(
+  votedCount: number,
+  total: number,
+  remaining: number,
+  holdoutNames: string[],
+): string {
+  if (total === 0) return '';
+  if (remaining === 0) return 'All locked in — revealing';
+  if (remaining <= 2 && holdoutNames.length === remaining && holdoutNames.length > 0) {
+    if (holdoutNames.length === 1) return `Waiting for ${holdoutNames[0]}`;
+    return `Waiting for ${holdoutNames[0]} and ${holdoutNames[1]}`;
+  }
+  return `${votedCount} of ${total} voted`;
 }

@@ -1,8 +1,9 @@
-import { SocialPlayer, VotingPhases, VOTE_TYPE_INFO } from '@pecking-order/shared-types';
+import { motion, useReducedMotion } from 'framer-motion';
+import { SocialPlayer, VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import { VotingShell } from './shared/VotingShell';
 import { VotingHeader } from './shared/VotingHeader';
-
-const ACCENT = '#9B8E7E';
+import { VOTE_ACCENT } from './shared/voting-tokens';
 
 interface SecondToLastVotingProps {
   cartridge: any;
@@ -11,94 +12,279 @@ interface SecondToLastVotingProps {
   engine: { sendVoteAction: (type: string, targetId: string) => void };
 }
 
-export default function SecondToLastVoting({ cartridge, playerId, roster }: SecondToLastVotingProps) {
-  const { phase, results, silverRanking } = cartridge;
+export default function SecondToLastVoting({
+  cartridge,
+  playerId,
+  roster,
+}: SecondToLastVotingProps) {
+  const { results, silverRanking } = cartridge;
   const info = VOTE_TYPE_INFO[cartridge.voteType as keyof typeof VOTE_TYPE_INFO];
-  const ranking: Array<{ id: string; silver: number }> = results?.summary?.silverRanking ?? silverRanking ?? [];
-  const eliminatedId: string | null = results?.eliminatedId ?? null;
-  const maxSilver = ranking.length > 0 ? Math.max(...ranking.map(r => r.silver), 1) : 1;
+  const accent = VOTE_ACCENT[cartridge.voteType as keyof typeof VOTE_ACCENT];
+  const reduce = useReducedMotion();
 
-  if (!ranking.length) {
+  const ranking: Array<{ id: string; silver: number }> =
+    results?.summary?.silverRanking ?? silverRanking ?? [];
+  const eliminatedId: string | null = results?.eliminatedId ?? null;
+
+  if (ranking.length === 0) {
     return (
-      <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
-        <div className="h-1 vote-strip-second" />
-        <div className="p-4 text-center space-y-3">
-          <span className="inline-block w-6 h-6 border-2 border-skin-dim border-t-transparent rounded-full spin-slow" />
-          <p className="text-xs font-mono text-skin-dim uppercase">Calculating...</p>
-        </div>
-      </div>
+      <VotingShell
+        accentColor={accent}
+        header={
+          <VotingHeader
+            mechanismName={info.name}
+            cta="Counting the silver."
+            howItWorks={info.howItWorks}
+            accentColor={accent}
+          />
+        }
+      >
+        <CountingPlaceholder reduce={reduce} />
+      </VotingShell>
     );
   }
 
   return (
-    <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
-      <div className="h-1 vote-strip-second" />
-      <div className="p-4 space-y-3">
-        {phase === VotingPhases.REVEAL ? (
-          <h3 className="text-sm font-mono font-bold text-skin-dim uppercase tracking-widest text-center">
-            SECOND TO LAST -- RESULTS
-          </h3>
-        ) : (
-          <VotingHeader
-            header={info.header}
-            cta=""
-            oneLiner={info.oneLiner}
-            howItWorks={info.howItWorks}
-            accentColor={ACCENT}
-          />
-        )}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, margin: '10px 0' }}>
+      <SilverLadder
+        ranking={ranking}
+        roster={roster}
+        accent={accent}
+        eliminatedId={eliminatedId}
+        selfId={playerId}
+        reduce={reduce}
+        eliminatedSubtitle={info.eliminatedSubtitle}
+      />
+    </div>
+  );
+}
 
-        <p
+function SilverLadder({
+  ranking,
+  roster,
+  accent,
+  eliminatedId,
+  selfId,
+  reduce,
+  eliminatedSubtitle,
+}: {
+  ranking: Array<{ id: string; silver: number }>;
+  roster: Record<string, SocialPlayer>;
+  accent: string;
+  eliminatedId: string | null;
+  selfId: string;
+  reduce: boolean | null;
+  eliminatedSubtitle: string;
+}) {
+  return (
+    <motion.div
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      style={{
+        padding: '16px 14px 18px',
+        borderRadius: 18,
+        background: `radial-gradient(120% 100% at 50% 0%, color-mix(in oklch, var(--po-text) 6%, transparent) 0%, transparent 70%), var(--po-bg-panel, rgba(0,0,0,0.25))`,
+        border: '1px solid color-mix(in oklch, var(--po-text) 12%, transparent)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+        }}
+      >
+        <span
           style={{
-            fontFamily: 'var(--vivid-font-mono)',
-            fontSize: 10,
-            color: '#9B8E7E',
-            textAlign: 'center',
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '0.28em',
+            color: 'var(--po-text-dim)',
             textTransform: 'uppercase',
           }}
         >
-          No vote -- 2nd-to-last silver is automatically eliminated
-        </p>
-
-        <div className="space-y-1">
-          {ranking.map((entry: { id: string; silver: number }, i: number) => {
-            const player = roster[entry.id];
-            const isEliminated = entry.id === eliminatedId;
-            const isSecondToLast = i === ranking.length - 2;
-            const barWidth = Math.max((entry.silver / maxSilver) * 100, 4);
-
-            return (
-              <div
-                key={entry.id}
-                className={`flex items-center gap-2 p-2 rounded-xl relative overflow-hidden ${
-                  isEliminated
-                    ? 'border border-skin-danger bg-skin-danger/10 elimination-reveal'
-                    : isSecondToLast
-                      ? 'border border-skin-danger/40 bg-skin-danger/5'
-                      : 'bg-skin-deep/40 border border-white/[0.06]'
-                } ${isSecondToLast && !isEliminated ? 'pulse-live' : ''}`}
-              >
-                {/* Silver bar background */}
-                <div
-                  className="absolute inset-y-0 left-0 bg-skin-dim/10 rounded-xl"
-                  style={{ width: `${barWidth}%` }}
-                />
-                <span className="text-xs font-mono text-skin-dim w-5 text-right relative z-10">#{i + 1}</span>
-                <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={32} className="relative z-10" />
-                <div className="flex-1 min-w-0 relative z-10">
-                  <div className={`text-xs font-bold truncate ${isEliminated ? 'text-skin-danger' : 'text-skin-base'}`}>
-                    {player?.personaName || entry.id}
-                  </div>
-                  {isEliminated && (
-                    <span className="text-[10px] font-mono text-skin-danger uppercase animate-flash-update">ELIMINATED</span>
-                  )}
-                </div>
-                <span className="font-mono text-xs text-skin-dim relative z-10">{entry.silver} silver</span>
-              </div>
-            );
-          })}
-        </div>
+          Second to Last
+        </span>
+        <span
+          style={{
+            fontFamily: 'var(--po-font-body)',
+            fontSize: 13,
+            fontWeight: 500,
+            color: 'var(--po-text-dim)',
+            letterSpacing: 0.1,
+          }}
+        >
+          Fate, not choice
+        </span>
       </div>
-    </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+        {ranking.map((entry, i) => {
+          const player = roster[entry.id];
+          const isEliminated = entry.id === eliminatedId;
+          const isSelf = entry.id === selfId;
+          const firstName = player?.personaName?.split(' ')[0] ?? entry.id;
+
+          return (
+            <motion.div
+              key={entry.id}
+              initial={reduce ? { opacity: 0 } : { opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: reduce ? 0 : 0.08 * i }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '6px 8px',
+                borderRadius: 12,
+                background: isEliminated
+                  ? `linear-gradient(90deg, color-mix(in oklch, var(--po-pink) 14%, transparent) 0%, transparent 100%)`
+                  : 'transparent',
+                border: isEliminated
+                  ? '1px solid color-mix(in oklch, var(--po-pink) 35%, transparent)'
+                  : '1px solid transparent',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'var(--po-font-display)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: 'var(--po-text-dim)',
+                  width: 22,
+                  textAlign: 'right',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                #{i + 1}
+              </span>
+              <div
+                style={{
+                  borderRadius: '50%',
+                  padding: isEliminated ? 1.5 : 0,
+                  background: isEliminated
+                    ? `conic-gradient(from 180deg, var(--po-pink), color-mix(in oklch, var(--po-pink) 35%, transparent), var(--po-pink))`
+                    : 'transparent',
+                  filter: isEliminated ? 'grayscale(40%) saturate(0.8)' : undefined,
+                  opacity: isEliminated ? 0.7 : 1,
+                  boxShadow: isEliminated
+                    ? '0 0 16px color-mix(in oklch, var(--po-pink) 30%, transparent)'
+                    : undefined,
+                }}
+              >
+                <PersonaAvatar
+                  avatarUrl={player?.avatarUrl}
+                  personaName={player?.personaName}
+                  size={32}
+                />
+              </div>
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: 'var(--po-font-body)',
+                    fontSize: 13,
+                    fontWeight: isSelf ? 700 : 600,
+                    color: isEliminated ? 'var(--po-pink)' : 'var(--po-text)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {firstName}
+                </span>
+                {isEliminated && (
+                  <span
+                    style={{
+                      fontFamily: 'var(--po-font-display)',
+                      fontSize: 9,
+                      fontWeight: 800,
+                      letterSpacing: '0.2em',
+                      color: 'var(--po-pink)',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {eliminatedSubtitle}
+                  </span>
+                )}
+              </div>
+              <span
+                style={{
+                  fontFamily: 'var(--po-font-display)',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums',
+                  color: 'var(--po-text-dim)',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {entry.silver}
+                <span
+                  style={{
+                    marginLeft: 3,
+                    fontSize: 9,
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  silver
+                </span>
+              </span>
+            </motion.div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+function CountingPlaceholder({ reduce }: { reduce: boolean | null }) {
+  return (
+    <motion.div
+      animate={reduce ? undefined : { opacity: [0.5, 0.8, 0.5] }}
+      transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 6,
+        padding: '20px 0',
+      }}
+    >
+      <span
+        style={{
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: '0.26em',
+          color: 'var(--po-text-dim)',
+          textTransform: 'uppercase',
+        }}
+      >
+        Tallying
+      </span>
+      <span
+        style={{
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 12,
+          color: 'var(--po-text-dim)',
+        }}
+      >
+        Reading the silver ledger…
+      </span>
+    </motion.div>
   );
 }

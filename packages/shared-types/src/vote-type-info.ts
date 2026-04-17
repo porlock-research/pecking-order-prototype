@@ -4,6 +4,8 @@
  */
 import type { VoteType } from './index';
 
+export type MechanismTone = 'punitive' | 'fate' | 'celebratory';
+
 export interface VoteTypeUiInfo {
   name: string;
   description: string;
@@ -13,6 +15,14 @@ export interface VoteTypeUiInfo {
   oneLiner: string;
   confirmTemplate: string;  // "Save {name}?" — {name} replaced at runtime
   actionVerb: string;       // "saved" — for "You saved {name}"
+  // Hero subtitle on REVEAL when an elimination occurs
+  eliminatedSubtitle: string;
+  // Hero copy on REVEAL when no elimination happens
+  noEliminationCopy: string;
+  // Tone drives hero composition: punitive (community decision), fate (no choice), celebratory (FINALS)
+  mechanismTone: MechanismTone;
+  // FINALS only — hero subtitle on the winner reveal
+  winnerSubtitle?: string;
   // Executioner second-phase fields (only on EXECUTIONER entry)
   executionerPickHeader?: string;
   executionerPickCta?: string;
@@ -31,6 +41,9 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     oneLiner: 'Most votes = eliminated \u00b7 Ties: lowest silver',
     confirmTemplate: 'Eliminate {name}?',
     actionVerb: 'voted for',
+    eliminatedSubtitle: 'Cast out by majority',
+    noEliminationCopy: 'The community spared everyone',
+    mechanismTone: 'punitive',
   },
   EXECUTIONER: {
     name: 'Executioner',
@@ -42,6 +55,9 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     oneLiner: 'The elected player chooses who to eliminate',
     confirmTemplate: 'Elect {name}?',
     actionVerb: 'elected',
+    eliminatedSubtitle: 'Chosen by the executioner',
+    noEliminationCopy: 'The executioner spared everyone',
+    mechanismTone: 'punitive',
     executionerPickHeader: 'Executioner: Pick Your Target',
     executionerPickCta: 'You are the executioner. Who goes?',
     executionerPickConfirm: 'Eliminate {name}?',
@@ -57,6 +73,9 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     oneLiner: 'Fewest saves = eliminated \u00b7 Top 3 silver immune',
     confirmTemplate: 'Save {name}?',
     actionVerb: 'saved',
+    eliminatedSubtitle: "Couldn't escape the bubble",
+    noEliminationCopy: 'Everyone made it through',
+    mechanismTone: 'punitive',
   },
   PODIUM_SACRIFICE: {
     name: 'Podium Sacrifice',
@@ -68,6 +87,9 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     oneLiner: 'Top 3 silver at risk \u00b7 Save one, one goes',
     confirmTemplate: 'Save {name}?',
     actionVerb: 'saved',
+    eliminatedSubtitle: 'Sacrificed from the top',
+    noEliminationCopy: 'The podium stands intact',
+    mechanismTone: 'punitive',
   },
   SECOND_TO_LAST: {
     name: 'Second to Last',
@@ -79,6 +101,9 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     oneLiner: 'Second-lowest silver is eliminated',
     confirmTemplate: '',
     actionVerb: '',
+    eliminatedSubtitle: 'Second-lowest in silver',
+    noEliminationCopy: 'No one to eliminate',
+    mechanismTone: 'fate',
   },
   SHIELD: {
     name: 'Shield',
@@ -90,6 +115,9 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     oneLiner: 'Most-shielded is safe \u00b7 Then majority eliminates',
     confirmTemplate: 'Shield {name}?',
     actionVerb: 'shielded',
+    eliminatedSubtitle: 'Left unsaved by the community',
+    noEliminationCopy: 'Everyone got a shield',
+    mechanismTone: 'punitive',
   },
   TRUST_PAIRS: {
     name: 'Trust Pairs',
@@ -101,6 +129,9 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     oneLiner: 'Both trust = safe \u00b7 One betrays = other out',
     confirmTemplate: 'Trust {name}?',
     actionVerb: 'trusted',
+    eliminatedSubtitle: 'Betrayed in trust',
+    noEliminationCopy: 'No betrayal landed',
+    mechanismTone: 'punitive',
   },
   DUELS: {
     name: 'Duels',
@@ -112,6 +143,9 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     oneLiner: 'Community votes on each pair',
     confirmTemplate: 'Vote for {name}?',
     actionVerb: 'voted for',
+    eliminatedSubtitle: 'Lost the duel',
+    noEliminationCopy: 'Both duelists survive',
+    mechanismTone: 'punitive',
   },
   FINALS: {
     name: 'Finals',
@@ -123,5 +157,9 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     oneLiner: 'Eliminated players vote \u00b7 Most votes wins',
     confirmTemplate: 'Crown {name}?',
     actionVerb: 'crowned',
+    eliminatedSubtitle: '',
+    noEliminationCopy: '',
+    mechanismTone: 'celebratory',
+    winnerSubtitle: 'The Pecking Order Winner',
   },
 };

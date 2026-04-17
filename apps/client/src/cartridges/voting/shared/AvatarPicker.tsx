@@ -144,6 +144,12 @@ export function AvatarPicker({
               onClick={() => handleTap(targetId)}
               disabled={!isInteractive}
               whileTap={isInteractive && !reduce ? { scale: 0.94 } : undefined}
+              aria-label={
+                isConfirmed
+                  ? `You ${actionVerb} ${player?.personaName ?? firstName}`
+                  : `${actionVerb.charAt(0).toUpperCase() + actionVerb.slice(1)} ${player?.personaName ?? firstName}`
+              }
+              aria-pressed={isSelected || isConfirmed}
               {...(testIdPrefix ? { 'data-testid': `${testIdPrefix}-${targetId}` } : {})}
               style={{
                 background: 'none',
@@ -233,6 +239,7 @@ export function AvatarPicker({
                 whileTap={reduce ? undefined : { scale: 0.95 }}
                 onClick={handleConfirm}
                 data-testid="vote-confirm-btn"
+                aria-label={confirmLabel.replace('{name}', player?.personaName ?? firstName)}
                 style={{
                   background: accentColor,
                   color: 'var(--po-text-inverted, #fff)',

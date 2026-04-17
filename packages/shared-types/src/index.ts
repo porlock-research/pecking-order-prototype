@@ -7,7 +7,7 @@ export { generateCycleDefaults, isLiveGame } from './cycle-defaults';
 export type { CycleDayDefaults } from './cycle-defaults';
 export { ECONOMY_INFO } from './economy-info';
 export { VOTE_TYPE_INFO } from './vote-type-info';
-export type { VoteTypeUiInfo } from './vote-type-info';
+export type { VoteTypeUiInfo, MechanismTone } from './vote-type-info';
 export { DILEMMA_TYPE_INFO } from './dilemma-type-info';
 export type { DilemmaTypeInfo } from './dilemma-type-info';
 export { GAME_TYPE_INFO } from './game-type-info';
