@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 import { useGameStore } from '../../../../store/useGameStore';
 
@@ -20,20 +19,21 @@ export function DmStatusRing({ partnerId, channelId, color, size, children }: Pr
   if (channelId && typingIn === channelId) status = 'typing';
   else if (isOnline) status = 'online';
 
+  // Typing reads via ring width + full opacity; no ambient scale loop.
+  // "Only pending/urgent state pulses ambiently" — typing is transient.
   const ringWidth = status === 'typing' ? 3 : 2;
   const opacity = status === 'idle' ? 0.3 : 1;
   const outer = size + ringWidth * 4;
 
   return (
-    <motion.div
-      animate={status === 'typing' ? { scale: [1, 1.03, 1] } : { scale: 1 }}
-      transition={status === 'typing' ? { duration: 1, repeat: Infinity } : { duration: 0.2 }}
+    <div
       style={{
         width: outer,
         height: outer,
         borderRadius: '50%',
         border: `${ringWidth}px solid ${color}`,
         opacity,
+        transition: 'opacity 180ms ease, border-width 180ms ease',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -43,6 +43,6 @@ export function DmStatusRing({ partnerId, channelId, color, size, children }: Pr
       <div style={{ width: size, height: size, borderRadius: '50%', overflow: 'hidden' }}>
         {children}
       </div>
-    </motion.div>
+    </div>
   );
 }

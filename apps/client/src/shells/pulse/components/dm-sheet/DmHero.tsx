@@ -104,17 +104,20 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
             <span>Add</span>
           </button>
         )}
-        <div role="group" aria-label="Photo variant" style={{ display: 'flex', gap: 'var(--pulse-space-sm)', alignItems: 'center', padding: '0 var(--pulse-space-xs)' }}>
+        <div role="group" aria-label="Photo variant" style={{ display: 'flex', gap: 0, alignItems: 'center' }}>
           {(['headshot', 'medium', 'full'] as const).map(v => (
             <button key={v} onClick={() => setVariant(v)} aria-label={`Show ${v} photo`} aria-pressed={variant === v} style={{
-              width: 24, height: 24, borderRadius: '50%',
+              width: 36, height: 36, borderRadius: '50%',
               border: 'none', padding: 0, cursor: 'pointer',
               background: 'transparent',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <span aria-hidden="true" style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: variant === v ? 'var(--pulse-on-accent)' : 'rgba(255,255,255,0.35)',
+                width: variant === v ? 10 : 7,
+                height: variant === v ? 10 : 7,
+                borderRadius: '50%',
+                transition: 'width 140ms ease, height 140ms ease, background 140ms ease',
+                background: variant === v ? 'var(--pulse-on-accent)' : 'rgba(255,255,255,0.4)',
               }} />
             </button>
           ))}
