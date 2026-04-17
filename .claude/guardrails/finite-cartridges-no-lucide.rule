@@ -1,0 +1,23 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/client/src/cartridges/.+\.(tsx?|jsx?)$
+MATCH_CONTENT: from ['"]lucide-react['"]
+ADVISORY: |
+  Cartridge files must use **Phosphor Icons (Fill weight)**, not Lucide.
+
+  The Pulse shell's locked icon contract lives in
+  `apps/client/src/shells/pulse/icons.ts` — a centralized Phosphor re-export
+  so future icon-library swaps are a one-file change. Lucide's 2.5px outline
+  strokes look wrong next to Phosphor Fill shapes in the same shell; mixing
+  them fractures weight and visual grammar, especially at small hero-badge
+  sizes.
+
+  WRONG:
+      import { Crown } from 'lucide-react';
+      <Crown size={20} strokeWidth={2.5} />
+
+  RIGHT:
+      import { Crown } from '../../shells/pulse/icons';
+      <Crown size={20} weight="fill" color={accent} />
+
+  If the icon you need isn't exported from `shells/pulse/icons.ts` yet, add
+  it there — don't bypass the single source.

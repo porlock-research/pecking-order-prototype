@@ -1,0 +1,17 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: packages/shared-types/src/.+\.ts$
+ADVISORY: |
+  `@pecking-order/shared-types` is a **built** package, not a source import.
+  After editing files in `packages/shared-types/src/`, you MUST rebuild
+  before any consumer (apps/client, apps/game-server, apps/lobby,
+  packages/game-cartridges) will see the changes in `tsc --noEmit`:
+
+      cd packages/shared-types && npm run build
+
+  Symptom when skipped: client tsc errors like "Property 'X' does not exist
+  on type 'Y'" even though the field is clearly in the source you just
+  edited. The fix is always the rebuild — don't re-edit the source chasing
+  phantom type errors.
+
+  If a change is load-bearing across multiple apps, rebuild before running
+  each app's type-check.
