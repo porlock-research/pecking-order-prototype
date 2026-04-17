@@ -1,6 +1,8 @@
-import { Reply, X } from '../../icons';
+import { X } from '../../icons';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useGameStore } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
+import { PULSE_SPRING } from '../../springs';
 import type { ChatMessage } from '@pecking-order/shared-types';
 
 interface ReplyBarProps {
@@ -10,12 +12,17 @@ interface ReplyBarProps {
 
 export function ReplyBar({ message, onCancel }: ReplyBarProps) {
   const roster = useGameStore(s => s.roster);
+  const reduce = useReducedMotion();
   const player = roster[message.senderId];
   const playerIndex = Object.keys(roster).indexOf(message.senderId);
   const color = getPlayerColor(playerIndex);
 
   return (
-    <div
+    <motion.div
+      initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={reduce ? { opacity: 0 } : { opacity: 0, y: 6 }}
+      transition={PULSE_SPRING.pop}
       style={{
         display: 'flex',
         alignItems: 'stretch',
@@ -55,6 +62,6 @@ export function ReplyBar({ message, onCancel }: ReplyBarProps) {
       >
         <X size={14} weight="bold" />
       </button>
-    </div>
+    </motion.div>
   );
 }

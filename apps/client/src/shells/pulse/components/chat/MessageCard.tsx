@@ -1,5 +1,5 @@
 import { memo, useRef, useState, type MouseEvent } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Smiley, Reply } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
@@ -61,7 +61,11 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
     window.dispatchEvent(new CustomEvent('pulse:reply', { detail: { message } }));
   };
 
-  const ownSendMotion = isSelf && !reduce
+  // Tactile scale-pop only for a just-sent self message. Without the
+  // timestamp gate, every prior self message re-animates on page reload
+  // (a visible pop-in staircase).
+  const isFreshSelfSend = isSelf && !reduce && Date.now() - message.timestamp < 3000;
+  const ownSendMotion = isFreshSelfSend
     ? {
         initial: { opacity: 0, scale: 0.94, x: 6 },
         animate: { opacity: 1, scale: 1, x: 0 },
@@ -126,7 +130,12 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
       {/* Content column — bubble for self/whisper, inline text otherwise */}
       <div className="pulse-msg-group" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
         <div
-          className={tapped ? 'pulse-msg-content pulse-msg-tapped' : 'pulse-msg-content'}
+          className={[
+            'pulse-msg-content',
+            tapped ? 'pulse-msg-tapped' : '',
+            // One-shot glow only for just-sent messages (see isFreshSelfSend).
+            isFreshSelfSend ? 'pulse-msg-selfsend' : '',
+          ].filter(Boolean).join(' ')}
           onClick={() => setTapped(v => !v)}
           style={{
             maxWidth: '100%',
@@ -220,7 +229,7 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
             onClick={handleReply}
             aria-label="Reply to message"
             style={{
-              width: 28, height: 28, border: 'none', background: 'transparent',
+              width: 32, height: 32, border: 'none', background: 'transparent',
               cursor: 'pointer', color: 'var(--pulse-text-2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               borderRadius: 8,
@@ -233,7 +242,7 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
             aria-label="React to message"
             aria-expanded={isBarOpen}
             style={{
-              width: 28, height: 28, border: 'none',
+              width: 32, height: 32, border: 'none',
               background: isBarOpen ? 'var(--pulse-accent-glow)' : 'transparent',
               cursor: 'pointer', color: isBarOpen ? 'var(--pulse-accent)' : 'var(--pulse-text-2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -245,14 +254,16 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
         </div>
 
         {/* Reaction bar (inline, below message, replaces action row when open) */}
-        {isBarOpen && (
-          <ReactionBar
-            messageId={message.id}
-            message={message}
-            isSelf={isSelf}
-            onClose={() => onOpenReaction(null)}
-          />
-        )}
+        <AnimatePresence>
+          {isBarOpen && (
+            <ReactionBar
+              messageId={message.id}
+              message={message}
+              isSelf={isSelf}
+              onClose={() => onOpenReaction(null)}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Reaction chips — below bubble, aligned with content side */}
         <ReactionChips message={message} />

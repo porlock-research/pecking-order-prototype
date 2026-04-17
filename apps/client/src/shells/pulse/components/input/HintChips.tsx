@@ -39,7 +39,8 @@ export function HintChips({ onSelect, channelType = 'MAIN', capabilities = [] }:
       {visible.map(h => (
         <motion.button
           key={h.label}
-          whileTap={{ scale: 0.94 }}
+          whileTap={{ scale: 0.94, backgroundColor: `${h.color}22` }}
+          transition={{ backgroundColor: { duration: 0.12 } }}
           onClick={() => onSelect(h.command)}
           style={{
             display: 'inline-flex',

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { PaperPlaneTilt } from '../../icons';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { usePulse } from '../../PulseShell';
 import { useGameStore } from '../../../../store/useGameStore';
 import { useCommandBuilder } from '../../hooks/useCommandBuilder';
@@ -198,9 +198,11 @@ export function PulseInput() {
       )}
 
       {/* Reply bar */}
-      {replyTo && commandMode.mode === 'idle' && (
-        <ReplyBar message={replyTo} onCancel={() => setReplyTo(null)} />
-      )}
+      <AnimatePresence>
+        {replyTo && commandMode.mode === 'idle' && (
+          <ReplyBar message={replyTo} onCancel={() => setReplyTo(null)} />
+        )}
+      </AnimatePresence>
 
       {/* Default input (idle mode) */}
       {commandMode.mode === 'idle' && (
