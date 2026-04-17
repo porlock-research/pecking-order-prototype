@@ -1,10 +1,18 @@
 MATCH_TOOL: Bash
-MATCH_PATTERN: axiom|po-logs
+MATCH_PATTERN: po-logs-(staging|production)
 ADVISORY: |
-  Game server logs use internal game IDs (format: game-{timestamp}-{random}).
-  Invite codes (e.g., M48TJ8) appear in lobby logs, not game-server logs.
-  If you have an invite code, first resolve it to the internal game ID:
-  1. Query lobby logs: where body has '{INVITE_CODE}'
-  2. Extract the internal game ID from the result
-  3. Then query game-server logs with the internal ID
-  See the investigate-game skill for the full procedure.
+  Axiom has two services in po-logs-*: `game-server-*` and `pecking-order-lobby-*`.
+  Pick the right one before querying.
+
+  For game-state investigations (voting, cartridges, transitions):
+    - Target `game-server-*`, which uses internal IDs `game-{timestamp}-{random}`.
+    - Invite codes (e.g., M48TJ8) appear in lobby logs, not game-server logs.
+    - Resolve invite code → internal game ID first via lobby logs, then query game-server.
+
+  For invite/join funnel investigations (who tapped what, bounce rates):
+    - Target `pecking-order-lobby-*` directly. Lobby logs are HTTP access logs:
+      `GET /join/CODE`, `POST /login?next=...`, `/invite/TOKEN`, etc.
+    - Lobby logs do NOT contain app-level state. Cross-reference D1 (`InviteTokens`,
+      `Invites`, `GameSessions`) for token-used status, slot acceptance, etc.
+    - D1 queries: `npx wrangler d1 execute pecking-order-lobby-db-{env} --env {env}
+      --remote --command "SQL" --json`.

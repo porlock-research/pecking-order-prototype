@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: apps/game-server/src/machines/
+MATCH_CONTENT: (createMachine\(|setup\(|initial:[[:space:]]*'|states:[[:space:]]*\{|invoke:[[:space:]]*\{)
 ADVISORY: |
   You are editing state machine code. Before proceeding:
   1. Run `npm run generate:docs` to regenerate machine specs

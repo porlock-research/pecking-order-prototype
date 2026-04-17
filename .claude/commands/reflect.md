@@ -11,7 +11,14 @@ Review the session for learnings that would help future agents:
 
 For each learning, choose the right home:
 
-- **Tool-call-reactive knowledge → guardrail rule.** Create a `.rule` file in `.claude/guardrails/` (see README there for format). Use when the learning is "when editing X / running Y, remember Z."
+- **Tool-call-reactive knowledge → guardrail rule.** Create a `.rule` file in `.claude/guardrails/` (see README there for format). Use when the learning is "when editing X / running Y, remember Z." Write rules pragmatically — every fire injects the full advisory body into the next agent's context:
+  - **Prefer updating an existing rule.** Scan `.claude/guardrails/` first; if a rule covers the same topic, tighten its MATCH_CONTENT or extend its advisory rather than creating a parallel rule.
+  - **Scope MATCH_PATTERN to specific architectural components.** Not `server\.ts` — use `apps/game-server/src/server\.ts`. Include file extensions and directory segments. If the trigger is a shell command, anchor it (`npm run dev`, not bare `dev`).
+  - **Add MATCH_CONTENT when the file is commonly edited for unrelated reasons.** Store files, shared components, and machine action files get touched constantly — gate firing on a content signal (a specific symbol, event name, or field reference) so the advisory only appears when the edit is actually relevant. MATCH_CONTENT applies to Edit/Write only, not Bash.
+  - **Test the regex before committing.** BSD grep -E is the target. No lookaround (`(?=...)`, `(?!...)`). Use `[[:space:]]` over `\s` if unsure. Pipe a handful of realistic positive and negative strings through `grep -E "$PATTERN"` to confirm.
+  - **Hand-test the rule against the last few commits in the target area.** If it would fire on >2–3 commits where the advisory doesn't apply, the gate is too loose.
+  - **Keep the advisory short.** The full body reprints on every fire. State the trap, the wrong pattern, the right pattern. Cut historical narrative unless it's load-bearing.
+  - **Lifetime plan.** If the rule's premise could become false (a fix in flight, a deprecated pattern), note in `skill-update-needed.md` what condition should trigger deletion.
 - **Behavioral / collaboration preference → memory file.** Create a markdown file in `/Users/manu/.claude/projects/-Users-manu-Projects-pecking-order/memory/` following the types defined in the auto-memory system prompt (user, feedback, project, reference). Add an entry to `MEMORY.md`. Use when the learning is about how to work with the user, ongoing project context, or where to look for things.
 - **Existing skill/workflow needs updating → flag it.** Append a note to `.claude/guardrails/skill-update-needed.md` describing the needed change.
 - **Knowledge file stale → fix in place.** Update CLAUDE.md, ARCHITECTURE.md, or similar directly.
