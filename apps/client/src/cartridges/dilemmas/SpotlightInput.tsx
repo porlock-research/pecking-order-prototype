@@ -40,42 +40,79 @@ export default function SpotlightInput({
   };
 
   if (submitted && selectedId) {
+    const target = roster[selectedId];
+    const targetName = (target?.personaName || selectedId).split(' ')[0];
     return (
       <motion.div
-        initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 6 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 8 }}
+        animate={reduce ? { opacity: 1 } : { opacity: 1, scale: [0.92, 1.03, 1], y: 0 }}
+        transition={{ duration: 0.55, ease: [0.2, 0.9, 0.3, 1] }}
         style={{
-          padding: '14px 18px',
-          borderRadius: 12,
-          background: `color-mix(in oklch, ${accentColor} 10%, transparent)`,
-          border: `1px solid color-mix(in oklch, ${accentColor} 32%, transparent)`,
+          padding: '20px 18px',
+          borderRadius: 16,
+          background: `color-mix(in oklch, ${accentColor} 14%, transparent)`,
+          border: `1.5px solid color-mix(in oklch, ${accentColor} 50%, transparent)`,
           textAlign: 'center',
-          boxShadow: `0 0 18px color-mix(in oklch, ${accentColor} 22%, transparent)`,
+          boxShadow: `0 0 28px color-mix(in oklch, ${accentColor} 35%, transparent), 0 0 60px color-mix(in oklch, ${accentColor} 14%, transparent)`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 10,
         }}
       >
-        <span
+        <div
           style={{
-            fontFamily: 'var(--po-font-display)',
-            fontSize: 14,
-            fontWeight: 700,
-            letterSpacing: 0.1,
-            color: accentColor,
+            borderRadius: '50%',
+            border: `2.5px solid ${accentColor}`,
+            boxShadow: `0 0 16px color-mix(in oklch, ${accentColor} 40%, transparent)`,
           }}
         >
-          You spotlit {(roster[selectedId]?.personaName || selectedId).split(' ')[0]}
-        </span>
+          <PersonaAvatar
+            avatarUrl={target?.avatarUrl}
+            personaName={target?.personaName}
+            size={64}
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span
+            style={{
+              fontFamily: 'var(--po-font-display)',
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.18em',
+              color: 'var(--po-text-dim)',
+              textTransform: 'uppercase',
+            }}
+          >
+            Locked in
+          </span>
+          <span
+            style={{
+              fontFamily: 'var(--po-font-display)',
+              fontSize: 20,
+              fontWeight: 700,
+              letterSpacing: -0.3,
+              color: accentColor,
+            }}
+          >
+            {targetName}
+          </span>
+        </div>
       </motion.div>
     );
   }
 
+  const selectedName = selectedId
+    ? (roster[selectedId]?.personaName || selectedId).split(' ')[0]
+    : null;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-          gap: 10,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))',
+          gap: 12,
         }}
       >
         {targets.map((pid, i) => {
@@ -133,7 +170,7 @@ export default function SpotlightInput({
                 <PersonaAvatar
                   avatarUrl={player.avatarUrl}
                   personaName={player.personaName}
-                  size={56}
+                  size={72}
                 />
               </div>
               <span
@@ -167,22 +204,22 @@ export default function SpotlightInput({
           transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           whileTap={reduce ? undefined : { scale: 0.96 }}
           style={{
-            padding: '14px 24px',
+            padding: '14px 28px',
             borderRadius: 9999,
             background: accentColor,
             color: 'var(--po-text-inverted, #fff)',
             border: 'none',
             fontWeight: 800,
-            fontSize: 13,
+            fontSize: 14,
             fontFamily: 'var(--po-font-display)',
             textTransform: 'uppercase',
-            letterSpacing: '0.12em',
+            letterSpacing: '0.14em',
             cursor: 'pointer',
-            boxShadow: `0 4px 20px color-mix(in oklch, ${accentColor} 45%, transparent)`,
+            boxShadow: `0 4px 22px color-mix(in oklch, ${accentColor} 50%, transparent)`,
             alignSelf: 'center',
           }}
         >
-          Spotlight them
+          Lock in {selectedName}
         </motion.button>
       )}
     </div>

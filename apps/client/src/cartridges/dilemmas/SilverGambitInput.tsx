@@ -28,31 +28,65 @@ export default function SilverGambitInput({ engine }: SilverGambitInputProps) {
   if (chosen) {
     const isDonate = chosen === 'DONATE';
     const accent = isDonate ? 'var(--po-green)' : 'var(--po-pink)';
+    const Icon = isDonate ? HandCoins : Shield;
     return (
       <motion.div
-        initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 6 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 8 }}
+        animate={reduce ? { opacity: 1 } : { opacity: 1, scale: [0.92, 1.03, 1], y: 0 }}
+        transition={{ duration: 0.55, ease: [0.2, 0.9, 0.3, 1] }}
         style={{
-          padding: '14px 18px',
-          borderRadius: 12,
-          background: `color-mix(in oklch, ${accent} 10%, transparent)`,
-          border: `1px solid color-mix(in oklch, ${accent} 30%, transparent)`,
+          padding: '20px 18px',
+          borderRadius: 16,
+          background: `color-mix(in oklch, ${accent} 14%, transparent)`,
+          border: `1.5px solid color-mix(in oklch, ${accent} 50%, transparent)`,
           textAlign: 'center',
-          boxShadow: `0 0 18px color-mix(in oklch, ${accent} 20%, transparent)`,
+          boxShadow: `0 0 28px color-mix(in oklch, ${accent} 35%, transparent), 0 0 60px color-mix(in oklch, ${accent} 14%, transparent)`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 10,
         }}
       >
-        <span
+        <div
           style={{
-            fontFamily: 'var(--po-font-display)',
-            fontSize: 14,
-            fontWeight: 700,
-            letterSpacing: 0.1,
-            color: accent,
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            border: `2px solid ${accent}`,
+            background: `color-mix(in oklch, ${accent} 10%, transparent)`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: `0 0 14px color-mix(in oklch, ${accent} 40%, transparent)`,
           }}
         >
-          {isDonate ? 'Donated — fingers crossed.' : 'Keeping your silver safe.'}
-        </span>
+          <Icon size={28} strokeWidth={2.25} color={accent} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span
+            style={{
+              fontFamily: 'var(--po-font-display)',
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.18em',
+              color: 'var(--po-text-dim)',
+              textTransform: 'uppercase',
+            }}
+          >
+            Locked in
+          </span>
+          <span
+            style={{
+              fontFamily: 'var(--po-font-display)',
+              fontSize: 18,
+              fontWeight: 700,
+              letterSpacing: -0.2,
+              color: accent,
+            }}
+          >
+            {isDonate ? 'Donated — fingers crossed.' : 'Keeping your silver safe.'}
+          </span>
+        </div>
       </motion.div>
     );
   }

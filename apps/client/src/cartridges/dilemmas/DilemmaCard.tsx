@@ -56,8 +56,8 @@ function ParticipationStrip({
         : `${submittedCount} of ${total} decided`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
         {eligiblePlayers.map((pid) => {
           const player = roster[pid];
           const didSubmit = submitted?.[pid] ?? false;
@@ -66,7 +66,7 @@ function ParticipationStrip({
               key={pid}
               style={{
                 position: 'relative',
-                opacity: didSubmit ? 1 : 0.5,
+                opacity: didSubmit ? 1 : 0.55,
                 transition: 'opacity 0.25s ease',
               }}
             >
@@ -74,18 +74,21 @@ function ParticipationStrip({
                 style={{
                   borderRadius: '50%',
                   border: didSubmit
-                    ? '2px solid var(--po-green, #2d6a4f)'
+                    ? '2.5px solid var(--po-green, #2d6a4f)'
                     : '2px solid var(--po-border, rgba(255,255,255,0.12))',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   transition: 'border 0.25s ease',
+                  boxShadow: didSubmit
+                    ? '0 0 10px color-mix(in oklch, var(--po-green) 35%, transparent)'
+                    : 'none',
                 }}
               >
                 <PersonaAvatar
                   avatarUrl={player?.avatarUrl}
                   personaName={player?.personaName}
-                  size={20}
+                  size={36}
                 />
               </div>
               {didSubmit && (
@@ -93,29 +96,29 @@ function ParticipationStrip({
                   aria-hidden="true"
                   style={{
                     position: 'absolute',
-                    bottom: -2,
-                    right: -2,
-                    width: 9,
-                    height: 9,
+                    bottom: -3,
+                    right: -3,
+                    width: 16,
+                    height: 16,
                     borderRadius: '50%',
                     background: 'var(--po-green, #2d6a4f)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    border: '1px solid var(--po-bg-panel, rgba(0,0,0,0.4))',
+                    border: '2px solid var(--po-bg-panel, rgba(0,0,0,0.5))',
                   }}
                 >
                   <svg
-                    width={5}
-                    height={4}
-                    viewBox="0 0 5 4"
+                    width={9}
+                    height={7}
+                    viewBox="0 0 9 7"
                     fill="none"
                     style={{ display: 'block' }}
                   >
                     <path
-                      d="M0.5 2L1.8 3.2L4.2 0.8"
+                      d="M1 3.5L3.5 6L8 1"
                       stroke="white"
-                      strokeWidth={0.9}
+                      strokeWidth={1.6}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
@@ -130,16 +133,47 @@ function ParticipationStrip({
       <span
         style={{
           fontFamily: 'var(--po-font-display)',
-          fontSize: 10,
+          fontSize: 11,
           color: 'var(--po-text-dim)',
           textTransform: 'uppercase',
-          letterSpacing: '0.1em',
+          letterSpacing: '0.14em',
           fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
         }}
       >
         {statusText}
       </span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Prompt slot — surfaces DILEMMA_TYPE_INFO.howItWorks above input    */
+/* ------------------------------------------------------------------ */
+
+function PromptSlot({ text, accentColor }: { text: string; accentColor: string }) {
+  return (
+    <div
+      style={{
+        padding: '12px 16px',
+        borderRadius: 12,
+        background: `color-mix(in oklch, ${accentColor} 5%, var(--po-bg-glass, rgba(255,255,255,0.03)))`,
+        border: `1px solid color-mix(in oklch, ${accentColor} 16%, transparent)`,
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 13,
+          lineHeight: 1.5,
+          color: 'var(--po-text)',
+          fontStyle: 'italic',
+          textAlign: 'center',
+        }}
+      >
+        {text}
+      </p>
     </div>
   );
 }
@@ -230,7 +264,14 @@ export default function DilemmaCard({ engine }: DilemmaCardProps) {
         </div>
 
         {/* Body */}
-        <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Prompt / stakes copy — surfaces what this dilemma actually does.
+              VotingHeader solves this for votes; dilemmas need the same
+              rescue for players who don't remember the rules. */}
+          {phase === DilemmaPhases.COLLECTING && !hasSubmitted && info.howItWorks && (
+            <PromptSlot text={info.howItWorks} accentColor={accentColor} />
+          )}
+
           {phase === DilemmaPhases.COLLECTING && (
             <ParticipationStrip
               eligiblePlayers={eligiblePlayers || []}

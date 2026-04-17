@@ -23,9 +23,17 @@ const staggerItem = {
   show: { opacity: 1, y: 0 },
 };
 
+// Per-type dramatic opener + accent. Replaces the generic "Results" label.
+const REVEAL_HERO: Record<string, { title: string; accent: string }> = {
+  SILVER_GAMBIT: { title: 'The Gambit Outcome', accent: 'var(--po-gold)' },
+  SPOTLIGHT:     { title: 'The Spotlight Falls On',     accent: 'var(--po-pink)' },
+  GIFT_OR_GRIEF: { title: 'Gift or Grief?',             accent: 'var(--po-orange, var(--po-gold))' },
+};
+
 export default function DilemmaReveal({ dilemmaType, decisions, results, roster, playerId }: DilemmaRevealProps) {
   const firstName = (id: string) => (roster[id]?.personaName || id).split(' ')[0];
   const { summary, silverRewards } = results;
+  const hero = REVEAL_HERO[dilemmaType] || { title: 'Results', accent: 'var(--po-gold)' };
 
   return (
     <motion.div
@@ -35,29 +43,48 @@ export default function DilemmaReveal({ dilemmaType, decisions, results, roster,
         hidden: {},
         show: { transition: { staggerChildren: 0.12 } },
       }}
-      style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
     >
-      {/* Header */}
+      {/* Hero title — per-type dramatic opener. This is the payoff moment
+          of the dilemma arc; it deserves presence, not a small label. */}
       <motion.div
         variants={staggerItem}
         transition={BOUNCY_SPRING}
         style={{
           textAlign: 'center',
-          padding: '8px 0',
+          padding: '4px 0 10px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
         }}
       >
         <span
           style={{
             fontFamily: 'var(--po-font-display)',
-            fontSize: 11,
-            fontWeight: 800,
-            color: 'var(--po-gold)',
+            fontSize: 10,
+            fontWeight: 700,
+            color: 'var(--po-text-dim)',
             textTransform: 'uppercase',
-            letterSpacing: '0.08em',
+            letterSpacing: '0.2em',
           }}
         >
-          Results
+          Verdict
         </span>
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 'clamp(24px, 6vw, 32px)',
+            fontWeight: 700,
+            letterSpacing: -0.6,
+            lineHeight: 1.05,
+            color: hero.accent,
+            textShadow: `0 0 24px color-mix(in oklch, ${hero.accent} 35%, transparent)`,
+          }}
+        >
+          {hero.title}
+        </h2>
       </motion.div>
 
       {/* Timeout — universal participation not met */}
