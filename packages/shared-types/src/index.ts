@@ -169,6 +169,8 @@ export const PushTriggerSchema = z.enum([
   'END_GAME',          // broadcast
   'START_ACTIVITY',    // broadcast
   'END_ACTIVITY',      // broadcast
+  // Confession phase
+  'CONFESSION_OPEN',   // broadcast — phase-open notification ("A confession phase has opened.")
 ]);
 export type PushTrigger = z.infer<typeof PushTriggerSchema>;
 
@@ -180,6 +182,7 @@ export const DEFAULT_PUSH_CONFIG: Record<PushTrigger, boolean> = {
   DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
   OPEN_DMS: true, CLOSE_DMS: true, OPEN_GROUP_CHAT: true, CLOSE_GROUP_CHAT: true,
   START_GAME: true, END_GAME: true, START_ACTIVITY: true, END_ACTIVITY: true,
+  CONFESSION_OPEN: true,
 };
 
 // --- Scheduling Strategy (orthogonal to game type) ---
