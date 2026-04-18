@@ -854,5 +854,9 @@ export type GameProjection = ArcadeGameProjection | TriviaProjection | RealtimeT
 export const GameTypes = GameTypeSchema.enum;
 export const VoteTypes = VoteTypeSchema.enum;
 export const PromptTypes = PromptTypeSchema.enum;
+
+// --- Prompt Pools ---
+
+export { HOT_TAKE_POOL, pickHotTakeQuestion, type HotTakeQuestion } from './prompt-pools/hot-take';
 export const ChannelTypes = ChannelTypeSchema.enum;
 export const PerkTypes = PerkTypeSchema.enum;
