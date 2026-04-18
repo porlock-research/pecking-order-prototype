@@ -50,7 +50,7 @@ function BetInput({ maxBet, onSubmit }: { maxBet: number; onSubmit: (d: Record<s
           max={maxBet}
           value={amount}
           onChange={(e) => setAmount(Number(e.target.value))}
-          className="w-full accent-[#ffd700]"
+          className="w-full accent-[var(--po-gold)]"
           disabled={confirmed}
         />
         <div className="flex justify-between text-[10px]  text-skin-dim/40">
@@ -60,9 +60,31 @@ function BetInput({ maxBet, onSubmit }: { maxBet: number; onSubmit: (d: Record<s
       </div>
 
       <button
+        type="button"
         onClick={handleConfirm}
         disabled={confirmed}
-        className="w-full py-3 bg-skin-gold text-skin-inverted font-bold text-sm uppercase tracking-wider rounded-lg hover:brightness-110 active:scale-[0.97] transition-all btn-press shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        style={{
+          width: '100%',
+          minHeight: 48,
+          padding: '14px 24px',
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 14,
+          fontWeight: 700,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: 'var(--po-text)',
+          background: confirmed
+            ? 'color-mix(in oklch, var(--po-gold) 18%, transparent)'
+            : 'linear-gradient(180deg, color-mix(in oklch, var(--po-gold) 95%, white) 0%, var(--po-gold) 100%)',
+          border: confirmed ? '1px solid color-mix(in oklch, var(--po-gold) 38%, transparent)' : 'none',
+          borderRadius: 14,
+          cursor: confirmed ? 'default' : 'pointer',
+          opacity: confirmed ? 0.8 : 1,
+          boxShadow: confirmed
+            ? 'none'
+            : 'inset 0 1px 0 color-mix(in oklch, var(--po-gold) 60%, white), 0 6px 18px -8px color-mix(in oklch, var(--po-gold) 60%, transparent)',
+          transition: 'transform 120ms ease',
+        }}
       >
         {confirmed ? 'Bet Locked!' : 'Lock In Bet'}
       </button>
