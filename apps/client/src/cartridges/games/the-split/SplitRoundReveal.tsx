@@ -54,7 +54,7 @@ export default function SplitRoundReveal({
         <p className={`text-lg font-bold font-display uppercase tracking-wider ${outcomeColor[outcome] ?? 'text-skin-dim'}`}>
           {outcomeLabel[outcome] ?? outcome}
         </p>
-        <p className="text-xs font-mono text-skin-dim">
+        <p className="text-xs  text-skin-dim">
           Pot: {potAmount} silver
           {roundResult.goldContribution > 0 && (
             <span className="text-skin-gold"> (+{roundResult.goldContribution} gold)</span>
@@ -81,7 +81,7 @@ export default function SplitRoundReveal({
       {/* Running totals leaderboard */}
       {runningTotals && Object.keys(runningTotals).length > 2 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] font-mono text-skin-dim/60 uppercase tracking-widest text-center">Running Totals</p>
+          <p className="text-[10px]  text-skin-dim/60 uppercase tracking-widest text-center">Running Totals</p>
           {Object.entries(runningTotals)
             .sort(([, a], [, b]) => (b as number) - (a as number))
             .map(([pid, total]) => {
@@ -90,7 +90,7 @@ export default function SplitRoundReveal({
               return (
                 <div
                   key={pid}
-                  className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-mono ${
+                  className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs  ${
                     isMe ? 'bg-skin-gold/5 border border-skin-gold/20' : 'bg-white/[0.02]'
                   }`}
                 >
@@ -104,7 +104,7 @@ export default function SplitRoundReveal({
 
       {/* Progress bar */}
       <div className="space-y-1">
-        <div className="flex justify-between text-[10px] font-mono text-skin-dim/40">
+        <div className="flex justify-between text-[10px]  text-skin-dim/40">
           <span>Round {currentRound + 1}</span>
           <span>{totalRounds} total</span>
         </div>
@@ -139,12 +139,12 @@ function PlayerCard({
           : 'border-red-500/30 bg-red-500/5'
       } ${isMe ? 'ring-1 ring-skin-gold/30' : ''}`}
     >
-      <p className="text-xs font-mono text-skin-base truncate">{name.slice(0, 12)}</p>
+      <p className="text-xs  text-skin-base truncate">{name.slice(0, 12)}</p>
       <p className="text-2xl">{isSplit ? '\u{1F91D}' : '\u{1F48E}'}</p>
-      <p className={`text-xs font-bold font-mono uppercase ${isSplit ? 'text-skin-green' : 'text-red-400'}`}>
+      <p className={`text-xs font-bold  uppercase ${isSplit ? 'text-skin-green' : 'text-red-400'}`}>
         {action}
       </p>
-      <p className={`text-sm font-bold font-mono ${reward > 0 ? 'text-skin-green' : reward < 0 ? 'text-red-400' : 'text-skin-dim/60'}`}>
+      <p className={`text-sm font-bold  ${reward > 0 ? 'text-skin-green' : reward < 0 ? 'text-red-400' : 'text-skin-dim/60'}`}>
         {reward > 0 ? '+' : ''}{reward}
       </p>
     </div>

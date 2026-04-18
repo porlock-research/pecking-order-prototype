@@ -124,8 +124,8 @@ function ActiveGame({
       {/* Timer (visible once holding) */}
       {!showIdle && (
         <div className="text-center">
-          <p className="text-xs font-mono text-skin-dim uppercase tracking-widest mb-1">Hold Time</p>
-          <p className="text-3xl font-bold font-mono text-skin-gold tabular-nums">
+          <p className="text-xs  text-skin-dim uppercase tracking-widest mb-1">Hold Time</p>
+          <p className="text-3xl font-bold  text-skin-gold tabular-nums">
             {showReleased
               ? formatDuration(myHold?.duration ?? 0)
               : formatDuration(elapsed)}
@@ -136,11 +136,11 @@ function ActiveGame({
       {/* Idle: "Touch & Hold" prompt */}
       {showIdle && (
         <div className="text-center space-y-3">
-          <p className="text-xs font-mono text-skin-dim uppercase tracking-widest">Press and hold!</p>
+          <p className="text-xs  text-skin-dim uppercase tracking-widest">Press and hold!</p>
           <button
             onMouseDown={handlePointerDown}
             onTouchStart={handlePointerDown}
-            className="w-full py-12 rounded-xl bg-skin-gold/10 border-2 border-skin-gold/30 text-skin-gold font-bold font-mono text-lg uppercase tracking-wider hover:bg-skin-gold/20 hover:border-skin-gold/50 transition-all select-none touch-none"
+            className="w-full py-12 rounded-xl bg-skin-gold/10 border-2 border-skin-gold/30 text-skin-gold font-bold  text-lg uppercase tracking-wider hover:bg-skin-gold/20 hover:border-skin-gold/50 transition-all select-none touch-none"
           >
             Touch &amp; Hold
           </button>
@@ -154,7 +154,7 @@ function ActiveGame({
           onMouseLeave={handlePointerUp}
           onTouchEnd={handlePointerUp}
           onTouchCancel={handlePointerUp}
-          className="w-full py-12 rounded-xl bg-skin-gold/10 border-2 border-skin-gold/40 text-skin-gold font-bold font-mono text-lg uppercase tracking-wider animate-pulse select-none touch-none active:bg-skin-gold/20 transition-colors"
+          className="w-full py-12 rounded-xl bg-skin-gold/10 border-2 border-skin-gold/40 text-skin-gold font-bold  text-lg uppercase tracking-wider animate-pulse select-none touch-none active:bg-skin-gold/20 transition-colors"
         >
           Holding...
         </button>
@@ -163,15 +163,15 @@ function ActiveGame({
       {/* Released */}
       {showReleased && (
         <div className="w-full py-8 rounded-xl bg-white/[0.02] border-2 border-white/[0.06] text-center">
-          <p className="text-sm font-mono text-skin-dim">Released</p>
-          <p className="text-lg font-bold font-mono text-skin-gold">{formatDuration(myHold?.duration ?? 0)}</p>
+          <p className="text-sm  text-skin-dim">Released</p>
+          <p className="text-lg font-bold  text-skin-gold">{formatDuration(myHold?.duration ?? 0)}</p>
         </div>
       )}
 
       {/* Player pips (live mode only) */}
       {!isSolo && (
         <div className="space-y-1.5">
-          <p className="text-[10px] font-mono text-skin-dim/60 uppercase tracking-widest">
+          <p className="text-[10px]  text-skin-dim/60 uppercase tracking-widest">
             Still holding: {stillHolding.length}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -181,7 +181,7 @@ function ActiveGame({
               return (
                 <div
                   key={pid}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-opacity ${
+                  className={`px-2.5 py-1 rounded-lg text-xs  border transition-opacity ${
                     holding
                       ? 'bg-skin-gold/10 border-skin-gold/30 text-skin-gold'
                       : 'bg-white/[0.02] border-white/[0.06] text-skin-dim/40 opacity-50'
@@ -224,7 +224,7 @@ function RankingsBreakdown({
     if (!myRanking) return null;
     return (
       <div className="text-center">
-        <p className="text-2xl font-bold font-mono text-skin-gold tabular-nums">
+        <p className="text-2xl font-bold  text-skin-gold tabular-nums">
           {formatDuration(myRanking.duration)}
         </p>
       </div>
@@ -244,7 +244,7 @@ function RankingsBreakdown({
         return (
           <div
             key={pid}
-            className={`flex items-center justify-between p-2.5 rounded-lg border text-sm font-mono ${
+            className={`flex items-center justify-between p-2.5 rounded-lg border text-sm  ${
               isWinner
                 ? 'bg-skin-gold/10 border-skin-gold/30'
                 : 'bg-white/[0.02] border-white/[0.06]'

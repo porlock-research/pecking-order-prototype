@@ -24,7 +24,7 @@ export default function SplitFinalReveal({ results, roster, playerId }: SplitFin
           Final Results
         </p>
         {winnerId && (
-          <p className="text-xs font-mono text-skin-dim">
+          <p className="text-xs  text-skin-dim">
             {roster[winnerId]?.personaName ?? winnerId} wins +{winnerBonus} bonus silver!
           </p>
         )}
@@ -42,7 +42,7 @@ export default function SplitFinalReveal({ results, roster, playerId }: SplitFin
           return (
             <div
               key={pid}
-              className={`flex items-center justify-between p-2.5 rounded-lg border text-sm font-mono ${
+              className={`flex items-center justify-between p-2.5 rounded-lg border text-sm  ${
                 isWinner
                   ? 'bg-skin-gold/10 border-skin-gold/30'
                   : 'bg-white/[0.03] border-white/[0.06]'
@@ -76,11 +76,11 @@ export default function SplitFinalReveal({ results, roster, playerId }: SplitFin
       {/* Gold contribution */}
       {results.goldContribution > 0 && (
         <div className="text-center p-2 rounded-lg bg-skin-gold/5 border border-skin-gold/20">
-          <p className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">Greed Tax</p>
-          <p className="text-sm font-bold font-mono text-skin-gold">
+          <p className="text-[10px]  text-skin-dim uppercase tracking-widest">Greed Tax</p>
+          <p className="text-sm font-bold  text-skin-gold">
             {results.goldContribution} silver sent to gold pool
           </p>
-          <p className="text-[10px] font-mono text-skin-dim/60">from mutual steal rounds</p>
+          <p className="text-[10px]  text-skin-dim/60">from mutual steal rounds</p>
         </div>
       )}
     </div>

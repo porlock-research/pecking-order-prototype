@@ -53,14 +53,14 @@ function AuctionInput({ maxBid, onSubmit }: { maxBid: number; onSubmit: (d: Reco
             } disabled:cursor-not-allowed`}
           >
             <div className="text-2xl mb-1">?</div>
-            <div className="text-[10px] font-mono text-skin-dim uppercase tracking-wider">Slot {slot}</div>
+            <div className="text-[10px]  text-skin-dim uppercase tracking-wider">Slot {slot}</div>
           </button>
         ))}
       </div>
 
       {selectedSlot !== null && (
         <div className="space-y-2 animate-fade-in">
-          <div className="flex items-center justify-between text-xs font-mono">
+          <div className="flex items-center justify-between text-xs ">
             <span className="text-skin-dim">Your bid for Slot {selectedSlot}</span>
             <span className="text-skin-gold font-bold text-lg">{amount} silver</span>
           </div>
@@ -73,7 +73,7 @@ function AuctionInput({ maxBid, onSubmit }: { maxBid: number; onSubmit: (d: Reco
             className="w-full accent-[#ffd700]"
             disabled={confirmed}
           />
-          <div className="flex justify-between text-[10px] font-mono text-skin-dim/40">
+          <div className="flex justify-between text-[10px]  text-skin-dim/40">
             <span>0 (free if solo)</span>
             <span>{maxBid}</span>
           </div>
@@ -143,11 +143,11 @@ function AuctionReveal({
                 {prize.label}
               </div>
               {winnerName ? (
-                <div className="text-[10px] font-mono text-skin-dim">
+                <div className="text-[10px]  text-skin-dim">
                   Won by <span className="text-skin-base font-bold">{winnerName}</span>
                 </div>
               ) : (
-                <div className="text-[10px] font-mono text-skin-dim/40">No bids</div>
+                <div className="text-[10px]  text-skin-dim/40">No bids</div>
               )}
             </div>
           );
@@ -156,7 +156,7 @@ function AuctionReveal({
 
       {/* All Bids */}
       <div className="space-y-1.5">
-        <p className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">All Bids</p>
+        <p className="text-[10px]  text-skin-dim uppercase tracking-widest">All Bids</p>
         {Object.entries(bids).map(([pid, bid]) => {
           const name = roster[pid]?.personaName ?? pid;
           const isWinner = slotWinners[bid.slot] === pid;
@@ -166,7 +166,7 @@ function AuctionReveal({
           return (
             <div
               key={pid}
-              className={`flex items-center justify-between p-2 rounded-lg border text-sm font-mono ${
+              className={`flex items-center justify-between p-2 rounded-lg border text-sm  ${
                 isWinner
                   ? 'bg-skin-green/10 border-skin-green/30'
                   : 'bg-white/[0.03] border-white/[0.06]'
@@ -190,7 +190,7 @@ function AuctionReveal({
 
       {silverSpent > 0 && (
         <div className="text-center">
-          <p className="text-xs font-mono text-skin-dim/60">{silverSpent} silver converted to gold</p>
+          <p className="text-xs  text-skin-dim/60">{silverSpent} silver converted to gold</p>
         </div>
       )}
     </div>

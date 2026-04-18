@@ -12,7 +12,7 @@ interface GameDeadBeatProps {
  * the score lands. This is a peak frame, not filler. Title-card voice,
  * display font, accent-tinted aura.
  *
- * Replaces the old `font-mono text-skin-dim animate-pulse "Calculating
+ * Replaces the old `text-skin-dim animate-pulse "Calculating
  * score..."` placeholder. The line itself comes from GAME_INFO so
  * each game owns its closer ("Popped.", "Crashed.", "Time's up.").
  */

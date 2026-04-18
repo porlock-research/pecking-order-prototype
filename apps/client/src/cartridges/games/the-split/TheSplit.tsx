@@ -37,12 +37,12 @@ export default function TheSplit(props: TheSplitProps) {
         const nameB = r[pairing[1]]?.personaName ?? pairing[1];
         return (
           <div className="px-4 py-2 border-b border-white/[0.04] flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-mono">
+            <div className="flex items-center gap-2 text-xs ">
               <span className="text-skin-base">{nameA.slice(0, 10)}</span>
               <span className="text-skin-dim/40">vs</span>
               <span className="text-skin-base">{nameB.slice(0, 10)}</span>
             </div>
-            <span className="text-xs font-mono font-bold text-skin-gold">{pot ?? 0} silver</span>
+            <span className="text-xs  font-bold text-skin-gold">{pot ?? 0} silver</span>
           </div>
         );
       }}

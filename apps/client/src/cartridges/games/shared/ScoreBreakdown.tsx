@@ -7,7 +7,7 @@ interface ScoreBreakdownProps {
 /**
  * Shared score-breakdown card used inside game wrapper invocations
  * (the `renderBreakdown` slot on Arcade/Live games). Replaces the
- * `bg-white/[0.03] border border-white/[0.06] ... font-mono` card
+ * `bg-white/[0.03] border border-white/[0.06] ... ` card
  * that 17 entry files used to copy.
  *
  * Compose with `<ScoreRow>` for individual stat rows and `<ScoreDivider>`

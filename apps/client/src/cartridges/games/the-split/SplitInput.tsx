@@ -18,9 +18,9 @@ export default function SplitInput({ onSubmit, opponentName, potAmount }: SplitI
   return (
     <div className="space-y-4">
       <div className="text-center p-3 rounded-lg bg-skin-gold/5 border border-skin-gold/20">
-        <p className="text-[10px] font-mono text-skin-dim uppercase tracking-widest">Pot at Stake</p>
-        <p className="text-2xl font-bold font-mono text-skin-gold">{potAmount} silver</p>
-        <p className="text-[10px] font-mono text-skin-dim/60">vs {opponentName}</p>
+        <p className="text-[10px]  text-skin-dim uppercase tracking-widest">Pot at Stake</p>
+        <p className="text-2xl font-bold  text-skin-gold">{potAmount} silver</p>
+        <p className="text-[10px]  text-skin-dim/60">vs {opponentName}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

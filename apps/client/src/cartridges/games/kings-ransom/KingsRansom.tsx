@@ -51,9 +51,9 @@ function RansomInput({
   return (
     <div className="space-y-4">
       <div className="text-center p-3 rounded-lg bg-skin-gold/5 border border-skin-gold/20">
-        <p className="text-xs font-mono text-skin-dim uppercase tracking-widest">Royal Vault</p>
-        <p className="text-2xl font-bold font-mono text-skin-gold">{vaultAmount} silver</p>
-        <p className="text-[10px] font-mono text-skin-dim/60">belonging to {kingName}</p>
+        <p className="text-xs  text-skin-dim uppercase tracking-widest">Royal Vault</p>
+        <p className="text-2xl font-bold  text-skin-gold">{vaultAmount} silver</p>
+        <p className="text-[10px]  text-skin-dim/60">belonging to {kingName}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -123,7 +123,7 @@ function RansomReveal({
         <p className={`text-lg font-bold font-display uppercase tracking-wider ${outcomeColor}`}>
           {outcomeLabel}
         </p>
-        <p className="text-xs font-mono text-skin-dim">
+        <p className="text-xs  text-skin-dim">
           {stealCount} steal vs {protectCount} protect
         </p>
       </div>
@@ -132,7 +132,7 @@ function RansomReveal({
       <div className="flex rounded-full overflow-hidden h-6 border border-white/[0.06]">
         {stealCount > 0 && (
           <div
-            className="bg-red-500/40 flex items-center justify-center text-[10px] font-mono font-bold text-red-300"
+            className="bg-red-500/40 flex items-center justify-center text-[10px]  font-bold text-red-300"
             style={{ width: `${(stealCount / (stealCount + protectCount)) * 100}%` }}
           >
             {stealCount} STEAL
@@ -140,7 +140,7 @@ function RansomReveal({
         )}
         {protectCount > 0 && (
           <div
-            className="bg-skin-green/40 flex items-center justify-center text-[10px] font-mono font-bold text-green-300"
+            className="bg-skin-green/40 flex items-center justify-center text-[10px]  font-bold text-green-300"
             style={{ width: `${(protectCount / (stealCount + protectCount)) * 100}%` }}
           >
             {protectCount} PROTECT
@@ -151,7 +151,7 @@ function RansomReveal({
       {/* Player List */}
       <div className="space-y-1.5">
         {/* King */}
-        <div className={`flex items-center justify-between p-2.5 rounded-lg border text-sm font-mono bg-skin-gold/5 border-skin-gold/20 ${playerId === kingId ? 'ring-1 ring-skin-gold/30' : ''}`}>
+        <div className={`flex items-center justify-between p-2.5 rounded-lg border text-sm  bg-skin-gold/5 border-skin-gold/20 ${playerId === kingId ? 'ring-1 ring-skin-gold/30' : ''}`}>
           <div className="flex items-center gap-2">
             <span className="text-skin-gold font-bold">{kingName.slice(0, 14)}</span>
             <span className="text-[10px] bg-skin-gold/20 text-skin-gold px-1.5 rounded">KING</span>
@@ -173,7 +173,7 @@ function RansomReveal({
           return (
             <div
               key={pid}
-              className={`flex items-center justify-between p-2 rounded-lg border text-sm font-mono ${
+              className={`flex items-center justify-between p-2 rounded-lg border text-sm  ${
                 isSteal
                   ? 'bg-red-500/5 border-red-500/20'
                   : 'bg-skin-green/5 border-skin-green/20'

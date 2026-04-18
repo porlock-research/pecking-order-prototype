@@ -40,7 +40,7 @@ function BetInput({ maxBet, onSubmit }: { maxBet: number; onSubmit: (d: Record<s
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs font-mono">
+        <div className="flex items-center justify-between text-xs ">
           <span className="text-skin-dim">Your bet</span>
           <span className="text-skin-gold font-bold text-lg">{amount} silver</span>
         </div>
@@ -53,7 +53,7 @@ function BetInput({ maxBet, onSubmit }: { maxBet: number; onSubmit: (d: Record<s
           className="w-full accent-[#ffd700]"
           disabled={confirmed}
         />
-        <div className="flex justify-between text-[10px] font-mono text-skin-dim/40">
+        <div className="flex justify-between text-[10px]  text-skin-dim/40">
           <span>1</span>
           <span>{maxBet}</span>
         </div>
@@ -94,8 +94,8 @@ function BetReveal({
   return (
     <div className="p-4 space-y-3">
       <div className="text-center">
-        <p className="text-xs font-mono text-skin-dim uppercase tracking-widest">Total Pot</p>
-        <p className="text-2xl font-bold font-mono text-skin-gold">{potTotal} silver</p>
+        <p className="text-xs  text-skin-dim uppercase tracking-widest">Total Pot</p>
+        <p className="text-2xl font-bold  text-skin-gold">{potTotal} silver</p>
       </div>
 
       <div className="space-y-1.5">
@@ -111,7 +111,7 @@ function BetReveal({
           return (
             <div
               key={pid}
-              className={`flex items-center justify-between p-2.5 rounded-lg border text-sm font-mono ${
+              className={`flex items-center justify-between p-2.5 rounded-lg border text-sm  ${
                 isWinner
                   ? 'bg-skin-green/10 border-skin-green/30'
                   : isLowest || isTied

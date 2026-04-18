@@ -28,7 +28,7 @@ export default function ColorSort(props: ColorSortProps) {
         const bonus = solved ? solvedBonus : 0;
 
         return (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2  text-sm">
             <div className="flex justify-between">
               <span className="text-white/50">Tubes sorted</span>
               <span className="text-white">{sortedTubes} / 5</span>

@@ -24,7 +24,7 @@ interface GameReadyRosterProps {
 
 /**
  * READY-state roster for live multiplayer games. Replaces the inline
- * `font-mono "Get Ready"` + per-row pill list with a portrait-first
+ * `"Get Ready"` + per-row pill list with a portrait-first
  * grid: persona avatars are the visual anchor, ready state is an
  * accent ring on the avatar (engaged/waiting grammar).
  */
