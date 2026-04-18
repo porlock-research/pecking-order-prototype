@@ -76,37 +76,66 @@ export function pickHotTakeQuestion(usedIds: readonly string[]): HotTakeQuestion
 
 **Where `usedIds` comes from:**
 
-- **Dynamic games (`game-master.ts`):** extend `GameMasterContext` with `hotTakeHistory: string[]`. On each `resolveDay`, if `activityType === 'HOT_TAKE'`, call `pickHotTakeQuestion(context.hotTakeHistory)`, assign the chosen `id/statement/options` into the `START_ACTIVITY` payload, and append the chosen `id` to `hotTakeHistory` via `assign()`.
-- **Static games (lobby, `apps/lobby/app/actions.ts:1000-1012`):** `buildEventPayload` is called once per day inside `buildManifestDays`. The lobby pre-computes all days up-front, so we maintain a running `usedIds: Set<string>` inside the manifest builder and pass it to `pickHotTakeQuestion` for each HOT_TAKE day. The resulting `{id, statement, options}` is baked into the day's START_ACTIVITY payload.
+- **Dynamic games (`apps/game-server/src/machines/game-master.ts`):** extend `GameMasterContext` with `hotTakeHistory: string[]`. In `resolveDay`, immediately after the existing block at **`game-master.ts:279–291`** that mutates `startActivity.payload`, call `pickHotTakeQuestion(context.hotTakeHistory)` when `activityType === 'HOT_TAKE'` and write `{promptType, promptText: q.statement, promptId: q.id, options: q.options}` onto the payload. The chosen `id` is appended to `hotTakeHistory` via the same `assign()` that updates the day's manifest.
 
-**Why client-side picking via `Math.random()` is fine:** the picker runs once per cartridge spawn (server for dynamic, lobby for static). We don't need deterministic seeding — variety across sessions is the point. If determinism is ever needed for tests, an optional `rng?: () => number` param can be added in a follow-up without breaking callers.
+- **Static games (lobby, `apps/lobby/app/actions.ts:1000–1012`):** `buildEventPayload(eventKey, activityType, dayIndex)` currently has no state parameter. Thread a local `usedIds: Set<string>` through `buildManifestDays` (same file, line 1016) by extending the signature to `buildEventPayload(eventKey, activityType, dayIndex, usedIds)`, and update the three call sites inside `buildManifestDays` (the function is invoked once per day × event; at line 228, 759, 881 the manifest builder itself is called — those are callers, not the per-day loop. The per-day loop at `:1029` is where we mutate `usedIds`). For each HOT_TAKE day, call `pickHotTakeQuestion([...usedIds])`, bake `{id, statement, options}` into the START_ACTIVITY payload, then `usedIds.add(q.id)`. Three lobby modes hit this path: preset cycles, `CONFIGURABLE_CYCLE`, and `DEBUG_PECKING_ORDER` — all three use the same `buildManifestDays` entry point, so only one code change is required.
+
+### Alternative considered: extend `GameHistoryEntry`
+
+`GameHistoryEntry` (in `packages/shared-types/src/index.ts:590–598`) already carries `activityType?: string` and a `summary` bag. Architecturally it would be consistent to add `promptId?: string` to the entry and derive `usedIds` by filtering `gameHistory` at pick time — avoiding a parallel `hotTakeHistory` field on `GameMasterContext`.
+
+This is **not chosen** because activity cartridges do not currently record to `gameHistory`. Only `recordGameResult` (in `apps/game-server/src/machines/actions/l2-economy.ts:131–144`) populates it, and it writes from `GAME_RESULT` events only. The parallel `emitPromptResultFact` at `l2-economy.ts:175–188` raises a fact but does not extend the history. Adding activity recording to `gameHistory` would expand scope (new `recordPromptResult` action, new consumers in shells that render history). Revisit after the pool lands; the parallel field is local to the Game Master and cheap to remove later.
+
+**Why client-side `Math.random()` is fine:** the picker runs once per cartridge spawn (server for dynamic, lobby for static). We don't need deterministic seeding — variety across sessions is the point. For static games, game creation is idempotent-by-design from the user's perspective: if the lobby retries `createGame`, the manifest may contain different hot takes than a previous attempt, but this is harmless because only the successfully-created game's manifest is persisted. If deterministic seeding is ever needed for tests, an optional `rng?: () => number` param can be added in a follow-up without breaking callers.
 
 ## 5. Start-activity payload shape
 
-The `START_ACTIVITY` payload that both lobby and GM emit today looks like:
+Today's payload differs per prompt type. The common-path code at `apps/lobby/app/actions.ts:1004–1012` and `apps/game-server/src/machines/game-master.ts:283–288` spreads `ACTIVITY_TYPE_INFO[type].options` into the payload — but `HOT_TAKE`'s `ACTIVITY_TYPE_INFO` entry has no `options` field, so in practice the HOT_TAKE payload today is exactly:
 ```ts
-{ promptType: 'HOT_TAKE', promptText: string, /* plus WYR options */ }
+{ promptType: 'HOT_TAKE', promptText: string, msg: string }
 ```
+Only WYR ships a `{optionA, optionB}` pair (flat, not array).
 
-Extend it (HOT_TAKE only) to carry the question id and the option list:
+After this change, HOT_TAKE gains two fields:
 ```ts
 {
   promptType: 'HOT_TAKE',
   promptText: string,           // the statement (field reused for backward compat)
-  promptId?: string,            // hot-take question id — added
-  options?: string[],           // 2–4 stance labels — added
+  msg: string,                  // unchanged — general INJECT_PROMPT text
+  promptId?: string,            // hot-take question id — NEW
+  options?: string[],           // 2–4 stance labels — NEW
 }
 ```
 
-`promptText` stays populated with the statement so the existing client field plumbing (`cartridge.promptText`, `PromptShell`, result displays in other shells) keeps working without type churn.
+Name note: WYR's `optionA` / `optionB` are **separate, flat** fields; HOT_TAKE's `options` is an **array**. Both can coexist on the union of payload shapes because they're disjoint by `promptType`. Downstream code reading `payload.options` must check `promptType === 'HOT_TAKE'` — don't conflate with the WYR shape.
+
+`promptText` stays populated with the statement so existing client field plumbing (`cartridge.promptText`, `PromptShell`, result displays in other shells) keeps working without type churn.
 
 ## 6. Machine changes (`hot-take-machine.ts`)
 
 Generalize from a hardcoded `'AGREE' | 'DISAGREE'` stance to an arbitrary option index.
 
-**Input** — extend `PromptCartridgeInput` consumption:
+**`PromptCartridgeInput` (contract change)** — in `packages/shared-types/src/index.ts:556–563`, the current shape is:
 ```ts
-context.options = input.options ?? ['AGREE', 'DISAGREE'];  // fallback keeps old static games safe
+export interface PromptCartridgeInput {
+  promptType: PromptType;
+  promptText: string;
+  roster: Record<string, SocialPlayer>;
+  dayIndex: number;
+  optionA?: string;             // WYR
+  optionB?: string;             // WYR
+}
+```
+Add two fields:
+```ts
+  options?: string[];           // HOT_TAKE — 2–4 stance labels
+  promptId?: string;            // HOT_TAKE — stable question id
+```
+Named `options` (plural) to differentiate from WYR's flat `optionA`/`optionB` pair. Both coexist on the same interface; readers branch by `promptType`.
+
+**Context** — extend `HotTakeContext`:
+```ts
+context.options = input.options ?? ['AGREE', 'DISAGREE'];  // fallback keeps legacy spawns safe
 context.promptId = input.promptId;
 context.stances: Record<string, number> = {};              // playerId → option index
 ```
@@ -179,9 +208,19 @@ function resolveResults(
 
 ## 7. Projections
 
-`packages/game-cartridges/src/helpers/projections.ts` currently projects the cartridge unchanged for HOT_TAKE (no mid-phase field stripping). After the change, the projection still passes through the extended context. The `stances` field continues to be projected (it's already public after responses land).
+The HOT_TAKE-relevant projection lives in **`apps/game-server/src/projections.ts:18–33`** (`promptParticipation`), where `ctx?.stances` is the HOT_TAKE branch used to derive the uniform `participated: Record<string, boolean>`. The derivation only checks `pid in submissions` — it doesn't read the values. Changing `stances` values from `'AGREE'|'DISAGREE'` to numeric indices **does not affect this projection**; keyed-object membership still works identically.
 
-Nothing private is added, so projection rules don't change. The phase-gated behavior remains: during `ACTIVE`, other players' stances are visible (same as today); during `RESULTS`, the full tally is visible.
+`projectPromptCartridge` in the same file (line 46) passes HOT_TAKE context through unchanged (no mid-phase stripping for HOT_TAKE — sensitive stripping only applies to CONFESSION / GUESS_WHO). The extended context (`options`, `promptId`, indexed `stances`) flows through the projection to the client as-is.
+
+**Note:** `packages/game-cartridges/src/helpers/projections.ts` (referenced in memory file `feedback_verify_projection_fields.md`) is a different file that does **not** touch HOT_TAKE. No change there.
+
+### Ticker (verified)
+
+`apps/game-server/src/ticker.ts:124–140` is the `FactTypes.PROMPT_RESULT` handler. It reads **only** `fact.payload?.silverRewards` to derive reward counts and the "Activity complete!" ticker line. It does **not** read `agreeCount`, `disagreeCount`, or `minorityStance`. Because the new fact payload (§6) still carries `silverRewards` at the top level, **the ticker is unaffected** and needs no change. Explicitly verified at spec time.
+
+### WebSocket event allowlist (verified)
+
+`apps/game-server/src/ws-handlers.ts:255–259` uses prefix-based allowlisting (`event.type.startsWith(Events.Activity.PREFIX)`). There is no Zod schema gating the `ACTIVITY.HOTTAKE.RESPOND` payload shape — payload validation is entirely in the machine's `recordStance` guard (§6). **No ws-handler change required.**
 
 ## 8. Client UI changes
 
@@ -209,17 +248,23 @@ Accent colors cycle through `var(--po-green)`, `var(--po-pink)`, `var(--po-gold)
 
 **"Who said what" list** — unchanged structure; the tag label pulls from `options[stance]` instead of mapping `'AGREE'→'Agree'`.
 
-**Other shells that show HOT_TAKE results:**
-- `apps/client/src/shells/vivid/components/dashboard/PromptResultDetail.tsx`
-- `apps/client/src/shells/vivid/components/today/CompletedSummary.tsx`
-- `apps/client/src/shells/classic/components/TimelineCartridgeCard.tsx`
-- `apps/client/src/shells/pulse/components/cartridge-overlay/PulseResultContent.tsx`
+**Other shells that show HOT_TAKE results** — each has a distinct failure mode; the fix is not uniform:
 
-Each reads `results.agreeCount` / `results.disagreeCount` / `results.minorityStance` today. Audit these four during implementation and migrate to `tally` / `options` / `minorityIndices`. Provide the same legacy-snapshot fallback so in-flight or historical games still render.
+- **`apps/client/src/shells/vivid/components/dashboard/PromptResultDetail.tsx:47–48`** — maps a single `playerResponses[pid]` **string** value to a display label via `response === 'AGREE' ? 'Agree' : response === 'DISAGREE' ? 'Disagree' : response`. It does **not** read any tally fields. Under the new shape, `playerResponses[pid]` will be a stringified index (e.g. `"2"`). Update the `case 'HOT_TAKE'` branch to: read `result.results?.options: string[]`, parse `response` as an int, and return `options[idx] ?? response`. Keep the legacy string-match path as an else branch for historical games.
+
+- **`apps/client/src/shells/vivid/components/today/CompletedSummary.tsx`** — audit during implementation. If it reads `agreeCount/disagreeCount/minorityStance`, migrate to `tally/options/minorityIndices` and preserve legacy-fallback render.
+
+- **`apps/client/src/shells/classic/components/TimelineCartridgeCard.tsx`** — same audit; migrate per findings.
+
+- **`apps/client/src/shells/pulse/components/cartridge-overlay/PulseResultContent.tsx`** — same audit. Pulse is the shell the user is building toward, so this one gets the most polish attention.
+
+For all three audited files: verify the actual symptom (string→label mapping vs tally read) before writing the migration — don't assume one shape.
 
 ## 9. Compatibility
 
-- **Legacy in-flight games:** at deploy time, any mid-HOT_TAKE phase snapshot hydrates into the new machine with `context.options` undefined — the input fallback `context.options = input.options ?? ['AGREE','DISAGREE']` only runs on spawn, not on rehydrate. To keep mid-phase games resolving cleanly we also backfill `context.options` via an entry action on the `active` state that normalizes the context shape (populate `options` if missing, migrate `stances` values from strings to indices). Client-side fallback (§8) handles rendering either shape. After the rollout window both the event compat branch and the hydration fixup are removed.
+- **Legacy in-flight games (mid-HOT_TAKE at deploy):** the snapshot hydrates into the new machine with `context.options` undefined — the input fallback `context.options = input.options ?? ['AGREE','DISAGREE']` only runs on spawn, not on rehydrate. To keep mid-phase games resolving cleanly, we also backfill `context.options` via an entry action on the `active` state that normalizes the context shape (populate `options` if missing, migrate `stances` values from strings to indices). Client-side fallback (§8) handles rendering either shape.
+
+- **Already-completed legacy games:** `PROMPT_RESULT` facts recorded before this ship contain old-shape payloads (`agreeCount/disagreeCount/minorityStance`). **These facts are never rewritten.** The journal and any derived history views keep the old shape forever. Every reader of historical HOT_TAKE results (result cards, dashboards, ticker) must tolerate both shapes indefinitely — legacy fallback is not a rollout-window bandage, it's permanent. The only rollout-window-only code is the `{stance}` event compat branch (§6) and the hydration fixup (this bullet's first sub-point).
 - **Legacy game-history entries (`gameHistory` in L2, `PROMPT_RESULT` facts):** contain old-shape payloads. Shell result components also handle both shapes.
 - **`ACTIVITY_TYPE_INFO.HOT_TAKE.promptText`:** kept as a default for any path that somehow spawns HOT_TAKE without going through the picker (defensive; shouldn't happen in practice). Updated from `'Pineapple belongs on pizza'` to a neutral `'Hot take'` placeholder — the picker always wins.
 - **`ActivityEvents.HOTTAKE.RESPOND`:** event key unchanged; only the payload shape changes.
@@ -250,16 +295,16 @@ A good hot take in this pool has these properties:
 ## 12. Open questions (for implementation session)
 
 - **Option color palette in Pulse shell:** needs to be selected against Pulse tokens at implementation time; the generic accents above are shell-agnostic hints.
-- **Result bar layout at 4 options:** visual density may warrant a vertical-bars variant. Defer to implementation review with screenshots.
-- **Fact payload in-flight migration:** whether to provide a one-time `factToTicker` shim that reads both old and new shapes, or accept a small cosmetic regression on historical ticker entries. Default is: accept the regression; new fact shape only applies going forward.
+- **Result bar layout at 4 options:** visual density may warrant a vertical-bars variant over the 2×2 stance grid. Defer to implementation review with screenshots once two entries (#1, #22) are live.
+- **Ticker:** verified safe at spec time (§7). No open question.
 
 ---
 
 ## Appendix A — The 30 questions
 
-Each entry is the draft content. Options lengths vary 2–4.
+Composition: **25 × 3-option**, **3 × 2-option** (#12, #15, #17), **2 × 4-option** (#1, #22). The two 4-option entries exist deliberately so the 2×2 client layout (§8) is driven by real content, not speculative UI work.
 
-1. `cereal-before-milk` — **Cereal should go in the bowl before milk.** *(2)* Cereal first · Milk first
+1. `cereal-before-milk` — **Cereal should go in the bowl before milk.** *(4)* Cereal first · Milk first · Neither — wet cereal is wrong · I don't do cereal
 2. `last-page-first` — **Reading the last page first is a crime.** *(3)* Major crime · Totally fine · Only for mysteries
 3. `k-reply` — **Replying just "k" is basically hostile.** *(3)* Always hostile · Totally neutral · Depends on who
 4. `ghosting-early` — **Ghosting is fine if you barely know someone.** *(3)* Fine · Never fine · Online only
@@ -270,17 +315,17 @@ Each entry is the draft content. Options lengths vary 2–4.
 9. `liking-own-posts` — **Liking your own posts is cringe.** *(3)* Cringe · Confident · Only on stories
 10. `crying-at-school` — **Crying at school is always OK.** *(3)* Always fine · Never fine · Only in private
 11. `small-talk` — **Small talk is a survival skill, not a waste.** *(3)* Survival skill · Waste of breath · Depends on the room
-12. `cats-vs-dogs` — **Cats are better than dogs.** *(3)* Cats · Dogs · Neither
+12. `cats-vs-dogs` — **Cats are better than dogs.** *(2)* Cats · Dogs
 13. `dogs-on-bed` — **Dogs on the bed is a dealbreaker.** *(3)* Dealbreaker · Hard yes · Small dogs only
 14. `ban-homework` — **Homework should be banned entirely.** *(3)* Ban it · Keep it · Only for younger grades
 15. `uniforms-vs-free` — **Uniforms are better than free dress.** *(2)* Uniforms · Free dress
 16. `group-projects` — **Group projects teach resentment, not teamwork.** *(3)* Facts · They're valuable · Depends on the group
-17. `winter-vs-summer` — **Winter is better than summer.** *(3)* Winter · Summer · Fall is the real winner
+17. `winter-vs-summer` — **Winter is better than summer.** *(2)* Winter · Summer
 18. `ocean-is-scary` — **The ocean is genuinely terrifying.** *(3)* Terrifying · Calming · Only the deep stuff
 19. `leftovers-better` — **Leftovers taste better than the first night.** *(3)* Always · Never · Only some foods
 20. `night-showers` — **Night showers beat morning showers.** *(3)* Night · Morning · Both, always
 21. `chat-size-limit` — **Group chats over eight people are always chaos.** *(3)* Nuke them · Size doesn't matter · Depends on the group
-22. `playback-speed` — **Watching a show on 1.5x speed ruins it.** *(3)* Ruins it · Way more efficient · Depends on the show
+22. `playback-speed` — **Watching a show on 1.5x speed ruins it.** *(4)* Ruins it · Way more efficient · Only for rewatches · Depends on the show
 23. `spoilers-fine` — **Spoilers genuinely don't ruin anything.** *(3)* Fine · They ruin it · Depends on the story
 24. `theater-phones` — **Phones in a movie theater should be illegal.** *(3)* Enforce it · Live and let live · Only during the movie
 25. `early-vs-late` — **Being really early is worse than being slightly late.** *(3)* Worse · Always better · Depends on the event
@@ -294,18 +339,29 @@ Each entry is the draft content. Options lengths vary 2–4.
 
 ## Appendix B — Files affected (implementation checklist)
 
-- **Add:** `packages/shared-types/src/prompt-pools/hot-take.ts`
-- **Add:** `packages/shared-types/src/__tests__/hot-take-pool.test.ts`
-- **Edit:** `packages/shared-types/src/index.ts` (barrel re-exports)
-- **Edit:** `packages/shared-types/src/activity-type-info.ts` (placeholder `promptText` only)
-- **Edit:** `apps/lobby/app/actions.ts` — `buildEventPayload` / `buildManifestDays` to call `pickHotTakeQuestion`
-- **Edit:** `apps/game-server/src/machines/game-master.ts` — `hotTakeHistory` in context; `resolveDay` calls picker
-- **Edit:** `apps/game-server/src/machines/cartridges/prompts/hot-take-machine.ts` — generalized stances + results
-- **Edit:** `apps/game-server/src/machines/cartridges/prompts/__tests__/prompt-early-end.test.ts`
-- **Add:** `apps/game-server/src/machines/cartridges/prompts/__tests__/hot-take-machine.test.ts`
-- **Edit:** `apps/client/src/cartridges/prompts/HotTakePrompt.tsx` — generalized buttons, tally bar, legacy fallback
-- **Edit (audit):** `apps/client/src/shells/vivid/components/dashboard/PromptResultDetail.tsx`
-- **Edit (audit):** `apps/client/src/shells/vivid/components/today/CompletedSummary.tsx`
-- **Edit (audit):** `apps/client/src/shells/classic/components/TimelineCartridgeCard.tsx`
-- **Edit (audit):** `apps/client/src/shells/pulse/components/cartridge-overlay/PulseResultContent.tsx`
-- **Regenerate:** `docs/machines/prompt-hot-take.json` via `npm run generate:docs` in `apps/game-server`
+**Add**
+- `packages/shared-types/src/prompt-pools/hot-take.ts` — `HotTakeQuestion`, `HOT_TAKE_POOL` (30 entries), `pickHotTakeQuestion`
+- `packages/shared-types/src/__tests__/hot-take-pool.test.ts` — invariants + picker dedupe
+- `apps/game-server/src/machines/cartridges/prompts/__tests__/hot-take-machine.test.ts` — generalized machine tests
+
+**Edit**
+- `packages/shared-types/src/index.ts` — barrel re-exports; extend `PromptCartridgeInput` with `options?: string[]` and `promptId?: string` (lines 556–563)
+- `packages/shared-types/src/activity-type-info.ts` — change placeholder `promptText` from `'Pineapple belongs on pizza'` to a neutral default
+- `apps/lobby/app/actions.ts` — thread `usedIds: Set<string>` through `buildManifestDays` (line 1016), call `pickHotTakeQuestion` inside the per-day loop at `:1029`, update `buildEventPayload` signature (line 1000) to accept and write `options`/`promptId`
+- `apps/game-server/src/machines/game-master.ts` — add `hotTakeHistory: string[]` to `GameMasterContext`; in `resolveDay` at the block `:279–291`, call `pickHotTakeQuestion(context.hotTakeHistory)` when `activityType === 'HOT_TAKE'` and write `promptId/options/promptText`
+- `apps/game-server/src/machines/cartridges/prompts/hot-take-machine.ts` — generalized context, guard, `resolveResults`, legacy `stance` → index bridge, entry-action hydration fixup
+- `apps/game-server/src/machines/cartridges/prompts/__tests__/prompt-early-end.test.ts` — update HOT_TAKE payload assertions (lines 195–196)
+- `apps/client/src/cartridges/prompts/HotTakePrompt.tsx` — variable 2/3/4 stance buttons; generalized `TallyBar`; legacy snapshot fallback
+- `apps/client/src/shells/vivid/components/dashboard/PromptResultDetail.tsx:47–48` — string→label branch reads `result.results?.options[Number(response)]`, with fallback to current `AGREE`/`DISAGREE` string match for legacy results
+- `apps/client/src/shells/vivid/components/today/CompletedSummary.tsx` — audit per §8
+- `apps/client/src/shells/classic/components/TimelineCartridgeCard.tsx` — audit per §8
+- `apps/client/src/shells/pulse/components/cartridge-overlay/PulseResultContent.tsx` — audit per §8
+
+**Verify (no change expected, but confirm during implementation)**
+- `apps/game-server/src/projections.ts:18–33` — `promptParticipation` unchanged (indices work as keys)
+- `apps/game-server/src/ticker.ts:124–140` — `PROMPT_RESULT` handler reads only `silverRewards`; confirmed safe
+- `apps/game-server/src/ws-handlers.ts:255–259` — prefix allowlist covers `ACTIVITY.*`; no Zod schema to update
+- `apps/game-server/src/demo/` — grep confirmed no HOT_TAKE references at spec time; re-confirm after machine changes land (per root CLAUDE.md rule about L2/L3/SYNC shape changes)
+
+**Regenerate**
+- `docs/machines/prompt-hot-take.json` via `npm run generate:docs` in `apps/game-server`
