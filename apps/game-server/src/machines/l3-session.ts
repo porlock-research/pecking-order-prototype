@@ -43,6 +43,15 @@ export interface DailyContext {
    *  Keys match the XState child id strings: 'activeVotingCartridge' | 'activeGameCartridge'
    *  | 'activePromptCartridge' | 'activeDilemmaCartridge'. */
   cartridgeUpdatedAt: Record<string, number>;
+  /** Confession phase state. Inactive default; populated on entry to
+   *  confessionLayer.posting (Plan 1, T8/T9). handlesByPlayer is SERVER-ONLY —
+   *  buildSyncPayload (Plan 1, T12) reduces to { myHandle, handleCount } per
+   *  recipient. posts is already anonymized at record time (no authorId). */
+  confessionPhase: {
+    active: boolean;
+    handlesByPlayer: Record<string, string>;
+    posts: Array<{ handle: string; text: string; ts: number }>;
+  };
 }
 
 export type DailyEvent =
@@ -128,6 +137,7 @@ export function buildL3Context(input: { dayIndex: number; roster: Record<string,
     requireDmInvite: input.manifest?.requireDmInvite ?? false,
     dmSlotsPerPlayer: input.manifest?.dmSlotsPerPlayer ?? 5,
     cartridgeUpdatedAt: {},
+    confessionPhase: { active: false, handlesByPlayer: {}, posts: [] },
   };
 }
 
