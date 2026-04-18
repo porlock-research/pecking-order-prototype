@@ -50,8 +50,7 @@ export function CastStrip() {
         radial-gradient(ellipse at top, rgba(255,59,111,0.07), transparent 60%),
         linear-gradient(to bottom, var(--pulse-surface), var(--pulse-bg))
       `,
-      borderBottom: '1px solid var(--pulse-border)',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+      borderBottom: '1px solid var(--pulse-border-2)',
       position: 'relative', zIndex: PULSE_Z.flow,
     }}>
       <div

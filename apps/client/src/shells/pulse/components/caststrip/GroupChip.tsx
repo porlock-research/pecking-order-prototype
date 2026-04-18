@@ -34,7 +34,7 @@ export function GroupChip({ entry, onTap }: Props) {
     >
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 14, overflow: 'hidden',
-        background: '#222', border: `2px solid ${edgeColor}`, boxShadow: glow,
+        background: 'var(--pulse-surface-3)', border: `2px solid ${edgeColor}`, boxShadow: glow,
         display: 'flex',
       }}>
         {others.map((id) => {
@@ -46,16 +46,16 @@ export function GroupChip({ entry, onTap }: Props) {
           );
         })}
         <span aria-hidden="true" style={{
-          position: 'absolute', top: 3, right: 3,
-          background: 'rgba(0,0,0,0.7)', color: 'var(--pulse-on-accent)',
-          fontSize: 7, fontWeight: 800, letterSpacing: 0.4,
-          padding: '1px 4px', borderRadius: 4, textTransform: 'uppercase',
+          position: 'absolute', top: 4, right: 4,
+          background: 'rgba(0,0,0,0.75)', color: 'var(--pulse-on-accent)',
+          fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+          padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase',
         }}>Group</span>
         <div aria-hidden="true" style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
           padding: '14px 6px 5px',
           background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)',
-          color: 'rgba(255,255,255,0.9)', fontSize: 10, fontWeight: 700, textAlign: 'center',
+          color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: 700, textAlign: 'center',
           textShadow: '0 1px 2px rgba(0,0,0,0.8)',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{firstNames}</div>

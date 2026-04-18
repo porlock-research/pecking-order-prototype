@@ -30,9 +30,10 @@ export function PickingBanner() {
         )}
       </span>
       <button onClick={cancelPicking} style={{
-        background: 'transparent', color: 'var(--pulse-text-3)',
-        border: '1px solid var(--pulse-border)', borderRadius: 14,
-        padding: '3px 10px', fontSize: 11, cursor: 'pointer',
+        background: 'transparent', color: 'var(--pulse-text-2)',
+        border: '1px solid var(--pulse-border-2)', borderRadius: 16,
+        padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+        minHeight: 36, minWidth: 80,
       }}>Cancel</button>
     </div>
   );

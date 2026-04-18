@@ -43,6 +43,9 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
   const avatar = resolveAvatarUrl(player?.avatarUrl);
 
   const isSelf = entry.kind === 'self';
+  // Offline chips stay mostly visible — faces are the visual interest
+  // (.impeccable.md principle 1). Previously 0.45 + saturate(0.6) read
+  // as "ghosted"; 0.82 with no filter reads as "quieter."
   const dimmed = !isOnline && !isSelf && !hasPendingInviteFromThem && !hasUnseenNudgeFromThem;
   const disabledInPicking = pickingMode && !pickable && !isSelf;
 
@@ -59,24 +62,31 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
     onTap(entry);
   };
 
-  // Edge/glow — tokenized via color-mix so theme tweaks cascade without
-  // hunting for rgba triples.
+  // Edge/glow grammar — each state gets a distinct hue. Pink is reserved
+  // for UNREAD so it's not overloaded across typing/unread/self. Typing
+  // used to share the pink border; now it's a neutral text-2 border and
+  // the bottom-right dots badge carries the typing signal unambiguously.
+  //
+  // Pulse tempos are staggered by urgency:
+  //   pending invite (1.0s) = "act on this now"
+  //   unseen nudge    (1.4s) = "someone reached out"
   let edgeColor: string | null = null;
   let glowColor: string | null = null;
-  let pulse = false;
+  let pulseDurationMs: number | null = null;
   if (hasPendingInviteFromThem) {
     edgeColor = 'var(--pulse-pending)';
     glowColor = 'color-mix(in oklch, var(--pulse-pending) 55%, transparent)';
-    pulse = true;
+    pulseDurationMs = 1000;
   } else if (hasUnseenNudgeFromThem) {
     edgeColor = 'var(--pulse-nudge)';
     glowColor = 'color-mix(in oklch, var(--pulse-nudge) 55%, transparent)';
-    pulse = true;
+    pulseDurationMs = 1400;
   } else if (unreadCount > 0) {
     edgeColor = 'var(--pulse-accent)';
     glowColor = 'color-mix(in oklch, var(--pulse-accent) 35%, transparent)';
   } else if (isTypingToYou) {
-    edgeColor = 'var(--pulse-accent)';
+    // Typing no longer borrows the pink border — dots badge carries it.
+    edgeColor = 'color-mix(in oklch, var(--pulse-text-2) 50%, transparent)';
   } else if (isOnline) {
     edgeColor = 'color-mix(in oklch, var(--pulse-online) 60%, transparent)';
   }
@@ -107,11 +117,10 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
         background: 'transparent',
         borderRadius: 14,
         cursor: disabledInPicking ? 'not-allowed' : 'pointer',
-        opacity: dimmed ? 0.45 : (disabledInPicking ? 0.4 : 1),
-        filter: dimmed ? 'saturate(0.6)' : 'none',
+        opacity: dimmed ? 0.82 : (disabledInPicking ? 0.4 : 1),
         scrollSnapAlign: 'start',
-        // Opacity/filter fade only; transform is driven by framer-motion whileTap.
-        transition: 'opacity 0.3s ease, filter 0.3s ease',
+        // Opacity-only fade; transform is driven by framer-motion whileTap.
+        transition: 'opacity 0.3s ease',
         animation: shaking ? 'pulse-chip-shake 350ms ease-in-out' : undefined,
       }}
     >
@@ -124,7 +133,9 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
           // Constant 2px border width — avoids the 0.5px layout shift that
           // the old 2.5px/2px toggle introduced between states.
           border: `2px solid ${edgeColor ?? 'transparent'}`,
-          animation: pulse ? 'pulse-breathe 1.4s ease-in-out infinite' : undefined,
+          animation: pulseDurationMs
+            ? `pulse-breathe ${pulseDurationMs}ms ease-in-out infinite`
+            : undefined,
         }}
       >
         {avatar && <img src={avatar} alt="" loading="lazy" width={72} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
@@ -132,7 +143,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
           position: 'absolute', left: 0, right: 0, bottom: 0,
           padding: 'var(--pulse-space-md) var(--pulse-space-xs) var(--pulse-space-2xs)',
           background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)',
-          color, fontSize: 11, fontWeight: 700, textAlign: 'center',
+          color, fontSize: 12, fontWeight: 700, textAlign: 'center',
           textShadow: '0 1px 2px rgba(0,0,0,0.8)',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
@@ -147,10 +158,10 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
             border: '2px solid var(--pulse-accent)', pointerEvents: 'none',
           }} />
           <span aria-hidden="true" style={{
-            position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+            position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)',
             background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
-            fontSize: 8, fontWeight: 800, letterSpacing: 0.5,
-            padding: '1px 5px', borderRadius: 6,
+            fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+            padding: '2px 7px', borderRadius: 7,
             textTransform: 'uppercase', pointerEvents: 'none', whiteSpace: 'nowrap',
           }}>You</span>
         </>
@@ -173,26 +184,26 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
 
       {hasUnseenNudgeFromThem && !hasPendingInviteFromThem && (
         <span aria-hidden="true" style={{
-          position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
           display: 'inline-flex', alignItems: 'center', gap: 'var(--pulse-space-2xs)',
           background: 'var(--pulse-nudge)', color: 'var(--pulse-bg)',
-          fontSize: 8, fontWeight: 800, letterSpacing: 0.5,
-          padding: '2px 6px', borderRadius: 8,
+          fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+          padding: '2px 7px', borderRadius: 9,
           textTransform: 'uppercase', animation: 'pulse-breathe 1.4s ease-in-out infinite',
           pointerEvents: 'none', whiteSpace: 'nowrap',
         }}>
-          <HandWaving size={10} weight="fill" />
+          <HandWaving size={11} weight="fill" />
           Nudge
         </span>
       )}
 
       {hasPendingInviteFromThem && (
         <span aria-hidden="true" style={{
-          position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--pulse-pending)', color: 'var(--pulse-on-accent)',
-          fontSize: 8, fontWeight: 800, letterSpacing: 0.5,
-          padding: '2px 6px', borderRadius: 8,
-          textTransform: 'uppercase', animation: 'pulse-breathe 1.4s ease-in-out infinite',
+          position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--pulse-pending)', color: 'var(--pulse-bg)',
+          fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+          padding: '2px 7px', borderRadius: 9,
+          textTransform: 'uppercase', animation: 'pulse-breathe 1.0s ease-in-out infinite',
           pointerEvents: 'none', whiteSpace: 'nowrap',
         }}>Invite</span>
       )}
@@ -202,12 +213,20 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
           data-testid={`chip-silver-pip-${entry.id}`}
           aria-hidden="true"
           style={{
-            position: 'absolute', top: -2, left: -2,
+            position: 'absolute',
+            // When leader crown occupies the top-left, silver pip moves to
+            // bottom-left so the two signals don't overlap. Typing dots
+            // live bottom-right, so bottom-left is free.
+            ...(isLeader && !isSelf
+              ? { bottom: -2, left: -2 }
+              : { top: -2, left: -2 }),
             width: 10, height: 10, borderRadius: '50%',
             background: 'var(--pulse-gold)',
-            boxShadow: '0 0 6px color-mix(in oklch, var(--pulse-gold) 60%, transparent)',
             border: '2px solid var(--pulse-bg)',
-            animation: 'pulse-breathe 1.8s ease-in-out infinite',
+            // One-shot arrival — scales in with gold glow peak, settles to
+            // a quiet static glow. Was infinite pulse-breathe which read
+            // as urgent as a pending invite; silver is calmer than that.
+            animation: 'pulse-silver-pip-arrive 700ms ease-out forwards',
           }}
         />
       )}

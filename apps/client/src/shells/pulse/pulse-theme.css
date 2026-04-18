@@ -180,6 +180,21 @@
   100% { background-position: -200% 0; }
 }
 
+/* One-shot silver-pip arrival — scales in with a gold glow peak, then
+   settles to a quiet static glow. Replaces the infinite pulse-breathe
+   that made the pip feel as urgent as a pending invite. Silver is a
+   "remember me" signal, not a "do something now" signal. */
+@keyframes pulse-silver-pip-arrive {
+  0%   { transform: scale(0.6); box-shadow: 0 0 0 0 rgba(255, 200, 61, 0); }
+  45%  { transform: scale(1.18); box-shadow: 0 0 14px 3px rgba(255, 200, 61, 0.7); }
+  100% { transform: scale(1); box-shadow: 0 0 6px 1px rgba(255, 200, 61, 0.35); }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes pulse-silver-pip-arrive {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 6px 1px rgba(255, 200, 61, 0.35); }
+  }
+}
+
 /* Silver arrival ignition — a one-shot gold sheen that sweeps across a
    SilverTransferCard the first time it mounts. The card sits calm after. */
 @keyframes pulse-silver-sheen {
