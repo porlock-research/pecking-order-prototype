@@ -558,8 +558,12 @@ export interface PromptCartridgeInput {
   promptText: string;
   roster: Record<string, SocialPlayer>;
   dayIndex: number;
+  // WYR-only (flat pair)
   optionA?: string;
   optionB?: string;
+  // HOT_TAKE-only (array)
+  options?: string[];
+  promptId?: string;
 }
 
 // --- Perks (Economy Powers) ---
