@@ -4,31 +4,40 @@ import { Coins } from '../../icons';
 import { PULSE_Z } from '../../zIndex';
 
 /**
- * SilverBurst — shell-level overdrive layer for silver sends.
+ * SilverBurst — shell-level overdrive layer for silver events.
  *
- * Fired by dispatching a window CustomEvent:
- *   window.dispatchEvent(new CustomEvent('pulse:silver-burst', {
- *     detail: { amount: 10, recipient: 'Alice' }
- *   }))
+ * Two variants gated by `direction`:
  *
- * Renders a self-contained particle shower + big "+N silver" text float
- * at the center of the viewport. Multiple rapid fires are supported — each
- * instance auto-removes after ~1000ms.
+ *   'sent'     — sender's dopamine echo: brief (~0.95s), particle shower
+ *                + "+N silver → Recipient" text float. Fired from
+ *                PulseInput after engine.sendSilver.
  *
- * Respects prefers-reduced-motion (falls back to a simple text fade).
+ *   'received' — recipient's comprehension moment: ~2.1s hold, sender
+ *                portrait anchor, "+N" + "silver from Sender" below.
+ *                Fired from useReceivedOverdrive on SYNC replay or
+ *                live event arrival. Face-first because the recipient
+ *                needs to know WHO before WHAT.
+ *
+ * Event detail:
+ *   { direction: 'sent', amount, recipient }
+ *   { direction: 'received', amount, from, senderAvatarUrl }
+ *
+ * Defaults to 'sent' for backward compat with existing sender-side dispatch.
  */
 
 interface BurstSpec {
   id: number;
+  direction: 'sent' | 'received';
   amount: number;
-  recipient: string;
+  /** For 'sent': recipient name. For 'received': sender name. */
+  who: string;
+  /** Only for 'received': sender's portrait URL. null → text-only fallback. */
+  senderAvatarUrl: string | null;
 }
 
 const PARTICLE_COUNT = 14;
 
 function randomParticles(seed: number) {
-  // Evenly spaced angles with random jitter so the shower reads radial,
-  // not clumpy. Velocities vary slightly for depth.
   const step = (Math.PI * 2) / PARTICLE_COUNT;
   return Array.from({ length: PARTICLE_COUNT }, (_, i) => {
     const angle = i * step + (((seed * 9301 + i * 49297) % 233280) / 233280 - 0.5) * 0.4;
@@ -43,7 +52,7 @@ function randomParticles(seed: number) {
   });
 }
 
-function SilverBurstInstance({ amount, recipient, reduce }: { amount: number; recipient: string; reduce: boolean }) {
+function SentBurstInstance({ amount, who, reduce }: { amount: number; who: string; reduce: boolean }) {
   if (reduce) {
     return (
       <motion.div
@@ -80,7 +89,6 @@ function SilverBurstInstance({ amount, recipient, reduce }: { amount: number; re
         pointerEvents: 'none',
       }}
     >
-      {/* Gold vignette pulse on viewport edges */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 0.18, 0] }}
@@ -90,20 +98,12 @@ function SilverBurstInstance({ amount, recipient, reduce }: { amount: number; re
           background: 'radial-gradient(ellipse at center, transparent 40%, rgba(255,200,61,0.5) 100%)',
         }}
       />
-
-      {/* Coin particle shower */}
       <div style={{ position: 'relative', width: 0, height: 0 }}>
         {particles.map((p, i) => (
           <motion.div
             key={i}
             initial={{ x: 0, y: 0, opacity: 1, rotate: 0, scale: 0.6 }}
-            animate={{
-              x: p.vx,
-              y: p.vy + 180, // gravity pulls below spread
-              opacity: 0,
-              rotate: p.rot,
-              scale: 1,
-            }}
+            animate={{ x: p.vx, y: p.vy + 180, opacity: 0, rotate: p.rot, scale: 1 }}
             transition={{ duration: 0.9, delay: p.delay, ease: [0.2, 0.6, 0.4, 1] }}
             style={{ position: 'absolute', top: 0, left: 0, willChange: 'transform' }}
           >
@@ -111,8 +111,6 @@ function SilverBurstInstance({ amount, recipient, reduce }: { amount: number; re
           </motion.div>
         ))}
       </div>
-
-      {/* Big "+N silver" text float-up */}
       <motion.div
         initial={{ y: 20, opacity: 0, scale: 0.8 }}
         animate={{
@@ -146,7 +144,146 @@ function SilverBurstInstance({ amount, recipient, reduce }: { amount: number; re
           color: 'var(--pulse-gold)',
           opacity: 0.9,
         }}>
-          silver → {recipient}
+          silver → {who}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function ReceivedBurstInstance({
+  amount,
+  who,
+  senderAvatarUrl,
+  reduce,
+}: {
+  amount: number;
+  who: string;
+  senderAvatarUrl: string | null;
+  reduce: boolean;
+}) {
+  if (reduce) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 1, 1, 0] }}
+        transition={{ duration: 2.1, times: [0, 0.15, 0.85, 1] }}
+        aria-hidden="true"
+        style={{
+          position: 'fixed', inset: 0, zIndex: PULSE_Z.reveal,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+        }}
+      >
+        <div style={{
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 32, fontWeight: 700,
+          color: 'var(--pulse-gold)',
+          textShadow: '0 4px 20px rgba(255,200,61,0.6)',
+        }}>
+          +{amount} silver from {who}
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Received variant: ~2.1s total.
+  //   0-250ms   anticipation — gold edge fades in, portrait scales up from 0.86
+  //   250ms-1.8s hold — full opacity, legible portrait + amount + copy
+  //   1.8-2.1s  exit — scale to 0.98, fade out
+  // 10 particles (vs 14 for sent) — quieter shower so the portrait leads.
+  const particles = randomParticles(amount + 3).slice(0, 10);
+
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'fixed', inset: 0, zIndex: PULSE_Z.reveal,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        pointerEvents: 'none',
+      }}
+    >
+      {/* Sustained gold vignette — in/hold/out matching the 2.1s beat. */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 0.22, 0.15, 0] }}
+        transition={{ duration: 2.1, times: [0, 0.12, 0.8, 1], ease: 'easeOut' }}
+        style={{
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(255,200,61,0.5) 100%)',
+        }}
+      />
+      {/* Particle shower — quieter, starts after anticipation so portrait lands first. */}
+      <div style={{ position: 'relative', width: 0, height: 0 }}>
+        {particles.map((p, i) => (
+          <motion.div
+            key={i}
+            initial={{ x: 0, y: 0, opacity: 0, rotate: 0, scale: 0.6 }}
+            animate={{
+              x: [0, p.vx],
+              y: [0, p.vy + 180],
+              opacity: [0, 1, 0],
+              rotate: [0, p.rot],
+              scale: [0.6, 1],
+            }}
+            transition={{ duration: 1.0, delay: 0.22 + p.delay, ease: [0.2, 0.6, 0.4, 1] }}
+            style={{ position: 'absolute', top: 0, left: 0, willChange: 'transform' }}
+          >
+            <Coins size={p.size} weight="fill" style={{ color: 'var(--pulse-gold)', filter: 'drop-shadow(0 2px 8px rgba(255,200,61,0.6))' }} />
+          </motion.div>
+        ))}
+      </div>
+
+      {/* The moment: portrait + amount + from. */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.86 }}
+        animate={{ opacity: [0, 1, 1, 0], scale: [0.86, 1.0, 1.0, 0.98] }}
+        transition={{ duration: 2.1, times: [0, 0.12, 0.85, 1], ease: 'easeOut' }}
+        style={{
+          position: 'absolute',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          gap: 'var(--pulse-space-sm)',
+          pointerEvents: 'none',
+        }}
+      >
+        {senderAvatarUrl && (
+          <motion.div
+            animate={{ filter: ['brightness(1.0)', 'brightness(1.15)', 'brightness(1.0)'] }}
+            transition={{ duration: 2.1, times: [0, 0.5, 1], ease: 'easeInOut' }}
+            style={{
+              width: 140, height: 168, borderRadius: 20,
+              overflow: 'hidden',
+              boxShadow:
+                '0 0 0 3px rgba(255,200,61,0.35), 0 0 48px rgba(255,200,61,0.5), 0 20px 60px rgba(0,0,0,0.6)',
+            }}
+          >
+            <img
+              src={senderAvatarUrl}
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+            />
+          </motion.div>
+        )}
+        <div style={{
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 'clamp(52px, 11vw, 72px)',
+          fontWeight: 700,
+          letterSpacing: -2,
+          lineHeight: 0.9,
+          color: 'var(--pulse-gold)',
+          textShadow: '0 4px 24px rgba(255,200,61,0.7), 0 0 48px rgba(255,200,61,0.45)',
+        }}>
+          +{amount}
+        </div>
+        <div style={{
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 13, fontWeight: 700, letterSpacing: 1.5,
+          textTransform: 'uppercase',
+          color: 'var(--pulse-gold)',
+          opacity: 0.92,
+          marginTop: -4,
+        }}>
+          silver from <span style={{ color: 'var(--pulse-text-1)' }}>{who}</span>
         </div>
       </motion.div>
     </div>
@@ -159,13 +296,31 @@ export function SilverBurst() {
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { amount: number; recipient: string } | undefined;
+      const detail = (e as CustomEvent).detail as {
+        direction?: 'sent' | 'received';
+        amount: number;
+        // sent variant
+        recipient?: string;
+        // received variant
+        from?: string;
+        senderAvatarUrl?: string | null;
+      } | undefined;
       if (!detail) return;
+      const direction = detail.direction ?? 'sent';
+      const who = direction === 'sent' ? (detail.recipient ?? '') : (detail.from ?? '');
       const id = Date.now() + Math.random();
-      setBursts(prev => [...prev, { id, amount: detail.amount, recipient: detail.recipient }]);
+      const spec: BurstSpec = {
+        id,
+        direction,
+        amount: detail.amount,
+        who,
+        senderAvatarUrl: detail.senderAvatarUrl ?? null,
+      };
+      setBursts(prev => [...prev, spec]);
+      const lifetime = direction === 'received' ? 2200 : 1100;
       window.setTimeout(() => {
         setBursts(prev => prev.filter(b => b.id !== id));
-      }, 1100);
+      }, lifetime);
     };
     window.addEventListener('pulse:silver-burst', handler);
     return () => window.removeEventListener('pulse:silver-burst', handler);
@@ -173,9 +328,11 @@ export function SilverBurst() {
 
   return (
     <AnimatePresence>
-      {bursts.map(b => (
-        <SilverBurstInstance key={b.id} amount={b.amount} recipient={b.recipient} reduce={reduce} />
-      ))}
+      {bursts.map(b =>
+        b.direction === 'received'
+          ? <ReceivedBurstInstance key={b.id} amount={b.amount} who={b.who} senderAvatarUrl={b.senderAvatarUrl} reduce={reduce} />
+          : <SentBurstInstance key={b.id} amount={b.amount} who={b.who} reduce={reduce} />
+      )}
     </AnimatePresence>
   );
 }

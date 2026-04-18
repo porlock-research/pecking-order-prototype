@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390, initial-scale=1.0">
+<title>Pulse — 12 · Recipient Overdrive</title>
+<link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Pulse locked tokens — mirrored from pulse-theme.css (warm ink, not pure black) */
+    --pulse-bg: #15121a;
+    --pulse-bg-2: #1a1420;
+    --pulse-surface: #1d1826;
+    --pulse-surface-2: #231c2d;
+    --pulse-surface-3: #2a2335;
+    --pulse-text-1: #f2eef5;
+    --pulse-text-2: #a8a2b2;
+    --pulse-text-3: #75707f;
+    --pulse-accent: #ff3b6f;
+    --pulse-gold: #ffc83d;
+    --pulse-nudge: #ffa04d;
+    --pulse-border: rgba(255,255,255,0.06);
+    --po-font-display: 'Clash Display', system-ui, sans-serif;
+    --po-font-body: 'Satoshi', system-ui, sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    background:#0a0810;
+    font-family: var(--po-font-body);
+    color: var(--pulse-text-1);
+    min-height:100vh;
+    padding:32px 16px 64px;
+    display:flex; flex-direction:column; align-items:center; gap:28px;
+  }
+  .page-head { text-align:center; max-width:720px; }
+  .page-head h1 { font-family: var(--po-font-display); font-size:22px; font-weight:600; letter-spacing:-0.3px; }
+  .page-head p { font-size:13px; color: var(--pulse-text-2); margin-top:6px; line-height:1.5; }
+
+  .controls { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-width:520px; }
+  .btn {
+    font-family: var(--po-font-body); font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.8px;
+    padding:10px 14px; border-radius:999px;
+    border:1px solid var(--pulse-border);
+    background: var(--pulse-surface);
+    color: var(--pulse-text-1);
+    cursor:pointer;
+  }
+  .btn:hover { background: var(--pulse-surface-2); }
+  .btn.gold { color: var(--pulse-gold); border-color: rgba(255,200,61,0.25); background: rgba(255,200,61,0.06); }
+  .btn.orange { color: var(--pulse-nudge); border-color: rgba(255,160,77,0.25); background: rgba(255,160,77,0.06); }
+  .btn.gold.filled { background: var(--pulse-gold); color:#111; border-color: var(--pulse-gold); }
+  .btn.orange.filled { background: var(--pulse-nudge); color:#111; border-color: var(--pulse-nudge); }
+  .btn-group { display:flex; gap:6px; align-items:center; padding:4px 4px 4px 14px; background: var(--pulse-surface); border-radius:999px; border:1px solid var(--pulse-border); }
+  .btn-group label { font-size:9px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color: var(--pulse-text-3); }
+
+  /* Phone mockup */
+  .phone {
+    width:390px; height:780px;
+    border-radius:40px; border:2px solid #1a1420;
+    overflow:hidden; position:relative;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+    background:
+      radial-gradient(ellipse 100% 60% at 50% 0%, rgba(255,59,111,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse 90% 50% at 30% 100%, rgba(176,105,219,0.06) 0%, transparent 60%),
+      linear-gradient(180deg, var(--pulse-bg) 0%, var(--pulse-bg-2) 100%);
+  }
+  .phone-scene { position:absolute; inset:0; display:flex; flex-direction:column; padding:20px 14px; gap:10px; font-size:12px; color: var(--pulse-text-2); }
+  .phone-scene .hdr { display:flex; justify-content:space-between; padding:4px 4px 14px; border-bottom:1px solid var(--pulse-border); }
+  .phone-scene .hdr .day { font-size:13px; font-weight:700; color: var(--pulse-text-1); }
+  .phone-scene .hdr .meta { color: var(--pulse-text-3); font-size:11px; }
+
+  .cast-row { display:flex; gap:8px; padding:10px 0; }
+  .cast-chip { width:66px; height:90px; border-radius:12px; position:relative; overflow:hidden; flex-shrink:0; background: var(--pulse-surface-3); }
+  .cast-chip img { width:100%; height:100%; object-fit:cover; object-position: center top; }
+  .cast-chip .name { position:absolute; left:0; right:0; bottom:4px; text-align:center; font-size:10px; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,0.8); }
+  .cast-chip.me { border:2px solid var(--pulse-accent); }
+  .cast-chip .you-badge { position:absolute; top:-6px; left:50%; transform:translateX(-50%); background: var(--pulse-accent); color:#fff; font-size:8px; font-weight:800; letter-spacing:0.5px; padding:2px 5px; border-radius:5px; text-transform:uppercase; z-index:2; }
+
+  .chat-stream { flex:1; overflow:hidden; display:flex; flex-direction:column; gap:6px; padding-top:8px; }
+  .gm-card { padding:10px 12px; border-radius:12px; background: var(--pulse-surface-2); font-size:12px; line-height:1.4; color: var(--pulse-text-2); }
+  .gm-card .gm-label { font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color: var(--pulse-text-3); margin-bottom:4px; }
+
+  .receipt { display:inline-flex; align-items:center; gap:8px; padding:5px 12px 5px 5px; border-radius:999px; font-size:11px; background: rgba(255,200,61,0.05); border:1px solid rgba(255,200,61,0.15); align-self:flex-start; }
+  .receipt .portraits { position:relative; width:34px; height:22px; flex-shrink:0; }
+  .receipt .portraits img { position:absolute; top:0; width:22px; height:22px; border-radius:5px; border:1.5px solid var(--pulse-bg); object-fit:cover; object-position: center top; }
+  .receipt .portraits img:first-child { left:0; z-index:2; }
+  .receipt .portraits img:last-child { left:12px; z-index:1; }
+  .receipt .amount { color: var(--pulse-gold); font-weight:800; }
+
+  /* Burst overlay */
+  .burst-layer { position:absolute; inset:0; pointer-events:none; display:flex; align-items:center; justify-content:center; z-index:100; }
+  .vignette { position:absolute; inset:0; opacity:0; background: radial-gradient(ellipse at center, transparent 40%, rgba(255,200,61,0.5) 100%); }
+  .vignette.orange { background: radial-gradient(ellipse at center, transparent 35%, rgba(255,160,77,0.55) 100%); }
+  .vignette.gold-hit { animation: vign 550ms ease-out forwards; }
+  .vignette.gold-hold { animation: vignHold 2100ms ease-out forwards; }
+  .vignette.orange-hit { animation: vign 450ms ease-out forwards; }
+  .vignette.orange-hold { animation: vignHold 2100ms ease-out forwards; }
+  @keyframes vign { 0% { opacity:0 } 50% { opacity:0.18 } 100% { opacity:0 } }
+  @keyframes vignHold { 0% { opacity:0 } 12% { opacity:0.22 } 80% { opacity:0.15 } 100% { opacity:0 } }
+
+  /* Sender burst — brief text float */
+  .text-stack-sent { position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .text-stack-sent.silver { animation: sentFloat 950ms cubic-bezier(0.16,1,0.3,1) forwards; }
+  .text-stack-sent.nudge  { animation: sentFloatN 850ms cubic-bezier(0.16,1,0.3,1) forwards; }
+  @keyframes sentFloat {
+    0% { transform: translateY(20px) scale(0.8); opacity:0 }
+    25% { transform: translateY(-20px) scale(1.15); opacity:1 }
+    50% { transform: translateY(-60px) scale(1); opacity:1 }
+    100% { transform: translateY(-80px) scale(1); opacity:0 }
+  }
+  @keyframes sentFloatN {
+    0% { transform: translateY(20px) scale(0.8); opacity:0 }
+    30% { transform: translateY(0) scale(1.12); opacity:1 }
+    55% { transform: translateY(-30px) scale(1); opacity:1 }
+    100% { transform: translateY(-50px) scale(1); opacity:0 }
+  }
+
+  .big-amount { font-family: var(--po-font-display); font-weight:700; font-size:64px; line-height:1; color: var(--pulse-gold); letter-spacing:-1px; text-shadow: 0 4px 24px rgba(255,200,61,0.7), 0 0 40px rgba(255,200,61,0.4); }
+  .big-sub { font-family: var(--po-font-body); font-size:13px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color: var(--pulse-gold); opacity:0.9; }
+  .big-sub.orange { color: var(--pulse-nudge); }
+
+  .big-nudged-row { display:flex; align-items:center; gap:12px; }
+  .big-nudged { font-family: var(--po-font-display); font-weight:700; font-size:44px; letter-spacing:2px; line-height:1; text-transform:uppercase; color: var(--pulse-nudge); text-shadow: 0 4px 20px rgba(255,160,77,0.7), 0 0 36px rgba(255,160,77,0.4); }
+  .big-hand { font-size:44px; line-height:1; color: var(--pulse-nudge); filter: drop-shadow(0 4px 16px rgba(255,160,77,0.6)); display:inline-block; transform-origin:70% 80%; animation: wave 0.6s ease-in-out 0.1s 1; }
+
+  /* Coin particles */
+  .coin { position:absolute; top:50%; left:50%; color: var(--pulse-gold); filter: drop-shadow(0 2px 8px rgba(255,200,61,0.6)); }
+
+  /* Shockwave rings */
+  .ring { position:absolute; top:50%; left:50%; width:120px; height:120px; margin:-60px 0 0 -60px; border:2.5px solid var(--pulse-nudge); border-radius:50%; box-shadow: 0 0 20px rgba(255,160,77,0.4); opacity:0; transform: scale(0); }
+  .ring.r1 { animation: ring 0.75s ease-out forwards; }
+  .ring.r2 { animation: ring 0.85s ease-out 0.12s forwards; }
+  .ring.r3 { animation: ring 0.95s ease-out 0.24s forwards; }
+  @keyframes ring { from { transform: scale(0); opacity:0.7 } to { transform: scale(5.5); opacity:0 } }
+
+  /* Received variant — portrait-anchored, 2.1s hold */
+  .recv-stack { display:flex; flex-direction:column; align-items:center; gap:10px; animation: recvHold 2100ms ease-out forwards; }
+  @keyframes recvHold {
+    0%   { transform: scale(0.86); opacity:0 }
+    12%  { transform: scale(1.0);  opacity:1 }   /* anticipation lands */
+    85%  { transform: scale(1.0);  opacity:1 }   /* hold */
+    100% { transform: scale(0.98); opacity:0 }   /* exit */
+  }
+  .recv-portrait {
+    width:150px; height:180px; border-radius:20px;
+    position:relative; overflow:hidden;
+    background: var(--pulse-surface-3);
+    box-shadow: 0 0 0 3px rgba(255,200,61,0.35), 0 0 48px rgba(255,200,61,0.5), 0 20px 60px rgba(0,0,0,0.6);
+    animation: recvGlow 2100ms ease-in-out forwards;
+  }
+  .recv-portrait img { width:100%; height:100%; object-fit:cover; object-position: center top; }
+  .recv-portrait.nudge { box-shadow: 0 0 0 3px rgba(255,160,77,0.35), 0 0 48px rgba(255,160,77,0.5), 0 20px 60px rgba(0,0,0,0.6); }
+  @keyframes recvGlow { 0%,100% { filter: brightness(1.0) } 50% { filter: brightness(1.15) } }
+
+  .recv-amount { font-family: var(--po-font-display); font-weight:700; font-size:72px; line-height:0.9; color: var(--pulse-gold); letter-spacing:-2px; text-shadow: 0 4px 24px rgba(255,200,61,0.7), 0 0 48px rgba(255,200,61,0.45); }
+  .recv-from  { font-family: var(--po-font-body); font-size:13px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color: var(--pulse-gold); opacity:0.92; margin-top:-4px; }
+  .recv-from .name { color: var(--pulse-text-1); }
+  .recv-from.orange { color: var(--pulse-nudge); }
+
+  .recv-nudged { font-family: var(--po-font-display); font-weight:700; font-size:40px; letter-spacing:2px; line-height:1; text-transform:uppercase; color: var(--pulse-nudge); text-shadow: 0 4px 20px rgba(255,160,77,0.7), 0 0 36px rgba(255,160,77,0.4); display:flex; align-items:center; gap:12px; margin-top:4px; }
+  .hand-wave { display:inline-block; transform-origin: 70% 80%; animation: wave 0.55s ease-in-out 0.18s infinite alternate; font-size:36px; filter: drop-shadow(0 4px 12px rgba(255,160,77,0.6)); }
+  @keyframes wave { from { transform: rotate(-16deg) } to { transform: rotate(18deg) } }
+
+  /* Coalesced trio */
+  .recv-trio { display:flex; position:relative; height:110px; padding-left:18px; }
+  .recv-trio .recv-portrait { width:82px; height:100px; border-radius:14px; margin-left:-18px; border:3px solid var(--pulse-bg); box-shadow: 0 0 0 2px rgba(255,200,61,0.35), 0 0 28px rgba(255,200,61,0.4); }
+
+  /* Notes block */
+  .notes { max-width:720px; width:100%; background: var(--pulse-surface); border:1px solid var(--pulse-border); border-radius:14px; padding:18px 20px; font-size:13px; line-height:1.6; color: var(--pulse-text-2); }
+  .notes h2 { font-family: var(--po-font-display); font-size:14px; font-weight:600; color: var(--pulse-text-1); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px; }
+  .notes ul { padding-left:18px; }
+  .notes li { margin-bottom:4px; }
+  .notes code { font-family: ui-monospace, monospace; font-size:12px; color: var(--pulse-accent); background: var(--pulse-surface-2); padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <h1>Pulse — Recipient Overdrive (sketch)</h1>
+  <p>Sender bursts are a 0.95s dopamine echo (peak → float → fade). Received bursts anchor the sender's face for ~2.1s: anticipation (portrait scales in + gold edge) → hold (portrait + amount read clearly) → exit. Tap any button to fire a burst inside the phone.</p>
+</header>
+
+<div class="controls">
+  <div class="btn-group">
+    <label>Silver</label>
+    <button class="btn gold" data-fire="sent-silver">Sent</button>
+    <button class="btn gold filled" data-fire="recv-silver">Received ★</button>
+    <button class="btn gold" data-fire="recv-silver-coalesced">Received ×3</button>
+  </div>
+  <div class="btn-group">
+    <label>Nudge</label>
+    <button class="btn orange" data-fire="sent-nudge">Sent</button>
+    <button class="btn orange filled" data-fire="recv-nudge">Received ★</button>
+  </div>
+</div>
+
+<div class="phone">
+  <div class="phone-scene">
+    <div class="hdr">
+      <div><span class="day">Day 1</span> <span class="meta">· voting</span></div>
+      <div class="meta">✎ ☰</div>
+    </div>
+    <div class="cast-row" id="cast-row"></div>
+    <div class="chat-stream" id="chat-stream"></div>
+  </div>
+  <div class="burst-layer" id="burst-layer"></div>
+</div>
+
+<div class="notes">
+  <h2>Notes · 2026-04-17</h2>
+  <ul>
+    <li><strong>Proposal under evaluation.</strong> Received bursts are not yet wired in code — this is a visual-only sketch to evaluate direction. Existing <code>SilverBurst.tsx</code> / <code>NudgeBurst.tsx</code> fire only from sender-side dispatch.</li>
+    <li><strong>Three asymmetries</strong> between sender and recipient: (1) anticipation beat so it doesn't feel like a jump-scare on app open, (2) longer hold for comprehension, (3) face as anchor instead of text-only.</li>
+    <li><strong>Coalescing</strong> when offline queue > 3: one summary burst with up to 3 portraits + total amount + "from N friends." Prevents a 15-second confetti marathon on return.</li>
+    <li><strong>Dispatcher</strong> adds a <code>direction: 'sent' | 'received'</code> discriminator to the CustomEvent detail. Burst components branch on direction; existing sender path untouched.</li>
+    <li><strong>Stacking</strong> in real app: 800ms gap between queued bursts so each registers as its own event.</li>
+  </ul>
+</div>
+
+<script>
+  // Small DOM helper — hook forbids innerHTML, this is the approved pattern.
+  function h(tag, props, children) {
+    const el = document.createElement(tag);
+    if (props) for (const k of Object.keys(props)) {
+      if (k === 'class') el.className = props[k];
+      else if (k === 'text') el.textContent = props[k];
+      else if (k === 'style') Object.assign(el.style, props[k]);
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), props[k]);
+      else el.setAttribute(k, props[k]);
+    }
+    if (children) for (const c of children) {
+      if (c == null || c === false) continue;
+      el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    }
+    return el;
+  }
+
+  // Persona CDN — real avatars. Swap persona numbers if your game roster differs.
+  const CDN = 'https://staging-assets.peckingorder.ca/personas';
+  const PERSONAS = {
+    silas:  { name: 'Silas',  color: '#7fffd4', headshot: `${CDN}/persona-01/headshot.png`, full: `${CDN}/persona-01/full.png` },
+    bella:  { name: 'Bella',  color: '#b57edc', headshot: `${CDN}/persona-02/headshot.png`, full: `${CDN}/persona-02/full.png` },
+    brenda: { name: 'Brenda', color: '#ff9a8b', headshot: `${CDN}/persona-03/headshot.png`, full: `${CDN}/persona-03/full.png` },
+  };
+
+  // Cast strip
+  const castRow = document.getElementById('cast-row');
+  function buildChip(p, isMe) {
+    const cls = 'cast-chip' + (isMe ? ' me' : '');
+    const kids = [
+      isMe ? h('span', { class: 'you-badge', text: 'You' }) : null,
+      h('img', { src: p.headshot, alt: '' }),
+      h('span', { class: 'name', style: { color: p.color }, text: p.name }),
+    ];
+    return h('div', { class: cls }, kids);
+  }
+  castRow.appendChild(buildChip(PERSONAS.silas, true));
+  castRow.appendChild(buildChip(PERSONAS.bella, false));
+  castRow.appendChild(buildChip(PERSONAS.brenda, false));
+
+  // Chat stream seed
+  const chat = document.getElementById('chat-stream');
+  chat.appendChild(h('div', { class: 'gm-card' }, [
+    h('div', { class: 'gm-label', text: 'Game Master' }),
+    'Day 1 begins. 3 players remain. Tonight\u2019s vote: Majority Vote.',
+  ]));
+  chat.appendChild(h('div', { class: 'receipt' }, [
+    h('div', { class: 'portraits' }, [
+      h('img', { src: PERSONAS.brenda.headshot, alt: '' }),
+      h('img', { src: PERSONAS.bella.headshot, alt: '' }),
+    ]),
+    h('span', { text: 'Brenda \u2192 Bella' }),
+    h('span', { class: 'amount', text: '+10' }),
+  ]));
+
+  // Coin keyframes (CSS vars driven)
+  const coinCss = document.createElement('style');
+  coinCss.textContent = `
+    @keyframes coin {
+      0% { transform: translate(-50%, -50%) rotate(0) scale(0.6); opacity:1 }
+      100% { transform: translate(calc(-50% + var(--vx)), calc(-50% + var(--vy))) rotate(var(--rot)) scale(1); opacity:0 }
+    }
+  `;
+  document.head.appendChild(coinCss);
+
+  function makeCoin(seed, i, count) {
+    const step = (Math.PI * 2) / count;
+    const angle = i * step + (((seed * 9301 + i * 49297) % 233280) / 233280 - 0.5) * 0.4;
+    const speed = 140 + ((seed * 17 + i * 23) % 80);
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed - 40;
+    const rot = (((seed + i * 7) % 720) - 360);
+    const delay = (i % 5) * 0.02;
+    const size = 18 + ((seed + i) % 12);
+    const svg = h('svg', { viewBox: '0 0 24 24', width: String(size), height: String(size), fill: 'currentColor' }, [
+      h('circle', { cx: '12', cy: '12', r: '10', opacity: '0.95' }),
+    ]);
+    const el = h('div', { class: 'coin' }, [svg]);
+    el.style.animation = `coin 0.9s ${delay}s cubic-bezier(0.2,0.6,0.4,1) forwards`;
+    el.style.setProperty('--vx', vx + 'px');
+    el.style.setProperty('--vy', (vy + 180) + 'px');
+    el.style.setProperty('--rot', rot + 'deg');
+    return el;
+  }
+  function coinShower(count, seed) {
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < count; i++) frag.appendChild(makeCoin(seed, i, count));
+    return frag;
+  }
+
+  function portrait(p, variant) {
+    const cls = 'recv-portrait' + (variant === 'nudge' ? ' nudge' : '');
+    return h('div', { class: cls }, [h('img', { src: p.full || p.headshot, alt: '' })]);
+  }
+
+  const layer = document.getElementById('burst-layer');
+  function fire(kind) {
+    const el = h('div', { style: { position: 'absolute', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' } });
+
+    if (kind === 'sent-silver') {
+      el.appendChild(h('div', { class: 'vignette gold-hit' }));
+      el.appendChild(coinShower(14, 10));
+      el.appendChild(h('div', { class: 'text-stack-sent silver' }, [
+        h('div', { class: 'big-amount', text: '+10' }),
+        h('div', { class: 'big-sub', text: 'silver \u2192 Bella' }),
+      ]));
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 1100);
+      return;
+    }
+    if (kind === 'recv-silver') {
+      el.appendChild(h('div', { class: 'vignette gold-hold' }));
+      el.appendChild(coinShower(10, 22));
+      el.appendChild(h('div', { class: 'recv-stack' }, [
+        portrait(PERSONAS.brenda, 'silver'),
+        h('div', { class: 'recv-amount', text: '+10' }),
+        h('div', { class: 'recv-from' }, [
+          'silver from ', h('span', { class: 'name', text: 'Brenda' }),
+        ]),
+      ]));
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 2200);
+      return;
+    }
+    if (kind === 'recv-silver-coalesced') {
+      el.appendChild(h('div', { class: 'vignette gold-hold' }));
+      el.appendChild(coinShower(14, 33));
+      el.appendChild(h('div', { class: 'recv-stack' }, [
+        h('div', { class: 'recv-trio' }, [
+          portrait(PERSONAS.brenda),
+          portrait(PERSONAS.bella),
+          portrait(PERSONAS.silas),
+        ]),
+        h('div', { class: 'recv-amount', text: '+35' }),
+        h('div', { class: 'recv-from' }, [
+          'silver from ', h('span', { class: 'name', text: '3 friends' }),
+        ]),
+      ]));
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 2200);
+      return;
+    }
+    if (kind === 'sent-nudge') {
+      el.appendChild(h('div', { class: 'vignette orange-hit' }));
+      ['r1', 'r2', 'r3'].forEach(r => el.appendChild(h('div', { class: 'ring ' + r })));
+      el.appendChild(h('div', { class: 'text-stack-sent nudge' }, [
+        h('div', { class: 'big-nudged-row' }, [
+          h('span', { class: 'big-hand', text: '\uD83D\uDC4B' }),
+          h('div', { class: 'big-nudged', text: 'Nudged' }),
+        ]),
+        h('div', { class: 'big-sub orange', text: '\u2192 Bella' }),
+      ]));
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 1000);
+      return;
+    }
+    if (kind === 'recv-nudge') {
+      el.appendChild(h('div', { class: 'vignette orange-hold' }));
+      ['r1', 'r2', 'r3'].forEach(r => el.appendChild(h('div', { class: 'ring ' + r })));
+      el.appendChild(h('div', { class: 'recv-stack' }, [
+        portrait(PERSONAS.brenda, 'nudge'),
+        h('div', { class: 'recv-nudged' }, [
+          h('span', { class: 'hand-wave', text: '\uD83D\uDC4B' }),
+          'Nudged',
+        ]),
+        h('div', { class: 'recv-from orange' }, [
+          'from ', h('span', { class: 'name', text: 'Brenda' }),
+        ]),
+      ]));
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 2200);
+      return;
+    }
+  }
+
+  document.querySelectorAll('[data-fire]').forEach(btn => {
+    btn.addEventListener('click', () => fire(btn.getAttribute('data-fire')));
+  });
+</script>
+</body>
+</html>

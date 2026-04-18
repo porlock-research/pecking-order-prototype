@@ -6,6 +6,7 @@ import type { GameEngine } from '../types';
 import { useGameStore, selectHaveINudged, selectPendingInvitesForMe } from '../../store/useGameStore';
 import { useDeepLinkIntent } from '../../hooks/useDeepLinkIntent';
 import { useRevealQueue } from './hooks/useRevealQueue';
+import { useReceivedOverdrive } from './hooks/useReceivedOverdrive';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import type { DeepLinkIntent, CartridgeKind } from '@pecking-order/shared-types';
 import { PULSE_Z } from './zIndex';
@@ -62,6 +63,11 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
   useEffect(() => {
     if (gameId && playerId) hydrateLastRead(gameId, playerId);
   }, [gameId, playerId, hydrateLastRead]);
+
+  // Recipient overdrive — fires received-variant bursts for unseen silver /
+  // nudge events addressed to the local player. Handles both offline
+  // catch-up (on mount) and live receive (on ticker arrival).
+  useReceivedOverdrive();
 
   // Surface DM/channel rejections as toasts (e.g., creator-only ADD_MEMBER guard).
   const dmRejection = useGameStore(s => s.dmRejection);
