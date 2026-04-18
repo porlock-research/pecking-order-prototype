@@ -16,6 +16,9 @@ export { GameLeaderboard } from './GameLeaderboard';
 export { GameSubmissionStatus } from './GameSubmissionStatus';
 export { GameReadyRoster } from './GameReadyRoster';
 
+// Score breakdown — composed inside `renderBreakdown` slots
+export { ScoreBreakdown, ScoreRow, ScoreDivider } from './ScoreBreakdown';
+
 // Surviving primitives (used inside playfields, not chrome)
 export { AnimatedCounter } from './AnimatedCounter';
 export { DifficultyBadge } from './DifficultyBadge';

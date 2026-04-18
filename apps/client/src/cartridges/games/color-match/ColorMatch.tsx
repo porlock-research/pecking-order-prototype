@@ -21,19 +21,19 @@ export default function ColorMatch(props: ColorMatchProps) {
         const total = result.totalRounds || 0;
         const streak = result.streak || 0;
         return (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
-            <div className="flex justify-between text-skin-dim">
+          <div style={{ background: 'var(--po-bg-glass)', border: '1px solid var(--po-border)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--po-font-body)', fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Correct</span>
-              <span className="text-skin-base font-bold">{correct}/{total}</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{correct}/{total}</span>
             </div>
-            <div className="flex justify-between text-skin-dim">
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Accuracy</span>
-              <span className="text-skin-base font-bold">{total > 0 ? Math.round(correct / total * 100) : 0}%</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{total > 0 ? Math.round(correct / total * 100) : 0}%</span>
             </div>
             {streak > 1 && (
-              <div className="flex justify-between">
-                <span className="text-skin-gold gold-glow">Best Streak</span>
-                <span className="text-skin-gold font-bold gold-glow">{streak}x</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 700 }}>Best Streak</span>
+                <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{streak}x</span>
               </div>
             )}
           </div>

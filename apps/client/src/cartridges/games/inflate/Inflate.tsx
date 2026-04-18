@@ -29,26 +29,26 @@ export default function Inflate(props: InflateProps) {
         const bonusSilver = Math.floor(perfectBanks / perfectBankBonus);
 
         return (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
-            <div className="flex justify-between">
-              <span className="text-white/50">Score</span>
-              <span className="text-white">{score}</span>
+          <div style={{ background: 'var(--po-bg-glass)', border: '1px solid var(--po-border)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--po-font-body)', fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Score</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{score}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-white/50">Balloons banked</span>
-              <span className="text-white">{balloonsBanked}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Balloons banked</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{balloonsBanked}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-white/50">Balloons popped</span>
-              <span className="text-white">{balloonsPopped}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Balloons popped</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{balloonsPopped}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-white/50">Perfect banks</span>
-              <span className="text-white">{perfectBanks}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Perfect banks</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{perfectBanks}</span>
             </div>
-            <div className="border-t border-white/[0.06] pt-2 flex justify-between">
-              <span className="text-white/50">Silver</span>
-              <span className="text-skin-gold">{baseSilver} + {bonusSilver} bonus</span>
+            <div style={{ borderTop: '1px solid var(--po-border)', paddingTop: 8, marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Silver</span>
+              <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{baseSilver} + {bonusSilver} bonus</span>
             </div>
           </div>
         );

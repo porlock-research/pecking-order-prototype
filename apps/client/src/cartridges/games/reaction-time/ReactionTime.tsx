@@ -21,18 +21,18 @@ export default function ReactionTime(props: ReactionTimeProps) {
         const best = result.bestReactionMs || 0;
         const rounds = result.roundsCompleted || 0;
         return (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
-            <div className="flex justify-between text-skin-dim">
+          <div style={{ background: 'var(--po-bg-glass)', border: '1px solid var(--po-border)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--po-font-body)', fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Average</span>
-              <span className="text-skin-base font-bold">{avg}ms</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{avg}ms</span>
             </div>
-            <div className="flex justify-between text-skin-dim">
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Best</span>
-              <span className="text-skin-gold font-bold">{best}ms</span>
+              <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{best}ms</span>
             </div>
-            <div className="flex justify-between text-skin-dim">
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Rounds</span>
-              <span className="text-skin-base">{rounds}</span>
+              <span style={{ color: 'var(--po-text)' }}>{rounds}</span>
             </div>
           </div>
         );

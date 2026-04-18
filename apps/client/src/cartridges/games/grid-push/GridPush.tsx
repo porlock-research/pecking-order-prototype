@@ -24,18 +24,18 @@ export default function GridPush(props: GridPushProps) {
         const totalFlips = result.totalFlips || 0;
 
         return (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
-            <div className="flex justify-between text-skin-dim">
+          <div style={{ background: 'var(--po-bg-glass)', border: '1px solid var(--po-border)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--po-font-body)', fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Banked Total</span>
-              <span className="text-skin-base font-bold">{bankedTotal} pts</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{bankedTotal} pts</span>
             </div>
-            <div className="flex justify-between text-skin-dim">
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Longest Run</span>
-              <span className="text-skin-base font-bold">{longestRun} flips</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{longestRun} flips</span>
             </div>
-            <div className="flex justify-between text-skin-dim">
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Total Flips</span>
-              <span className="text-skin-base">{totalFlips}</span>
+              <span style={{ color: 'var(--po-text)' }}>{totalFlips}</span>
             </div>
           </div>
         );

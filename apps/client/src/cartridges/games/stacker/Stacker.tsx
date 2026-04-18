@@ -20,15 +20,15 @@ export default function Stacker(props: StackerProps) {
         const height = result.height || 0;
         const perfectLayers = result.perfectLayers || 0;
         return (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
-            <div className="flex justify-between text-skin-dim">
+          <div style={{ background: 'var(--po-bg-glass)', border: '1px solid var(--po-border)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--po-font-body)', fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Height</span>
-              <span className="text-skin-base font-bold">{height} layers</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{height} layers</span>
             </div>
             {perfectLayers > 0 && (
-              <div className="flex justify-between">
-                <span className="text-skin-gold gold-glow">Perfect Drops</span>
-                <span className="text-skin-gold font-bold gold-glow">{perfectLayers}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 700 }}>Perfect Drops</span>
+                <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{perfectLayers}</span>
               </div>
             )}
           </div>

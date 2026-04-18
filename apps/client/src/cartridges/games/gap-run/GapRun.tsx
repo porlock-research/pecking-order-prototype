@@ -29,24 +29,24 @@ export default function GapRun(props: GapRunProps) {
         const survivalBonus = survived ? survivalBonusValue : 0;
 
         return (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
-            <div className="flex justify-between text-skin-dim">
+          <div style={{ background: 'var(--po-bg-glass)', border: '1px solid var(--po-border)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--po-font-body)', fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Distance</span>
-              <span className="text-skin-base font-bold">{distance}m</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{distance}m</span>
             </div>
-            <div className="flex justify-between text-skin-dim">
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Distance Silver</span>
-              <span className="text-skin-base font-bold">{distanceSilver} silver</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{distanceSilver} silver</span>
             </div>
             {survivalBonus > 0 && (
-              <div className="flex justify-between">
-                <span className="text-skin-gold gold-glow">Survival Bonus</span>
-                <span className="text-skin-gold font-bold gold-glow">+{survivalBonus} silver</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 700 }}>Survival Bonus</span>
+                <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>+{survivalBonus} silver</span>
               </div>
             )}
-            <div className="flex justify-between text-skin-dim">
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--po-text-dim)' }}>
               <span>Jumps</span>
-              <span className="text-skin-base">{jumps}</span>
+              <span style={{ color: 'var(--po-text)' }}>{jumps}</span>
             </div>
           </div>
         );

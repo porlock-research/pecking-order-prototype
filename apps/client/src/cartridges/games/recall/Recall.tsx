@@ -29,24 +29,24 @@ export default function Recall(props: RecallProps) {
         const gold = fullClear ? fullClearGold : 0;
 
         return (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
-            <div className="flex justify-between">
-              <span className="text-white/50">Rounds cleared</span>
-              <span className="text-white">{roundsCleared}</span>
+          <div style={{ background: 'var(--po-bg-glass)', border: '1px solid var(--po-border)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--po-font-body)', fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Rounds cleared</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{roundsCleared}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-white/50">Highest grid</span>
-              <span className="text-white">{highestSize > 0 ? `${highestSize}×${highestSize}` : '—'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Highest grid</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{highestSize > 0 ? `${highestSize}×${highestSize}` : '—'}</span>
             </div>
             {fullClear > 0 && (
-              <div className="flex justify-between">
-                <span className="text-white/50">Full clear</span>
-                <span className="text-skin-gold">PERFECT</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--po-text-dim)' }}>Full clear</span>
+                <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>PERFECT</span>
               </div>
             )}
-            <div className="border-t border-white/[0.06] pt-2 flex justify-between">
-              <span className="text-white/50">Rewards</span>
-              <span className="text-skin-gold">{silver} silver · {gold} gold</span>
+            <div style={{ borderTop: '1px solid var(--po-border)', paddingTop: 8, marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Rewards</span>
+              <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{silver} silver · {gold} gold</span>
             </div>
           </div>
         );

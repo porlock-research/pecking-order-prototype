@@ -29,26 +29,26 @@ export default function BeatDrop(props: BeatDropProps) {
         const bonusSilver = accuracyPct === 100 ? perfectAccuracyBonus : 0;
 
         return (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
-            <div className="flex justify-between">
-              <span className="text-white/50">Score</span>
-              <span className="text-white">{score.toLocaleString()}</span>
+          <div style={{ background: 'var(--po-bg-glass)', border: '1px solid var(--po-border)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--po-font-body)', fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Score</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{score.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-white/50">Perfect hits</span>
-              <span className="text-white">{perfectHits}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Perfect hits</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{perfectHits}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-white/50">Max combo</span>
-              <span className="text-white">{maxCombo}x</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Max combo</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{maxCombo}x</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-white/50">Accuracy</span>
-              <span className="text-white">{accuracyPct}%</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Accuracy</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{accuracyPct}%</span>
             </div>
-            <div className="border-t border-white/[0.06] pt-2 flex justify-between">
-              <span className="text-white/50">Silver</span>
-              <span className="text-skin-gold">{baseSilver}{bonusSilver > 0 ? ` + ${bonusSilver} perfect bonus` : ''}</span>
+            <div style={{ borderTop: '1px solid var(--po-border)', paddingTop: 8, marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Silver</span>
+              <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{baseSilver}{bonusSilver > 0 ? ` + ${bonusSilver} perfect bonus` : ''}</span>
             </div>
           </div>
         );
