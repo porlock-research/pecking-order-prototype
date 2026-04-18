@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Events } from '@pecking-order/shared-types';
 import type { LiveGameProjection, SocialPlayer } from '@pecking-order/shared-types';
 import LiveGameWrapper from '../wrappers/LiveGameWrapper';
+import { HeroStat, HeroStatRow, HeroFrame } from '../shared';
 
 interface TouchScreenProps {
   cartridge: LiveGameProjection;
@@ -44,6 +45,10 @@ export default function TouchScreen({ cartridge, playerId, roster, engine, onDis
           isSolo={isSolo}
         />
       )}
+      renderHero={() => {
+        const myRanking = rankings.find((r) => r.playerId === playerId);
+        return <TouchScreenHero myDuration={myRanking?.duration ?? 0} totalRanked={rankings.length} />;
+      }}
       renderBreakdown={() => (
         <RankingsBreakdown
           rankings={rankings}
@@ -265,6 +270,67 @@ function RankingsBreakdown({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Bespoke peak frame for Touch Screen — a single fingertip glyph
+ * on a glass surface, with a pulse ring showing the player's hold
+ * duration. Reads as the moment of contact frozen in time.
+ */
+function TouchScreenHero({ myDuration, totalRanked }: { myDuration: number; totalRanked: number }) {
+  const accent = 'var(--po-pink)';
+  const seconds = myDuration / 1000;
+  // Ring radius scales with seconds held (cap at 52)
+  const ringR = Math.min(52, 20 + Math.log(Math.max(1, seconds)) * 14);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+      <HeroFrame accent={accent} haloIntensity={0.5}>
+        <svg width={140} height={140} viewBox="-70 -70 140 140" aria-hidden>
+          {/* Outer duration ring */}
+          <circle
+            cx={0} cy={0} r={ringR}
+            fill="none"
+            stroke={accent}
+            strokeWidth={2}
+            opacity={0.7}
+            strokeDasharray={`${ringR * 2 * Math.PI * 0.82} ${ringR * 2 * Math.PI}`}
+            transform="rotate(-90)"
+          />
+          {/* Inner ring (solid) */}
+          <circle
+            cx={0} cy={0} r={ringR * 0.7}
+            fill={`color-mix(in oklch, ${accent} 14%, transparent)`}
+            stroke={`color-mix(in oklch, ${accent} 40%, transparent)`}
+            strokeWidth={1}
+          />
+          {/* Fingertip — simple rounded shape */}
+          <g transform="translate(0, 4)">
+            <ellipse cx={0} cy={0} rx={14} ry={18}
+                     fill="color-mix(in oklch, var(--po-pink) 85%, white)"
+                     stroke={accent}
+                     strokeWidth={1.5} />
+            {/* Fingernail */}
+            <ellipse cx={0} cy={-8} rx={7} ry={5}
+                     fill="color-mix(in oklch, var(--po-pink) 40%, white)" opacity={0.8} />
+            {/* Contact highlight */}
+            <ellipse cx={0} cy={-2} rx={4} ry={2}
+                     fill="color-mix(in oklch, var(--po-pink) 20%, white)" opacity={0.6} />
+          </g>
+        </svg>
+      </HeroFrame>
+      <HeroStatRow>
+        <HeroStat
+          value={seconds.toFixed(seconds < 60 ? 2 : 0)}
+          label="held"
+          accent={accent}
+          suffix={seconds < 60 ? 's' : 's'}
+        />
+        {totalRanked > 1 && (
+          <HeroStat value={totalRanked} label="players" accent={accent} />
+        )}
+      </HeroStatRow>
     </div>
   );
 }

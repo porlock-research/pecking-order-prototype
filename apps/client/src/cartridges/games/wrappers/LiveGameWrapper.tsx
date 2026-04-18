@@ -28,6 +28,9 @@ interface LiveGameWrapperProps {
   renderGame: () => ReactNode;
   /** Render breakdown for the result hero */
   renderBreakdown?: () => ReactNode;
+  /** Optional bespoke peak-frame hero shown above the silver count
+   *  in the COMPLETED state. Same slot as ArcadeGameWrapper.renderHero. */
+  renderHero?: () => ReactNode;
 }
 
 export default function LiveGameWrapper({
@@ -40,6 +43,7 @@ export default function LiveGameWrapper({
   readyEvent,
   renderGame,
   renderBreakdown,
+  renderHero,
 }: LiveGameWrapperProps) {
   const phase = cartridge.phase as string;
   const isSolo = cartridge.mode === 'SOLO';
@@ -119,6 +123,7 @@ export default function LiveGameWrapper({
               : undefined}
             silverEarned={mySilver}
             goldContribution={results.goldContribution}
+            bespokeHero={renderHero?.()}
             breakdown={renderBreakdown?.()}
             onDismiss={onDismiss}
           />
