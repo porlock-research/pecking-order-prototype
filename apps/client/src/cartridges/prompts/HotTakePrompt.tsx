@@ -10,19 +10,30 @@ import {
   SectionLabel,
 } from './PromptShell';
 
+const OPTION_COLORS = ['var(--po-green)', 'var(--po-pink)', 'var(--po-gold)', 'var(--po-blue)'];
+
+interface HotTakeResults {
+  statement: string;
+  promptId?: string;
+  options?: string[];
+  tally?: number[];
+  minorityIndices?: number[];
+  hasRealMinority?: boolean;
+  silverRewards: Record<string, number>;
+  // --- legacy shape (completed games recorded before the pool shipped) ---
+  agreeCount?: number;
+  disagreeCount?: number;
+  minorityStance?: 'AGREE' | 'DISAGREE' | null;
+}
+
 interface HotTakeCartridge {
   promptType: 'HOT_TAKE';
   promptText: string;
   phase: 'ACTIVE' | 'RESULTS';
   eligibleVoters: string[];
-  stances: Record<string, 'AGREE' | 'DISAGREE'>;
-  results: {
-    statement: string;
-    agreeCount: number;
-    disagreeCount: number;
-    minorityStance: 'AGREE' | 'DISAGREE' | null;
-    silverRewards: Record<string, number>;
-  } | null;
+  options?: string[];
+  stances: Record<string, number | 'AGREE' | 'DISAGREE'>;
+  results: HotTakeResults | null;
 }
 
 interface HotTakePromptProps {
@@ -36,15 +47,28 @@ interface HotTakePromptProps {
 
 export default function HotTakePrompt({ cartridge, playerId, roster, engine }: HotTakePromptProps) {
   const { promptText, phase, eligibleVoters, stances, results } = cartridge;
-  const hasResponded = playerId in stances;
-  const respondedCount = Object.keys(stances).length;
+  const options = cartridge.options ?? ['Agree', 'Disagree'];
+
+  const normalizedStances: Record<string, number> = {};
+  for (const [pid, v] of Object.entries(stances ?? {})) {
+    if (typeof v === 'number') {
+      normalizedStances[pid] = v;
+    } else if (v === 'AGREE') {
+      normalizedStances[pid] = 0;
+    } else if (v === 'DISAGREE') {
+      normalizedStances[pid] = 1;
+    }
+  }
+
+  const hasResponded = playerId in normalizedStances;
+  const respondedCount = Object.keys(normalizedStances).length;
   const totalEligible = eligibleVoters.length;
   const accent = PROMPT_ACCENT.HOT_TAKE;
   const reduce = useReducedMotion();
 
-  const handleStance = (stance: 'AGREE' | 'DISAGREE') => {
+  const handleOption = (optionIndex: number) => {
     if (hasResponded || phase !== PromptPhases.ACTIVE) return;
-    engine.sendActivityAction(ActivityEvents.HOTTAKE.RESPOND, { stance });
+    engine.sendActivityAction(ActivityEvents.HOTTAKE.RESPOND, { optionIndex });
   };
 
   const status =
@@ -67,29 +91,33 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
           : undefined
       }
       eligibleIds={phase === PromptPhases.ACTIVE ? eligibleVoters : undefined}
-      respondedIds={phase === PromptPhases.ACTIVE ? Object.keys(stances) : undefined}
+      respondedIds={phase === PromptPhases.ACTIVE ? Object.keys(normalizedStances) : undefined}
       roster={roster}
     >
       {phase === PromptPhases.ACTIVE && !hasResponded && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <StanceButton
-            onClick={() => handleStance('AGREE')}
-            label="Agree"
-            color="var(--po-green)"
-          />
-          <StanceButton
-            onClick={() => handleStance('DISAGREE')}
-            label="Disagree"
-            color="var(--po-pink)"
-          />
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: options.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr',
+            gap: 10,
+          }}
+        >
+          {options.map((label, i) => (
+            <StanceButton
+              key={i}
+              onClick={() => handleOption(i)}
+              label={label}
+              color={OPTION_COLORS[i % OPTION_COLORS.length]}
+            />
+          ))}
         </div>
       )}
 
       {phase === PromptPhases.ACTIVE && hasResponded && (
         <LockedInReceipt
-          accentColor={stances[playerId] === 'AGREE' ? 'var(--po-green)' : 'var(--po-pink)'}
+          accentColor={OPTION_COLORS[normalizedStances[playerId] % OPTION_COLORS.length]}
           label="You voted"
-          value={stances[playerId] === 'AGREE' ? 'Agree' : 'Disagree'}
+          value={options[normalizedStances[playerId]] ?? 'Submitted'}
         />
       )}
 
