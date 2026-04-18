@@ -2,6 +2,7 @@ import React from 'react';
 import type { ArcadeGameProjection, SocialPlayer } from '@pecking-order/shared-types';
 import { Config } from '@pecking-order/shared-types';
 import ArcadeGameWrapper from '../wrappers/ArcadeGameWrapper';
+import { HeroStat, HeroStatRow, HeroFrame } from '../shared';
 import RecallRenderer from './RecallRenderer';
 
 interface RecallProps {
@@ -19,6 +20,12 @@ export default function Recall(props: RecallProps) {
     <ArcadeGameWrapper
       {...props}
       Renderer={RecallRenderer}
+      renderHero={(result) => {
+        const roundsCleared = result.roundsCleared || 0;
+        const highestSize = result.highestSize || 0;
+        const fullClear = (result.fullClear || 0) > 0;
+        return <RecallHero roundsCleared={roundsCleared} highestSize={highestSize} fullClear={fullClear} />;
+      }}
       renderBreakdown={(result) => {
         const roundsCleared = result.roundsCleared || 0;
         const highestSize = result.highestSize || 0;
@@ -52,5 +59,81 @@ export default function Recall(props: RecallProps) {
         );
       }}
     />
+  );
+}
+
+/**
+ * Bespoke peak frame for Recall — the largest grid the player
+ * cleared, rendered as a grid of memory tiles with a few lit
+ * (recalled) in blue. The grid size itself IS the hero — bigger
+ * grid = better memory.
+ */
+function RecallHero({
+  roundsCleared,
+  highestSize,
+  fullClear,
+}: {
+  roundsCleared: number;
+  highestSize: number;
+  fullClear: boolean;
+}) {
+  const accent = 'var(--po-blue)';
+  const size = Math.max(2, Math.min(8, highestSize || 3));
+  const cellSize = Math.min(16, 96 / size);
+  const gap = 2;
+  const total = size * size;
+  // "Lit" cells — about half, deterministic pattern
+  const lit = new Set(Array.from({ length: Math.ceil(total / 2) }, (_, i) => (i * 7) % total));
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+      <HeroFrame accent={accent} haloIntensity={0.4}>
+        <svg width={130} height={130} viewBox="-65 -65 130 130" aria-hidden>
+          {/* Grid cells */}
+          {Array.from({ length: total }, (_, i) => {
+            const col = i % size;
+            const row = Math.floor(i / size);
+            const totalWidth = size * (cellSize + gap) - gap;
+            const x = -totalWidth / 2 + col * (cellSize + gap);
+            const y = -totalWidth / 2 + row * (cellSize + gap);
+            const isLit = lit.has(i);
+            return (
+              <rect
+                key={i}
+                x={x}
+                y={y}
+                width={cellSize}
+                height={cellSize}
+                rx={2}
+                fill={isLit ? accent : 'var(--po-bg-glass)'}
+                stroke={isLit ? accent : 'var(--po-border)'}
+                strokeWidth={1}
+              />
+            );
+          })}
+          {/* Perfect badge — corner star if full clear */}
+          {fullClear && (
+            <g transform="translate(52, -52)">
+              <circle cx={0} cy={0} r={10} fill="var(--po-gold)" />
+              <text
+                x={0} y={3}
+                textAnchor="middle"
+                style={{
+                  fontFamily: 'var(--po-font-display)',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  fill: 'var(--po-bg-deep)',
+                }}
+              >
+                ★
+              </text>
+            </g>
+          )}
+        </svg>
+      </HeroFrame>
+      <HeroStatRow>
+        <HeroStat value={highestSize > 0 ? `${highestSize}×${highestSize}` : '—'} label="grid" accent={accent} />
+        <HeroStat value={roundsCleared} label="rounds" accent={accent} />
+      </HeroStatRow>
+    </div>
   );
 }
