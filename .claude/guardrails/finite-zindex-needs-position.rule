@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: apps/client/src/.+/(popover|sheet|picker|overlay|modal|drawer|reveal|menu).*\.tsx?$|apps/client/src/.+/.*(Popover|Sheet|Picker|Overlay|Modal|Drawer|Reveal|Menu|Bar).tsx?$
+MATCH_CONTENT: zIndex[[:space:]]*:|z-index[[:space:]]*:
 ADVISORY: |
   CSS z-index gotcha that broke CommandPicker clicks in the Pulse shell:
 
