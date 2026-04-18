@@ -72,7 +72,7 @@ export const LobbySchema = z.object({
 
 export const TimelineEventSchema = z.object({
   time: z.string(), // "09:00" or ISO string
-  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "OPEN_GROUP_CHAT", "CLOSE_GROUP_CHAT", "START_GAME", "END_GAME", "START_DILEMMA", "END_DILEMMA", "END_DAY"]),
+  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "OPEN_GROUP_CHAT", "CLOSE_GROUP_CHAT", "START_GAME", "END_GAME", "START_DILEMMA", "END_DILEMMA", "START_CONFESSION_CHAT", "END_CONFESSION_CHAT", "END_DAY"]),
   payload: z.any().optional(),
 });
 
@@ -288,6 +288,9 @@ export const PeckingOrderRulesetSchema = z.object({
   inactivity: PeckingOrderInactivityRulesSchema,
   dayCount: PeckingOrderDayCountRulesSchema,
   dilemmas: PeckingOrderDilemmaRulesSchema.optional(),
+  confessions: z.object({
+    enabled: z.boolean(),
+  }).optional(),
 });
 export type PeckingOrderRuleset = z.infer<typeof PeckingOrderRulesetSchema>;
 
@@ -512,13 +515,14 @@ export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LI
 
 // --- Channel System ---
 
-export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM']);
+export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM', 'CONFESSION']);
 export type ChannelType = z.infer<typeof ChannelTypeSchema>;
 
 export type ChannelCapability =
   | 'CHAT' | 'SILVER_TRANSFER' | 'INVITE_MEMBER' | 'REACTIONS' | 'REPLIES' | 'GAME_ACTIONS'
   | 'NUDGE'     // MAIN + 1:1 DM — UI affordance flag (NUDGE event is player-scoped)
-  | 'WHISPER';  // MAIN only — whisper is MAIN-anonymous
+  | 'WHISPER'   // MAIN only — whisper is MAIN-anonymous
+  | 'CONFESS';  // CONFESSION channel only — anonymized post under per-phase handle
 
 export interface Channel {
   id: string;
