@@ -26,8 +26,9 @@ export function ConversationsList() {
 
   if (threads.length === 0) {
     return (
-      <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: 'var(--pulse-text-3)', fontStyle: 'italic' }}>
-        No conversations yet.
+      <div style={{ padding: '16px 20px 24px', textAlign: 'center', fontSize: 13, color: 'var(--pulse-text-3)', lineHeight: 1.5 }}>
+        No DMs yet.<br />
+        <span style={{ color: 'var(--pulse-text-2)' }}>Tap a face to start one.</span>
       </div>
     );
   }

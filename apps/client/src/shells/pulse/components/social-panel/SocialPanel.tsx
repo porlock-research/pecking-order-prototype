@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
-import { useGameStore, selectPendingInvitesForMe, selectStandings } from '../../../../store/useGameStore';
+import { useGameStore, selectPendingInvitesForMe, selectDmThreads } from '../../../../store/useGameStore';
 import { PULSE_SPRING } from '../../springs';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import { Podium } from './Podium';
@@ -13,9 +13,7 @@ interface Props { onClose: () => void; }
 export function SocialPanel({ onClose }: Props) {
   const pendingInvites = useGameStore(useShallow(selectPendingInvitesForMe));
   const roster = useGameStore(s => s.roster);
-  const playerId = useGameStore(s => s.playerId);
-  const standings = useGameStore(useShallow(selectStandings));
-  const myRank = standings.find(s => s.id === playerId)?.rank ?? null;
+  const threads = useGameStore(useShallow(selectDmThreads));
 
   return (
     <>
@@ -39,40 +37,41 @@ export function SocialPanel({ onClose }: Props) {
           position: 'fixed', top: 40, left: 0, right: 0, bottom: 0,
           background: 'var(--pulse-bg)',
           borderTopLeftRadius: 20, borderTopRightRadius: 20,
-          borderTop: '1px solid var(--pulse-border)',
-          boxShadow: '0 -6px 20px rgba(0,0,0,0.35)',
+          borderTop: '1px solid var(--pulse-border-2)',
           display: 'flex', flexDirection: 'column',
           zIndex: PULSE_Z.drawer, overflowY: 'auto',
         }}
       >
-        {/* Drag affordance */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--pulse-space-sm) 0' }}>
-          <span aria-hidden="true" style={{ width: 40, height: 4, background: 'var(--pulse-border)', borderRadius: 2 }} />
-        </div>
-
-        {/* STANDINGS — featured (largest type, gold ambient tint, generous padding) */}
+        {/* STANDINGS — chapter card, gold ambient tint, Clash Display title */}
         <section style={{
           background: 'radial-gradient(ellipse at top, rgba(255,200,61,0.08), transparent 60%), var(--pulse-surface)',
           borderBottom: '1px solid var(--pulse-border)',
+          paddingTop: 'var(--pulse-space-lg)',
           paddingBottom: 'var(--pulse-space-md)',
         }}>
           <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: 'var(--pulse-space-lg) var(--pulse-space-lg) var(--pulse-space-sm)',
+            padding: '0 var(--pulse-space-lg) var(--pulse-space-sm)',
           }}>
             <h2 style={{
               margin: 0,
-              fontSize: 17, fontWeight: 900, letterSpacing: 2,
-              textTransform: 'uppercase', color: 'var(--pulse-text-1)',
+              fontFamily: 'var(--po-font-display)',
+              fontSize: 'clamp(24px, 6vw, 32px)',
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              lineHeight: 1,
+              color: 'var(--pulse-text-1)',
             }}>Standings</h2>
-            {myRank && (
-              <span style={{
-                fontSize: 11, color: 'var(--pulse-accent)', fontWeight: 700,
-                background: 'rgba(255,59,111,0.15)',
-                padding: 'var(--pulse-space-2xs) var(--pulse-space-sm)',
-                borderRadius: 10,
-              }}>You · #{myRank}</span>
-            )}
+            <div style={{
+              marginTop: 4,
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: 'var(--pulse-gold)',
+              opacity: 0.75,
+            }}>
+              Ranked by silver
+            </div>
           </div>
           <Podium />
           <StandingsRest />
@@ -82,7 +81,7 @@ export function SocialPanel({ onClose }: Props) {
         {pendingInvites.length > 0 && (
           <section style={{
             margin: 'var(--pulse-space-lg) var(--pulse-space-md) 0',
-            padding: 'var(--pulse-space-md) var(--pulse-space-md) var(--pulse-space-md)',
+            padding: 'var(--pulse-space-md)',
             background: 'color-mix(in oklch, var(--pulse-pending) 10%, var(--pulse-surface))',
             border: '1px solid color-mix(in oklch, var(--pulse-pending) 32%, transparent)',
             borderRadius: 14,
@@ -94,7 +93,7 @@ export function SocialPanel({ onClose }: Props) {
               color: 'var(--pulse-pending)',
               display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-xs)',
             }}>
-              Pending Invites
+              Pending invites
               <span aria-hidden="true" style={{
                 background: 'var(--pulse-pending)', color: 'var(--pulse-on-accent)',
                 fontSize: 10,
@@ -110,14 +109,28 @@ export function SocialPanel({ onClose }: Props) {
           </section>
         )}
 
-        {/* CONVERSATIONS — utility (quietest label; list carries its own rhythm) */}
+        {/* CONVERSATIONS — bumped visual weight. The list IS the content here,
+            but the label should still read as a section, not a footnote. */}
         <section>
-          <div style={{ padding: 'var(--pulse-space-xl) var(--pulse-space-lg) var(--pulse-space-xs)' }}>
+          <div style={{
+            padding: 'var(--pulse-space-lg) var(--pulse-space-lg) var(--pulse-space-xs)',
+            display: 'flex', alignItems: 'baseline', gap: 'var(--pulse-space-sm)',
+          }}>
             <h3 style={{
               margin: 0,
-              fontSize: 10, fontWeight: 700, letterSpacing: 1.6, textTransform: 'uppercase',
-              color: 'var(--pulse-text-4)',
+              fontFamily: 'var(--po-font-display)',
+              fontSize: 20,
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              color: 'var(--pulse-text-1)',
             }}>Conversations</h3>
+            {threads.length > 0 && (
+              <span style={{
+                fontSize: 12, fontWeight: 700,
+                color: 'var(--pulse-text-3)',
+                fontVariantNumeric: 'tabular-nums',
+              }}>{threads.length}</span>
+            )}
           </div>
           <ConversationsList />
         </section>
