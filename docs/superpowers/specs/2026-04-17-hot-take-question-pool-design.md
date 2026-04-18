@@ -78,7 +78,12 @@ export function pickHotTakeQuestion(usedIds: readonly string[]): HotTakeQuestion
 
 - **Dynamic games (`apps/game-server/src/machines/game-master.ts`):** extend `GameMasterContext` with `hotTakeHistory: string[]`. In `resolveDay`, immediately after the existing block at **`game-master.ts:279–291`** that mutates `startActivity.payload`, call `pickHotTakeQuestion(context.hotTakeHistory)` when `activityType === 'HOT_TAKE'` and write `{promptType, promptText: q.statement, promptId: q.id, options: q.options}` onto the payload. The chosen `id` is appended to `hotTakeHistory` via the same `assign()` that updates the day's manifest.
 
-- **Static games (lobby, `apps/lobby/app/actions.ts:1000–1012`):** `buildEventPayload(eventKey, activityType, dayIndex)` currently has no state parameter. Thread a local `usedIds: Set<string>` through `buildManifestDays` (same file, line 1016) by extending the signature to `buildEventPayload(eventKey, activityType, dayIndex, usedIds)`, and update the three call sites inside `buildManifestDays` (the function is invoked once per day × event; at line 228, 759, 881 the manifest builder itself is called — those are callers, not the per-day loop. The per-day loop at `:1029` is where we mutate `usedIds`). For each HOT_TAKE day, call `pickHotTakeQuestion([...usedIds])`, bake `{id, statement, options}` into the START_ACTIVITY payload, then `usedIds.add(q.id)`. Three lobby modes hit this path: preset cycles, `CONFIGURABLE_CYCLE`, and `DEBUG_PECKING_ORDER` — all three use the same `buildManifestDays` entry point, so only one code change is required.
+- **Static games (lobby, `apps/lobby/app/actions.ts:1000–1012`):** `buildEventPayload(eventKey, activityType, dayIndex)` currently has no state parameter. Extend its signature to `buildEventPayload(eventKey, activityType, dayIndex, usedIds)` and write `{promptId, options}` into the START_ACTIVITY payload plus `usedIds.add(q.id)` for HOT_TAKE days. `buildManifestDays` (same file, line 1016) has **two per-day loops** that must each be updated — they can't share a helper because they iterate different config shapes:
+  - `DEBUG_PECKING_ORDER` mode at `:1024`: `.map((day, i) => …)` over `debugConfig.days`
+  - `CONFIGURABLE_CYCLE` mode at `:1057`: `.map((day, i) => …)` over `cfgConfig.days`
+  - The admin-driven fallback at `:1088` returns empty timelines — no picker call needed.
+
+  Each `.map` becomes a small closure pattern: declare `const usedIds = new Set<string>()` just before the `.map`, then call the mutation-aware `buildEventPayload` inside the inner `for (const eventKey …)` loop. Two loop-level edits in total.
 
 ### Alternative considered: extend `GameHistoryEntry`
 
@@ -187,7 +192,13 @@ function resolveResults(
 }
 ```
 
-**PROMPT_RESULT fact payload** updates accordingly:
+**Two emission paths for `PROMPT_RESULT`.** Both fire per activity completion:
+- `apps/game-server/src/machines/cartridges/prompts/hot-take-machine.ts:69–81` — full payload (`{ promptType, promptText, results }`) via `sendParent`. This is the path this spec updates.
+- `apps/game-server/src/machines/actions/l2-economy.ts:175–188` — a second fact raised from L2's `emitPromptResultFact`, payload is silver-rewards-only (`{ silverRewards }`). Unchanged — it already matches the ticker's `silverRewards`-only read (§7) and carries no agree/disagree fields today.
+
+An implementer will see both; only the machine-side payload changes.
+
+**PROMPT_RESULT fact payload** (machine-emitted, full payload) updates accordingly:
 ```ts
 {
   promptType: 'HOT_TAKE',
@@ -233,6 +244,8 @@ const stances = cartridge.stances;  // now Record<string, number>
 // Legacy snapshot read-path: if any stance value is 'AGREE'|'DISAGREE', treat as index 0|1.
 ```
 
+**Send site** — `HotTakePrompt.tsx:45–48` (`handleStance`) today sends `{ stance: 'AGREE'|'DISAGREE' }`. Rename to `handleOption(i: number)` and send `{ optionIndex: i }`. This is the one send-side line that matters; the rest of the component is render-side.
+
 **Active phase** — stance buttons rendered from `options`, laid out as:
 - 2 options → `gridTemplateColumns: '1fr 1fr'` (unchanged from today)
 - 3 options → `gridTemplateColumns: '1fr 1fr 1fr'`
@@ -252,20 +265,19 @@ Accent colors cycle through `var(--po-green)`, `var(--po-pink)`, `var(--po-gold)
 
 - **`apps/client/src/shells/vivid/components/dashboard/PromptResultDetail.tsx:47–48`** — maps a single `playerResponses[pid]` **string** value to a display label via `response === 'AGREE' ? 'Agree' : response === 'DISAGREE' ? 'Disagree' : response`. It does **not** read any tally fields. Under the new shape, `playerResponses[pid]` will be a stringified index (e.g. `"2"`). Update the `case 'HOT_TAKE'` branch to: read `result.results?.options: string[]`, parse `response` as an int, and return `options[idx] ?? response`. Keep the legacy string-match path as an else branch for historical games.
 
-- **`apps/client/src/shells/vivid/components/today/CompletedSummary.tsx`** — audit during implementation. If it reads `agreeCount/disagreeCount/minorityStance`, migrate to `tally/options/minorityIndices` and preserve legacy-fallback render.
+- **`apps/client/src/shells/vivid/components/today/CompletedSummary.tsx:653–657`** — reads `results.agreeCount`, `results.disagreeCount`, and `results.minorityStance` directly. Migrate to `tally[i]` + `options[i]` + `minorityIndices`, with a legacy branch that reconstructs agree/disagree when `options` is absent.
 
-- **`apps/client/src/shells/classic/components/TimelineCartridgeCard.tsx`** — same audit; migrate per findings.
+- **`apps/client/src/shells/classic/components/TimelineCartridgeCard.tsx:195–197, 446–468`** — two surfaces: a one-line summary string ("Agree: X / Disagree: Y") and a visual bar. Replace the summary with a join over `options.map((opt, i) => \`${opt}: ${tally[i]}\`)`, and generalize the bar to N segments. Line 43 maps `'HOT_TAKE' → 'Hot Take'` (no change); line 230 gates on `results.statement` existence (no change).
 
-- **`apps/client/src/shells/pulse/components/cartridge-overlay/PulseResultContent.tsx`** — same audit. Pulse is the shell the user is building toward, so this one gets the most polish attention.
+- **`apps/client/src/shells/pulse/components/cartridge-overlay/PulseResultContent.tsx:686–695`** — reads the same three legacy fields and passes `'left'`/`'right'` minority hints to a stance bar. This is the shell the user is building toward, so it gets the most polish attention — expect this migration to drive layout-token decisions for the other shells.
 
-For all three audited files: verify the actual symptom (string→label mapping vs tally read) before writing the migration — don't assume one shape.
+Each migration keeps a legacy-shape branch permanently (§9).
 
 ## 9. Compatibility
 
-- **Legacy in-flight games (mid-HOT_TAKE at deploy):** the snapshot hydrates into the new machine with `context.options` undefined — the input fallback `context.options = input.options ?? ['AGREE','DISAGREE']` only runs on spawn, not on rehydrate. To keep mid-phase games resolving cleanly, we also backfill `context.options` via an entry action on the `active` state that normalizes the context shape (populate `options` if missing, migrate `stances` values from strings to indices). Client-side fallback (§8) handles rendering either shape.
+- **Legacy in-flight games (mid-HOT_TAKE at deploy):** the snapshot hydrates into the new machine with `context.options` undefined — the input fallback `context.options = input.options ?? ['AGREE','DISAGREE']` only runs on spawn, not on rehydrate. To keep mid-phase games resolving cleanly, we backfill `context.options` via an entry action on the `active` state that normalizes the context shape (populate `options` if missing, migrate `stances` values from strings to indices). **Games already in `completed`/final at deploy do not re-run entry actions** — they rely entirely on the client-side rendering fallback (§8) to display old-shape results correctly. Since §6 removes `agreeCount`/`disagreeCount`/`minorityStance` as a breaking change, the client fallback is the sole surface keeping these historical results visible.
 
-- **Already-completed legacy games:** `PROMPT_RESULT` facts recorded before this ship contain old-shape payloads (`agreeCount/disagreeCount/minorityStance`). **These facts are never rewritten.** The journal and any derived history views keep the old shape forever. Every reader of historical HOT_TAKE results (result cards, dashboards, ticker) must tolerate both shapes indefinitely — legacy fallback is not a rollout-window bandage, it's permanent. The only rollout-window-only code is the `{stance}` event compat branch (§6) and the hydration fixup (this bullet's first sub-point).
-- **Legacy game-history entries (`gameHistory` in L2, `PROMPT_RESULT` facts):** contain old-shape payloads. Shell result components also handle both shapes.
+- **Legacy `PROMPT_RESULT` facts (journal, derived history views):** recorded before this ship, they contain old-shape payloads (`agreeCount/disagreeCount/minorityStance`). **These facts are never rewritten.** Every reader of historical HOT_TAKE results (result cards, dashboards, ticker) must tolerate both shapes indefinitely — legacy fallback is **permanent**, not a rollout-window bandage. The only rollout-window-only code is the `{stance}` event compat branch (§6) and the hydration fixup in the preceding bullet.
 - **`ACTIVITY_TYPE_INFO.HOT_TAKE.promptText`:** kept as a default for any path that somehow spawns HOT_TAKE without going through the picker (defensive; shouldn't happen in practice). Updated from `'Pineapple belongs on pizza'` to a neutral `'Hot take'` placeholder — the picker always wins.
 - **`ActivityEvents.HOTTAKE.RESPOND`:** event key unchanged; only the payload shape changes.
 
