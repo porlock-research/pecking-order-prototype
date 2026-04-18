@@ -7,7 +7,7 @@
 
 | Machine | Group | States | Transitions | Events | Parallel | Final |
 |---------|-------|--------|-------------|--------|----------|-------|
-| pecking-order-l2 | Orchestration | 10 | 43 | 24 | - | Yes |
+| pecking-order-l2 | Orchestration | 10 | 46 | 24 | - | Yes |
 | l3-daily-session | Orchestration | 19 | 51 | 37 | Yes | Yes |
 | post-game | Orchestration | 1 | 1 | 1 | - | - |
 | vote-majority | Voting | 2 | 2 | 2 | - | Yes |
@@ -55,7 +55,7 @@
 ### pecking-order-l2
 
 **File**: `src/machines/l2-orchestrator.ts`
-**States**: 10 | **Transitions**: 43 | **Events**: 24
+**States**: 10 | **Transitions**: 46 | **Events**: 24
 
 **States:**
 
@@ -103,6 +103,9 @@
 | dayLoop.activeSession | * | dayLoop.activeSession |
 | dayLoop.activeSession | * | dayLoop.activeSession |
 | dayLoop.activeSession | * | dayLoop.activeSession |
+| dayLoop.activeSession | * | dayLoop.activeSession |
+| dayLoop.activeSession | ADMIN.INJECT_TIMELINE_EVENT | dayLoop.activeSession |
+| dayLoop.activeSession | ADMIN.INJECT_TIMELINE_EVENT | dayLoop.activeSession |
 | dayLoop.activeSession | ADMIN.INJECT_TIMELINE_EVENT | dayLoop.activeSession |
 | dayLoop.activeSession | ADMIN.INJECT_TIMELINE_EVENT | dayLoop.activeSession |
 | dayLoop.activeSession | xstate.done.actor.l3-session | dayLoop.nightSummary |
