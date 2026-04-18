@@ -96,19 +96,35 @@ export function ChatView() {
 
   const isSocialPhase = phase !== DayPhases.ELIMINATION && phase !== DayPhases.GAME_OVER;
 
-  // Group consecutive messages from the same sender within 2 minutes
-  // (Only applies to message entries; social events break the grouping)
-  const grouped: Array<{ entry: TimelineEntry; showHeader: boolean }> = [];
+  // Group consecutive messages from the same sender.
+  //
+  // Window is asymmetric: self messages coalesce for up to 10 minutes so
+  // "spam your own thought" sessions don't each get a fresh avatar + fresh
+  // bubble (the "wall of pink self" critique, v3). Other senders use the
+  // usual 2-minute window — rapid replies from other players group tight,
+  // but conversation gaps break the group so the persona avatar returns
+  // to remind you who's talking.
+  //
+  // continuationDepth is 0 for the first message of a stack, 1+ for
+  // continuations. MessageCard uses it to fade the self-bubble fill on
+  // successive messages so a stack has visible rhythm.
+  const SELF_STACK_WINDOW_MS = 600_000; // 10 min
+  const OTHER_STACK_WINDOW_MS = 120_000; // 2 min
+  const grouped: Array<{ entry: TimelineEntry; showHeader: boolean; continuationDepth: number }> = [];
+  let depth = 0;
   for (let i = 0; i < timeline.length; i++) {
     const entry = timeline[i];
     const prev = i > 0 ? timeline[i - 1] : null;
     let showHeader = true;
     if (entry.type === 'msg' && prev?.type === 'msg') {
-      showHeader =
-        prev.data.senderId !== entry.data.senderId ||
-        entry.data.timestamp - prev.data.timestamp > 120_000;
+      const sameSender = prev.data.senderId === entry.data.senderId;
+      const isSelf = entry.data.senderId === playerId;
+      const windowMs = isSelf ? SELF_STACK_WINDOW_MS : OTHER_STACK_WINDOW_MS;
+      const withinWindow = entry.data.timestamp - prev.data.timestamp <= windowMs;
+      showHeader = !sameSender || !withinWindow;
     }
-    grouped.push({ entry, showHeader });
+    depth = showHeader ? 0 : depth + 1;
+    grouped.push({ entry, showHeader, continuationDepth: depth });
   }
 
   return (
@@ -139,7 +155,7 @@ export function ChatView() {
         </div>
       )}
 
-      {grouped.map(({ entry, showHeader }, i) => {
+      {grouped.map(({ entry, showHeader, continuationDepth }, i) => {
         // Insert the "New" divider before the first unread MAIN message
         // (only possible before an entry of type 'msg' with channelId MAIN).
         const isFirstUnreadMain =
@@ -216,6 +232,7 @@ export function ChatView() {
               message={msg}
               showHeader={showHeader}
               isSelf={msg.senderId === playerId}
+              continuationDepth={continuationDepth}
               openReactionId={openReactionId}
               onOpenReaction={setOpenReactionId}
             />

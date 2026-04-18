@@ -16,13 +16,15 @@ interface MessageCardProps {
   message: ChatMessage;
   showHeader: boolean;
   isSelf: boolean;
+  /** 0 for first in a sender-stack, 1+ for continuations. Drives bubble fade. */
+  continuationDepth?: number;
   openReactionId: string | null;
   onOpenReaction: (id: string | null) => void;
 }
 
 const AVATAR_SIZE = 44;
 
-function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenReaction }: MessageCardProps) {
+function MessageCardInner({ message, showHeader, isSelf, continuationDepth = 0, openReactionId, onOpenReaction }: MessageCardProps) {
   const roster = useGameStore(s => s.roster);
   const { openDM } = usePulse();
   const reduce = useReducedMotion();
@@ -73,8 +75,20 @@ function MessageCardInner({ message, showHeader, isSelf, openReactionId, onOpenR
       }
     : {};
 
+  // Self-stack fade: first message full tint, continuations step down to
+  // avoid "wall of pink." Floor at depth 2 so very long stacks don't
+  // disappear into the background entirely.
+  const depthFade = isSelf && continuationDepth > 0
+    ? continuationDepth === 1
+      ? { bg: 0.07, border: 0.14 }
+      : { bg: 0.04, border: 0.10 }
+    : { bg: 0.10, border: 0.20 };
+
   const bubbleStyle = isSelf
-    ? { background: 'rgba(255, 59, 111, 0.10)', border: '1px solid rgba(255, 59, 111, 0.20)' }
+    ? {
+        background: `rgba(255, 59, 111, ${depthFade.bg})`,
+        border: `1px solid rgba(255, 59, 111, ${depthFade.border})`,
+      }
     : isWhisper
       ? { background: 'rgba(176, 105, 219, 0.10)', border: '1px solid rgba(176, 105, 219, 0.22)' }
       : { background: 'transparent', border: 'none' };
