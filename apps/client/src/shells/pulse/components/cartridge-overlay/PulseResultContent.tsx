@@ -684,17 +684,21 @@ function PromptResult({ snapshot, roster, playerId }: {
 
 function StanceBar({ promptType, results }: { promptType: string; results: any }) {
   if (promptType === 'HOT_TAKE') {
-    const agree = results.agreeCount ?? 0;
-    const disagree = results.disagreeCount ?? 0;
-    if (agree + disagree === 0) return null;
-    return (
-      <DualBar
-        leftLabel="Agree" rightLabel="Disagree"
-        leftCount={agree} rightCount={disagree}
-        leftColor="var(--pulse-vote)" rightColor="var(--pulse-accent)"
-        minority={results.minorityStance === 'AGREE' ? 'left' : results.minorityStance === 'DISAGREE' ? 'right' : null}
-      />
-    );
+    const options: string[] = Array.isArray(results.options)
+      ? results.options
+      : ['Agree', 'Disagree'];
+    const tally: number[] = Array.isArray(results.tally)
+      ? results.tally
+      : [results.agreeCount ?? 0, results.disagreeCount ?? 0];
+    if (tally.reduce((s, n) => s + n, 0) === 0) return null;
+    const minorityIndices: number[] = Array.isArray(results.minorityIndices)
+      ? results.minorityIndices
+      : results.minorityStance === 'AGREE'
+        ? [0]
+        : results.minorityStance === 'DISAGREE'
+          ? [1]
+          : [];
+    return <PulseNAryBar options={options} tally={tally} minorityIndices={minorityIndices} />;
   }
   if (promptType === 'WOULD_YOU_RATHER') {
     const countA = results.countA ?? 0;
@@ -787,6 +791,65 @@ function MinorityTag() {
     >
       MINORITY
     </span>
+  );
+}
+
+function PulseNAryBar({ options, tally, minorityIndices }: {
+  options: string[];
+  tally: number[];
+  minorityIndices: number[];
+}) {
+  const total = tally.reduce((s, n) => s + n, 0);
+  const COLORS = ['var(--pulse-vote)', 'var(--pulse-accent)', 'var(--pulse-prompt)', 'var(--pulse-nudge)'];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div
+        style={{
+          display: 'flex', height: 26, borderRadius: 10, overflow: 'hidden',
+          border: '1px solid var(--pulse-border)',
+        }}
+      >
+        {tally.map((count, i) => {
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+          const color = COLORS[i % COLORS.length];
+          return (
+            <div
+              key={i}
+              style={{
+                width: `${pct}%`,
+                background: `color-mix(in oklch, ${color} 30%, transparent)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRight: i < tally.length - 1 ? '1px solid var(--pulse-border)' : 'none',
+                color, fontSize: 12, fontWeight: 800,
+                outline: minorityIndices.includes(i) ? '1.5px solid var(--pulse-gold)' : 'none',
+                outlineOffset: -2,
+              }}
+            >
+              {pct > 8 ? `${pct}%` : ''}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' }}>
+        {options.map((opt, i) => {
+          const color = COLORS[i % COLORS.length];
+          const isMin = minorityIndices.includes(i);
+          return (
+            <span
+              key={i}
+              style={{
+                fontSize: 11, fontWeight: isMin ? 800 : 500, color,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                maxWidth: options.length <= 2 ? '48%' : '32%',
+              }}
+            >
+              {opt}
+              {isMin && <MinorityTag />}
+            </span>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
