@@ -33,6 +33,11 @@ interface ArcadeGameWrapperProps {
   onDismiss?: () => void;
   Renderer: React.ComponentType<ArcadeRendererProps>;
   renderBreakdown?: (result: Record<string, number>, silverReward: number) => ReactNode;
+  /** Optional bespoke peak-frame hero for the COMPLETED state.
+   *  Renders ABOVE the silver count inside GameResultHero. Use this
+   *  for per-game compositions: Snake's final-length flourish, Stacker's
+   *  height ladder, BeatDrop's combo arc. Pure presentation. */
+  renderHero?: (result: Record<string, number>, silverReward: number) => ReactNode;
 }
 
 export default function ArcadeGameWrapper({
@@ -42,6 +47,7 @@ export default function ArcadeGameWrapper({
   onDismiss,
   Renderer,
   renderBreakdown,
+  renderHero,
 }: ArcadeGameWrapperProps) {
   const { status, silverReward, goldContribution, seed, timeLimit, difficulty, gameType } = cartridge;
 
@@ -193,6 +199,7 @@ export default function ArcadeGameWrapper({
             gameName={gameName}
             silverEarned={silverReward}
             goldContribution={goldContribution}
+            bespokeHero={renderHero?.(finalResult, silverReward)}
             breakdown={renderBreakdown?.(finalResult, silverReward)}
             onDismiss={onDismiss}
           />
