@@ -71,6 +71,16 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
     engine.sendActivityAction(ActivityEvents.HOTTAKE.RESPOND, { optionIndex });
   };
 
+  const tally: number[] =
+    results?.tally && results.tally.length === options.length
+      ? results.tally
+      : deriveLegacyTally(results, options, normalizedStances);
+
+  const minorityIndices: number[] =
+    results?.minorityIndices ?? deriveLegacyMinorityIndices(results, options);
+
+  const hasRealMinority = results?.hasRealMinority ?? minorityIndices.length > 0;
+
   const status =
     phase === PromptPhases.RESULTS
       ? 'Results'
@@ -123,24 +133,15 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
 
       {phase === PromptPhases.RESULTS && results && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <StanceBar
-            leftLabel="Agree"
-            leftCount={results.agreeCount}
-            rightLabel="Disagree"
-            rightCount={results.disagreeCount}
-            leftColor="var(--po-green)"
-            rightColor="var(--po-pink)"
-            minority={
-              results.minorityStance === 'AGREE'
-                ? 'left'
-                : results.minorityStance === 'DISAGREE'
-                  ? 'right'
-                  : null
-            }
+          <TallyBar
+            options={options}
+            tally={tally}
+            colors={OPTION_COLORS}
+            minorityIndices={minorityIndices}
             reduce={reduce ?? false}
           />
 
-          {results.minorityStance && (
+          {hasRealMinority && (
             <p
               style={{
                 margin: 0,
@@ -153,26 +154,26 @@ export default function HotTakePrompt({ cartridge, playerId, roster, engine }: H
                 color: 'var(--po-gold)',
               }}
             >
-              Minority bonus · {results.minorityStance === 'AGREE' ? 'Agree' : 'Disagree'} · +10 silver
+              Minority bonus · {minorityIndices.map((i) => options[i]).join(' & ')} · +10 silver
             </p>
           )}
 
-          {Object.keys(stances).length > 0 && (
+          {Object.keys(normalizedStances).length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <SectionLabel>Who said what</SectionLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {Object.entries(stances).map(([pid, stance]) => {
+                {Object.entries(normalizedStances).map(([pid, idx]) => {
                   const player = roster[pid];
                   const isMe = pid === playerId;
-                  const stanceColor = stance === 'AGREE' ? 'var(--po-green)' : 'var(--po-pink)';
+                  const tagColor = OPTION_COLORS[idx % OPTION_COLORS.length];
                   return (
                     <StanceRow
                       key={pid}
                       player={player}
                       isMe={isMe}
                       name={player?.personaName || pid}
-                      tagLabel={stance === 'AGREE' ? 'Agree' : 'Disagree'}
-                      tagColor={stanceColor}
+                      tagLabel={options[idx] ?? '—'}
+                      tagColor={tagColor}
                     />
                   );
                 })}
@@ -228,34 +229,28 @@ function StanceButton({
   );
 }
 
-function StanceBar({
-  leftLabel,
-  leftCount,
-  rightLabel,
-  rightCount,
-  leftColor,
-  rightColor,
-  minority,
+function TallyBar({
+  options,
+  tally,
+  colors,
+  minorityIndices,
   reduce,
 }: {
-  leftLabel: string;
-  leftCount: number;
-  rightLabel: string;
-  rightCount: number;
-  leftColor: string;
-  rightColor: string;
-  minority: 'left' | 'right' | null;
+  options: string[];
+  tally: number[];
+  colors: string[];
+  minorityIndices: number[];
   reduce: boolean;
 }) {
-  const total = leftCount + rightCount;
-  const pctLeft = total > 0 ? Math.round((leftCount / total) * 100) : 50;
-  const pctRight = 100 - pctLeft;
+  const total = tally.reduce((s, n) => s + n, 0);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
           justifyContent: 'space-between',
+          gap: 8,
           fontFamily: 'var(--po-font-display)',
           fontSize: 12,
           fontWeight: 700,
@@ -264,12 +259,11 @@ function StanceBar({
           fontVariantNumeric: 'tabular-nums',
         }}
       >
-        <span style={{ color: leftColor }}>
-          {leftLabel} · {leftCount}
-        </span>
-        <span style={{ color: rightColor }}>
-          {rightCount} · {rightLabel}
-        </span>
+        {options.map((opt, i) => (
+          <span key={i} style={{ color: colors[i % colors.length] }}>
+            {opt} · {tally[i]}
+          </span>
+        ))}
       </div>
       <div
         style={{
@@ -280,51 +274,60 @@ function StanceBar({
           border: '1px solid var(--po-border, rgba(255,255,255,0.08))',
         }}
       >
-        <motion.div
-          initial={reduce ? { width: `${pctLeft}%` } : { width: '50%' }}
-          animate={{ width: `${pctLeft}%` }}
-          transition={{ duration: 0.65, ease: 'easeOut', delay: 0.15 }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: `color-mix(in oklch, ${leftColor} 22%, transparent)`,
-            color: leftColor,
-            fontFamily: 'var(--po-font-display)',
-            fontWeight: 800,
-            fontSize: 13,
-            letterSpacing: 0.2,
-            fontVariantNumeric: 'tabular-nums',
-            outline: minority === 'left' ? `2px solid var(--po-gold)` : 'none',
-            outlineOffset: -2,
-          }}
-        >
-          {pctLeft > 10 ? `${pctLeft}%` : ''}
-        </motion.div>
-        <motion.div
-          initial={reduce ? { width: `${pctRight}%` } : { width: '50%' }}
-          animate={{ width: `${pctRight}%` }}
-          transition={{ duration: 0.65, ease: 'easeOut', delay: 0.15 }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: `color-mix(in oklch, ${rightColor} 22%, transparent)`,
-            color: rightColor,
-            fontFamily: 'var(--po-font-display)',
-            fontWeight: 800,
-            fontSize: 13,
-            letterSpacing: 0.2,
-            fontVariantNumeric: 'tabular-nums',
-            outline: minority === 'right' ? `2px solid var(--po-gold)` : 'none',
-            outlineOffset: -2,
-          }}
-        >
-          {pctRight > 10 ? `${pctRight}%` : ''}
-        </motion.div>
+        {tally.map((count, i) => {
+          const pct = total > 0 ? (count / total) * 100 : 100 / tally.length;
+          const color = colors[i % colors.length];
+          const isMinority = minorityIndices.includes(i);
+          return (
+            <motion.div
+              key={i}
+              initial={reduce ? { width: `${pct}%` } : { width: '0%' }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.65, ease: 'easeOut', delay: 0.15 }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: `color-mix(in oklch, ${color} 22%, transparent)`,
+                color,
+                fontFamily: 'var(--po-font-display)',
+                fontWeight: 800,
+                fontSize: 13,
+                letterSpacing: 0.2,
+                fontVariantNumeric: 'tabular-nums',
+                outline: isMinority ? '2px solid var(--po-gold)' : 'none',
+                outlineOffset: -2,
+              }}
+            >
+              {pct > 10 ? `${Math.round(pct)}%` : ''}
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
+}
+
+function deriveLegacyTally(
+  results: HotTakeResults | null,
+  options: string[],
+  stances: Record<string, number>,
+): number[] {
+  if (!results) return options.map(() => 0);
+  if (typeof results.agreeCount === 'number' && options.length === 2) {
+    return [results.agreeCount, results.disagreeCount ?? 0];
+  }
+  const out = options.map(() => 0);
+  for (const idx of Object.values(stances)) out[idx]++;
+  return out;
+}
+
+function deriveLegacyMinorityIndices(
+  results: HotTakeResults | null,
+  options: string[],
+): number[] {
+  if (!results?.minorityStance || options.length !== 2) return [];
+  return [results.minorityStance === 'AGREE' ? 0 : 1];
 }
 
 function StanceRow({
