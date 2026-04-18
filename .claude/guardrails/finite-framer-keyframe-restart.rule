@@ -1,0 +1,34 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/client/src/shells/pulse/components/(chat|caststrip|reveals|cartridge-overlay)/.+\.tsx?$
+MATCH_CONTENT: (scale|opacity|rotate|x|y):[[:space:]]*\[[^]]*,[^]]*\]
+ADVISORY: |
+  Framer-motion keyframe-array trap. This silently broke the Pulse silver /
+  nudge transfer pills — scale got stuck at 0.88, the whole card rendered
+  at 88%, portraits looked cramped / clipped.
+
+  Inline keyframe arrays in `animate` restart the animation on every parent
+  re-render. In a live Pulse game the store ticks constantly — the 700ms
+  transition never finishes, so the element stays at the FIRST keyframe
+  value (the `initial` equivalent) forever.
+
+  Wrong (stuck at scale 0.88):
+    <motion.div
+      initial={{ scale: 0.88, opacity: 0 }}
+      animate={{ scale: [0.88, 1.04, 1], opacity: 1 }}
+      transition={{ duration: 0.7 }}
+    />
+
+  Right — single target value:
+    <motion.div
+      initial={{ scale: 0.88, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={PULSE_SPRING.snappy}
+    />
+
+  If you need a one-shot peak/overshoot, drive it via a CSS keyframe class
+  that fires once on mount (independent of React re-renders), or via
+  `useAnimate()` / `useAnimationControls()` imperatively.
+
+  This rule excludes `overdrive/` — those are fullscreen, auto-dismissed
+  layers that mount fresh per event and don't sit in a re-rendering feed,
+  so keyframe arrays there are safe.
