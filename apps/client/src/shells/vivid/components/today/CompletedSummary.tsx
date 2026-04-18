@@ -650,12 +650,22 @@ function PromptCompleted({ snapshot, roster, playerId }: { snapshot: any; roster
 /** Agree/Disagree or Option A/B percentage bar */
 function StanceBar({ promptType, results }: { promptType: string; results: any }) {
   if (promptType === 'HOT_TAKE') {
-    const agree = results.agreeCount ?? 0;
-    const disagree = results.disagreeCount ?? 0;
-    const total = agree + disagree;
+    const options: string[] = Array.isArray(results.options)
+      ? results.options
+      : ['Agree', 'Disagree'];
+    const tally: number[] = Array.isArray(results.tally)
+      ? results.tally
+      : [results.agreeCount ?? 0, results.disagreeCount ?? 0];
+    const total = tally.reduce((s, n) => s + n, 0);
     if (total === 0) return null;
-    const minority = results.minorityStance;
-    return <DualBar leftLabel="Agree" rightLabel="Disagree" leftCount={agree} rightCount={disagree} leftColor="#4A9B5A" rightColor="#D04A35" highlight={minority === 'AGREE' ? 'left' : minority === 'DISAGREE' ? 'right' : null} />;
+    const minorityIndices: number[] = Array.isArray(results.minorityIndices)
+      ? results.minorityIndices
+      : results.minorityStance === 'AGREE'
+        ? [0]
+        : results.minorityStance === 'DISAGREE'
+          ? [1]
+          : [];
+    return <NAryBar options={options} tally={tally} minorityIndices={minorityIndices} />;
   }
   if (promptType === 'WOULD_YOU_RATHER') {
     const countA = results.countA ?? 0;
@@ -743,6 +753,67 @@ function DualBar({ leftLabel, rightLabel, leftCount, rightCount, leftColor, righ
           )}
           {rightLabel}
         </span>
+      </div>
+    </div>
+  );
+}
+
+function NAryBar({ options, tally, minorityIndices }: {
+  options: string[];
+  tally: number[];
+  minorityIndices: number[];
+}) {
+  const total = tally.reduce((s, n) => s + n, 0);
+  const COLORS = ['#4A9B5A', '#D04A35', '#B78B3D', '#3BA99C'];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', height: 24, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--vivid-border)' }}>
+        {tally.map((count, i) => {
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+          const color = COLORS[i % COLORS.length];
+          return (
+            <div
+              key={i}
+              style={{
+                width: `${pct}%`,
+                background: `${color}30`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRight: i < tally.length - 1 ? '1px solid var(--vivid-border)' : 'none',
+                outline: minorityIndices.includes(i) ? '1px solid #B78B3D' : 'none',
+                outlineOffset: -2,
+              }}
+            >
+              <span style={{ fontFamily: 'var(--vivid-font-mono)', fontSize: 11, fontWeight: 700, color }}>
+                {pct > 8 ? `${pct}%` : ''}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {options.map((opt, i) => {
+          const color = COLORS[i % COLORS.length];
+          const isMin = minorityIndices.includes(i);
+          return (
+            <span
+              key={i}
+              style={{
+                fontFamily: 'var(--vivid-font-body)',
+                fontSize: 11,
+                color,
+                fontWeight: isMin ? 700 : 500,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '48%',
+              }}
+            >
+              {opt} · {tally[i]}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
