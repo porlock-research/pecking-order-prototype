@@ -2464,3 +2464,24 @@ Plan 2 (`2026-04-17-confessions-match.md`) branches from post-merge `main` with 
 - `projectFactForClient` has NO v1 consumer (facts never reach clients via SYNC — only TICKER, and CONFESSION_POSTED returns null from `factToTicker`). Shipped as defense-in-depth gate; don't go hunting for a wire-up.
 - Per CLAUDE.md: stage commits by path, never `-A`; don't merge or push without explicit approval.
 
+
+---
+
+## Handoff — 2026-04-18 14:45
+
+**This session landed T8–T11 (Phase 1 complete)** on `feature/spec-c-confessions` in `.worktrees/confessions`. Commits (oldest first): `126e801` T8 l3-confession actions + guard; `8f4b441` T9 confessionLayer parallel region + `Events.Internal.START/END_CONFESSION_CHAT`; `6951beb` T10 POST guard wiring + capability-rejection tests; `c5da560` T11 L2 timeline routing + ruleset/alive guards + `CONFESSION.*` prefix forward. game-server 462/462 green. Phase 1 boundary (`npm run build && npm test`) verified — only failing test is the pre-existing `HintChips.test.tsx` one from the prior handoff.
+
+**Next step: T12 (Phase 2)** — `buildSyncPayload` per-recipient projection in `apps/game-server/src/sync.ts`. The full `confessionPhase.handlesByPlayer` is in L3 context but must NEVER reach a client SYNC payload. Per-recipient reduction inside the per-player loop at `sync.ts:145` produces `{ active, myHandle, handleCount, posts }` where `myHandle = handlesByPlayer[playerId]` and the full map is dropped. Plan lines ~1670 onward have the skeleton.
+
+**State for the next agent:**
+- Working tree clean on `feature/spec-c-confessions`; 14 commits ahead of main (6 from prior session + 4 Phase 1 commits + T7 handoff commit + T1–T5 Phase 0 commits already there).
+- Machine specs regenerated twice this session (after T9 L3 edits, after T11 L2 edits). If you modify machines in T12+, run `npm run generate:docs` before committing.
+- Deviations worth knowing:
+  - T8 tests: exported `computeOpenConfessionAssignment` / `computeCloseConfessionAssignment` as pure fns (the plan's `.assign({ context })` test pattern doesn't work in xstate v5). Actions wrap them with `assign()`.
+  - T9: had to switch `recordConfession`, `emitConfessionPhaseStartedFact`, `emitConfessionPhaseEndedFact` from `assign(...)` / bare fn to `enqueueActions(...)` — `enqueue.raise` is only available inside the latter. Captured as guardrail `finite-enqueueactions-for-raise-and-assign`.
+  - T9: added `Events.Internal.START_CONFESSION_CHAT` and `END_CONFESSION_CHAT` to `packages/shared-types/src/events.ts` (missed in T1 — T1 only added them to `TimelineEventSchema.action`). Don't re-add.
+  - T10: skipped NUDGE / WHISPER capability-rejection tests — those handlers don't route by `event.channelId` (they check MAIN's capability regardless). Captured as `reference_nudge_whisper_main_only` memory.
+  - T11: L2 already had a catch-all `ADMIN.INJECT_TIMELINE_EVENT` handler that forwards any `event.payload.action` as `INTERNAL.{action}` to L3. I added two specific-guard branches BEFORE the default: ruleset gate (`confessions.enabled !== true`) and alive-count gate (`< 2 alive`). END is never guarded.
+  - T11: also added `Events.Confession.PREFIX` forwarder to the `'*'` catch-all so client `CONFESSION.POST` events reach L3 from any entry point.
+- Pre-existing test failures to ignore: still `HintChips.test.tsx > MAIN shows /silver /nudge /whisper /dm`. The other one (`gm-briefings.test.ts > sends separate dilemma message`) doesn't appear in current runs — may have self-resolved or was in a different package.
+- Per CLAUDE.md: stage commits by path, never `-A`; don't merge or push without explicit approval. Worktree `node_modules` is already set up.
