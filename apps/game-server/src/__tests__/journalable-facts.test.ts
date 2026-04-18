@@ -27,4 +27,13 @@ describe('isJournalable', () => {
   it('rejects an unknown fact type', () => {
     expect(isJournalable('COMPLETELY.MADE.UP.TYPE')).toBe(false);
   });
+
+  // Confessions feature — Plan 1, T2
+  it.each([
+    FactTypes.CONFESSION_POSTED,
+    FactTypes.CONFESSION_PHASE_STARTED,
+    FactTypes.CONFESSION_PHASE_ENDED,
+  ])('%s is journalable', (factType) => {
+    expect(isJournalable(factType)).toBe(true);
+  });
 });

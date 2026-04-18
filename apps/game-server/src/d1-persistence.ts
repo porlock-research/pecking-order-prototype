@@ -15,6 +15,12 @@ const JOURNALABLE_TYPES = [
   // dropped. Confirmed via local Pulse test: 2026-04-14.
   FactTypes.DM_INVITE_SENT,
   FactTypes.NUDGE,
+  // Confessions feature (Spec C, Plan 1). CONFESSION_POSTED is the load-bearing
+  // archive for the match cartridge (Plan 2) — actorId preserved in D1, stripped
+  // from SYNC by projections.ts. PHASE_STARTED drives the SOCIAL_PHASE ticker line.
+  FactTypes.CONFESSION_POSTED,
+  FactTypes.CONFESSION_PHASE_STARTED,
+  FactTypes.CONFESSION_PHASE_ENDED,
 ];
 
 /** Returns true if the fact type should be persisted to the D1 journal. */
