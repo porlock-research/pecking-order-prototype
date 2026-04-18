@@ -12,7 +12,7 @@ import { l3GameActions } from './actions/l3-games';
 import { l3ActivityActions } from './actions/l3-activity';
 import { l3DilemmaActions } from './actions/l3-dilemma';
 import { l3PerkActions, l3PerkGuards } from './actions/l3-perks';
-import { l3ConfessionActions } from './actions/l3-confession';
+import { l3ConfessionActions, l3ConfessionGuards } from './actions/l3-confession';
 import { buildChatMessage, appendToChatLog, resolveExistingChannel } from './actions/social-helpers';
 
 // 1. Define strict types
@@ -164,6 +164,7 @@ export const dailySessionMachine = setup({
   guards: {
     ...l3SocialGuards,
     ...l3PerkGuards,
+    ...l3ConfessionGuards,
   } as any,
   actors: {
     ...VOTE_REGISTRY,
@@ -360,7 +361,7 @@ export const dailySessionMachine = setup({
                   actions: ['emitConfessionPhaseEndedFact', 'closeConfessionChannel'],
                 },
                 'CONFESSION.POST': {
-                  // Guard wiring lands in T10.
+                  guard: 'isConfessionPostAllowed',
                   actions: 'recordConfession',
                 },
               },
