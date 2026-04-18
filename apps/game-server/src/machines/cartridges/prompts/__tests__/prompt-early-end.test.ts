@@ -192,8 +192,8 @@ describe('Single-phase prompts — partial results on END_ACTIVITY', () => {
     const actor = createActor(stubHotTake, { input: makeInput('HOT_TAKE') });
     actor.start();
 
-    actor.send({ type: ActivityEvents.HOTTAKE.RESPOND, senderId: 'p1', stance: 'AGREE' } as any);
-    actor.send({ type: ActivityEvents.HOTTAKE.RESPOND, senderId: 'p2', stance: 'DISAGREE' } as any);
+    actor.send({ type: ActivityEvents.HOTTAKE.RESPOND, senderId: 'p1', optionIndex: 0 } as any);
+    actor.send({ type: ActivityEvents.HOTTAKE.RESPOND, senderId: 'p2', optionIndex: 1 } as any);
 
     actor.send({ type: 'INTERNAL.END_ACTIVITY' } as any);
 
