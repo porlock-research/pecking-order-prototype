@@ -12,6 +12,7 @@ import { l3GameActions } from './actions/l3-games';
 import { l3ActivityActions } from './actions/l3-activity';
 import { l3DilemmaActions } from './actions/l3-dilemma';
 import { l3PerkActions, l3PerkGuards } from './actions/l3-perks';
+import { l3ConfessionActions } from './actions/l3-confession';
 import { buildChatMessage, appendToChatLog, resolveExistingChannel } from './actions/social-helpers';
 
 // 1. Define strict types
@@ -75,6 +76,9 @@ export type DailyEvent =
   | { type: 'INTERNAL.END_ACTIVITY' }
   | { type: 'INTERNAL.START_DILEMMA' }
   | { type: 'INTERNAL.END_DILEMMA' }
+  | { type: 'INTERNAL.START_CONFESSION_CHAT' }
+  | { type: 'INTERNAL.END_CONFESSION_CHAT' }
+  | { type: 'CONFESSION.POST'; senderId: string; channelId: string; text: string }
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
   | { type: `GAME.${string}`; senderId: string; [key: string]: any }
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
@@ -155,6 +159,7 @@ export const dailySessionMachine = setup({
     ...l3ActivityActions,
     ...l3DilemmaActions,
     ...l3PerkActions,
+    ...l3ConfessionActions,
   } as any,
   guards: {
     ...l3SocialGuards,
@@ -333,6 +338,34 @@ export const dailySessionMachine = setup({
               }
             }
           }
+        },
+        // REGION E: CONFESSION LAYER
+        confessionLayer: {
+          initial: 'idle',
+          states: {
+            idle: {
+              on: {
+                'INTERNAL.START_CONFESSION_CHAT': { target: 'posting' },
+              },
+            },
+            posting: {
+              entry: [
+                'openConfessionChannel',
+                'emitConfessionPhaseStartedFact',
+                sendParent({ type: 'PUSH.PHASE', trigger: 'CONFESSION_OPEN' } as any),
+              ],
+              on: {
+                'INTERNAL.END_CONFESSION_CHAT': {
+                  target: 'idle',
+                  actions: ['emitConfessionPhaseEndedFact', 'closeConfessionChannel'],
+                },
+                'CONFESSION.POST': {
+                  // Guard wiring lands in T10.
+                  actions: 'recordConfession',
+                },
+              },
+            },
+          },
         },
         // REGION D: DILEMMA LAYER
         dilemmaLayer: {

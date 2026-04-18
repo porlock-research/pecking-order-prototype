@@ -1,4 +1,4 @@
-import { assign } from 'xstate';
+import { assign, enqueueActions } from 'xstate';
 import { Events, FactTypes, PlayerStatuses, Config } from '@pecking-order/shared-types';
 import type { Channel, ChannelCapability } from '@pecking-order/shared-types';
 import { assignPhaseHandles } from '../observations/confession-handles';
@@ -94,12 +94,14 @@ export const l3ConfessionActions = {
   /**
    * POST handler. Guard isConfessionPostAllowed runs before this on the transition.
    * Records the post under the sender's handle and raises CONFESSION_POSTED.
+   * enqueueActions() wrapper exposes both enqueue.raise() (for the fact) AND
+   * enqueue.assign() (for the posts append).
    */
-  recordConfession: assign(({ context, event, enqueue }: any) => {
+  recordConfession: enqueueActions(({ context, event, enqueue }: any) => {
     const handle = context.confessionPhase?.handlesByPlayer?.[event.senderId];
     if (!handle) {
       log('warn', 'L3', 'recordConfession: sender has no handle', { senderId: event.senderId });
-      return {};
+      return;
     }
     const ts = Date.now();
     const text = String(event.text);
@@ -120,22 +122,22 @@ export const l3ConfessionActions = {
       },
     });
 
+    enqueue.assign({
+      confessionPhase: {
+        ...context.confessionPhase,
+        posts: [...(context.confessionPhase?.posts ?? []), post],
+      },
+    });
+
     log('info', 'confession', 'post-recorded', {
       dayIndex: context.dayIndex,
       handle,
       actorId: event.senderId,
       textLength: text.length,
     });
-
-    return {
-      confessionPhase: {
-        ...context.confessionPhase,
-        posts: [...(context.confessionPhase?.posts ?? []), post],
-      },
-    };
   }),
 
-  emitConfessionPhaseStartedFact: ({ context, enqueue }: any) => {
+  emitConfessionPhaseStartedFact: enqueueActions(({ context, enqueue }: any) => {
     const channelId = confessionChannelId(context.dayIndex);
     enqueue.raise({
       type: Events.Fact.RECORD,
@@ -151,9 +153,9 @@ export const l3ConfessionActions = {
       channelId,
       playerCount: Object.keys(context.confessionPhase?.handlesByPlayer || {}).length,
     });
-  },
+  }),
 
-  emitConfessionPhaseEndedFact: ({ context, enqueue }: any) => {
+  emitConfessionPhaseEndedFact: enqueueActions(({ context, enqueue }: any) => {
     const channelId = confessionChannelId(context.dayIndex);
     const postCount = context.confessionPhase?.posts?.length ?? 0;
     enqueue.raise({
@@ -169,7 +171,7 @@ export const l3ConfessionActions = {
       dayIndex: context.dayIndex,
       postCount,
     });
-  },
+  }),
 };
 
 export const l3ConfessionGuards = {
