@@ -2447,3 +2447,20 @@ Run these before handing off.
 - After merge: worktree cleanup per `finishing-a-development-branch` skill.
 
 Plan 2 (`2026-04-17-confessions-match.md`) branches from post-merge `main` with the archive fact stream this plan produces.
+
+---
+
+## Handoff — 2026-04-17 23:30
+
+**This session landed T1–T7** on branch `feature/spec-c-confessions` in `.worktrees/confessions`. Commits (oldest first): `64876a8` T1 shared types; `f6b8dca` T2 journalable; `54a278d` T3 `projectFactForClient`; `89b2558` T4 ticker `SOCIAL_PHASE`; `7cc6ab9` T5 `CONFESSION_OPEN` push; `5e1b8d4` T6 seeded RNG + `assignPhaseHandles`; `e0e1c0b` T7 `DailyContext.confessionPhase` field + `buildL3Context` default. Game-server suite 421/421 green. Phase 0 boundary (after T5) and T7 both full-suite-verified.
+
+**Next step: T8** — create `apps/game-server/src/machines/actions/l3-confession.ts` with the 5 phase actions (`openConfessionChannel`, `closeConfessionChannel`, `recordConfession`, `emitConfessionPhaseStartedFact`, `emitConfessionPhaseEndedFact`) AND the `isConfessionPostAllowed` 6-rule validation guard (read T8/T10 in this plan — the `sender-eliminated` rule is the R3 P1 fix; don't rely on any implicit L3 alive-sender check because grep of `l3-social.ts` confirmed none exists).
+
+**State for the next agent:**
+- Working tree clean on `feature/spec-c-confessions`; no uncommitted changes.
+- `npm install` has run at the worktree root; `@pecking-order/shared-types` and `@pecking-order/game-cartridges` dists are current. Rebuild them if you edit their source (see `finite-worktree-no-node-modules.rule`).
+- Pre-existing test failures to ignore: `gm-briefings.test.ts > sends separate dilemma message when dilemmaType is set` and `HintChips.test.tsx > MAIN shows /silver /nudge /whisper /dm`.
+- Plan test code uses `TimelineActions` / `handlePhasePush` / `JOURNALABLE_TYPES.has(...)` in a few places where the real API is different (inline Zod enum / `phasePushPayload` / `isJournalable()`). When plan-test-code doesn't compile, trust the real API and adjust the test; note the deviation in the commit message.
+- `projectFactForClient` has NO v1 consumer (facts never reach clients via SYNC — only TICKER, and CONFESSION_POSTED returns null from `factToTicker`). Shipped as defense-in-depth gate; don't go hunting for a wire-up.
+- Per CLAUDE.md: stage commits by path, never `-A`; don't merge or push without explicit approval.
+
