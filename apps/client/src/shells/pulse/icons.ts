@@ -25,6 +25,7 @@ export {
   Hand,
   Lock,
   HandWaving,
+  PencilSimple,
   PlusCircle,
   UserPlus,
 
@@ -46,6 +47,7 @@ export {
   Broadcast,
   Lightning,
   Crown,
+  Trophy,
   Users,
   UsersThree,
 } from '@phosphor-icons/react';
