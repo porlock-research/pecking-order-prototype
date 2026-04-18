@@ -132,25 +132,25 @@ export default function SimonSaysRenderer({ seed, onResult }: ArcadeRendererProp
   return (
     <div className="px-4 pb-4 space-y-4">
       {/* Progress */}
-      <div className="flex items-center justify-between text-xs font-mono">
-        <span className="text-skin-dim">
-          Round <span className="text-skin-base font-bold">{round + 1}</span>
-          <span className="text-skin-dim/50 ml-1">({sequence.length} in sequence)</span>
+      <div className="flex items-center justify-between text-xs ">
+        <span style={{ color: 'var(--po-text-dim)' }}>
+          Round <span className="text-[var(--po-text)] font-bold">{round + 1}</span>
+          <span className="text-[var(--po-text-dim)]/50 ml-1">({sequence.length} in sequence)</span>
         </span>
         {phase === 'INPUT' && (
-          <span className="text-skin-gold">
+          <span style={{ color: 'var(--po-gold)' }}>
             {inputIndex}/{sequence.length}
           </span>
         )}
       </div>
 
       {/* Status */}
-      <div className="text-center text-xs font-mono h-5">
-        {phase === 'SHOWING' && <span className="text-skin-dim animate-pulse">Watch the pattern...</span>}
-        {phase === 'INPUT' && <span className="text-skin-gold">Your turn! Repeat the pattern.</span>}
+      <div className="text-center text-xs  h-5">
+        {phase === 'SHOWING' && <span className="text-[var(--po-text-dim)] animate-pulse">Watch the pattern...</span>}
+        {phase === 'INPUT' && <span style={{ color: 'var(--po-gold)' }}>Your turn! Repeat the pattern.</span>}
         {phase === 'CORRECT' && <span className="text-green-400 animate-fade-in">Correct!</span>}
         {phase === 'WRONG' && <span className="text-red-400 animate-fade-in">Wrong!</span>}
-        {phase === 'DONE' && <span className="text-skin-dim animate-pulse">Submitting...</span>}
+        {phase === 'DONE' && <span className="text-[var(--po-text-dim)] animate-pulse">Submitting...</span>}
       </div>
 
       {/* Pads */}
@@ -177,7 +177,7 @@ export default function SimonSaysRenderer({ seed, onResult }: ArcadeRendererProp
         })}
       </div>
 
-      <p className="text-[10px] font-mono text-skin-dim/50 text-center">
+      <p className="text-[10px]  text-[var(--po-text-dim)]/50 text-center">
         Watch the pattern, then repeat it. Sequence grows each round.
       </p>
     </div>

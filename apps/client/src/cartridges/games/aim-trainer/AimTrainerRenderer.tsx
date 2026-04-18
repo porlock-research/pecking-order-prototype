@@ -153,23 +153,23 @@ export default function AimTrainerRenderer({ seed, difficulty, onResult }: Arcad
   return (
     <div ref={containerRef} className="px-4 pb-4 space-y-3">
       {/* HUD */}
-      <div className="flex items-center justify-between text-xs font-mono">
-        <span className={`font-bold ${seconds <= 5 ? 'text-red-400' : 'text-skin-dim'}`}>
+      <div className="flex items-center justify-between text-xs ">
+        <span className={`font-bold ${seconds <= 5 ? 'text-red-400' : 'text-[var(--po-text-dim)]'}`}>
           {seconds}s
         </span>
         <div className="flex items-center gap-3">
-          <span className="text-skin-dim">
-            Hits: <span className="text-skin-base font-bold">{hits}</span>
+          <span style={{ color: 'var(--po-text-dim)' }}>
+            Hits: <span className="text-[var(--po-text)] font-bold">{hits}</span>
           </span>
-          <span className="text-skin-dim">
-            Score: <span className="text-skin-gold font-bold">{score}</span>
+          <span style={{ color: 'var(--po-text-dim)' }}>
+            Score: <span className="text-[var(--po-gold)] font-bold">{score}</span>
           </span>
         </div>
       </div>
 
       {/* Play area */}
       <div
-        className="relative rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden cursor-crosshair mx-auto"
+        className="relative rounded-xl border border-[var(--po-border)] bg-[color-mix(in_oklch,var(--po-text)_3%,transparent)] overflow-hidden cursor-crosshair mx-auto"
         style={{ width: AREA_WIDTH, height: AREA_HEIGHT }}
         onClick={handleMiss}
       >
@@ -193,12 +193,12 @@ export default function AimTrainerRenderer({ seed, difficulty, onResult }: Arcad
 
         {done && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <p className="text-sm font-mono text-skin-dim animate-pulse">Submitting...</p>
+            <p style={{ fontSize: 13, color: 'var(--po-text-dim)', opacity: 0.7 }}>Submitting...</p>
           </div>
         )}
       </div>
 
-      <p className="text-[10px] font-mono text-skin-dim/50 text-center">
+      <p className="text-[10px]  text-[var(--po-text-dim)]/50 text-center">
         Tap targets before they shrink away. Smaller = more points. Missing costs 1 point.
       </p>
     </div>

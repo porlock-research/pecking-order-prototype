@@ -139,16 +139,16 @@ export default function QuickMathRenderer({ seed, difficulty, onResult }: Arcade
   return (
     <div className="px-4 pb-4 space-y-4">
       {/* Progress */}
-      <div className="flex items-center justify-between text-xs font-mono">
-        <span className="text-skin-dim">
-          <span className="text-skin-base font-bold">{Math.min(round, TOTAL_QUESTIONS)}</span>/{TOTAL_QUESTIONS}
+      <div className="flex items-center justify-between text-xs ">
+        <span style={{ color: 'var(--po-text-dim)' }}>
+          <span className="text-[var(--po-text)] font-bold">{Math.min(round, TOTAL_QUESTIONS)}</span>/{TOTAL_QUESTIONS}
         </span>
         <div className="flex items-center gap-3">
           {streak > 1 && (
-            <span className="text-skin-gold animate-pulse">{streak}x</span>
+            <span className="text-[var(--po-gold)] animate-pulse">{streak}x</span>
           )}
-          <span className="text-skin-dim">
-            Correct: <span className="text-skin-gold font-bold">{correct}</span>
+          <span style={{ color: 'var(--po-text-dim)' }}>
+            Correct: <span className="text-[var(--po-gold)] font-bold">{correct}</span>
           </span>
         </div>
       </div>
@@ -159,9 +159,9 @@ export default function QuickMathRenderer({ seed, difficulty, onResult }: Arcade
           <div className={`text-center py-8 rounded-xl border transition-colors duration-200
             ${feedback === 'correct' ? 'border-green-500/40 bg-green-500/5' : ''}
             ${feedback === 'wrong' ? 'border-red-500/40 bg-red-500/5' : ''}
-            ${!feedback ? 'border-white/[0.08] bg-white/[0.04]' : ''}
+            ${!feedback ? 'border-[color-mix(in_oklch,var(--po-text)_10%,transparent)] bg-[var(--po-bg-glass)]' : ''}
           `}>
-            <p className="text-4xl font-bold font-mono text-skin-base">
+            <p className="text-4xl font-bold  text-[var(--po-text)]">
               {question.a} {question.op} {question.b} = ?
             </p>
             {feedback === 'wrong' && (
@@ -175,7 +175,7 @@ export default function QuickMathRenderer({ seed, difficulty, onResult }: Arcade
               const isCorrectAnswer = opt === question.answer;
               const showResult = !!feedback;
 
-              let cls = 'bg-white/[0.06] border border-white/[0.08] text-skin-base hover:bg-white/[0.1] hover:border-white/[0.2]';
+              let cls = 'bg-[color-mix(in_oklch,var(--po-text)_8%,transparent)] border border-[color-mix(in_oklch,var(--po-text)_10%,transparent)] text-[var(--po-text)] hover:bg-[color-mix(in_oklch,var(--po-text)_12%,transparent)] hover:border-[color-mix(in_oklch,var(--po-text)_22%,transparent)]';
               if (showResult && isCorrectAnswer) {
                 cls = 'bg-green-500/20 border-2 border-green-500 text-green-400';
               }
@@ -185,7 +185,7 @@ export default function QuickMathRenderer({ seed, difficulty, onResult }: Arcade
                   key={i}
                   onClick={() => handleAnswer(opt)}
                   disabled={!!feedback}
-                  className={`py-3.5 rounded-lg font-mono font-bold text-xl transition-all active:scale-95 ${cls}`}
+                  className={`py-3.5 rounded-lg  font-bold text-xl transition-all active:scale-95 ${cls}`}
                 >
                   {opt}
                 </button>
@@ -195,11 +195,11 @@ export default function QuickMathRenderer({ seed, difficulty, onResult }: Arcade
         </>
       ) : (
         <div className="text-center py-4 animate-fade-in">
-          <p className="text-sm font-mono text-skin-dim animate-pulse">Submitting...</p>
+          <p style={{ fontSize: 13, color: 'var(--po-text-dim)', opacity: 0.7 }}>Submitting...</p>
         </div>
       )}
 
-      <p className="text-[10px] font-mono text-skin-dim/50 text-center">
+      <p className="text-[10px]  text-[var(--po-text-dim)]/50 text-center">
         Solve as many as you can. 5 seconds per question.
       </p>
     </div>

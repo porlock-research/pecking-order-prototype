@@ -1095,7 +1095,7 @@ export default function OrbitRenderer({ seed, difficulty, timeLimit, onResult }:
       {showRespawn && (
         <button
           onClick={() => respawnRef.current?.()}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 px-6 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-sm font-mono text-white/90 hover:bg-white/20 active:scale-95 transition-all animate-pulse"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 px-6 py-2 bg-white/10 border border-white/20 rounded-lg text-sm  text-white/90 hover:bg-white/20 active:scale-95 transition-all animate-pulse"
         >
           Retry from last star
         </button>
