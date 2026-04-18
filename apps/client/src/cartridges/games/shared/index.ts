@@ -19,6 +19,9 @@ export { GameReadyRoster } from './GameReadyRoster';
 // Score breakdown — composed inside `renderBreakdown` slots
 export { ScoreBreakdown, ScoreRow, ScoreDivider } from './ScoreBreakdown';
 
+// Hero stats — composed inside per-game `renderHero` slots
+export { HeroStat, HeroStatRow, HeroFrame } from './HeroStats';
+
 // Surviving primitives (used inside playfields, not chrome)
 export { AnimatedCounter } from './AnimatedCounter';
 export { DifficultyBadge } from './DifficultyBadge';
