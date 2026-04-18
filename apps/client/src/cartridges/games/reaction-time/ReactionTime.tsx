@@ -15,8 +15,6 @@ export default function ReactionTime(props: ReactionTimeProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Reaction Time"
-      description="Wait for the screen to turn green, then tap as fast as you can. 5 rounds — your average reaction time determines your score."
       Renderer={ReactionTimeRenderer}
       renderBreakdown={(result) => {
         const avg = result.avgReactionMs || 0;

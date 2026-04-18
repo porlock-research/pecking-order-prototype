@@ -18,8 +18,6 @@ export default function Blink(props: BlinkProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Blink"
-      description="Tap on BLACK. Freeze on WHITE. Black = +1. White = −3. The flash is a trap."
       Renderer={BlinkRenderer}
       renderBreakdown={(result) => {
         const score = result.score || 0;

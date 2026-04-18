@@ -1,14 +1,27 @@
 import React, { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import { ArcadePhases, Events } from '@pecking-order/shared-types';
+import { ArcadePhases, Events, CARTRIDGE_INFO } from '@pecking-order/shared-types';
 import type { ArcadeGameProjection, ArcadeRendererProps, SocialPlayer } from '@pecking-order/shared-types';
 import {
-  CountdownBar,
-  CartridgeContainer,
-  CartridgeHeader,
-  CelebrationSequence,
-  RetryDecisionScreen,
-  Leaderboard,
+  getGameInfo,
+  pickStatusLine,
+  GameShell,
+  GameHeader,
+  GameStartCard,
+  GameCountdown,
+  GameTimerBar,
+  GameDeadBeat,
+  GameRetryDecision,
+  GameResultHero,
+  GameLeaderboard,
 } from '../shared';
+
+type LocalPhase =
+  | 'NOT_STARTED'
+  | 'COUNTDOWN'
+  | 'PLAYING'
+  | 'DEAD'
+  | 'AWAITING_DECISION'
+  | 'COMPLETED';
 
 interface ArcadeGameWrapperProps {
   cartridge: ArcadeGameProjection;
@@ -18,8 +31,6 @@ interface ArcadeGameWrapperProps {
     sendGameAction: (type: string, payload?: Record<string, any>) => void;
   };
   onDismiss?: () => void;
-  title: string;
-  description: string;
   Renderer: React.ComponentType<ArcadeRendererProps>;
   renderBreakdown?: (result: Record<string, number>, silverReward: number) => ReactNode;
 }
@@ -29,26 +40,29 @@ export default function ArcadeGameWrapper({
   playerId,
   engine,
   onDismiss,
-  title,
-  description,
   Renderer,
   renderBreakdown,
 }: ArcadeGameWrapperProps) {
   const { status, silverReward, goldContribution, seed, timeLimit, difficulty, gameType } = cartridge;
 
-  const [gamePhase, setGamePhase] = useState<'NOT_STARTED' | 'COUNTDOWN' | 'PLAYING' | 'DEAD' | 'AWAITING_DECISION' | 'COMPLETED'>(
+  const info = CARTRIDGE_INFO[gameType];
+  const game = getGameInfo(gameType);
+  const gameName = info?.displayName ?? gameType;
+  const tagline = info?.tagline;
+  const description = info?.description;
+
+  const [gamePhase, setGamePhase] = useState<LocalPhase>(
     status === ArcadePhases.COMPLETED ? 'COMPLETED'
       : status === ArcadePhases.AWAITING_DECISION ? 'AWAITING_DECISION'
       : 'NOT_STARTED'
   );
   const [gameDeadline, setGameDeadline] = useState<number | null>(null);
-  const [countdownValue, setCountdownValue] = useState(3);
+  const [countdownStartedAt, setCountdownStartedAt] = useState<number | null>(null);
   const [finalResult, setFinalResult] = useState<Record<string, number>>(
     cartridge.result || {}
   );
 
   // Stable refs — keeps callbacks referentially stable across SYNC re-renders
-  // so child Renderers' game loops never re-initialize mid-play
   const engineRef = useRef(engine);
   engineRef.current = engine;
   const gameTypeRef = useRef(gameType);
@@ -57,22 +71,15 @@ export default function ArcadeGameWrapper({
   timeLimitRef.current = timeLimit;
 
   const handleStart = useCallback(() => {
-    setCountdownValue(3);
+    setCountdownStartedAt(Date.now());
     setGamePhase('COUNTDOWN');
   }, []);
 
-  // Countdown timer: 3 → 2 → 1 → GO → start game
-  useEffect(() => {
-    if (gamePhase !== 'COUNTDOWN') return;
-    if (countdownValue <= 0) {
-      engineRef.current.sendGameAction(Events.Game.start(gameTypeRef.current));
-      setGamePhase('PLAYING');
-      setGameDeadline(Date.now() + timeLimitRef.current);
-      return;
-    }
-    const timer = setTimeout(() => setCountdownValue(v => v - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [gamePhase, countdownValue]);
+  const handleCountdownComplete = useCallback(() => {
+    engineRef.current.sendGameAction(Events.Game.start(gameTypeRef.current));
+    setGamePhase('PLAYING');
+    setGameDeadline(Date.now() + timeLimitRef.current);
+  }, []);
 
   const handleResult = useCallback((result: Record<string, number>) => {
     setFinalResult(result);
@@ -94,11 +101,11 @@ export default function ArcadeGameWrapper({
   // Transition from DEAD -> AWAITING_DECISION or COMPLETED when server confirms
   useEffect(() => {
     if (status === ArcadePhases.AWAITING_DECISION && gamePhase === 'DEAD') {
-      const timer = setTimeout(() => setGamePhase('AWAITING_DECISION'), 1200);
+      const timer = setTimeout(() => setGamePhase('AWAITING_DECISION'), 1400);
       return () => clearTimeout(timer);
     }
     if (status === ArcadePhases.COMPLETED && gamePhase === 'DEAD') {
-      const timer = setTimeout(() => setGamePhase('COMPLETED'), 1200);
+      const timer = setTimeout(() => setGamePhase('COMPLETED'), 1400);
       return () => clearTimeout(timer);
     }
     if (status === ArcadePhases.COMPLETED && gamePhase === 'NOT_STARTED') {
@@ -109,48 +116,50 @@ export default function ArcadeGameWrapper({
     }
   }, [status, gamePhase]);
 
+  const headerStatus =
+    gamePhase === 'COMPLETED' ? `+${silverReward} silver` : undefined;
+
   return (
-    <CartridgeContainer>
-      <CartridgeHeader
-        label={title}
-        score={gamePhase === 'COMPLETED' ? silverReward : undefined}
-        showScore={gamePhase === 'COMPLETED'}
-      />
-
-      {gamePhase === 'PLAYING' && gameDeadline && (
-        <div className="px-4 pt-2">
-          <CountdownBar deadline={gameDeadline} totalMs={timeLimit} />
-        </div>
-      )}
-
-      {/* NOT_STARTED: Start Screen */}
+    <GameShell
+      accent={game.accent}
+      header={
+        gamePhase === 'COUNTDOWN' || gamePhase === 'PLAYING' || gamePhase === 'DEAD'
+          ? undefined
+          : (
+              <GameHeader
+                gameName={gameName}
+                moodSubtitle={game.moodSubtitle ?? tagline}
+                accent={game.accent}
+                howItWorks={description}
+                status={headerStatus}
+              />
+            )
+      }
+      footer={
+        gamePhase === 'PLAYING' && gameDeadline ? (
+          <GameTimerBar deadline={gameDeadline} totalMs={timeLimit} accent={game.accent} />
+        ) : undefined
+      }
+    >
       {gamePhase === 'NOT_STARTED' && (
-        <div className="p-6 space-y-4 text-center">
-          <div className="space-y-2">
-            <p className="text-sm font-bold text-skin-base">{title}</p>
-            <p className="text-xs text-skin-dim leading-relaxed">{description}</p>
-          </div>
-          <button
-            onClick={handleStart}
-            className="px-8 py-3 bg-skin-gold text-skin-inverted font-bold text-sm uppercase tracking-wider rounded-lg hover:brightness-110 active:scale-[0.97] transition-all btn-press shadow-lg"
-          >
-            Start
-          </button>
-        </div>
+        <GameStartCard
+          gameName={gameName}
+          tagline={game.moodSubtitle ?? tagline}
+          accent={game.accent}
+          onStart={handleStart}
+        />
       )}
 
-      {/* COUNTDOWN: show game title with countdown overlay */}
-      {gamePhase === 'COUNTDOWN' && (
-        <div className="p-6 flex flex-col items-center justify-center min-h-[250px] space-y-4">
-          <p className="text-sm font-bold text-skin-base">{title}</p>
-          <p className="text-xs text-skin-dim">{description}</p>
-          <span className="text-7xl font-black font-display text-skin-gold drop-shadow-lg" style={{ textShadow: '0 0 30px rgba(251,191,36,0.4)' }}>
-            {countdownValue > 0 ? countdownValue : 'GO'}
-          </span>
-        </div>
+      {gamePhase === 'COUNTDOWN' && countdownStartedAt && (
+        <GameCountdown
+          gameName={gameName}
+          accent={game.accent}
+          startedAt={countdownStartedAt}
+          totalMs={3000}
+          onComplete={handleCountdownComplete}
+        />
       )}
 
-      {/* PLAYING: Renderer */}
       {gamePhase === 'PLAYING' && (
         <Renderer
           seed={seed}
@@ -160,47 +169,43 @@ export default function ArcadeGameWrapper({
         />
       )}
 
-      {/* DEAD: Brief game-over overlay */}
       {gamePhase === 'DEAD' && (
-        <div className="p-6 text-center space-y-3 animate-fade-in">
-          <p className="text-sm font-mono text-skin-dim animate-pulse">Calculating score...</p>
-        </div>
+        <GameDeadBeat line={game.deadBeat} accent={game.accent} />
       )}
 
-      {/* AWAITING_DECISION: Retry or Submit */}
       {gamePhase === 'AWAITING_DECISION' && (
-        <RetryDecisionScreen
-          result={finalResult}
+        <GameRetryDecision
+          accent={game.accent}
+          status={pickStatusLine(game, silverReward, cartridge.previousSilverReward ?? null)}
           silverReward={silverReward}
-          goldReward={cartridge.goldReward}
-          previousResult={cartridge.previousResult}
-          previousSilverReward={cartridge.previousSilverReward}
+          previousSilverReward={cartridge.previousSilverReward ?? null}
           retryCount={cartridge.retryCount}
+          breakdown={renderBreakdown ? renderBreakdown(finalResult, silverReward) : undefined}
           onSubmit={handleSubmit}
           onRetry={handleRetry}
-          renderBreakdown={renderBreakdown ? (r) => renderBreakdown(r, silverReward) : undefined}
         />
       )}
 
-      {/* COMPLETED: Celebration + Leaderboard */}
       {gamePhase === 'COMPLETED' && (
         <>
-          <CelebrationSequence
-            title={`${title} Complete`}
+          <GameResultHero
+            accent={game.accent}
+            gameName={gameName}
             silverEarned={silverReward}
             goldContribution={goldContribution}
-            onDismiss={onDismiss}
             breakdown={renderBreakdown?.(finalResult, silverReward)}
+            onDismiss={onDismiss}
           />
           {cartridge.allPlayerResults && (
-            <Leaderboard
+            <GameLeaderboard
               allPlayerResults={cartridge.allPlayerResults}
               currentPlayerId={playerId}
               gameType={gameType}
+              accent={game.accent}
             />
           )}
         </>
       )}
-    </CartridgeContainer>
+    </GameShell>
   );
 }

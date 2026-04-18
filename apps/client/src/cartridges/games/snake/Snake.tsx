@@ -18,8 +18,6 @@ export default function Snake(props: SnakeProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Snake"
-      description="Eat pellets to grow. Avoid walls and your tail. Speed ramps up — survive 45 seconds!"
       Renderer={SnakeRenderer}
       renderBreakdown={(result) => {
         const score = result.score || 0;

@@ -18,8 +18,6 @@ export default function ColorSort(props: ColorSortProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Color Sort"
-      description="Tap a tube to pick up the top ball, tap another to drop it. Stack by color. Sort all 5 tubes to win."
       Renderer={ColorSortRenderer}
       renderBreakdown={(result) => {
         const score = result.score || 0;

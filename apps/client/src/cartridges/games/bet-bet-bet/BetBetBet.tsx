@@ -16,8 +16,6 @@ export default function BetBetBet(props: BetBetBetProps) {
   return (
     <SyncDecisionWrapper
       {...props}
-      title="Bet Bet Bet"
-      description="Everyone secretly bets silver. The 2nd-highest bettor wins the pot! But beware: the lowest bettor pays double, and ties cost 5x."
       renderDecisionInput={({ playerId, roster, onSubmit }) => {
         const maxBet = roster[playerId]?.silver ?? 1;
         return <BetInput maxBet={maxBet} onSubmit={onSubmit} />;

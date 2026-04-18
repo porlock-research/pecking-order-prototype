@@ -18,8 +18,6 @@ export default function Shockwave(props: ShockwaveProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Shockwave"
-      description="Dodge the contracting rings! Move toward your cursor/finger, click to dash. Survive as long as you can."
       Renderer={ShockwaveRenderer}
       renderBreakdown={(result) => {
         const wavesCleared = result.wavesCleared || 0;

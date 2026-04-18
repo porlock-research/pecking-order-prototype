@@ -21,12 +21,6 @@ export default function KingsRansom(props: KingsRansomProps) {
   return (
     <SyncDecisionWrapper
       {...props}
-      title="King's Ransom"
-      description={
-        isKing
-          ? `You are the King! ${vaultAmount} silver from your vault is at stake. Others will decide your fate.`
-          : `${kingName} has ${vaultAmount} silver at stake. Will you STEAL the vault or PROTECT the King?`
-      }
       renderDecisionInput={({ onSubmit }) => (
         <RansomInput onSubmit={onSubmit} kingName={kingName} vaultAmount={vaultAmount ?? 0} />
       )}

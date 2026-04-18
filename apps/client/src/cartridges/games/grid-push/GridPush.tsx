@@ -17,8 +17,6 @@ export default function GridPush(props: GridPushProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Grid Push"
-      description="Flip tiles to build runs. Each safe flip scores its position (1st=1, 2nd=2...). Bank to lock in points. Hit a bomb and your current run is lost!"
       Renderer={GridPushRenderer}
       renderBreakdown={(result) => {
         const bankedTotal = result.bankedTotal || 0;

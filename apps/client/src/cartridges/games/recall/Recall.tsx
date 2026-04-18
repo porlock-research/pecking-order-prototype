@@ -18,8 +18,6 @@ export default function Recall(props: RecallProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Recall"
-      description="Memorize the grid. Tap 1 to lock in — the other numbers vanish. Then tap them in order from memory. Grids grow 3×3 → 6×6."
       Renderer={RecallRenderer}
       renderBreakdown={(result) => {
         const roundsCleared = result.roundsCleared || 0;

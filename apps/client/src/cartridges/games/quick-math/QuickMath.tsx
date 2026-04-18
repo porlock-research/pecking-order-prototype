@@ -15,8 +15,6 @@ export default function QuickMath(props: QuickMathProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Quick Math"
-      description="Solve arithmetic problems as fast as you can. 5 seconds per question, 15 questions total. Difficulty increases with harder operations."
       Renderer={QuickMathRenderer}
       renderBreakdown={(result) => {
         const correct = result.correctAnswers || 0;

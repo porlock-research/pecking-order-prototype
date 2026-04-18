@@ -18,8 +18,6 @@ export default function Orbit(props: OrbitProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Orbit"
-      description="Tap to release your planet and fly to the next star. Time your release carefully — miss and you drift into the void."
       Renderer={OrbitRenderer}
       renderBreakdown={(result) => {
         const transfers = result.transfers || 0;

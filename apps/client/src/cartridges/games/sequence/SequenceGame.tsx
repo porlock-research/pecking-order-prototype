@@ -17,8 +17,6 @@ export default function SequenceGame(props: SequenceGameProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Sequence"
-      description="Memorize a sequence of numbers, then recall the one at the highlighted position. Each round adds one more number. How far can you go?"
       Renderer={SequenceRenderer}
       renderBreakdown={(result) => {
         const correctRounds = result.correctRounds || 0;

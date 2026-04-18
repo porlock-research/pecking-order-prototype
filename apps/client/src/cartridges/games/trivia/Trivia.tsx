@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArcadePhases, Events } from '@pecking-order/shared-types';
+import { ArcadePhases, Events, CARTRIDGE_INFO } from '@pecking-order/shared-types';
 import type { SocialPlayer, TriviaProjection } from '@pecking-order/shared-types';
 import {
-  CountdownBar,
+  getGameInfo,
+  pickStatusLine,
+  GameShell,
+  GameHeader,
+  GameStartCard,
+  GameTimerBar,
+  GameRetryDecision,
+  GameResultHero,
   DifficultyBadge,
-  CartridgeContainer,
-  CartridgeHeader,
   OptionGrid,
   ResultFeedback,
-  CelebrationSequence,
-  RetryDecisionScreen,
 } from '../shared';
 
 interface TriviaProps {
@@ -26,8 +29,6 @@ const RESULT_DISPLAY_MS = 2_000;
 const BASE_SILVER_PER_Q = 2;
 const PERFECT_BONUS_AMT = 5;
 
-// --- Round Result (trivia-specific layout composing shared pieces) ---
-
 function RoundResult({
   result,
   selectedAnswer,
@@ -36,24 +37,30 @@ function RoundResult({
   selectedAnswer: number | null;
 }) {
   return (
-    <div className="p-4 space-y-4 animate-fade-in">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <DifficultyBadge category={result.category} difficulty={result.difficulty} />
-      <p className="text-sm font-bold text-skin-base leading-relaxed">
+      <p
+        style={{
+          margin: 0,
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 'clamp(17px, 4.5vw, 20px)',
+          fontWeight: 600,
+          lineHeight: 1.3,
+          letterSpacing: -0.2,
+          color: 'var(--po-text)',
+        }}
+      >
         {result.question}
       </p>
-      <div>
-        <OptionGrid
-          options={result.options}
-          selectedAnswer={selectedAnswer}
-          correctIndex={result.correctIndex}
-        />
-        <ResultFeedback correct={result.correct} silver={result.silver} speedBonus={result.speedBonus} />
-      </div>
+      <OptionGrid
+        options={result.options}
+        selectedAnswer={selectedAnswer}
+        correctIndex={result.correctIndex}
+      />
+      <ResultFeedback correct={result.correct} silver={result.silver} speedBonus={result.speedBonus} />
     </div>
   );
 }
-
-// --- Trivia Score Breakdown (slot for CelebrationSequence) ---
 
 function TriviaScoreBreakdown({
   correctCount,
@@ -68,49 +75,84 @@ function TriviaScoreBreakdown({
   speedBonuses: number;
   isPerfect: boolean;
 }) {
+  const row: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontFamily: 'var(--po-font-body)',
+    fontSize: 13,
+    color: 'var(--po-text-dim)',
+  };
   return (
-    <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-2 font-mono text-sm">
-      <div className="flex justify-between text-skin-dim">
-        <span>Base Score</span>
-        <span>{correctCount} &times; 2 = <span className="text-skin-base font-bold">{baseSilver} silver</span></span>
+    <div
+      style={{
+        background: 'var(--po-bg-glass)',
+        border: '1px solid var(--po-border)',
+        borderRadius: 12,
+        padding: 14,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+      }}
+    >
+      <div style={row}>
+        <span>Base score</span>
+        <span style={{ color: 'var(--po-text)', fontVariantNumeric: 'tabular-nums' }}>
+          {correctCount} × 2 = {baseSilver} silver
+        </span>
       </div>
       {speedBonuses > 0 && (
-        <div className="flex justify-between text-skin-dim">
-          <span>Speed Bonuses</span>
-          <span className="text-skin-gold font-bold">+{speedBonuses} silver</span>
+        <div style={row}>
+          <span>Speed bonuses</span>
+          <span style={{ color: 'var(--po-gold)', fontVariantNumeric: 'tabular-nums' }}>
+            +{speedBonuses} silver
+          </span>
         </div>
       )}
       {isPerfect && (
-        <div className="flex justify-between">
-          <span className="text-skin-gold gold-glow">Perfect Bonus</span>
-          <span className="text-skin-gold font-bold gold-glow">+{PERFECT_BONUS_AMT} silver</span>
+        <div style={row}>
+          <span style={{ color: 'var(--po-violet)' }}>Perfect bonus</span>
+          <span style={{ color: 'var(--po-violet)', fontVariantNumeric: 'tabular-nums' }}>
+            +{PERFECT_BONUS_AMT} silver
+          </span>
         </div>
       )}
     </div>
   );
 }
 
-// --- Main Component ---
+export default function Trivia({ cartridge, playerId, engine, onDismiss }: TriviaProps) {
+  const {
+    status,
+    currentRound,
+    totalRounds,
+    currentQuestion,
+    roundDeadline,
+    lastRoundResult,
+    score,
+    correctCount,
+    silverReward,
+    goldContribution,
+    retryCount,
+    previousResult,
+    previousSilverReward,
+  } = cartridge;
 
-export default function Trivia({ cartridge, playerId, roster, engine, onDismiss }: TriviaProps) {
-  const { status, currentRound, totalRounds, currentQuestion, roundDeadline, lastRoundResult, score, correctCount, silverReward, goldContribution, retryCount, previousResult, previousSilverReward, previousGoldReward } = cartridge;
+  const info = CARTRIDGE_INFO.TRIVIA;
+  const game = getGameInfo('TRIVIA');
 
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showingResult, setShowingResult] = useState(false);
   const [displayedResult, setDisplayedResult] = useState<TriviaProjection['lastRoundResult']>(null);
   const prevRoundRef = useRef(currentRound);
 
-  // Initialize immediately if already COMPLETED on mount (reconnect)
   const [completionReady, setCompletionReady] = useState(
     status === ArcadePhases.COMPLETED && !lastRoundResult,
   );
-
-  // For AWAITING_DECISION: show last-round feedback briefly, then decision screen
   const [decisionReady, setDecisionReady] = useState(
     status === ArcadePhases.AWAITING_DECISION && !lastRoundResult,
   );
 
-  // When lastRoundResult arrives mid-game (round advanced), show result briefly
   useEffect(() => {
     if (lastRoundResult && currentRound !== prevRoundRef.current) {
       setDisplayedResult(lastRoundResult);
@@ -123,9 +165,8 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
       prevRoundRef.current = currentRound;
       return () => clearTimeout(timer);
     }
-  }, [currentRound]);
+  }, [currentRound, lastRoundResult]);
 
-  // AWAITING_DECISION: show last-round feedback briefly, then decision screen
   useEffect(() => {
     if (status === ArcadePhases.AWAITING_DECISION) {
       if (lastRoundResult && selectedAnswer !== null) {
@@ -135,16 +176,14 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
         setDecisionReady(true);
       }
     }
-  }, [status]);
+  }, [status, lastRoundResult, selectedAnswer]);
 
-  // Completion: show celebration (only reached after submit)
   useEffect(() => {
     if (status === ArcadePhases.COMPLETED) {
       setCompletionReady(true);
     }
   }, [status]);
 
-  // Auto-submit on timeout (answerIndex -1 = no answer)
   useEffect(() => {
     if (status !== ArcadePhases.PLAYING || !roundDeadline || selectedAnswer !== null) return;
     const remaining = roundDeadline - Date.now();
@@ -156,7 +195,7 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
       engine.sendGameAction(Events.Game.event('TRIVIA', 'ANSWER'), { answerIndex: -1 });
     }, remaining + 200);
     return () => clearTimeout(timer);
-  }, [roundDeadline, status, selectedAnswer]);
+  }, [roundDeadline, status, selectedAnswer, engine]);
 
   const handleStart = () => engine.sendGameAction(Events.Game.start('TRIVIA'));
 
@@ -185,65 +224,87 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
   const perfectBonus = isPerfect ? PERFECT_BONUS_AMT : 0;
   const speedBonuses = Math.max(0, score - baseSilver - perfectBonus);
 
-  const roundInfo = status === ArcadePhases.NOT_STARTED
+  const headerStatus = status === ArcadePhases.NOT_STARTED
     ? undefined
-    : status === ArcadePhases.COMPLETED || status === ArcadePhases.AWAITING_DECISION
-      ? `${totalRounds}/${totalRounds}`
-      : `${currentRound}/${totalRounds}`;
+    : status === ArcadePhases.COMPLETED
+      ? `+${silverReward} silver`
+      : status === ArcadePhases.AWAITING_DECISION
+        ? `${totalRounds}/${totalRounds}`
+        : `${currentRound}/${totalRounds}`;
+
+  const showHeader =
+    status === ArcadePhases.NOT_STARTED ||
+    status === ArcadePhases.PLAYING ||
+    status === ArcadePhases.AWAITING_DECISION ||
+    status === ArcadePhases.COMPLETED;
 
   return (
-    <CartridgeContainer>
-      <CartridgeHeader
-        label="Trivia"
-        roundInfo={roundInfo}
-        score={status !== ArcadePhases.NOT_STARTED ? score : undefined}
-        showScore={status !== ArcadePhases.NOT_STARTED}
-      />
-
-      {/* LOADING: Fetching questions */}
+    <GameShell
+      accent={game.accent}
+      header={
+        showHeader ? (
+          <GameHeader
+            gameName={info?.displayName ?? 'Trivia'}
+            moodSubtitle={game.moodSubtitle ?? info?.tagline}
+            accent={game.accent}
+            howItWorks={info?.description}
+            status={headerStatus}
+          />
+        ) : undefined
+      }
+      footer={
+        status === ArcadePhases.PLAYING && !showingResult && roundDeadline ? (
+          <GameTimerBar deadline={roundDeadline} accent={game.accent} />
+        ) : undefined
+      }
+    >
+      {/* Loading */}
       {status === ArcadePhases.NOT_STARTED && cartridge.ready === false && (
-        <div className="p-6 text-center space-y-3">
-          <span className="inline-block w-5 h-5 border-2 border-skin-gold border-t-transparent rounded-full spin-slow" />
-          <p className="text-sm font-mono text-skin-dim animate-pulse">Loading questions...</p>
-        </div>
+        <p
+          style={{
+            margin: 0,
+            padding: '32px 16px',
+            textAlign: 'center',
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 14,
+            color: 'var(--po-text-dim)',
+          }}
+        >
+          Loading questions…
+        </p>
       )}
 
-      {/* PREGAME: Start Button */}
+      {/* Pre-game */}
       {status === ArcadePhases.NOT_STARTED && cartridge.ready !== false && (
-        <div className="p-6 space-y-4 text-center">
-          <div className="space-y-2">
-            <p className="text-sm font-bold text-skin-base">Daily Trivia Challenge</p>
-            <p className="text-xs text-skin-dim leading-relaxed">
-              {totalRounds} questions, 15 seconds each. Answer correctly and quickly for maximum silver.
-              Get all {totalRounds} right for a perfect bonus!
-            </p>
-          </div>
-          <button
-            onClick={handleStart}
-            className="px-8 py-3 bg-skin-gold text-skin-inverted font-bold text-sm uppercase tracking-wider rounded-lg hover:brightness-110 active:scale-[0.97] transition-all btn-press shadow-lg"
-          >
-            Start Trivia
-          </button>
-        </div>
+        <GameStartCard
+          gameName={info?.displayName ?? 'Trivia'}
+          tagline={`${totalRounds} questions, 15 seconds each. All ${totalRounds} right earns a perfect bonus.`}
+          accent={game.accent}
+          onStart={handleStart}
+          ctaLabel="Start trivia"
+        />
       )}
 
-      {/* PLAYING: Show result overlay or current question */}
+      {/* Playing */}
       {status === ArcadePhases.PLAYING && (
         <>
-          {!showingResult && (
-            <div className="px-4 pt-2">
-              <CountdownBar deadline={roundDeadline} />
-            </div>
-          )}
-
           {showingResult && displayedResult && (
             <RoundResult result={displayedResult} selectedAnswer={selectedAnswer} />
           )}
-
           {!showingResult && currentQuestion && (
-            <div className="p-4 space-y-4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <DifficultyBadge category={currentQuestion.category} difficulty={currentQuestion.difficulty} />
-              <p className="text-sm font-bold text-skin-base leading-relaxed">
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: 'var(--po-font-display)',
+                  fontSize: 'clamp(17px, 4.5vw, 20px)',
+                  fontWeight: 600,
+                  lineHeight: 1.3,
+                  letterSpacing: -0.2,
+                  color: 'var(--po-text)',
+                }}
+              >
                 {currentQuestion.question}
               </p>
               <OptionGrid
@@ -252,8 +313,16 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
                 onSelect={handleAnswer}
               />
               {selectedAnswer !== null && (
-                <p className="text-xs font-mono text-skin-dim text-center animate-fade-in">
-                  Answer locked. The faster you answer, the more silver you earn.
+                <p
+                  style={{
+                    margin: 0,
+                    fontFamily: 'var(--po-font-body)',
+                    fontSize: 12,
+                    color: 'var(--po-text-dim)',
+                    textAlign: 'center',
+                  }}
+                >
+                  Locked. Faster answers earn more silver.
                 </p>
               )}
             </div>
@@ -261,42 +330,17 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
         </>
       )}
 
-      {/* AWAITING_DECISION Phase 1: Last Round Feedback */}
+      {/* Awaiting decision: feedback then retry-decision */}
       {status === ArcadePhases.AWAITING_DECISION && !decisionReady && lastRoundResult && (
         <RoundResult result={lastRoundResult} selectedAnswer={selectedAnswer} />
       )}
-
-      {/* AWAITING_DECISION Phase 2: Retry Decision Screen */}
       {status === ArcadePhases.AWAITING_DECISION && decisionReady && (
-        <RetryDecisionScreen
-          result={{ score, correctCount }}
+        <GameRetryDecision
+          accent={game.accent}
+          status={pickStatusLine(game, silverReward, previousSilverReward ?? null)}
           silverReward={silverReward}
-          goldReward={previousGoldReward}
-          previousResult={previousResult}
-          previousSilverReward={previousSilverReward}
+          previousSilverReward={previousSilverReward ?? null}
           retryCount={retryCount}
-          onSubmit={handleSubmit}
-          onRetry={handleRetry}
-          renderBreakdown={(r) => (
-            <TriviaScoreBreakdown
-              correctCount={r.correctCount ?? correctCount}
-              totalRounds={totalRounds}
-              baseSilver={(r.correctCount ?? correctCount) * BASE_SILVER_PER_Q}
-              speedBonuses={Math.max(0, (r.score ?? score) - (r.correctCount ?? correctCount) * BASE_SILVER_PER_Q - ((r.correctCount ?? correctCount) === totalRounds ? PERFECT_BONUS_AMT : 0))}
-              isPerfect={(r.correctCount ?? correctCount) === totalRounds}
-            />
-          )}
-        />
-      )}
-
-      {/* COMPLETED: Celebration Sequence (reached after submit) */}
-      {status === ArcadePhases.COMPLETED && completionReady && (
-        <CelebrationSequence
-          title="Trivia Complete"
-          subtitle={isPerfect ? 'Perfect Score!' : undefined}
-          silverEarned={silverReward}
-          goldContribution={goldContribution}
-          onDismiss={onDismiss}
           breakdown={
             <TriviaScoreBreakdown
               correctCount={correctCount}
@@ -306,8 +350,31 @@ export default function Trivia({ cartridge, playerId, roster, engine, onDismiss 
               isPerfect={isPerfect}
             />
           }
+          onSubmit={handleSubmit}
+          onRetry={handleRetry}
         />
       )}
-    </CartridgeContainer>
+
+      {/* Completed */}
+      {status === ArcadePhases.COMPLETED && completionReady && (
+        <GameResultHero
+          accent={game.accent}
+          gameName={info?.displayName ?? 'Trivia'}
+          subtitle={isPerfect ? 'Perfect score' : undefined}
+          silverEarned={silverReward}
+          goldContribution={goldContribution}
+          breakdown={
+            <TriviaScoreBreakdown
+              correctCount={correctCount}
+              totalRounds={totalRounds}
+              baseSilver={baseSilver}
+              speedBonuses={speedBonuses}
+              isPerfect={isPerfect}
+            />
+          }
+          onDismiss={onDismiss}
+        />
+      )}
+    </GameShell>
   );
 }

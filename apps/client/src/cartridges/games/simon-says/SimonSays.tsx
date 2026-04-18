@@ -15,8 +15,6 @@ export default function SimonSays(props: SimonSaysProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Simon Says"
-      description="Watch the colored pads flash in a pattern, then repeat it. The sequence grows by one each round. How long can you keep up?"
       Renderer={SimonSaysRenderer}
       renderBreakdown={(result) => {
         const rounds = result.roundsCompleted || 0;

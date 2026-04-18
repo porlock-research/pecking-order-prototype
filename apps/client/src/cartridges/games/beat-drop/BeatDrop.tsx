@@ -18,8 +18,6 @@ export default function BeatDrop(props: BeatDropProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Beat Drop"
-      description="Hit the notes as they cross the line! Press D, F, J, K (or tap the lanes). Build combos for bonus points. 3 misses and you're out!"
       Renderer={BeatDropRenderer}
       renderBreakdown={(result) => {
         const score = result.score || 0;

@@ -18,8 +18,6 @@ export default function Inflate(props: InflateProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Inflate"
-      description="Hold to inflate the balloon. Release to bank points. Don't pop it! 3 lives."
       Renderer={InflateRenderer}
       renderBreakdown={(result) => {
         const score = result.score || 0;

@@ -33,8 +33,6 @@ export default function TouchScreen({ cartridge, playerId, roster, engine, onDis
       roster={roster}
       engine={engine}
       onDismiss={onDismiss}
-      title="Touch Screen"
-      description="Hold the button as long as you can. Longer = more silver."
       startEvent={Events.Game.start('TOUCH_SCREEN')}
       readyEvent={Events.Game.event('TOUCH_SCREEN', 'READY')}
       renderGame={() => (

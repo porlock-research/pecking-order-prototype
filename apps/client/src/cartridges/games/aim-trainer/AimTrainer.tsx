@@ -15,8 +15,6 @@ export default function AimTrainer(props: AimTrainerProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Aim Trainer"
-      description="Targets appear and shrink. Tap them before they vanish — the smaller they are when you hit them, the more points you earn. 30 seconds on the clock."
       Renderer={AimTrainerRenderer}
       renderBreakdown={(result) => {
         const hits = result.targetsHit || 0;

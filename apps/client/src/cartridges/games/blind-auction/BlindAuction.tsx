@@ -16,8 +16,6 @@ export default function BlindAuction(props: BlindAuctionProps) {
   return (
     <SyncDecisionWrapper
       {...props}
-      title="Blind Auction"
-      description="Three mystery prizes await. Pick a slot and place your bid. Highest bidder wins — but if you're the only one bidding on a slot, you get it for free!"
       renderDecisionInput={({ playerId, roster, cartridge, onSubmit }) => {
         const maxBid = roster[playerId]?.silver ?? 0;
         return <AuctionInput maxBid={maxBid} onSubmit={onSubmit} />;

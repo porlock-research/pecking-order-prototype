@@ -1,12 +1,13 @@
 import React, { Suspense } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { CartridgeKind, SocialPlayer } from '@pecking-order/shared-types';
-import { DILEMMA_TYPE_INFO } from '@pecking-order/shared-types';
+import { DILEMMA_TYPE_INFO, CARTRIDGE_INFO } from '@pecking-order/shared-types';
 import type { DilemmaType } from '@pecking-order/shared-types';
 import type { GameEngine } from '../../../types';
 import { useGameStore } from '../../../../store/useGameStore';
 import { CartridgeStageContext } from '../../../../cartridges/CartridgeStageContext';
 import { PROMPT_HOW_IT_WORKS } from '../../../../cartridges/prompts/PromptShell';
+import { GAME_INFO } from '../../../../cartridges/games/shared';
 import { PersonaAvatar } from '../../../../components/PersonaAvatar';
 
 const VotingPanel  = React.lazy(() => import('../../../../components/panels/VotingPanel'));
@@ -131,6 +132,7 @@ function StageHowItWorks({ text }: { text: string }) {
 function useHowItWorks(kind: CartridgeKind): string | null {
   const activePromptCartridge = useGameStore((s) => s.activePromptCartridge);
   const activeDilemma = useGameStore((s) => s.activeDilemma);
+  const activeGame = useGameStore((s) => s.activeGameCartridge);
 
   if (kind === 'prompt' && activePromptCartridge) {
     return PROMPT_HOW_IT_WORKS[activePromptCartridge.promptType] ?? null;
@@ -138,6 +140,10 @@ function useHowItWorks(kind: CartridgeKind): string | null {
   if (kind === 'dilemma' && activeDilemma) {
     const info = DILEMMA_TYPE_INFO[activeDilemma.dilemmaType as DilemmaType];
     return info?.howItWorks ?? null;
+  }
+  if (kind === 'game' && activeGame) {
+    const gameType = (activeGame as { gameType?: string }).gameType;
+    if (gameType) return CARTRIDGE_INFO[gameType]?.description ?? null;
   }
   return null;
 }
@@ -273,6 +279,7 @@ function StageCast({ cast, accent }: { cast: CastState; accent: string }) {
 function useCastState(kind: CartridgeKind): CastState | null {
   const activePrompt = useGameStore((s) => s.activePromptCartridge);
   const activeDilemma = useGameStore((s) => s.activeDilemma);
+  const activeGame = useGameStore((s) => s.activeGameCartridge);
   const roster = useGameStore((s) => s.roster);
   const playerId = useGameStore((s) => s.playerId);
 
@@ -333,6 +340,29 @@ function useCastState(kind: CartridgeKind): CastState | null {
     };
   }
 
+  if (kind === 'game' && activeGame) {
+    const game = activeGame as any;
+    // Live and SyncDecision games carry eligiblePlayers + readyPlayers/submitted.
+    // Arcade is solo — return null so the stage doesn't show a cast strip below
+    // a single-player playfield.
+    const eligibleIds = (game.eligiblePlayers ?? []) as string[];
+    if (!eligibleIds.length) return null;
+    let respondedIds: string[] = [];
+    if (Array.isArray(game.readyPlayers)) {
+      respondedIds = game.readyPlayers as string[];
+    } else if (game.submitted && typeof game.submitted === 'object') {
+      respondedIds = Object.entries(game.submitted as Record<string, boolean>)
+        .filter(([, v]) => v)
+        .map(([k]) => k);
+    }
+    return {
+      eligibleIds,
+      respondedIds,
+      selfId: playerId,
+      roster,
+    };
+  }
+
   return null;
 }
 
@@ -358,12 +388,19 @@ const DILEMMA_STAGE_ACCENT: Record<string, string> = {
 function useStageAccent(kind: CartridgeKind): string {
   const activePrompt = useGameStore((s) => s.activePromptCartridge);
   const activeDilemma = useGameStore((s) => s.activeDilemma);
+  const activeGame = useGameStore((s) => s.activeGameCartridge);
 
   if (kind === 'prompt' && activePrompt) {
     return PROMPT_STAGE_ACCENT[activePrompt.promptType] ?? 'var(--po-gold)';
   }
   if (kind === 'dilemma' && activeDilemma) {
     return DILEMMA_STAGE_ACCENT[activeDilemma.dilemmaType as string] ?? 'var(--po-gold)';
+  }
+  if (kind === 'game' && activeGame) {
+    const gameType = (activeGame as { gameType?: string }).gameType;
+    if (gameType && GAME_INFO[gameType as keyof typeof GAME_INFO]) {
+      return GAME_INFO[gameType as keyof typeof GAME_INFO].accent;
+    }
   }
   return 'var(--po-gold)';
 }

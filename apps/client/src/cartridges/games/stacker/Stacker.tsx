@@ -15,8 +15,6 @@ export default function Stacker(props: StackerProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Stacker"
-      description="Blocks slide back and forth. Tap to drop and stack them. Overhang is trimmed — align perfectly to keep your width. How high can you go?"
       Renderer={StackerRenderer}
       renderBreakdown={(result) => {
         const height = result.height || 0;

@@ -18,8 +18,6 @@ export default function Flappy(props: FlappyProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Flappy"
-      description="Tap to flap. Hold longer for a stronger flap. Thread the gaps, grab coins, survive the phases."
       Renderer={FlappyRenderer}
       renderBreakdown={(result) => {
         const score = result.score || 0;

@@ -18,8 +18,6 @@ export default function GapRun(props: GapRunProps) {
   return (
     <ArcadeGameWrapper
       {...props}
-      title="Gap Run"
-      description="Jump over gaps to survive as long as possible. Tap or press Space to jump. The longer you run, the more silver you earn!"
       Renderer={GapRunRenderer}
       renderBreakdown={(result, silverReward) => {
         const distance = result.distance || 0;

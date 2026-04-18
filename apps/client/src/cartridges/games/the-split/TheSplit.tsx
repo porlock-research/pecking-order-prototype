@@ -29,12 +29,6 @@ export default function TheSplit(props: TheSplitProps) {
   return (
     <SyncDecisionWrapper
       {...props}
-      title="The Split"
-      description={
-        currentPairing?.includes(playerId)
-          ? `You face ${opponentName}. Pot: ${potAmount ?? 0} silver. SPLIT to share, or STEAL to take it all.`
-          : 'Watch as this round plays out...'
-      }
       renderRoundHeader={({ cartridge: c, roster: r }) => {
         const pairing = c.currentPairing as [string, string] | undefined;
         const pot = c.potAmount as number | undefined;
