@@ -40,6 +40,16 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
+/* Game cartridge focus rings — scoped to GameShell so we don't bleed
+   styles into other cartridge surfaces. Uses outline (not box-shadow)
+   so it composes cleanly with the chassis's own shadow stack. */
+[data-game-shell] button:focus-visible,
+[data-game-shell] [role="button"]:focus-visible {
+  outline: 2px solid var(--po-text);
+  outline-offset: 2px;
+  border-radius: 14px;
+}
+
 /* Bubble glass — frosted chat bubble for received messages */
 .bubble-glass {
   background: rgba(255, 255, 255, 0.10);
