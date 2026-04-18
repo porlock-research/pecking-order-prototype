@@ -51,25 +51,19 @@ export function SilverTransferCard({ text }: SilverTransferCardProps) {
   const senderColor = senderEntry ? getPlayerColor(Object.keys(roster).indexOf(senderEntry[0])) : 'var(--pulse-text-2)';
   const recipientColor = recipientEntry ? getPlayerColor(Object.keys(roster).indexOf(recipientEntry[0])) : 'var(--pulse-text-2)';
 
+  // Pop/glow arrival uses opacity + translate only. The previous scale
+  // keyframe animation (0.88 → 1.04 → 1) was stuck at the initial 0.88
+  // whenever the parent re-rendered before the 700ms transition completed
+  // — every live-game store tick was enough. The visible result: the whole
+  // card rendered at 88% with portraits pinched to 24.6px. Keep arrival
+  // feel via opacity + x; the CSS pulse-silver-arrive sheen + glow layer
+  // carries the dramatic beat.
   return (
     <motion.div
       className={reduce ? undefined : 'pulse-silver-arrive'}
-      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.88, x: -8 }}
-      animate={
-        reduce
-          ? { opacity: 1 }
-          : {
-              opacity: 1,
-              x: 0,
-              scale: [0.88, 1.04, 1],
-              boxShadow: [
-                '0 0 0 0 rgba(255,200,61,0)',
-                '0 0 18px 2px rgba(255,200,61,0.45)',
-                '0 0 0 0 rgba(255,200,61,0)',
-              ],
-            }
-      }
-      transition={reduce ? { duration: 0.2 } : { duration: 0.7, times: [0, 0.5, 1], ease: [0.2, 0.9, 0.3, 1] }}
+      initial={reduce ? { opacity: 0 } : { opacity: 0, x: -8 }}
+      animate={reduce ? { opacity: 1 } : { opacity: 1, x: 0 }}
+      transition={reduce ? { duration: 0.2 } : { duration: 0.35, ease: [0.2, 0.9, 0.3, 1] }}
       style={{
         display: 'inline-flex',
         alignSelf: 'flex-start',
@@ -83,22 +77,24 @@ export function SilverTransferCard({ text }: SilverTransferCardProps) {
         fontFamily: 'var(--po-font-body)',
       }}
     >
-      {/* Overlapping portraits — smaller */}
-      <div style={{ position: 'relative', width: 32, height: 22, flexShrink: 0 }}>
+      {/* Overlapping portraits — face-legible. 28px each, overlap 8px so
+          the first portrait still shows 20px (~70%) of the sender's face.
+          The old 14px overlap (50%) hid half a face and read as cramped. */}
+      <div style={{ position: 'relative', width: 48, height: 28, flexShrink: 0 }}>
         {sender && (
           <img
             src={sender.avatarUrl}
             alt=""
             loading="lazy"
-            width={22}
-            height={22}
+            width={28}
+            height={28}
             style={{
               position: 'absolute',
               left: 0,
               top: 0,
-              width: 22,
-              height: 22,
-              borderRadius: 6,
+              width: 28,
+              height: 28,
+              borderRadius: 7,
               objectFit: 'cover',
               objectPosition: 'center top',
               border: '1.5px solid var(--pulse-bg)',
@@ -111,15 +107,15 @@ export function SilverTransferCard({ text }: SilverTransferCardProps) {
             src={recipient.avatarUrl}
             alt=""
             loading="lazy"
-            width={22}
-            height={22}
+            width={28}
+            height={28}
             style={{
               position: 'absolute',
-              left: 10,
+              left: 20,
               top: 0,
-              width: 22,
-              height: 22,
-              borderRadius: 6,
+              width: 28,
+              height: 28,
+              borderRadius: 7,
               objectFit: 'cover',
               objectPosition: 'center top',
               border: '1.5px solid var(--pulse-bg)',

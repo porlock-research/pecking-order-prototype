@@ -190,7 +190,14 @@
 }
 .pulse-silver-arrive {
   position: relative;
-  overflow: hidden;
+  /* overflow: hidden previously kept the sheen pseudo inside the pill,
+     but combined with inline-flex + absolute child it was collapsing the
+     card to padding+border only (~10px), which cropped 28px portraits.
+     isolation creates a stacking context so the sheen paints above the
+     background but below the card's text/portraits without needing to
+     clip. The sheen animation uses opacity to fade at the extremes so
+     residual overhang isn't visible. */
+  isolation: isolate;
 }
 .pulse-silver-arrive::after {
   content: '';
@@ -206,6 +213,8 @@
   transform: translateX(-100%);
   animation: pulse-silver-sheen 1100ms ease 120ms 1 forwards;
   pointer-events: none;
+  /* Keep the sheen from painting over siblings outside the pill. */
+  clip-path: inset(0 round 999px);
 }
 @media (prefers-reduced-motion: reduce) {
   .pulse-silver-arrive::after { animation: none; display: none; }

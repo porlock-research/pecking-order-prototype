@@ -51,25 +51,15 @@ export function NudgeTransferCard({ text }: Props) {
   const senderColor = senderEntry ? getPlayerColor(Object.keys(roster).indexOf(senderEntry[0])) : 'var(--pulse-text-2)';
   const recipientColor = recipientEntry ? getPlayerColor(Object.keys(roster).indexOf(recipientEntry[0])) : 'var(--pulse-text-2)';
 
+  // Same fix as SilverTransferCard: scale keyframes were stuck at the 0.88
+  // initial on every parent re-render, rendering the whole card at 88%
+  // with cramped portraits. The hand-wave rotation below still carries the
+  // "nudge = poke" beat without affecting card dimensions.
   return (
     <motion.div
-      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.88 }}
-      animate={
-        reduce
-          ? { opacity: 1 }
-          : {
-              opacity: 1,
-              scale: [0.88, 1.04, 1],
-              // Kinetic wobble — "nudge = poke" physicalized. Fires once.
-              x: [0, -4, 4, -3, 3, 0],
-              boxShadow: [
-                '0 0 0 0 rgba(255,160,77,0)',
-                '0 0 16px 2px rgba(255,160,77,0.45)',
-                '0 0 0 0 rgba(255,160,77,0)',
-              ],
-            }
-      }
-      transition={reduce ? { duration: 0.2 } : { duration: 0.7, ease: [0.2, 0.9, 0.3, 1] }}
+      initial={reduce ? { opacity: 0 } : { opacity: 0 }}
+      animate={reduce ? { opacity: 1 } : { opacity: 1 }}
+      transition={reduce ? { duration: 0.2 } : { duration: 0.35, ease: [0.2, 0.9, 0.3, 1] }}
       style={{
         display: 'inline-flex',
         alignSelf: 'flex-start',
@@ -83,17 +73,19 @@ export function NudgeTransferCard({ text }: Props) {
         fontFamily: 'var(--po-font-body)',
       }}
     >
-      <div style={{ position: 'relative', width: 32, height: 22, flexShrink: 0 }}>
+      {/* Face-legible portraits — matches SilverTransferCard sizing.
+          28px each, overlap 8px so the first portrait shows ~70% of face. */}
+      <div style={{ position: 'relative', width: 48, height: 28, flexShrink: 0 }}>
         {sender && (
           <img
             src={sender.avatarUrl}
             alt=""
             loading="lazy"
-            width={22}
-            height={22}
+            width={28}
+            height={28}
             style={{
               position: 'absolute', left: 0, top: 0,
-              width: 22, height: 22, borderRadius: 6,
+              width: 28, height: 28, borderRadius: 7,
               objectFit: 'cover', objectPosition: 'center top',
               border: '1.5px solid var(--pulse-bg)', zIndex: 2,
             }}
@@ -104,11 +96,11 @@ export function NudgeTransferCard({ text }: Props) {
             src={recipient.avatarUrl}
             alt=""
             loading="lazy"
-            width={22}
-            height={22}
+            width={28}
+            height={28}
             style={{
-              position: 'absolute', left: 10, top: 0,
-              width: 22, height: 22, borderRadius: 6,
+              position: 'absolute', left: 20, top: 0,
+              width: 28, height: 28, borderRadius: 7,
               objectFit: 'cover', objectPosition: 'center top',
               border: '1.5px solid var(--pulse-bg)', zIndex: 1,
             }}

@@ -1,6 +1,7 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useGameStore, selectCastStripEntries, type CastStripEntry } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
+import { useHasOverflow } from '../../hooks/useHasOverflow';
 import { PULSE_Z } from '../../zIndex';
 import { CastChip } from './CastChip';
 import { GroupChip } from './GroupChip';
@@ -33,6 +34,9 @@ export function CastStrip() {
     openDM(entry.id, entry.kind === 'group');
   }, [pickingMode, lockedIds, togglePicked, openSocialPanel, openDM]);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const overflow = useHasOverflow(scrollRef);
+
   if (entries.length === 0) return null;
 
   return (
@@ -50,16 +54,19 @@ export function CastStrip() {
       boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
       position: 'relative', zIndex: PULSE_Z.flow,
     }}>
-      <div style={{
-        display: 'flex', gap: 'var(--pulse-space-sm)',
-        // Top 12 fits the "You" badge (top: -8) + 4px safety. Bottom 10 fits
-        // the typing badge (bottom: -3) + 7px safety so the chip's gap-to-
-        // chat below still reads clean. Horizontal padding is the edge gutter.
-        padding: 'var(--pulse-space-md) var(--pulse-space-md) 10px',
-        overflowX: 'auto',
-        scrollSnapType: 'x mandatory',
-        scrollbarWidth: 'none',
-      }}>
+      <div
+        ref={scrollRef}
+        style={{
+          display: 'flex', gap: 'var(--pulse-space-sm)',
+          // Top 12 fits the "You" badge (top: -8) + 4px safety. Bottom 10 fits
+          // the typing badge (bottom: -3) + 7px safety so the chip's gap-to-
+          // chat below still reads clean. Horizontal padding is the edge gutter.
+          padding: 'var(--pulse-space-md) var(--pulse-space-md) 10px',
+          overflowX: 'auto',
+          scrollSnapType: 'x mandatory',
+          scrollbarWidth: 'none',
+        }}
+      >
         {entries.map(entry => {
           if (entry.kind === 'group') {
             if (pickingMode) return null;
@@ -81,6 +88,34 @@ export function CastStrip() {
           );
         })}
       </div>
+      <CastStripEdgeFade side="left" visible={overflow.left} />
+      <CastStripEdgeFade side="right" visible={overflow.right} />
     </div>
+  );
+}
+
+/**
+ * Cast strip edge fade. The strip's ambient background is a gradient
+ * (pink radial + surface→bg linear) so we fade toward `--pulse-bg`, the
+ * darkest stop — that's where the bottom edge of the strip meets the
+ * chat below, and matches closely enough near the outer edges to feel
+ * seamless. pointer-events:none so it never swallows chip taps.
+ */
+function CastStripEdgeFade({ side, visible }: { side: 'left' | 'right'; visible: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        [side]: 0,
+        width: 28,
+        pointerEvents: 'none',
+        background: `linear-gradient(to ${side}, transparent, var(--pulse-bg))`,
+        opacity: visible ? 1 : 0,
+        transition: 'opacity 0.18s ease',
+      }}
+    />
   );
 }
