@@ -1,0 +1,24 @@
+MATCH_TOOL: Bash
+MATCH_PATTERN: npm run format
+ADVISORY: |
+  `npm run format` runs Prettier across the ENTIRE monorepo (671+ files), not
+  just files your feature branch touched. Running it in a feature branch
+  produces massive unrelated churn that's nearly impossible to review and
+  creates nasty rebase/merge conflicts.
+
+  If you want to format only the files this branch changed, scope explicitly:
+
+      # format only files touched since branching from main
+      git diff --name-only main...HEAD | grep -E '\.(ts|tsx|js|jsx|md|json)$' \
+        | xargs npx prettier --write
+
+  If you already ran `npm run format` and got a monorepo-wide diff, revert
+  the non-feature files:
+
+      git diff --name-only main...HEAD > /tmp/feature.txt
+      git ls-files -m | grep -v -F -f /tmp/feature.txt > /tmp/noop.txt
+      cat /tmp/noop.txt | tr '\n' '\0' | xargs -0 git checkout --
+
+  Real session cost (2026-04-18): ran `npm run format` expecting it to scope
+  to my feature — got 671 files, 5831 insertions, 3021 deletions. Spent
+  extra time scoping back manually before the feature PR was reviewable.
