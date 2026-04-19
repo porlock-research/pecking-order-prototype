@@ -52,7 +52,7 @@ export function StartPickedCta() {
         background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
         padding: '12px 22px', borderRadius: 22,
         fontSize: 14, fontWeight: 800, border: 'none',
-        boxShadow: '0 4px 14px rgba(255,59,111,0.45)',
+        boxShadow: '0 4px 14px color-mix(in oklch, var(--pulse-accent) 45%, transparent)',
         cursor: 'pointer',
       }}>{label}</button>
     </motion.div>

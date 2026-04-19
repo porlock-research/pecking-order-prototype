@@ -31,7 +31,7 @@ export function ReplyBar({ message, onCancel }: ReplyBarProps) {
         background: 'var(--pulse-surface-2)',
         fontSize: 12,
         fontFamily: 'var(--po-font-body)',
-        borderTop: '1px solid rgba(255, 59, 111, 0.18)',
+        borderTop: '1px solid color-mix(in oklch, var(--pulse-accent) 18%, transparent)',
       }}
     >
       <div style={{ width: 2, borderRadius: 1, background: color, flexShrink: 0 }} />

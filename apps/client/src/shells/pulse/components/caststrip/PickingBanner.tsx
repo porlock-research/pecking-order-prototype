@@ -16,8 +16,8 @@ export function PickingBanner() {
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '8px 14px',
-      background: 'rgba(255,59,111,0.12)',
-      borderBottom: '1px solid rgba(255,59,111,0.25)',
+      background: 'color-mix(in oklch, var(--pulse-accent) 12%, transparent)',
+      borderBottom: '1px solid color-mix(in oklch, var(--pulse-accent) 25%, transparent)',
       color: 'var(--pulse-accent)', fontSize: 12, fontWeight: 600,
       position: 'relative', zIndex: PULSE_Z.flow,
     }}>

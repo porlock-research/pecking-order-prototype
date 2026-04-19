@@ -276,7 +276,7 @@ export function ChatView() {
               // Pink-tinted layered glow instead of generic drop shadow —
               // the button earns its accent weight.
               boxShadow:
-                '0 0 0 1px rgba(255, 59, 111, 0.4), 0 10px 28px -8px rgba(255, 59, 111, 0.55)',
+                '0 0 0 1px color-mix(in oklch, var(--pulse-accent) 40%, transparent), 0 10px 28px -8px color-mix(in oklch, var(--pulse-accent) 55%, transparent)',
               zIndex: PULSE_Z.elevated,
             }}
           >

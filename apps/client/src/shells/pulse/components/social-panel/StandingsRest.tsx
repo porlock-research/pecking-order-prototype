@@ -23,7 +23,7 @@ export function StandingsRest() {
             onClick={() => { if (!isSelf) openDM(entry.id); }}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
-              background: isSelf ? 'rgba(255,59,111,0.12)' : 'transparent',
+              background: isSelf ? 'color-mix(in oklch, var(--pulse-accent) 12%, transparent)' : 'transparent',
               border: 'none', borderRadius: 10,
               cursor: isSelf ? 'default' : 'pointer', textAlign: 'left',
               width: '100%',
@@ -36,7 +36,7 @@ export function StandingsRest() {
               minWidth: 28,
               fontSize: 10, fontWeight: 800, letterSpacing: 0.2,
               color: 'var(--pulse-accent)',
-              background: 'rgba(255, 59, 111, 0.2)',
+              background: 'color-mix(in oklch, var(--pulse-accent) 20%, transparent)',
               padding: '3px 7px', borderRadius: 8,
               fontVariantNumeric: 'tabular-nums',
             }}>#{entry.rank}</span>

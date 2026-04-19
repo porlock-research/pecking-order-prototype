@@ -44,7 +44,7 @@ export function SocialPanel({ onClose }: Props) {
       >
         {/* STANDINGS — chapter card, gold ambient tint, Clash Display title */}
         <section style={{
-          background: 'radial-gradient(ellipse at top, rgba(255,200,61,0.08), transparent 60%), var(--pulse-surface)',
+          background: 'radial-gradient(ellipse at top, color-mix(in oklch, var(--pulse-gold) 8%, transparent), transparent 60%), var(--pulse-surface)',
           borderBottom: '1px solid var(--pulse-border)',
           paddingTop: 'var(--pulse-space-lg)',
           paddingBottom: 'var(--pulse-space-md)',

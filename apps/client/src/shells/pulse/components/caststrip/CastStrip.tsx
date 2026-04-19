@@ -47,7 +47,7 @@ export function CastStrip() {
       // scroller needs breathing room inside its clip rect to show them.
       padding: '2px 0 6px',
       background: `
-        radial-gradient(ellipse at top, rgba(255,59,111,0.07), transparent 60%),
+        radial-gradient(ellipse at top, color-mix(in oklch, var(--pulse-accent) 7%, transparent), transparent 60%),
         linear-gradient(to bottom, var(--pulse-surface), var(--pulse-bg))
       `,
       borderBottom: '1px solid var(--pulse-border-2)',
