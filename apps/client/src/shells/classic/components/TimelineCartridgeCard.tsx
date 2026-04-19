@@ -192,11 +192,16 @@ function getPromptDetail(snapshot: any, roster: Record<string, any>): string | n
       }
       return null;
 
-    case 'HOT_TAKE':
-      if (results.agreeCount != null && results.disagreeCount != null) {
-        return `Agree: ${results.agreeCount} / Disagree: ${results.disagreeCount}`;
-      }
-      return null;
+    case 'HOT_TAKE': {
+      const options: string[] = Array.isArray(results.options) ? results.options : ['Agree', 'Disagree'];
+      const tally: number[] = Array.isArray(results.tally)
+        ? results.tally
+        : (results.agreeCount != null && results.disagreeCount != null
+            ? [results.agreeCount, results.disagreeCount]
+            : []);
+      if (tally.length === 0) return null;
+      return options.map((opt, i) => `${opt}: ${tally[i] ?? 0}`).join(' / ');
+    }
 
     case 'CONFESSION':
       if (results.winnerId) {
@@ -444,33 +449,44 @@ const PromptDetail: React.FC<{ snapshot: any; roster: Record<string, any> }> = (
       }
 
       case 'HOT_TAKE': {
-        const total = (results.agreeCount || 0) + (results.disagreeCount || 0);
+        const options: string[] = Array.isArray(results.options)
+          ? results.options
+          : ['Agree', 'Disagree'];
+        const tally: number[] = Array.isArray(results.tally)
+          ? results.tally
+          : [results.agreeCount ?? 0, results.disagreeCount ?? 0];
+        const total = tally.reduce((s, n) => s + n, 0);
         if (!total) return null;
-        const pctAgree = Math.round(((results.agreeCount || 0) / total) * 100);
+        const minorityIndices: number[] = Array.isArray(results.minorityIndices)
+          ? results.minorityIndices
+          : results.minorityStance === 'AGREE'
+            ? [0]
+            : results.minorityStance === 'DISAGREE'
+              ? [1]
+              : [];
+        const COLORS = ['green', 'danger', 'gold', 'info'] as const;
         return (
           <div className="space-y-1.5">
             {results.statement && (
               <p className="text-xs text-skin-dim italic">&ldquo;{results.statement}&rdquo;</p>
             )}
-            <div className="flex gap-2 text-xs">
-              <div className="flex-1">
-                <div className="flex justify-between mb-0.5">
-                  <span className="text-skin-green">Agree</span>
-                  <span className="text-skin-muted tabular-nums">{results.agreeCount}</span>
-                </div>
-                <div className="h-2 rounded-full bg-skin-base/10 overflow-hidden">
-                  <div className="h-full rounded-full bg-skin-green/40" style={{ width: `${pctAgree}%` }} />
-                </div>
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between mb-0.5">
-                  <span className="text-skin-danger">Disagree</span>
-                  <span className="text-skin-muted tabular-nums">{results.disagreeCount}</span>
-                </div>
-                <div className="h-2 rounded-full bg-skin-base/10 overflow-hidden">
-                  <div className="h-full rounded-full bg-skin-danger/40" style={{ width: `${100 - pctAgree}%` }} />
-                </div>
-              </div>
+            <div className="flex flex-col gap-1.5 text-xs">
+              {options.map((opt, i) => {
+                const pct = Math.round((tally[i] / total) * 100);
+                const color = COLORS[i % COLORS.length];
+                const isMin = minorityIndices.includes(i);
+                return (
+                  <div key={i}>
+                    <div className="flex justify-between mb-0.5">
+                      <span className={`text-skin-${color}${isMin ? ' font-bold' : ''}`}>{opt}</span>
+                      <span className="text-skin-muted tabular-nums">{tally[i]}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-skin-base/10 overflow-hidden">
+                      <div className={`h-full rounded-full bg-skin-${color}/40`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );

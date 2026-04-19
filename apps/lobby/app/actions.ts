@@ -1,6 +1,6 @@
 'use server';
 
-import { InitPayloadSchema, Roster, ACTIVITY_TYPE_INFO } from '@pecking-order/shared-types';
+import { InitPayloadSchema, Roster, ACTIVITY_TYPE_INFO, pickHotTakeQuestion } from '@pecking-order/shared-types';
 import { signGameToken } from '@pecking-order/auth';
 import { getDB, getEnv } from '@/lib/db';
 import { requireAuth, getSession, generateId, generateInviteCode, generateToken } from '@/lib/auth';
@@ -997,18 +997,34 @@ function resolveActionName(key: string): string {
   return key.replace(/_2$/, '');
 }
 
-function buildEventPayload(eventKey: string, activityType: string, dayIndex: number) {
+function buildEventPayload(
+  eventKey: string,
+  activityType: string,
+  dayIndex: number,
+  usedHotTakeIds: Set<string>,
+) {
   const msg = eventKey === 'INJECT_PROMPT'
     ? `Welcome to Day ${dayIndex} of Pecking Order`
     : EVENT_MESSAGES[eventKey];
   if (eventKey === 'START_ACTIVITY') {
     const actInfo = (ACTIVITY_TYPE_INFO as Record<string, any>)[activityType];
-    return {
+    const base = {
       msg,
       promptType: activityType,
       promptText: actInfo?.promptText || 'Pick a player',
       ...(actInfo?.options || {}),
     };
+    if (activityType === 'HOT_TAKE') {
+      const q = pickHotTakeQuestion([...usedHotTakeIds]);
+      usedHotTakeIds.add(q.id);
+      return {
+        ...base,
+        promptText: q.statement,
+        promptId: q.id,
+        options: q.options,
+      };
+    }
+    return base;
   }
   return { msg };
 }
@@ -1021,6 +1037,7 @@ function buildManifestDays(
 ) {
   if ((mode === 'DEBUG_PECKING_ORDER') && config) {
     const debugConfig = config as DebugManifestConfig;
+    const usedHotTakeIds = new Set<string>();
     return debugConfig.days.slice(0, debugConfig.dayCount).map((day, i) => {
       const baseOffset = i * 30000;
       const timeline: { time: string; action: string; payload: any }[] = [];
@@ -1033,7 +1050,7 @@ function buildManifestDays(
           timeline.push({
             time: t(baseOffset + eventOffset),
             action: eventKey,
-            payload: buildEventPayload(eventKey, day.activityType, i + 1),
+            payload: buildEventPayload(eventKey, day.activityType, i + 1, usedHotTakeIds),
           });
           eventOffset += 5000;
         }
@@ -1054,6 +1071,7 @@ function buildManifestDays(
   if ((mode === 'CONFIGURABLE_CYCLE') && config) {
     const cfgConfig = config as ConfigurableManifestConfig;
     console.log('[buildManifestDays] CC config:', JSON.stringify({ dayCount: cfgConfig.dayCount, speedRun: cfgConfig.speedRun, day0events: Object.entries(cfgConfig.days[0]?.events || {}).map(([k, v]: [string, any]) => `${k}:${v.enabled}:${v.time}`) }));
+    const usedHotTakeIds = new Set<string>();
     return cfgConfig.days.slice(0, cfgConfig.dayCount).map((day, i) => {
       const timeline: { time: string; action: string; payload: any }[] = [];
 
@@ -1064,7 +1082,7 @@ function buildManifestDays(
           timeline.push({
             time: eventCfg.time,
             action: resolveActionName(eventKey),
-            payload: buildEventPayload(resolveActionName(eventKey), day.activityType, i + 1),
+            payload: buildEventPayload(resolveActionName(eventKey), day.activityType, i + 1, usedHotTakeIds),
           });
         }
       }
