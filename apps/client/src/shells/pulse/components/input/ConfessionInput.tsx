@@ -6,6 +6,8 @@ const MAX = Config.confession.maxConfessionLength;
 interface ConfessionInputProps {
   myHandle: string | null;
   onSend: (text: string) => void;
+  /** Phase is within 60s of ending. Swaps the red REC chrome for gold LAST CALL. */
+  closingSoon?: boolean;
 }
 
 /**
@@ -17,7 +19,7 @@ interface ConfessionInputProps {
  * `myHandle === null` renders a minimal locked-out plate (non-members don't
  * see or post during a live phase).
  */
-export function ConfessionInput({ myHandle, onSend }: ConfessionInputProps) {
+export function ConfessionInput({ myHandle, onSend, closingSoon = false }: ConfessionInputProps) {
   const [text, setText] = useState('');
   const [flashing, setFlashing] = useState(false);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,9 +63,9 @@ export function ConfessionInput({ myHandle, onSend }: ConfessionInputProps) {
           <div style={boothStyle.mask} aria-hidden="true" />
           <TapeLabel text={handleLabel} size="md" />
         </div>
-        <div style={boothStyle.rec}>
-          <span style={boothStyle.recDot} />
-          <span>REC</span>
+        <div style={closingSoon ? boothStyle.recLastCall : boothStyle.rec}>
+          <span style={closingSoon ? boothStyle.recDotLastCall : boothStyle.recDot} />
+          <span>{closingSoon ? 'LAST CALL' : 'REC'}</span>
         </div>
       </div>
 
@@ -231,6 +233,23 @@ const boothStyle = {
     borderRadius: '50%',
     background: '#ff2a3d',
     boxShadow: '0 0 10px rgba(255,42,61,0.4)',
+    animation: 'pulse-breathe 1.4s ease-in-out infinite',
+  },
+  recLastCall: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    fontFamily: 'ui-monospace, monospace',
+    fontSize: 11,
+    color: 'var(--pulse-gold)',
+    letterSpacing: '0.08em',
+  },
+  recDotLastCall: {
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    background: 'var(--pulse-gold)',
+    boxShadow: '0 0 10px rgba(255,200,61,0.5)',
     animation: 'pulse-breathe 1.4s ease-in-out infinite',
   },
   micFrame: {

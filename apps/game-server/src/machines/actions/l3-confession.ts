@@ -7,6 +7,25 @@ import { log } from '../../log';
 export const confessionChannelId = (dayIndex: number) => `CONFESSION-d${dayIndex}`;
 
 /**
+ * Resolve the absolute epoch-ms timestamp of the next END_CONFESSION_CHAT in
+ * the given timeline. Returns null if the timeline has none (ADMIN games
+ * without scheduled bounds, or malformed manifests). Relies on timeline times
+ * already being absolute ISO strings at open time — for dynamic days the
+ * game-master converts relative offsets before the manifest reaches L3.
+ */
+export function resolveConfessionClosesAt(timeline: Array<{ time: string; action: string }> | undefined, now: number = Date.now()): number | null {
+  if (!timeline || timeline.length === 0) return null;
+  let best: number | null = null;
+  for (const e of timeline) {
+    if (e.action !== 'END_CONFESSION_CHAT') continue;
+    const t = new Date(e.time).getTime();
+    if (Number.isNaN(t) || t <= now) continue;
+    if (best === null || t < best) best = t;
+  }
+  return best;
+}
+
+/**
  * Pure computation: patch for confessionLayer entry.
  * Exported for direct unit testing; wrapped with xstate `assign()` in the action bag.
  */
@@ -28,12 +47,15 @@ export function computeOpenConfessionAssignment(context: any) {
     capabilities: ['CONFESS'] as ChannelCapability[],
   };
 
+  const closesAt = resolveConfessionClosesAt(context.manifest?.timeline);
+
   return {
     channels: { ...(context.channels || {}), [channelId]: newChannel },
     confessionPhase: {
       active: true,
       handlesByPlayer,
       posts: [] as Array<{ handle: string; text: string; ts: number }>,
+      closesAt,
     },
     groupChatOpen: false,
   };
@@ -54,6 +76,7 @@ export function computeCloseConfessionAssignment(context: any) {
       active: false,
       handlesByPlayer: {} as Record<string, string>,
       posts: [] as Array<{ handle: string; text: string; ts: number }>,
+      closesAt: null,
     },
     groupChatOpen: true,
   };

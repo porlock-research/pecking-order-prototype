@@ -141,6 +141,9 @@ interface GameState {
     myHandle: string | null;
     handleCount: number;
     posts: Array<{ handle: string; text: string; ts: number }>;
+    /** Absolute epoch-ms timestamp of the scheduled END_CONFESSION_CHAT.
+     *  Null when inactive or when the day's timeline doesn't schedule one. */
+    closesAt: number | null;
   };
   tickerMessages: TickerMessage[];
   debugTicker: string | null;
@@ -878,7 +881,7 @@ export const useGameStore = create<GameState>((set) => ({
   silverTransferRejection: null,
   lastPerkResult: null,
   playerActivity: {},
-  confessionPhase: { active: false, myHandle: null, handleCount: 0, posts: [] },
+  confessionPhase: { active: false, myHandle: null, handleCount: 0, posts: [], closesAt: null },
   tickerMessages: [],
   debugTicker: null,
   showcaseData: null,
@@ -958,7 +961,7 @@ export const useGameStore = create<GameState>((set) => ({
       // edits-within-window), so length equality is insufficient — rely on deep equality.
       confessionPhase: stableRef(
         state.confessionPhase,
-        data.context?.confessionPhase ?? { active: false, myHandle: null, handleCount: 0, posts: [] },
+        data.context?.confessionPhase ?? { active: false, myHandle: null, handleCount: 0, posts: [], closesAt: null },
       ),
       welcomeSeen: localStorage.getItem(`po-welcomeSeen-${data.context?.gameId || state.gameId}`) === 'true' || state.welcomeSeen,
       showcaseData: stableRef(state.showcaseData, data.context?.showcase ?? state.showcaseData),

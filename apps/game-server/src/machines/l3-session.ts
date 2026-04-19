@@ -47,11 +47,16 @@ export interface DailyContext {
   /** Confession phase state. Inactive default; populated on entry to
    *  confessionLayer.posting (Plan 1, T8/T9). handlesByPlayer is SERVER-ONLY —
    *  buildSyncPayload (Plan 1, T12) reduces to { myHandle, handleCount } per
-   *  recipient. posts is already anonymized at record time (no authorId). */
+   *  recipient. posts is already anonymized at record time (no authorId).
+   *  closesAt is the absolute epoch-ms timestamp of the scheduled
+   *  END_CONFESSION_CHAT, resolved from the current day's timeline at open.
+   *  Null when inactive or when the timeline doesn't schedule an end (ADMIN
+   *  games). Clients use it to render the closing-soon warning chrome. */
   confessionPhase: {
     active: boolean;
     handlesByPlayer: Record<string, string>;
     posts: Array<{ handle: string; text: string; ts: number }>;
+    closesAt: number | null;
   };
 }
 
@@ -141,7 +146,7 @@ export function buildL3Context(input: { dayIndex: number; roster: Record<string,
     requireDmInvite: input.manifest?.requireDmInvite ?? false,
     dmSlotsPerPlayer: input.manifest?.dmSlotsPerPlayer ?? 5,
     cartridgeUpdatedAt: {},
-    confessionPhase: { active: false, handlesByPlayer: {}, posts: [] },
+    confessionPhase: { active: false, handlesByPlayer: {}, posts: [], closesAt: null },
   };
 }
 

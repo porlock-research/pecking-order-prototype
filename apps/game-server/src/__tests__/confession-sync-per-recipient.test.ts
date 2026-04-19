@@ -106,6 +106,7 @@ describe('buildSyncPayload — per-recipient confessionPhase projection', () => 
       myHandle: null,
       handleCount: 0,
       posts: [],
+      closesAt: null,
     });
   });
 
@@ -120,6 +121,7 @@ describe('buildSyncPayload — per-recipient confessionPhase projection', () => 
       myHandle: null,
       handleCount: 0,
       posts: [],
+      closesAt: null,
     });
   });
 });

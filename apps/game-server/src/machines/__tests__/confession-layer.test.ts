@@ -119,7 +119,7 @@ describe('l3-confession — computeCloseConfessionAssignment', () => {
     expect(next.channels['CONFESSION-d2']).toBeUndefined();
     expect(next.channels.MAIN).toBeDefined();
     expect(next.groupChatOpen).toBe(true);
-    expect(next.confessionPhase).toEqual({ active: false, handlesByPlayer: {}, posts: [] });
+    expect(next.confessionPhase).toEqual({ active: false, handlesByPlayer: {}, posts: [], closesAt: null });
   });
 
   it('is idempotent if channel already absent', () => {

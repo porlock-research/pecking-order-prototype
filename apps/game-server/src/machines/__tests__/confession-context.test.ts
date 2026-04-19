@@ -24,6 +24,7 @@ describe('buildL3Context — confessionPhase initial state (T7)', () => {
       active: false,
       handlesByPlayer: {},
       posts: [],
+      closesAt: null,
     });
   });
 

@@ -74,7 +74,7 @@ export function buildDemoSyncPayload(
       // Confession Booth (Spec C) — demo never schedules a confession phase,
       // so the projection is always inactive. Shape-match prod's buildSyncPayload
       // so the client store hydrates identically under demo vs real games.
-      confessionPhase: { active: false, myHandle: null, handleCount: 0, posts: [] },
+      confessionPhase: { active: false, myHandle: null, handleCount: 0, posts: [], closesAt: null },
       onlinePlayers,
     },
   };

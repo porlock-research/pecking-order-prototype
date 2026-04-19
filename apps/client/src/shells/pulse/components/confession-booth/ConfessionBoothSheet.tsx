@@ -43,9 +43,23 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
 
   const myHandle = confessionPhase?.myHandle ?? null;
   const posts = confessionPhase?.posts ?? [];
-  const phaseClosed = !(confessionPhase?.active ?? false);
+  const phaseActive = confessionPhase?.active ?? false;
+  const phaseClosed = !phaseActive;
+  const closesAt = confessionPhase?.closesAt ?? null;
   // Newest at top of the reel — the latest tape is the most interesting.
   const sortedPosts = [...posts].sort((a, b) => b.ts - a.ts);
+
+  // Countdown ticker. Runs only while the phase is active AND the server gave
+  // us a closesAt. Ticks once/second — fine enough for a minute countdown,
+  // cheap enough to ignore on low-power devices.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!phaseActive || closesAt === null) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [phaseActive, closesAt]);
+  const msRemaining = closesAt !== null ? Math.max(0, closesAt - now) : null;
+  const closingSoon = phaseActive && msRemaining !== null && msRemaining <= 60_000;
 
   // Entry nameplate — first open per phase for a participant. Persist the
   // last-revealed dayIndex in localStorage so a page reload mid-phase doesn't
@@ -171,7 +185,7 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
           <div style={headerStyle.title}>
             <div style={headerStyle.eyebrow}>
               <span>DAY {dayIndex} ·</span>
-              <OnAirPip active={confessionPhase?.active ?? false} />
+              <OnAirPip active={phaseActive} closingSoon={closingSoon} />
             </div>
             <div style={headerStyle.name}>Confession Booth</div>
           </div>
@@ -186,10 +200,12 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
           {!phaseClosed && (
             <>
               <span style={headerStyle.sep} />
-              <span>anonymous to everyone</span>
+              <span>{closingSoon ? 'last call' : 'anonymous to everyone'}</span>
             </>
           )}
         </div>
+
+        {closingSoon && msRemaining !== null && <ClosingBanner msRemaining={msRemaining} />}
 
         {/* Feed */}
         <div style={phaseClosed ? feedStyleClosed : feedStyle}>
@@ -220,7 +236,11 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
         </div>
 
         {/* Composer (live) or rubber-stamp plate (archived) */}
-        {phaseClosed ? <ClosedPlate /> : <ConfessionInput myHandle={myHandle} onSend={handleSend} />}
+        {phaseClosed ? (
+          <ClosedPlate />
+        ) : (
+          <ConfessionInput myHandle={myHandle} onSend={handleSend} closingSoon={closingSoon} />
+        )}
 
         {/* One-time entry nameplate — dismisses on tap, dismissal persisted per phase */}
         <AnimatePresence>
@@ -233,8 +253,28 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
   );
 }
 
-function OnAirPip({ active }: { active: boolean }) {
-  const color = active ? '#ff2a3d' : 'var(--pulse-text-3)';
+function OnAirPip({ active, closingSoon = false }: { active: boolean; closingSoon?: boolean }) {
+  const color = !active
+    ? 'var(--pulse-text-3)'
+    : closingSoon
+      ? 'var(--pulse-gold)'
+      : '#ff2a3d';
+  const bg = !active
+    ? 'transparent'
+    : closingSoon
+      ? 'rgba(255,200,61,0.08)'
+      : 'rgba(255,42,61,0.08)';
+  const borderColor = !active
+    ? 'var(--pulse-border)'
+    : closingSoon
+      ? 'rgba(255,200,61,0.22)'
+      : 'rgba(255,42,61,0.22)';
+  const glow = !active
+    ? 'none'
+    : closingSoon
+      ? '0 0 10px rgba(255,200,61,0.4)'
+      : '0 0 10px rgba(255,42,61,0.4)';
+  const label = !active ? 'OFF AIR' : closingSoon ? 'CLOSING' : 'ON AIR';
   return (
     <span
       style={{
@@ -247,8 +287,8 @@ function OnAirPip({ active }: { active: boolean }) {
         letterSpacing: '0.24em',
         color,
         padding: '3px 7px',
-        background: active ? 'rgba(255,42,61,0.08)' : 'transparent',
-        border: `1px solid ${active ? 'rgba(255,42,61,0.22)' : 'var(--pulse-border)'}`,
+        background: bg,
+        border: `1px solid ${borderColor}`,
         borderRadius: 6,
       }}
     >
@@ -258,14 +298,68 @@ function OnAirPip({ active }: { active: boolean }) {
           height: 7,
           borderRadius: '50%',
           background: color,
-          boxShadow: active ? '0 0 10px rgba(255,42,61,0.4)' : 'none',
+          boxShadow: glow,
           animation: active ? 'pulse-breathe 1.6s ease-in-out infinite' : 'none',
         }}
       />
-      {active ? 'ON AIR' : 'OFF AIR'}
+      {label}
     </span>
   );
 }
+
+function ClosingBanner({ msRemaining }: { msRemaining: number }) {
+  return (
+    <div style={closingBannerStyle.wrap}>
+      <div style={closingBannerStyle.tc}>{formatCountdown(msRemaining)}</div>
+      <div style={closingBannerStyle.msg}>
+        <strong style={closingBannerStyle.strong}>Booth closes in less than a minute.</strong>
+        <br />
+        Anything you don&rsquo;t drop is lost &mdash; the tapes stay, the booth doesn&rsquo;t.
+      </div>
+    </div>
+  );
+}
+
+function formatCountdown(ms: number): string {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+const closingBannerStyle = {
+  wrap: {
+    margin: '12px 16px 0',
+    padding: '12px 14px',
+    background: 'linear-gradient(180deg, rgba(255,200,61,0.06), rgba(255,200,61,0.02))',
+    border: '1px solid rgba(255,200,61,0.22)',
+    borderRadius: 12,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    position: 'relative',
+    zIndex: 1,
+  },
+  tc: {
+    fontFamily: 'Outfit, sans-serif',
+    fontWeight: 700,
+    fontSize: 26,
+    letterSpacing: '-0.02em',
+    color: 'var(--pulse-gold)',
+    fontVariantNumeric: 'tabular-nums',
+    lineHeight: 1,
+  },
+  msg: {
+    fontFamily: 'Outfit, sans-serif',
+    fontSize: 12,
+    lineHeight: 1.4,
+    color: 'var(--pulse-text-2)',
+  },
+  strong: {
+    color: 'var(--pulse-text-1)',
+    fontWeight: 700,
+  },
+} satisfies Record<string, React.CSSProperties>;
 
 const headerStyle = {
   wrap: {

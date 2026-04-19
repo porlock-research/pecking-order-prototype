@@ -6,6 +6,7 @@ const DEFAULT_CONFESSION_PHASE = {
   myHandle: null,
   handleCount: 0,
   posts: [],
+  closesAt: null,
 };
 
 /**
@@ -36,6 +37,7 @@ describe('useGameStore — confessionPhase hydration (T15)', () => {
           myHandle: 'Confessor #3',
           handleCount: 4,
           posts: [{ handle: 'Confessor #1', text: 'x', ts: 1 }],
+          closesAt: 9_999_999,
         },
       },
       state: 'activeSession',
@@ -45,6 +47,7 @@ describe('useGameStore — confessionPhase hydration (T15)', () => {
       myHandle: 'Confessor #3',
       handleCount: 4,
       posts: [{ handle: 'Confessor #1', text: 'x', ts: 1 }],
+      closesAt: 9_999_999,
     });
   });
 
@@ -62,6 +65,7 @@ describe('useGameStore — confessionPhase hydration (T15)', () => {
       myHandle: 'Confessor #2',
       handleCount: 3,
       posts: [{ handle: 'Confessor #1', text: 'first', ts: 10 }],
+      closesAt: null,
     };
     useGameStore.getState().sync({ context: { confessionPhase: first }, state: 'activeSession' });
     const ref1 = useGameStore.getState().confessionPhase;
@@ -74,6 +78,7 @@ describe('useGameStore — confessionPhase hydration (T15)', () => {
           myHandle: 'Confessor #2',
           handleCount: 3,
           posts: [{ handle: 'Confessor #1', text: 'first', ts: 10 }],
+          closesAt: null,
         },
       },
       state: 'activeSession',
@@ -88,6 +93,7 @@ describe('useGameStore — confessionPhase hydration (T15)', () => {
       myHandle: 'Confessor #2',
       handleCount: 3,
       posts: [{ handle: 'Confessor #1', text: 'first', ts: 10 }],
+      closesAt: null,
     };
     useGameStore.getState().sync({ context: { confessionPhase: first }, state: 'activeSession' });
     const ref1 = useGameStore.getState().confessionPhase;
@@ -103,6 +109,7 @@ describe('useGameStore — confessionPhase hydration (T15)', () => {
             { handle: 'Confessor #1', text: 'first', ts: 10 },
             { handle: 'Confessor #2', text: 'second', ts: 20 },
           ],
+          closesAt: null,
         },
       },
       state: 'activeSession',
