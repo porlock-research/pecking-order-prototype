@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useImperativeHandle, useRef, forwardRef } from 'react';
 import { Config } from '@pecking-order/shared-types';
 
 const MAX = Config.confession.maxConfessionLength;
@@ -11,6 +11,21 @@ interface ConfessionInputProps {
 }
 
 /**
+ * Imperative handle so the parent (ConfessionBoothSheet) can orchestrate the
+ * View Transitions morph that Polish E implements. The parent tags the source
+ * textarea with `view-transition-name: flying-tape` before calling
+ * `document.startViewTransition(...)`, clears both the name AND the textarea
+ * value inside the transition callback (so the "new" snapshot has the name
+ * only on the destination cassette), and relies on the parent's pending-insert
+ * to complete the morph.
+ */
+export interface ConfessionInputHandle {
+  tagSourceForMorph: () => void;
+  clearSourceMorph: () => void;
+  clearText: () => void;
+}
+
+/**
  * Confession Booth input. Replaces the default composer when a CONFESSION
  * channel is focused. Design contract: mockup 14 (docs/reports/pulse-mockups).
  *
@@ -19,18 +34,36 @@ interface ConfessionInputProps {
  * `myHandle === null` renders a minimal locked-out plate (non-members don't
  * see or post during a live phase).
  */
-export function ConfessionInput({ myHandle, onSend, closingSoon = false }: ConfessionInputProps) {
+export const ConfessionInput = forwardRef<ConfessionInputHandle, ConfessionInputProps>(function ConfessionInput(
+  { myHandle, onSend, closingSoon = false },
+  ref,
+) {
   const [text, setText] = useState('');
   const [flashing, setFlashing] = useState(false);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const trimmed = text.trim();
   const tooLong = text.length > MAX;
   const empty = trimmed.length === 0;
   const canSend = !tooLong && !empty && myHandle !== null;
 
+  useImperativeHandle(ref, () => ({
+    tagSourceForMorph: () => {
+      if (textareaRef.current) textareaRef.current.style.viewTransitionName = 'flying-tape';
+    },
+    clearSourceMorph: () => {
+      if (textareaRef.current) textareaRef.current.style.viewTransitionName = '';
+    },
+    clearText: () => setText(''),
+  }), []);
+
   const handleSend = useCallback(() => {
     if (!canSend) return;
+    // Parent typically calls clearText() via the imperative handle inside
+    // `flushSync` within a View Transitions callback (Polish E). The
+    // redundant internal setText('') here covers the non-VT path and is a
+    // no-op when the parent already cleared — both settle to empty.
     onSend(trimmed);
     setText('');
     // Ignition beat: inner pink flash on the mic frame. ~420ms total.
@@ -73,6 +106,7 @@ export function ConfessionInput({ myHandle, onSend, closingSoon = false }: Confe
         style={flashing ? { ...boothStyle.micFrame, ...boothStyle.micFrameFlashing } : boothStyle.micFrame}
       >
         <textarea
+          ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Speak into the mic&hellip;"
@@ -112,7 +146,7 @@ export function ConfessionInput({ myHandle, onSend, closingSoon = false }: Confe
       </div>
     </div>
   );
-}
+});
 
 /* ---------- Tape label component (exported for use on cassettes) ---------- */
 

@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { PULSE_Z, backdropFor } from '../../zIndex';
@@ -7,12 +8,32 @@ import { PULSE_SPRING } from '../../springs';
 import { BoothNameplate } from './BoothNameplate';
 import { Cassette } from './Cassette';
 import { ClosedPlate } from './ClosedPlate';
-import { ConfessionInput } from '../input/ConfessionInput';
+import { ConfessionInput, type ConfessionInputHandle } from '../input/ConfessionInput';
 
 /** localStorage key for the last-revealed phase dayIndex per (gameId, playerId). */
 function revealKeyFor(gameId: string | null, playerId: string | null): string | null {
   if (!gameId || !playerId) return null;
   return `po-pulse-revealedBoothPhase:${gameId}:${playerId}`;
+}
+
+interface PendingConfession {
+  tempId: string;
+  handle: string;
+  text: string;
+  ts: number;
+}
+
+/** Optimistic pending cassette lives this long before auto-rollback on no SYNC match. */
+const PENDING_CONFESSION_TTL_MS = 10_000;
+
+/**
+ * `document.startViewTransition` is Chromium-only as of early 2026. Feature-detect
+ * so Safari / Firefox fall through to the plain optimistic insert (still correct,
+ * just without the morph animation).
+ */
+function supportsViewTransitions(): boolean {
+  return typeof document !== 'undefined'
+    && typeof (document as any).startViewTransition === 'function';
 }
 
 interface Props {
@@ -46,8 +67,6 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
   const phaseActive = confessionPhase?.active ?? false;
   const phaseClosed = !phaseActive;
   const closesAt = confessionPhase?.closesAt ?? null;
-  // Newest at top of the reel — the latest tape is the most interesting.
-  const sortedPosts = [...posts].sort((a, b) => b.ts - a.ts);
 
   // Countdown ticker. Runs only while the phase is active AND the server gave
   // us a closesAt. Ticks once/second — fine enough for a minute countdown,
@@ -110,9 +129,109 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posts.length]);
 
+  // Pending confessions = optimistic cassettes shown between send and SYNC
+  // confirmation (Polish E). The morphing id marks the cassette that carries
+  // the `view-transition-name: flying-tape` destination for the current
+  // startViewTransition cycle — cleared once the transition settles so a
+  // future send can reuse the name.
+  const [pending, setPending] = useState<PendingConfession[]>([]);
+  const [morphingTempId, setMorphingTempId] = useState<string | null>(null);
+  const composerRef = useRef<ConfessionInputHandle>(null);
+
+  // Dedupe pending against confirmed posts. A pending entry is considered
+  // reconciled when a server post arrives with matching handle + text AND
+  // a timestamp within the TTL window — enough latitude for server clock
+  // skew without matching an unrelated old post with identical text.
+  useEffect(() => {
+    if (pending.length === 0) return;
+    setPending(prev => prev.filter(p => {
+      const matched = posts.some(serverPost =>
+        serverPost.handle === p.handle
+          && serverPost.text === p.text
+          && Math.abs(serverPost.ts - p.ts) < PENDING_CONFESSION_TTL_MS * 3
+      );
+      return !matched;
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posts]);
+
+  // Time-based rollback — if SYNC doesn't confirm within the TTL, drop the
+  // pending cassette. Covers server rejections (silently dropped by the
+  // capability guard) and network/socket drops alike.
+  useEffect(() => {
+    if (pending.length === 0) return;
+    const oldest = pending.reduce((min, p) => Math.min(min, p.ts), Infinity);
+    const deadline = oldest + PENDING_CONFESSION_TTL_MS;
+    const delay = Math.max(0, deadline - Date.now());
+    const id = window.setTimeout(() => {
+      setPending(prev => prev.filter(p => Date.now() - p.ts < PENDING_CONFESSION_TTL_MS));
+    }, delay);
+    return () => window.clearTimeout(id);
+  }, [pending]);
+
+  // Flat display list: pending first (newest → oldest), then confirmed posts
+  // (newest → oldest). Cassette keys stay stable: `pending-*` while optimistic
+  // and `${handle}-${ts}` once reconciled. The morphing cassette (just-sent
+  // from the current tick) carries view-transition-name so the View
+  // Transitions morph lands there.
+  const displayedEntries = [
+    ...[...pending]
+      .sort((a, b) => b.ts - a.ts)
+      .map((p) => ({
+        key: p.tempId,
+        handle: p.handle,
+        text: p.text,
+        ts: p.ts,
+        isNew: true,
+        viewTransitionName: p.tempId === morphingTempId ? 'flying-tape' : undefined,
+      })),
+    ...[...posts]
+      .sort((a, b) => b.ts - a.ts)
+      .map((post) => {
+        const key = `${post.handle}-${post.ts}`;
+        return {
+          key,
+          handle: post.handle,
+          text: post.text,
+          ts: post.ts,
+          isNew: !seenRef.current.has(key),
+          viewTransitionName: undefined as string | undefined,
+        };
+      }),
+  ];
+
   const handleSend = useCallback((text: string) => {
     if (!myHandle) return;
+    const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const entry: PendingConfession = { tempId, handle: myHandle, text, ts: Date.now() };
+
+    const commitOptimistic = () => {
+      // Inside the view-transition callback we also clear the source-side
+      // flying-tape name + the composer value so the "new" snapshot has the
+      // VT name only on the destination cassette (no duplicate-name abort).
+      composerRef.current?.clearSourceMorph();
+      composerRef.current?.clearText();
+      setPending(prev => [...prev, entry]);
+      setMorphingTempId(tempId);
+    };
+
+    if (!supportsViewTransitions()) {
+      commitOptimistic();
+      engine.sendConfession(channelId, text);
+      // Non-VT browsers: no morph lifecycle — just clear the morphing id
+      // immediately so the cassette doesn't carry a stale VT name.
+      setMorphingTempId(null);
+      return;
+    }
+
+    composerRef.current?.tagSourceForMorph();
+    const transition = (document as any).startViewTransition(() => {
+      flushSync(commitOptimistic);
+    });
     engine.sendConfession(channelId, text);
+    transition.finished
+      .catch(() => { /* transition may be skipped on slow devices — DOM update already applied */ })
+      .finally(() => setMorphingTempId(null));
   }, [channelId, engine, myHandle]);
 
   return (
@@ -194,7 +313,7 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
 
         <div style={headerStyle.meta}>
           <span>
-            {sortedPosts.length} {sortedPosts.length === 1 ? 'tape' : 'tapes'}
+            {displayedEntries.length} {displayedEntries.length === 1 ? 'tape' : 'tapes'}
             {phaseClosed ? ' · archived' : ' tonight'}
           </span>
           {!phaseClosed && (
@@ -207,9 +326,12 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
 
         {closingSoon && msRemaining !== null && <ClosingBanner msRemaining={msRemaining} />}
 
-        {/* Feed */}
+        {/* Feed — pending (optimistic) cassettes render above confirmed posts.
+             Both pending and confirmed are sorted newest-first within each
+             group, and the morphing cassette carries view-transition-name so
+             the send-moment morph lands here. */}
         <div style={phaseClosed ? feedStyleClosed : feedStyle}>
-          {sortedPosts.length === 0 ? (
+          {displayedEntries.length === 0 ? (
             <div style={emptyStateStyle.wrap}>
               <div style={emptyStateStyle.title}>No tapes {phaseClosed ? 'were recorded.' : 'yet.'}</div>
               <div style={emptyStateStyle.body}>
@@ -219,19 +341,16 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
               </div>
             </div>
           ) : (
-            sortedPosts.map((post) => {
-              const key = `${post.handle}-${post.ts}`;
-              const isNew = !seenRef.current.has(key);
-              return (
-                <Cassette
-                  key={key}
-                  handle={post.handle}
-                  text={post.text}
-                  ts={post.ts}
-                  isNew={isNew}
-                />
-              );
-            })
+            displayedEntries.map((entry) => (
+              <Cassette
+                key={entry.key}
+                handle={entry.handle}
+                text={entry.text}
+                ts={entry.ts}
+                isNew={entry.isNew}
+                viewTransitionName={entry.viewTransitionName}
+              />
+            ))
           )}
         </div>
 
@@ -239,7 +358,12 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
         {phaseClosed ? (
           <ClosedPlate />
         ) : (
-          <ConfessionInput myHandle={myHandle} onSend={handleSend} closingSoon={closingSoon} />
+          <ConfessionInput
+            ref={composerRef}
+            myHandle={myHandle}
+            onSend={handleSend}
+            closingSoon={closingSoon}
+          />
         )}
 
         {/* One-time entry nameplate — dismisses on tap, dismissal persisted per phase */}
