@@ -1,5 +1,5 @@
 MATCH_TOOL: Bash
-MATCH_PATTERN: npm run format
+MATCH_PATTERN: (^|[;&|(] *)npm run format($|[[:space:]])
 ADVISORY: |
   `npm run format` runs Prettier across the ENTIRE monorepo (671+ files), not
   just files your feature branch touched. Running it in a feature branch
