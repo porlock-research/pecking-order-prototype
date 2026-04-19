@@ -2014,3 +2014,22 @@ This document tracks significant architectural decisions, their context, and con
     *   SW failure-to-parse is silent (`null` → no intent on notification), so a malformed server payload degrades to the original no-deep-link behavior, not a broken notification.
     *   The 10-second / 3-attempt retry bound is a deliberate floor — SYNC hydration can take seconds on a cold start; the bound gives it time but caps the tail.
     *   Plan: `docs/superpowers/plans/2026-04-14-pulse-phase4-catchup.md` Tasks 8–12.
+
+
+## [ADR-139] Per-Recipient SYNC Projection for Server-Only Anonymity
+*   **Date:** 2026-04-18
+*   **Status:** Accepted
+*   **Context:** Spec C's confession phase assigns each alive player an anonymous daily handle ("Confessor #3"). The complete mapping (`handlesByPlayer: { p1: 'Confessor #3', p2: 'Confessor #1', ... }`) lives in L3 context for handle stamping + validation, but must NEVER be broadcast to clients — shipping it in a SYNC payload would let any inspector reverse the anonymization in one line. Existing SYNC fields (roster, channels, chatLog) are broadcast verbatim because they're either public (roster) or already scoped (channels filter by membership in `buildSyncPayload`). Confessions are the first feature where a server-side collection needs **per-recipient reduction** before it leaves the Worker.
+*   **Decision:**
+    1.  Inside `buildSyncPayload(deps, playerId, onlinePlayers)` at `apps/game-server/src/sync.ts:145`, reduce sensitive server-side collections in the per-player loop. For confessions: `handlesByPlayer` collapses to `{ myHandle: handlesByPlayer[playerId] ?? null, handleCount: Object.keys(handlesByPlayer).length }`. The full map is dropped before the payload is returned.
+    2.  Shape on the wire: `context.confessionPhase = { active, myHandle, handleCount, posts }` — shipped as a sibling of `channels`/`chatLog`, NOT under an `l3Context` umbrella (the plan's scaffold assumed one; production payload puts everything at the top of `context`).
+    3.  Non-members receive `myHandle: null` explicitly — never omitted, never `undefined`. Downstream consumers can count on the field's presence.
+    4.  Default shape `{ active: false, myHandle: null, handleCount: 0, posts: [] }` when no phase is live — the client store hydrates non-nullably; UI renders "inactive" state rather than guarding on nullability.
+    5.  Client side (`useGameStore.sync`) uses `stableRef(state.confessionPhase, nextConfessionPhase)` — posts[] can mutate in place (future edits / reactions), so length-equality would be wrong (see `finite-stableref-for-mutable-fields`).
+    6.  Tests enforce the invariant: `apps/game-server/src/__tests__/confession-sync-per-recipient.test.ts` asserts `payload.context.confessionPhase.handlesByPlayer === undefined` across multiple recipients + the non-member case. T18 e2e extends the invariant to a live two-browser flow (distinct `myHandle` per player; sender persona name never appears in the recipient's booth DOM).
+*   **Consequences:**
+    *   Establishes the pattern for any future "server keeps the secret" feature (Plan 2's match cartridge, potential future voting-anonymity features, whisper-history-keyed-by-me). Template: collection lives in L3 context verbatim → per-recipient reduction inside `buildSyncPayload` → test asserts the sensitive field is `undefined` on the wire.
+    *   The DemoServer's `demo-sync.ts` has to shape-match prod (a `confessionPhase: { active: false, … }` default was added in T17) so the client store hydrates identically under demo and real games.
+    *   New sensitive fields follow the same path: add to L3 context → extend `buildSyncPayload` projection → add a test asserting projection + absence of the raw field → teach the demo path if demo games could touch the feature.
+    *   The "sibling of chatLog, not `l3Context.*`" choice means plan scaffolds that assume a nested `l3Context` envelope need translation — document this in the plan's self-review when writing future projection tasks.
+    *   Plan: `docs/superpowers/plans/2026-04-17-confessions-phase.md` Phase 2 T12; see also T15 (client hydration) and T18 (e2e privacy assertion).
