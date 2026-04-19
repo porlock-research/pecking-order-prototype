@@ -1,6 +1,6 @@
 import { memo, useRef, useState, type MouseEvent } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Smiley, Reply } from '../../icons';
+import { Smiley, Reply, Lock } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
@@ -84,13 +84,20 @@ function MessageCardInner({ message, showHeader, isSelf, continuationDepth = 0, 
       : { bg: 0.04, border: 0.10 }
     : { bg: 0.10, border: 0.20 };
 
-  const bubbleStyle = isSelf
+  // Whisper-ness wins over self-ness for the bubble: both sender and
+  // recipient see the purple whisper tint so the privacy signal reads
+  // at a glance. A self-whisper in the normal coral self-bubble is the
+  // regression that made senders unable to tell they were whispering.
+  const bubbleStyle = isWhisper
     ? {
-        background: `color-mix(in oklch, var(--pulse-accent) ${depthFade.bg * 100}%, transparent)`,
-        border: `1px solid color-mix(in oklch, var(--pulse-accent) ${depthFade.border * 100}%, transparent)`,
+        background: 'color-mix(in oklch, var(--pulse-whisper) 10%, transparent)',
+        border: '1px solid color-mix(in oklch, var(--pulse-whisper) 22%, transparent)',
       }
-    : isWhisper
-      ? { background: 'rgba(176, 105, 219, 0.10)', border: '1px solid rgba(176, 105, 219, 0.22)' }
+    : isSelf
+      ? {
+          background: `color-mix(in oklch, var(--pulse-accent) ${depthFade.bg * 100}%, transparent)`,
+          border: `1px solid color-mix(in oklch, var(--pulse-accent) ${depthFade.border * 100}%, transparent)`,
+        }
       : { background: 'transparent', border: 'none' };
 
   return (
@@ -160,24 +167,38 @@ function MessageCardInner({ message, showHeader, isSelf, continuationDepth = 0, 
             ...bubbleStyle,
           }}
         >
-          {/* Name plate (non-self, new-sender) */}
-          {showHeader && !isSelf && (
+          {/* Name plate + whisper eyebrow.
+              - Non-self header rows: show sender name.
+              - Sender (self) on a whisper: "🔒 WHISPER TO @Target" — sender
+                needs the target spelled out.
+              - Recipient on a whisper: "🔒 WHISPER" — no "to @Me"; the
+                recipient knows who they are, and the purple bubble already
+                signals privacy. Dropping @Me removes the redundancy.
+              - Non-recipient observers never land here: they see the
+                redacted WhisperCard via ChatView's earlier branch. */}
+          {((showHeader && !isSelf) || isWhisper) && (
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 2 }}>
-              <span style={{ fontWeight: 700, fontSize: 14, color, letterSpacing: -0.1 }}>{player?.personaName}</span>
+              {showHeader && !isSelf && (
+                <span style={{ fontWeight: 700, fontSize: 14, color, letterSpacing: -0.1 }}>{player?.personaName}</span>
+              )}
               {isWhisper && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--pulse-whisper)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  whisper{whisperTarget ? ' to' : ''}
-                  {whisperTargetAvatar && (
-                    <img
-                      src={whisperTargetAvatar}
-                      alt=""
-                      style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover', marginLeft: 2 }}
-                    />
-                  )}
-                  {whisperTarget && (
-                    <span style={{ color: getPlayerColor(whisperTargetIndex), textTransform: 'none', fontWeight: 700 }}>
-                      {whisperTarget.personaName}
-                    </span>
+                  <Lock size={11} weight="fill" style={{ marginBottom: -1 }} />
+                  whisper
+                  {isSelf && whisperTarget && (
+                    <>
+                      <span style={{ opacity: 0.85 }}>to</span>
+                      {whisperTargetAvatar && (
+                        <img
+                          src={whisperTargetAvatar}
+                          alt=""
+                          style={{ width: 14, height: 14, borderRadius: '50%', objectFit: 'cover' }}
+                        />
+                      )}
+                      <span style={{ color: getPlayerColor(whisperTargetIndex), textTransform: 'none', fontWeight: 700 }}>
+                        {whisperTarget.personaName}
+                      </span>
+                    </>
                   )}
                 </span>
               )}
