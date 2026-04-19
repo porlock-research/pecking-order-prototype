@@ -2485,3 +2485,87 @@ Plan 2 (`2026-04-17-confessions-match.md`) branches from post-merge `main` with 
   - T11: also added `Events.Confession.PREFIX` forwarder to the `'*'` catch-all so client `CONFESSION.POST` events reach L3 from any entry point.
 - Pre-existing test failures to ignore: still `HintChips.test.tsx > MAIN shows /silver /nudge /whisper /dm`. The other one (`gm-briefings.test.ts > sends separate dilemma message`) doesn't appear in current runs — may have self-resolved or was in a different package.
 - Per CLAUDE.md: stage commits by path, never `-A`; don't merge or push without explicit approval. Worktree `node_modules` is already set up.
+
+
+---
+
+## Handoff — 2026-04-18 18:55 (Plan 1 code-complete; verification + polish remain)
+
+**All 18 Plan 1 tasks are committed** on `feature/spec-c-confessions` in `.worktrees/confessions`. 20 commits ahead of main. This session shipped T12–T18:
+
+| Commit  | Task    | What                                                                             |
+|---------|---------|----------------------------------------------------------------------------------|
+| `3555ab9` | T12   | Per-recipient `confessionPhase` projection in `buildSyncPayload`                 |
+| `d024358` | T13+14 | Pulse CONFESSION UI — `ConfessionInput`, `Cassette`, `ConfessionBoothSheet`, booth overdrive (drop-in + rim-light + mic-flash), mockups 13 + 14 |
+| `fc1f46a` | T15   | Store SYNC hydration of `confessionPhase` with `stableRef` for mutable `posts[]` |
+| `1e97d0a` | T16   | Lobby `DynamicRulesetBuilder` — `Confession Booth` toggle (`data-testid=confessions-enabled`) |
+| `c34e6d3` | T17   | DemoServer SYNC shape-match                                                      |
+| `e43952f` | T18   | E2E spec + plumbing (`TickerMessage.channelId` in shared-types, `factToTicker` propagation, `data-channel-type` + `data-testid="my-confessor-handle"`, `createTestGame` ruleset option) |
+
+**Test status:** game-server 468/468, client 145/146 (pre-existing HintChips flake — ignore), shared-types + lobby green. `npm run build` clean across all apps. **E2E spec typechecks but has never been executed end-to-end.**
+
+### Priority 1 — Verification before merge
+
+Dev servers in most sessions are bound to the main repo (`/Users/manu/Projects/pecking-order/apps/*`), NOT this worktree — so `test:e2e` would exercise STALE code. Before running e2e:
+
+```bash
+lsof -i :5173 :8787 | grep LISTEN       # note PIDs
+lsof -p <pid> | grep cwd                 # confirm wrong cwd
+kill <pid>                               # kill them
+cd .worktrees/confessions && npm run dev # restart from worktree
+```
+
+Then in another shell:
+```bash
+cd .worktrees/confessions && npm run test:e2e -- --grep "Confession Phase"
+```
+
+Also do one **manual browser playthrough**: SPEED_RUN game with `ruleset.confessions.enabled=true`, two browsers, admin-inject `START_CONFESSION_CHAT`, tap the narrator line, post, verify both clients see distinct handles. The unit tests don't cover the full SOCIAL_PHASE ticker → narrator → tap → booth → POST wiring end-to-end; e2e + manual sanity are the safety net.
+
+If everything is green: `git merge main` INTO this branch first (conflicts resolve easier here than on main per the branch-safety hook), then ask before push + PR.
+
+### Priority 2 — Deferred design items (ship before Plan 2)
+
+The user explicitly confirmed these need to land. All visuals are in the mockups on this branch at `docs/reports/pulse-mockups/`.
+
+**A. Entry nameplate moment** — one-time `YOU ARE / CONFESSOR / #03 / NAMELESS FOR TONIGHT` reveal on first booth open each phase. Mockup 13 state 01 shows it (masked silhouette drops in, pink `#` + white `03` at 120px Clash Display, italic caption, tap-to-enter). Currently: opening the booth just shows the composer. Track with a per-phase `lastRevealedBoothPhase: string | null` — persist in `localStorage` keyed by `(gameId, playerId, dayIndex)` so page reloads don't replay.
+
+**B. Closing-soon state** — amber warning when phase is within ~60s of ending. Mockup 13 state 03: gold `CLOSING` pill replaces red `ON AIR`; `00:27` countdown banner above the reel; `LAST CALL` (gold) in the composer chrome. Requires: server emits a new `CONFESSION_PHASE_CLOSING` fact when <60s remain OR client computes countdown from a `closesAt` field on the confessionPhase projection (add to T12 projection). Server-side is cleaner. Don't add a new ticker category — reuse `SOCIAL_PHASE` with `kind: 'confession-closing'`.
+
+**C. Archived state** — `BOOTH CLOSED` rubber-stamp plate replaces the composer after phase close; reel stays browsable, cassettes desaturate (`saturate(0.85)`). Mockup 13 state 04. Currently: sheet just closes. Requires: keep `ConfessionBoothSheet` mounted after `active=false` if any posts exist; replace `ConfessionInput` with a `ClosedPlate` component.
+
+**D. Auto-open booth on phase start** — current flow requires tapping the narrator line. Proposal: when `confessionPhase.active` flips from `false` → `true` AND `myHandle !== null`, auto-`openConfessionBooth(channelId)`. Narrator tap remains as a re-entry path. Use a ref to track the last-seen `active` value so we don't re-open after manual close.
+
+**E. Direction-C text-to-cassette morph** — sender sees their typed text fly from mic up into a cassette via View Transitions API. Mockup 14 demonstrates it working in isolation. Dropped from production because the post arrives async via server SYNC — no in-tick DOM change to morph. Revisit with **optimistic local insert**: on send, immediately insert a "pending cassette" into the reel, call `startViewTransition()` around that insert with `view-transition-name: flying-tape` on the text node; when SYNC confirms, swap the pending cassette's tempId for the server id (or rollback on reject). Needs reconciliation care — don't double-render when SYNC arrives.
+
+Order-of-easiness: **D (10 min) → C (45 min) → A (1h) → B (needs server work, 2h) → E (reconciliation-heavy, 3h)**.
+
+### Priority 3 — Plan 2 (match cartridge)
+
+Separate plan, not started. Per the Plan-1 self-review (explicitly Plan 2 scope):
+- Handle-assignment-for-matchers · guess recording · reveal scoring
+- `activityLayer.loading` sub-state
+- `d1-confession-queries` / `loadConfessionArchive`
+- Rewrite `confession-machine.ts` → `confession-match-machine.ts`
+- `ConfessionMatch.tsx` UI
+- `LOAD_ERROR` surfacing on `results.status`
+
+Branches from post-merge `main`. New plan file at `docs/superpowers/plans/2026-04-17-confessions-match.md` (per plan footer). Writing that plan is a separate session.
+
+### Guardrails and gotchas to remember
+
+- **Worktree node_modules**: already installed; shared-types + game-cartridges dists are current. Rebuild with `cd packages/shared-types && npm run build` if you edit those sources.
+- **stableRef**: any new server-mutable store field needs `stableRef(prev, next)` in the SYNC merge. `confessionPhase.posts[]` already uses it.
+- **Narrator lines are fact-driven** (`finite-narrator-lines-fact-driven` rule) — server `factToTicker` decides copy, client filters by category only.
+- **Pulse typography**: `.impeccable.md` says Clash Display + Satoshi but shipped Pulse still uses Outfit. The mockups use Clash; production uses Outfit. If you want mockup-parity you'd need a pulse-theme.css font-stack migration (separate project — don't do it inside a confessions polish pass).
+- **Stage by path, never `-A`** (multi-session branch drift). Always exclude the stray `package-lock.json` diff — it drifts between sessions and isn't ours.
+- **Ask before push + PR.**
+
+### Files worth opening cold next session
+
+- `docs/superpowers/plans/2026-04-17-confessions-phase.md` — this plan (T1–T18 spec + handoffs)
+- `docs/reports/pulse-mockups/13-confessions-booth.html` — 5 states (authoritative visuals)
+- `docs/reports/pulse-mockups/14-confession-send-moment.html` — Direction C overdrive demo with live VT feature-detect
+- `apps/client/src/shells/pulse/components/confession-booth/ConfessionBoothSheet.tsx` — where A/C/D polish lands
+- `apps/client/src/shells/pulse/components/input/ConfessionInput.tsx` — where the nameplate moment hooks in
+- `memory/project_confessions.md` — update after merge
