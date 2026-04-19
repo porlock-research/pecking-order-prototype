@@ -142,15 +142,18 @@ export function useReceivedOverdrive() {
       }
     }
 
-    // Pre-register ALL keys before scheduling — prevents re-enqueue when
-    // markSeen() below mutates the store and re-runs this effect mid-stagger.
-    for (const b of bursts) {
-      for (const k of b.keys) dispatched.current.add(k);
-    }
-
+    // Register dedup keys INSIDE the setTimeout callback, not synchronously
+    // before scheduling. Silver transfer triggers TICKER.UPDATE immediately
+    // followed by SYSTEM.SYNC (roster silver counts changed) — the SYNC
+    // re-runs this effect and its cleanup would clearTimeout the pending
+    // dispatch. Registering keys up front would cause the next run to skip
+    // the silver entirely (key already in `dispatched`), losing the burst.
+    // Registering at dispatch time means a cancelled timer leaves the key
+    // unregistered, so the next effect run re-schedules cleanly.
     const timers: number[] = [];
     bursts.forEach((burst, i) => {
       const t = window.setTimeout(() => {
+        for (const k of burst.keys) dispatched.current.add(k);
         if (burst.kind === 'silver') {
           window.dispatchEvent(new CustomEvent('pulse:silver-burst', {
             detail: {

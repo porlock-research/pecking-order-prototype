@@ -230,6 +230,25 @@
   .pulse-silver-arrive::after { animation: none; display: none; }
 }
 
+/* One-shot hand-wave on nudge arrival. CSS keyframes fire once on mount
+   independent of React re-renders, so the animation can't be restarted /
+   stuck by feed ticks (see finite-framer-keyframe-restart). */
+@keyframes pulse-nudge-wave {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(-18deg); }
+  40%  { transform: rotate(16deg); }
+  60%  { transform: rotate(-12deg); }
+  80%  { transform: rotate(10deg); }
+  100% { transform: rotate(0deg); }
+}
+.pulse-nudge-wave {
+  transform-origin: 70% 80%;
+  animation: pulse-nudge-wave 550ms ease-in-out 180ms 1 both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-nudge-wave { animation: none; }
+}
+
 /* Shake feedback for out-of-slots chip taps */
 @keyframes pulse-chip-shake {
   0%, 100% { transform: translateX(0); }

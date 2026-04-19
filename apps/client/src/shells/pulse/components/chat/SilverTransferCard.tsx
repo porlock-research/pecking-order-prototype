@@ -3,6 +3,7 @@ import { Coins } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
 import { PULSE_SPRING } from '../../springs';
+import { PersonaImage } from '../common/PersonaImage';
 
 interface SilverTransferCardProps {
   text: string;
@@ -11,29 +12,29 @@ interface SilverTransferCardProps {
 
 /**
  * Inline chat card for silver transfer broadcasts.
- * Parses "{Sender} sent {amount} silver to {Recipient}" text and renders with
- * overlapping persona portraits + gold chip — matches mockup 03-conversations.
+ * Treatment mirrors the NarratorLine / WhisperCard public-intrigue row:
+ * dividers each side, muted italic body, inline persona avatars + player-
+ * colored bold names. The amount reads gold-bold inline with a Coins icon
+ * so the value carries without needing a separate chip.
  */
 export function SilverTransferCard({ text }: SilverTransferCardProps) {
   const roster = useGameStore(s => s.roster);
   const reduce = useReducedMotion();
 
-  // Parse: "NAME sent AMOUNT silver to NAME"
+  // Parse: "SENDER sent AMOUNT silver to RECIPIENT"
   const match = text.match(/^(.+?)\s+sent\s+(\d+)\s+silver\s+to\s+(.+?)$/i);
   if (!match) {
-    // Fallback to plain text if regex fails
     return (
       <motion.div
-        initial={{ opacity: 0, x: -12 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={PULSE_SPRING.bouncy}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={PULSE_SPRING.gentle}
         style={{
-          padding: '8px 14px',
-          margin: '4px 0',
-          borderRadius: 12,
-          fontSize: 12,
-          color: 'var(--pulse-text-2)',
-          background: 'var(--pulse-surface-2)',
+          padding: '8px 16px',
+          fontSize: 11,
+          fontStyle: 'italic',
+          color: 'var(--pulse-text-3)',
+          textAlign: 'center',
         }}
       >
         {text}
@@ -43,110 +44,138 @@ export function SilverTransferCard({ text }: SilverTransferCardProps) {
 
   const [, senderName, amountStr, recipientName] = match;
   const amount = parseInt(amountStr, 10);
-
-  const senderEntry = Object.entries(roster).find(([_, p]) => p.personaName === senderName);
-  const recipientEntry = Object.entries(roster).find(([_, p]) => p.personaName === recipientName);
+  const senderEntry = Object.entries(roster).find(([, p]) => p.personaName === senderName);
+  const recipientEntry = Object.entries(roster).find(([, p]) => p.personaName === recipientName);
   const sender = senderEntry?.[1];
   const recipient = recipientEntry?.[1];
-  const senderColor = senderEntry ? getPlayerColor(Object.keys(roster).indexOf(senderEntry[0])) : 'var(--pulse-text-2)';
-  const recipientColor = recipientEntry ? getPlayerColor(Object.keys(roster).indexOf(recipientEntry[0])) : 'var(--pulse-text-2)';
+  const senderColor = senderEntry
+    ? getPlayerColor(Object.keys(roster).indexOf(senderEntry[0]))
+    : 'var(--pulse-text-2)';
+  const recipientColor = recipientEntry
+    ? getPlayerColor(Object.keys(roster).indexOf(recipientEntry[0]))
+    : 'var(--pulse-text-2)';
 
-  // Pop/glow arrival uses opacity + translate only. The previous scale
-  // keyframe animation (0.88 → 1.04 → 1) was stuck at the initial 0.88
-  // whenever the parent re-rendered before the 700ms transition completed
-  // — every live-game store tick was enough. The visible result: the whole
-  // card rendered at 88% with portraits pinched to 24.6px. Keep arrival
-  // feel via opacity + x; the CSS pulse-silver-arrive sheen + glow layer
-  // carries the dramatic beat.
+  const dividerMotion = reduce
+    ? {}
+    : {
+        initial: { scaleX: 0 },
+        animate: { scaleX: 1 },
+        transition: { duration: 0.55, ease: [0.25, 1, 0.5, 1] as const },
+      };
+
+  // Coins flip-in — the value lands with a beat.
+  const coinsMotion = reduce
+    ? {}
+    : {
+        initial: { scale: 0.55, rotate: -30 },
+        animate: { scale: 1, rotate: 0 },
+        transition: { ...PULSE_SPRING.bouncy, delay: 0.1 },
+      };
+
   return (
     <motion.div
-      className={reduce ? undefined : 'pulse-silver-arrive'}
-      initial={reduce ? { opacity: 0 } : { opacity: 0, x: -8 }}
-      animate={reduce ? { opacity: 1 } : { opacity: 1, x: 0 }}
-      transition={reduce ? { duration: 0.2 } : { duration: 0.35, ease: [0.2, 0.9, 0.3, 1] }}
+      initial={reduce ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={PULSE_SPRING.gentle}
       style={{
-        display: 'inline-flex',
-        alignSelf: 'flex-start',
+        display: 'flex',
         alignItems: 'center',
-        gap: 'var(--pulse-space-sm)',
-        padding: 'var(--pulse-space-xs) var(--pulse-space-sm) var(--pulse-space-xs) var(--pulse-space-xs)',
-        margin: 'var(--pulse-space-2xs) 0',
-        borderRadius: 999,
-        background: 'color-mix(in oklch, var(--pulse-gold) 5%, transparent)',
-        border: '1px solid color-mix(in oklch, var(--pulse-gold) 15%, transparent)',
-        fontFamily: 'var(--po-font-body)',
+        gap: 10,
+        padding: '8px 16px',
       }}
     >
-      {/* Overlapping portraits — face-legible. 28px each, overlap 8px so
-          the first portrait still shows 20px (~70%) of the sender's face.
-          The old 14px overlap (50%) hid half a face and read as cramped. */}
-      <div style={{ position: 'relative', width: 48, height: 28, flexShrink: 0 }}>
-        {sender && (
-          <img
-            src={sender.avatarUrl}
-            alt=""
-            loading="lazy"
-            width={28}
-            height={28}
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              width: 28,
-              height: 28,
-              borderRadius: 7,
-              objectFit: 'cover',
-              objectPosition: 'center top',
-              border: '1.5px solid var(--pulse-bg)',
-              zIndex: 2,
-            }}
-          />
-        )}
-        {recipient && (
-          <img
-            src={recipient.avatarUrl}
-            alt=""
-            loading="lazy"
-            width={28}
-            height={28}
-            style={{
-              position: 'absolute',
-              left: 20,
-              top: 0,
-              width: 28,
-              height: 28,
-              borderRadius: 7,
-              objectFit: 'cover',
-              objectPosition: 'center top',
-              border: '1.5px solid var(--pulse-bg)',
-              zIndex: 1,
-            }}
-          />
-        )}
-      </div>
-
-      {/* Text — small, single line */}
-      <div style={{ fontSize: 11, color: 'var(--pulse-text-2)', lineHeight: 1.2, fontWeight: 500 }}>
-        <span style={{ fontWeight: 700, color: senderColor }}>{senderName}</span>
-        <span> → </span>
-        <span style={{ fontWeight: 700, color: recipientColor }}>{recipientName}</span>
-      </div>
-
-      {/* Gold amount chip — compact */}
-      <div
+      <motion.span
+        aria-hidden
+        {...dividerMotion}
+        style={{
+          flex: 1,
+          height: 1,
+          minWidth: 12,
+          transformOrigin: 'right center',
+          background:
+            'linear-gradient(to right, transparent, color-mix(in oklch, var(--pulse-gold) 28%, transparent))',
+        }}
+      />
+      <span
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 3,
-          color: 'var(--pulse-gold)',
-          fontWeight: 800,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          columnGap: 6,
+          rowGap: 2,
+          flexShrink: 1,
+          maxWidth: '80%',
           fontSize: 11,
-          flexShrink: 0,
+          fontStyle: 'italic',
+          lineHeight: 1.45,
+          letterSpacing: 0.2,
+          color: 'var(--pulse-text-3)',
+          textAlign: 'center',
         }}
       >
-        <Coins size={11} weight="fill" />
-        <span>{amount}</span>
-      </div>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {senderEntry && (
+            <PersonaImage
+              avatarUrl={sender?.avatarUrl}
+              cacheKey={senderEntry[0]}
+              preferredVariant="headshot"
+              initials={(senderName ?? '?').slice(0, 1).toUpperCase()}
+              playerColor={senderColor}
+              alt=""
+              style={{ width: 16, height: 16, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }}
+            />
+          )}
+          <strong style={{ color: senderColor, fontStyle: 'normal', fontWeight: 700 }}>
+            {senderName}
+          </strong>
+        </span>
+        <span>sent</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+          <motion.span
+            {...coinsMotion}
+            style={{
+              display: 'inline-flex',
+              color: 'var(--pulse-gold)',
+              filter: 'drop-shadow(0 0 6px color-mix(in oklch, var(--pulse-gold) 45%, transparent))',
+            }}
+          >
+            <Coins size={12} weight="fill" />
+          </motion.span>
+          <strong style={{ color: 'var(--pulse-gold)', fontStyle: 'normal', fontWeight: 700 }}>
+            {amount}
+          </strong>
+        </span>
+        <span>to</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {recipientEntry && (
+            <PersonaImage
+              avatarUrl={recipient?.avatarUrl}
+              cacheKey={recipientEntry[0]}
+              preferredVariant="headshot"
+              initials={(recipientName ?? '?').slice(0, 1).toUpperCase()}
+              playerColor={recipientColor}
+              alt=""
+              style={{ width: 16, height: 16, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }}
+            />
+          )}
+          <strong style={{ color: recipientColor, fontStyle: 'normal', fontWeight: 700 }}>
+            {recipientName}
+          </strong>
+        </span>
+      </span>
+      <motion.span
+        aria-hidden
+        {...dividerMotion}
+        style={{
+          flex: 1,
+          height: 1,
+          minWidth: 12,
+          transformOrigin: 'left center',
+          background:
+            'linear-gradient(to left, transparent, color-mix(in oklch, var(--pulse-gold) 28%, transparent))',
+        }}
+      />
     </motion.div>
   );
 }
