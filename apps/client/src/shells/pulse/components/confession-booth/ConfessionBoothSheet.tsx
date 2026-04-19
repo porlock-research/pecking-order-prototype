@@ -5,6 +5,7 @@ import { usePulse } from '../../PulseShell';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import { PULSE_SPRING } from '../../springs';
 import { Cassette } from './Cassette';
+import { ClosedPlate } from './ClosedPlate';
 import { ConfessionInput } from '../input/ConfessionInput';
 
 interface Props {
@@ -33,6 +34,7 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
 
   const myHandle = confessionPhase?.myHandle ?? null;
   const posts = confessionPhase?.posts ?? [];
+  const phaseClosed = !(confessionPhase?.active ?? false);
   // Newest at top of the reel — the latest tape is the most interesting.
   const sortedPosts = [...posts].sort((a, b) => b.ts - a.ts);
 
@@ -139,18 +141,27 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
         </div>
 
         <div style={headerStyle.meta}>
-          <span>{sortedPosts.length} {sortedPosts.length === 1 ? 'tape' : 'tapes'} tonight</span>
-          <span style={headerStyle.sep} />
-          <span>anonymous to everyone</span>
+          <span>
+            {sortedPosts.length} {sortedPosts.length === 1 ? 'tape' : 'tapes'}
+            {phaseClosed ? ' · archived' : ' tonight'}
+          </span>
+          {!phaseClosed && (
+            <>
+              <span style={headerStyle.sep} />
+              <span>anonymous to everyone</span>
+            </>
+          )}
         </div>
 
         {/* Feed */}
-        <div style={feedStyle}>
+        <div style={phaseClosed ? feedStyleClosed : feedStyle}>
           {sortedPosts.length === 0 ? (
             <div style={emptyStateStyle.wrap}>
-              <div style={emptyStateStyle.title}>No tapes yet.</div>
+              <div style={emptyStateStyle.title}>No tapes {phaseClosed ? 'were recorded.' : 'yet.'}</div>
               <div style={emptyStateStyle.body}>
-                The booth is on air. Drop something in &mdash; everyone sees the tape, no one sees the name.
+                {phaseClosed
+                  ? 'The booth came and went without anyone stepping in.'
+                  : 'The booth is on air. Drop something in — everyone sees the tape, no one sees the name.'}
               </div>
             </div>
           ) : (
@@ -170,8 +181,8 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
           )}
         </div>
 
-        {/* Composer */}
-        <ConfessionInput myHandle={myHandle} onSend={handleSend} />
+        {/* Composer (live) or rubber-stamp plate (archived) */}
+        {phaseClosed ? <ClosedPlate /> : <ConfessionInput myHandle={myHandle} onSend={handleSend} />}
       </motion.div>
     </>
   );
@@ -286,6 +297,12 @@ const feedStyle: React.CSSProperties = {
   gap: 12,
   position: 'relative',
   zIndex: 1,
+};
+
+// Archived variant: slight desaturation on the cassette reel per mockup 13 state 04.
+const feedStyleClosed: React.CSSProperties = {
+  ...feedStyle,
+  filter: 'saturate(0.85)',
 };
 
 const emptyStateStyle = {
