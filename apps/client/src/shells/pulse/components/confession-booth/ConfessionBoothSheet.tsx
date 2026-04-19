@@ -1,12 +1,19 @@
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import { PULSE_SPRING } from '../../springs';
+import { BoothNameplate } from './BoothNameplate';
 import { Cassette } from './Cassette';
 import { ClosedPlate } from './ClosedPlate';
 import { ConfessionInput } from '../input/ConfessionInput';
+
+/** localStorage key for the last-revealed phase dayIndex per (gameId, playerId). */
+function revealKeyFor(gameId: string | null, playerId: string | null): string | null {
+  if (!gameId || !playerId) return null;
+  return `po-pulse-revealedBoothPhase:${gameId}:${playerId}`;
+}
 
 interface Props {
   /** Channel id of the CONFESSION channel, e.g. "CONFESSION-d2". */
@@ -30,6 +37,8 @@ interface Props {
 export function ConfessionBoothSheet({ channelId, onClose }: Props) {
   const confessionPhase = useGameStore(s => s.confessionPhase);
   const dayIndex = useGameStore(s => s.dayIndex);
+  const gameId = useGameStore(s => s.gameId);
+  const playerId = useGameStore(s => s.playerId);
   const { engine } = usePulse();
 
   const myHandle = confessionPhase?.myHandle ?? null;
@@ -37,6 +46,35 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
   const phaseClosed = !(confessionPhase?.active ?? false);
   // Newest at top of the reel — the latest tape is the most interesting.
   const sortedPosts = [...posts].sort((a, b) => b.ts - a.ts);
+
+  // Entry nameplate — first open per phase for a participant. Persist the
+  // last-revealed dayIndex in localStorage so a page reload mid-phase doesn't
+  // replay the reveal. Non-members (`myHandle === null`) and archived phases
+  // (`phaseClosed`) skip the reveal entirely. The effect re-evaluates when
+  // deps change so a delayed SYNC for `myHandle` still flips the reveal on.
+  const storageKey = revealKeyFor(gameId, playerId);
+  const currentPhaseTag = `d${dayIndex}`;
+  const [showNameplate, setShowNameplate] = useState(false);
+  useEffect(() => {
+    if (!storageKey || !myHandle || phaseClosed) {
+      setShowNameplate(false);
+      return;
+    }
+    try {
+      setShowNameplate(window.localStorage.getItem(storageKey) !== currentPhaseTag);
+    } catch {
+      setShowNameplate(false);
+    }
+  }, [storageKey, myHandle, phaseClosed, currentPhaseTag]);
+  const dismissNameplate = useCallback(() => {
+    setShowNameplate(false);
+    if (!storageKey) return;
+    try {
+      window.localStorage.setItem(storageKey, currentPhaseTag);
+    } catch {
+      /* storage can be disabled (private mode); reveal will just replay next mount */
+    }
+  }, [storageKey, currentPhaseTag]);
 
   // Track which post-ids we've already seen so newly-arrived ones get the
   // drop-in animation exactly once. Key = `${handle}-${ts}` (the Cassette
@@ -183,6 +221,13 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
 
         {/* Composer (live) or rubber-stamp plate (archived) */}
         {phaseClosed ? <ClosedPlate /> : <ConfessionInput myHandle={myHandle} onSend={handleSend} />}
+
+        {/* One-time entry nameplate — dismisses on tap, dismissal persisted per phase */}
+        <AnimatePresence>
+          {showNameplate && myHandle && (
+            <BoothNameplate key="nameplate" handle={myHandle} onContinue={dismissNameplate} />
+          )}
+        </AnimatePresence>
       </motion.div>
     </>
   );

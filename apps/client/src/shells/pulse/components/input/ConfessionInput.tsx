@@ -160,6 +160,18 @@ export function formatHandleForLabel(handle: string): string {
   return `CONFESSOR · ${match[1]}`;
 }
 
+/**
+ * Split a handle like "Confessor #3" into its word ("CONFESSOR") and
+ * zero-padded number ("03") for the entry nameplate reveal. Two-digit
+ * padding keeps the giant numeral visually balanced regardless of player
+ * count (mockup 13 state 01).
+ */
+export function parseHandleParts(handle: string): { word: string; number: string } {
+  const match = handle.match(/^([A-Za-z]+)\s*#?\s*(\d+)$/);
+  if (!match) return { word: handle.toUpperCase(), number: '' };
+  return { word: match[1].toUpperCase(), number: match[2].padStart(2, '0') };
+}
+
 /* ---------- Styles ---------- */
 
 const boothStyle = {
