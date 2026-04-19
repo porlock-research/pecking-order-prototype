@@ -132,16 +132,16 @@ interface GameState {
   lastPerkResult: any | null;
   playerActivity: Record<string, { messagesInMain: number; dmPartners: number; isOnline: boolean }>;
   /**
-   * Per-recipient confession-phase projection from SYNC (T12).
-   * Full handlesByPlayer stays server-side; client sees only its own handle.
-   * null outside of a live confession phase. Hydration: T15.
+   * Per-recipient confession-phase projection from SYNC (T12 server projection,
+   * T15 hydration). Full handlesByPlayer stays server-side; client sees only
+   * its own handle. Default inactive shape when no live phase; never null.
    */
   confessionPhase: {
     active: boolean;
     myHandle: string | null;
     handleCount: number;
     posts: Array<{ handle: string; text: string; ts: number }>;
-  } | null;
+  };
   tickerMessages: TickerMessage[];
   debugTicker: string | null;
 
@@ -878,7 +878,7 @@ export const useGameStore = create<GameState>((set) => ({
   silverTransferRejection: null,
   lastPerkResult: null,
   playerActivity: {},
-  confessionPhase: null,
+  confessionPhase: { active: false, myHandle: null, handleCount: 0, posts: [] },
   tickerMessages: [],
   debugTicker: null,
   showcaseData: null,
@@ -953,6 +953,13 @@ export const useGameStore = create<GameState>((set) => ({
       dmStats: stableRef(state.dmStats, data.context?.dmStats ?? null),
       onlinePlayers: stableRef(state.onlinePlayers, data.context?.onlinePlayers ?? state.onlinePlayers),
       playerActivity: stableRef(state.playerActivity, data.context?.playerActivity ?? state.playerActivity),
+      // Per-recipient confession-phase projection (T12 put it under `context`, not `l3Context`).
+      // stableRef is load-bearing here: posts[] can mutate in-place server-side (reactions,
+      // edits-within-window), so length equality is insufficient — rely on deep equality.
+      confessionPhase: stableRef(
+        state.confessionPhase,
+        data.context?.confessionPhase ?? { active: false, myHandle: null, handleCount: 0, posts: [] },
+      ),
       welcomeSeen: localStorage.getItem(`po-welcomeSeen-${data.context?.gameId || state.gameId}`) === 'true' || state.welcomeSeen,
       showcaseData: stableRef(state.showcaseData, data.context?.showcase ?? state.showcaseData),
       // Pulse Phase 4 — hydrate seen-state maps from localStorage inline (like welcomeSeen above).
