@@ -642,12 +642,19 @@ export const l3SocialGuards = {
     return true;
   },
 
-  // Guard: whisper target must be alive, text non-empty, and MAIN must carry the WHISPER cap
+  // Guard: whisper target must be alive, text non-empty, MAIN must carry the WHISPER cap,
+  // AND DMs must be open (whisper delivers as a DM — if DMs are closed, the underlying
+  // channel for whispers is gated closed too).
   isWhisperAllowed: ({ context, event }: any) => {
     if (event.type !== Events.Social.WHISPER) return false;
     // Consistency check: whispers require MAIN to carry the WHISPER capability.
     // Drop the cap (test harness / future feature flag) → whispers are disabled.
     if (!channelHasCapability(context.channels, 'MAIN', 'WHISPER')) return false;
+    // Phase gate: whispers share the DM channel lifecycle. When DMs are closed
+    // (before OPEN_DMS, after CLOSE_DMS), whispers must be rejected. Without this
+    // the client could send whispers during the post-chat window even though the
+    // underlying private-message surface is closed.
+    if (!context.dmsOpen) return false;
     const { senderId, targetId, text } = event;
     if (senderId === targetId) return false;
     if (!text || text.length === 0) return false;
