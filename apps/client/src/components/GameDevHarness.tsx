@@ -143,6 +143,10 @@ const VOTING_DEFS: Record<VoteType, VotingDef> = {
 interface PromptDef {
   loadMachine: () => Promise<any>;
   Component: React.LazyExoticComponent<React.ComponentType<any>>;
+  /** Per-type input fields beyond the base { promptType, roster, dayIndex } —
+   *  promptText is required for all; HOT_TAKE needs options[]; WYR needs
+   *  optionA/optionB. Without these the cartridge renders empty. */
+  extraInput: Record<string, any>;
   /** Type-specific bot submit. */
   botSubmit: (actor: AnyActorRef, botIds: string[], roster: Record<string, SocialPlayer>) => Array<{ event: string; payload: any }>;
   /** Per-phase advance buttons (e.g. CONFESSION COLLECTING → VOTING → REVEAL). */
@@ -159,6 +163,7 @@ const PROMPT_DEFS: Record<PromptType, PromptDef> = {
   PLAYER_PICK: {
     loadMachine: () => import('@pecking-order/cartridges').then(m => m.playerPickMachine),
     Component: lazy(() => import('../cartridges/prompts/PlayerPickPrompt')),
+    extraInput: { promptText: 'Who would you trust with your last silver coin?' },
     botSubmit: (actor, botIds, roster) => botIds.map(senderId => {
       const targets = Object.keys(roster).filter(id => id !== senderId);
       const targetId = targets[Math.floor(Math.random() * targets.length)];
@@ -170,6 +175,7 @@ const PROMPT_DEFS: Record<PromptType, PromptDef> = {
   PREDICTION: {
     loadMachine: () => import('@pecking-order/cartridges').then(m => m.predictionMachine),
     Component: lazy(() => import('../cartridges/prompts/PredictionPrompt')),
+    extraInput: { promptText: 'Who will be eliminated tonight?' },
     botSubmit: (actor, botIds, roster) => botIds.map(senderId => {
       const targets = Object.keys(roster);
       const targetId = targets[Math.floor(Math.random() * targets.length)];
@@ -181,6 +187,7 @@ const PROMPT_DEFS: Record<PromptType, PromptDef> = {
   WOULD_YOU_RATHER: {
     loadMachine: () => import('@pecking-order/cartridges').then(m => m.wyrMachine),
     Component: lazy(() => import('../cartridges/prompts/WouldYouRatherPrompt')),
+    extraInput: { promptText: 'Would you rather…', optionA: 'Win the game alone', optionB: 'Split the prize five ways' },
     botSubmit: (actor, botIds) => botIds.map(senderId => {
       const choice = Math.random() > 0.5 ? 'A' : 'B';
       actor.send({ type: ActivityEvents.WYR.CHOOSE, senderId, choice });
@@ -191,6 +198,11 @@ const PROMPT_DEFS: Record<PromptType, PromptDef> = {
   HOT_TAKE: {
     loadMachine: () => import('@pecking-order/cartridges').then(m => m.hotTakeMachine),
     Component: lazy(() => import('../cartridges/prompts/HotTakePrompt')),
+    extraInput: {
+      promptText: 'Lying in DMs is a perfectly valid strategy.',
+      options: ['Strongly disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly agree'],
+      promptId: 'dev-hot-take',
+    },
     botSubmit: (actor, botIds) => botIds.map(senderId => {
       const stance = Math.floor(Math.random() * 5);
       actor.send({ type: ActivityEvents.HOTTAKE.RESPOND, senderId, stance });
@@ -201,6 +213,7 @@ const PROMPT_DEFS: Record<PromptType, PromptDef> = {
   CONFESSION: {
     loadMachine: () => import('@pecking-order/cartridges').then(m => m.confessionMachine),
     Component: lazy(() => import('../cartridges/prompts/ConfessionPrompt')),
+    extraInput: { promptText: 'Confess your worst game-day move so far.' },
     botSubmit: (actor, botIds) => {
       const phase = (actor.getSnapshot() as any)?.value;
       if (phase === 'voting') {
@@ -225,6 +238,7 @@ const PROMPT_DEFS: Record<PromptType, PromptDef> = {
   GUESS_WHO: {
     loadMachine: () => import('@pecking-order/cartridges').then(m => m.guessWhoMachine),
     Component: lazy(() => import('../cartridges/prompts/GuessWhoPrompt')),
+    extraInput: { promptText: 'In one word, describe your game so far.' },
     botSubmit: (actor, botIds, roster) => {
       const phase = (actor.getSnapshot() as any)?.value;
       if (phase === 'guessing') {
@@ -436,7 +450,10 @@ function buildInput(mode: Mode, type: string, config: Record<string, any>): any 
     return { ...base, gameType: type, ...(def.defaultInput || {}), ...config };
   }
   if (mode === 'voting') return { ...base, voteType: type };
-  if (mode === 'prompt') return { ...base, promptType: type };
+  if (mode === 'prompt') {
+    const def = PROMPT_DEFS[type as PromptType];
+    return { ...base, promptType: type, ...def.extraInput };
+  }
   if (mode === 'dilemma') return { ...base, dilemmaType: type };
   return base;
 }
