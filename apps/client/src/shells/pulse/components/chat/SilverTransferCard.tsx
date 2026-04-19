@@ -72,8 +72,8 @@ export function SilverTransferCard({ text }: SilverTransferCardProps) {
         padding: 'var(--pulse-space-xs) var(--pulse-space-sm) var(--pulse-space-xs) var(--pulse-space-xs)',
         margin: 'var(--pulse-space-2xs) 0',
         borderRadius: 999,
-        background: 'rgba(255,200,61,0.05)',
-        border: '1px solid rgba(255,200,61,0.15)',
+        background: 'color-mix(in oklch, var(--pulse-gold) 5%, transparent)',
+        border: '1px solid color-mix(in oklch, var(--pulse-gold) 15%, transparent)',
         fontFamily: 'var(--po-font-body)',
       }}
     >

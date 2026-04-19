@@ -24,8 +24,8 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
           padding: '10px 12px',
           margin: '6px 0',
           borderRadius: 12,
-          background: 'rgba(255, 59, 111, 0.07)',
-          border: '1px solid rgba(255, 59, 111, 0.18)',
+          background: 'color-mix(in oklch, var(--pulse-accent) 7%, transparent)',
+          border: '1px solid color-mix(in oklch, var(--pulse-accent) 18%, transparent)',
           fontFamily: 'var(--po-font-body)',
         }}
       >
@@ -68,8 +68,8 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
         fontWeight: 500,
         color: 'var(--pulse-text-2)',
         fontFamily: 'var(--po-font-body)',
-        background: isGold ? 'rgba(255, 200, 61, 0.06)' : 'var(--pulse-surface-2)',
-        border: isGold ? '1px solid rgba(255, 200, 61, 0.18)' : '1px solid var(--pulse-border)',
+        background: isGold ? 'color-mix(in oklch, var(--pulse-gold) 6%, transparent)' : 'var(--pulse-surface-2)',
+        border: isGold ? '1px solid color-mix(in oklch, var(--pulse-gold) 18%, transparent)' : '1px solid var(--pulse-border)',
       }}
     >
       <span>{message.content}</span>

@@ -53,7 +53,7 @@ export function ReactionBar({ messageId, message: _message, isSelf, onClose }: R
           background: 'var(--pulse-surface-3)',
           border: '1px solid var(--pulse-border-2)',
           // Pink-tinted layered glow — replaces generic drop shadow.
-          boxShadow: '0 0 0 1px rgba(255, 59, 111, 0.18), 0 8px 28px -8px rgba(255, 59, 111, 0.35)',
+          boxShadow: '0 0 0 1px color-mix(in oklch, var(--pulse-accent) 18%, transparent), 0 8px 28px -8px color-mix(in oklch, var(--pulse-accent) 35%, transparent)',
           zIndex: PULSE_Z.reactionBar,
           transformOrigin: isSelf ? 'right center' : 'left center',
         }}

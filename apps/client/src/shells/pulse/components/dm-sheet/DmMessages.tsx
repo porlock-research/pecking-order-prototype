@@ -53,8 +53,8 @@ export function DmMessages({ channelId, isGroup = false }: Props) {
             )}
             <div style={{
               fontSize: 15, color: 'var(--pulse-text-1)', lineHeight: 1.45,
-              background: isSelf ? 'rgba(255,59,111,0.10)' : 'transparent',
-              border: isSelf ? '1px solid rgba(255,59,111,0.20)' : 'none',
+              background: isSelf ? 'color-mix(in oklch, var(--pulse-accent) 10%, transparent)' : 'transparent',
+              border: isSelf ? '1px solid color-mix(in oklch, var(--pulse-accent) 20%, transparent)' : 'none',
               padding: isSelf ? '8px 12px' : 0,
               borderRadius: isSelf ? 14 : 0,
               maxWidth: '85%',

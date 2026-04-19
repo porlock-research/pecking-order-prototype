@@ -70,7 +70,7 @@ function SentBurstInstance({ amount, who, reduce }: { amount: number; who: strin
           fontFamily: 'var(--po-font-display)',
           fontSize: 32, fontWeight: 700,
           color: 'var(--pulse-gold)',
-          textShadow: '0 4px 20px rgba(255,200,61,0.6)',
+          textShadow: '0 4px 20px color-mix(in oklch, var(--pulse-gold) 60%, transparent)',
         }}>
           +{amount} silver
         </div>
@@ -95,7 +95,7 @@ function SentBurstInstance({ amount, who, reduce }: { amount: number; who: strin
         transition={{ duration: 0.55, ease: 'easeOut' }}
         style={{
           position: 'absolute', inset: 0,
-          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(255,200,61,0.5) 100%)',
+          background: 'radial-gradient(ellipse at center, transparent 40%, color-mix(in oklch, var(--pulse-gold) 50%, transparent) 100%)',
         }}
       />
       <div style={{ position: 'relative', width: 0, height: 0 }}>
@@ -107,7 +107,7 @@ function SentBurstInstance({ amount, who, reduce }: { amount: number; who: strin
             transition={{ duration: 0.9, delay: p.delay, ease: [0.2, 0.6, 0.4, 1] }}
             style={{ position: 'absolute', top: 0, left: 0, willChange: 'transform' }}
           >
-            <Coins size={p.size} weight="fill" style={{ color: 'var(--pulse-gold)', filter: 'drop-shadow(0 2px 8px rgba(255,200,61,0.6))' }} />
+            <Coins size={p.size} weight="fill" style={{ color: 'var(--pulse-gold)', filter: 'drop-shadow(0 2px 8px color-mix(in oklch, var(--pulse-gold) 60%, transparent))' }} />
           </motion.div>
         ))}
       </div>
@@ -133,7 +133,7 @@ function SentBurstInstance({ amount, who, reduce }: { amount: number; who: strin
           letterSpacing: -1,
           lineHeight: 1,
           color: 'var(--pulse-gold)',
-          textShadow: '0 4px 24px rgba(255,200,61,0.7), 0 0 40px rgba(255,200,61,0.4)',
+          textShadow: '0 4px 24px color-mix(in oklch, var(--pulse-gold) 70%, transparent), 0 0 40px color-mix(in oklch, var(--pulse-gold) 40%, transparent)',
         }}>
           +{amount}
         </div>
@@ -179,7 +179,7 @@ function ReceivedBurstInstance({
           fontFamily: 'var(--po-font-display)',
           fontSize: 32, fontWeight: 700,
           color: 'var(--pulse-gold)',
-          textShadow: '0 4px 20px rgba(255,200,61,0.6)',
+          textShadow: '0 4px 20px color-mix(in oklch, var(--pulse-gold) 60%, transparent)',
         }}>
           +{amount} silver from {who}
         </div>
@@ -210,7 +210,7 @@ function ReceivedBurstInstance({
         transition={{ duration: 2.1, times: [0, 0.12, 0.8, 1], ease: 'easeOut' }}
         style={{
           position: 'absolute', inset: 0,
-          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(255,200,61,0.5) 100%)',
+          background: 'radial-gradient(ellipse at center, transparent 40%, color-mix(in oklch, var(--pulse-gold) 50%, transparent) 100%)',
         }}
       />
       {/* Particle shower — quieter, starts after anticipation so portrait lands first. */}
@@ -229,7 +229,7 @@ function ReceivedBurstInstance({
             transition={{ duration: 1.0, delay: 0.22 + p.delay, ease: [0.2, 0.6, 0.4, 1] }}
             style={{ position: 'absolute', top: 0, left: 0, willChange: 'transform' }}
           >
-            <Coins size={p.size} weight="fill" style={{ color: 'var(--pulse-gold)', filter: 'drop-shadow(0 2px 8px rgba(255,200,61,0.6))' }} />
+            <Coins size={p.size} weight="fill" style={{ color: 'var(--pulse-gold)', filter: 'drop-shadow(0 2px 8px color-mix(in oklch, var(--pulse-gold) 60%, transparent))' }} />
           </motion.div>
         ))}
       </div>
@@ -254,7 +254,7 @@ function ReceivedBurstInstance({
               width: 140, height: 168, borderRadius: 20,
               overflow: 'hidden',
               boxShadow:
-                '0 0 0 3px rgba(255,200,61,0.35), 0 0 48px rgba(255,200,61,0.5), 0 20px 60px rgba(0,0,0,0.6)',
+                '0 0 0 3px color-mix(in oklch, var(--pulse-gold) 35%, transparent), 0 0 48px color-mix(in oklch, var(--pulse-gold) 50%, transparent), 0 20px 60px rgba(0,0,0,0.6)',
             }}
           >
             <img
@@ -271,7 +271,7 @@ function ReceivedBurstInstance({
           letterSpacing: -2,
           lineHeight: 0.9,
           color: 'var(--pulse-gold)',
-          textShadow: '0 4px 24px rgba(255,200,61,0.7), 0 0 48px rgba(255,200,61,0.45)',
+          textShadow: '0 4px 24px color-mix(in oklch, var(--pulse-gold) 70%, transparent), 0 0 48px color-mix(in oklch, var(--pulse-gold) 45%, transparent)',
         }}>
           +{amount}
         </div>

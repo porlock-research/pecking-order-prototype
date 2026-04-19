@@ -130,8 +130,8 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
           width: 28, height: 28, borderRadius: '50%',
           background: 'rgba(0,0,0,0.7)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 0 12px rgba(255,200,61,0.7)',
-          border: '1.5px solid rgba(255,200,61,0.9)',
+          boxShadow: '0 0 12px color-mix(in oklch, var(--pulse-gold) 70%, transparent)',
+          border: '1.5px solid color-mix(in oklch, var(--pulse-gold) 90%, transparent)',
         }}>
           <svg width="16" height="12" viewBox="0 0 14 10" aria-hidden>
             <path d="M1 9 L2 3 L5 6 L7 1 L9 6 L12 3 L13 9 Z" fill="#ffc83d" />
@@ -187,7 +187,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
           )}
           {rank !== null && (
             <span style={{
-              background: 'rgba(255,59,111,0.2)',
+              background: 'color-mix(in oklch, var(--pulse-accent) 20%, transparent)',
               color: 'var(--pulse-accent)',
               padding: '3px 8px', borderRadius: 10, fontSize: 10, fontWeight: 800,
               letterSpacing: 0.2,
@@ -198,10 +198,10 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
               player's own SilverPip on the header visually rhyme with it. */}
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
-            background: 'rgba(255,200,61,0.14)',
+            background: 'color-mix(in oklch, var(--pulse-gold) 14%, transparent)',
             color: 'var(--pulse-gold)',
             padding: '3px 8px 3px 7px', borderRadius: 10, fontSize: 11, fontWeight: 800,
-            border: '1px solid rgba(255,200,61,0.3)',
+            border: '1px solid color-mix(in oklch, var(--pulse-gold) 30%, transparent)',
             fontVariantNumeric: 'tabular-nums',
           }}>
             <Coins size={11} weight="fill" />

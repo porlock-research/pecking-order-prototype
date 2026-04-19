@@ -18,7 +18,7 @@ export function GroupChip({ entry, onTap }: Props) {
     .slice(0, 3)
     .join(', ');
   const edgeColor = entry.unreadCount > 0 ? 'var(--pulse-accent)' : 'rgba(255,255,255,0.1)';
-  const glow = entry.unreadCount > 0 ? '0 0 12px rgba(255,59,111,0.35)' : 'none';
+  const glow = entry.unreadCount > 0 ? '0 0 12px color-mix(in oklch, var(--pulse-accent) 35%, transparent)' : 'none';
 
   const ariaLabel = `Group with ${firstNames || 'members'}${entry.unreadCount > 0 ? `, ${entry.unreadCount} unread` : ''}`;
 

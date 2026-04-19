@@ -61,3 +61,22 @@ MATCH_PATTERN_EXCLUDE: packages/shared-types/src/(events|index)\.ts
 Option 3 is lowest-effort and addresses the core pain (noise in the log).
 
 **Deletion condition:** Delete once the rule either (a) stops firing on JSDoc mentions, or (b) has its advisory body trimmed to <10 lines.
+
+---
+
+## `trace-cartridge-results` skill — `/state` does NOT return `completedPhases`
+
+**Location:** `.claude/skills/trace-cartridge-results/SKILL.md` (Quick Diagnosis section).
+
+**Current text:**
+> 1. Hit `/state` endpoint: `GET /parties/game-server/{gameId}/state`
+> 2. Find `completedPhases` in L2 context
+
+**Problem:** `/state` only returns a SUMMARY of L2 (`{ state, day, nextWakeup, manifest, roster }`) — `completedPhases` is NOT included. Confirmed during 2026-04-18 SHOCKWAVE result-card debugging: trying to follow this step returned an empty object and sent me down a wrong path. The `apps/game-server/CLAUDE.md` "GET /state Limitation" note already calls this out for L3 data; same applies to most L2 context fields.
+
+**Suggested edit:** Replace step 1+2 with:
+> 1. Use the WebSocket SYNC payload or `INSPECT.SUBSCRIBE` to read `completedPhases` — the `/state` HTTP endpoint only exposes a summary (state, day, manifest, roster). For client-side debugging, attach a temporary `window.__pulseStore` exposure (per `reference_pulse_store_inspection.md`) and read `s.completedCartridges`.
+
+Optionally also add a pointer to `apps/game-server/src/sync.ts:extractL3Context` / `extractCartridges` for programmatic access.
+
+**Deletion condition:** Delete once the skill's Quick Diagnosis section reflects the actual `/state` shape.

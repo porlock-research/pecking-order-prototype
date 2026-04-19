@@ -81,7 +81,7 @@ export function MentionRenderer({ text }: MentionRendererProps) {
                   border: '1px solid var(--pulse-accent)',
                   padding: '0 6px',
                   borderRadius: 6,
-                  background: 'linear-gradient(180deg, rgba(255,59,111,0.22) 0%, rgba(255,59,111,0.12) 100%)',
+                  background: 'linear-gradient(180deg, color-mix(in oklch, var(--pulse-accent) 22%, transparent) 0%, color-mix(in oklch, var(--pulse-accent) 12%, transparent) 100%)',
                   color: 'var(--pulse-accent)',
                   fontWeight: 800,
                   cursor: 'pointer',

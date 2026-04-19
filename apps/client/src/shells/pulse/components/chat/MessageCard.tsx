@@ -86,8 +86,8 @@ function MessageCardInner({ message, showHeader, isSelf, continuationDepth = 0, 
 
   const bubbleStyle = isSelf
     ? {
-        background: `rgba(255, 59, 111, ${depthFade.bg})`,
-        border: `1px solid rgba(255, 59, 111, ${depthFade.border})`,
+        background: `color-mix(in oklch, var(--pulse-accent) ${depthFade.bg * 100}%, transparent)`,
+        border: `1px solid color-mix(in oklch, var(--pulse-accent) ${depthFade.border * 100}%, transparent)`,
       }
     : isWhisper
       ? { background: 'rgba(176, 105, 219, 0.10)', border: '1px solid rgba(176, 105, 219, 0.22)' }
@@ -236,7 +236,7 @@ function MessageCardInner({ message, showHeader, isSelf, continuationDepth = 0, 
             background: 'var(--pulse-surface-2)',
             border: '1px solid var(--pulse-border)',
             // Tinted inner-glow instead of generic drop-shadow.
-            boxShadow: '0 0 0 1px rgba(255, 59, 111, 0.06), 0 6px 20px -8px rgba(255, 59, 111, 0.25)',
+            boxShadow: '0 0 0 1px color-mix(in oklch, var(--pulse-accent) 6%, transparent), 0 6px 20px -8px color-mix(in oklch, var(--pulse-accent) 25%, transparent)',
           }}
         >
           <button

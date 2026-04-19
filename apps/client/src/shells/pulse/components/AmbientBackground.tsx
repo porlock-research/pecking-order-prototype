@@ -19,7 +19,7 @@ export function AmbientBackground() {
           pointerEvents: 'none',
           zIndex: PULSE_Z.base,
           background:
-            'radial-gradient(ellipse 80% 80% at 50% -10%, rgba(255,59,111,0.07) 0%, transparent 50%)',
+            'radial-gradient(ellipse 80% 80% at 50% -10%, color-mix(in oklch, var(--pulse-accent) 7%, transparent) 0%, transparent 50%)',
         }}
       />
       {/* Whisper purple radial bottom */}

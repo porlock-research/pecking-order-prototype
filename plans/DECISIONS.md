@@ -2151,3 +2151,41 @@ This document tracks significant architectural decisions, their context, and con
     *   **Copy convention for closed-channel placeholders.** Terse, neutral, no apology or redirect: `"Group chat is closed"` / `"DMs are closed"`. The Pulse voice (reality-TV, teen audience, minimal chrome) doesn't explain WHEN it'll reopen — that's a scheduled detail that belongs in the day-brief messaging from the Game Master, not in every composer placeholder. Ran through `/clarify`.
     *   **Tests.** `apps/game-server/src/machines/__tests__/l3-channel-capabilities.test.ts` gained a rejection test for whisper-with-DMs-closed, and an existing "whisper succeeds" test was amended to first `OPEN_DMS` (before the fix it was silently passing because the guard wasn't gating on `dmsOpen`). No client-component tests added — the change is mechanical prop-threading, and browser verification drove a live SPEED_RUN game past both `CLOSE_GROUP_CHAT` and (admin-injected) `CLOSE_DMS` to confirm all three placeholders and chip-strip filters land correctly.
     *   **Branch + merge:** `fix/input-gating-closed-channels` off `5816cbc`. Two feature commits (`9f0d23f` server guard, `26d1302` client gating) + main-merge (`1f0f5cc`) → merged to main as `a4c89df`.
+
+## [ADR-139] Pulse palette authored in OKLCH, component tints derived via color-mix
+*   **Date:** 2026-04-19
+*   **Status:** Accepted
+*   **Context:** Before this change, `apps/client/src/shells/pulse/pulse-theme.css` declared every palette token as hex (`--pulse-accent: #ff3b6f`, `--pulse-gold: #ffc83d`, etc.), and ~25 Pulse components hardcoded `rgba(255, 59, 111, X)` / `rgba(255, 200, 61, X)` inline to tint backgrounds, borders, glows, and box-shadows at various alphas. Retuning an accent meant editing the CSS variable AND updating every inline rgba site — they would silently drift. The shell's `.impeccable.md` / impeccable skill explicitly require OKLCH for perceptually-uniform palettes; hex authoring bypassed that and the `--pulse-*-glow` tokens were hand-authored single-tier rgba values rather than derivations.
+*   **Decision:** Two-part palette convention for Pulse (implemented in `e5020aa` + `473a513`, merged to main 2026-04-18/19):
+
+    **(a) Token source-of-truth is OKLCH.** `pulse-theme.css` authors the base palette in `oklch()`:
+      - Warm-ink ladder: `--pulse-bg` → `--pulse-surface-3` at hues ~300–307 (warm purple), lightness 0.19–0.27.
+      - Text ladder: `--pulse-text-1` → `--pulse-text-4` at similar hue, lightness 0.95 → 0.38.
+      - Accent: `--pulse-accent: oklch(0.664 0.230 11)` (hot pink).
+      - Signal: `--pulse-gold: oklch(0.859 0.158 86)`.
+      - Cartridge type hues (`--pulse-vote|game|prompt|dilemma|whisper|nudge`) and status (`--pulse-online|pending`) also in `oklch()`.
+
+    **(b) Derivations use `color-mix(in oklch, ...)` referencing the token, not hand-authored rgba.** Glows, borders, radial-gradient tints, and translucent backgrounds all mix the source token with `transparent` at a specific percentage:
+    ```css
+    --pulse-accent-glow: color-mix(in oklch, var(--pulse-accent) 16%, transparent);
+    --pulse-border:      color-mix(in oklch, var(--pulse-text-1)  6%, transparent);
+    ```
+    And in component inline styles:
+    ```tsx
+    boxShadow: '0 0 0 1px color-mix(in oklch, var(--pulse-accent) 18%, transparent), ...'
+    background: 'color-mix(in oklch, var(--pulse-gold) 14%, transparent)'
+    ```
+    Retuning `--pulse-accent` or `--pulse-gold` now propagates to every derived tint across the shell without hunting down rgba literals.
+
+    **Explicit carve-outs — these stay as literal rgba, by design:**
+      1. **`@keyframes` blocks in `pulse-theme.css`** (e.g. `pulse-selfsend-glow`, `pulse-silver-pip-arrive`, `pulse-silver-sheen`). CSS vars don't reliably interpolate across keyframe stops in Safari; baked rgba avoids cross-browser drift.
+      2. **Framer-motion `animate={{}}` and `initial={{}}` color arrays** (e.g. `MentionRenderer.tsx`, `ReactionChips.tsx`). Popmotion's color parser accepts rgb/rgba/hsl/hex — not `color-mix()`. A `color-mix` string in an animate array falls back to string-mode (snap transition) or errors outright. See `memory/reference_framer_motion_no_color_mix.md`.
+
+    **What this ADR does NOT cover:**
+      - Light mode. The `[data-theme="light"]` stub was deleted in `e5020aa` — it overrode only 5 tokens, left the accent at 3.3:1 contrast on its light bg, and had zero downstream consumers. Dark mode is the committed Pulse direction per `.impeccable.md`; if light mode ever lands, it'll need its own accent/gold/cartridge-hue overrides designed from scratch, not a token-flip of the dark palette.
+      - The cartridge type hues (`--pulse-vote|game|prompt|dilemma`) are OKLCH-encoded but still at Tailwind-400-row equivalents (bright saturated primaries). A critique flagged these as AI-slop generic and as duplicating the gold signal (amber-400 ≈ `--pulse-gold`). Rebuilding them into a warm-tinted, perceptually-equalized family is a separate piece of work.
+*   **Consequences:**
+    *   **Cascade-safe retune.** Changing a single `oklch()` value at the top of `pulse-theme.css` propagates to all derived glows/borders/tints across 18+ component files without code edits. This replaces the previous rgba sweep (25 component files with hardcoded RGB digits) that required hand-updates at every retune.
+    *   **Browser floor implicit.** `color-mix()` needs Chrome 111+ / Safari 16.2+ / Firefox 113+ (all 2023-Q1-or-later). For a PWA targeting teen mobile users, this is fine — no fallbacks shipped. If future platform support requires older Safari/Android-webview, the derivation layer will need a preprocessor or JS color-mix shim.
+    *   **Authoring convention for new Pulse components.** Inline accent/gold tints must use `color-mix(in oklch, var(--pulse-accent|gold) N%, transparent)` — not new rgba literals mirroring the RGB digits. Reviewers should grep for `rgba\(\s*255,\s*59,\s*111` or `rgba\(\s*255,\s*200,\s*61` on incoming Pulse PRs to catch regressions.
+    *   **Branch + merge:** Palette migration — `feature/pulse-palette-oklch` → main as `e5020aa` (tokens + light-mode deletion + border warm-tint). Component sweep — `feature/pulse-rgba-to-colormix` → main as `473a513` (18 files, 40 inline rgba → color-mix swaps).
