@@ -21,7 +21,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@pecking-order/game-cartridges": "*",
     "@pecking-order/shared-types": "*"
   },
   "peerDependencies": {

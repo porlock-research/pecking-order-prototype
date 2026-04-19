@@ -532,7 +532,9 @@ export default function GameDevHarness() {
 
   const sendEvent = useCallback((eventType: string, payload?: Record<string, any>) => {
     logEvent(eventType, payload, 'sendAction');
-    actorRef.current?.send({ type: eventType, ...payload, senderId: MOCK_PLAYER_ID });
+    // Default to the human player's senderId; let callers override (bot dispatch
+    // can call sendEvent with an explicit senderId in the payload).
+    actorRef.current?.send({ type: eventType, senderId: MOCK_PLAYER_ID, ...payload });
   }, [logEvent]);
 
   const engine = useMemo(() => buildEngine(mode, sendEvent), [mode, sendEvent]);
@@ -548,7 +550,7 @@ export default function GameDevHarness() {
       if (!def.botPayload) return;
       results = BOT_IDS.map(senderId => {
         const payload = def.botPayload!();
-        const eventType = `GAME.${type}.SUBMIT`;
+        const eventType = Events.Game.event(type, 'SUBMIT');
         actorRef.current!.send({ type: eventType, senderId, ...payload });
         return { event: eventType, payload: { senderId, ...payload } };
       });
