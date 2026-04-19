@@ -257,6 +257,7 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
         aria-label="Confession Booth"
         data-channel-type="CONFESSION"
         data-channel-id={channelId}
+        className="pulse-booth-rim-flash"
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
@@ -274,6 +275,24 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
           isolation: 'isolate',
         }}
       >
+        {/* Booth-light bloom — fires once on mount. Sits above the base
+            gradient but below all chrome. Amber radial wash suggests the
+            booth lights coming on when the player enters. */}
+        <div
+          aria-hidden="true"
+          className="pulse-booth-bloom"
+          style={{
+            position: 'absolute',
+            inset: '-20% -15% 20% -15%',
+            pointerEvents: 'none',
+            zIndex: 0,
+            background:
+              'radial-gradient(ellipse 60% 55% at 50% 35%, rgba(249,169,74,0.22), transparent 65%)',
+            filter: 'blur(14px)',
+            transformOrigin: '50% 35%',
+          }}
+        />
+
         {/* VHS scan-line texture overlay */}
         <div
           aria-hidden="true"
@@ -289,7 +308,8 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
           }}
         />
 
-        {/* Header */}
+        {/* Header — staggered after the sheet lands. The back button doesn't
+            animate (stays interactive) but the identity column does. */}
         <div style={headerStyle.wrap}>
           <button
             type="button"
@@ -301,17 +321,27 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
               <path d="M8 1 L3 6 L8 11" stroke="currentColor" strokeWidth="1.6" fill="none" />
             </svg>
           </button>
-          <div style={headerStyle.title}>
+          <motion.div
+            style={headerStyle.title}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.32, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          >
             <div style={headerStyle.eyebrow}>
               <span>DAY {dayIndex} ·</span>
               <OnAirPip active={phaseActive} closingSoon={closingSoon} />
             </div>
             <div style={headerStyle.name}>Confession Booth</div>
-          </div>
+          </motion.div>
           <div style={{ width: 34 }} />
         </div>
 
-        <div style={headerStyle.meta}>
+        <motion.div
+          style={headerStyle.meta}
+          initial={{ opacity: 0, y: -3 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.26, ease: [0.22, 1, 0.36, 1] }}
+        >
           <span>
             {displayedEntries.length} {displayedEntries.length === 1 ? 'tape' : 'tapes'}
             {phaseClosed ? ' · archived' : ' tonight'}
@@ -322,7 +352,7 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
               <span>{closingSoon ? 'last call' : 'anonymous to everyone'}</span>
             </>
           )}
-        </div>
+        </motion.div>
 
         {closingSoon && msRemaining !== null && <ClosingBanner msRemaining={msRemaining} />}
 
