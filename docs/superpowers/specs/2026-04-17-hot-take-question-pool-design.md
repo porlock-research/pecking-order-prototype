@@ -362,12 +362,14 @@ Composition: **25 × 3-option**, **3 × 2-option** (#12, #15, #17), **2 × 4-opt
 - `apps/lobby/app/actions.ts` — thread `usedIds: Set<string>` through `buildManifestDays` (line 1016), call `pickHotTakeQuestion` inside the per-day loop at `:1029`, update `buildEventPayload` signature (line 1000) to accept and write `options`/`promptId`
 - `apps/game-server/src/machines/game-master.ts` — add `hotTakeHistory: string[]` to `GameMasterContext`; in `resolveDay` at the block `:279–291`, call `pickHotTakeQuestion(context.hotTakeHistory)` when `activityType === 'HOT_TAKE'` and write `promptId/options/promptText`
 - `apps/game-server/src/machines/cartridges/prompts/hot-take-machine.ts` — generalized context, guard, `resolveResults`, legacy `stance` → index bridge, entry-action hydration fixup
+- `apps/game-server/src/machines/actions/l3-activity.ts` — **`spawnPromptCartridge` input builder** must forward `options` and `promptId` from the payload. (Found during browser verification — originally missed.)
 - `apps/game-server/src/machines/cartridges/prompts/__tests__/prompt-early-end.test.ts` — update HOT_TAKE payload assertions (lines 195–196)
 - `apps/client/src/cartridges/prompts/HotTakePrompt.tsx` — variable 2/3/4 stance buttons; generalized `TallyBar`; legacy snapshot fallback
+- `apps/client/src/cartridges/prompts/PromptShell.tsx` — `PROMPT_HOW_IT_WORKS.HOT_TAKE` copy from "Agree or Disagree" to N-agnostic "Pick your stance."
 - `apps/client/src/shells/vivid/components/dashboard/PromptResultDetail.tsx:47–48` — string→label branch reads `result.results?.options[Number(response)]`, with fallback to current `AGREE`/`DISAGREE` string match for legacy results
 - `apps/client/src/shells/vivid/components/today/CompletedSummary.tsx` — audit per §8
 - `apps/client/src/shells/classic/components/TimelineCartridgeCard.tsx` — audit per §8
-- `apps/client/src/shells/pulse/components/cartridge-overlay/PulseResultContent.tsx` — audit per §8
+- `apps/client/src/shells/pulse/components/cartridge-overlay/PulseResultContent.tsx` — **two HOT_TAKE sites**: tally-bar render at :686–695 (spec'd) AND `resolveResponseText` at :552–553 (Pulse twin of Vivid's `PromptResultDetail`, originally missed, found during browser verification).
 
 **Verify (no change expected, but confirm during implementation)**
 - `apps/game-server/src/projections.ts:18–33` — `promptParticipation` unchanged (indices work as keys)
