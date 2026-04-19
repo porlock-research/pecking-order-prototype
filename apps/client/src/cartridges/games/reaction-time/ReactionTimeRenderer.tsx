@@ -96,13 +96,13 @@ export default function ReactionTimeRenderer({ seed, onResult }: ArcadeRendererP
   return (
     <div className="px-4 pb-4 space-y-3">
       {/* Progress */}
-      <div className="flex items-center justify-between text-xs font-mono">
-        <span className="text-skin-dim">
-          Round <span className="text-skin-base font-bold">{Math.min(round + 1, TOTAL_ROUNDS)}</span>/{TOTAL_ROUNDS}
+      <div className="flex items-center justify-between text-xs ">
+        <span style={{ color: 'var(--po-text-dim)' }}>
+          Round <span className="text-[var(--po-text)] font-bold">{Math.min(round + 1, TOTAL_ROUNDS)}</span>/{TOTAL_ROUNDS}
         </span>
         {avgSoFar !== null && (
-          <span className="text-skin-dim">
-            Avg: <span className="text-skin-gold font-bold">{avgSoFar}ms</span>
+          <span style={{ color: 'var(--po-text-dim)' }}>
+            Avg: <span className="text-[var(--po-gold)] font-bold">{avgSoFar}ms</span>
           </span>
         )}
       </div>
@@ -116,12 +116,12 @@ export default function ReactionTimeRenderer({ seed, onResult }: ArcadeRendererP
           ${phase === 'READY' ? 'bg-red-500/20 border-2 border-red-500/40 cursor-pointer py-16' : ''}
           ${phase === 'GO' ? 'bg-green-500/30 border-2 border-green-500/60 cursor-pointer py-16 animate-pulse' : ''}
           ${phase === 'TOO_EARLY' ? 'bg-red-500/10 border border-red-500/20 py-12' : ''}
-          ${phase === 'RESULT' ? 'bg-white/[0.04] border border-white/[0.08] py-12' : ''}
-          ${phase === 'WAITING' || phase === 'DONE' ? 'bg-white/[0.04] border border-white/[0.08] py-12' : ''}
+          ${phase === 'RESULT' ? 'bg-[var(--po-bg-glass)] border border-[color-mix(in_oklch,var(--po-text)_10%,transparent)] py-12' : ''}
+          ${phase === 'WAITING' || phase === 'DONE' ? 'bg-[var(--po-bg-glass)] border border-[color-mix(in_oklch,var(--po-text)_10%,transparent)] py-12' : ''}
         `}
       >
         {phase === 'WAITING' && (
-          <p className="text-sm font-mono text-skin-dim animate-pulse">Get ready...</p>
+          <p style={{ fontSize: 13, color: 'var(--po-text-dim)', opacity: 0.7 }}>Get ready...</p>
         )}
         {phase === 'READY' && (
           <div>
@@ -138,19 +138,19 @@ export default function ReactionTimeRenderer({ seed, onResult }: ArcadeRendererP
         {phase === 'TOO_EARLY' && (
           <div>
             <p className="text-lg font-bold text-red-400">Too early!</p>
-            <p className="text-xs text-skin-dim mt-1">Wait for green...</p>
+            <p className="text-xs text-[var(--po-text-dim)] mt-1">Wait for green...</p>
           </div>
         )}
         {phase === 'RESULT' && (
           <div>
-            <p className="text-3xl font-bold font-mono text-skin-gold">{lastTime}ms</p>
-            <p className="text-xs text-skin-dim mt-1">
+            <p className="text-3xl font-bold  text-[var(--po-gold)]">{lastTime}ms</p>
+            <p className="text-xs text-[var(--po-text-dim)] mt-1">
               {lastTime < 200 ? 'Lightning!' : lastTime < 300 ? 'Great!' : lastTime < 400 ? 'Good' : 'Keep trying'}
             </p>
           </div>
         )}
         {phase === 'DONE' && (
-          <p className="text-sm font-mono text-skin-dim animate-pulse">Submitting...</p>
+          <p style={{ fontSize: 13, color: 'var(--po-text-dim)', opacity: 0.7 }}>Submitting...</p>
         )}
       </button>
 
@@ -160,8 +160,8 @@ export default function ReactionTimeRenderer({ seed, onResult }: ArcadeRendererP
           {times.map((t, i) => (
             <span
               key={i}
-              className={`text-[10px] font-mono px-2 py-0.5 rounded-full
-                ${t < 250 ? 'bg-green-500/20 text-green-400' : t < 400 ? 'bg-skin-gold/20 text-skin-gold' : 'bg-white/[0.06] text-skin-dim'}
+              className={`text-[10px]  px-2 py-0.5 rounded-full
+                ${t < 250 ? 'bg-green-500/20 text-green-400' : t < 400 ? 'bg-[var(--po-gold)]/20 text-[var(--po-gold)]' : 'bg-[color-mix(in_oklch,var(--po-text)_8%,transparent)] text-[var(--po-text-dim)]'}
               `}
             >
               {t}ms
@@ -170,7 +170,7 @@ export default function ReactionTimeRenderer({ seed, onResult }: ArcadeRendererP
         </div>
       )}
 
-      <p className="text-[10px] font-mono text-skin-dim/50 text-center">
+      <p className="text-[10px]  text-[var(--po-text-dim)]/50 text-center">
         Wait for green, then tap as fast as possible.
       </p>
     </div>

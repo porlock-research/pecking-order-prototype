@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { RealtimeTriviaPhases, Events } from '@pecking-order/shared-types';
+import { RealtimeTriviaPhases, Events, CARTRIDGE_INFO } from '@pecking-order/shared-types';
 import type { SocialPlayer, RealtimeTriviaProjection } from '@pecking-order/shared-types';
 import {
-  CountdownBar,
+  getGameInfo,
+  GameShell,
+  GameHeader,
+  GameTimerBar,
+  GameLeaderboard,
   DifficultyBadge,
-  CartridgeContainer,
-  CartridgeHeader,
   OptionGrid,
   ResultFeedback,
 } from '../shared';
@@ -20,14 +22,27 @@ interface TriviaProps {
   onDismiss?: () => void;
 }
 
-export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: TriviaProps) {
+export default function RealtimeTrivia({ cartridge, playerId, engine }: TriviaProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const { phase, currentRound, totalRounds, scores, currentQuestion, roundDeadline, lastRoundResults, silverRewards, goldContribution, correctCounts } = cartridge;
+  const {
+    phase,
+    currentRound,
+    totalRounds,
+    scores,
+    currentQuestion,
+    roundDeadline,
+    lastRoundResults,
+    silverRewards,
+    goldContribution,
+    correctCounts,
+  } = cartridge;
 
-  // Reset selection only when round advances (not on phase change within same round)
   useEffect(() => {
     setSelectedAnswer(null);
   }, [currentRound]);
+
+  const info = CARTRIDGE_INFO.REALTIME_TRIVIA;
+  const game = getGameInfo('REALTIME_TRIVIA');
 
   const handleAnswer = (idx: number) => {
     if (selectedAnswer !== null || phase !== RealtimeTriviaPhases.QUESTION) return;
@@ -40,33 +55,56 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
   const correctIdx = lastRoundResults?.correctIndex;
   const showQuestion = phase === RealtimeTriviaPhases.QUESTION || (isShowingResult && currentQuestion);
 
-  const sortedScores = Object.entries(scores)
-    .sort(([, a], [, b]) => b - a)
-    .map(([id, score]) => ({ id, score, name: roster[id]?.personaName || id }));
+  const headerStatus =
+    phase === RealtimeTriviaPhases.SCOREBOARD
+      ? `+${silverRewards?.[playerId] ?? 0} silver`
+      : `Round ${currentRound}/${totalRounds}`;
+
+  // Build leaderboard payload from final scoreboard data
+  const leaderboardEntries = phase === RealtimeTriviaPhases.SCOREBOARD
+    ? Object.entries(scores)
+        .sort(([, a], [, b]) => b - a)
+        .map(([id, score]) => ({
+          playerId: id,
+          silverReward: silverRewards?.[id] ?? 0,
+          result: { score, correctCount: correctCounts?.[id] ?? 0 },
+        }))
+    : [];
 
   return (
-    <CartridgeContainer>
-      <CartridgeHeader
-        label="RT Trivia"
-        roundInfo={`Round ${currentRound}/${totalRounds}`}
-        score={scores[playerId] || 0}
-      />
-
-      {/* Timer (only during active question, not during result) */}
-      {phase === RealtimeTriviaPhases.QUESTION && (
-        <div className="px-4 pt-2">
-          <CountdownBar deadline={roundDeadline} />
-        </div>
-      )}
-
-      {/* Question + Inline Result Phase */}
+    <GameShell
+      accent={game.accent}
+      header={
+        <GameHeader
+          gameName={info?.displayName ?? 'Live Trivia'}
+          moodSubtitle={game.moodSubtitle ?? info?.tagline}
+          accent={game.accent}
+          howItWorks={info?.description}
+          status={headerStatus}
+        />
+      }
+      footer={
+        phase === RealtimeTriviaPhases.QUESTION && roundDeadline ? (
+          <GameTimerBar deadline={roundDeadline} accent={game.accent} />
+        ) : undefined
+      }
+    >
       {showQuestion && currentQuestion && (
-        <div className="p-4 space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <DifficultyBadge category={currentQuestion.category} difficulty={currentQuestion.difficulty} />
-          <p className="text-sm font-bold text-skin-base leading-relaxed">
+          <p
+            style={{
+              margin: 0,
+              fontFamily: 'var(--po-font-display)',
+              fontSize: 'clamp(17px, 4.5vw, 20px)',
+              fontWeight: 600,
+              lineHeight: 1.3,
+              letterSpacing: -0.2,
+              color: 'var(--po-text)',
+            }}
+          >
             {currentQuestion.question}
           </p>
-
           <OptionGrid
             options={currentQuestion.options}
             selectedAnswer={selectedAnswer}
@@ -74,85 +112,68 @@ export default function RealtimeTrivia({ cartridge, playerId, roster, engine }: 
             correctIndex={isShowingResult ? correctIdx : undefined}
             disabled={isShowingResult}
           />
-
-          {/* Inline result feedback */}
           {isShowingResult && myResult && (
-            <div className="animate-fade-in">
-              <ResultFeedback correct={myResult.correct} silver={myResult.silver} speedBonus={myResult.speedBonus} />
-            </div>
+            <ResultFeedback correct={myResult.correct} silver={myResult.silver} speedBonus={myResult.speedBonus} />
           )}
-
-          {/* Pre-answer hint */}
           {phase === RealtimeTriviaPhases.QUESTION && selectedAnswer !== null && !isShowingResult && (
-            <p className="text-xs font-mono text-skin-dim text-center animate-fade-in">
-              Answer locked. The faster you answer, the more silver you earn.
+            <p
+              style={{
+                margin: 0,
+                fontFamily: 'var(--po-font-body)',
+                fontSize: 12,
+                color: 'var(--po-text-dim)',
+                textAlign: 'center',
+              }}
+            >
+              Locked. Faster answers earn more silver.
             </p>
           )}
         </div>
       )}
 
-      {/* Scoreboard Phase (Final) */}
       {phase === RealtimeTriviaPhases.SCOREBOARD && (
-        <div className="p-4 space-y-4 animate-fade-in">
-          <p className="text-center text-sm font-bold text-skin-gold uppercase tracking-wider font-display">
-            Final Scoreboard
-          </p>
-
+        <>
           {(goldContribution ?? 0) > 0 && (
-            <div className="text-center text-xs font-mono text-skin-gold/70 border border-skin-gold/10 rounded-lg py-2 bg-skin-gold/5">
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '8px 12px',
+                borderRadius: 12,
+                background: 'color-mix(in oklch, var(--po-gold) 10%, transparent)',
+                border: '1px solid color-mix(in oklch, var(--po-gold) 24%, transparent)',
+                fontFamily: 'var(--po-font-display)',
+                fontSize: 13,
+                fontWeight: 700,
+                color: 'var(--po-gold)',
+                letterSpacing: 0.04,
+              }}
+            >
               +{goldContribution} gold added to the pot
             </div>
           )}
-
-          <div className="space-y-1.5">
-            {sortedScores.map((entry, rank) => {
-              const reward = silverRewards?.[entry.id] ?? 0;
-              const isMe = entry.id === playerId;
-              const playerPerfect = (correctCounts?.[entry.id] || 0) === totalRounds;
-              return (
-                <div
-                  key={entry.id}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm
-                    ${isMe ? 'bg-skin-gold/10 border-skin-gold/30' : 'bg-white/[0.02] border-white/[0.04]'}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold font-mono
-                      ${rank === 0 ? 'bg-skin-gold text-skin-inverted' : 'bg-white/[0.06] text-skin-dim'}`}>
-                      {rank + 1}
-                    </span>
-                    <span className="font-medium text-skin-base">
-                      {entry.name}
-                      {isMe && <span className="ml-1.5 text-[9px] text-skin-gold">(you)</span>}
-                      {playerPerfect && <span className="ml-1.5 text-[9px] text-skin-green">PERFECT</span>}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-skin-green">
-                      +{reward} silver
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+          <GameLeaderboard
+            allPlayerResults={leaderboardEntries}
+            currentPlayerId={playerId}
+            gameType="REALTIME_TRIVIA"
+            accent={game.accent}
+          />
+        </>
       )}
 
-      {/* Waiting / Loading Phase */}
       {phase === RealtimeTriviaPhases.WAITING && (
-        <div className="p-6 text-center space-y-3">
-          {cartridge.ready === false ? (
-            <>
-              <span className="inline-block w-5 h-5 border-2 border-skin-gold border-t-transparent rounded-full spin-slow" />
-              <p className="text-sm font-mono text-skin-dim animate-pulse">Loading questions...</p>
-            </>
-          ) : (
-            <span className="text-sm font-mono text-skin-dim animate-pulse">
-              Starting trivia...
-            </span>
-          )}
-        </div>
+        <p
+          style={{
+            margin: 0,
+            padding: '32px 16px',
+            textAlign: 'center',
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 14,
+            color: 'var(--po-text-dim)',
+          }}
+        >
+          {cartridge.ready === false ? 'Loading questions…' : 'Starting trivia…'}
+        </p>
       )}
-    </CartridgeContainer>
+    </GameShell>
   );
 }

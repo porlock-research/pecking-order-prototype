@@ -1,6 +1,8 @@
 import React from 'react';
 import type { SyncDecisionProjection, SocialPlayer } from '@pecking-order/shared-types';
 import SyncDecisionWrapper from '../wrappers/SyncDecisionWrapper';
+import { PersonaAvatar } from '../../../components/PersonaAvatar';
+import { Coins } from '../../../shells/pulse/icons';
 import SplitInput from './SplitInput';
 import SplitRoundReveal from './SplitRoundReveal';
 import SplitFinalReveal from './SplitFinalReveal';
@@ -18,52 +20,32 @@ interface TheSplitProps {
 export default function TheSplit(props: TheSplitProps) {
   const { cartridge, playerId, roster } = props;
   const currentPairing = cartridge.currentPairing as [string, string] | undefined;
-  const potAmount = cartridge.potAmount as number | undefined;
+  const potAmount = (cartridge.potAmount as number | undefined) ?? 0;
 
-  // Find opponent name for the current player
   const opponentId = currentPairing
     ? currentPairing.find((id) => id !== playerId) ?? currentPairing[0]
     : null;
-  const opponentName = opponentId ? (roster[opponentId]?.personaName ?? 'opponent') : 'opponent';
+  const opponent = opponentId ? roster[opponentId] : undefined;
 
   return (
     <SyncDecisionWrapper
       {...props}
-      title="The Split"
-      description={
-        currentPairing?.includes(playerId)
-          ? `You face ${opponentName}. Pot: ${potAmount ?? 0} silver. SPLIT to share, or STEAL to take it all.`
-          : 'Watch as this round plays out...'
-      }
       renderRoundHeader={({ cartridge: c, roster: r }) => {
         const pairing = c.currentPairing as [string, string] | undefined;
-        const pot = c.potAmount as number | undefined;
+        const pot = (c.potAmount as number | undefined) ?? 0;
         if (!pairing) return null;
-        const nameA = r[pairing[0]]?.personaName ?? pairing[0];
-        const nameB = r[pairing[1]]?.personaName ?? pairing[1];
-        return (
-          <div className="px-4 py-2 border-b border-white/[0.04] flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <span className="text-skin-base">{nameA.slice(0, 10)}</span>
-              <span className="text-skin-dim/40">vs</span>
-              <span className="text-skin-base">{nameB.slice(0, 10)}</span>
-            </div>
-            <span className="text-xs font-mono font-bold text-skin-gold">{pot ?? 0} silver</span>
-          </div>
-        );
+        return <PairingStrip aId={pairing[0]} bId={pairing[1]} pot={pot} roster={r} />;
       }}
       renderDecisionInput={({ onSubmit, cartridge: c }) => (
         <SplitInput
           onSubmit={onSubmit}
-          opponentName={opponentName}
+          opponent={opponent}
           potAmount={(c.potAmount as number) ?? 0}
         />
       )}
-      renderRoundReveal={({ decisions, roundResult, roundResults, roster: r, playerId: pid, currentRound, totalRounds }) => (
+      renderRoundReveal={({ roundResult, roster: r, playerId: pid, currentRound, totalRounds }) => (
         <SplitRoundReveal
-          decisions={decisions}
           roundResult={roundResult}
-          roundResults={roundResults}
           roster={r}
           playerId={pid}
           currentRound={currentRound}
@@ -71,12 +53,111 @@ export default function TheSplit(props: TheSplitProps) {
         />
       )}
       renderReveal={({ results, roster: r, playerId: pid }) => (
-        <SplitFinalReveal
-          results={results}
-          roster={r}
-          playerId={pid}
-        />
+        <SplitFinalReveal results={results} roster={r} playerId={pid} />
       )}
     />
   );
+}
+
+/* Compact pairing strip — sits above the input during COLLECTING in multi-round games. */
+function PairingStrip({
+  aId,
+  bId,
+  pot,
+  roster,
+}: {
+  aId: string;
+  bId: string;
+  pot: number;
+  roster: Record<string, SocialPlayer>;
+}) {
+  const a = roster[aId];
+  const b = roster[bId];
+  const aName = firstName(a);
+  const bName = firstName(b);
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '10px 14px',
+        marginBottom: 4,
+        borderRadius: 14,
+        background: 'color-mix(in oklch, var(--po-text) 4%, transparent)',
+        border: '1px solid color-mix(in oklch, var(--po-text) 6%, transparent)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '1 1 auto' }}>
+        <PersonaAvatar avatarUrl={a?.avatarUrl} personaName={a?.personaName} size={28} />
+        <span
+          style={{
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 13,
+            fontWeight: 700,
+            color: 'var(--po-text)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: 80,
+          }}
+        >
+          {aName}
+        </span>
+        <span
+          style={{
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: '0.18em',
+            color: 'var(--po-text-dim)',
+          }}
+        >
+          VS
+        </span>
+        <span
+          style={{
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 13,
+            fontWeight: 700,
+            color: 'var(--po-text)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: 80,
+          }}
+        >
+          {bName}
+        </span>
+        <PersonaAvatar avatarUrl={b?.avatarUrl} personaName={b?.personaName} size={28} />
+      </div>
+      <div
+        aria-label={`Pot of ${pot} silver`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          padding: '4px 10px',
+          borderRadius: 999,
+          background: 'color-mix(in oklch, var(--po-gold) 14%, transparent)',
+          border: '1px solid color-mix(in oklch, var(--po-gold) 28%, transparent)',
+          color: 'var(--po-gold)',
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 12,
+          fontWeight: 800,
+          fontVariantNumeric: 'tabular-nums',
+          flexShrink: 0,
+        }}
+      >
+        <Coins size={12} weight="fill" />
+        {pot}
+      </div>
+    </div>
+  );
+}
+
+function firstName(player: SocialPlayer | undefined): string {
+  if (!player?.personaName) return '?';
+  return player.personaName.split(' ')[0];
 }

@@ -125,16 +125,16 @@ export default function ColorMatchRenderer({ seed, onResult }: ArcadeRendererPro
   return (
     <div className="px-4 pb-4 space-y-4">
       {/* Progress */}
-      <div className="flex items-center justify-between text-xs font-mono">
-        <span className="text-skin-dim">
-          Round <span className="text-skin-base font-bold">{round}</span>/{TOTAL_ROUNDS}
+      <div className="flex items-center justify-between text-xs ">
+        <span style={{ color: 'var(--po-text-dim)' }}>
+          Round <span className="text-[var(--po-text)] font-bold">{round}</span>/{TOTAL_ROUNDS}
         </span>
         <div className="flex items-center gap-3">
           {streak > 1 && (
-            <span className="text-skin-gold animate-pulse">{streak}x streak</span>
+            <span className="text-[var(--po-gold)] animate-pulse">{streak}x streak</span>
           )}
-          <span className="text-skin-dim">
-            Correct: <span className="text-skin-gold font-bold">{correct}</span>
+          <span style={{ color: 'var(--po-text-dim)' }}>
+            Correct: <span className="text-[var(--po-gold)] font-bold">{correct}</span>
           </span>
         </div>
       </div>
@@ -142,12 +142,12 @@ export default function ColorMatchRenderer({ seed, onResult }: ArcadeRendererPro
       {!done ? (
         <>
           {/* The word display */}
-          <div className={`text-center py-6 rounded-xl bg-white/[0.04] border transition-colors duration-200
+          <div className={`text-center py-6 rounded-xl bg-[var(--po-bg-glass)] border transition-colors duration-200
             ${feedback === 'correct' ? 'border-green-500/40 bg-green-500/5' : ''}
             ${feedback === 'wrong' ? 'border-red-500/40 bg-red-500/5' : ''}
-            ${!feedback ? 'border-white/[0.08]' : ''}
+            ${!feedback ? 'border-[color-mix(in_oklch,var(--po-text)_10%,transparent)]' : ''}
           `}>
-            <p className="text-xs font-mono text-skin-dim/50 uppercase tracking-widest mb-2">
+            <p className="text-xs  text-[var(--po-text-dim)]/50 uppercase tracking-widest mb-2">
               What COLOR is this word?
             </p>
             <p
@@ -166,7 +166,7 @@ export default function ColorMatchRenderer({ seed, onResult }: ArcadeRendererPro
                 onClick={() => handleAnswer(opt)}
                 disabled={!!feedback}
                 className="py-3 rounded-lg font-bold text-sm uppercase tracking-wider transition-all active:scale-95
-                  bg-white/[0.06] border border-white/[0.08] hover:border-white/[0.2] hover:bg-white/[0.1]"
+                  bg-[color-mix(in_oklch,var(--po-text)_8%,transparent)] border border-[color-mix(in_oklch,var(--po-text)_10%,transparent)] hover:border-[color-mix(in_oklch,var(--po-text)_22%,transparent)] hover:bg-[color-mix(in_oklch,var(--po-text)_12%,transparent)]"
                 style={{ color: colorHex(opt) }}
               >
                 {opt}
@@ -176,11 +176,11 @@ export default function ColorMatchRenderer({ seed, onResult }: ArcadeRendererPro
         </>
       ) : (
         <div className="text-center py-4 animate-fade-in">
-          <p className="text-sm font-mono text-skin-dim animate-pulse">Submitting...</p>
+          <p style={{ fontSize: 13, color: 'var(--po-text-dim)', opacity: 0.7 }}>Submitting...</p>
         </div>
       )}
 
-      <p className="text-[10px] font-mono text-skin-dim/50 text-center">
+      <p className="text-[10px]  text-[var(--po-text-dim)]/50 text-center">
         Tap the COLOR the word is painted in, not what it says.
       </p>
     </div>

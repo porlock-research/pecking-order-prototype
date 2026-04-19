@@ -578,12 +578,12 @@ export default function StackerRenderer({ seed, onResult }: ArcadeRendererProps)
           ref={canvasRef}
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
-          className="rounded-lg border border-white/[0.06] cursor-pointer"
+          className="rounded-lg border border-[var(--po-border)] cursor-pointer"
           style={{ touchAction: 'none' }}
         />
       </div>
 
-      <p className="text-[10px] font-mono text-skin-dim/50 text-center">
+      <p className="text-[10px]  text-[var(--po-text-dim)]/50 text-center">
         Tap / Space to drop. Align blocks to keep stacking.
       </p>
     </div>

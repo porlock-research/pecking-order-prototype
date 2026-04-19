@@ -846,10 +846,10 @@ export default function GapRunRenderer({ seed, difficulty, timeLimit, onResult }
         ref={canvasRef}
         width={320}
         height={CANVAS_HEIGHT}
-        className="w-full rounded-lg border border-white/[0.06] cursor-pointer"
+        className="w-full rounded-lg border border-[var(--po-border)] cursor-pointer"
         style={{ touchAction: 'none', imageRendering: 'pixelated' }}
       />
-      <p className="text-[10px] font-mono text-skin-dim/50 text-center mt-1.5">
+      <p className="text-[10px]  text-[var(--po-text-dim)]/50 text-center mt-1.5">
         Tap / Space / Click to jump
       </p>
     </div>
