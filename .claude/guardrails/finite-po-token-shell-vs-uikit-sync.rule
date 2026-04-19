@@ -1,0 +1,28 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: (apps/client/src/shells/pulse/pulse-theme\.css$|packages/ui-kit/src/theme\.css$)
+MATCH_CONTENT: --po-(gold|pink|green|orange|blue|violet|info|danger|text|bg|border|font)
+ADVISORY: |
+  The --po-* design contract is defined in TWO places:
+
+    1. packages/ui-kit/src/theme.css   ← global defaults, used anywhere
+       no shell wrapper applies (most visibly the GameDevHarness at
+       /dev/games, plus shell-agnostic test/preview routes)
+    2. apps/client/src/shells/pulse/pulse-theme.css  ← Pulse-specific
+       overrides; same for shells/vivid/vivid.css
+
+  When you add a new --po-* token to one, ADD IT TO THE OTHER. Otherwise
+  consumers that resolve outside the shell wrapper get an empty value,
+  color-mix() falls through silently, and the rendered output looks
+  visually wrong only in those contexts.
+
+  Concrete example: --po-blue and --po-violet were added to pulse-theme.css
+  but never backfilled into ui-kit's theme.css. Result: BlindAuction's
+  SHIELD prize card rendered with no background tint in /dev/games (looked
+  broken next to the SILVER and CURSE cards), and 8 pre-existing chassis
+  games (FLAPPY, ORBIT, SEQUENCE, RECALL on blue; SHOCKWAVE, BLINK,
+  COLOR_SORT, TRIVIA on violet) had silent accent failures. Fixed in
+  `67c3152`.
+
+  Quick check after adding a token to pulse-theme.css:
+    grep "<token>" packages/ui-kit/src/theme.css
+  If empty, add it there too.

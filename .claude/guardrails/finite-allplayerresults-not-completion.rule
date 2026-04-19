@@ -1,0 +1,33 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: (apps/client/src/shells/(pulse|vivid)/.+\.tsx?$|packages/game-cartridges/src/helpers/projections\.ts$)
+MATCH_CONTENT: allPlayerResults
+ADVISORY: |
+  `allPlayerResults` is a PER-PLAYER signal, NOT a cartridge-completion signal.
+
+  The async-game projection (arcade/trivia) emits `allPlayerResults` the
+  moment the CALLING player's status flips to AWAITING_DECISION — by design,
+  so ArcadeGameWrapper / GameLeaderboard can render the in-game leaderboard
+  during the post-run retry screen (per ADR-126 §7).
+
+  It does NOT mean the cartridge as a whole is done. For solo arcade, only
+  YOUR run finished; the actor stays in `active` until ALL_COMPLETE or
+  END_GAME. The cartridge actor only enters `completed` (final state) and
+  output() runs when the LAST alive player submits.
+
+  Do NOT use `if (c.allPlayerResults) → 'completed'` or equivalent. The
+  legitimate completion signals are:
+    - `thisCompleted` (entry in `completedCartridges` — written by L2 after
+       output() fires)
+    - `phase === 'COMPLETED' | 'REVEAL'` (only sync-decision cartridges
+       expose top-level phase)
+
+  Treating `allPlayerResults` as completion in the Pulse pill classifier
+  caused a regression where solo arcade jumped to the result card instead
+  of showing the score countdown / retry decision screen. Fixed in
+  `659cb64` (apps/client/src/shells/pulse/hooks/usePillStates.ts).
+
+  Same misread still exists at:
+    - apps/client/src/shells/vivid/components/TodayTab.tsx:97
+    - apps/client/src/shells/vivid/components/BroadcastBar.tsx:67
+
+  Sweep them when convenient.
