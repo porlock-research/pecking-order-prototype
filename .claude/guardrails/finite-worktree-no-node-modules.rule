@@ -1,0 +1,36 @@
+MATCH_TOOL: Bash
+MATCH_PATTERN: \.worktrees/[^/]+/.*((cd packages/shared-types|cd packages/game-cartridges).*npm run build|npm (test|run test|run build)|npx vitest run|vite build)
+ADVISORY: |
+  Worktree may not have its own node_modules, or its workspace packages may
+  have empty `dist/` directories. Two distinct symptoms:
+
+  (a) Runtime drift when tests pass against a parent-repo's stale dist:
+      `FactTypes.MY_NEW_TYPE === undefined` at runtime even though source AND
+      worktree dist both contain the constant.
+  (b) App build fails at import resolution: "Failed to resolve entry for
+      package '@pecking-order/auth'" (or any workspace package). Happens when
+      running `vite build` / `next build` from apps/* in a fresh worktree —
+      the workspace symlink exists but points at an unbuilt dist.
+
+  Diagnose first:
+    ls .worktrees/<branch>/node_modules/@pecking-order/shared-types  # missing → resolves to parent
+    ls .worktrees/<branch>/packages/auth/dist                         # empty → (b) above
+
+  Fix once at worktree creation — build ALL workspace packages, not just the
+  two commonly named ones. `auth`, `ui-kit`, and others all need dist too:
+    cd .worktrees/<branch> && npm install
+    npx turbo build --filter='./packages/*'
+
+  `turbo --filter='./packages/*'` picks up every workspace package including
+  auth, shared-types, game-cartridges, ui-kit, and any future additions —
+  prefer this over hand-listing packages (which rots as packages are added).
+
+  After install + packages-build, `apps/<name> && npm run build` resolves
+  cleanly. Worktree node_modules contains workspace symlinks back to the
+  worktree's own packages — subsequent source edits in those packages
+  require another `turbo build` before app tests see them.
+
+  Session costs tracked against this trap:
+  - 2026-04-17: ~50k tokens debugging stale shared-types in confessions T4.
+  - 2026-04-19: apps/client vite build failed on `@pecking-order/auth` entry
+    resolve in the rgba-to-colormix worktree. Fixed with turbo --filter above.
