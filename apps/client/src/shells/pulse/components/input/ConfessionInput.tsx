@@ -57,7 +57,7 @@ export function ConfessionInput({ myHandle, onSend }: ConfessionInputProps) {
   return (
     <div style={boothStyle.wrap}>
       <div style={boothStyle.chrome}>
-        <div style={boothStyle.posting}>
+        <div style={boothStyle.posting} data-testid="my-confessor-handle">
           <div style={boothStyle.mask} aria-hidden="true" />
           <TapeLabel text={handleLabel} size="md" />
         </div>

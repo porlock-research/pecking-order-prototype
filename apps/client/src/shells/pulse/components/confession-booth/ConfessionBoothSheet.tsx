@@ -82,6 +82,8 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
       <motion.div
         role="dialog"
         aria-label="Confession Booth"
+        data-channel-type="CONFESSION"
+        data-channel-id={channelId}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}

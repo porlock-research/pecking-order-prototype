@@ -622,6 +622,9 @@ export interface TickerMessage {
   // Optional structured discriminator for category variants (e.g. SOCIAL_INVITE
   // needs to distinguish 'initial' DM creation from 'add_member').
   kind?: string;
+  // Optional channel pointer — when present, a tap on the narrator line
+  // routes to the referenced channel (e.g. CONFESSION-d2 for phase opens).
+  channelId?: string;
 }
 
 // --- Game Phase (server-projected, consumed by all shells) ---
