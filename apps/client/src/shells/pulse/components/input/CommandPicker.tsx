@@ -4,19 +4,21 @@ import { PULSE_SPRING, PULSE_TAP } from '../../springs';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import type { Command } from '../../hooks/useCommandBuilder';
 
-const commands: Array<{ id: Command; icon: typeof Coins; label: string; desc: string; color: string }> = [
+const commands: Array<{ id: Command; icon: typeof Coins; label: string; desc: string; color: string; requires?: 'dmsOpen' }> = [
   { id: 'silver', icon: Coins, label: 'Silver', desc: 'Send silver', color: 'var(--pulse-gold)' },
-  { id: 'dm', icon: ChatCircle, label: 'DM', desc: 'Start a chat', color: 'var(--pulse-accent)' },
+  { id: 'dm', icon: ChatCircle, label: 'DM', desc: 'Start a chat', color: 'var(--pulse-accent)', requires: 'dmsOpen' },
   { id: 'nudge', icon: HandWaving, label: 'Nudge', desc: 'Poke a player', color: 'var(--pulse-nudge)' },
-  { id: 'whisper', icon: Lock, label: 'Whisper', desc: 'Secret message', color: 'var(--pulse-whisper)' },
+  { id: 'whisper', icon: Lock, label: 'Whisper', desc: 'Secret message', color: 'var(--pulse-whisper)', requires: 'dmsOpen' },
 ];
 
 interface CommandPickerProps {
   onSelect: (cmd: Command) => void;
   onClose: () => void;
+  dmsOpen?: boolean;
 }
 
-export function CommandPicker({ onSelect, onClose }: CommandPickerProps) {
+export function CommandPicker({ onSelect, onClose, dmsOpen = true }: CommandPickerProps) {
+  const visible = commands.filter(c => !(c.requires === 'dmsOpen' && !dmsOpen));
   return (
     <>
       <div
@@ -40,7 +42,7 @@ export function CommandPicker({ onSelect, onClose }: CommandPickerProps) {
           alignItems: 'stretch',
         }}
       >
-        {commands.map(({ id, icon: Icon, label, desc, color }) => (
+        {visible.map(({ id, icon: Icon, label, desc, color }) => (
           <motion.button
             key={id}
             whileTap={PULSE_TAP.button}

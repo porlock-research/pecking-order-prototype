@@ -24,6 +24,8 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
   const { engine, openSendSilver, openNudge, playerId } = usePulse();
   const channel = useGameStore(s => (channelId ? s.channels[channelId] : undefined));
   const ownSilver = useGameStore(s => s.roster[playerId]?.silver ?? 0);
+  const dmsOpen = useGameStore(s => s.dmsOpen);
+  const groupChatOpen = useGameStore(s => s.groupChatOpen);
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
 
@@ -31,7 +33,16 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
   const channelType: ChannelType = channel?.type ?? (isGroup ? ChannelTypes.GROUP_DM : ChannelTypes.DM);
   const capabilities = channel?.capabilities ?? (isGroup ? DEFAULT_GROUP_CAPS : DEFAULT_DM_CAPS);
   const noSilver = ownSilver === 0;
-  const sendDisabled = disabled || noSilver;
+  // Phase gate takes precedence over silver: if DMs are closed, no message can
+  // land regardless of wallet. Server's isChannelMessageAllowed already rejects
+  // these, but the UI must reflect it so the player doesn't keep typing.
+  const sendDisabled = disabled || !dmsOpen || noSilver;
+
+  const placeholder = !dmsOpen
+    ? 'DMs are closed'
+    : noSilver
+      ? 'Out of silver'
+      : `Message ${placeholderName}…`;
 
   const submit = () => {
     if (!text.trim() || sendDisabled) return;
@@ -79,10 +90,12 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
             onSelect={handleChip}
             channelType={channelType}
             capabilities={capabilities}
+            groupChatOpen={groupChatOpen}
+            dmsOpen={dmsOpen}
           />
         </div>
       </div>
-      {noSilver && (
+      {dmsOpen && noSilver && (
         <div style={{
           padding: '4px 12px 6px',
           fontSize: 11,
@@ -97,7 +110,7 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           background: 'var(--pulse-bg)', borderRadius: 20, padding: '6px 8px 6px 14px',
-          opacity: disabled ? 0.5 : 1,
+          opacity: disabled || !dmsOpen ? 0.55 : 1,
         }}>
           <input
             ref={inputRef}
@@ -105,7 +118,7 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
             onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') submit(); }}
             disabled={sendDisabled}
-            placeholder={noSilver ? 'Out of silver' : `Message ${placeholderName}…`}
+            placeholder={placeholder}
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
               color: 'var(--pulse-text-1)', fontSize: 14, fontFamily: 'inherit',

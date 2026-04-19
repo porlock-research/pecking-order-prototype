@@ -21,6 +21,8 @@ export function PulseInput() {
   const { engine, playerId, openDM, openNudge } = usePulse();
   const phase = useGameStore(s => s.phase);
   const mainCapabilities = useGameStore(s => s.channels?.['MAIN']?.capabilities);
+  const groupChatOpen = useGameStore(s => s.groupChatOpen);
+  const dmsOpen = useGameStore(s => s.dmsOpen);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -53,10 +55,11 @@ export function PulseInput() {
 
   const handleSend = useCallback(() => {
     if (!text.trim()) return;
+    if (!groupChatOpen) return; // defensive — input is also disabled visually
     engine.sendMessage(text.trim(), replyTo ? { replyTo: replyTo.id } : undefined);
     setText('');
     setReplyTo(null);
-  }, [text, replyTo, engine]);
+  }, [text, replyTo, engine, groupChatOpen]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -157,7 +160,7 @@ export function PulseInput() {
     <div style={{ borderTop: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)', position: 'relative', zIndex: PULSE_Z.flow }}>
       {/* Command overlays */}
       {commandMode.mode === 'command-picker' && (
-        <CommandPicker onSelect={selectCommand} onClose={cancel} />
+        <CommandPicker onSelect={selectCommand} onClose={cancel} dmsOpen={dmsOpen} />
       )}
 
       {commandMode.mode === 'player-picker' && (
@@ -222,6 +225,8 @@ export function PulseInput() {
               onSelect={selectCommand}
               channelType="MAIN"
               capabilities={mainCapabilities}
+              groupChatOpen={groupChatOpen}
+              dmsOpen={dmsOpen}
             />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)', padding: 'var(--pulse-space-md) var(--pulse-space-md)' }}>
@@ -230,7 +235,8 @@ export function PulseInput() {
               value={text}
               onChange={e => handleTextChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Message..."
+              disabled={!groupChatOpen}
+              placeholder={groupChatOpen ? 'Message...' : 'Group chat is closed'}
               style={{
                 flex: 1,
                 padding: 'var(--pulse-space-md) var(--pulse-space-lg)',
@@ -241,6 +247,8 @@ export function PulseInput() {
                 fontSize: 14,
                 fontFamily: 'var(--po-font-body)',
                 outline: 'none',
+                opacity: groupChatOpen ? 1 : 0.55,
+                cursor: groupChatOpen ? 'text' : 'not-allowed',
               }}
             />
             {text.trim() && (
