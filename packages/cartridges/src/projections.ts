@@ -1,10 +1,7 @@
 /**
- * Cartridge projection helpers for SYSTEM.SYNC payloads.
+ * Prompt + dilemma projection helpers for SYSTEM.SYNC payloads.
  * Pure functions — no side effects or dependencies on server state.
  */
-
-// Game cartridge projection is now in the shared package
-export { projectGameCartridge } from '@pecking-order/game-cartridges';
 import { PromptPhases, PromptTypes } from '@pecking-order/shared-types';
 
 /**

@@ -5,7 +5,7 @@ import { HintChips } from '../HintChips';
 describe('HintChips visibility', () => {
   const noop = () => {};
 
-  it('MAIN shows /silver /nudge /whisper /dm (no @mention)', () => {
+  it('MAIN shows /silver /nudge /whisper /dm and @mention', () => {
     render(
       <HintChips
         onSelect={noop}
@@ -17,7 +17,7 @@ describe('HintChips visibility', () => {
     expect(screen.getByText('/nudge')).toBeInTheDocument();
     expect(screen.getByText('/whisper')).toBeInTheDocument();
     expect(screen.getByText('/dm')).toBeInTheDocument();
-    expect(screen.queryByText('@mention')).toBeNull();
+    expect(screen.getByText('@mention')).toBeInTheDocument();
   });
 
   it('1:1 DM shows /silver /nudge only', () => {

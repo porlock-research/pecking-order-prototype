@@ -1,6 +1,6 @@
 import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
-import type { DilemmaOutput } from '../cartridges/dilemmas/_contract';
-import { DILEMMA_REGISTRY } from '../cartridges/dilemmas/_registry';
+import { DILEMMA_REGISTRY } from '@pecking-order/cartridges';
+import type { DilemmaOutput } from '@pecking-order/shared-types';
 import { Events, DILEMMA_TYPE_INFO } from '@pecking-order/shared-types';
 import type { DilemmaType } from '@pecking-order/shared-types';
 import { log } from '../../log';

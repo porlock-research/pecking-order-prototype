@@ -2,8 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { getStateNodes, toDirectedGraph, getShortestPaths } from 'xstate/graph';
 import { dailySessionMachine } from '../l3-session';
 import { orchestratorMachine } from '../l2-orchestrator';
-import { VOTE_REGISTRY } from '../cartridges/voting/_registry';
-import { PROMPT_REGISTRY } from '../cartridges/prompts/_registry';
+import { VOTE_REGISTRY, PROMPT_REGISTRY } from '@pecking-order/cartridges';
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
 
 /**

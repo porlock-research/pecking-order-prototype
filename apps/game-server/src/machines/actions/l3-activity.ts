@@ -1,6 +1,5 @@
 import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
-import type { PromptOutput } from '../cartridges/prompts/_contract';
-import { PROMPT_REGISTRY } from '../cartridges/prompts/_registry';
+import { PROMPT_REGISTRY, type PromptOutput } from '@pecking-order/cartridges';
 import { Events, ACTIVITY_TYPE_INFO } from '@pecking-order/shared-types';
 import { log } from '../../log';
 

@@ -1,9 +1,7 @@
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
 import { ChatMessage, SocialPlayer, SocialEvent, AdminEvent, DailyManifest, Fact, VoteType, GameType, PromptType, Channel, Events, FactTypes, GAME_MASTER_ID, DM_MAX_CHARS_PER_DAY, DM_MAX_PARTNERS_PER_DAY, buildDayBriefingMessages } from '@pecking-order/shared-types';
-import { VOTE_REGISTRY } from './cartridges/voting/_registry';
+import { VOTE_REGISTRY, PROMPT_REGISTRY, DILEMMA_REGISTRY } from '@pecking-order/cartridges';
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
-import { PROMPT_REGISTRY } from './cartridges/prompts/_registry';
-import { DILEMMA_REGISTRY } from './cartridges/dilemmas/_registry';
 import type { AnyActorRef } from 'xstate';
 
 import { l3SocialActions, l3SocialGuards } from './actions/l3-social';

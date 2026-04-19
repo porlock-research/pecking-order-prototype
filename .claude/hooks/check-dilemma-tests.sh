@@ -27,7 +27,7 @@ if echo "$STAGED" | grep -qE 'cartridges/dilemmas/.*\.(ts|tsx)$'; then
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "ask",
-    "permissionDecisionReason": "Dilemma cartridge files are staged. Run dilemma unit tests first: npx vitest run apps/game-server/src/machines/cartridges/dilemmas/__tests__/dilemma-machine.test.ts"
+    "permissionDecisionReason": "Dilemma cartridge files are staged. Run dilemma unit tests first: npx vitest run packages/cartridges/src/dilemmas/__tests__/dilemma-machine.test.ts"
   }
 }
 EOF
