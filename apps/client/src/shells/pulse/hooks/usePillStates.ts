@@ -120,23 +120,26 @@ export function usePillStates(): PillState[] {
       const typeKey = gameTypeKey(game);
       const cartridgeId = cartridgeIdFor('game', dayIndex, typeKey);
       const thisCompleted = todayCompletedIds.has(cartridgeId);
-      // Async games (trivia/arcade) expose per-player `status` dict and
-      // `allPlayerResults` on completion; sync-decision games expose a
-      // top-level `phase`. Check both.
+      // Async games (trivia/arcade) expose per-player `status` dict;
+      // sync-decision games expose a top-level `phase`. Check both.
       //
-      // The earlier `game.status === 'PLAYING'` comparison was broken for
-      // async games (status is a per-player dict, not a string), and the
-      // default fallthrough was `just-started` — which made every active
-      // async game render a breathing dot instead of the needs-action
-      // exclamation badge that voting/prompt/dilemma use. Aligned with
-      // the other classifiers: default to needs-action, flip to in-progress
-      // once the player has entered, completed once done.
+      // Completion signal: `thisCompleted` (L2 wrote completedCartridges) or
+      // sync-decision `phase`. Do NOT use `game.allPlayerResults` as a
+      // completion signal — the projection emits it the moment the calling
+      // player's status flips to AWAITING_DECISION (so ArcadeGameWrapper can
+      // render the in-game leaderboard during the post-run retry screen).
+      // It does not mean the cartridge is done. Treating it as done flips the
+      // pill to 'completed' early, which makes CartridgeOverlay swap the
+      // playable mount for the result card, robbing the player of the score
+      // countdown / retry decision phase.
       const perPlayerStatus = playerId ? (game.status as any)?.[playerId] : undefined;
-      const playerActed = perPlayerStatus === 'PLAYING' || perPlayerStatus === 'COMPLETED';
+      const playerActed =
+        perPlayerStatus === 'PLAYING'
+        || perPlayerStatus === 'COMPLETED'
+        || perPlayerStatus === 'AWAITING_DECISION';
       const gameLifecycle: PillLifecycle =
         thisCompleted
           || game.phase === 'COMPLETED' || game.phase === 'REVEAL'
-          || game.allPlayerResults
           ? 'completed'
         : game.phase === 'PLAYING' || game.phase === 'ACTIVE' || playerActed
           ? 'in-progress'
