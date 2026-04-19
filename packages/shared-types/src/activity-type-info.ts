@@ -20,7 +20,7 @@ export const ACTIVITY_TYPE_INFO: Record<PromptType, ActivityTypeInfo> = {
   PLAYER_PICK:       { name: 'Player Pick',       description: 'Pick a player for a scenario',       promptText: 'Pick your bestie' },
   PREDICTION:        { name: 'Prediction',        description: 'Predict what happens next',          promptText: 'Who do you think will be eliminated tonight?' },
   WOULD_YOU_RATHER:  { name: 'Would You Rather',  description: 'Choose between two options',         promptText: 'Would you rather...', options: { optionA: 'Have immunity for one round', optionB: 'Get 50 bonus silver' } },
-  HOT_TAKE:          { name: 'Hot Take',          description: 'Share a controversial opinion',      promptText: 'Pineapple belongs on pizza' },
+  HOT_TAKE:          { name: 'Hot Take',          description: 'Share a controversial opinion',      promptText: 'Hot take' },
   CONFESSION:        { name: 'Confession',        description: 'Reveal something about yourself',    promptText: 'Confess something about your game strategy' },
   GUESS_WHO:         { name: 'Guess Who',         description: 'Figure out who said what',           promptText: 'What is your biggest fear in this game?' },
 };

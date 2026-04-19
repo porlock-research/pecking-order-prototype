@@ -11,7 +11,7 @@ import type {
   GameHistoryEntry,
   GameMasterAction,
 } from '@pecking-order/shared-types';
-import { VOTE_TYPE_INFO, ACTIVITY_TYPE_INFO } from '@pecking-order/shared-types';
+import { VOTE_TYPE_INFO, ACTIVITY_TYPE_INFO, pickHotTakeQuestion } from '@pecking-order/shared-types';
 import { generateDayTimeline, computeNextDayStart } from './timeline-presets';
 import { createInactivityModule, type InactivityState } from './observations/inactivity';
 
@@ -37,6 +37,8 @@ export interface GameMasterContext {
   reasoning: string;
   inactivityState: InactivityState;
   gameMasterActions: GameMasterAction[];
+  /** HOT_TAKE question ids picked so far this game; used to avoid intra-game repeats. */
+  hotTakeHistory: string[];
 }
 
 // ── Pure resolution functions (unchanged from before) ───────────────────
@@ -255,7 +257,8 @@ function resolveDay(
   gameHistory: GameHistoryEntry[],
   schedulePreset: SchedulePreset,
   startTime: string,
-): { resolvedDay: DailyManifest; totalDays: number; reasoning: string } {
+  hotTakeHistory: string[],
+): { resolvedDay: DailyManifest; totalDays: number; reasoning: string; hotTakeHistory: string[] } {
   const alive = countAlivePlayers(roster);
   const totalDays = computeTotalDays(alive, ruleset.dayCount);
   const voteType = resolveVoteType(dayIndex, totalDays, ruleset.voting, alive);
@@ -276,11 +279,21 @@ function resolveDay(
 
   // Attach activity payload to START_ACTIVITY event (same data the lobby sets for static games).
   // Without this, spawnPromptCartridge falls back to generic DEFAULT_PROMPT_TEXT.
+  const nextHotTakeHistory = [...hotTakeHistory];
   if (activityType !== 'NONE') {
     const actInfo = ACTIVITY_TYPE_INFO[activityType as PromptType];
-    if (actInfo) {
-      const startActivity = timeline.find(e => e.action === 'START_ACTIVITY');
-      if (startActivity) {
+    const startActivity = timeline.find(e => e.action === 'START_ACTIVITY');
+    if (startActivity && actInfo) {
+      if (activityType === 'HOT_TAKE') {
+        const q = pickHotTakeQuestion(nextHotTakeHistory);
+        nextHotTakeHistory.push(q.id);
+        startActivity.payload = {
+          promptType: 'HOT_TAKE',
+          promptText: q.statement,
+          promptId: q.id,
+          options: q.options,
+        };
+      } else {
         startActivity.payload = {
           promptType: activityType,
           promptText: actInfo.promptText,
@@ -324,6 +337,7 @@ function resolveDay(
     },
     totalDays,
     reasoning: `Day ${dayIndex}/${totalDays}: ${voteType} vote, ${gameType} game, ${activityType} activity, ${dilemmaType} dilemma, ${social.dmCharsPerPlayer} DM chars, ${timeline.length} timeline events`,
+    hotTakeHistory: nextHotTakeHistory,
   };
 }
 
@@ -345,6 +359,7 @@ export function buildGameMasterContext(input: GameMasterInput): GameMasterContex
     reasoning: '',
     inactivityState: inactivityModule.init(input.roster, input.ruleset),
     gameMasterActions: [],
+    hotTakeHistory: [],
   };
 }
 
@@ -372,9 +387,9 @@ export function createGameMasterMachine() {
           'GAME_MASTER.RESOLVE_DAY': {
             target: 'tournament',
             actions: assign(({ context, event }) => {
-              const { resolvedDay, totalDays, reasoning } = resolveDay(
+              const { resolvedDay, totalDays, reasoning, hotTakeHistory } = resolveDay(
                 event.dayIndex, event.roster, context.ruleset, context.gameHistory,
-                context.schedulePreset, context.startTime,
+                context.schedulePreset, context.startTime, context.hotTakeHistory,
               );
               const { state: inactivityState, actions } = inactivityModule.onResolveDay(
                 context.inactivityState, event.dayIndex, event.roster, context.ruleset,
@@ -387,6 +402,7 @@ export function createGameMasterMachine() {
                 reasoning,
                 inactivityState,
                 gameMasterActions: actions,
+                hotTakeHistory,
               };
             }),
           },
@@ -396,9 +412,9 @@ export function createGameMasterMachine() {
         on: {
           'GAME_MASTER.RESOLVE_DAY': {
             actions: assign(({ context, event }) => {
-              const { resolvedDay, totalDays, reasoning } = resolveDay(
+              const { resolvedDay, totalDays, reasoning, hotTakeHistory } = resolveDay(
                 event.dayIndex, event.roster, context.ruleset, context.gameHistory,
-                context.schedulePreset, context.startTime,
+                context.schedulePreset, context.startTime, context.hotTakeHistory,
               );
               const { state: inactivityState, actions } = inactivityModule.onResolveDay(
                 context.inactivityState, event.dayIndex, event.roster, context.ruleset,
@@ -410,6 +426,7 @@ export function createGameMasterMachine() {
                 resolvedDay,
                 reasoning,
                 inactivityState,
+                hotTakeHistory,
                 gameMasterActions: actions,
               };
             }),

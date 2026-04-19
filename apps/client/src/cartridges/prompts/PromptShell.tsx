@@ -37,7 +37,7 @@ export const PROMPT_LABEL: Record<string, string> = {
  *  Hosted externally by the Pulse cartridge stage; inlined elsewhere.  */
 export const PROMPT_HOW_IT_WORKS: Record<string, string> = {
   HOT_TAKE:
-    'Pick Agree or Disagree. Being in the minority earns bonus silver.',
+    'Pick your stance. Being in the minority earns bonus silver.',
   WOULD_YOU_RATHER:
     'Pick A or B. Being in the minority earns bonus silver.',
   CONFESSION:

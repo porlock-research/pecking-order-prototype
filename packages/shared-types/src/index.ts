@@ -558,8 +558,12 @@ export interface PromptCartridgeInput {
   promptText: string;
   roster: Record<string, SocialPlayer>;
   dayIndex: number;
+  // WYR-only (flat pair)
   optionA?: string;
   optionB?: string;
+  // HOT_TAKE-only (array)
+  options?: string[];
+  promptId?: string;
 }
 
 // --- Perks (Economy Powers) ---
@@ -854,5 +858,9 @@ export type GameProjection = ArcadeGameProjection | TriviaProjection | RealtimeT
 export const GameTypes = GameTypeSchema.enum;
 export const VoteTypes = VoteTypeSchema.enum;
 export const PromptTypes = PromptTypeSchema.enum;
+
+// --- Prompt Pools ---
+
+export { HOT_TAKE_POOL, pickHotTakeQuestion, type HotTakeQuestion } from './prompt-pools/hot-take';
 export const ChannelTypes = ChannelTypeSchema.enum;
 export const PerkTypes = PerkTypeSchema.enum;
