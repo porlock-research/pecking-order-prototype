@@ -167,7 +167,7 @@ function ReceivedBurstInstance({
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 1, 1, 0] }}
-        transition={{ duration: 2.1, times: [0, 0.15, 0.85, 1] }}
+        transition={{ duration: 4.0, times: [0, 0.08, 0.8, 1] }}
         aria-hidden="true"
         style={{
           position: 'fixed', inset: 0, zIndex: PULSE_Z.reveal,
@@ -187,27 +187,34 @@ function ReceivedBurstInstance({
     );
   }
 
-  // Received variant: ~2.1s total.
-  //   0-250ms   anticipation — gold edge fades in, portrait scales up from 0.86
-  //   250ms-1.8s hold — full opacity, legible portrait + amount + copy
-  //   1.8-2.1s  exit — scale to 0.98, fade out
+  // Received variant phases (exit handled by AnimatePresence — decoupled from
+  // the parent setTimeout so we can't get clipped mid-fade):
+  //   0-340ms   entry — portrait/content fade + scale up from 0.86
+  //   340ms-3.2s hold — full opacity; brightness breathes 1.0 → 1.15 → 1.0
+  //   3.2s+     exit — parent removes burst from state → AnimatePresence plays
+  //             the `exit` transitions (opacity → 0, scale → 0.94) over 900ms
   // 10 particles (vs 14 for sent) — quieter shower so the portrait leads.
   const particles = randomParticles(amount + 3).slice(0, 10);
 
+  const exitTransition = { duration: 0.9, ease: [0.4, 0, 0.3, 1] as [number, number, number, number] };
+
   return (
-    <div
+    <motion.div
       aria-hidden="true"
+      initial={{ opacity: 1 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: exitTransition }}
       style={{
         position: 'fixed', inset: 0, zIndex: PULSE_Z.reveal,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         pointerEvents: 'none',
       }}
     >
-      {/* Sustained gold vignette — in/hold/out matching the 2.1s beat. */}
+      {/* Sustained gold vignette — fades in with entry; inherits parent exit. */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 0.22, 0.15, 0] }}
-        transition={{ duration: 2.1, times: [0, 0.12, 0.8, 1], ease: 'easeOut' }}
+        animate={{ opacity: 0.22 }}
+        transition={{ duration: 0.34, ease: 'easeOut' }}
         style={{
           position: 'absolute', inset: 0,
           background: 'radial-gradient(ellipse at center, transparent 40%, color-mix(in oklch, var(--pulse-gold) 50%, transparent) 100%)',
@@ -237,8 +244,9 @@ function ReceivedBurstInstance({
       {/* The moment: portrait + amount + from. */}
       <motion.div
         initial={{ opacity: 0, scale: 0.86 }}
-        animate={{ opacity: [0, 1, 1, 0], scale: [0.86, 1.0, 1.0, 0.98] }}
-        transition={{ duration: 2.1, times: [0, 0.12, 0.85, 1], ease: 'easeOut' }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94, transition: exitTransition }}
+        transition={{ duration: 0.34, ease: 'easeOut' }}
         style={{
           position: 'absolute',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -249,7 +257,7 @@ function ReceivedBurstInstance({
         {senderAvatarUrl && (
           <motion.div
             animate={{ filter: ['brightness(1.0)', 'brightness(1.15)', 'brightness(1.0)'] }}
-            transition={{ duration: 2.1, times: [0, 0.5, 1], ease: 'easeInOut' }}
+            transition={{ duration: 3.2, times: [0, 0.5, 1], ease: 'easeInOut' }}
             style={{
               width: 140, height: 168, borderRadius: 20,
               overflow: 'hidden',
@@ -286,7 +294,7 @@ function ReceivedBurstInstance({
           silver from <span style={{ color: 'var(--pulse-text-1)' }}>{who}</span>
         </div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -317,7 +325,9 @@ export function SilverBurst() {
         senderAvatarUrl: detail.senderAvatarUrl ?? null,
       };
       setBursts(prev => [...prev, spec]);
-      const lifetime = direction === 'received' ? 2200 : 1100;
+      // Received: 340ms entry + ~2860ms hold = 3200ms, then AnimatePresence's
+      // exit animation (~900ms) plays before unmount. Sender is atomic.
+      const lifetime = direction === 'received' ? 3200 : 1100;
       window.setTimeout(() => {
         setBursts(prev => prev.filter(b => b.id !== id));
       }, lifetime);
