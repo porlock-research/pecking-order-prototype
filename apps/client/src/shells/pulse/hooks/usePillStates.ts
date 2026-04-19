@@ -120,25 +120,37 @@ export function usePillStates(): PillState[] {
       const typeKey = gameTypeKey(game);
       const cartridgeId = cartridgeIdFor('game', dayIndex, typeKey);
       const thisCompleted = todayCompletedIds.has(cartridgeId);
-      // Async games (trivia/arcade) expose per-player `status` and
-      // `allPlayerResults` on completion; sync-decision games expose `phase`.
-      // Match today's completedCartridges entry by exact cartridgeId — the
-      // previous `some(c.kind === 'game')` check was too broad and misclassified
-      // Day N+1's active game as completed if any earlier game finished.
+      // Async games (trivia/arcade) expose per-player `status` dict;
+      // sync-decision games expose a top-level `phase`. Check both.
+      //
+      // Completion signal: `thisCompleted` (L2 wrote completedCartridges) or
+      // sync-decision `phase`. Do NOT use `game.allPlayerResults` as a
+      // completion signal — the projection emits it the moment the calling
+      // player's status flips to AWAITING_DECISION (so ArcadeGameWrapper can
+      // render the in-game leaderboard during the post-run retry screen).
+      // It does not mean the cartridge is done. Treating it as done flips the
+      // pill to 'completed' early, which makes CartridgeOverlay swap the
+      // playable mount for the result card, robbing the player of the score
+      // countdown / retry decision phase.
+      const perPlayerStatus = playerId ? (game.status as any)?.[playerId] : undefined;
+      const playerActed =
+        perPlayerStatus === 'PLAYING'
+        || perPlayerStatus === 'COMPLETED'
+        || perPlayerStatus === 'AWAITING_DECISION';
       const gameLifecycle: PillLifecycle =
         thisCompleted
           || game.phase === 'COMPLETED' || game.phase === 'REVEAL'
-          || game.status === 'COMPLETED' || game.allPlayerResults
           ? 'completed'
-        : game.phase === 'PLAYING' || game.phase === 'ACTIVE' || game.status === 'PLAYING'
+        : game.phase === 'PLAYING' || game.phase === 'ACTIVE' || playerActed
           ? 'in-progress'
-        : 'just-started';
+        : 'needs-action';
 
       pills.push({
         id: cartridgeId,
         kind: 'game',
         label: prettyLabel(typeKey, 'Game'),
         lifecycle: gameLifecycle,
+        playerActed,
         cartridgeData: game,
       });
     }

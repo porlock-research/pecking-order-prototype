@@ -22,8 +22,8 @@ export function NarratorLine({ kind, text, onTap }: Props) {
   const roster = useGameStore(s => s.roster);
 
   const accent =
-    kind === 'scheming' ? '#b07aff' :
-    kind === 'alliance' ? '#ffd700' :
+    kind === 'scheming' ? 'var(--pulse-whisper)' :
+    kind === 'alliance' ? 'var(--pulse-gold)' :
     'var(--pulse-accent)';
 
   // Pre-compute name → { id, avatarUrl } map so we can lookup per bold token.

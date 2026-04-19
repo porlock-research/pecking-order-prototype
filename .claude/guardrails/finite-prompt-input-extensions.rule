@@ -1,0 +1,24 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: packages/shared-types/src/index\.ts
+MATCH_CONTENT: PromptCartridgeInput
+ADVISORY: |
+  When extending `PromptCartridgeInput` with a new field (e.g., adding `options?: string[]`
+  or `promptId?: string` for a prompt-type-specific feature), the field does NOT
+  automatically flow from the START_ACTIVITY payload to the cartridge machine's input.
+
+  The spawner at `apps/game-server/src/machines/actions/l3-activity.ts:spawnPromptCartridge`
+  builds the `input` object by explicitly picking fields off `event.payload` — any new
+  field you add to `PromptCartridgeInput` must ALSO be added there, or it silently
+  arrives as `undefined` and the machine falls back to its default.
+
+  Flow:  START_ACTIVITY payload → spawnPromptCartridge input-builder → machine context
+
+  Real session cost (2026-04-18): HOT_TAKE pool machine correctly spawned with the
+  pool-picked question's options in `START_ACTIVITY.payload.options`, but the spawner
+  only forwarded `optionA`/`optionB` (WYR's flat pair). Machine got `input.options ===
+  undefined` and fell back to `['AGREE','DISAGREE']`. Three-option UI never rendered.
+  Caught only by live browser verification, after spec + plan + full test suite all
+  passed. Unit tests called the machine directly — they never exercised the spawner.
+
+  Also update the machine context builder at `apps/game-server/src/machines/cartridges/prompts/<type>-machine.ts`
+  to read `input.<new-field>`.

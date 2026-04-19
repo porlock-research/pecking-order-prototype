@@ -1,9 +1,0 @@
-MATCH_TOOL: Edit|Write
-MATCH_PATTERN: react|REACT|reaction|Reaction
-ADVISORY: |
-  Vivid's double-tap reactions are VISUAL ONLY — local React state for 800ms, no server
-  round-trip, no persistence. Events.Social.REACT does NOT exist yet in shared-types.
-  ChannelCapability already includes 'REACTIONS' as a value and MAIN is initialized with
-  capabilities: ['CHAT', 'REACTIONS'], but no server handler processes reaction events.
-  To add persistent reactions: add event to shared-types, add L3 handler, store reactions
-  as metadata on ChatMessage objects in chatLog, deliver via SYNC on each message.

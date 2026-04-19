@@ -130,18 +130,18 @@ export default function GridPushRenderer({ seed, onResult }: ArcadeRendererProps
   return (
     <div className="px-4 pb-4 space-y-3">
       {/* Score bar */}
-      <div className="flex items-center justify-between text-xs font-mono">
+      <div className="flex items-center justify-between text-xs ">
         <div className="flex items-center gap-3">
-          <span className="text-skin-dim">
-            Banked: <span className="text-skin-gold font-bold">{bankedTotal}</span>
+          <span style={{ color: 'var(--po-text-dim)' }}>
+            Banked: <span className="text-[var(--po-gold)] font-bold">{bankedTotal}</span>
           </span>
           {currentRun > 0 && (
-            <span className="text-skin-green animate-pulse">
+            <span className="text-[var(--po-green)] animate-pulse">
               Run: +{currentRun}
             </span>
           )}
         </div>
-        <span className="text-skin-dim">
+        <span style={{ color: 'var(--po-text-dim)' }}>
           {safeRemaining} safe / {hiddenCount} hidden
         </span>
       </div>
@@ -162,15 +162,15 @@ export default function GridPushRenderer({ seed, onResult }: ArcadeRendererProps
             className={`
               aspect-square rounded-sm text-[10px] font-bold transition-all duration-150
               ${state === 'hidden'
-                ? 'bg-white/[0.06] border border-white/[0.08] hover:bg-skin-gold/10 hover:border-skin-gold/30 active:scale-90 cursor-pointer'
+                ? 'bg-[color-mix(in_oklch,var(--po-text)_8%,transparent)] border border-[color-mix(in_oklch,var(--po-text)_10%,transparent)] hover:bg-[var(--po-gold)]/10 hover:border-[var(--po-gold)]/30 active:scale-90 cursor-pointer'
                 : state === 'safe'
-                  ? 'bg-skin-green/20 border border-skin-green/30'
+                  ? 'bg-[var(--po-green)]/20 border border-[var(--po-green)]/30'
                   : 'bg-red-500/20 border border-red-500/40 animate-shake'
               }
               ${busted || gameOver ? 'pointer-events-none' : ''}
             `}
           >
-            {state === 'safe' && <span className="text-skin-green">&#10003;</span>}
+            {state === 'safe' && <span style={{ color: 'var(--po-green)' }}>&#10003;</span>}
             {state === 'bomb' && <span className="text-red-400">&#10008;</span>}
           </button>
         ))}
@@ -180,7 +180,7 @@ export default function GridPushRenderer({ seed, onResult }: ArcadeRendererProps
       {busted && (
         <div className="text-center py-2 animate-fade-in">
           <p className="text-sm font-bold text-red-400">BOOM! Run lost.</p>
-          <p className="text-[10px] text-skin-dim mt-0.5">Resuming...</p>
+          <p className="text-[10px] text-[var(--po-text-dim)] mt-0.5">Resuming...</p>
         </div>
       )}
 
@@ -193,8 +193,8 @@ export default function GridPushRenderer({ seed, onResult }: ArcadeRendererProps
             className={`
               flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all
               ${currentRun > 0
-                ? 'bg-skin-gold/20 border border-skin-gold/40 text-skin-gold hover:bg-skin-gold/30 active:scale-[0.97]'
-                : 'bg-white/[0.03] border border-white/[0.06] text-skin-dim cursor-not-allowed'
+                ? 'bg-[var(--po-gold)]/20 border border-[var(--po-gold)]/40 text-[var(--po-gold)] hover:bg-[var(--po-gold)]/30 active:scale-[0.97]'
+                : 'bg-[var(--po-bg-glass)] border border-[var(--po-border)] text-[var(--po-text-dim)] cursor-not-allowed'
               }
             `}
           >
@@ -202,14 +202,14 @@ export default function GridPushRenderer({ seed, onResult }: ArcadeRendererProps
           </button>
           <button
             onClick={handleCashOut}
-            className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg bg-white/[0.06] border border-white/[0.08] text-skin-dim hover:bg-white/[0.1] hover:text-skin-base transition-all active:scale-[0.97]"
+            className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg bg-[color-mix(in_oklch,var(--po-text)_8%,transparent)] border border-[color-mix(in_oklch,var(--po-text)_10%,transparent)] text-[var(--po-text-dim)] hover:bg-[color-mix(in_oklch,var(--po-text)_12%,transparent)] hover:text-[var(--po-text)] transition-all active:scale-[0.97]"
           >
             Cash Out
           </button>
         </div>
       )}
 
-      <p className="text-[10px] font-mono text-skin-dim/50 text-center">
+      <p className="text-[10px]  text-[var(--po-text-dim)]/50 text-center">
         Flip tiles to score. Bank to lock in points. Hit a bomb = lose current run.
       </p>
     </div>

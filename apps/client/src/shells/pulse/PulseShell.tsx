@@ -6,8 +6,10 @@ import type { GameEngine } from '../types';
 import { useGameStore, selectHaveINudged, selectPendingInvitesForMe } from '../../store/useGameStore';
 import { useDeepLinkIntent } from '../../hooks/useDeepLinkIntent';
 import { useRevealQueue } from './hooks/useRevealQueue';
+import { useReceivedOverdrive } from './hooks/useReceivedOverdrive';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import type { DeepLinkIntent, CartridgeKind } from '@pecking-order/shared-types';
+import { PULSE_Z } from './zIndex';
 
 const DM_REJECTION_LABELS: Record<string, string> = {
   DMS_CLOSED: 'DMs are closed right now',
@@ -32,6 +34,8 @@ import { EliminationReveal } from './components/reveals/EliminationReveal';
 import { WinnerReveal } from './components/reveals/WinnerReveal';
 import { PhaseTransition } from './components/reveals/PhaseTransition';
 import { CartridgeOverlay } from './components/cartridge-overlay/CartridgeOverlay';
+import { SilverBurst } from './components/overdrive/SilverBurst';
+import { NudgeBurst } from './components/overdrive/NudgeBurst';
 import { AnimatePresence } from 'framer-motion';
 
 // Context to provide engine + playerId + overlay actions to all Pulse children.
@@ -61,6 +65,11 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
   useEffect(() => {
     if (gameId && playerId) hydrateLastRead(gameId, playerId);
   }, [gameId, playerId, hydrateLastRead]);
+
+  // Recipient overdrive — fires received-variant bursts for unseen silver /
+  // nudge events addressed to the local player. Handles both offline
+  // catch-up (on mount) and live receive (on ticker arrival).
+  useReceivedOverdrive();
 
   // Surface DM/channel rejections as toasts (e.g., creator-only ADD_MEMBER guard).
   const dmRejection = useGameStore(s => s.dmRejection);
@@ -146,7 +155,11 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
       return;
     }
     engine.sendNudge(targetId);
-    toast.success(`Nudged ${name}`);
+    // Sender celebration — three-pulse haptic + NudgeBurst overdrive layer.
+    // Success toast dropped in favor of the burst (inline public chat card
+    // still lands via SOCIAL_NUDGE ticker, so a11y info isn't lost).
+    try { navigator.vibrate?.([20, 40, 20]); } catch { /* no-op */ }
+    window.dispatchEvent(new CustomEvent('pulse:nudge-burst', { detail: { recipient: name } }));
   }, [engine]);
   const openDM = useCallback((targetId: string, isGroup = false) => {
     setDmTarget(targetId);
@@ -198,9 +211,9 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
         {pickingActive && <PickingBanner />}
         <CastStrip />
         <PulseBar />
-        <div style={{ flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+        <main style={{ flex: 1, overflow: 'hidden', position: 'relative', zIndex: PULSE_Z.base }}>
           <ChatView />
-        </div>
+        </main>
         <PulseInput />
 
         {/* Overlays */}
@@ -245,6 +258,10 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
         <EliminationReveal />
         <WinnerReveal />
         <PhaseTransition />
+        {/* Overdrive layers — sender celebration bursts. Listen for
+            pulse:silver-burst / pulse:nudge-burst window CustomEvents. */}
+        <SilverBurst />
+        <NudgeBurst />
         <Toaster position="top-center" theme="dark" richColors closeButton={false} />
       </div>
     </PulseContext.Provider>

@@ -44,8 +44,13 @@ function resolveResponseText(
       const optionB = result.results?.optionB ?? 'Option B';
       return response === 'A' ? optionA : response === 'B' ? optionB : response;
     }
-    case 'HOT_TAKE':
+    case 'HOT_TAKE': {
+      const options: string[] | undefined = result.results?.options;
+      if (options && /^\d+$/.test(response)) {
+        return options[Number(response)] ?? response;
+      }
       return response === 'AGREE' ? 'Agree' : response === 'DISAGREE' ? 'Disagree' : response;
+    }
     case 'PLAYER_PICK':
     case 'PREDICTION':
       // response is a playerId — resolve to name

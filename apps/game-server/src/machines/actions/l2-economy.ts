@@ -1,6 +1,6 @@
 import { assign, raise, enqueueActions } from 'xstate';
 import type { GameOutput } from '@pecking-order/game-cartridges';
-import type { PromptOutput } from '../cartridges/prompts/_contract';
+import type { PromptOutput } from '@pecking-order/cartridges';
 import { PERK_COSTS, Config, type PerkType, type GameHistoryEntry, Events, FactTypes, type DilemmaOutput } from '@pecking-order/shared-types';
 
 /**

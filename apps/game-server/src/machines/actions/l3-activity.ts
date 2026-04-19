@@ -1,6 +1,5 @@
 import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
-import type { PromptOutput } from '../cartridges/prompts/_contract';
-import { PROMPT_REGISTRY } from '../cartridges/prompts/_registry';
+import { PROMPT_REGISTRY, type PromptOutput } from '@pecking-order/cartridges';
 import { Events, ACTIVITY_TYPE_INFO } from '@pecking-order/shared-types';
 import { log } from '../../log';
 
@@ -24,8 +23,12 @@ export const l3ActivityActions = {
           promptText: payload?.promptText || (ACTIVITY_TYPE_INFO as any)[promptType]?.promptText || 'Share your thoughts',
           roster: context.roster,
           dayIndex: context.dayIndex,
+          // WYR — flat pair
           optionA: payload?.optionA || (ACTIVITY_TYPE_INFO as any)[promptType]?.options?.optionA,
           optionB: payload?.optionB || (ACTIVITY_TYPE_INFO as any)[promptType]?.options?.optionB,
+          // HOT_TAKE — pool question id + N-option array
+          options: payload?.options,
+          promptId: payload?.promptId,
         },
       });
     },

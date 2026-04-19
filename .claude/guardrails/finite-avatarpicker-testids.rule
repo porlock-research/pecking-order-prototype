@@ -1,0 +1,20 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/client/src/cartridges/voting/shared/AvatarPicker\.tsx$
+ADVISORY: |
+  AvatarPicker owns three load-bearing `data-testid` values that the
+  Playwright e2e tests depend on (`e2e/tests/voting.spec.ts`,
+  `e2e/tests/game-lifecycle.spec.ts`):
+
+      data-testid="vote-btn-${targetId}"  — each avatar button (gated on testIdPrefix prop)
+      data-testid="vote-confirm-btn"      — the docked lock-in CTA
+      data-testid="vote-confirmed"        — the post-commit ConfirmedFooter
+
+  Removing, renaming, or gating any of these will silently break the voting
+  e2e flow (MAJORITY + FINALS are the currently-tested mechanisms; only
+  those cartridges pass `testIdPrefix` to this component).
+
+  Also — the 3-second lock-in countdown (`LOCK_IN_MS` in this file) is UX,
+  not decoration. It gives teen mis-tappers an undo window. If you need to
+  fast-forward e2e runs, gate on a test-env signal rather than shortening
+  `LOCK_IN_MS` globally. The countdown auto-completes and fires `onConfirm`
+  at `LOCK_IN_MS`, so tests will pass — just slower.

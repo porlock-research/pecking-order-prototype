@@ -27,7 +27,7 @@ if echo "$STAGED" | grep -qE 'cartridges/voting/.*\.(ts|tsx)$'; then
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "ask",
-    "permissionDecisionReason": "Voting cartridge files are staged. Run voting unit tests first: npx vitest run apps/game-server/src/machines/cartridges/voting/__tests__/voting-machines.test.ts"
+    "permissionDecisionReason": "Voting cartridge files are staged. Run voting unit tests first: npx vitest run packages/cartridges/src/voting/__tests__/voting-machines.test.ts"
   }
 }
 EOF

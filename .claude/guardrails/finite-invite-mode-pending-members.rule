@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: (apps/game-server/src/(machines/actions/l3-social|push-triggers|ticker|machine-actions)\.ts|apps/client/src/shells/.+/(dm-sheet|conversations)/.+\.tsx?)$
+MATCH_CONTENT: (pendingMemberIds|\.memberIds\b|addChannelMember|createChannel\b|emitChatFact|emitInitialDmInvite|requireDmInvite|ACCEPT_DM)
 ADVISORY: |
   Invite mode gotcha — `pendingMemberIds` is NOT `memberIds`.
 

@@ -1,9 +1,7 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: apps/client/src/store/useGameStore\.ts$
+MATCH_CONTENT: (stableRef\(|(chatLog|channels|roster|completedCartridges|dmStats|playerActivity|showcaseData)[[:space:]]*:|Events\.System\.SYNC|sync:[[:space:]]*\(data)
 ADVISORY: |
-  (Rule fires on every edit to this file. Skip if your edit doesn't touch the
-  sync handler body or add a new server-mutable collection field.)
-
   Zustand SYNC handler gotcha discovered while debugging Pulse reactions:
 
   When merging a server SYNC payload, DON'T use length-based equality to dedupe

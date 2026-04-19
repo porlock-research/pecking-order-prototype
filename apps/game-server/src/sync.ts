@@ -6,7 +6,8 @@
 import type { Connection } from "partyserver";
 import { Events, DayPhases, getChannelHints } from "@pecking-order/shared-types";
 import type { DayPhase, ChannelType, ChannelCapability } from "@pecking-order/shared-types";
-import { projectGameCartridge, projectPromptCartridge, projectDilemmaCartridge } from "./projections";
+import { projectGameCartridge } from "@pecking-order/game-cartridges";
+import { projectPromptCartridge, projectDilemmaCartridge } from "@pecking-order/cartridges";
 import { flattenState } from "./ticker";
 
 export interface CartridgeSnapshots {

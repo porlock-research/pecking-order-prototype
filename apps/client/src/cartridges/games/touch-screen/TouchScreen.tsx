@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Events } from '@pecking-order/shared-types';
 import type { LiveGameProjection, SocialPlayer } from '@pecking-order/shared-types';
 import LiveGameWrapper from '../wrappers/LiveGameWrapper';
+import { HeroStat, HeroStatRow, HeroFrame } from '../shared';
 
 interface TouchScreenProps {
   cartridge: LiveGameProjection;
@@ -33,8 +34,6 @@ export default function TouchScreen({ cartridge, playerId, roster, engine, onDis
       roster={roster}
       engine={engine}
       onDismiss={onDismiss}
-      title="Touch Screen"
-      description="Hold the button as long as you can. Longer = more silver."
       startEvent={Events.Game.start('TOUCH_SCREEN')}
       readyEvent={Events.Game.event('TOUCH_SCREEN', 'READY')}
       renderGame={() => (
@@ -46,6 +45,10 @@ export default function TouchScreen({ cartridge, playerId, roster, engine, onDis
           isSolo={isSolo}
         />
       )}
+      renderHero={() => {
+        const myRanking = rankings.find((r) => r.playerId === playerId);
+        return <TouchScreenHero myDuration={myRanking?.duration ?? 0} totalRanked={rankings.length} />;
+      }}
       renderBreakdown={() => (
         <RankingsBreakdown
           rankings={rankings}
@@ -126,8 +129,8 @@ function ActiveGame({
       {/* Timer (visible once holding) */}
       {!showIdle && (
         <div className="text-center">
-          <p className="text-xs font-mono text-skin-dim uppercase tracking-widest mb-1">Hold Time</p>
-          <p className="text-3xl font-bold font-mono text-skin-gold tabular-nums">
+          <p className="text-xs  text-skin-dim uppercase tracking-widest mb-1">Hold Time</p>
+          <p className="text-3xl font-bold  text-skin-gold tabular-nums">
             {showReleased
               ? formatDuration(myHold?.duration ?? 0)
               : formatDuration(elapsed)}
@@ -138,11 +141,11 @@ function ActiveGame({
       {/* Idle: "Touch & Hold" prompt */}
       {showIdle && (
         <div className="text-center space-y-3">
-          <p className="text-xs font-mono text-skin-dim uppercase tracking-widest">Press and hold!</p>
+          <p className="text-xs  text-skin-dim uppercase tracking-widest">Press and hold!</p>
           <button
             onMouseDown={handlePointerDown}
             onTouchStart={handlePointerDown}
-            className="w-full py-12 rounded-xl bg-skin-gold/10 border-2 border-skin-gold/30 text-skin-gold font-bold font-mono text-lg uppercase tracking-wider hover:bg-skin-gold/20 hover:border-skin-gold/50 transition-all select-none touch-none"
+            className="w-full py-12 rounded-xl bg-skin-gold/10 border-2 border-skin-gold/30 text-skin-gold font-bold  text-lg uppercase tracking-wider hover:bg-skin-gold/20 hover:border-skin-gold/50 transition-all select-none touch-none"
           >
             Touch &amp; Hold
           </button>
@@ -156,7 +159,7 @@ function ActiveGame({
           onMouseLeave={handlePointerUp}
           onTouchEnd={handlePointerUp}
           onTouchCancel={handlePointerUp}
-          className="w-full py-12 rounded-xl bg-skin-gold/10 border-2 border-skin-gold/40 text-skin-gold font-bold font-mono text-lg uppercase tracking-wider animate-pulse select-none touch-none active:bg-skin-gold/20 transition-colors"
+          className="w-full py-12 rounded-xl bg-skin-gold/10 border-2 border-skin-gold/40 text-skin-gold font-bold  text-lg uppercase tracking-wider animate-pulse select-none touch-none active:bg-skin-gold/20 transition-colors"
         >
           Holding...
         </button>
@@ -165,15 +168,15 @@ function ActiveGame({
       {/* Released */}
       {showReleased && (
         <div className="w-full py-8 rounded-xl bg-white/[0.02] border-2 border-white/[0.06] text-center">
-          <p className="text-sm font-mono text-skin-dim">Released</p>
-          <p className="text-lg font-bold font-mono text-skin-gold">{formatDuration(myHold?.duration ?? 0)}</p>
+          <p className="text-sm  text-skin-dim">Released</p>
+          <p className="text-lg font-bold  text-skin-gold">{formatDuration(myHold?.duration ?? 0)}</p>
         </div>
       )}
 
       {/* Player pips (live mode only) */}
       {!isSolo && (
         <div className="space-y-1.5">
-          <p className="text-[10px] font-mono text-skin-dim/60 uppercase tracking-widest">
+          <p className="text-[10px]  text-skin-dim/60 uppercase tracking-widest">
             Still holding: {stillHolding.length}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -183,7 +186,7 @@ function ActiveGame({
               return (
                 <div
                   key={pid}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-opacity ${
+                  className={`px-2.5 py-1 rounded-lg text-xs  border transition-opacity ${
                     holding
                       ? 'bg-skin-gold/10 border-skin-gold/30 text-skin-gold'
                       : 'bg-white/[0.02] border-white/[0.06] text-skin-dim/40 opacity-50'
@@ -226,7 +229,7 @@ function RankingsBreakdown({
     if (!myRanking) return null;
     return (
       <div className="text-center">
-        <p className="text-2xl font-bold font-mono text-skin-gold tabular-nums">
+        <p className="text-2xl font-bold  text-skin-gold tabular-nums">
           {formatDuration(myRanking.duration)}
         </p>
       </div>
@@ -246,7 +249,7 @@ function RankingsBreakdown({
         return (
           <div
             key={pid}
-            className={`flex items-center justify-between p-2.5 rounded-lg border text-sm font-mono ${
+            className={`flex items-center justify-between p-2.5 rounded-lg border text-sm  ${
               isWinner
                 ? 'bg-skin-gold/10 border-skin-gold/30'
                 : 'bg-white/[0.02] border-white/[0.06]'
@@ -267,6 +270,67 @@ function RankingsBreakdown({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Bespoke peak frame for Touch Screen — a single fingertip glyph
+ * on a glass surface, with a pulse ring showing the player's hold
+ * duration. Reads as the moment of contact frozen in time.
+ */
+function TouchScreenHero({ myDuration, totalRanked }: { myDuration: number; totalRanked: number }) {
+  const accent = 'var(--po-pink)';
+  const seconds = myDuration / 1000;
+  // Ring radius scales with seconds held (cap at 52)
+  const ringR = Math.min(52, 20 + Math.log(Math.max(1, seconds)) * 14);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+      <HeroFrame accent={accent} haloIntensity={0.5}>
+        <svg width={140} height={140} viewBox="-70 -70 140 140" aria-hidden>
+          {/* Outer duration ring */}
+          <circle
+            cx={0} cy={0} r={ringR}
+            fill="none"
+            stroke={accent}
+            strokeWidth={2}
+            opacity={0.7}
+            strokeDasharray={`${ringR * 2 * Math.PI * 0.82} ${ringR * 2 * Math.PI}`}
+            transform="rotate(-90)"
+          />
+          {/* Inner ring (solid) */}
+          <circle
+            cx={0} cy={0} r={ringR * 0.7}
+            fill={`color-mix(in oklch, ${accent} 14%, transparent)`}
+            stroke={`color-mix(in oklch, ${accent} 40%, transparent)`}
+            strokeWidth={1}
+          />
+          {/* Fingertip — simple rounded shape */}
+          <g transform="translate(0, 4)">
+            <ellipse cx={0} cy={0} rx={14} ry={18}
+                     fill="color-mix(in oklch, var(--po-pink) 85%, white)"
+                     stroke={accent}
+                     strokeWidth={1.5} />
+            {/* Fingernail */}
+            <ellipse cx={0} cy={-8} rx={7} ry={5}
+                     fill="color-mix(in oklch, var(--po-pink) 40%, white)" opacity={0.8} />
+            {/* Contact highlight */}
+            <ellipse cx={0} cy={-2} rx={4} ry={2}
+                     fill="color-mix(in oklch, var(--po-pink) 20%, white)" opacity={0.6} />
+          </g>
+        </svg>
+      </HeroFrame>
+      <HeroStatRow>
+        <HeroStat
+          value={seconds.toFixed(seconds < 60 ? 2 : 0)}
+          label="held"
+          accent={accent}
+          suffix={seconds < 60 ? 's' : 's'}
+        />
+        {totalRanked > 1 && (
+          <HeroStat value={totalRanked} label="players" accent={accent} />
+        )}
+      </HeroStatRow>
     </div>
   );
 }

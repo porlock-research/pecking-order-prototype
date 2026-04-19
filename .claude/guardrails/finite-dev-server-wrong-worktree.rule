@@ -1,5 +1,5 @@
 MATCH_TOOL: Bash
-MATCH_PATTERN: (lsof.*-i.*:(5173|8787|3000)|npm run dev|wrangler dev|vite( |$))
+MATCH_PATTERN: (lsof.*-i.*:(5173|8787|3000)|npm run dev|wrangler dev( |$))
 ADVISORY: |
   Heads up: this monorepo uses git worktrees (.worktrees/*). If a dev server is
   already running from a DIFFERENT worktree than the one you're editing in, your

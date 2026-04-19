@@ -1,6 +1,7 @@
-import { Fragment, useRef, useEffect, useState, useCallback } from 'react';
+import { Fragment, useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
+import { PULSE_Z } from '../../zIndex';
 import { MessageCard } from './MessageCard';
 import { BroadcastCard } from './BroadcastCard';
 import { WhisperCard } from './WhisperCard';
@@ -51,12 +52,12 @@ export function ChatView() {
 
   // First unread MAIN message timestamp — divider anchors here.
   // null if every MAIN message has been read or there are none.
-  const firstUnreadMainTs = (() => {
+  const firstUnreadMainTs = useMemo(() => {
     for (const m of mainMessages) {
       if (m.timestamp > mainLastRead) return m.timestamp;
     }
     return null;
-  })();
+  }, [mainMessages, mainLastRead]);
 
   const handleDividerCleared = useCallback(() => {
     markChannelRead('MAIN');
@@ -102,19 +103,35 @@ export function ChatView() {
 
   const isSocialPhase = phase !== DayPhases.ELIMINATION && phase !== DayPhases.GAME_OVER;
 
-  // Group consecutive messages from the same sender within 2 minutes
-  // (Only applies to message entries; social events break the grouping)
-  const grouped: Array<{ entry: TimelineEntry; showHeader: boolean }> = [];
+  // Group consecutive messages from the same sender.
+  //
+  // Window is asymmetric: self messages coalesce for up to 10 minutes so
+  // "spam your own thought" sessions don't each get a fresh avatar + fresh
+  // bubble (the "wall of pink self" critique, v3). Other senders use the
+  // usual 2-minute window — rapid replies from other players group tight,
+  // but conversation gaps break the group so the persona avatar returns
+  // to remind you who's talking.
+  //
+  // continuationDepth is 0 for the first message of a stack, 1+ for
+  // continuations. MessageCard uses it to fade the self-bubble fill on
+  // successive messages so a stack has visible rhythm.
+  const SELF_STACK_WINDOW_MS = 600_000; // 10 min
+  const OTHER_STACK_WINDOW_MS = 120_000; // 2 min
+  const grouped: Array<{ entry: TimelineEntry; showHeader: boolean; continuationDepth: number }> = [];
+  let depth = 0;
   for (let i = 0; i < timeline.length; i++) {
     const entry = timeline[i];
     const prev = i > 0 ? timeline[i - 1] : null;
     let showHeader = true;
     if (entry.type === 'msg' && prev?.type === 'msg') {
-      showHeader =
-        prev.data.senderId !== entry.data.senderId ||
-        entry.data.timestamp - prev.data.timestamp > 120_000;
+      const sameSender = prev.data.senderId === entry.data.senderId;
+      const isSelf = entry.data.senderId === playerId;
+      const windowMs = isSelf ? SELF_STACK_WINDOW_MS : OTHER_STACK_WINDOW_MS;
+      const withinWindow = entry.data.timestamp - prev.data.timestamp <= windowMs;
+      showHeader = !sameSender || !withinWindow;
     }
-    grouped.push({ entry, showHeader });
+    depth = showHeader ? 0 : depth + 1;
+    grouped.push({ entry, showHeader, continuationDepth: depth });
   }
 
   return (
@@ -125,10 +142,9 @@ export function ChatView() {
         flex: 1,
         overflowY: 'auto',
         overflowX: 'hidden',
-        padding: '8px 12px',
+        padding: 'var(--pulse-space-sm) var(--pulse-space-md)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 2,
         height: '100%',
       }}
     >
@@ -146,7 +162,7 @@ export function ChatView() {
         </div>
       )}
 
-      {grouped.map(({ entry, showHeader }, i) => {
+      {grouped.map(({ entry, showHeader, continuationDepth }, i) => {
         // Insert the "New" divider before the first unread MAIN message
         // (only possible before an entry of type 'msg' with channelId MAIN).
         const isFirstUnreadMain =
@@ -229,6 +245,7 @@ export function ChatView() {
               message={msg}
               showHeader={showHeader}
               isSelf={msg.senderId === playerId}
+              continuationDepth={continuationDepth}
               openReactionId={openReactionId}
               onOpenReaction={setOpenReactionId}
             />
@@ -238,36 +255,59 @@ export function ChatView() {
 
       <TypingIndicator channelId="MAIN" />
 
-      {/* Jump to latest */}
-      {!autoScroll && (
-        <button
-          onClick={() => {
-            if (scrollRef.current) {
-              scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-              setAutoScroll(true);
-            }
-          }}
-          style={{
-            position: 'absolute',
-            bottom: 8,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '6px 16px',
-            borderRadius: 20,
-            background: 'var(--pulse-accent)',
-            color: '#fff',
-            border: 'none',
-            fontSize: 11,
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontFamily: 'var(--po-font-body)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            zIndex: 5,
-          }}
-        >
-          Jump to latest
-        </button>
-      )}
+      {/* Jump to latest — pink-glow pill, shows unread count when present */}
+      {!autoScroll && (() => {
+        const unreadCount = firstUnreadMainTs
+          ? mainMessages.filter(m => m.timestamp >= firstUnreadMainTs).length
+          : 0;
+        return (
+          <button
+            onClick={() => {
+              if (scrollRef.current) {
+                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                setAutoScroll(true);
+              }
+            }}
+            style={{
+              position: 'absolute',
+              bottom: 8,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 14px',
+              borderRadius: 999,
+              background: 'var(--pulse-accent)',
+              color: 'var(--pulse-on-accent)',
+              border: 'none',
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: 0.1,
+              cursor: 'pointer',
+              fontFamily: 'var(--po-font-body)',
+              // Pink-tinted layered glow instead of generic drop shadow —
+              // the button earns its accent weight.
+              boxShadow:
+                '0 0 0 1px color-mix(in oklch, var(--pulse-accent) 40%, transparent), 0 10px 28px -8px color-mix(in oklch, var(--pulse-accent) 55%, transparent)',
+              zIndex: PULSE_Z.elevated,
+            }}
+          >
+            {unreadCount > 0 ? `${unreadCount} new` : 'Jump to latest'}
+            <span
+              style={{
+                display: 'inline-block',
+                width: 0,
+                height: 0,
+                borderLeft: '4px solid transparent',
+                borderRight: '4px solid transparent',
+                borderTop: '5px solid currentColor',
+                marginBottom: -1,
+              }}
+            />
+          </button>
+        );
+      })()}
     </div>
   );
 }

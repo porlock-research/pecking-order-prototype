@@ -1,21 +1,39 @@
 import React from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
-import { Flame } from 'lucide-react';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import {
+  PROMPT_ACCENT,
+  PromptShell,
+  LockedInReceipt,
+  SilverEarned,
+  SectionLabel,
+} from './PromptShell';
+
+const OPTION_COLORS = ['var(--po-green)', 'var(--po-pink)', 'var(--po-gold)', 'var(--po-blue)'];
+
+interface HotTakeResults {
+  statement: string;
+  promptId?: string;
+  options?: string[];
+  tally?: number[];
+  minorityIndices?: number[];
+  hasRealMinority?: boolean;
+  silverRewards: Record<string, number>;
+  // --- legacy shape (completed games recorded before the pool shipped) ---
+  agreeCount?: number;
+  disagreeCount?: number;
+  minorityStance?: 'AGREE' | 'DISAGREE' | null;
+}
 
 interface HotTakeCartridge {
   promptType: 'HOT_TAKE';
   promptText: string;
   phase: 'ACTIVE' | 'RESULTS';
   eligibleVoters: string[];
-  stances: Record<string, 'AGREE' | 'DISAGREE'>;
-  results: {
-    statement: string;
-    agreeCount: number;
-    disagreeCount: number;
-    minorityStance: 'AGREE' | 'DISAGREE' | null;
-    silverRewards: Record<string, number>;
-  } | null;
+  options?: string[];
+  stances: Record<string, number | 'AGREE' | 'DISAGREE'>;
+  results: HotTakeResults | null;
 }
 
 interface HotTakePromptProps {
@@ -29,166 +47,352 @@ interface HotTakePromptProps {
 
 export default function HotTakePrompt({ cartridge, playerId, roster, engine }: HotTakePromptProps) {
   const { promptText, phase, eligibleVoters, stances, results } = cartridge;
-  const hasResponded = playerId in stances;
-  const respondedCount = Object.keys(stances).length;
-  const totalEligible = eligibleVoters.length;
+  const options = cartridge.options ?? ['Agree', 'Disagree'];
 
-  const handleStance = (stance: 'AGREE' | 'DISAGREE') => {
+  const normalizedStances: Record<string, number> = {};
+  for (const [pid, v] of Object.entries(stances ?? {})) {
+    if (typeof v === 'number') {
+      normalizedStances[pid] = v;
+    } else if (v === 'AGREE') {
+      normalizedStances[pid] = 0;
+    } else if (v === 'DISAGREE') {
+      normalizedStances[pid] = 1;
+    }
+  }
+
+  const hasResponded = playerId in normalizedStances;
+  const respondedCount = Object.keys(normalizedStances).length;
+  const totalEligible = eligibleVoters.length;
+  const accent = PROMPT_ACCENT.HOT_TAKE;
+  const reduce = useReducedMotion();
+
+  const handleOption = (optionIndex: number) => {
     if (hasResponded || phase !== PromptPhases.ACTIVE) return;
-    engine.sendActivityAction(ActivityEvents.HOTTAKE.RESPOND, { stance });
+    engine.sendActivityAction(ActivityEvents.HOTTAKE.RESPOND, { optionIndex });
   };
 
+  const tally: number[] =
+    results?.tally && results.tally.length === options.length
+      ? results.tally
+      : deriveLegacyTally(results, options, normalizedStances);
+
+  const minorityIndices: number[] =
+    results?.minorityIndices ?? deriveLegacyMinorityIndices(results, options);
+
+  const hasRealMinority = results?.hasRealMinority ?? minorityIndices.length > 0;
+
+  const status =
+    phase === PromptPhases.RESULTS
+      ? 'Results'
+      : respondedCount === totalEligible
+        ? 'All in'
+        : `${respondedCount}/${totalEligible} in`;
+
   return (
-    <div className="mx-4 my-2 rounded-xl bg-glass border border-white/[0.06] overflow-hidden slide-up-in shadow-card">
-      {/* Header */}
-      <div className="px-4 py-3 bg-skin-pink/5 border-b border-white/[0.06] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-2.5 py-0.5 text-skin-pink uppercase tracking-widest">
-            Hot Take
-          </span>
-          <span className="text-xs font-mono text-skin-dim">
-            {respondedCount}/{totalEligible} responded
-          </span>
-        </div>
-        {hasResponded && (
-          <span className="text-[10px] font-mono text-skin-green uppercase tracking-wider">Submitted</span>
-        )}
-      </div>
-
-      {/* Active Phase */}
-      {phase === PromptPhases.ACTIVE && (
-        <div className="p-4 space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
-              <Flame size={14} className="text-skin-pink" />
-            </div>
-            <p className="text-sm font-bold text-skin-base leading-relaxed pt-1 italic">
-              "{promptText}"
-            </p>
-          </div>
-
-          {!hasResponded ? (
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => handleStance('AGREE')}
-                className="px-4 py-4 rounded-lg border bg-white/[0.03] border-white/[0.06] text-skin-base hover:bg-skin-green/10 hover:border-skin-green/30 active:scale-[0.98] transition-all text-sm font-bold text-center"
-              >
-                Agree
-              </button>
-              <button
-                onClick={() => handleStance('DISAGREE')}
-                className="px-4 py-4 rounded-lg border bg-white/[0.03] border-white/[0.06] text-skin-base hover:bg-skin-pink/10 hover:border-skin-pink/30 active:scale-[0.98] transition-all text-sm font-bold text-center"
-              >
-                Disagree
-              </button>
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-skin-dim">
-                You voted <span className="font-bold text-skin-pink">{stances[playerId]}</span>
-              </p>
-              <p className="text-xs text-skin-dim mt-1 font-mono">Waiting for others...</p>
-            </div>
-          )}
+    <PromptShell
+      type="HOT_TAKE"
+      accentColor={accent}
+      status={status}
+      statusBadge={phase === PromptPhases.ACTIVE && hasResponded ? 'Submitted' : undefined}
+      promptText={promptText}
+      helper={
+        phase === PromptPhases.ACTIVE && !hasResponded
+          ? 'Pick a side — being in the minority earns bonus silver.'
+          : undefined
+      }
+      eligibleIds={phase === PromptPhases.ACTIVE ? eligibleVoters : undefined}
+      respondedIds={phase === PromptPhases.ACTIVE ? Object.keys(normalizedStances) : undefined}
+      roster={roster}
+    >
+      {phase === PromptPhases.ACTIVE && !hasResponded && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: options.length === 3 ? '1fr 1fr 1fr' : '1fr 1fr',
+            gap: 10,
+          }}
+        >
+          {options.map((label, i) => (
+            <StanceButton
+              key={i}
+              onClick={() => handleOption(i)}
+              label={label}
+              color={OPTION_COLORS[i % OPTION_COLORS.length]}
+            />
+          ))}
         </div>
       )}
 
-      {/* Results Phase */}
+      {phase === PromptPhases.ACTIVE && hasResponded && (
+        <LockedInReceipt
+          accentColor={OPTION_COLORS[normalizedStances[playerId] % OPTION_COLORS.length]}
+          label="You voted"
+          value={options[normalizedStances[playerId]] ?? 'Submitted'}
+        />
+      )}
+
       {phase === PromptPhases.RESULTS && results && (
-        <div className="p-4 space-y-4 animate-fade-in">
-          {/* Show the prompt text in results too */}
-          <div className="flex items-start gap-3 pb-1">
-            <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
-              <Flame size={14} className="text-skin-pink" />
-            </div>
-            <p className="text-sm font-bold text-skin-base leading-relaxed pt-1 italic">
-              "{results.statement || promptText}"
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <TallyBar
+            options={options}
+            tally={tally}
+            colors={OPTION_COLORS}
+            minorityIndices={minorityIndices}
+            reduce={reduce ?? false}
+          />
+
+          {hasRealMinority && (
+            <p
+              style={{
+                margin: 0,
+                textAlign: 'center',
+                fontFamily: 'var(--po-font-display)',
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: 'var(--po-gold)',
+              }}
+            >
+              Minority bonus · {minorityIndices.map((i) => options[i]).join(' & ')} · +10 silver
             </p>
-          </div>
+          )}
 
-          <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
-            Results
-          </p>
-
-          <div className="space-y-2">
-            {(() => {
-              const total = results.agreeCount + results.disagreeCount;
-              const pctAgree = total > 0 ? Math.round((results.agreeCount / total) * 100) : 50;
-              const pctDisagree = 100 - pctAgree;
-              const agreeIsMinority = results.minorityStance === 'AGREE';
-              const disagreeIsMinority = results.minorityStance === 'DISAGREE';
-              return (
-                <>
-                  <div className="flex justify-between text-xs font-mono text-skin-dim">
-                    <span>Agree ({results.agreeCount})</span>
-                    <span>Disagree ({results.disagreeCount})</span>
-                  </div>
-                  <div className="flex rounded-lg overflow-hidden h-8 border border-white/[0.06]">
-                    <div
-                      className={`flex items-center justify-center text-xs font-mono font-bold transition-all ${agreeIsMinority ? 'bg-skin-gold/30 text-skin-gold' : 'bg-skin-green/20 text-skin-green'}`}
-                      style={{ width: `${pctAgree}%` }}
-                    >
-                      {pctAgree > 10 ? `${pctAgree}%` : ''}
-                    </div>
-                    <div
-                      className={`flex items-center justify-center text-xs font-mono font-bold transition-all ${disagreeIsMinority ? 'bg-skin-gold/30 text-skin-gold' : 'bg-skin-pink/20 text-skin-pink'}`}
-                      style={{ width: `${pctDisagree}%` }}
-                    >
-                      {pctDisagree > 10 ? `${pctDisagree}%` : ''}
-                    </div>
-                  </div>
-                  {results.minorityStance && (
-                    <p className="text-center text-xs font-mono text-skin-gold">
-                      Minority bonus: {results.minorityStance} (+10 silver)
-                    </p>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-
-          {/* Individual stances */}
-          <div className="space-y-1 pt-1">
-            <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
-              Who said what
-            </p>
-            {Object.keys(stances).length === 0 && (
-              <p className="text-xs text-skin-dim/40 text-center py-2 font-mono">No responses</p>
-            )}
-            {Object.entries(stances).map(([pid, stance]) => {
-              const player = roster[pid];
-              const isMe = pid === playerId;
-              return (
-                <div
-                  key={pid}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${isMe ? 'bg-skin-gold/5 border border-skin-gold/15' : ''}`}
-                >
-                  <PersonaAvatar
-                    avatarUrl={player?.avatarUrl}
-                    personaName={player?.personaName}
-                    size={20}
-                  />
-                  <span className={`text-xs flex-1 ${isMe ? 'font-bold text-skin-gold' : 'text-skin-dim'}`}>
-                    {isMe ? 'You' : (player?.personaName || pid)}
-                  </span>
-                  <span className={`text-xs font-mono font-bold ${stance === 'AGREE' ? 'text-skin-green' : 'text-skin-pink'}`}>
-                    {stance}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {results.silverRewards[playerId] != null && (
-            <div className="text-center py-2">
-              <p className="text-xs font-mono text-skin-dim uppercase tracking-widest mb-1">You Earned</p>
-              <p className="text-2xl font-bold font-mono text-skin-gold text-glow">
-                +{results.silverRewards[playerId]} silver
-              </p>
+          {Object.keys(normalizedStances).length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <SectionLabel>Who said what</SectionLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {Object.entries(normalizedStances).map(([pid, idx]) => {
+                  const player = roster[pid];
+                  const isMe = pid === playerId;
+                  const tagColor = OPTION_COLORS[idx % OPTION_COLORS.length];
+                  return (
+                    <StanceRow
+                      key={pid}
+                      player={player}
+                      isMe={isMe}
+                      name={player?.personaName || pid}
+                      tagLabel={options[idx] ?? '—'}
+                      tagColor={tagColor}
+                    />
+                  );
+                })}
+              </div>
             </div>
           )}
+
+          <SilverEarned amount={results.silverRewards[playerId] ?? 0} />
         </div>
       )}
+    </PromptShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Local primitives                                                   */
+/* ------------------------------------------------------------------ */
+
+function StanceButton({
+  onClick,
+  label,
+  color,
+}: {
+  onClick: () => void;
+  label: string;
+  color: string;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.button
+      onClick={onClick}
+      whileTap={reduce ? undefined : { scale: 0.96 }}
+      whileHover={reduce ? undefined : { y: -2 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      style={{
+        padding: '18px 12px',
+        borderRadius: 14,
+        background: `color-mix(in oklch, ${color} 10%, var(--po-bg-glass, rgba(255,255,255,0.03)))`,
+        border: `1.5px solid color-mix(in oklch, ${color} 38%, transparent)`,
+        cursor: 'pointer',
+        fontFamily: 'var(--po-font-display)',
+        fontSize: 15,
+        fontWeight: 800,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        color: color,
+        boxShadow: `0 0 14px color-mix(in oklch, ${color} 18%, transparent)`,
+        transition: 'background 0.2s, border-color 0.2s, box-shadow 0.2s',
+      }}
+    >
+      {label}
+    </motion.button>
+  );
+}
+
+function TallyBar({
+  options,
+  tally,
+  colors,
+  minorityIndices,
+  reduce,
+}: {
+  options: string[];
+  tally: number[];
+  colors: string[];
+  minorityIndices: number[];
+  reduce: boolean;
+}) {
+  const total = tally.reduce((s, n) => s + n, 0);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          gap: 8,
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {options.map((opt, i) => (
+          <span key={i} style={{ color: colors[i % colors.length] }}>
+            {opt} · {tally[i]}
+          </span>
+        ))}
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          height: 36,
+          borderRadius: 10,
+          overflow: 'hidden',
+          border: '1px solid var(--po-border, rgba(255,255,255,0.08))',
+        }}
+      >
+        {tally.map((count, i) => {
+          const pct = total > 0 ? (count / total) * 100 : 100 / tally.length;
+          const color = colors[i % colors.length];
+          const isMinority = minorityIndices.includes(i);
+          return (
+            <motion.div
+              key={i}
+              initial={reduce ? { width: `${pct}%` } : { width: '0%' }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.65, ease: 'easeOut', delay: 0.15 }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: `color-mix(in oklch, ${color} 22%, transparent)`,
+                color,
+                fontFamily: 'var(--po-font-display)',
+                fontWeight: 800,
+                fontSize: 13,
+                letterSpacing: 0.2,
+                fontVariantNumeric: 'tabular-nums',
+                outline: isMinority ? '2px solid var(--po-gold)' : 'none',
+                outlineOffset: -2,
+              }}
+            >
+              {pct > 10 ? `${Math.round(pct)}%` : ''}
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function deriveLegacyTally(
+  results: HotTakeResults | null,
+  options: string[],
+  stances: Record<string, number>,
+): number[] {
+  if (!results) return options.map(() => 0);
+  if (typeof results.agreeCount === 'number' && options.length === 2) {
+    return [results.agreeCount, results.disagreeCount ?? 0];
+  }
+  const out = options.map(() => 0);
+  for (const idx of Object.values(stances)) out[idx]++;
+  return out;
+}
+
+function deriveLegacyMinorityIndices(
+  results: HotTakeResults | null,
+  options: string[],
+): number[] {
+  if (!results?.minorityStance || options.length !== 2) return [];
+  return [results.minorityStance === 'AGREE' ? 0 : 1];
+}
+
+function StanceRow({
+  player,
+  isMe,
+  name,
+  tagLabel,
+  tagColor,
+}: {
+  player?: SocialPlayer;
+  isMe: boolean;
+  name: string;
+  tagLabel: string;
+  tagColor: string;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '7px 10px',
+        borderRadius: 10,
+        background: isMe
+          ? 'color-mix(in oklch, var(--po-gold) 8%, transparent)'
+          : 'var(--po-bg-glass, rgba(255,255,255,0.03))',
+        border: isMe
+          ? '1px solid color-mix(in oklch, var(--po-gold) 26%, transparent)'
+          : '1px solid var(--po-border, rgba(255,255,255,0.05))',
+      }}
+    >
+      <PersonaAvatar
+        avatarUrl={player?.avatarUrl}
+        personaName={player?.personaName}
+        size={36}
+      />
+      <span
+        style={{
+          flex: 1,
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 13,
+          fontWeight: 700,
+          color: isMe ? 'var(--po-gold)' : 'var(--po-text)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {isMe ? 'You' : name}
+      </span>
+      <span
+        style={{
+          padding: '3px 10px',
+          borderRadius: 9999,
+          background: `color-mix(in oklch, ${tagColor} 18%, transparent)`,
+          color: tagColor,
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: 0.2,
+          textTransform: 'uppercase',
+        }}
+      >
+        {tagLabel}
+      </span>
     </div>
   );
 }

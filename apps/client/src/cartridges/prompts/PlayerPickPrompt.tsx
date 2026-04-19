@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
 import { PromptPhases, ActivityEvents, type SocialPlayer } from '@pecking-order/shared-types';
-import { Users, Heart } from 'lucide-react';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import { Heart } from 'lucide-react';
+import {
+  PROMPT_ACCENT,
+  PromptShell,
+  PersonaPicker,
+  LockedInReceipt,
+  WinnerSpread,
+  SilverEarned,
+  SectionLabel,
+} from './PromptShell';
 
-interface PromptCartridge {
+interface PlayerPickCartridge {
   promptType: 'PLAYER_PICK';
   promptText: string;
   phase: 'ACTIVE' | 'RESULTS';
@@ -17,7 +26,7 @@ interface PromptCartridge {
 }
 
 interface PlayerPickPromptProps {
-  cartridge: PromptCartridge;
+  cartridge: PlayerPickCartridge;
   playerId: string;
   roster: Record<string, SocialPlayer>;
   engine: {
@@ -25,179 +34,263 @@ interface PlayerPickPromptProps {
   };
 }
 
-export default function PlayerPickPrompt({ cartridge, playerId, roster, engine }: PlayerPickPromptProps) {
+export default function PlayerPickPrompt({
+  cartridge,
+  playerId,
+  roster,
+  engine,
+}: PlayerPickPromptProps) {
   const { promptText, phase, eligibleVoters, responses, results } = cartridge;
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const hasResponded = playerId in responses;
   const respondedCount = Object.keys(responses).length;
   const totalEligible = eligibleVoters.length;
+  const accent = PROMPT_ACCENT.PLAYER_PICK;
 
   const name = (id: string) => roster[id]?.personaName || id;
+  const firstName = (id: string) => name(id).split(' ')[0];
 
-  const handleSubmit = (targetId: string) => {
-    if (hasResponded || phase !== PromptPhases.ACTIVE) return;
-    setSelectedTarget(targetId);
-    engine.sendActivityAction(ActivityEvents.PROMPT.SUBMIT, { targetId });
+  const handleConfirm = () => {
+    if (!selectedTarget || hasResponded || phase !== PromptPhases.ACTIVE) return;
+    engine.sendActivityAction(ActivityEvents.PROMPT.SUBMIT, { targetId: selectedTarget });
   };
 
-  // Pick targets = all eligible except self
-  const targets = eligibleVoters.filter(id => id !== playerId);
+  const targets = eligibleVoters.filter((id) => id !== playerId);
+
+  const status =
+    phase === PromptPhases.RESULTS
+      ? 'Results'
+      : respondedCount === totalEligible
+        ? 'All in'
+        : `${respondedCount}/${totalEligible} in`;
 
   return (
-    <div className="mx-4 my-2 rounded-xl bg-glass border border-white/[0.06] overflow-hidden slide-up-in shadow-card">
-
-      {/* Header */}
-      <div className="px-4 py-3 bg-skin-pink/5 border-b border-white/[0.06] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-2.5 py-0.5 text-skin-pink uppercase tracking-widest">
-            Activity
-          </span>
-          <span className="text-xs font-mono text-skin-dim">
-            {respondedCount}/{totalEligible} responded
-          </span>
-        </div>
-        {hasResponded && (
-          <span className="text-[10px] font-mono text-skin-green uppercase tracking-wider">Submitted</span>
-        )}
-      </div>
-
-      {/* Active Phase */}
-      {phase === PromptPhases.ACTIVE && (
-        <div className="p-4 space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
-              <Users size={14} className="text-skin-pink" />
-            </div>
-            <p className="text-sm font-bold text-skin-base leading-relaxed pt-1">
-              {promptText}
-            </p>
-          </div>
-
-          {!hasResponded ? (
-            <div className="grid grid-cols-1 gap-2">
-              {targets.map(targetId => {
-                const player = roster[targetId];
-                if (!player) return null;
-                const isSelected = selectedTarget === targetId;
-                return (
-                  <button
-                    key={targetId}
-                    onClick={() => handleSubmit(targetId)}
-                    disabled={hasResponded}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all text-sm
-                      ${isSelected
-                        ? 'bg-skin-pink/20 border-skin-pink/50 text-skin-pink'
-                        : 'bg-white/[0.03] border-white/[0.06] text-skin-base hover:bg-white/[0.06] hover:border-white/10 active:scale-[0.98]'
-                      }`}
-                  >
-                    <PersonaAvatar avatarUrl={player.avatarUrl} personaName={player.personaName} size={32} />
-                    <span className="font-medium">{player.personaName}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-skin-dim">
-                You picked <span className="font-bold text-skin-pink">{name(responses[playerId])}</span>
-              </p>
-              <p className="text-xs text-skin-dim mt-1 font-mono">
-                Waiting for others...
-              </p>
-            </div>
-          )}
-        </div>
+    <PromptShell
+      type="PLAYER_PICK"
+      accentColor={accent}
+      status={status}
+      statusBadge={phase === PromptPhases.ACTIVE && hasResponded ? 'Submitted' : undefined}
+      promptText={promptText}
+      helper={
+        phase === PromptPhases.ACTIVE && !hasResponded
+          ? 'Tap a face to pick. Mutual picks earn +10 silver each.'
+          : undefined
+      }
+      eligibleIds={phase === PromptPhases.ACTIVE ? eligibleVoters : undefined}
+      respondedIds={phase === PromptPhases.ACTIVE ? Object.keys(responses) : undefined}
+      roster={roster}
+    >
+      {phase === PromptPhases.ACTIVE && !hasResponded && (
+        <PersonaPicker
+          candidates={targets}
+          roster={roster}
+          accentColor={accent}
+          selectedId={selectedTarget}
+          onSelect={setSelectedTarget}
+          ctaLabel="Pick"
+          onConfirm={handleConfirm}
+        />
       )}
 
-      {/* Results Phase */}
+      {phase === PromptPhases.ACTIVE && hasResponded && (
+        <LockedInReceipt
+          accentColor={accent}
+          label="You picked"
+          value={firstName(responses[playerId])}
+        />
+      )}
+
       {phase === PromptPhases.RESULTS && results && (
-        <div className="p-4 space-y-4 animate-fade-in">
-          <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
-            Results
-          </p>
-
-          {/* Most Picked */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {results.mostPicked && (
-            <div className="text-center py-3 rounded-lg bg-skin-pink/5 border border-skin-pink/10">
-              <p className="text-xs text-skin-dim uppercase tracking-wider mb-1">Most Picked</p>
-              <p className="text-lg font-bold text-skin-pink">
-                {name(results.mostPicked.playerId)}
-              </p>
-              <p className="text-xs text-skin-dim">
-                {results.mostPicked.count} {results.mostPicked.count === 1 ? 'pick' : 'picks'}
-              </p>
+            <WinnerSpread
+              player={roster[results.mostPicked.playerId]}
+              accentColor={accent}
+              label="Most Picked"
+              name={firstName(results.mostPicked.playerId)}
+              sublabel={`${results.mostPicked.count} ${
+                results.mostPicked.count === 1 ? 'pick' : 'picks'
+              }`}
+            />
+          )}
+
+          {results.mutualPicks.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <SectionLabel accentColor="var(--po-pink)">Mutual picks · +10 each</SectionLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {results.mutualPicks.map(([a, b], idx) => {
+                  const isMe = a === playerId || b === playerId;
+                  return (
+                    <MutualPickRow
+                      key={idx}
+                      playerA={roster[a]}
+                      playerB={roster[b]}
+                      nameA={firstName(a)}
+                      nameB={firstName(b)}
+                      isMe={isMe}
+                    />
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          {/* Mutual Picks */}
-          {results.mutualPicks.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-skin-dim uppercase tracking-wider font-mono">Mutual Picks</p>
-              {results.mutualPicks.map(([a, b], idx) => {
-                const isMe = a === playerId || b === playerId;
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <SectionLabel>All picks</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {Object.entries(responses).map(([pickerId, targetId]) => {
+                const picker = roster[pickerId];
+                const target = roster[targetId];
+                const isMe = pickerId === playerId;
                 return (
-                  <div
-                    key={idx}
-                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm
-                      ${isMe ? 'bg-skin-pink/10 border-skin-pink/30' : 'bg-white/[0.02] border-white/[0.04]'}`}
-                  >
-                    <span className={isMe ? 'font-bold text-skin-pink' : 'text-skin-base'}>{name(a)}</span>
-                    <Heart size={12} className="text-skin-pink" />
-                    <span className={isMe ? 'font-bold text-skin-pink' : 'text-skin-base'}>{name(b)}</span>
-                    <span className="text-xs font-mono text-skin-green ml-2">+10 silver each</span>
-                  </div>
+                  <PickRow
+                    key={pickerId}
+                    picker={picker}
+                    target={target}
+                    nameFrom={isMe ? 'You' : firstName(pickerId)}
+                    nameTo={firstName(targetId)}
+                    accent={accent}
+                    isMe={isMe}
+                  />
                 );
               })}
             </div>
-          )}
-
-          {/* All picks */}
-          <div className="space-y-1 pt-1">
-            <p className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest text-center mb-2">
-              All picks
-            </p>
-            {Object.entries(responses).map(([pickerId, targetId]) => {
-              const picker = roster[pickerId];
-              const target = roster[targetId];
-              const isMe = pickerId === playerId;
-              return (
-                <div
-                  key={pickerId}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg ${isMe ? 'bg-skin-gold/5 border border-skin-gold/15' : ''}`}
-                >
-                  <PersonaAvatar
-                    avatarUrl={picker?.avatarUrl}
-                    personaName={picker?.personaName}
-                    size={20}
-                  />
-                  <span className={`text-xs ${isMe ? 'font-bold text-skin-gold' : 'text-skin-dim'}`}>
-                    {isMe ? 'You' : (picker?.personaName || pickerId)}
-                  </span>
-                  <span className="text-xs text-skin-dim/40 mx-1">&rarr;</span>
-                  <PersonaAvatar
-                    avatarUrl={target?.avatarUrl}
-                    personaName={target?.personaName}
-                    size={20}
-                  />
-                  <span className="text-xs text-skin-dim">
-                    {target?.personaName || targetId}
-                  </span>
-                </div>
-              );
-            })}
           </div>
 
-          {/* Your Silver */}
-          {results.silverRewards[playerId] != null && (
-            <div className="text-center py-2">
-              <p className="text-xs font-mono text-skin-dim uppercase tracking-widest mb-1">You Earned</p>
-              <p className="text-2xl font-bold font-mono text-skin-gold text-glow">
-                +{results.silverRewards[playerId]} silver
-              </p>
-            </div>
-          )}
+          <SilverEarned amount={results.silverRewards[playerId] ?? 0} />
         </div>
       )}
+    </PromptShell>
+  );
+}
+
+function MutualPickRow({
+  playerA,
+  playerB,
+  nameA,
+  nameB,
+  isMe,
+}: {
+  playerA?: SocialPlayer;
+  playerB?: SocialPlayer;
+  nameA: string;
+  nameB: string;
+  isMe: boolean;
+}) {
+  const bg = isMe
+    ? 'color-mix(in oklch, var(--po-pink) 12%, transparent)'
+    : 'var(--po-bg-glass, rgba(255,255,255,0.03))';
+  const border = isMe
+    ? '1.5px solid color-mix(in oklch, var(--po-pink) 38%, transparent)'
+    : '1px solid var(--po-border, rgba(255,255,255,0.05))';
+  const accent = 'var(--po-pink)';
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        padding: '10px 12px',
+        borderRadius: 12,
+        background: bg,
+        border,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <PersonaAvatar avatarUrl={playerA?.avatarUrl} personaName={playerA?.personaName} size={32} />
+        <span
+          style={{
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 13,
+            fontWeight: 700,
+            color: 'var(--po-text)',
+          }}
+        >
+          {nameA}
+        </span>
+      </div>
+      <Heart size={14} strokeWidth={2.5} color={accent} fill={accent} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span
+          style={{
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 13,
+            fontWeight: 700,
+            color: 'var(--po-text)',
+          }}
+        >
+          {nameB}
+        </span>
+        <PersonaAvatar avatarUrl={playerB?.avatarUrl} personaName={playerB?.personaName} size={32} />
+      </div>
+    </div>
+  );
+}
+
+function PickRow({
+  picker,
+  target,
+  nameFrom,
+  nameTo,
+  accent,
+  isMe,
+}: {
+  picker?: SocialPlayer;
+  target?: SocialPlayer;
+  nameFrom: string;
+  nameTo: string;
+  accent: string;
+  isMe: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '6px 10px',
+        borderRadius: 10,
+        background: isMe
+          ? `color-mix(in oklch, ${accent} 10%, transparent)`
+          : 'transparent',
+        border: isMe
+          ? `1px solid color-mix(in oklch, ${accent} 26%, transparent)`
+          : '1px solid transparent',
+      }}
+    >
+      <PersonaAvatar avatarUrl={picker?.avatarUrl} personaName={picker?.personaName} size={28} />
+      <span
+        style={{
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 13,
+          fontWeight: 700,
+          color: isMe ? accent : 'var(--po-text)',
+        }}
+      >
+        {nameFrom}
+      </span>
+      <span
+        style={{
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 13,
+          color: 'var(--po-text-dim)',
+          margin: '0 2px',
+        }}
+      >
+        →
+      </span>
+      <PersonaAvatar avatarUrl={target?.avatarUrl} personaName={target?.personaName} size={28} />
+      <span
+        style={{
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 13,
+          fontWeight: 600,
+          color: 'var(--po-text)',
+        }}
+      >
+        {nameTo}
+      </span>
     </div>
   );
 }

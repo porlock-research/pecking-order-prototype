@@ -48,41 +48,54 @@ export function CartridgeInfoSplash({ kind, typeKey, fallbackLabel, scheduledAt,
       style={{
         flex: 1,
         overflow: 'auto',
-        padding: '32px 24px',
+        // Kind-tinted ambient wash — anticipation lives in the kind's color.
+        background: `radial-gradient(ellipse 80% 40% at 50% 0%, color-mix(in oklch, ${dotColor} 14%, transparent) 0%, transparent 70%)`,
+        paddingTop: 'var(--pulse-space-2xl)',
+        paddingLeft: 'var(--pulse-space-lg)',
+        paddingRight: 'var(--pulse-space-lg)',
+        paddingBottom: 'var(--pulse-space-2xl)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 20,
         color: 'var(--pulse-text-1)',
       }}
     >
+      {/* Countdown chip — breathes when live, for extra anticipation */}
       <div
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 8,
-          padding: '6px 14px',
+          gap: 'var(--pulse-space-sm)',
+          padding: 'var(--pulse-space-xs) var(--pulse-space-md)',
+          marginBottom: 'var(--pulse-space-md)',
           borderRadius: 999,
           background: `${dotColor}1A`,
           border: `1px solid ${dotColor}40`,
           fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: 1,
+          fontWeight: 800,
+          letterSpacing: 1.4,
           textTransform: 'uppercase',
           color: dotColor,
+          fontFamily: 'var(--po-font-body)',
+          animation: isStarting ? 'pulse-breathe 1.4s ease-in-out infinite' : undefined,
         }}
       >
-        {isStarting ? 'Starting now…' : countdown ? `Starts in ${countdown}` : 'Scheduled'}
+        <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 8px ${dotColor}` }} />
+        {isStarting ? 'Starting now' : countdown ? `Starts in ${countdown}` : 'Scheduled'}
       </div>
 
+      {/* Hero title — fluid display type, anchor of the splash */}
       <h1
         style={{
-          fontSize: 28,
-          fontWeight: 900,
-          fontFamily: 'var(--po-font-display, var(--po-font-body))',
+          fontSize: 'clamp(32px, 8vw, 44px)',
+          fontWeight: 700,
+          letterSpacing: -1.2,
+          fontFamily: 'var(--po-font-display)',
           textAlign: 'center',
           margin: 0,
-          lineHeight: 1.1,
+          marginBottom: 'var(--pulse-space-md)',
+          lineHeight: 1.02,
+          maxWidth: 520,
         }}
       >
         {displayName}
@@ -91,12 +104,15 @@ export function CartridgeInfoSplash({ kind, typeKey, fallbackLabel, scheduledAt,
       {tagline && (
         <p
           style={{
-            fontSize: 15,
+            fontSize: 16,
             fontStyle: 'italic',
             color: 'var(--pulse-text-2)',
             textAlign: 'center',
             margin: 0,
+            marginBottom: 'var(--pulse-space-md)',
             maxWidth: 340,
+            fontFamily: 'var(--po-font-body)',
+            lineHeight: 1.35,
           }}
         >
           {tagline}
@@ -110,8 +126,9 @@ export function CartridgeInfoSplash({ kind, typeKey, fallbackLabel, scheduledAt,
             color: 'var(--pulse-text-2)',
             textAlign: 'center',
             margin: 0,
+            marginBottom: 'var(--pulse-space-xl)',
             maxWidth: 360,
-            lineHeight: 1.5,
+            lineHeight: 1.55,
           }}
         >
           {description}
@@ -121,44 +138,45 @@ export function CartridgeInfoSplash({ kind, typeKey, fallbackLabel, scheduledAt,
       {mechanics.length > 0 && (
         <div
           style={{
-            marginTop: 8,
             width: '100%',
             maxWidth: 360,
-            padding: 16,
-            borderRadius: 14,
+            padding: 'var(--pulse-space-lg)',
+            borderRadius: 16,
             background: 'var(--pulse-surface-2)',
-            border: '1px solid var(--pulse-border)',
+            border: `1px solid color-mix(in oklch, ${dotColor} 18%, var(--pulse-border))`,
           }}
         >
           <div
             style={{
               fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: 1,
+              fontWeight: 800,
+              letterSpacing: 1.4,
               textTransform: 'uppercase',
               color: 'var(--pulse-text-3)',
-              marginBottom: 10,
+              marginBottom: 'var(--pulse-space-md)',
+              fontFamily: 'var(--po-font-body)',
             }}
           >
             How it works
           </div>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--pulse-space-sm)' }}>
             {mechanics.map((m, i) => (
               <li
                 key={i}
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
-                  gap: 10,
+                  gap: 'var(--pulse-space-sm)',
                   fontSize: 13,
                   color: 'var(--pulse-text-1)',
-                  lineHeight: 1.4,
+                  lineHeight: 1.45,
                 }}
               >
                 <span
+                  aria-hidden="true"
                   style={{
-                    width: 18,
-                    height: 18,
+                    width: 20,
+                    height: 20,
                     flexShrink: 0,
                     borderRadius: '50%',
                     background: `${dotColor}22`,
@@ -186,7 +204,7 @@ export function CartridgeInfoSplash({ kind, typeKey, fallbackLabel, scheduledAt,
             fontSize: 12,
             color: 'var(--pulse-text-3)',
             fontStyle: 'italic',
-            marginTop: 8,
+            marginTop: 'var(--pulse-space-sm)',
             textAlign: 'center',
           }}
         >

@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { PromptPhases, ActivityEvents, Config, type SocialPlayer } from '@pecking-order/shared-types';
-import { PenLine } from 'lucide-react';
+import { PersonaAvatar } from '../../components/PersonaAvatar';
+import {
+  PROMPT_ACCENT,
+  PromptShell,
+  LockedInReceipt,
+  WinnerSpread,
+  SilverEarned,
+  SectionLabel,
+} from './PromptShell';
 
 interface ConfessionCartridge {
   promptType: 'CONFESSION';
@@ -30,16 +39,15 @@ interface ConfessionPromptProps {
   };
 }
 
-export default function ConfessionPrompt({ cartridge, playerId, roster, engine }: ConfessionPromptProps) {
+export default function ConfessionPrompt({
+  cartridge,
+  playerId,
+  roster,
+  engine,
+}: ConfessionPromptProps) {
   const { promptText, phase, eligibleVoters, anonymousConfessions, votes, results } = cartridge;
-  const respondedCount = phase === PromptPhases.COLLECTING
-    ? eligibleVoters.filter(id => {
-        // We can't see confessions map (stripped), but we know if we submitted
-        // Track our own submission via local state
-        return false; // Server doesn't expose this during collecting
-      }).length
-    : anonymousConfessions.length;
   const totalEligible = eligibleVoters.length;
+  const accent = PROMPT_ACCENT.CONFESSION;
 
   const [confessionText, setConfessionText] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -47,6 +55,8 @@ export default function ConfessionPrompt({ cartridge, playerId, roster, engine }
   const hasVoted = playerId in votes;
 
   const name = (id: string) => roster[id]?.personaName || id;
+  const firstName = (id: string) => name(id).split(' ')[0];
+  const reduce = useReducedMotion();
 
   const handleSubmitConfession = () => {
     if (submitted || !confessionText.trim()) return;
@@ -60,147 +70,312 @@ export default function ConfessionPrompt({ cartridge, playerId, roster, engine }
     engine.sendActivityAction(ActivityEvents.CONFESSION.VOTE, { confessionIndex });
   };
 
+  const status = (() => {
+    if (phase === PromptPhases.COLLECTING) return 'Write yours';
+    if (phase === PromptPhases.VOTING) {
+      const v = Object.keys(votes).length;
+      return v === totalEligible ? 'All voted' : `${v}/${totalEligible} voted`;
+    }
+    return 'Results';
+  })();
+
+  const statusBadge =
+    (phase === PromptPhases.COLLECTING && submitted)
+      ? 'Submitted'
+      : phase === PromptPhases.VOTING && (hasVoted || votedIndex !== null)
+        ? 'Voted'
+        : undefined;
+
+  const helper =
+    phase === PromptPhases.COLLECTING && !submitted
+      ? 'Anonymous — no one knows it’s you until the reveal.'
+      : phase === PromptPhases.VOTING && !(hasVoted || votedIndex !== null)
+        ? 'Vote for the best. Winner takes +15 silver.'
+        : undefined;
+
   return (
-    <div className="mx-4 my-2 rounded-xl bg-glass border border-white/[0.06] overflow-hidden slide-up-in shadow-card">
-      {/* Header */}
-      <div className="px-4 py-3 bg-skin-pink/5 border-b border-white/[0.06] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono bg-skin-pink/10 border border-skin-pink/30 rounded-pill px-2.5 py-0.5 text-skin-pink uppercase tracking-widest">
-            Confession
-          </span>
-          <span className="text-xs font-mono text-skin-dim">
-            {phase === PromptPhases.COLLECTING ? 'Write your confession' : phase === PromptPhases.VOTING ? `${Object.keys(votes).length}/${totalEligible} voted` : 'Results'}
-          </span>
-        </div>
-        {phase === PromptPhases.COLLECTING && submitted && (
-          <span className="text-[10px] font-mono text-skin-green uppercase tracking-wider">Submitted</span>
-        )}
-        {phase === PromptPhases.VOTING && (hasVoted || votedIndex !== null) && (
-          <span className="text-[10px] font-mono text-skin-green uppercase tracking-wider">Voted</span>
-        )}
-      </div>
-
-      {/* Collecting Phase */}
-      {phase === PromptPhases.COLLECTING && (
-        <div className="p-4 space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-skin-pink/10 border border-skin-pink/20 flex items-center justify-center shrink-0">
-              <PenLine size={14} className="text-skin-pink" />
-            </div>
-            <p className="text-sm font-bold text-skin-base leading-relaxed pt-1">
-              {promptText}
-            </p>
+    <PromptShell
+      type="CONFESSION"
+      accentColor={accent}
+      status={status}
+      statusBadge={statusBadge}
+      promptText={promptText}
+      helper={helper}
+      /* Strip hides during COLLECTING — server strips who's written what. */
+      eligibleIds={phase === PromptPhases.VOTING ? eligibleVoters : undefined}
+      respondedIds={phase === PromptPhases.VOTING ? Object.keys(votes) : undefined}
+      roster={roster}
+    >
+      {/* Collecting — write */}
+      {phase === PromptPhases.COLLECTING && !submitted && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <textarea
+            value={confessionText}
+            onChange={(e) => setConfessionText(e.target.value.slice(0, Config.chat.maxMessageLength))}
+            placeholder="Spill it…"
+            rows={3}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'var(--po-bg-glass, rgba(255,255,255,0.04))',
+              border: `1.5px solid color-mix(in oklch, ${accent} 22%, transparent)`,
+              color: 'var(--po-text)',
+              fontFamily: 'var(--po-font-body)',
+              fontSize: 14,
+              lineHeight: 1.5,
+              resize: 'none',
+              outline: 'none',
+              boxSizing: 'border-box',
+              transition: 'border-color 0.2s',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = accent;
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = `color-mix(in oklch, ${accent} 22%, transparent)`;
+            }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span
+              style={{
+                fontFamily: 'var(--po-font-display)',
+                fontSize: 11,
+                fontWeight: 600,
+                color: 'var(--po-text-dim)',
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: 0.2,
+              }}
+            >
+              {confessionText.length}/{Config.chat.maxMessageLength}
+            </span>
+            <motion.button
+              onClick={handleSubmitConfession}
+              disabled={!confessionText.trim()}
+              whileTap={reduce ? undefined : { scale: 0.96 }}
+              style={{
+                padding: '12px 26px',
+                borderRadius: 9999,
+                background: accent,
+                color: 'var(--po-text-inverted, #111)',
+                border: 'none',
+                fontFamily: 'var(--po-font-display)',
+                fontSize: 13,
+                fontWeight: 800,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                cursor: confessionText.trim() ? 'pointer' : 'not-allowed',
+                opacity: confessionText.trim() ? 1 : 0.4,
+                boxShadow: `0 4px 20px color-mix(in oklch, ${accent} 50%, transparent)`,
+                transition: 'opacity 0.2s',
+              }}
+            >
+              Confess
+            </motion.button>
           </div>
-
-          {!submitted ? (
-            <div className="space-y-3">
-              <textarea
-                value={confessionText}
-                onChange={(e) => setConfessionText(e.target.value.slice(0, Config.chat.maxMessageLength))}
-                placeholder="Write your anonymous confession..."
-                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg px-4 py-3 text-sm text-skin-base placeholder:text-skin-dim/40 focus:outline-none focus:border-skin-pink/30 resize-none"
-                rows={3}
-              />
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-skin-dim/40">{confessionText.length}/{Config.chat.maxMessageLength}</span>
-                <button
-                  onClick={handleSubmitConfession}
-                  disabled={!confessionText.trim()}
-                  className="px-4 py-2 rounded-lg bg-skin-pink/20 border border-skin-pink/30 text-skin-pink text-xs font-bold uppercase tracking-wider hover:bg-skin-pink/30 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  Submit
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-skin-dim">Confession submitted anonymously</p>
-              <p className="text-xs text-skin-dim mt-1 font-mono">Waiting for others...</p>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Voting Phase */}
-      {phase === PromptPhases.VOTING && (
-        <div className="p-4 space-y-4">
-          <p className="text-sm font-bold text-skin-base text-center">Vote for the best confession</p>
-          <div className="space-y-2">
-            {anonymousConfessions.map((c) => {
-              const isVoted = votedIndex === c.index || (hasVoted && votes[playerId] === c.index);
-              return (
-                <button
-                  key={c.index}
-                  onClick={() => handleVote(c.index)}
-                  disabled={hasVoted || votedIndex !== null}
-                  className={`w-full text-left px-4 py-3 rounded-lg border transition-all text-sm
-                    ${isVoted
-                      ? 'bg-skin-pink/20 border-skin-pink/50 text-skin-pink'
-                      : 'bg-white/[0.03] border-white/[0.06] text-skin-base hover:bg-white/[0.06] hover:border-white/10 active:scale-[0.98]'
-                    }
-                    ${(hasVoted || votedIndex !== null) && !isVoted ? 'opacity-50' : ''}`}
-                >
-                  <span className="text-skin-pink font-mono text-xs mr-2">#{c.index + 1}</span>
-                  "{c.text}"
-                </button>
-              );
-            })}
-          </div>
-          {(hasVoted || votedIndex !== null) && (
-            <p className="text-center text-xs text-skin-dim font-mono">Waiting for others...</p>
-          )}
+      {phase === PromptPhases.COLLECTING && submitted && (
+        <LockedInReceipt
+          accentColor={accent}
+          label="You confessed"
+          value="Sent — stays anonymous until the reveal."
+          waitingText="Waiting for the rest…"
+        />
+      )}
+
+      {/* Voting — pick the best */}
+      {phase === PromptPhases.VOTING && !(hasVoted || votedIndex !== null) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {anonymousConfessions.map((c) => (
+            <motion.button
+              key={c.index}
+              onClick={() => handleVote(c.index)}
+              whileTap={reduce ? undefined : { scale: 0.98 }}
+              whileHover={reduce ? undefined : { y: -1 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              style={{
+                textAlign: 'left',
+                padding: '12px 14px',
+                borderRadius: 14,
+                background: 'var(--po-bg-glass, rgba(255,255,255,0.04))',
+                border: `1px solid var(--po-border, rgba(255,255,255,0.08))`,
+                cursor: 'pointer',
+                display: 'grid',
+                gridTemplateColumns: 'auto 1fr',
+                gap: 12,
+                alignItems: 'start',
+                transition: 'background 0.2s, border-color 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = `color-mix(in oklch, ${accent} 42%, transparent)`;
+                e.currentTarget.style.background = `color-mix(in oklch, ${accent} 6%, var(--po-bg-glass))`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--po-border, rgba(255,255,255,0.08))';
+                e.currentTarget.style.background = 'var(--po-bg-glass, rgba(255,255,255,0.04))';
+              }}
+            >
+              <span
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: `color-mix(in oklch, ${accent} 18%, transparent)`,
+                  color: accent,
+                  fontFamily: 'var(--po-font-display)',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  marginTop: 2,
+                }}
+              >
+                {c.index + 1}
+              </span>
+              <span
+                style={{
+                  fontFamily: 'var(--po-font-body)',
+                  fontSize: 14,
+                  lineHeight: 1.45,
+                  fontStyle: 'italic',
+                  color: 'var(--po-text)',
+                }}
+              >
+                “{c.text}”
+              </span>
+            </motion.button>
+          ))}
         </div>
       )}
 
-      {/* Results Phase */}
+      {phase === PromptPhases.VOTING && (hasVoted || votedIndex !== null) && (
+        <LockedInReceipt
+          accentColor={accent}
+          label="You voted"
+          value={`Confession #${(votedIndex ?? votes[playerId]) + 1}`}
+        />
+      )}
+
+      {/* Results */}
       {phase === PromptPhases.RESULTS && results && (
-        <div className="p-4 space-y-4 animate-fade-in">
-          <p className="text-center text-sm font-bold text-skin-pink uppercase tracking-wider font-display">
-            Results
-          </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {results.winnerText && results.winnerId && (
+            <WinnerSpread
+              player={roster[results.winnerId]}
+              accentColor={accent}
+              label="Best Confession"
+              name={firstName(results.winnerId)}
+              sublabel="+15 silver"
+            />
+          )}
 
           {results.winnerText && (
-            <div className="text-center py-3 rounded-lg bg-skin-pink/5 border border-skin-pink/10">
-              <p className="text-xs text-skin-dim uppercase tracking-wider mb-1">Best Confession</p>
-              <p className="text-sm font-bold text-skin-base italic px-4">
-                "{results.winnerText}"
-              </p>
-              {results.winnerId && (
-                <p className="text-xs text-skin-pink mt-2">
-                  — {name(results.winnerId)} (+15 silver)
-                </p>
-              )}
-            </div>
+            <blockquote
+              style={{
+                margin: 0,
+                padding: '14px 16px',
+                borderRadius: 14,
+                background: `color-mix(in oklch, ${accent} 10%, transparent)`,
+                border: `1px solid color-mix(in oklch, ${accent} 28%, transparent)`,
+                fontFamily: 'var(--po-font-body)',
+                fontSize: 15,
+                lineHeight: 1.5,
+                fontStyle: 'italic',
+                color: 'var(--po-text)',
+                textAlign: 'center',
+              }}
+            >
+              “{results.winnerText}”
+            </blockquote>
           )}
 
-          {/* Author Reveal */}
-          <div className="space-y-1.5">
-            <p className="text-xs text-skin-dim uppercase tracking-wider font-mono">Author Reveal</p>
-            {results.anonymousConfessions.map((c) => {
-              const authorId = results.indexToAuthor[c.index];
-              const isWinner = c.index === results.winnerIndex;
-              return (
-                <div key={c.index} className={`flex items-start gap-2 px-3 py-2 rounded-lg border text-xs ${isWinner ? 'bg-skin-pink/10 border-skin-pink/30' : 'bg-white/[0.02] border-white/[0.04]'}`}>
-                  <span className="text-skin-dim shrink-0">#{c.index + 1}</span>
-                  <span className="text-skin-base flex-1 italic">"{c.text}"</span>
-                  <span className={`shrink-0 font-mono ${authorId === playerId ? 'text-skin-pink font-bold' : 'text-skin-dim'}`}>
-                    {authorId ? name(authorId) : '?'}
-                  </span>
-                </div>
-              );
-            })}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <SectionLabel>Author reveal</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {results.anonymousConfessions.map((c) => {
+                const authorId = results.indexToAuthor[c.index];
+                const author = authorId ? roster[authorId] : undefined;
+                const isWinner = c.index === results.winnerIndex;
+                const isMe = authorId === playerId;
+                return (
+                  <div
+                    key={c.index}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'auto 1fr auto',
+                      gap: 10,
+                      alignItems: 'center',
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      background: isWinner
+                        ? `color-mix(in oklch, ${accent} 10%, transparent)`
+                        : 'var(--po-bg-glass, rgba(255,255,255,0.03))',
+                      border: isWinner
+                        ? `1px solid color-mix(in oklch, ${accent} 32%, transparent)`
+                        : '1px solid var(--po-border, rgba(255,255,255,0.05))',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: isWinner
+                          ? accent
+                          : 'color-mix(in oklch, var(--po-text-dim) 15%, transparent)',
+                        color: isWinner ? 'var(--po-text-inverted, #111)' : 'var(--po-text-dim)',
+                        fontFamily: 'var(--po-font-display)',
+                        fontSize: 11,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {c.index + 1}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: 'var(--po-font-body)',
+                        fontSize: 13,
+                        fontStyle: 'italic',
+                        color: 'var(--po-text)',
+                        lineHeight: 1.4,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      “{c.text}”
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <PersonaAvatar
+                        avatarUrl={author?.avatarUrl}
+                        personaName={author?.personaName}
+                        size={24}
+                      />
+                      <span
+                        style={{
+                          fontFamily: 'var(--po-font-display)',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: isMe ? accent : 'var(--po-text-dim)',
+                          letterSpacing: 0.1,
+                        }}
+                      >
+                        {isMe ? 'You' : authorId ? firstName(authorId) : '?'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {results.silverRewards[playerId] != null && (
-            <div className="text-center py-2">
-              <p className="text-xs font-mono text-skin-dim uppercase tracking-widest mb-1">You Earned</p>
-              <p className="text-2xl font-bold font-mono text-skin-gold text-glow">
-                +{results.silverRewards[playerId]} silver
-              </p>
-            </div>
-          )}
+          <SilverEarned amount={results.silverRewards[playerId] ?? 0} />
         </div>
       )}
-    </div>
+    </PromptShell>
   );
 }

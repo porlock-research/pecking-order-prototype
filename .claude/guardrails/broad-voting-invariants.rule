@@ -1,11 +1,16 @@
 MATCH_TOOL: Edit|Write
-MATCH_PATTERN: cartridges/voting/
+MATCH_PATTERN: (apps/game-server/src/machines/cartridges/voting/|apps/game-server/src/machines/actions/l2-elimination|apps/game-server/src/machines/actions/l2-day-resolution)
+MATCH_CONTENT: (eliminatedId|winnerId|openVoting|closeVoting|OPEN_VOTING|CLOSE_VOTING|VOTE_RESULT|computeElimination|resolveVote)
 ADVISORY: |
-  You are editing voting cartridge code. Key invariants:
+  You are editing SERVER-SIDE voting logic. Key invariants (from
+  apps/game-server/.claude/invariants/voting.md):
+
   - Every voting mechanism MUST eliminate exactly one player
-  - eliminatedId must NEVER be null
-  - If no one votes, eliminate lowest silver. If tied, use lowest silver
-  - Only exception: FINALS picks a winner instead of eliminating
-  - All result summaries must show: vote tallies, who voted for whom, elimination outcome
-  - Results must be shown immediately after voting closes, never delayed to night summary
-  Read apps/game-server/.claude/invariants/voting.md for full rules.
+  - eliminatedId must NEVER be null (tie-break by lowest silver; no votes → lowest silver)
+  - Only exception: FINALS picks a winner instead
+  - Result payload must include: tallies, per-voter picks, elimination outcome
+  - Results publish immediately when voting closes — never delayed to night summary
+
+  Client cartridges (apps/client/src/cartridges/voting/) render server-decided
+  outcomes and CANNOT violate these invariants — this rule intentionally does
+  not fire on client UI edits.

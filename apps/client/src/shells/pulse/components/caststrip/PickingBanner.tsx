@@ -1,4 +1,5 @@
 import { useGameStore, selectDmSlots } from '../../../../store/useGameStore';
+import { PULSE_Z } from '../../zIndex';
 
 export function PickingBanner() {
   const pickingMode = useGameStore(s => s.pickingMode);
@@ -15,10 +16,10 @@ export function PickingBanner() {
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '8px 14px',
-      background: 'rgba(255,59,111,0.12)',
-      borderBottom: '1px solid rgba(255,59,111,0.25)',
+      background: 'color-mix(in oklch, var(--pulse-accent) 12%, transparent)',
+      borderBottom: '1px solid color-mix(in oklch, var(--pulse-accent) 25%, transparent)',
       color: 'var(--pulse-accent)', fontSize: 12, fontWeight: 600,
-      position: 'relative', zIndex: 3,
+      position: 'relative', zIndex: PULSE_Z.flow,
     }}>
       <span>
         {isAddMode ? 'Add to conversation' : 'Pick 1 to chat · 2+ for a group'}
@@ -29,9 +30,10 @@ export function PickingBanner() {
         )}
       </span>
       <button onClick={cancelPicking} style={{
-        background: 'transparent', color: 'var(--pulse-text-3)',
-        border: '1px solid var(--pulse-border)', borderRadius: 14,
-        padding: '3px 10px', fontSize: 11, cursor: 'pointer',
+        background: 'transparent', color: 'var(--pulse-text-2)',
+        border: '1px solid var(--pulse-border-2)', borderRadius: 16,
+        padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+        minHeight: 36, minWidth: 80,
       }}>Cancel</button>
     </div>
   );

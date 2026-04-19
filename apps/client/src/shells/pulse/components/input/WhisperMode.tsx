@@ -52,18 +52,29 @@ export function WhisperMode({ player, playerId, onSend, onCancel }: WhisperModeP
         whileTap={PULSE_TAP.button}
         onClick={handleSubmit}
         disabled={!text.trim()}
+        aria-label="Send whisper"
         style={{
-          width: 36, height: 36, borderRadius: '50%',
+          width: 44, height: 44, borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: text.trim() ? 'var(--pulse-whisper)' : 'var(--pulse-surface-2)',
           border: 'none', cursor: text.trim() ? 'pointer' : 'default',
-          color: '#fff',
+          color: 'var(--pulse-on-accent)',
         }}
       >
-        <PaperPlaneTilt size={16} weight="fill" />
+        <PaperPlaneTilt size={18} weight="fill" />
       </motion.button>
 
-      <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-3)', display: 'flex' }}>
+      <button
+        onClick={onCancel}
+        aria-label="Cancel whisper"
+        style={{
+          width: 36, height: 36,
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--pulse-text-3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 8,
+        }}
+      >
         <X size={16} weight="bold" />
       </button>
     </div>

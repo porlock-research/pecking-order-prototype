@@ -1,9 +1,7 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: apps/client/src/(store/useGameStore\.ts|shells/.*\.tsx?)$
+MATCH_CONTENT: (memoSelector\(|export (const|function) select|useGameStore\([^=]*=>[[:space:]]*\(?[[:space:]]*[\{\[]|useShallow\()
 ADVISORY: |
-  (Skip if your edit doesn't add or modify a `select...` export / a
-  `useGameStore(s => ...)` callsite that constructs a fresh object or array.)
-
   React 19 + Zustand gotcha that crashes the Pulse shell with "Maximum update
   depth exceeded" / "getSnapshot should be cached to avoid an infinite loop":
 

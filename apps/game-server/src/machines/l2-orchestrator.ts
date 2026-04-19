@@ -4,7 +4,7 @@ import { dailySessionMachine } from './l3-session';
 import { postGameMachine } from './l4-post-game';
 import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, DailyManifest, Events, PlayerStatuses, QaEntry, type DilemmaOutput } from '@pecking-order/shared-types';
 import type { GameOutput } from '@pecking-order/game-cartridges';
-import type { PromptOutput } from './cartridges/prompts/_contract';
+import type { PromptOutput } from '@pecking-order/cartridges';
 import { log } from '../log';
 
 import { l2InitializationActions } from './actions/l2-initialization';

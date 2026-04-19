@@ -1,6 +1,8 @@
 import { useRef } from 'react';
 import { useGameStore, selectCartridgeUnread } from '../../../store/useGameStore';
 import { usePillStates, type PillState } from '../hooks/usePillStates';
+import { useHasOverflow } from '../hooks/useHasOverflow';
+import { PULSE_Z } from '../zIndex';
 import { usePillOrigin } from './cartridge-overlay/usePillOrigin';
 import { Pill } from './Pill';
 
@@ -22,6 +24,8 @@ export function PulseBar() {
   useGameStore(s => s.lastSeenCartridge);
   const { set: setPillOrigin } = usePillOrigin();
   const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const overflow = useHasOverflow(scrollRef);
 
   if (pills.length === 0) return null;
 
@@ -33,38 +37,68 @@ export function PulseBar() {
     focusCartridge(cartridgeId, pill.kind, 'manual');
   };
 
+  // Wrap the scroller in a relative positioned container so edge fades can
+  // overlay without being clipped by overflow-x. The fades are pointer-events:
+  // none so they never intercept taps on the pills underneath.
   return (
     <div
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '6px 12px',
-        height: 48,
-        overflowX: 'auto',
-        overflowY: 'hidden',
         position: 'relative',
-        zIndex: 2,
+        zIndex: PULSE_Z.flow,
         borderBottom: '1px solid var(--pulse-border)',
         background: 'var(--pulse-surface)',
-        scrollbarWidth: 'none',
       }}
     >
-      {pills.map(pill => {
-        const cartridgeId = pillToCartridgeId(pill, dayIndex);
-        const unread = selectCartridgeUnread(useGameStore.getState(), cartridgeId);
-        return (
-          <Pill
-            key={pill.id}
-            pill={pill}
-            cartridgeId={cartridgeId}
-            unread={unread}
-            onTap={() => handleTap(pill)}
-            buttonRef={(el) => { pillRefs.current[pill.id] = el; }}
-          />
-        );
-      })}
+      <div
+        ref={scrollRef}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 12px',
+          height: 48,
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          scrollbarWidth: 'none',
+        }}
+      >
+        {pills.map(pill => {
+          const cartridgeId = pillToCartridgeId(pill, dayIndex);
+          const unread = selectCartridgeUnread(useGameStore.getState(), cartridgeId);
+          return (
+            <Pill
+              key={pill.id}
+              pill={pill}
+              cartridgeId={cartridgeId}
+              unread={unread}
+              onTap={() => handleTap(pill)}
+              buttonRef={(el) => { pillRefs.current[pill.id] = el; }}
+            />
+          );
+        })}
+      </div>
+      <EdgeFade side="left" visible={overflow.left} bg="var(--pulse-surface)" />
+      <EdgeFade side="right" visible={overflow.right} bg="var(--pulse-surface)" />
     </div>
+  );
+}
+
+function EdgeFade({ side, visible, bg }: { side: 'left' | 'right'; visible: boolean; bg: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        [side]: 0,
+        width: 28,
+        pointerEvents: 'none',
+        background: `linear-gradient(to ${side}, transparent, ${bg})`,
+        opacity: visible ? 1 : 0,
+        transition: 'opacity 0.18s ease',
+      }}
+    />
   );
 }
 

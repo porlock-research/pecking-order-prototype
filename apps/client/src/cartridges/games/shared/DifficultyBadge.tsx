@@ -1,28 +1,51 @@
-const DIFFICULTY_COLORS: Record<string, string> = {
-  easy: 'bg-skin-green/15 text-skin-green border-skin-green/30',
-  medium: 'bg-skin-gold/15 text-skin-gold border-skin-gold/30',
-  hard: 'bg-skin-danger/15 text-skin-danger border-skin-danger/30',
-};
-
 interface DifficultyBadgeProps {
   category?: string;
   difficulty?: string;
 }
 
+const DIFFICULTY_TONE: Record<string, string> = {
+  easy: 'var(--po-green)',
+  medium: 'var(--po-gold)',
+  hard: 'var(--po-pink)',
+};
+
+/**
+ * Small category + difficulty pills shown above a trivia question.
+ * Shell-agnostic via --po-* tokens.
+ */
 export function DifficultyBadge({ category, difficulty }: DifficultyBadgeProps) {
   if (!category && !difficulty) return null;
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      {category && (
-        <span className="text-[9px] font-mono text-skin-dim bg-white/[0.04] border border-white/[0.08] rounded-pill px-2 py-0.5 uppercase tracking-wider">
-          {category}
-        </span>
-      )}
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {category && <Pill text={category} tone="var(--po-text-dim)" muted />}
       {difficulty && (
-        <span className={`text-[9px] font-mono border rounded-pill px-2 py-0.5 uppercase tracking-wider ${DIFFICULTY_COLORS[difficulty] || ''}`}>
-          {difficulty}
-        </span>
+        <Pill text={difficulty} tone={DIFFICULTY_TONE[difficulty] ?? 'var(--po-text-dim)'} />
       )}
     </div>
+  );
+}
+
+function Pill({ text, tone, muted }: { text: string; tone: string; muted?: boolean }) {
+  return (
+    <span
+      style={{
+        fontFamily: 'var(--po-font-display)',
+        fontSize: 10,
+        fontWeight: 800,
+        letterSpacing: '0.18em',
+        textTransform: 'uppercase',
+        color: tone,
+        background: muted
+          ? `color-mix(in oklch, var(--po-text) 6%, transparent)`
+          : `color-mix(in oklch, ${tone} 12%, transparent)`,
+        border: muted
+          ? `1px solid var(--po-border)`
+          : `1px solid color-mix(in oklch, ${tone} 28%, transparent)`,
+        borderRadius: 999,
+        padding: '3px 9px',
+      }}
+    >
+      {text}
+    </span>
   );
 }

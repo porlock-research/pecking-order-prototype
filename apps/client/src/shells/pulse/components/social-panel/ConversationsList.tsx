@@ -13,7 +13,7 @@ const rowStyle: CSSProperties = {
 };
 
 const pipStyle: CSSProperties = {
-  background: 'var(--pulse-accent)', color: '#fff',
+  background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
   fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 8,
 };
 
@@ -26,8 +26,9 @@ export function ConversationsList() {
 
   if (threads.length === 0) {
     return (
-      <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: 'var(--pulse-text-3)', fontStyle: 'italic' }}>
-        No conversations yet.
+      <div style={{ padding: '16px 20px 24px', textAlign: 'center', fontSize: 13, color: 'var(--pulse-text-3)', lineHeight: 1.5 }}>
+        No DMs yet.<br />
+        <span style={{ color: 'var(--pulse-text-2)' }}>Tap a face to start one.</span>
       </div>
     );
   }
@@ -54,6 +55,9 @@ export function ConversationsList() {
                     key={m.id}
                     src={resolveAvatarUrl(m.avatarUrl) || ''}
                     alt=""
+                    loading="lazy"
+                    width={26}
+                    height={26}
                     style={{
                       position: 'absolute', width: 26, height: 26, borderRadius: 6, objectFit: 'cover',
                       top: i === 0 ? 0 : 10, left: i === 0 ? 0 : 10,
@@ -80,6 +84,7 @@ export function ConversationsList() {
         return (
           <button key={t.channelId} onClick={() => openDM(t.partnerId)} style={rowStyle}>
             <img src={resolveAvatarUrl(partner.avatarUrl) || ''} alt=""
+              loading="lazy" width={36} height={36}
               style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color }}>{partner.personaName}</div>

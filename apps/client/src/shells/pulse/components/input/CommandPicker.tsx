@@ -1,25 +1,34 @@
 import { motion } from 'framer-motion';
 import { Coins, ChatCircle, HandWaving, Lock, X } from '../../icons';
-import { PULSE_SPRING } from '../../springs';
+import { PULSE_SPRING, PULSE_TAP } from '../../springs';
+import { PULSE_Z, backdropFor } from '../../zIndex';
 import type { Command } from '../../hooks/useCommandBuilder';
 
-const commands: Array<{ id: Command; icon: typeof Coins; label: string; desc: string; color: string }> = [
+const commands: Array<{ id: Command; icon: typeof Coins; label: string; desc: string; color: string; requires?: 'dmsOpen' }> = [
   { id: 'silver', icon: Coins, label: 'Silver', desc: 'Send silver', color: 'var(--pulse-gold)' },
-  { id: 'dm', icon: ChatCircle, label: 'DM', desc: 'Start a chat', color: 'var(--pulse-accent)' },
+  { id: 'dm', icon: ChatCircle, label: 'DM', desc: 'Start a chat', color: 'var(--pulse-accent)', requires: 'dmsOpen' },
   { id: 'nudge', icon: HandWaving, label: 'Nudge', desc: 'Poke a player', color: 'var(--pulse-nudge)' },
-  { id: 'whisper', icon: Lock, label: 'Whisper', desc: 'Secret message', color: 'var(--pulse-whisper)' },
+  { id: 'whisper', icon: Lock, label: 'Whisper', desc: 'Secret message', color: 'var(--pulse-whisper)', requires: 'dmsOpen' },
 ];
 
 interface CommandPickerProps {
   onSelect: (cmd: Command) => void;
   onClose: () => void;
+  dmsOpen?: boolean;
 }
 
-export function CommandPicker({ onSelect, onClose }: CommandPickerProps) {
+export function CommandPicker({ onSelect, onClose, dmsOpen = true }: CommandPickerProps) {
+  const visible = commands.filter(c => !(c.requires === 'dmsOpen' && !dmsOpen));
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
+      <div
+        onClick={onClose}
+        aria-hidden="true"
+        style={{ position: 'fixed', inset: 0, zIndex: backdropFor(PULSE_Z.popup) }}
+      />
       <motion.div
+        role="dialog"
+        aria-label="Command picker"
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 12 }}
@@ -29,14 +38,14 @@ export function CommandPicker({ onSelect, onClose }: CommandPickerProps) {
           display: 'flex',
           gap: 8,
           padding: '8px 12px',
-          zIndex: 40,
+          zIndex: PULSE_Z.popup,
           alignItems: 'stretch',
         }}
       >
-        {commands.map(({ id, icon: Icon, label, desc, color }) => (
+        {visible.map(({ id, icon: Icon, label, desc, color }) => (
           <motion.button
             key={id}
-            whileTap={{ scale: 0.95 }}
+            whileTap={PULSE_TAP.button}
             onClick={() => onSelect(id)}
             style={{
               flex: 1,
@@ -59,11 +68,11 @@ export function CommandPicker({ onSelect, onClose }: CommandPickerProps) {
         ))}
         {/* Dismiss */}
         <motion.button
-          whileTap={{ scale: 0.95 }}
+          whileTap={PULSE_TAP.button}
           onClick={onClose}
           aria-label="Close"
           style={{
-            width: 36,
+            width: 44,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             borderRadius: 14,
             background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)',

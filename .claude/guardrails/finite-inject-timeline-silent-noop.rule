@@ -1,5 +1,6 @@
 MATCH_TOOL: Bash|Edit|Write
 MATCH_PATTERN: apps/game-server/src/machines/actions/l3-(games|activity|dilemma)\.ts$|INJECT_TIMELINE_EVENT
+MATCH_CONTENT: (spawn(Game|Prompt|Dilemma)Cartridge|manifest\.(gameType|activityType|dilemmaType)|INJECT_TIMELINE_EVENT)
 ADVISORY: |
   `INJECT_TIMELINE_EVENT` silently no-ops when the current day manifest has
   `NONE` for the relevant type. The spawn actions read the manifest field FIRST

@@ -1,34 +1,27 @@
-import { useGameStore, selectAggregatePulseUnread } from '../../../../store/useGameStore';
+import { Trophy } from '../../icons';
 
 interface Props { onClick: () => void; }
 
+/**
+ * Opens the Social Panel. The panel's hero content is Standings — pending
+ * invites / conversations / silver / cartridge unread are all already
+ * surfaced more specifically on the cast strip and pill bar, so this
+ * button does NOT carry an aggregate unread badge. It's a pure "see the
+ * pecking order" affordance.
+ */
 export function PanelButton({ onClick }: Props) {
-  const total = useGameStore(selectAggregatePulseUnread);
-
   return (
     <button
       onClick={onClick}
-      aria-label="Open social panel"
+      aria-label="Open standings"
       style={{
-        position: 'relative', width: 34, height: 34,
-        borderRadius: 8, border: '1px solid var(--pulse-border)',
+        position: 'relative', width: 44, height: 44,
+        borderRadius: 10, border: '1px solid var(--pulse-border)',
         background: 'var(--pulse-surface)', color: 'var(--pulse-text-1)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >
-      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
-        <rect x="2" y="4" width="14" height="2" rx="1" fill="currentColor" />
-        <rect x="2" y="8" width="14" height="2" rx="1" fill="currentColor" />
-        <rect x="2" y="12" width="14" height="2" rx="1" fill="currentColor" />
-      </svg>
-      {total > 0 && (
-        <span data-testid="panel-unread-pip" style={{
-          position: 'absolute', top: -6, right: -6,
-          background: 'var(--pulse-accent)', color: '#fff',
-          fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 8,
-          minWidth: 16, textAlign: 'center', border: '2px solid var(--pulse-bg)',
-        }}>{total > 9 ? '9+' : total}</span>
-      )}
+      <Trophy size={18} weight="fill" />
     </button>
   );
 }

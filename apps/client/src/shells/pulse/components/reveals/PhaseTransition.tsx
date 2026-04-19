@@ -36,10 +36,25 @@ export function PhaseTransition() {
     prevPhaseRef.current = phase;
   }, [phase]);
 
+  useEffect(() => {
+    if (!visible) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setVisible(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [visible]);
+
   return (
     <AnimatePresence>
       {visible && display && (
         <motion.div
+          role="status"
+          aria-live="polite"
+          aria-label={`${display.title}. ${display.subtitle}`}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
@@ -57,7 +72,7 @@ export function PhaseTransition() {
             cursor: 'pointer',
           }}
         >
-          <div style={{ fontSize: 56, marginBottom: 16 }}>{display.icon}</div>
+          <div aria-hidden="true" style={{ fontSize: 56, marginBottom: 16 }}>{display.icon}</div>
           <div style={{ fontWeight: 800, fontSize: 28, color: 'var(--pulse-text-1)', fontFamily: 'var(--po-font-display)', marginBottom: 8 }}>
             {display.title}
           </div>

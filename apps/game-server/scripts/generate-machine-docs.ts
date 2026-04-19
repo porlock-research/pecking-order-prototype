@@ -19,11 +19,8 @@ import { orchestratorMachine } from '../src/machines/l2-orchestrator';
 import { dailySessionMachine } from '../src/machines/l3-session';
 import { postGameMachine } from '../src/machines/l4-post-game';
 
-// Voting cartridges
-import { VOTE_REGISTRY } from '../src/machines/cartridges/voting/_registry';
-
-// Prompt cartridges
-import { PROMPT_REGISTRY } from '../src/machines/cartridges/prompts/_registry';
+// Voting + prompt cartridges
+import { VOTE_REGISTRY, PROMPT_REGISTRY } from '@pecking-order/cartridges';
 
 // Game cartridges
 import { GAME_REGISTRY } from '@pecking-order/game-cartridges';
@@ -78,7 +75,7 @@ const MACHINES: MachineInfo[] = [
   ...Object.entries(VOTE_REGISTRY).map(([type, machine]) => ({
     id: `vote-${type.toLowerCase().replace(/_/g, '-')}`,
     group: 'Voting',
-    filePath: `src/machines/cartridges/voting/${type.toLowerCase().replace(/_/g, '-')}-machine.ts`,
+    filePath: `packages/cartridges/src/voting/${type.toLowerCase().replace(/_/g, '-')}-machine.ts`,
     machine,
   })),
 
@@ -86,7 +83,7 @@ const MACHINES: MachineInfo[] = [
   ...Object.entries(PROMPT_REGISTRY).map(([type, machine]) => ({
     id: `prompt-${type.toLowerCase().replace(/_/g, '-')}`,
     group: 'Prompts',
-    filePath: `src/machines/cartridges/prompts/${type.toLowerCase().replace(/_/g, '-')}-machine.ts`,
+    filePath: `packages/cartridges/src/prompts/${type.toLowerCase().replace(/_/g, '-')}-machine.ts`,
     machine,
   })),
 

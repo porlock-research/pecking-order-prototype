@@ -50,6 +50,8 @@ Create a test game and return magic links for each player. Works against local d
 
 Run a **single** Node.js script from the **monorepo root** (`/Users/manu/Projects/pecking-order`). The script does everything in one shot.
 
+**Script placement matters:** write the script somewhere *inside* the monorepo (e.g., `scripts/tmp-create-<feature>.js`), then run it from the monorepo root. Writing it to `/tmp/` fails with `Cannot find module '@pecking-order/auth'` because Node's require walks up from the script's location, and `/tmp/` has no `node_modules` chain back to the workspace packages. If you don't want to leave the script on disk, inline the whole thing into a single `node -e '…'` invocation run from the monorepo root.
+
 ### Environments
 
 **`env=local` (default):**
@@ -57,6 +59,13 @@ Run a **single** Node.js script from the **monorepo root** (`/Users/manu/Project
 - Client: `http://localhost:5173`
 - Auth secret: `dev-secret-change-me`
 - Requires `npm run dev` running locally
+
+**Worktree gotcha:** `apps/game-server/.dev.vars` is gitignored and does NOT propagate to new worktrees. A worktree's wrangler therefore starts with `AUTH_SECRET=''`, and every JWT the script generates fails verification (401 on the browser side, "HMAC key length (0)" warnings in the server log). **Before creating a game against a worktree dev-server, copy .dev.vars from the canonical repo:**
+```bash
+cp /Users/manu/Projects/pecking-order/apps/game-server/.dev.vars \
+   /Users/manu/Projects/pecking-order/.worktrees/<branch>/apps/game-server/.dev.vars
+```
+Then restart `npm run dev` so wrangler re-reads it.
 
 **`env=staging`:**
 - Game server: `https://staging-api.peckingorder.ca`
@@ -106,6 +115,16 @@ Run a **single** Node.js script from the **monorepo root** (`/Users/manu/Project
 - **Last day is always FINALS** when days > 1 (unless vote= override applies to all days)
 - **Game types**: When `game=X` override provided, set `gameType` on all non-FINALS days
 - **Activity types**: When `activity=X` override provided, set `activityType` on all non-FINALS days
+- **`activity=X` semantics differ by mode:**
+  - ADMIN presets (`quick`, `big`, `invite`): sets `day.activityType` on each static day → spawns that activity directly.
+  - PRE_SCHEDULED presets (`speedrun`, `smoketest`, `playtest`): the ruleset drives day resolution, so for `activity=X` to take effect you must also edit the ruleset's `activities` field (e.g. `activities: { mode: 'POOL', pool: [X] }`). Baseline `speedrun` ships `activities: { mode: 'NONE' }` and will otherwise play NO activity at all.
+- **Live browser verification timing:** SMOKE_TEST has a ~1-minute activity window; often closes before you can click through. For verifying an activity's UI, prefer `speedrun` (23-min day, ~3-min active window) or bypass the schedule entirely by injecting `START_ACTIVITY` via the admin API with your chosen payload:
+  ```bash
+  curl -s -X POST "$GS/parties/game-server/$GAME_ID/admin" \
+    -H "Authorization: Bearer $SECRET" -H "Content-Type: application/json" \
+    -d '{"type":"INJECT_TIMELINE_EVENT","action":"START_ACTIVITY","payload":{ ... }}'
+  ```
+  The payload shape must match what the Game Master would have written for the chosen activityType — for HOT_TAKE that's `{promptType, promptText, promptId, options: string[]}`.
 
 ### Real personas
 

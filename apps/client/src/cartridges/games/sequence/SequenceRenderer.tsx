@@ -131,27 +131,27 @@ export default function SequenceRenderer({ seed, difficulty, onResult }: ArcadeR
   return (
     <div className="px-4 pb-4 space-y-4">
       {/* Round / Score header */}
-      <div className="flex items-center justify-between text-xs font-mono">
-        <span className="text-skin-dim">
-          Round <span className="text-skin-base font-bold">{round}</span>
-          <span className="text-skin-dim/50 ml-1">({STARTING_LENGTH + round - 1} numbers)</span>
+      <div className="flex items-center justify-between text-xs ">
+        <span style={{ color: 'var(--po-text-dim)' }}>
+          Round <span className="text-[var(--po-text)] font-bold">{round}</span>
+          <span className="text-[var(--po-text-dim)]/50 ml-1">({STARTING_LENGTH + round - 1} numbers)</span>
         </span>
-        <span className="text-skin-dim">
-          Score: <span className="text-skin-gold font-bold">{score}</span>
+        <span style={{ color: 'var(--po-text-dim)' }}>
+          Score: <span className="text-[var(--po-gold)] font-bold">{score}</span>
         </span>
       </div>
 
       {/* SHOWING: Display the sequence */}
       {phase === 'SHOWING' && (
         <div className="text-center space-y-3 py-4">
-          <p className="text-xs font-mono text-skin-dim uppercase tracking-widest animate-pulse">
+          <p className="text-xs  text-[var(--po-text-dim)] uppercase tracking-widest animate-pulse">
             Memorize!
           </p>
           <div className="flex justify-center gap-2 flex-wrap">
             {sequence.map((num, i) => (
               <div
                 key={i}
-                className="w-10 h-10 flex items-center justify-center rounded-lg bg-skin-gold/10 border border-skin-gold/30 text-skin-gold font-bold font-mono text-lg animate-fade-in"
+                className="w-10 h-10 flex items-center justify-center rounded-lg bg-[var(--po-gold)]/10 border border-[var(--po-gold)]/30 text-[var(--po-gold)] font-bold  text-lg animate-fade-in"
                 style={{ animationDelay: `${i * 80}ms` }}
               >
                 {num}
@@ -165,17 +165,17 @@ export default function SequenceRenderer({ seed, difficulty, onResult }: ArcadeR
       {(phase === 'ASKING' || phase === 'CORRECT' || phase === 'WRONG') && (
         <div className="text-center space-y-4 py-2">
           <div className="space-y-1">
-            <p className="text-sm font-bold text-skin-base">
-              What was number <span className="text-skin-gold">#{askIndex + 1}</span>?
+            <p className="text-sm font-bold text-[var(--po-text)]">
+              What was number <span style={{ color: 'var(--po-gold)' }}>#{askIndex + 1}</span>?
             </p>
             <div className="flex justify-center gap-1.5">
               {sequence.map((_, i) => (
                 <div
                   key={i}
-                  className={`w-8 h-8 flex items-center justify-center rounded-md text-xs font-mono font-bold
+                  className={`w-8 h-8 flex items-center justify-center rounded-md text-xs  font-bold
                     ${i === askIndex
-                      ? 'bg-skin-gold/20 border-2 border-skin-gold text-skin-gold'
-                      : 'bg-white/[0.04] border border-white/[0.06] text-skin-dim'
+                      ? 'bg-[var(--po-gold)]/20 border-2 border-[var(--po-gold)] text-[var(--po-gold)]'
+                      : 'bg-[var(--po-bg-glass)] border border-[var(--po-border)] text-[var(--po-text-dim)]'
                     }`}
                 >
                   {i === askIndex ? '?' : '\u00B7'}
@@ -190,9 +190,9 @@ export default function SequenceRenderer({ seed, difficulty, onResult }: ArcadeR
               const isCorrectAnswer = opt === sequence[askIndex];
               const showResult = phase === 'CORRECT' || phase === 'WRONG';
 
-              let btnClass = 'bg-white/[0.06] border border-white/[0.08] text-skin-base hover:bg-skin-gold/10 hover:border-skin-gold/30';
+              let btnClass = 'bg-[color-mix(in_oklch,var(--po-text)_8%,transparent)] border border-[color-mix(in_oklch,var(--po-text)_10%,transparent)] text-[var(--po-text)] hover:bg-[var(--po-gold)]/10 hover:border-[var(--po-gold)]/30';
               if (showResult && isCorrectAnswer) {
-                btnClass = 'bg-skin-green/20 border-2 border-skin-green text-skin-green';
+                btnClass = 'bg-[var(--po-green)]/20 border-2 border-[var(--po-green)] text-[var(--po-green)]';
               } else if (showResult && isSelected && !isCorrectAnswer) {
                 btnClass = 'bg-red-500/20 border-2 border-red-500 text-red-400';
               }
@@ -202,7 +202,7 @@ export default function SequenceRenderer({ seed, difficulty, onResult }: ArcadeR
                   key={opt}
                   onClick={() => handleAnswer(opt)}
                   disabled={phase !== 'ASKING'}
-                  className={`py-3 rounded-lg font-mono font-bold text-lg transition-all active:scale-95 ${btnClass}`}
+                  className={`py-3 rounded-lg  font-bold text-lg transition-all active:scale-95 ${btnClass}`}
                 >
                   {opt}
                 </button>
@@ -213,14 +213,14 @@ export default function SequenceRenderer({ seed, difficulty, onResult }: ArcadeR
           {phase === 'ASKING' && correctRounds > 0 && (
             <button
               onClick={handleStop}
-              className="text-[10px] font-mono text-skin-dim/50 underline hover:text-skin-dim transition-colors"
+              className="text-[10px]  text-[var(--po-text-dim)]/50 underline hover:text-[var(--po-text-dim)] transition-colors"
             >
               Stop and keep {score} points
             </button>
           )}
 
           {phase === 'CORRECT' && (
-            <p className="text-sm font-bold text-skin-green animate-fade-in">Correct! +{sequence.length} pts</p>
+            <p className="text-sm font-bold text-[var(--po-green)] animate-fade-in">Correct! +{sequence.length} pts</p>
           )}
 
           {phase === 'WRONG' && (
@@ -234,11 +234,11 @@ export default function SequenceRenderer({ seed, difficulty, onResult }: ArcadeR
       {/* DONE */}
       {phase === 'DONE' && (
         <div className="text-center py-4 animate-fade-in">
-          <p className="text-sm font-mono text-skin-dim animate-pulse">Submitting score...</p>
+          <p style={{ fontSize: 13, color: 'var(--po-text-dim)', opacity: 0.7 }}>Submitting score...</p>
         </div>
       )}
 
-      <p className="text-[10px] font-mono text-skin-dim/50 text-center">
+      <p className="text-[10px]  text-[var(--po-text-dim)]/50 text-center">
         Memorize the sequence, then recall the highlighted position.
       </p>
     </div>

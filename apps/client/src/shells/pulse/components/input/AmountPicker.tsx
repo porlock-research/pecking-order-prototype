@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Coins } from '../../icons';
 import { getPlayerColor } from '../../colors';
 import { useGameStore } from '../../../../store/useGameStore';
+import { PULSE_TAP } from '../../springs';
 import type { SocialPlayer } from '@pecking-order/shared-types';
 
 const AMOUNTS = [5, 10, 25, 50];
@@ -22,7 +23,14 @@ export function AmountPicker({ player, playerId, onSelect, onBack }: AmountPicke
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <button
           onClick={onBack}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-2)', display: 'flex' }}
+          aria-label="Back"
+          style={{
+            width: 36, height: 36,
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--pulse-text-2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 8,
+          }}
         >
           <ArrowLeft size={20} weight="bold" />
         </button>
@@ -38,8 +46,9 @@ export function AmountPicker({ player, playerId, onSelect, onBack }: AmountPicke
         {AMOUNTS.map(a => (
           <motion.button
             key={a}
-            whileTap={{ scale: 0.95 }}
+            whileTap={PULSE_TAP.button}
             onClick={() => onSelect(a)}
+            aria-label={`Send ${a} silver`}
             style={{
               padding: '12px 20px',
               borderRadius: 12,

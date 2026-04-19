@@ -1,3 +1,4 @@
+import { motion, useReducedMotion } from 'framer-motion';
 import { useGameStore } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
 import { usePulse } from '../../PulseShell';
@@ -8,7 +9,8 @@ interface MentionRendererProps {
 
 export function MentionRenderer({ text }: MentionRendererProps) {
   const roster = useGameStore(s => s.roster);
-  const { openDM } = usePulse();
+  const { openDM, playerId: viewerId } = usePulse();
+  const reduce = useReducedMotion();
 
   // Parse @Name patterns and render as styled spans
   const parts: Array<{ type: 'text' | 'mention'; value: string; playerId?: string }> = [];
@@ -54,6 +56,45 @@ export function MentionRenderer({ text }: MentionRendererProps) {
         if (part.type === 'mention' && part.playerId) {
           const playerIndex = Object.keys(roster).indexOf(part.playerId);
           const pid = part.playerId;
+          const color = getPlayerColor(playerIndex);
+          const isMe = pid === viewerId;
+
+          if (isMe) {
+            // Self-mention — pink-accent pill with a one-shot pulse on mount.
+            // Makes "someone's talking about YOU" read as a dopamine moment
+            // without derailing the message text flow.
+            return (
+              <motion.button
+                key={idx}
+                onClick={() => openDM(pid)}
+                initial={reduce ? undefined : { boxShadow: '0 0 0 0 rgba(255,59,111,0)' }}
+                animate={reduce ? undefined : {
+                  boxShadow: [
+                    '0 0 0 0 rgba(255,59,111,0)',
+                    '0 0 12px 2px rgba(255,59,111,0.55)',
+                    '0 0 0 0 rgba(255,59,111,0)',
+                  ],
+                }}
+                transition={reduce ? undefined : { duration: 0.9, ease: 'easeOut' }}
+                style={{
+                  appearance: 'none',
+                  border: '1px solid var(--pulse-accent)',
+                  padding: '0 6px',
+                  borderRadius: 6,
+                  background: 'linear-gradient(180deg, color-mix(in oklch, var(--pulse-accent) 22%, transparent) 0%, color-mix(in oklch, var(--pulse-accent) 12%, transparent) 100%)',
+                  color: 'var(--pulse-accent)',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  fontFamily: 'var(--po-font-body)',
+                  letterSpacing: 0.1,
+                }}
+              >
+                {part.value}
+              </motion.button>
+            );
+          }
+
           return (
             <button
               key={idx}
@@ -63,7 +104,7 @@ export function MentionRenderer({ text }: MentionRendererProps) {
                 background: 'none',
                 border: 'none',
                 padding: 0,
-                color: getPlayerColor(playerIndex),
+                color,
                 fontWeight: 700,
                 cursor: 'pointer',
                 font: 'inherit',

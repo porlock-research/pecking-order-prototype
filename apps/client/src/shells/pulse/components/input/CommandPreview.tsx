@@ -21,7 +21,7 @@ export function CommandPreview({ player, playerId, amount, onSend, onCancel }: C
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
       <span style={{ fontSize: 13, fontFamily: 'var(--po-font-body)', color: 'var(--pulse-text-2)', display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
         <Coins size={16} weight="fill" style={{ color: 'var(--pulse-gold)' }} />
-        <img src={player.avatarUrl} alt="" style={{ width: 22, height: 22, borderRadius: 6, objectFit: 'cover', objectPosition: 'center top' }} />
+        <img src={player.avatarUrl} alt="" loading="lazy" width={22} height={22} style={{ width: 22, height: 22, borderRadius: 6, objectFit: 'cover', objectPosition: 'center top' }} />
         <span style={{ fontWeight: 700, color: getPlayerColor(playerIndex) }}>{player.personaName}</span>
         <span style={{ color: 'var(--pulse-gold)', fontWeight: 800 }}>{amount} silver</span>
       </span>
@@ -32,14 +32,24 @@ export function CommandPreview({ player, playerId, amount, onSend, onCancel }: C
         style={{
           padding: '8px 16px', borderRadius: 10,
           background: 'linear-gradient(135deg, var(--pulse-gold), #e6c200)',
-          color: '#000', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+          color: 'var(--pulse-on-gold)', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
           fontFamily: 'var(--po-font-body)',
         }}
       >
         Send
       </motion.button>
 
-      <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pulse-text-3)', display: 'flex' }}>
+      <button
+        onClick={onCancel}
+        aria-label="Cancel send"
+        style={{
+          width: 36, height: 36,
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--pulse-text-3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 8,
+        }}
+      >
         <X size={18} weight="bold" />
       </button>
     </div>

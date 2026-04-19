@@ -27,12 +27,15 @@ export function CartridgeOverlayHeader({ kind, label, deadline, onClose }: Props
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
-        paddingLeft: 8,
-        paddingRight: 16,
-        height: 44,
+        gap: 'var(--pulse-space-md)',
+        paddingLeft: 'var(--pulse-space-sm)',
+        paddingRight: 'var(--pulse-space-lg)',
+        height: 56,
         borderBottom: '1px solid var(--pulse-border)',
-        background: 'var(--pulse-surface)',
+        // Kind-themed ambient tint — surface with a breath of the cartridge's
+        // signature color. Reads as "this belongs to voting/game/prompt" at
+        // a glance, not just a generic overlay chrome bar.
+        background: `linear-gradient(to bottom, color-mix(in oklch, ${dotColor} 8%, var(--pulse-surface)) 0%, var(--pulse-surface) 100%)`,
         flexShrink: 0,
       }}
     >
@@ -41,8 +44,8 @@ export function CartridgeOverlayHeader({ kind, label, deadline, onClose }: Props
         whileTap={PULSE_TAP.button}
         aria-label="Close cartridge"
         style={{
-          width: 38,
-          height: 38,
+          width: 44,
+          height: 44,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -60,22 +63,25 @@ export function CartridgeOverlayHeader({ kind, label, deadline, onClose }: Props
         </svg>
       </motion.button>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)', flex: 1, minWidth: 0 }}>
         <span
+          aria-hidden="true"
           style={{
-            width: 8,
-            height: 8,
+            width: 10,
+            height: 10,
             borderRadius: '50%',
             background: dotColor,
+            boxShadow: `0 0 10px ${dotColor}`,
             flexShrink: 0,
           }}
         />
         <span
           style={{
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: 700,
+            letterSpacing: -0.2,
             color: 'var(--pulse-text-1)',
-            fontFamily: 'var(--po-font-body)',
+            fontFamily: 'var(--po-font-display)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -94,6 +100,7 @@ export function CartridgeOverlayHeader({ kind, label, deadline, onClose }: Props
             color: urgent ? 'var(--pulse-accent)' : dotColor,
             letterSpacing: 0.5,
             flexShrink: 0,
+            fontVariantNumeric: 'tabular-nums',
           }}
         >
           {timerLabel}

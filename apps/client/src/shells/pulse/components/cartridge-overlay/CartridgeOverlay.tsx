@@ -84,8 +84,9 @@ export function CartridgeOverlay() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
+        transition={PULSE_SPRING.exit}
         onClick={unfocus}
+        aria-hidden="true"
         style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
           backdropFilter: 'blur(5px)',

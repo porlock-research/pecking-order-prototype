@@ -1,126 +1,132 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { InfoCircle } from '@solar-icons/react';
+import { useCartridgeStage } from '../../CartridgeStageContext';
 
 interface VotingHeaderProps {
-  header: string;
+  /** Short mechanism name (info.name from VOTE_TYPE_INFO) — e.g. "Majority". */
+  mechanismName: string;
+  /** Atmospheric tagline rendered below the mechanism label — e.g. "Most votes go home". */
+  moodSubtitle?: string;
+  /** Call-to-action — e.g. "Who should go?" */
   cta: string;
-  oneLiner: string;
+  /** Full rules text — always visible inline, hidden when staged (host renders externally). */
   howItWorks: string;
+  /** Accent color, expected to be a CSS var like 'var(--po-orange)'. */
   accentColor: string;
 }
 
+/**
+ * Shell-agnostic voting header — mirrors PromptShell's header pattern.
+ *
+ * - Mechanism label + optional mood subtitle + CTA always render (cartridge identity).
+ * - HowItWorks panel renders inline ONLY when not staged. When staged on
+ *   the Pulse cartridge stage, the stage host renders HOW IT WORKS as a
+ *   distinct neutral card above the cartridge — keeping the cartridge
+ *   itself tight (header + action belong together).
+ *
+ * Always-open: rules card is never collapsed. Playtester feedback: no
+ * veterans yet, hiding rules behind a button costs comprehension.
+ */
 export function VotingHeader({
-  header,
+  mechanismName,
+  moodSubtitle,
   cta,
-  oneLiner,
   howItWorks,
   accentColor,
 }: VotingHeaderProps) {
-  const [expanded, setExpanded] = useState(false);
+  const { staged } = useCartridgeStage();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* Collapsible rules banner */}
-      <div
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          borderRadius: 8,
-          padding: '6px 10px',
-        }}
-      >
-        <div
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Mechanism label + mood subtitle — title-card voice. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignSelf: 'flex-start' }}>
+        <span
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '0.22em',
+            color: accentColor,
+            textTransform: 'uppercase',
           }}
         >
+          {mechanismName}
+        </span>
+        {moodSubtitle && (
           <span
             style={{
-              fontFamily: 'var(--vivid-font-body)',
-              fontSize: 11,
-              color: '#9B8E7E',
-              lineHeight: 1.4,
-              flex: 1,
+              fontFamily: 'var(--po-font-display)',
+              fontSize: 14,
+              fontWeight: 500,
+              lineHeight: 1.25,
+              letterSpacing: -0.1,
+              color: 'var(--po-text-dim)',
+              fontStyle: 'normal',
             }}
           >
-            {oneLiner}
+            {moodSubtitle}
           </span>
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 2,
-              cursor: 'pointer',
-              color: '#9B8E7E',
-              display: 'flex',
-              alignItems: 'center',
-              flexShrink: 0,
-            }}
-            aria-label={expanded ? 'Hide rules' : 'Show rules'}
-          >
-            <InfoCircle size={16} weight="Bold" />
-          </button>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {expanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
-              style={{ overflow: 'hidden' }}
-            >
-              <p
-                style={{
-                  fontFamily: 'var(--vivid-font-body)',
-                  fontSize: 11,
-                  color: '#9B8E7E',
-                  lineHeight: 1.5,
-                  marginTop: 6,
-                  paddingTop: 6,
-                  borderTop: '1px solid rgba(255,255,255,0.06)',
-                }}
-              >
-                {howItWorks}
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        )}
       </div>
 
-      {/* Header */}
-      <h3
+      {/* CTA — primary statement of intent. */}
+      {cta && (
+        <p
+          style={{
+            fontFamily: 'var(--po-font-display)',
+            fontSize: 'clamp(20px, 5vw, 26px)',
+            fontWeight: 600,
+            lineHeight: 1.15,
+            letterSpacing: -0.4,
+            color: 'var(--po-text)',
+            margin: 0,
+          }}
+          data-testid="voting-cta"
+        >
+          {cta}
+        </p>
+      )}
+
+      {/* HowItWorks — only inline when not staged. */}
+      {!staged && <HowItWorks text={howItWorks} accentColor={accentColor} />}
+    </div>
+  );
+}
+
+function HowItWorks({ text, accentColor }: { text: string; accentColor: string }) {
+  return (
+    <div
+      style={{
+        padding: '12px 14px 13px',
+        borderRadius: 12,
+        background: `color-mix(in oklch, ${accentColor} 9%, var(--po-bg-glass, rgba(255,255,255,0.04)))`,
+        border: `1px solid color-mix(in oklch, ${accentColor} 26%, transparent)`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}
+    >
+      <span
         style={{
-          fontFamily: 'var(--vivid-font-mono)',
-          fontSize: 14,
-          fontWeight: 700,
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: '0.26em',
           color: accentColor,
           textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          textAlign: 'center',
-          margin: 0,
         }}
       >
-        {header}
-      </h3>
-
-      {/* CTA */}
+        How it works
+      </span>
       <p
         style={{
-          fontFamily: 'var(--vivid-font-body)',
-          fontSize: 13,
-          fontWeight: 400,
-          color: '#f5f0e8',
-          textAlign: 'center',
           margin: 0,
+          fontFamily: 'var(--po-font-body)',
+          fontSize: 13,
+          lineHeight: 1.45,
+          color: 'var(--po-text)',
+          fontWeight: 500,
         }}
       >
-        {cta}
+        {text}
       </p>
     </div>
   );

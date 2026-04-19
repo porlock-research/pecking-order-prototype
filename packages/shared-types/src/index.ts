@@ -7,7 +7,7 @@ export { generateCycleDefaults, isLiveGame } from './cycle-defaults';
 export type { CycleDayDefaults } from './cycle-defaults';
 export { ECONOMY_INFO } from './economy-info';
 export { VOTE_TYPE_INFO } from './vote-type-info';
-export type { VoteTypeUiInfo } from './vote-type-info';
+export type { VoteTypeUiInfo, MechanismTone } from './vote-type-info';
 export { DILEMMA_TYPE_INFO } from './dilemma-type-info';
 export type { DilemmaTypeInfo } from './dilemma-type-info';
 export { GAME_TYPE_INFO } from './game-type-info';
@@ -565,8 +565,12 @@ export interface PromptCartridgeInput {
   promptText: string;
   roster: Record<string, SocialPlayer>;
   dayIndex: number;
+  // WYR-only (flat pair)
   optionA?: string;
   optionB?: string;
+  // HOT_TAKE-only (array)
+  options?: string[];
+  promptId?: string;
 }
 
 // --- Perks (Economy Powers) ---
@@ -864,5 +868,9 @@ export type GameProjection = ArcadeGameProjection | TriviaProjection | RealtimeT
 export const GameTypes = GameTypeSchema.enum;
 export const VoteTypes = VoteTypeSchema.enum;
 export const PromptTypes = PromptTypeSchema.enum;
+
+// --- Prompt Pools ---
+
+export { HOT_TAKE_POOL, pickHotTakeQuestion, type HotTakeQuestion } from './prompt-pools/hot-take';
 export const ChannelTypes = ChannelTypeSchema.enum;
 export const PerkTypes = PerkTypeSchema.enum;

@@ -18,11 +18,14 @@ export function GroupChip({ entry, onTap }: Props) {
     .slice(0, 3)
     .join(', ');
   const edgeColor = entry.unreadCount > 0 ? 'var(--pulse-accent)' : 'rgba(255,255,255,0.1)';
-  const glow = entry.unreadCount > 0 ? '0 0 12px rgba(255,59,111,0.35)' : 'none';
+  const glow = entry.unreadCount > 0 ? '0 0 12px color-mix(in oklch, var(--pulse-accent) 35%, transparent)' : 'none';
+
+  const ariaLabel = `Group with ${firstNames || 'members'}${entry.unreadCount > 0 ? `, ${entry.unreadCount} unread` : ''}`;
 
   return (
     <button
       onClick={() => onTap(entry)}
+      aria-label={ariaLabel}
       style={{
         position: 'relative', width: 72, height: 100,
         flexShrink: 0, padding: 0, border: 'none', background: 'transparent',
@@ -31,36 +34,36 @@ export function GroupChip({ entry, onTap }: Props) {
     >
       <div style={{
         position: 'absolute', inset: 0, borderRadius: 14, overflow: 'hidden',
-        background: '#222', border: `2px solid ${edgeColor}`, boxShadow: glow,
+        background: 'var(--pulse-surface-3)', border: `2px solid ${edgeColor}`, boxShadow: glow,
         display: 'flex',
       }}>
         {others.map((id) => {
           const avatar = resolveAvatarUrl(roster[id]?.avatarUrl);
           return (
             <div key={id} style={{ flex: 1, position: 'relative' }}>
-              {avatar && <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+              {avatar && <img src={avatar} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
             </div>
           );
         })}
-        <span style={{
-          position: 'absolute', top: 3, right: 3,
-          background: 'rgba(0,0,0,0.7)', color: '#fff',
-          fontSize: 7, fontWeight: 800, letterSpacing: 0.4,
-          padding: '1px 4px', borderRadius: 4, textTransform: 'uppercase',
+        <span aria-hidden="true" style={{
+          position: 'absolute', top: 4, right: 4,
+          background: 'rgba(0,0,0,0.75)', color: 'var(--pulse-on-accent)',
+          fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+          padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase',
         }}>Group</span>
-        <div style={{
+        <div aria-hidden="true" style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
           padding: '14px 6px 5px',
           background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)',
-          color: 'rgba(255,255,255,0.9)', fontSize: 10, fontWeight: 700, textAlign: 'center',
+          color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: 700, textAlign: 'center',
           textShadow: '0 1px 2px rgba(0,0,0,0.8)',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{firstNames}</div>
       </div>
       {entry.unreadCount > 0 && (
-        <span style={{
+        <span aria-hidden="true" style={{
           position: 'absolute', top: -4, right: -4,
-          background: 'var(--pulse-accent)', color: '#fff',
+          background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
           minWidth: 18, height: 18, padding: '0 4px',
           borderRadius: 9, fontSize: 10, fontWeight: 800,
           display: 'flex', alignItems: 'center', justifyContent: 'center',

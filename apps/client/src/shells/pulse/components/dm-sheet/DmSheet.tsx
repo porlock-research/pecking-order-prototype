@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectStandings } from '../../../../store/useGameStore';
+import { PULSE_SPRING } from '../../springs';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import { DmHero } from './DmHero';
@@ -63,22 +64,25 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
     <>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
+        transition={PULSE_SPRING.exit}
         onClick={onClose}
+        aria-hidden="true"
         style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
           backdropFilter: 'blur(5px)', zIndex: backdropFor(PULSE_Z.drawer),
         }}
       />
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Direct message"
         initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-        transition={{ duration: 0.28, ease: [0.2, 0.9, 0.3, 1] }}
+        transition={PULSE_SPRING.page}
         style={{
           position: 'fixed', top: 40, left: 0, right: 0, bottom: 0,
           background: 'var(--pulse-bg)',
           borderTopLeftRadius: 20, borderTopRightRadius: 20,
-          borderTop: '1px solid var(--pulse-border)',
-          boxShadow: '0 -6px 20px rgba(0,0,0,0.35)',
+          borderTop: '1px solid var(--pulse-border-2)',
           display: 'flex', flexDirection: 'column',
           zIndex: PULSE_Z.drawer, overflow: 'hidden',
         }}
@@ -114,7 +118,7 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
         ) : (
           <>
             {channel
-              ? <DmMessages channelId={channel.id} />
+              ? <DmMessages channelId={channel.id} isGroup={isGroup} />
               : <DmEmptyState
                   isGroup={isGroup}
                   targetName={targetPlayer?.personaName ?? ''}

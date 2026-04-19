@@ -29,6 +29,13 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
   const handleSend = () => {
     if (!amount || amount > balance) return;
     engine.sendSilver(amount, targetId);
+    // Sender celebration — haptic + SilverBurst overdrive layer (coin shower
+    // + "+N silver" float). Toast dropped in favor of the burst; the public
+    // SOCIAL_TRANSFER chat card still carries the announcement for a11y.
+    try { navigator.vibrate?.(25); } catch { /* no-op */ }
+    window.dispatchEvent(new CustomEvent('pulse:silver-burst', {
+      detail: { amount, recipient: target?.personaName ?? 'player' },
+    }));
     onClose();
   };
 
@@ -54,10 +61,14 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
         {/* Close */}
         <button
           onClick={onClose}
+          aria-label="Close send silver"
           style={{
-            position: 'absolute', top: 12, right: 12,
+            position: 'absolute', top: 8, right: 8,
+            width: 36, height: 36,
             background: 'none', border: 'none', cursor: 'pointer',
             color: 'var(--pulse-text-3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 8,
           }}
         >
           <X size={20} weight="bold" />
@@ -67,7 +78,10 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginBottom: 20 }}>
           <img
             src={target?.avatarUrl}
-            alt={target?.personaName}
+            alt=""
+            loading="lazy"
+            width={64}
+            height={64}
             style={{ width: 64, height: 64, borderRadius: 16, objectFit: 'cover' }}
           />
           <div style={{ fontWeight: 700, fontSize: 16, color: getPlayerColor(playerIndex), fontFamily: 'var(--po-font-body)' }}>
@@ -100,20 +114,25 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
           ))}
         </div>
 
-        {/* Send button */}
+        {/* Send button — flat gold. The real celebration is SilverBurst after
+            tap; the button itself stays calm so the burst owns the drama.
+            One-shot sheen on mount (pulse-silver-arrive) glints the CTA into
+            view, then settles. */}
         <motion.button
           whileTap={PULSE_TAP.button}
           onClick={handleSend}
           disabled={!amount || amount > balance}
+          className={amount ? 'pulse-silver-arrive' : undefined}
           style={{
             width: '100%',
             padding: 14,
             borderRadius: 14,
             fontSize: 15,
-            fontWeight: 700,
+            fontWeight: 800,
+            letterSpacing: 0.1,
             fontFamily: 'var(--po-font-body)',
-            background: amount ? 'linear-gradient(135deg, var(--pulse-gold), #e6c200)' : 'var(--pulse-surface-2)',
-            color: amount ? '#000' : 'var(--pulse-text-4)',
+            background: amount ? 'var(--pulse-gold)' : 'var(--pulse-surface-2)',
+            color: amount ? 'var(--pulse-on-gold)' : 'var(--pulse-text-4)',
             border: 'none',
             cursor: amount ? 'pointer' : 'not-allowed',
           }}

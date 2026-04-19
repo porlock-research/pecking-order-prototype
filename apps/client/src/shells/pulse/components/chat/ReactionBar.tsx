@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { usePulse } from '../../PulseShell';
-import { PULSE_SPRING } from '../../springs';
+import { PULSE_SPRING, PULSE_TAP } from '../../springs';
+import { PULSE_Z, backdropFor } from '../../zIndex';
 import type { ChatMessage } from '@pecking-order/shared-types';
 
 const EMOJIS = ['😂', '👀', '🔥', '💀', '❤️'];
@@ -25,52 +26,55 @@ export function ReactionBar({ messageId, message: _message, isSelf, onClose }: R
       {/* Invisible backdrop to dismiss */}
       <div
         onClick={onClose}
+        aria-hidden="true"
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 50,
+          zIndex: backdropFor(PULSE_Z.reactionBar),
         }}
       />
       <motion.div
-        initial={{ opacity: 0, scale: 0.85, y: 4 }}
+        initial={{ opacity: 0, scale: 0.9, y: -2 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.85 }}
+        exit={{ opacity: 0, scale: 0.9 }}
         transition={PULSE_SPRING.pop}
         style={{
-          // Replaces the action-trigger bar in EXACT same position.
-          // Self messages have triggers on the LEFT (row-reverse layout),
-          // others on the RIGHT — picker mirrors that placement.
-          position: 'absolute',
-          top: -14,
-          [isSelf ? 'left' : 'right']: 8,
+          // Inline trailing: appears in the same flow slot as the action row,
+          // below the message. Aligned to the content-side edge.
+          // position:relative required for zIndex to take effect above the
+          // fixed backdrop (see .claude/guardrails/finite-zindex-needs-position).
+          position: 'relative',
           display: 'flex',
           alignItems: 'center',
           gap: 1,
+          marginTop: 4,
           padding: '2px 4px',
-          borderRadius: 14,
+          borderRadius: 12,
           background: 'var(--pulse-surface-3)',
           border: '1px solid var(--pulse-border-2)',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
-          zIndex: 51,
-          transformOrigin: isSelf ? 'left center' : 'right center',
+          // Pink-tinted layered glow — replaces generic drop shadow.
+          boxShadow: '0 0 0 1px color-mix(in oklch, var(--pulse-accent) 18%, transparent), 0 8px 28px -8px color-mix(in oklch, var(--pulse-accent) 35%, transparent)',
+          zIndex: PULSE_Z.reactionBar,
+          transformOrigin: isSelf ? 'right center' : 'left center',
         }}
       >
         {EMOJIS.map(emoji => (
           <motion.button
             key={emoji}
-            whileTap={{ scale: 1.4 }}
+            whileTap={PULSE_TAP.reaction}
             transition={PULSE_SPRING.pop}
             onClick={(e) => {
               e.stopPropagation();
               handleReact(emoji);
             }}
+            aria-label={`React with ${emoji}`}
             style={{
-              width: 28,
-              height: 24,
+              width: 36,
+              height: 36,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 18,
+              fontSize: 20,
               background: 'none',
               border: 'none',
               cursor: 'pointer',

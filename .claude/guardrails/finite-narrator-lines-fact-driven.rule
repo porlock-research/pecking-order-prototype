@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: apps/client/src/shells/pulse/components/chat/(ChatView|NarratorLine)\.tsx$
+MATCH_CONTENT: (useNarratorLines|SOCIAL_INVITE|NarratorLine\b|channels\.filter|Object\.values\(channels|createdBy|memberIds\.length|factToTicker)
 ADVISORY: |
   Pulse narrator lines are FACT-driven via TICKER.UPDATE — do NOT re-introduce
   channel-shape derivation.

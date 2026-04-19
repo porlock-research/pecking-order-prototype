@@ -1,11 +1,13 @@
+import { motion, useReducedMotion } from 'framer-motion';
 import { SocialPlayer, VotingPhases, VoteEvents, VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { PersonaAvatar } from '../../components/PersonaAvatar';
+import { VotingShell, IneligibleNote } from './shared/VotingShell';
 import { VotingHeader } from './shared/VotingHeader';
 import { VoterStrip } from './shared/VoterStrip';
 import { AvatarPicker } from './shared/AvatarPicker';
-
-const ACCENT_ELECT = '#9d174d';
-const ACCENT_PICK = '#9d174d';
+import { VotingResultHero } from './shared/VotingResultHero';
+import { VotingTallyGrid } from './shared/VotingTallyGrid';
+import { VOTE_ACCENT } from './shared/voting-tokens';
 
 interface ExecutionerVotingProps {
   cartridge: any;
@@ -14,7 +16,12 @@ interface ExecutionerVotingProps {
   engine: { sendVoteAction: (type: string, targetId: string) => void };
 }
 
-export default function ExecutionerVoting({ cartridge, playerId, roster, engine }: ExecutionerVotingProps) {
+export default function ExecutionerVoting({
+  cartridge,
+  playerId,
+  roster,
+  engine,
+}: ExecutionerVotingProps) {
   const {
     phase,
     eligibleVoters,
@@ -25,235 +32,216 @@ export default function ExecutionerVoting({ cartridge, playerId, roster, engine 
     electionTallies,
   } = cartridge;
   const info = VOTE_TYPE_INFO[cartridge.voteType as keyof typeof VOTE_TYPE_INFO];
+  const accent = VOTE_ACCENT[cartridge.voteType as keyof typeof VOTE_ACCENT];
 
-  // REVEAL phase
+  // PHASE 3 — REVEAL
   if (phase === VotingPhases.REVEAL) {
     const eliminatedId: string | null = results?.eliminatedId ?? null;
     const exId: string | null = results?.summary?.executionerId ?? executionerId ?? null;
-    const revealTallies: Record<string, number> = results?.summary?.electionTallies ?? electionTallies ?? {};
-    const executioner = exId ? roster[exId] : null;
-    const eliminated = eliminatedId ? roster[eliminatedId] : null;
+    const revealTallies: Record<string, number> =
+      results?.summary?.electionTallies ?? electionTallies ?? {};
+    const eliminatedPlayer = eliminatedId ? roster[eliminatedId] : undefined;
+    const executionerPlayer = exId ? roster[exId] : undefined;
 
     return (
-      <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
-        <div className="h-1 vote-strip-executioner" />
-        <div className="p-4 space-y-3 animate-slide-up-in">
-          <h3 className="text-sm font-mono font-bold text-skin-danger uppercase tracking-widest text-center">
-            EXECUTIONER RESULTS
-          </h3>
-
-          {executioner && (
-            <div className="flex items-center justify-center gap-2 text-sm">
-              <PersonaAvatar avatarUrl={executioner.avatarUrl} personaName={executioner.personaName} size={32} />
-              <span className="font-bold text-skin-base">{executioner.personaName}</span>
-              <span className="text-[10px] font-mono text-skin-dim uppercase">was the executioner</span>
-            </div>
-          )}
-
-          {eliminated ? (
-            <div className="flex items-center justify-center gap-2 p-3 rounded-xl border border-skin-danger bg-skin-danger/10 elimination-reveal">
-              <PersonaAvatar avatarUrl={eliminated.avatarUrl} personaName={eliminated.personaName} size={32} />
-              <div>
-                <div className="text-sm font-bold text-skin-danger">{eliminated.personaName}</div>
-                <span className="text-[10px] font-mono text-skin-danger uppercase animate-flash-update">ELIMINATED</span>
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs font-mono text-skin-dim text-center uppercase">No elimination</p>
-          )}
-
-          {Object.keys(revealTallies).length > 0 && (
-            <div className="space-y-1">
-              <p className="text-[10px] font-mono text-skin-dim uppercase text-center">Election Tallies</p>
-              <div className="grid grid-cols-2 gap-1">
-                {Object.entries(revealTallies)
-                  .sort(([, a], [, b]) => (b as number) - (a as number))
-                  .map(([targetId, count]) => {
-                    const player = roster[targetId];
-                    return (
-                      <div key={targetId} className="flex items-center gap-1 p-1.5 rounded-lg bg-skin-deep/40 border border-white/[0.06] text-xs">
-                        <PersonaAvatar avatarUrl={player?.avatarUrl} personaName={player?.personaName} size={24} />
-                        <span className="truncate flex-1 text-skin-base">{player?.personaName || targetId}</span>
-                        <span className="font-mono font-bold text-skin-gold">{count as number}</span>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, margin: '10px 0' }}>
+        <VotingResultHero
+          subjectPlayer={eliminatedPlayer}
+          accent={accent}
+          tone={info.mechanismTone}
+          haloVariant="spotlight"
+          subtitle={eliminatedId ? info.eliminatedSubtitle : info.noEliminationCopy}
+          label={eliminatedId ? info.revealLabel : undefined}
+          secondarySubject={
+            executionerPlayer
+              ? {
+                  player: executionerPlayer,
+                  caption: info.executionerRevealCaption ?? 'The executioner',
+                }
+              : undefined
+          }
+        />
+        {Object.keys(revealTallies).length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span
+              style={{
+                fontFamily: 'var(--po-font-display)',
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: '0.26em',
+                color: 'var(--po-text-dim)',
+                textTransform: 'uppercase',
+                textAlign: 'center',
+                marginTop: 4,
+              }}
+            >
+              Election Tallies
+            </span>
+            <VotingTallyGrid
+              tallies={revealTallies}
+              roster={roster}
+              accent={accent}
+              winnerId={exId}
+              unitLabel="votes"
+            />
+          </div>
+        )}
       </div>
     );
   }
 
-  // EXECUTIONER_PICKING phase
+  // PHASE 2 — EXECUTIONER PICKING
   if (phase === VotingPhases.EXECUTIONER_PICKING) {
     const isExecutioner = playerId === executionerId;
-    const executioner = executionerId ? roster[executionerId] : null;
-    // For executioner pick, use the pick-specific fields
+    const executionerPlayer = executionerId ? roster[executionerId] : undefined;
     const pickHeader = info.executionerPickHeader ?? info.header;
     const pickCta = info.executionerPickCta ?? info.cta;
     const pickConfirm = info.executionerPickConfirm ?? info.confirmTemplate;
     const pickVerb = info.executionerPickVerb ?? info.actionVerb;
 
     return (
-      <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
-        <div className="h-1 vote-strip-executioner" />
-        <div className="p-4 space-y-3">
+      <VotingShell
+        accentColor={accent}
+        header={
           <VotingHeader
-            header={pickHeader}
-            cta={isExecutioner ? pickCta : 'Waiting for the executioner...'}
-            oneLiner={info.oneLiner}
+            mechanismName={info.name}
+            moodSubtitle={info.moodSubtitle}
+            cta={isExecutioner ? pickCta : 'The executioner is choosing.'}
             howItWorks={info.howItWorks}
-            accentColor={ACCENT_PICK}
+            accentColor={accent}
           />
-
-          {/* Executioner identity badge */}
-          {executioner && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-              }}
-            >
-              <PersonaAvatar avatarUrl={executioner.avatarUrl} personaName={executioner.personaName} size={32} />
-              <span
-                style={{
-                  fontFamily: 'var(--vivid-font-body)',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: '#f5f0e8',
-                }}
-              >
-                {executioner.personaName}
-              </span>
-              <span
-                style={{
-                  fontFamily: 'var(--vivid-font-mono)',
-                  fontSize: 9,
-                  color: ACCENT_PICK,
-                  textTransform: 'uppercase',
-                  background: 'rgba(157,23,77,0.15)',
-                  padding: '2px 8px',
-                  borderRadius: 10,
-                }}
-              >
-                executioner
-              </span>
-            </div>
-          )}
-
-          {isExecutioner ? (
-            <AvatarPicker
-              eligibleTargets={eligibleTargets}
-              roster={roster}
-              disabled={false}
-              confirmedId={null}
-              accentColor={ACCENT_PICK}
-              confirmLabel={pickConfirm}
-              actionVerb={pickVerb}
-              onConfirm={(targetId) => engine.sendVoteAction(VoteEvents.EXECUTIONER.PICK, targetId)}
-            />
-          ) : (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '16px 0',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: '50%',
-                  background: 'rgba(157,23,77,0.1)',
-                  border: '1px solid rgba(157,23,77,0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: 'var(--vivid-font-mono)',
-                    fontSize: 18,
-                    fontWeight: 700,
-                    color: ACCENT_PICK,
-                  }}
-                >
-                  ?
-                </span>
-              </div>
-              <p
-                style={{
-                  fontFamily: 'var(--vivid-font-mono)',
-                  fontSize: 11,
-                  color: '#9B8E7E',
-                  fontStyle: 'italic',
-                }}
-              >
-                The Executioner is choosing...
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
+        }
+      >
+        <ExecutionerSpotlight player={executionerPlayer} accent={accent} />
+        {isExecutioner ? (
+          <AvatarPicker
+            eligibleTargets={eligibleTargets}
+            roster={roster}
+            disabled={false}
+            confirmedId={null}
+            accentColor={accent}
+            confirmLabel={pickConfirm}
+            actionVerb={pickVerb}
+            onConfirm={(targetId) =>
+              engine.sendVoteAction(VoteEvents.EXECUTIONER.PICK, targetId)
+            }
+          />
+        ) : (
+          <IneligibleNote reason="Only the executioner can choose this round." />
+        )}
+      </VotingShell>
     );
   }
 
-  // VOTING phase (election)
+  // PHASE 1 — ELECTION
   const canVote = eligibleVoters.includes(playerId);
   const myVote = votes[playerId] ?? null;
 
   return (
-    <div className="mx-4 my-2 rounded-xl vote-panel overflow-hidden">
-      <div className="h-1 vote-strip-executioner" />
-      <div className="p-4 space-y-3">
+    <VotingShell
+      accentColor={accent}
+      header={
         <VotingHeader
-          header={info.header}
+          mechanismName={`${info.name} · Election`}
           cta={info.cta}
-          oneLiner={info.oneLiner}
           howItWorks={info.howItWorks}
-          accentColor={ACCENT_ELECT}
+          accentColor={accent}
         />
-
+      }
+      engagement={
         <VoterStrip
           eligibleVoters={eligibleVoters}
           votes={votes}
           roster={roster}
+          accentColor={accent}
+          selfId={playerId}
         />
+      }
+    >
+      {!canVote && <IneligibleNote reason="You're not in this round." />}
+      <AvatarPicker
+        eligibleTargets={eligibleTargets}
+        roster={roster}
+        disabled={!canVote}
+        confirmedId={myVote}
+        accentColor={accent}
+        confirmLabel={info.confirmTemplate}
+        actionVerb={info.actionVerb}
+        onConfirm={(targetId) => engine.sendVoteAction(VoteEvents.EXECUTIONER.ELECT, targetId)}
+      />
+    </VotingShell>
+  );
+}
 
-        {!canVote && (
-          <p
-            style={{
-              fontFamily: 'var(--vivid-font-mono)',
-              fontSize: 11,
-              color: '#9B8E7E',
-              textAlign: 'center',
-              textTransform: 'uppercase',
-            }}
-          >
-            You are not eligible to vote
-          </p>
-        )}
+function ExecutionerSpotlight({
+  player,
+  accent,
+}: {
+  player: SocialPlayer | undefined;
+  accent: string;
+}) {
+  const reduce = useReducedMotion();
+  if (!player) return null;
+  const firstName = player.personaName?.split(' ')[0] ?? '';
 
-        <AvatarPicker
-          eligibleTargets={eligibleTargets}
-          roster={roster}
-          disabled={!canVote}
-          confirmedId={myVote}
-          accentColor={ACCENT_ELECT}
-          confirmLabel={info.confirmTemplate}
-          actionVerb={info.actionVerb}
-          onConfirm={(targetId) => engine.sendVoteAction(VoteEvents.EXECUTIONER.ELECT, targetId)}
-        />
-      </div>
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 0 4px',
+      }}
+    >
+      <motion.div
+        animate={reduce ? undefined : { opacity: [0.7, 1, 0.7] }}
+        transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+        style={{
+          position: 'relative',
+          borderRadius: '50%',
+          padding: 2,
+          background: `conic-gradient(from 180deg, ${accent}, color-mix(in oklch, ${accent} 35%, transparent), ${accent})`,
+          boxShadow: `0 0 28px color-mix(in oklch, ${accent} 50%, transparent)`,
+        }}
+      >
+        <div
+          style={{
+            borderRadius: '50%',
+            background: 'var(--po-bg-panel, rgba(0,0,0,0.35))',
+            padding: 2,
+          }}
+        >
+          <PersonaAvatar
+            avatarUrl={player.avatarUrl}
+            personaName={player.personaName}
+            size={72}
+          />
+        </div>
+      </motion.div>
+      <span
+        style={{
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: '0.28em',
+          color: accent,
+          textTransform: 'uppercase',
+        }}
+      >
+        Executioner
+      </span>
+      <span
+        style={{
+          fontFamily: 'var(--po-font-display)',
+          fontSize: 18,
+          fontWeight: 700,
+          letterSpacing: -0.3,
+          color: 'var(--po-text)',
+        }}
+      >
+        {firstName}
+      </span>
     </div>
   );
 }

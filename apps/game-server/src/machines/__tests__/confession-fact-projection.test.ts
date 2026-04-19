@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { FactTypes } from '@pecking-order/shared-types';
-import { projectFactForClient } from '../../projections';
+import { projectFactForClient } from '@pecking-order/cartridges';
 
 describe('projectFactForClient — CONFESSION_POSTED', () => {
   const baseFact = {

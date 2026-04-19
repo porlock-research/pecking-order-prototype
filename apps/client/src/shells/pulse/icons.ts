@@ -25,7 +25,9 @@ export {
   Hand,
   Lock,
   HandWaving,
+  PencilSimple,
   PlusCircle,
+  UserPlus,
 
   // Feedback
   Smiley,
@@ -40,11 +42,27 @@ export {
   Scales,
   ChartBar,
   Target,
+  Sword,
+  Shield,
+  ShieldCheck,
+  ShieldSlash,
+  Vault,
+  HandFist,
+  Handshake,
+  Gavel,
+  Envelope,
+  LockKey,
+  LockKeyOpen,
+  TreasureChest,
+  Confetti,
+  Sparkle,
+  Question,
 
   // System
   Broadcast,
   Lightning,
   Crown,
+  Trophy,
   Users,
   UsersThree,
 } from '@phosphor-icons/react';

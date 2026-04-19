@@ -1,7 +1,7 @@
 import { assign, sendParent, sendTo, enqueueActions } from 'xstate';
 import type { VoteResult } from '@pecking-order/shared-types';
 import { Events } from '@pecking-order/shared-types';
-import { VOTE_REGISTRY } from '../cartridges/voting/_registry';
+import { VOTE_REGISTRY } from '@pecking-order/cartridges';
 import { log } from '../../log';
 
 export const l3VotingActions = {

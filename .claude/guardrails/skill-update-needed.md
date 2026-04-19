@@ -1,87 +1,82 @@
-# Guardrails Needing Update / Promotion
+# Skill updates pending
 
-## `finite-reactions-not-persisted.rule` — stale on Pulse branch, accurate on main
+## `investigate-game` skill — soften "don't waste queries on lobby HTTP logs"
 
-**State:** The rule says reactions are visual-only with no server handler. On
-`feature/pulse-shell-phase1` branch this is now FALSE — server handler, schemas,
-SYNC delivery, and stableRef store fix are all in place. Reactions persist
-multi-player.
+**Location:** `.claude/skills/investigate-game/SKILL.md` (Step 1).
 
-**On main, the rule is still accurate** — none of the server work has merged yet.
+**Current line:** *"Do NOT waste queries on lobby HTTP logs — they only contain URL routing (GET /join/CODE), not application data with game IDs."*
 
-**Action:** When `feature/pulse-shell-phase1` merges to main, this rule must be
-deleted (its premise becomes wrong). Until then, leave it.
+**Problem:** This language is too absolute. For invite/join funnel investigations (who tapped a share link, who bounced to `/login`, how many times a `/invite/TOKEN` hit was followed by `/join/CODE`), lobby HTTP logs are exactly the right dataset. This session (2026-04-16) they revealed 83 share-link bounces across 3 playtests — the data that drove the whole frictionless-invite design decision.
 
-**Also:** the rule's `MATCH_PATTERN: react|REACT|reaction|Reaction` is too broad —
-fires on every component that uses React imports. Tighten to specific reaction
-component paths if it's kept post-merge:
-  apps/client/src/shells/(vivid|classic|immersive)/.+[Rr]eaction.+\.tsx$
+**Suggested edit:** Replace the blanket "don't" with a scoped statement:
+> "Lobby HTTP logs do NOT contain game-server application events — for XState transitions, cartridge lifecycle, voting, etc., query `game-server-*`. But for invite/join funnel work (share-link taps, login bounces, email-invite conversion), lobby HTTP logs ARE the primary dataset. Cross-reference D1 (`InviteTokens`, `Invites`, `GameSessions`) for token-used state."
 
-The rule fired ~10 times during the Pulse session as I edited reaction-related
-files; the advisory was misleading because the gap had already been filled.
+**Deletion condition:** Delete this entry once the skill's Step 1 is updated.
 
-## Resolved 2026-04-15
+---
 
-- `finite-pulse-bio-as-stereotype` — narrowed MATCH_PATTERN to
-  `(CastCard|DmHero|DmBioQuote|PlayerProfile).*\.tsx$` (option B).
-- `finite-stableref-for-mutable-fields` — added skip-if preamble to advisory (option 4).
-- `finite-zustand-selector-fresh-objects` — added skip-if preamble to advisory (option C).
+## `finite-arcade-spec-integration-checklist.rule` — MATCH_PATTERN too broad
 
-Long-term: if the guardian hook gains content-aware matching, revisit the two
-preamble-only rules for stricter activation.
+**Problem:** Fires on ANY edit to `packages/shared-types/src/index.ts` or `config.ts`, even when the change is unrelated to arcade games. Observed during confessions Plan 1 implementation (2026-04-17): fired 3× on edits that were adding ChannelTypeSchema, ChannelCapability, confessions ruleset block, and `Config.confession` — zero of which touch arcade integration.
 
-## `finite-cartridge-theme-color-keys.rule` — broken regex + wrong match target
+**Current pattern trigger:** matching `shared-types/src/(index\.ts|config\.ts|game-type-info\.ts|cycle-defaults\.ts)` alone is too loose — those files change for many reasons.
 
-**State:** Discovered while authoring `finite-no-raw-event-strings` on 2026-04-15.
+**Suggested fix:** Add MATCH_CONTENT so the rule only fires when the edit mentions an arcade-specific symbol:
 
-Two compounding bugs:
+```
+MATCH_CONTENT: (GameTypeSchema|GAME_TYPE_INFO|GAME_POOL|GAME_REGISTRY|GAME_COMPONENTS|GAME_STAT_CONFIG|GAME_DEFS|ARCADE_TYPES|LIVE_GAMES|ClientEvent)
+```
 
-1. `MATCH_PATTERN: (theme\.colors\.|themeRef\.current.*colors\.|t\.colors\.|colors\[(?!.*\|))`
-   uses a PCRE negative lookahead `(?!...)`, which BSD grep -E (macOS default)
-   does not support. Invocations spammed `grep: repetition-operator operand
-   invalid` to stderr before the guardian started suppressing it (commit
-   da15b73).
-2. The pattern is intended to match CONTENT (`theme.colors.*` usages in code)
-   but was placed in `MATCH_PATTERN`, which the guardian compares against file
-   paths — so it would never have matched anyway, even with valid regex.
+Keeps the advisory relevant; drops false positives for unrelated shared-types edits.
 
-**Fix (now straightforward with da15b73's `MATCH_CONTENT`):**
-- Move the pattern to `MATCH_CONTENT`.
-- Add a `MATCH_PATTERN` for file scope (e.g. `packages/game-cartridges/.+\.tsx?$`).
-- Rewrite without lookahead — drop the `colors[(?!.*\|)` clause or express it
-  positively (e.g. `colors\[[^|]+\]`).
+**Deletion condition:** Delete this entry once the rule has MATCH_CONTENT added.
 
-**Recommendation:** low urgency — the rule has been a silent no-op for weeks
-and no bugs have surfaced. Fix opportunistically next time someone's in
-this area.
+---
 
-## `finite-narrator-lines-fact-driven.rule` — over-broad file match
+## `finite-no-raw-event-strings.rule` — fires on source of truth it explicitly exempts
 
-**State:** fires on ANY `ChatView.tsx` edit. Phase 4 T13 session (2026-04-15) hit
-it ~6 times while wiring an unread divider (`ChatDivider`) that has nothing to do
-with narrator content. The rule body is useful; the trigger is too broad.
+**Problem:** The advisory body says `(Skip if editing packages/shared-types/src/events.ts — the source of truth …)`, but the rule still triggers on every edit of that file. Cost in the confessions session (2026-04-17): noise on every `Events.Confession.POST` / `TickerCategories.SOCIAL_PHASE` / `FactTypes.CONFESSION_POSTED` addition — the exact edits the exemption covers.
 
-**Fix with `MATCH_CONTENT`:** scope activation to edits that actually touch
-narrator-adjacent code. Suggested content patterns:
-  - `useNarratorLines`
-  - `channels\.filter|Object\.values\(channels\)`
-  - `SOCIAL_INVITE`
-  - `createdBy|memberIds\.length`
-  - `NarratorLine\b`
+**Suggested fix:** Add a negative path filter so the rule doesn't evaluate the source file. Either:
 
-Keep the file scope (`ChatView.tsx`, `NarratorLine.tsx`, `factToTicker`) as
-`MATCH_PATTERN` for locality, but require `MATCH_CONTENT` match to fire.
+```
+MATCH_PATTERN_EXCLUDE: packages/shared-types/src/(events|index)\.ts
+```
 
-## `finite-invite-mode-pending-members.rule` — over-broad file match
+…if the hook framework supports excludes, or invert the current `MATCH_PATTERN` to exclude that path with a lookaround-free regex. Alternately, drop the parenthetical exemption from the advisory body since it's not actually enforced.
 
-**State:** fires on every `push-triggers.ts` edit. Phase 4 T8–T10 (2026-04-15) hit
-it ~5 times while threading `DeepLinkIntent` through push helpers — unrelated to
-channel invite-mode semantics.
+**Deletion condition:** Delete once the rule stops firing on `packages/shared-types/src/events.ts` edits.
 
-**Fix with `MATCH_CONTENT`:** only fire when the edit touches member-list fields
-specifically. Suggested:
-  - `pendingMemberIds`
-  - `channels\[.*\]\.(memberIds|pendingMemberIds)`
-  - `addChannelMember|createChannel\b`
+---
 
-File-path scope remains useful; gate activation on content presence.
+## `finite-cartridge-shell-agnostic-tokens.rule` — fires on JSDoc comments referencing banned tokens
+
+**Problem:** The rule's `MATCH_CONTENT` is `(skin-[a-z]|var\(--pulse-|var\(--vivid-|bg-glass|text-glow)` which correctly catches violations in JSX class/style, but it also fires on JSDoc comments that *mention* the banned patterns in prose. Session 2026-04-18 (game-cartridge-chassis): fired on `GameStartCard.tsx`, `GameDeadBeat.tsx`, `GameReadyRoster.tsx`, `ScoreBreakdown.tsx`, `GameSubmissionStatus.tsx` — all because their JSDoc says things like "Replaces the `bg-skin-gold Start` button that…" or "Replaces the old `font-mono` spinner…". Every fire reprints the full 26-line advisory body.
+
+**Suggested fix options:**
+1. Tighten `MATCH_CONTENT` to require the token be inside a `className=` or `style={{` context. Regex gets ugly but possible: `className[^"]*"[^"]*\b(skin-[a-z]|bg-glass|text-glow)\b` etc.
+2. Add a path-level exclude or content exclude so lines starting with ` *` or `//` don't trigger. The hook framework's support for excludes is unclear.
+3. Shorten the advisory body. The current 26 lines teach every time. A 4-line "banned: skin-*, --pulse-*, --vivid-*, bg-glass, text-glow → use --po-*. See pulse-theme.css for keys." covers the essentials; agents who need more detail can read the rule file directly.
+
+Option 3 is lowest-effort and addresses the core pain (noise in the log).
+
+**Deletion condition:** Delete once the rule either (a) stops firing on JSDoc mentions, or (b) has its advisory body trimmed to <10 lines.
+
+---
+
+## `trace-cartridge-results` skill — `/state` does NOT return `completedPhases`
+
+**Location:** `.claude/skills/trace-cartridge-results/SKILL.md` (Quick Diagnosis section).
+
+**Current text:**
+> 1. Hit `/state` endpoint: `GET /parties/game-server/{gameId}/state`
+> 2. Find `completedPhases` in L2 context
+
+**Problem:** `/state` only returns a SUMMARY of L2 (`{ state, day, nextWakeup, manifest, roster }`) — `completedPhases` is NOT included. Confirmed during 2026-04-18 SHOCKWAVE result-card debugging: trying to follow this step returned an empty object and sent me down a wrong path. The `apps/game-server/CLAUDE.md` "GET /state Limitation" note already calls this out for L3 data; same applies to most L2 context fields.
+
+**Suggested edit:** Replace step 1+2 with:
+> 1. Use the WebSocket SYNC payload or `INSPECT.SUBSCRIBE` to read `completedPhases` — the `/state` HTTP endpoint only exposes a summary (state, day, manifest, roster). For client-side debugging, attach a temporary `window.__pulseStore` exposure (per `reference_pulse_store_inspection.md`) and read `s.completedCartridges`.
+
+Optionally also add a pointer to `apps/game-server/src/sync.ts:extractL3Context` / `extractCartridges` for programmatic access.
+
+**Deletion condition:** Delete once the skill's Quick Diagnosis section reflects the actual `/state` shape.

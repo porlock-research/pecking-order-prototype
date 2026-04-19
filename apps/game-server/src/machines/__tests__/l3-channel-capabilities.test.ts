@@ -114,6 +114,8 @@ describe('Channel capabilities', () => {
 
   it('WHISPER is rejected when MAIN loses WHISPER capability', () => {
     const actor = createL3Actor();
+    // Open DMs so the gate this test is probing (capability) is the ONLY reason to reject.
+    actor.send({ type: Events.Internal.OPEN_DMS } as any);
     // Mutate MAIN's capabilities to simulate cap removal.
     const ctx = actor.getL3Context();
     (ctx.channels['MAIN'] as any).capabilities = ['CHAT', 'REACTIONS'];
@@ -130,8 +132,26 @@ describe('Channel capabilities', () => {
     expect(whispers).toHaveLength(0);
   });
 
-  it('WHISPER succeeds when MAIN has WHISPER capability', () => {
+  it('WHISPER is rejected when DMs are closed, even with the WHISPER capability', () => {
     const actor = createL3Actor();
+    // Do NOT open DMs. Whisper delivers as a DM; when DMs are closed,
+    // the server must reject the event regardless of channel capabilities.
+    actor.send({
+      type: Events.Social.WHISPER,
+      senderId: 'p0',
+      targetId: 'p1',
+      text: 'hi',
+    } as any);
+
+    const ctx = actor.getL3Context();
+    const whispers = ctx.chatLog.filter((m: any) => m.whisperTarget);
+    expect(whispers).toHaveLength(0);
+    expect(ctx.dmsOpen).toBe(false);
+  });
+
+  it('WHISPER succeeds when MAIN has WHISPER capability and DMs are open', () => {
+    const actor = createL3Actor();
+    actor.send({ type: Events.Internal.OPEN_DMS } as any);
     actor.send({
       type: Events.Social.WHISPER,
       senderId: 'p0',
