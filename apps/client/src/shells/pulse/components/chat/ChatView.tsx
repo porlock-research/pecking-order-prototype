@@ -12,6 +12,15 @@ import { ChatDivider } from './ChatDivider';
 import { DayPhases, GAME_MASTER_ID, TickerCategories } from '@pecking-order/shared-types';
 import type { TickerMessage } from '@pecking-order/shared-types';
 
+// Predicate: is this ticker message a narrator line?
+// Fact-driven pipeline (see finite-narrator-lines-fact-driven rule):
+//   server fact → factToTicker → SOCIAL_INVITE | SOCIAL_PHASE category → this filter.
+// Do NOT derive narrator content from channel shape.
+export function isNarratorTicker(t: TickerMessage): boolean {
+  return t.category === TickerCategories.SOCIAL_INVITE
+    || t.category === TickerCategories.SOCIAL_PHASE;
+}
+
 // Map SOCIAL_INVITE ticker kind → NarratorLine visual kind.
 // 'initial' covers 1:1 and small-group creation ('talking' / 'scheming' copy
 // share the same calm accent color); alliance sizes trigger 'alliance' styling.
@@ -30,7 +39,7 @@ export function ChatView() {
   const phase = useGameStore(s => s.phase);
   const mainLastRead = useGameStore(s => s.lastReadTimestamp?.MAIN ?? 0);
   const markChannelRead = useGameStore(s => s.markChannelRead);
-  const { playerId } = usePulse();
+  const { playerId, openConfessionBooth } = usePulse();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [openReactionId, setOpenReactionId] = useState<string | null>(null);
@@ -62,11 +71,9 @@ export function ChatView() {
       || t.category === TickerCategories.SOCIAL_PERK,
   );
 
-  // Narrator lines come from SOCIAL_INVITE ticker events (fact-driven).
+  // Narrator lines come from SOCIAL_INVITE + SOCIAL_PHASE ticker events (fact-driven).
   // Public intrigue copy only — never names targets, never viewer-relative.
-  const narratorTickers: TickerMessage[] = tickerMessages.filter(
-    t => t.category === TickerCategories.SOCIAL_INVITE,
-  );
+  const narratorTickers: TickerMessage[] = tickerMessages.filter(isNarratorTicker);
 
   // Interleave messages, social events, and narrator lines by timestamp
   type TimelineEntry =
@@ -152,11 +159,17 @@ export function ChatView() {
           : null;
 
         if (entry.type === 'narrator') {
+          // SOCIAL_PHASE tickers carry an entry action — tap opens the booth.
+          const t = entry.data;
+          const isConfessionOpen = t.category === TickerCategories.SOCIAL_PHASE
+            && (t as any).channelId
+            && t.kind === 'confession-open';
           return (
             <NarratorLine
-              key={entry.data.id}
-              kind={socialInviteToNarratorKind(entry.data)}
-              text={entry.data.text}
+              key={t.id}
+              kind={t.category === TickerCategories.SOCIAL_PHASE ? 'alliance' : socialInviteToNarratorKind(t)}
+              text={t.text}
+              onTap={isConfessionOpen ? () => openConfessionBooth((t as any).channelId) : undefined}
             />
           );
         }

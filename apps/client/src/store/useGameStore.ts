@@ -131,6 +131,17 @@ interface GameState {
   silverTransferRejection: { reason: string; timestamp: number } | null;
   lastPerkResult: any | null;
   playerActivity: Record<string, { messagesInMain: number; dmPartners: number; isOnline: boolean }>;
+  /**
+   * Per-recipient confession-phase projection from SYNC (T12).
+   * Full handlesByPlayer stays server-side; client sees only its own handle.
+   * null outside of a live confession phase. Hydration: T15.
+   */
+  confessionPhase: {
+    active: boolean;
+    myHandle: string | null;
+    handleCount: number;
+    posts: Array<{ handle: string; text: string; ts: number }>;
+  } | null;
   tickerMessages: TickerMessage[];
   debugTicker: string | null;
 
@@ -867,6 +878,7 @@ export const useGameStore = create<GameState>((set) => ({
   silverTransferRejection: null,
   lastPerkResult: null,
   playerActivity: {},
+  confessionPhase: null,
   tickerMessages: [],
   debugTicker: null,
   showcaseData: null,

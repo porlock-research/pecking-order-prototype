@@ -9,6 +9,8 @@ interface Props {
    *  text. Non-matching bold tokens (e.g. "5 players") render accented bold only.
    *  Non-bold segments render in muted italic. */
   text: string;
+  /** When provided, the line becomes tappable (e.g. to enter the Confession Booth). */
+  onTap?: () => void;
 }
 
 /**
@@ -16,7 +18,7 @@ interface Props {
  * Treatment mirrors docs/reports/pulse-mockups/11-cast-strip-v2.html —
  * muted italic body, colored non-italic bold for names/counts.
  */
-export function NarratorLine({ kind, text }: Props) {
+export function NarratorLine({ kind, text, onTap }: Props) {
   const roster = useGameStore(s => s.roster);
 
   const accent =
@@ -38,11 +40,16 @@ export function NarratorLine({ kind, text }: Props) {
 
   return (
     <div
+      role={onTap ? 'button' : undefined}
+      tabIndex={onTap ? 0 : undefined}
+      onClick={onTap}
+      onKeyDown={onTap ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap(); } } : undefined}
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: 10,
         padding: '8px 16px',
+        cursor: onTap ? 'pointer' : undefined,
       }}
     >
       <span
