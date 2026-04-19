@@ -464,6 +464,7 @@ export default function LobbyRoot() {
           mode: 'ACTIVE_PLAYERS_MINUS_ONE' as const,
           maxDays: dynamicConfig.dayCount.maxDays,
         },
+        ...(dynamicConfig.confessions.enabled ? { confessions: { enabled: true } } : {}),
       };
 
       const result = await createGame('CONFIGURABLE_CYCLE', undefined, {

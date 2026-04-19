@@ -1,4 +1,4 @@
-import { useState, createContext, useContext, useCallback, useEffect } from 'react';
+import { useState, createContext, useContext, useCallback, useEffect, useRef } from 'react';
 import { toast, Toaster } from 'sonner';
 import './pulse-theme.css';
 import type { ShellProps } from '../types';
@@ -25,6 +25,7 @@ import { CastStrip } from './components/caststrip/CastStrip';
 import { PulseInput } from './components/input/PulseInput';
 import { SendSilverSheet } from './components/popover/SendSilverSheet';
 import { DmSheet } from './components/dm-sheet/DmSheet';
+import { ConfessionBoothSheet } from './components/confession-booth/ConfessionBoothSheet';
 import { SocialPanel } from './components/social-panel/SocialPanel';
 import { PulseHeader } from './components/header/PulseHeader';
 import { PickingBanner } from './components/caststrip/PickingBanner';
@@ -47,6 +48,7 @@ export const PulseContext = createContext<{
   openNudge: (targetId: string) => void;
   openDM: (targetId: string, isGroup?: boolean) => void;
   openSocialPanel: () => void;
+  openConfessionBooth: (channelId: string) => void;
 }>(null!);
 
 export function usePulse() {
@@ -83,6 +85,7 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
   const [dmTarget, setDmTarget] = useState<string | null>(null);
   const [dmIsGroup, setDmIsGroup] = useState(false);
   const [socialPanelOpen, setSocialPanelOpen] = useState(false);
+  const [confessionChannelId, setConfessionChannelId] = useState<string | null>(null);
 
   // Cartridge overlay — store-driven (shell-agnostic intent + Pulse rendering)
   const focusedCartridge = useGameStore(s => s.focusedCartridge);
@@ -164,9 +167,35 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
     setSocialPanelOpen(false);
   }, []);
   const openSocialPanel = useCallback(() => setSocialPanelOpen(true), []);
+  const openConfessionBooth = useCallback((channelId: string) => {
+    setConfessionChannelId(channelId);
+    setSocialPanelOpen(false);
+  }, []);
+
+  // Auto-open the Confession Booth on phase open for participants. The ref
+  // is set once we've actually opened (or once the phase ends), so a manual
+  // close stays closed and a SYNC race that delays channel/handle data
+  // doesn't cause us to miss the open. Narrator tap remains the re-entry path.
+  const confessionActive = useGameStore(s => s.confessionPhase.active);
+  const confessionMyHandle = useGameStore(s => s.confessionPhase.myHandle);
+  const liveConfessionChannelId = useGameStore(s =>
+    Object.values(s.channels).find(ch => ch.type === ChannelTypes.CONFESSION)?.id ?? null
+  );
+  const autoOpenedConfessionRef = useRef(false);
+  useEffect(() => {
+    if (!confessionActive) {
+      autoOpenedConfessionRef.current = false;
+      return;
+    }
+    if (autoOpenedConfessionRef.current) return;
+    if (!confessionMyHandle || !liveConfessionChannelId) return;
+    setConfessionChannelId(liveConfessionChannelId);
+    setSocialPanelOpen(false);
+    autoOpenedConfessionRef.current = true;
+  }, [confessionActive, confessionMyHandle, liveConfessionChannelId]);
 
   return (
-    <PulseContext.Provider value={{ engine, playerId, openSendSilver, openNudge, openDM, openSocialPanel }}>
+    <PulseContext.Provider value={{ engine, playerId, openSendSilver, openNudge, openDM, openSocialPanel, openConfessionBooth }}>
       <div
         className="pulse-shell"
         style={{
@@ -206,6 +235,15 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
         <AnimatePresence>
           {socialPanelOpen && (
             <SocialPanel onClose={() => setSocialPanelOpen(false)} />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {confessionChannelId && (
+            <ConfessionBoothSheet
+              key={confessionChannelId}
+              channelId={confessionChannelId}
+              onClose={() => setConfessionChannelId(null)}
+            />
           )}
         </AnimatePresence>
 

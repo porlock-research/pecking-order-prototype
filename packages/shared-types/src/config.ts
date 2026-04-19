@@ -11,6 +11,9 @@ export const Config = {
     maxLogSize: 500,
     maxMessageLength: 280,
   },
+  confession: {
+    maxConfessionLength: 280,   // chosen over Config.chat.maxMessageLength to force brevity + Twitter-feel cadence
+  },
   perk: {
     costs: { SPY_DMS: 5, EXTRA_DM_PARTNER: 3, EXTRA_DM_CHARS: 2 } as Record<PerkType, number>,
     extraCharsBonus: 600,

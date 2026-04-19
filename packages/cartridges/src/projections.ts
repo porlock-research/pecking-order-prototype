@@ -2,7 +2,31 @@
  * Prompt + dilemma projection helpers for SYSTEM.SYNC payloads.
  * Pure functions — no side effects or dependencies on server state.
  */
-import { PromptPhases, PromptTypes } from '@pecking-order/shared-types';
+import { FactTypes, PromptPhases, PromptTypes } from '@pecking-order/shared-types';
+
+/**
+ * Strip sensitive fields from facts before broadcasting to clients.
+ *
+ * Defense-in-depth gate. Per-fact-type branch — explicitly NOT a generic
+ * "strip actorId from all facts" rule, because some facts (e.g., PROMPT_RESULT
+ * with the match-cartridge full reveal) legitimately carry author info.
+ *
+ * v1 status: NO PRODUCTION CONSUMER. Facts reach clients only via TICKER.UPDATE
+ * (factToTicker), and CONFESSION_POSTED returns null from factToTicker — so the
+ * actorId never leaks today. This helper exists so any future client-facing
+ * fact pipeline (FACT.UPDATE WS messages, exported admin journal, debug
+ * tooling) gets correct stripping by passing every fact through here.
+ *
+ * If you add such a pipeline, route facts through projectFactForClient before
+ * the WS send. See `reference_facts_ticker_pipeline.md` for the design rule.
+ */
+export function projectFactForClient(fact: any): any {
+  if (fact?.type === FactTypes.CONFESSION_POSTED) {
+    const { actorId, ...rest } = fact;
+    return rest;
+  }
+  return fact;
+}
 
 /**
  * Derive the per-player `participated` map from a prompt context.

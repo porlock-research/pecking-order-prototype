@@ -24,6 +24,10 @@ export interface DynamicRulesetConfig {
     thresholdDays: number;
     action: 'ELIMINATE';
   };
+  // Confession Booth (Spec C) — opt-in per game
+  confessions: {
+    enabled: boolean;
+  };
   // Day count
   dayCount: {
     maxDays: number;
@@ -57,6 +61,9 @@ export function createDefaultDynamicConfig(): DynamicRulesetConfig {
       enabled: true,
       thresholdDays: 2,
       action: 'ELIMINATE',
+    },
+    confessions: {
+      enabled: false,
     },
     dayCount: {
       maxDays: 7,
@@ -631,6 +638,27 @@ export function DynamicRulesetBuilder({
               />
             </div>
           )}
+        </div>
+      </Section>
+
+      {/* ── Confession Booth ── */}
+      <Section title="Confession Booth" testId="section-confessions">
+        <div className="space-y-2 mt-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono text-skin-dim/60">Enable confession phases</span>
+            <Toggle
+              checked={config.confessions.enabled}
+              onChange={v => onChange({ ...config, confessions: { enabled: v } })}
+              size="md"
+              data-testid="confessions-enabled"
+            />
+          </div>
+          <p className="text-[8px] font-mono text-skin-dim/30">
+            Admins schedule <span className="text-skin-gold/70">START_CONFESSION_CHAT</span> /
+            <span className="text-skin-gold/70"> END_CONFESSION_CHAT</span> timeline events to open
+            an anonymous post window. Players drop confessions under a daily
+            &ldquo;Confessor #N&rdquo; handle — everyone sees the tape, no one sees the name.
+          </p>
         </div>
       </Section>
 

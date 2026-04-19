@@ -209,6 +209,22 @@ export function factToTicker(fact: any, roster: Record<string, any>): TickerMess
         kind,
       };
     }
+    case FactTypes.CONFESSION_PHASE_STARTED:
+      return {
+        id: crypto.randomUUID(),
+        text: 'The confession booth is open.',
+        category: TickerCategories.SOCIAL_PHASE,
+        timestamp: fact.timestamp,
+        // Client ChatView uses `kind === 'confession-open'` + channelId to make
+        // this narrator line tappable — tap opens the booth sheet overlay.
+        kind: 'confession-open',
+        channelId: fact.payload?.channelId,
+      } as TickerMessage;
+
+    // CONFESSION_POSTED + CONFESSION_PHASE_ENDED intentionally fall through to default null:
+    // - POSTED: per-post silence prevents timing-based deanonymization
+    // - PHASE_ENDED: phase close is quiet; the next-day match cartridge is the drum beat
+
     default:
       return null;
   }

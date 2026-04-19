@@ -72,7 +72,7 @@ export const LobbySchema = z.object({
 
 export const TimelineEventSchema = z.object({
   time: z.string(), // "09:00" or ISO string
-  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "OPEN_GROUP_CHAT", "CLOSE_GROUP_CHAT", "START_GAME", "END_GAME", "START_DILEMMA", "END_DILEMMA", "END_DAY"]),
+  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "OPEN_GROUP_CHAT", "CLOSE_GROUP_CHAT", "START_GAME", "END_GAME", "START_DILEMMA", "END_DILEMMA", "START_CONFESSION_CHAT", "END_CONFESSION_CHAT", "END_DAY"]),
   payload: z.any().optional(),
 });
 
@@ -169,6 +169,8 @@ export const PushTriggerSchema = z.enum([
   'END_GAME',          // broadcast
   'START_ACTIVITY',    // broadcast
   'END_ACTIVITY',      // broadcast
+  // Confession phase
+  'CONFESSION_OPEN',   // broadcast — phase-open notification ("A confession phase has opened.")
 ]);
 export type PushTrigger = z.infer<typeof PushTriggerSchema>;
 
@@ -180,6 +182,7 @@ export const DEFAULT_PUSH_CONFIG: Record<PushTrigger, boolean> = {
   DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
   OPEN_DMS: true, CLOSE_DMS: true, OPEN_GROUP_CHAT: true, CLOSE_GROUP_CHAT: true,
   START_GAME: true, END_GAME: true, START_ACTIVITY: true, END_ACTIVITY: true,
+  CONFESSION_OPEN: true,
 };
 
 // --- Scheduling Strategy (orthogonal to game type) ---
@@ -288,6 +291,9 @@ export const PeckingOrderRulesetSchema = z.object({
   inactivity: PeckingOrderInactivityRulesSchema,
   dayCount: PeckingOrderDayCountRulesSchema,
   dilemmas: PeckingOrderDilemmaRulesSchema.optional(),
+  confessions: z.object({
+    enabled: z.boolean(),
+  }).optional(),
 });
 export type PeckingOrderRuleset = z.infer<typeof PeckingOrderRulesetSchema>;
 
@@ -512,13 +518,14 @@ export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LI
 
 // --- Channel System ---
 
-export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM']);
+export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM', 'CONFESSION']);
 export type ChannelType = z.infer<typeof ChannelTypeSchema>;
 
 export type ChannelCapability =
   | 'CHAT' | 'SILVER_TRANSFER' | 'INVITE_MEMBER' | 'REACTIONS' | 'REPLIES' | 'GAME_ACTIONS'
   | 'NUDGE'     // MAIN + 1:1 DM — UI affordance flag (NUDGE event is player-scoped)
-  | 'WHISPER';  // MAIN only — whisper is MAIN-anonymous
+  | 'WHISPER'   // MAIN only — whisper is MAIN-anonymous
+  | 'CONFESS';  // CONFESSION channel only — anonymized post under per-phase handle
 
 export interface Channel {
   id: string;
@@ -619,6 +626,9 @@ export interface TickerMessage {
   // Optional structured discriminator for category variants (e.g. SOCIAL_INVITE
   // needs to distinguish 'initial' DM creation from 'add_member').
   kind?: string;
+  // Optional channel pointer — when present, a tap on the narrator line
+  // routes to the referenced channel (e.g. CONFESSION-d2 for phase opens).
+  channelId?: string;
 }
 
 // --- Game Phase (server-projected, consumed by all shells) ---

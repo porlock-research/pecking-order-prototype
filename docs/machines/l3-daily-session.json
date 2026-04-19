@@ -3,11 +3,12 @@
   "group": "Orchestration",
   "filePath": "src/machines/l3-session.ts",
   "stats": {
-    "stateCount": 16,
-    "transitionCount": 48,
+    "stateCount": 19,
+    "transitionCount": 51,
     "eventTypes": [
       "*",
       "CARTRIDGE.PLAYER_GAME_RESULT",
+      "CONFESSION.POST",
       "FACT.RECORD",
       "GAME.CHANNEL.CREATE",
       "GAME.CHANNEL.DESTROY",
@@ -15,6 +16,7 @@
       "INTERNAL.CLOSE_GROUP_CHAT",
       "INTERNAL.CLOSE_VOTING",
       "INTERNAL.END_ACTIVITY",
+      "INTERNAL.END_CONFESSION_CHAT",
       "INTERNAL.END_DAY",
       "INTERNAL.END_DILEMMA",
       "INTERNAL.END_GAME",
@@ -24,6 +26,7 @@
       "INTERNAL.OPEN_VOTING",
       "INTERNAL.START_ACTIVITY",
       "INTERNAL.START_CARTRIDGE",
+      "INTERNAL.START_CONFESSION_CHAT",
       "INTERNAL.START_DILEMMA",
       "INTERNAL.START_GAME",
       "SOCIAL.ACCEPT_DM",
@@ -163,6 +166,32 @@
       "events": [
         "INTERNAL.END_ACTIVITY",
         "xstate.done.actor.activePromptCartridge"
+      ]
+    },
+    {
+      "name": "confessionLayer",
+      "path": "running.confessionLayer",
+      "type": "compound",
+      "parent": "running",
+      "events": []
+    },
+    {
+      "name": "idle",
+      "path": "running.confessionLayer.idle",
+      "type": "atomic",
+      "parent": "running.confessionLayer",
+      "events": [
+        "INTERNAL.START_CONFESSION_CHAT"
+      ]
+    },
+    {
+      "name": "posting",
+      "path": "running.confessionLayer.posting",
+      "type": "atomic",
+      "parent": "running.confessionLayer",
+      "events": [
+        "INTERNAL.END_CONFESSION_CHAT",
+        "CONFESSION.POST"
       ]
     },
     {
@@ -420,6 +449,21 @@
       "source": "running.activityLayer.completed",
       "target": "running.activityLayer.idle",
       "event": "xstate.done.actor.activePromptCartridge"
+    },
+    {
+      "source": "running.confessionLayer.idle",
+      "target": "running.confessionLayer.posting",
+      "event": "INTERNAL.START_CONFESSION_CHAT"
+    },
+    {
+      "source": "running.confessionLayer.posting",
+      "target": "running.confessionLayer.idle",
+      "event": "INTERNAL.END_CONFESSION_CHAT"
+    },
+    {
+      "source": "running.confessionLayer.posting",
+      "target": "running.confessionLayer.posting",
+      "event": "CONFESSION.POST"
     },
     {
       "source": "running.dilemmaLayer.idle",
