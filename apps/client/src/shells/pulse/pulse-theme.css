@@ -286,6 +286,18 @@
     animation-duration: 580ms;
     animation-timing-function: cubic-bezier(0.22, 1.2, 0.36, 1);
   }
+
+  /* Reduced-motion fallback: `runViewTransition` already skips the VT
+     path when prefers-reduced-motion is set, but zeroing the default
+     cross-fade here is a belt-and-suspenders guarantee for any future
+     call site that forgets the JS gate. */
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+      animation: none !important;
+    }
+  }
 }
 
 /* ---- Confession Booth: open-moment bloom + rim-flash ----

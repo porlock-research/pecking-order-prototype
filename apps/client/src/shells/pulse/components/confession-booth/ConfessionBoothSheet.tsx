@@ -5,6 +5,7 @@ import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import { PULSE_SPRING } from '../../springs';
+import { runViewTransition, supportsViewTransitions, prefersReducedMotion } from '../../viewTransitions';
 import { BoothNameplate } from './BoothNameplate';
 import { Cassette } from './Cassette';
 import { ClosedPlate } from './ClosedPlate';
@@ -25,16 +26,6 @@ interface PendingConfession {
 
 /** Optimistic pending cassette lives this long before auto-rollback on no SYNC match. */
 const PENDING_CONFESSION_TTL_MS = 10_000;
-
-/**
- * `document.startViewTransition` is Chromium-only as of early 2026. Feature-detect
- * so Safari / Firefox fall through to the plain optimistic insert (still correct,
- * just without the morph animation).
- */
-function supportsViewTransitions(): boolean {
-  return typeof document !== 'undefined'
-    && typeof (document as any).startViewTransition === 'function';
-}
 
 interface Props {
   /** Channel id of the CONFESSION channel, e.g. "CONFESSION-d2". */
@@ -215,23 +206,17 @@ export function ConfessionBoothSheet({ channelId, onClose }: Props) {
       setMorphingTempId(tempId);
     };
 
-    if (!supportsViewTransitions()) {
-      commitOptimistic();
-      engine.sendConfession(channelId, text);
-      // Non-VT browsers: no morph lifecycle — just clear the morphing id
-      // immediately so the cassette doesn't carry a stale VT name.
-      setMorphingTempId(null);
-      return;
-    }
+    // Only tag the composer source when the morph will actually run —
+    // reduced-motion users skip the VT path and should keep a clean
+    // textarea (no lingering view-transition-name on a DOM node that
+    // never morphs).
+    const willMorph = supportsViewTransitions() && !prefersReducedMotion();
+    if (willMorph) composerRef.current?.tagSourceForMorph();
 
-    composerRef.current?.tagSourceForMorph();
-    const transition = (document as any).startViewTransition(() => {
+    runViewTransition(() => {
       flushSync(commitOptimistic);
-    });
+    }).finally(() => setMorphingTempId(null));
     engine.sendConfession(channelId, text);
-    transition.finished
-      .catch(() => { /* transition may be skipped on slow devices — DOM update already applied */ })
-      .finally(() => setMorphingTempId(null));
   }, [channelId, engine, myHandle]);
 
   return (

@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectStandings } from '../../../../store/useGameStore';
 import { PULSE_SPRING } from '../../springs';
 import { PULSE_Z, backdropFor } from '../../zIndex';
+import { supportsViewTransitions, prefersReducedMotion } from '../../viewTransitions';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import { DmHero } from './DmHero';
 import { DmGroupHero } from './DmGroupHero';
@@ -60,11 +61,19 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
         .filter((m): m is { id: string; player: typeof roster[string]; colorIdx: number } => !!m.player)
     : [];
 
+  // When VTAPI drives the chip → hero morph, framer's slide-from-right
+  // would race with the browser-owned geometry animation. Gate the sheet
+  // animation off in that path. Groups don't morph (no single face) so
+  // they keep the slide regardless.
+  const vtActive = supportsViewTransitions() && !prefersReducedMotion() && !isGroup;
+
   return (
     <>
       <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        transition={PULSE_SPRING.exit}
+        initial={vtActive ? false : { opacity: 0 }}
+        animate={vtActive ? undefined : { opacity: 1 }}
+        exit={vtActive ? { opacity: 1, transition: { duration: 0 } } : { opacity: 0 }}
+        transition={vtActive ? undefined : PULSE_SPRING.exit}
         onClick={onClose}
         aria-hidden="true"
         style={{
@@ -76,8 +85,10 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label="Direct message"
-        initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-        transition={PULSE_SPRING.page}
+        initial={vtActive ? false : { x: '100%' }}
+        animate={vtActive ? undefined : { x: 0 }}
+        exit={vtActive ? { x: 0, transition: { duration: 0 } } : { x: '100%' }}
+        transition={vtActive ? undefined : PULSE_SPRING.page}
         style={{
           position: 'fixed', top: 40, left: 0, right: 0, bottom: 0,
           background: 'var(--pulse-bg)',

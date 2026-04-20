@@ -1,8 +1,10 @@
 import { useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useGameStore, selectCartridgeUnread } from '../../../store/useGameStore';
 import { usePillStates, type PillState } from '../hooks/usePillStates';
 import { useHasOverflow } from '../hooks/useHasOverflow';
 import { PULSE_Z } from '../zIndex';
+import { runViewTransition, supportsViewTransitions, prefersReducedMotion } from '../viewTransitions';
 import { usePillOrigin } from './cartridge-overlay/usePillOrigin';
 import { Pill } from './Pill';
 
@@ -10,6 +12,15 @@ import { Pill } from './Pill';
  * PulseBar shows cartridge pills in chronological order.
  * When no cartridges are active, the bar renders nothing —
  * CastStrip owns presence now (Phase 1.5).
+ *
+ * View Transitions: each pill carries `data-pill-cartridge-id` and the
+ * open/close tap path drives an `active-pill` morph into CartridgeOverlay.
+ * Passive reorders (e.g., a pill flipping to `completed` lifecycle when
+ * SYNC lands) don't morph — that would require wrapping the Zustand
+ * commit site in `runViewTransition` and giving each pill a stable
+ * `view-transition-name: pill-${cartridgeId}` during reorder only.
+ * Deferred: no single commit site to wrap, and per-pill stable names
+ * collide with the transient `active-pill` tag used for tap-to-open.
  */
 export function PulseBar() {
   const pills = usePillStates();
@@ -31,10 +42,24 @@ export function PulseBar() {
 
   const handleTap = (pill: PillState) => {
     const el = pillRefs.current[pill.id];
-    if (el) setPillOrigin(el.getBoundingClientRect());
     const cartridgeId = pillToCartridgeId(pill, dayIndex);
+    const vtActive = supportsViewTransitions() && !prefersReducedMotion();
+
+    if (el) {
+      // Keep the origin-rect fallback for non-VT browsers so the overlay
+      // still scales from the tapped pill's position there.
+      if (!vtActive) setPillOrigin(el.getBoundingClientRect());
+      // Tag source for the VT morph — cleared inside the callback so the
+      // "new" snapshot has the name only on the overlay panel (duplicate
+      // names abort the transition).
+      if (vtActive) el.style.viewTransitionName = 'active-pill';
+    }
     markCartridgeSeen(cartridgeId);
-    focusCartridge(cartridgeId, pill.kind, 'manual');
+
+    runViewTransition(() => {
+      if (el) el.style.viewTransitionName = '';
+      flushSync(() => focusCartridge(cartridgeId, pill.kind, 'manual'));
+    });
   };
 
   // Wrap the scroller in a relative positioned container so edge fades can
