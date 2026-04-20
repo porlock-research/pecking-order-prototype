@@ -39,7 +39,7 @@ function makeInviteCode(): string {
  * Uses MAJORITY voting (simplest path) and NONE for games.
  * Timeline events are empty — we advance via admin API.
  */
-function buildManifest(gameId: string, dayCount: number) {
+function buildManifest(gameId: string, dayCount: number, ruleset?: any) {
   const days = [];
   for (let i = 0; i < dayCount; i++) {
     const isLast = i === dayCount - 1;
@@ -57,6 +57,7 @@ function buildManifest(gameId: string, dayCount: number) {
     gameMode: 'CONFIGURABLE_CYCLE' as const, // legacy compat
     scheduling: 'ADMIN' as const, // admin-driven, no timeline events
     days,
+    ...(ruleset ? { ruleset } : {}),
   };
 }
 
@@ -89,11 +90,15 @@ function buildRoster(playerCount: number) {
  * Create a test game by POSTing directly to the game server.
  * Returns game info + signed JWT tokens for each player.
  */
-export async function createTestGame(playerCount = 3, dayCount = 2): Promise<TestGame> {
+export async function createTestGame(
+  playerCount = 3,
+  dayCount = 2,
+  opts?: { ruleset?: any },
+): Promise<TestGame> {
   const gameId = makeGameId();
   const inviteCode = makeInviteCode();
   const roster = buildRoster(playerCount);
-  const manifest = buildManifest(gameId, dayCount);
+  const manifest = buildManifest(gameId, dayCount, opts?.ruleset);
 
   // POST /init to create the game
   const res = await fetch(`${GAME_SERVER}/parties/game-server/${gameId}/init`, {

@@ -6,6 +6,16 @@ import { PULSE_Z } from '../../zIndex';
 import { CastChip } from './CastChip';
 import { GroupChip } from './GroupChip';
 
+/**
+ * View Transitions: each CastChip carries `data-chip-player-id`, and the
+ * chip → DmHero face morph (driven from PulseShell.openDM) queries that
+ * attribute to tag the source. Passive chip reorders (eliminations,
+ * rank changes) don't morph — that would require wrapping the store
+ * commit in `runViewTransition` and giving each chip a stable
+ * `view-transition-name: chip-${playerId}` during reorder only.
+ * Deferred: the same `chip-${playerId}` name is claimed transiently by
+ * the DM-open morph, so a persistent stable tag would collide.
+ */
 export function CastStrip() {
   const entries = useGameStore(selectCastStripEntries);
   const pickingMode = useGameStore(s => s.pickingMode);

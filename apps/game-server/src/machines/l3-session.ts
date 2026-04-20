@@ -10,6 +10,7 @@ import { l3GameActions } from './actions/l3-games';
 import { l3ActivityActions } from './actions/l3-activity';
 import { l3DilemmaActions } from './actions/l3-dilemma';
 import { l3PerkActions, l3PerkGuards } from './actions/l3-perks';
+import { l3ConfessionActions, l3ConfessionGuards } from './actions/l3-confession';
 import { buildChatMessage, appendToChatLog, resolveExistingChannel } from './actions/social-helpers';
 
 // 1. Define strict types
@@ -41,6 +42,20 @@ export interface DailyContext {
    *  Keys match the XState child id strings: 'activeVotingCartridge' | 'activeGameCartridge'
    *  | 'activePromptCartridge' | 'activeDilemmaCartridge'. */
   cartridgeUpdatedAt: Record<string, number>;
+  /** Confession phase state. Inactive default; populated on entry to
+   *  confessionLayer.posting (Plan 1, T8/T9). handlesByPlayer is SERVER-ONLY —
+   *  buildSyncPayload (Plan 1, T12) reduces to { myHandle, handleCount } per
+   *  recipient. posts is already anonymized at record time (no authorId).
+   *  closesAt is the absolute epoch-ms timestamp of the scheduled
+   *  END_CONFESSION_CHAT, resolved from the current day's timeline at open.
+   *  Null when inactive or when the timeline doesn't schedule an end (ADMIN
+   *  games). Clients use it to render the closing-soon warning chrome. */
+  confessionPhase: {
+    active: boolean;
+    handlesByPlayer: Record<string, string>;
+    posts: Array<{ handle: string; text: string; ts: number }>;
+    closesAt: number | null;
+  };
 }
 
 export type DailyEvent =
@@ -64,6 +79,9 @@ export type DailyEvent =
   | { type: 'INTERNAL.END_ACTIVITY' }
   | { type: 'INTERNAL.START_DILEMMA' }
   | { type: 'INTERNAL.END_DILEMMA' }
+  | { type: 'INTERNAL.START_CONFESSION_CHAT' }
+  | { type: 'INTERNAL.END_CONFESSION_CHAT' }
+  | { type: 'CONFESSION.POST'; senderId: string; channelId: string; text: string }
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
   | { type: `GAME.${string}`; senderId: string; [key: string]: any }
   | { type: `ACTIVITY.${string}`; senderId: string; [key: string]: any }
@@ -126,6 +144,7 @@ export function buildL3Context(input: { dayIndex: number; roster: Record<string,
     requireDmInvite: input.manifest?.requireDmInvite ?? false,
     dmSlotsPerPlayer: input.manifest?.dmSlotsPerPlayer ?? 5,
     cartridgeUpdatedAt: {},
+    confessionPhase: { active: false, handlesByPlayer: {}, posts: [], closesAt: null },
   };
 }
 
@@ -143,10 +162,12 @@ export const dailySessionMachine = setup({
     ...l3ActivityActions,
     ...l3DilemmaActions,
     ...l3PerkActions,
+    ...l3ConfessionActions,
   } as any,
   guards: {
     ...l3SocialGuards,
     ...l3PerkGuards,
+    ...l3ConfessionGuards,
   } as any,
   actors: {
     ...VOTE_REGISTRY,
@@ -321,6 +342,34 @@ export const dailySessionMachine = setup({
               }
             }
           }
+        },
+        // REGION E: CONFESSION LAYER
+        confessionLayer: {
+          initial: 'idle',
+          states: {
+            idle: {
+              on: {
+                'INTERNAL.START_CONFESSION_CHAT': { target: 'posting' },
+              },
+            },
+            posting: {
+              entry: [
+                'openConfessionChannel',
+                'emitConfessionPhaseStartedFact',
+                sendParent({ type: 'PUSH.PHASE', trigger: 'CONFESSION_OPEN' } as any),
+              ],
+              on: {
+                'INTERNAL.END_CONFESSION_CHAT': {
+                  target: 'idle',
+                  actions: ['emitConfessionPhaseEndedFact', 'closeConfessionChannel'],
+                },
+                'CONFESSION.POST': {
+                  guard: 'isConfessionPostAllowed',
+                  actions: 'recordConfession',
+                },
+              },
+            },
+          },
         },
         // REGION D: DILEMMA LAYER
         dilemmaLayer: {

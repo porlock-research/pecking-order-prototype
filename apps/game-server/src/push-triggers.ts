@@ -159,6 +159,10 @@ export function phasePushPayload(
     case 'END_ACTIVITY':
       return { payload: { title: "Activity Complete", body: "Results are in — see who earned silver" }, ttl: EVENT_TTL,
                intent: { kind: 'cartridge_result', cartridgeId: `prompt-${dayIndex}-${promptType}` } };
+    case 'CONFESSION_OPEN':
+      // Plan 1 routes to chat-root (no deep-link intent into a cartridge yet — Plan 2's match
+      // cartridge gets its own START_ACTIVITY push when it spawns later).
+      return { payload: { title: 'Confession', body: 'A confession phase has opened.' }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     default:
       return null;
   }

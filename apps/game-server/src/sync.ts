@@ -221,6 +221,22 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
     };
   }
 
+  // Per-recipient confessionPhase projection. Server-side `handlesByPlayer` maps
+  // every player to their anonymous handle and MUST NEVER ship to a client —
+  // collapse to `myHandle` (this player's own handle or null) and `handleCount`.
+  // `closesAt` (absolute epoch-ms of the scheduled END_CONFESSION_CHAT) is
+  // non-sensitive — it flows through so clients can render the closing-soon
+  // warning and a countdown without a new fact/alarm.
+  const rawConfession = l3Context.confessionPhase || { active: false, handlesByPlayer: {}, posts: [], closesAt: null };
+  const rawHandles = rawConfession.handlesByPlayer || {};
+  const confessionPhase = {
+    active: rawConfession.active ?? false,
+    myHandle: rawHandles[playerId] ?? null,
+    handleCount: Object.keys(rawHandles).length,
+    posts: rawConfession.posts ?? [],
+    closesAt: rawConfession.closesAt ?? null,
+  };
+
   return {
     type: Events.System.SYNC,
     state: snapshot.value,
@@ -245,6 +261,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       completedPhases: snapshot.context.completedPhases ?? [],
       dmStats,
       playerActivity,
+      confessionPhase,
       ...(onlinePlayers ? { onlinePlayers } : {}),
     },
   };
