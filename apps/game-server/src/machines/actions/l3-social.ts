@@ -49,7 +49,7 @@ export const l3SocialActions = {
             createdAt: Date.now(),
             capabilities: channelType === 'DM'
               ? ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE']
-              : ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
+              : ['CHAT', 'INVITE_MEMBER'],
           };
         } else {
           channels[channelId] = {
@@ -60,7 +60,7 @@ export const l3SocialActions = {
             createdAt: Date.now(),
             capabilities: channelType === 'DM'
               ? ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE']
-              : ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
+              : ['CHAT', 'INVITE_MEMBER'],
           };
         }
         // Sender consumes a slot for new conversation
@@ -386,7 +386,7 @@ export const l3SocialActions = {
         : { memberIds: allMembers }),
       createdBy: senderId,
       createdAt: Date.now(),
-      capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
+      capabilities: ['CHAT', 'INVITE_MEMBER'],
     };
 
     const dmGroupsByPlayer = { ...context.dmGroupsByPlayer };
@@ -457,8 +457,12 @@ export const l3SocialActions = {
     const totalMembers = updatedMemberIds.length + (updatedPendingIds?.length ?? 0);
     const shouldPromote = channel.type === 'DM' && totalMembers > 2;
 
+    // On promotion to GROUP_DM, strip caps that only make sense 1:1:
+    // NUDGE (spammy in groups) and SILVER_TRANSFER (silver is a 1:1 social proof).
     const promotedCaps = shouldPromote
-      ? (channel.capabilities ?? []).filter((c: ChannelCapability) => c !== 'NUDGE')
+      ? (channel.capabilities ?? []).filter(
+          (c: ChannelCapability) => c !== 'NUDGE' && c !== 'SILVER_TRANSFER',
+        )
       : channel.capabilities;
 
     channels[channelId] = {

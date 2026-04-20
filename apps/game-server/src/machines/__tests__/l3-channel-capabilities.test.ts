@@ -97,7 +97,7 @@ describe('Channel capabilities', () => {
     expect(dm.capabilities).toContain('SILVER_TRANSFER');
   });
 
-  it('GROUP_DM is created WITHOUT NUDGE capability', () => {
+  it('GROUP_DM is created WITHOUT NUDGE or SILVER_TRANSFER capabilities', () => {
     const actor = createL3Actor();
     actor.send({ type: Events.Internal.OPEN_DMS });
     actor.send({
@@ -110,6 +110,9 @@ describe('Channel capabilities', () => {
     const gdm = Object.values(ctx.channels).find((c: any) => c.type === 'GROUP_DM') as any;
     expect(gdm).toBeDefined();
     expect(gdm.capabilities).not.toContain('NUDGE');
+    expect(gdm.capabilities).not.toContain('SILVER_TRANSFER');
+    expect(gdm.capabilities).toContain('CHAT');
+    expect(gdm.capabilities).toContain('INVITE_MEMBER');
   });
 
   it('WHISPER is rejected when MAIN loses WHISPER capability', () => {
