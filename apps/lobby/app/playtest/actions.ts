@@ -2,7 +2,7 @@
 
 import { getDB, getEnv } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
-import { buildPlaytestConfirmationHtml } from '@/lib/email-templates';
+import { buildPlaytestConfirmationEmail } from '@/lib/email-templates';
 import { deriveKeys, encrypt, hmac } from '@/lib/crypto';
 import { signupSchema } from './constants';
 import { Resend } from 'resend';
@@ -133,8 +133,8 @@ async function submitPlaytestSignup(
       const lobbyUrl = (env.LOBBY_HOST as string) || '';
       const playtestUrl = (env.PLAYTEST_URL as string) || 'https://playtest.peckingorder.ca';
 
-      const html = buildPlaytestConfirmationHtml({ assetsUrl, lobbyUrl, playtestUrl, referralCode });
-      await sendEmail(email, "You're on the list!", html, resendApiKey);
+      const { subject, html } = buildPlaytestConfirmationEmail({ assetsUrl, lobbyUrl, playtestUrl, referralCode });
+      await sendEmail(email, subject, html, resendApiKey);
 
       // 6. Upsert to Resend Contacts (with segment for segmentation)
       const segmentId = env.RESEND_PLAYTEST_SEGMENT_ID as string | undefined;
