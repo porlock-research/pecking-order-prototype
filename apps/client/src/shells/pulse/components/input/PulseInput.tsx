@@ -144,13 +144,6 @@ export function PulseInput() {
     cancel();
   }, [commandMode, engine, cancel]);
 
-  // Breadcrumb for player picker
-  const getBreadcrumb = () => {
-    if (commandMode.mode !== 'player-picker') return '';
-    const labels: Record<string, string> = { silver: 'Send Silver', dm: 'Direct Message', nudge: 'Nudge', whisper: 'Whisper', mention: 'Mention' };
-    return `${labels[commandMode.command] || ''} — pick a player`;
-  };
-
   // When chat is closed the ChatView renders its own "Chat opens at dawn"
   // notice in the empty chat area. Hiding the input bar here avoids a
   // duplicate copy of the same message stacked at the bottom of the viewport.
@@ -165,7 +158,6 @@ export function PulseInput() {
 
       {commandMode.mode === 'player-picker' && (
         <PlayerPicker
-          breadcrumb={getBreadcrumb()}
           command={commandMode.command}
           onSelect={handlePlayerSelect}
           onBack={back}
