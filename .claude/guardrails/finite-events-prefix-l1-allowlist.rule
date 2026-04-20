@@ -1,0 +1,27 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: packages/shared-types/src/events\.ts
+MATCH_CONTENT: PREFIX:\s*['"][A-Z_.]*\.['"]
+ADVISORY: |
+  Adding a new `Events.X.PREFIX` constant? L1 has a prefix allowlist gate
+  for client-originated events at `apps/game-server/src/ws-handlers.ts`
+  (search for `isAllowed`). If your new prefix carries client → server
+  events (anything the client `engine.send`s), the gate WILL drop them
+  silently — every event matching the new prefix gets logged as
+  "Rejected event type from client" and never reaches L2 / L3.
+
+  Currently allowed by prefix: VOTE., GAME., ACTIVITY., DILEMMA., CONFESSION.
+  Server-only prefixes (ECONOMY., GAME_MASTER., SOCIAL., CHANNEL., FACT.,
+  TICKER., INTERNAL.) are NOT allowlisted — by design, no client should
+  emit them.
+
+  Decision tree:
+    - Is this prefix for client-originated events? → also extend the L1
+      allowlist with `event.type.startsWith(Events.X.PREFIX)`.
+    - Server-only? → don't add to the allowlist; document the constraint
+      in the prefix's comment block in events.ts.
+
+  Real cost: spec C confessions had CONFESSION.POST handlers in L3 +
+  guards + tests + an e2e spec — all green — but live playtest revealed
+  every post was being dropped at L1. ~30 min of debugging the optimistic
+  client UI before tracing back to the missing allowlist line.
+  See `apps/game-server/src/ws-handlers.ts:255` for the gate.

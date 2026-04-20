@@ -2569,3 +2569,52 @@ Branches from post-merge `main`. New plan file at `docs/superpowers/plans/2026-0
 - `apps/client/src/shells/pulse/components/confession-booth/ConfessionBoothSheet.tsx` — where A/C/D polish lands
 - `apps/client/src/shells/pulse/components/input/ConfessionInput.tsx` — where the nameplate moment hooks in
 - `memory/project_confessions.md` — update after merge
+
+## Handoff — 2026-04-19 07:30 (Plan 1 SHIPPED — closed)
+
+All five deferred polish items D / C / A / B / E landed, plus an animate +
+bolder + polish pass on the booth-open moment, plus one critical post-
+playtest fix.
+
+Final commit chain on `feature/spec-c-confessions` (now deleted, all merged):
+
+| Commit  | What                                                                     |
+|---------|--------------------------------------------------------------------------|
+| `fd0eec5` | D — auto-open booth on phase start (race-safe ref)                     |
+| `e17546a` | C — archived BOOTH CLOSED state (rubber-stamp + desaturated reel)      |
+| `a985207` | A — entry nameplate reveal (per-phase localStorage gate)                |
+| `ad8201d` | B — closing-soon amber state (server `closesAt` projection + countdown) |
+| `0922d2a` | E — text-to-cassette VT morph + optimistic insert + reconciliation     |
+| `7a71069` | **fix:** L1 `CONFESSION.*` allowlist — playtest-caught silent drop     |
+| `8f49b3e` | animate/bolder/polish — booth-open bloom + rim-flash + staggered chrome |
+| `5e37853` | merge main → branch (resolved 4 conflicts; ADR renumbered 139 → 140)   |
+
+Merged to main as `f8dcd50`. **Not pushed** — local only at session close.
+
+**Verification at merge:** game-server 384/384, cartridges 90/90, client 143/143.
+Pre-existing HintChips flake is gone (main fixed it). Shared-types has one
+unrelated gm-briefings failure pre-existing on main.
+
+**Live playtest done.** L1 allowlist fix was the single critical bug — every
+CONFESSION.POST was being silently dropped before the fix. New guardrail
+`finite-events-prefix-l1-allowlist.rule` warns future agents adding new
+event prefixes.
+
+**Worktree cleanup:** `.worktrees/confessions` removed, branch deleted,
+dev servers stopped.
+
+### What's next (separate session)
+
+1. **Push `main` to origin** — local has 27 commits ahead of origin (Plan 1 +
+   polish + merge). `git push origin main` when ready.
+2. **Plan 2 — match cartridge** — confession-match cartridge for guessing
+   confessor identities. New plan file: `docs/superpowers/plans/2026-04-17-confessions-match.md`.
+   Branches from post-merge main. Per Plan 1 self-review (Phase 5):
+   - Handle-assignment-for-matchers · guess recording · reveal scoring
+   - `activityLayer.loading` sub-state
+   - `d1-confession-queries` / `loadConfessionArchive`
+   - Rewrite `confession-machine.ts` → `confession-match-machine.ts`
+   - `ConfessionMatch.tsx` UI
+   - `LOAD_ERROR` surfacing on `results.status`
+
+This plan file (Plan 1) is now closed. Future work goes in the Plan 2 file.
