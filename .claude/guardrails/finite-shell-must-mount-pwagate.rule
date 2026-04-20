@@ -1,0 +1,16 @@
+MATCH_TOOL: Write
+MATCH_PATTERN: apps/client/src/shells/[^/]+/[A-Z][a-zA-Z]+Shell\.tsx$
+ADVISORY: |
+  New shell file — verify it mounts <PwaGate token={token} /> in its
+  render tree (see ClassicShell:230, ImmersiveShell:145, VividShell:343,
+  PulseShell).
+
+  Without PwaGate, usePushNotifications never runs while the player is
+  on /game/<code>. Subscriptions survive only as long as the launcher
+  PushPrompt (App.tsx:669) last ran — so the bug is invisible until a
+  user's sub dies (browser data cleared, VAPID rotated, 410 from the
+  push service) and there's no in-shell path to re-subscribe.
+
+  Discovered 2026-04-20: PulseShell had been shipping without PwaGate
+  for the entire Phase 4 window; masked because launcher visits kept
+  subs alive.
