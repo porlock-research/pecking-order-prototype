@@ -6,7 +6,7 @@ import { getDB, getEnv } from '@/lib/db';
 import { requireAuth, getSession, generateId, generateInviteCode, generateToken } from '@/lib/auth';
 import { requireSuperAdmin } from '@/lib/super-admin';
 import { sendEmail } from '@/lib/email';
-import { buildInviteEmailHtml } from '@/lib/email-templates';
+import { buildInviteEmail } from '@/lib/email-templates';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -1578,12 +1578,14 @@ export async function sendEmailInvite(
     const inviteLink = `${LOBBY_HOST}/invite/${token}`;
     const senderName = session.displayName || session.email.split('@')[0];
 
-    const result = await sendEmail(
-      normalizedEmail,
-      "You've been invited to Pecking Order!",
-      buildInviteEmailHtml({ senderName, inviteLink, inviteCode: game.invite_code, assetsUrl: PERSONA_ASSETS_URL, lobbyUrl: LOBBY_HOST }),
-      RESEND_API_KEY,
-    );
+    const { subject, html } = buildInviteEmail({
+      senderName,
+      inviteLink,
+      inviteCode: game.invite_code,
+      assetsUrl: PERSONA_ASSETS_URL,
+      lobbyUrl: LOBBY_HOST,
+    });
+    const result = await sendEmail(normalizedEmail, subject, html, RESEND_API_KEY);
 
     if (result.success) return { success: true, sent: true };
     console.error('[Invite] Email send failed:', result.error);

@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getDB, getEnv } from './db';
 import { sendEmail } from './email';
-import { buildLoginEmailHtml } from './email-templates';
+import { buildLoginEmail } from './email-templates';
 
 const DEFAULT_SESSION_COOKIE = 'po_session';
 
@@ -126,12 +126,12 @@ export async function sendMagicLink(
   // Send email when Resend API key is available
   if (options?.resendApiKey && options?.lobbyHost) {
     const fullLink = `${options.lobbyHost}${verifyPath}`;
-    const result = await sendEmail(
-      normalizedEmail,
-      'Your Pecking Order Login Link',
-      buildLoginEmailHtml({ loginLink: fullLink, assetsUrl: options.assetsUrl || '', lobbyUrl: options.lobbyHost }),
-      options.resendApiKey,
-    );
+    const { subject, html } = buildLoginEmail({
+      loginLink: fullLink,
+      assetsUrl: options.assetsUrl || '',
+      lobbyUrl: options.lobbyHost,
+    });
+    const result = await sendEmail(normalizedEmail, subject, html, options.resendApiKey);
     if (result.success) return { sent: true };
     // Fall through to inline display if email fails
     console.error('[Auth] Email send failed, falling back to inline link:', result.error);
