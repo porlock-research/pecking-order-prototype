@@ -148,29 +148,35 @@ export type DailyManifest = z.infer<typeof DailyManifestSchema>;
 // --- Push Notification Config ---
 
 export const PushTriggerSchema = z.enum([
-  // Fact-driven
-  'DM_SENT',           // targeted -> DM recipient
-  'ELIMINATION',       // broadcast
-  'WINNER_DECLARED',   // broadcast
-  'GROUP_CHAT_MSG',    // broadcast (main channel messages)
+  // Fact-driven — targeted
+  'DM_SENT',           // DM recipient
+  'MENTION',           // @mention in main chat (targeted to mentioned player)
+  'REPLY',             // reply to your main-chat message (targeted to original author)
+  'WHISPER',           // whisper recipient
+  'NUDGE',             // nudge recipient
+  'SILVER_RECEIVED',   // silver recipient
+  // Fact-driven — broadcast
+  'ELIMINATION',
+  'WINNER_DECLARED',
+  'GROUP_CHAT_MSG',    // main-channel message (suppressed for mentioned / reply-to author)
   // Phase-transition
-  'DAY_START',         // broadcast (morningBriefing/groupChat)
-  'ACTIVITY',          // broadcast
-  'VOTING',            // broadcast
-  'NIGHT_SUMMARY',     // broadcast
-  'DAILY_GAME',        // broadcast
+  'DAY_START',
+  'ACTIVITY',
+  'VOTING',
+  'NIGHT_SUMMARY',
+  'DAILY_GAME',
   // Gate events
-  'OPEN_DMS',          // broadcast
-  'CLOSE_DMS',         // broadcast
-  'OPEN_GROUP_CHAT',   // broadcast
-  'CLOSE_GROUP_CHAT',  // broadcast
+  'OPEN_DMS',
+  'CLOSE_DMS',
+  'OPEN_GROUP_CHAT',
+  'CLOSE_GROUP_CHAT',
   // Cartridge lifecycle
-  'START_GAME',        // broadcast
-  'END_GAME',          // broadcast
-  'START_ACTIVITY',    // broadcast
-  'END_ACTIVITY',      // broadcast
+  'START_GAME',
+  'END_GAME',
+  'START_ACTIVITY',
+  'END_ACTIVITY',
   // Confession phase
-  'CONFESSION_OPEN',   // broadcast — phase-open notification ("A confession phase has opened.")
+  'CONFESSION_OPEN',
 ]);
 export type PushTrigger = z.infer<typeof PushTriggerSchema>;
 
@@ -178,7 +184,8 @@ export const PushConfigSchema = z.record(PushTriggerSchema, z.boolean()).default
 export type PushConfig = z.infer<typeof PushConfigSchema>;
 
 export const DEFAULT_PUSH_CONFIG: Record<PushTrigger, boolean> = {
-  DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true, GROUP_CHAT_MSG: true,
+  DM_SENT: true, MENTION: true, REPLY: true, WHISPER: true, NUDGE: true, SILVER_RECEIVED: true,
+  ELIMINATION: true, WINNER_DECLARED: true, GROUP_CHAT_MSG: true,
   DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
   OPEN_DMS: true, CLOSE_DMS: true, OPEN_GROUP_CHAT: true, CLOSE_GROUP_CHAT: true,
   START_GAME: true, END_GAME: true, START_ACTIVITY: true, END_ACTIVITY: true,

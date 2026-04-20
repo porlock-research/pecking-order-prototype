@@ -158,13 +158,39 @@ export const l3SocialActions = {
       }
     }
 
+    // Enrich MAIN messages with reply-to author and @mention target ids so
+    // handleFactPush can route MENTION/REPLY pushes without needing chatLog
+    // access. Scoped to MAIN — DMs already get DM_SENT pushes per-recipient.
+    let replyToAuthorId: string | undefined;
+    let mentionedIds: string[] | undefined;
+    if (!isDM) {
+      if (event.replyTo) {
+        const orig = context.chatLog.find((m: any) => m.id === event.replyTo);
+        if (orig && orig.senderId !== event.senderId) replyToAuthorId = orig.senderId;
+      }
+      const content: string = event.content || '';
+      const ids: string[] = [];
+      for (const [pid, p] of Object.entries(context.roster)) {
+        if (pid === event.senderId) continue;
+        const personaName = (p as any)?.personaName;
+        if (personaName && content.includes(`@${personaName}`)) ids.push(pid);
+      }
+      if (ids.length > 0) mentionedIds = ids;
+    }
+
     return {
       type: Events.Fact.RECORD,
       fact: {
         type: isDM ? FactTypes.DM_SENT : FactTypes.CHAT_MSG,
         actorId: event.senderId,
         targetId,
-        payload: { content: event.content, channelId, targetIds },
+        payload: {
+          content: event.content,
+          channelId,
+          targetIds,
+          ...(replyToAuthorId ? { replyToAuthorId } : {}),
+          ...(mentionedIds ? { mentionedIds } : {}),
+        },
         timestamp: Date.now(),
       },
     };

@@ -38,6 +38,7 @@ import { PhaseTransition } from './components/reveals/PhaseTransition';
 import { CartridgeOverlay } from './components/cartridge-overlay/CartridgeOverlay';
 import { SilverBurst } from './components/overdrive/SilverBurst';
 import { NudgeBurst } from './components/overdrive/NudgeBurst';
+import { PwaGate } from '../../components/PwaGate';
 import { AnimatePresence } from 'framer-motion';
 
 // Context to provide engine + playerId + overlay actions to all Pulse children.
@@ -57,7 +58,7 @@ export function usePulse() {
   return useContext(PulseContext);
 }
 
-export default function PulseShell({ playerId, engine, token: _token }: ShellProps) {
+export default function PulseShell({ playerId, engine, token }: ShellProps) {
   const gameId = useGameStore(s => s.gameId);
   const hydrateLastRead = useGameStore(s => s.hydrateLastRead);
   const startPicking = useGameStore(s => s.startPicking);
@@ -122,11 +123,19 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
         return true;
       }
       case 'cartridge_active': {
+        // Don't commit until SYNC has hydrated the manifest; otherwise the
+        // overlay's pill-match lookup (usePillStates → active slots +
+        // completedCartridges) has nothing to resolve against and
+        // CartridgeOverlay unfocuses with "Activity unavailable" before the
+        // pill arrives. Returning false leaves the intent pending so the
+        // retry loop picks it up once the store is populated.
+        if (!state.manifest) return false;
         markCartridgeSeen(intent.cartridgeId);
         focusCartridge(intent.cartridgeId, intent.cartridgeKind, 'push');
         return true;
       }
       case 'cartridge_result': {
+        if (!state.manifest) return false;
         markCartridgeSeen(intent.cartridgeId);
         const kind = (intent.cartridgeId.split('-')[0] ?? 'voting') as CartridgeKind;
         focusCartridge(intent.cartridgeId, kind, 'push');
@@ -320,6 +329,7 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
         <SilverBurst />
         <NudgeBurst />
         <Toaster position="top-center" theme="dark" richColors closeButton={false} />
+        <PwaGate token={token} />
       </div>
     </PulseContext.Provider>
   );

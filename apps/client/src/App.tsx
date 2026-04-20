@@ -373,21 +373,25 @@ export default function App() {
         setActiveShellId(shellParam);
       }
 
-      // ── Fast path: transient token from lobby redirect ──
-      // This is authoritative (just issued by the lobby), skip server validation.
-      if (gameCode && transientToken) {
-        console.log('[App] init: transient token for', gameCode);
+      // ── Fast path: authoritative JWT in URL ──
+      // Either `?_t=<jwt>` (lobby redirect) or `?token=<jwt>` (debug magic link)
+      // — both are freshly minted and trusted. Short-circuits the
+      // my-active-game archive check so a valid token isn't evicted by stale
+      // lobby session state.
+      const urlToken = transientToken || rawToken;
+      if (gameCode && urlToken) {
+        console.log('[App] init: URL token for', gameCode, transientToken ? '(transient)' : '(raw)');
         try {
-          const decoded = decodeGameToken(transientToken);
+          const decoded = decodeGameToken(urlToken);
           if (decoded.exp && decoded.exp < Date.now() / 1000) {
-            console.warn('[App] init: transient token expired, redirecting to /');
+            console.warn('[App] init: URL token expired, redirecting to /');
             window.location.href = '/';
             return;
           }
-          applyToken(transientToken, gameCode, setGameId, setPlayerId, setToken);
-          setSentryAuthMethod('transient');
+          applyToken(urlToken, gameCode, setGameId, setPlayerId, setToken);
+          setSentryAuthMethod(transientToken ? 'transient' : 'raw-token');
         } catch (err) {
-          console.error('[App] init: transient token decode failed:', err);
+          console.error('[App] init: URL token decode failed:', err);
           window.location.href = '/';
           return;
         }

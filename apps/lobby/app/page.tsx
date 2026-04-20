@@ -50,6 +50,12 @@ const AVAILABLE_ACTIVITY_TYPES = [
 
 const PUSH_TRIGGER_LABELS: { key: string; label: string }[] = [
   { key: 'DM_SENT', label: 'DM Received' },
+  { key: 'GROUP_CHAT_MSG', label: 'Group Chat Message' },
+  { key: 'MENTION', label: '@Mention' },
+  { key: 'REPLY', label: 'Reply' },
+  { key: 'WHISPER', label: 'Whisper' },
+  { key: 'NUDGE', label: 'Nudge' },
+  { key: 'SILVER_RECEIVED', label: 'Silver Received' },
   { key: 'ELIMINATION', label: 'Elimination' },
   { key: 'WINNER_DECLARED', label: 'Winner Declared' },
   { key: 'DAY_START', label: 'Day Started' },
@@ -73,7 +79,9 @@ function createDefaultManifestConfig(): DebugManifestConfig {
     dayCount: 2,
     days: [createDefaultDay(), createDefaultDay()],
     pushConfig: {
-      DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
+      DM_SENT: true, GROUP_CHAT_MSG: true, MENTION: true, REPLY: true,
+      WHISPER: true, NUDGE: true, SILVER_RECEIVED: true,
+      ELIMINATION: true, WINNER_DECLARED: true,
       DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
     },
   };
@@ -147,7 +155,9 @@ function createDefaultConfigurableConfig(): ConfigurableManifestConfig {
     dayCount: DEFAULT_DAY_COUNT,
     days: buildConfigurableDays(DEFAULT_DAY_COUNT),
     pushConfig: {
-      DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
+      DM_SENT: true, GROUP_CHAT_MSG: true, MENTION: true, REPLY: true,
+      WHISPER: true, NUDGE: true, SILVER_RECEIVED: true,
+      ELIMINATION: true, WINNER_DECLARED: true,
       DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
     },
     requireDmInvite: false,
@@ -537,6 +547,7 @@ export default function LobbyRoot() {
     if (result.success) {
       setStatus(`LOBBY_CREATED: ${result.gameId}`);
       setGameId(result.gameId ?? null);
+      setInviteCode(result.inviteCode ?? null);
       if (result.clientHost) setClientHost(result.clientHost);
       if (result.tokens) setTokens(result.tokens);
     } else {
@@ -1276,7 +1287,7 @@ export default function LobbyRoot() {
               {tokens && gameId && (
                 <div className="grid grid-cols-1 gap-3 slide-up-in pt-2">
                   <a
-                    href={`${clientHost}/?token=${tokens['p1']}`}
+                    href={inviteCode ? `${clientHost}/game/${inviteCode}?token=${tokens['p1']}` : `${clientHost}/?token=${tokens['p1']}`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-between p-4 bg-skin-panel/30 hover:bg-skin-panel/50 text-skin-base rounded-lg transition-all border border-skin-base hover:border-skin-dim/30 group"
