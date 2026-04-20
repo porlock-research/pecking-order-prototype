@@ -1,4 +1,5 @@
 import { useState, createContext, useContext, useCallback, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { toast, Toaster } from 'sonner';
 import './pulse-theme.css';
 import type { ShellProps } from '../types';
@@ -10,6 +11,7 @@ import { useReceivedOverdrive } from './hooks/useReceivedOverdrive';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import type { DeepLinkIntent, CartridgeKind } from '@pecking-order/shared-types';
 import { PULSE_Z } from './zIndex';
+import { runViewTransition, supportsViewTransitions, prefersReducedMotion } from './viewTransitions';
 
 const DM_REJECTION_LABELS: Record<string, string> = {
   DMS_CLOSED: 'DMs are closed right now',
@@ -162,10 +164,65 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
     window.dispatchEvent(new CustomEvent('pulse:nudge-burst', { detail: { recipient: name } }));
   }, [engine]);
   const openDM = useCallback((targetId: string, isGroup = false) => {
-    setDmTarget(targetId);
-    setDmIsGroup(isGroup);
-    setSocialPanelOpen(false);
+    // 1:1 DMs morph from the tapped cast chip into the DmHero portrait via
+    // the `chip-${playerId}` view-transition-name. Group DMs don't have a
+    // single-face hero (DmGroupHero is a multi-avatar composition), so we
+    // skip the source tag and let the sheet slide in normally.
+    const vtActive = supportsViewTransitions() && !prefersReducedMotion();
+    const chipEl = vtActive && !isGroup
+      ? document.querySelector<HTMLElement>(`[data-chip-player-id="${targetId}"]`)
+      : null;
+    if (chipEl) chipEl.style.viewTransitionName = `chip-${targetId}`;
+
+    runViewTransition(() => {
+      // Clear the source tag inside the callback so the "new" snapshot
+      // has the name only on the DmHero PersonaImage — duplicate names
+      // across source + destination abort the transition.
+      if (chipEl) chipEl.style.viewTransitionName = '';
+      flushSync(() => {
+        setDmTarget(targetId);
+        setDmIsGroup(isGroup);
+        setSocialPanelOpen(false);
+      });
+    });
   }, []);
+  const closeDM = useCallback(() => {
+    const targetId = dmTarget;
+    const isGroup = dmIsGroup;
+    if (!targetId) {
+      setDmTarget(null);
+      setDmIsGroup(false);
+      return;
+    }
+    // Reverse morph: for the "new" snapshot we need only the chip tagged
+    // `chip-${targetId}`. AnimatePresence keeps DmSheet around during exit,
+    // so the DmHero wrapper (data-dm-hero-player-id) still has the tag at
+    // that point — clear it inside the callback so the tag doesn't collide
+    // with the chip's and abort the transition. Skip for groups (no single
+    // face to morph to).
+    const vtActive = supportsViewTransitions() && !prefersReducedMotion();
+    const chipEl = vtActive && !isGroup
+      ? document.querySelector<HTMLElement>(`[data-chip-player-id="${targetId}"]`)
+      : null;
+
+    runViewTransition(() => {
+      // Commit the state change first — after flushSync, AnimatePresence
+      // holds the now-removed DmSheet during its (0-duration) exit. React
+      // won't reconcile the held DOM again, so the style mutations below
+      // stick through the browser's NEW-snapshot capture.
+      flushSync(() => {
+        setDmTarget(null);
+        setDmIsGroup(false);
+      });
+      const heroEl = vtActive && !isGroup
+        ? document.querySelector<HTMLElement>(`[data-dm-hero-player-id="${targetId}"]`)
+        : null;
+      if (heroEl) heroEl.style.viewTransitionName = '';
+      if (chipEl) chipEl.style.viewTransitionName = `chip-${targetId}`;
+    }).finally(() => {
+      if (chipEl) chipEl.style.viewTransitionName = '';
+    });
+  }, [dmTarget, dmIsGroup]);
   const openSocialPanel = useCallback(() => setSocialPanelOpen(true), []);
   const openConfessionBooth = useCallback((channelId: string) => {
     setConfessionChannelId(channelId);
@@ -228,7 +285,7 @@ export default function PulseShell({ playerId, engine, token: _token }: ShellPro
               key={`${dmTarget}-${dmIsGroup}`}
               targetId={dmTarget}
               isGroup={dmIsGroup}
-              onClose={() => { setDmTarget(null); setDmIsGroup(false); }}
+              onClose={closeDM}
             />
           )}
         </AnimatePresence>

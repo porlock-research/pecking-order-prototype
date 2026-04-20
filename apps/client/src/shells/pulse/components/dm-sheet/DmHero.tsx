@@ -6,6 +6,7 @@ import { PersonaImage, initialsOf } from '../common/PersonaImage';
 import { DmStatusRing } from './DmStatusRing';
 import { useGameStore, selectCanAddMemberTo, selectHaveINudged } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
+import { supportsViewTransitions, prefersReducedMotion } from '../../viewTransitions';
 import { HandWaving, UserPlus, Coins, ArrowLeft } from '../../icons';
 
 interface Props {
@@ -31,18 +32,33 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
   // Pulse shell uses short bio as pseudo-stereotype (matches CastCard convention).
   const stereotype = player.bio && player.bio.length > 4 && player.bio.length <= 50 ? player.bio : '';
 
+  // Morph target for the cast-chip → DmHero face transition. Only enabled
+  // when VTAPI is supported AND the user hasn't opted into reduced motion
+  // — matches the gate in PulseShell.openDM's source-tag application.
+  // The `data-dm-hero-player-id` attribute lets PulseShell.closeDM clear
+  // the tag at close time, since AnimatePresence holds DmSheet around for
+  // its exit animation and a lingering tag would collide with the chip's.
+  const heroMorphName = supportsViewTransitions() && !prefersReducedMotion()
+    ? `chip-${player.id}`
+    : undefined;
+
   return (
     <div style={{ position: 'relative', width: '100%', height: 'var(--pulse-hero-height)', background: 'var(--pulse-bg)', overflow: 'hidden' }}>
-      <PersonaImage
-        avatarUrl={player.avatarUrl}
-        cacheKey={player.id}
-        preferredVariant={variant}
-        fallbackChain={['headshot', 'medium', 'full']}
-        initials={initialsOf(player.personaName)}
-        playerColor={color}
-        alt={player.personaName}
-        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-      />
+      <div
+        data-dm-hero-player-id={player.id}
+        style={{ position: 'absolute', inset: 0, viewTransitionName: heroMorphName }}
+      >
+        <PersonaImage
+          avatarUrl={player.avatarUrl}
+          cacheKey={player.id}
+          preferredVariant={variant}
+          fallbackChain={['headshot', 'medium', 'full']}
+          initials={initialsOf(player.personaName)}
+          playerColor={color}
+          alt={player.personaName}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      </div>
 
       <button onClick={onClose} aria-label="Close DM" style={{
         position: 'absolute', top: 'var(--pulse-space-md)', left: 'var(--pulse-space-md)',
