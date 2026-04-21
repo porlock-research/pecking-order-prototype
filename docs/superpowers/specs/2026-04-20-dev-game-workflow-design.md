@@ -2,43 +2,59 @@
 
 **Date:** 2026-04-20
 **Branch:** `feature/dev-game-workflow`
-**Status:** Draft
+**Status:** Draft (revised after review)
 
 ## Motivation
 
-Three problems compound to make local/staging testing brittle and cause real playtester failures:
+Three problems compound to make local/staging testing brittle and cost real playtesters their spots:
 
-1. **Bypass parity.** Local test games are minted by `scripts/tmp-create-game.js` or lobby "Skip invites" toggle — both POST `/init` directly. No `Users`, `Invites`, or `po_session` cookie exist. Bugs in archive-check, token-cache, invite-collision, and magic-link recovery don't surface locally because local doesn't exercise those paths.
-2. **Designer distribution on staging.** Designers can't self-serve test games on staging — every invite requires email-auth signup. No path exists to share a single link with a group chat and let each designer claim a seat without the full wizard.
-3. **Playtester "scenario 3" trap.** `acceptInvite` calls `/player-joined`. If L2 has left `preGame` (DYNAMIC CC day-1 alarm fired), DO returns 409, lobby flips `GameSessions.status = STARTED`, and the playtester sees *"This game has already started."* Real playtest quote: *"I forgot to click the last button when setting up and missed the deadline wompwomp."*
+1. **Bypass parity.** Local test games are minted by `scripts/tmp-create-game.js` or the lobby "Skip invites" toggle — both POST `/init` directly. No `Users`, `Invites`, or `po_session` cookie exist. Bugs in archive-check, token-cache, invite-collision, and magic-link recovery don't surface locally because local doesn't exercise those paths.
+2. **Designer distribution on staging.** Designers can't self-serve test games on staging — every invite requires email-auth signup. No path exists to share one URL with a group chat and let each designer claim a seat without the full wizard.
+3. **Scenario-3 window (mitigation, not a fix).** `acceptInvite` calls `/player-joined`. If L2 has left `preGame` (DYNAMIC CC Day-1 alarm fired), DO returns 409 and `actions.ts:617-628` correctly releases the slot + flips status. This cleanup is correct behavior. But the window between wizard entry and final submit is long enough that players lose their setup to a real-world race. Real playtest quote: *"I forgot to click the last button when setting up and missed the deadline wompwomp."* This spec shrinks that window; it doesn't remove the race.
 
 ## Scope
 
-**In this spec:**
-- Super-admin-gated `/admin/create-debug` page + `createDebugGame()` server action.
-- Frictionless `/j/CODE` route — one share URL per game; recipient types a name; auto-user-create; hand off to existing persona wizard.
-- Schema: `Users.contact_handle TEXT` column; `Users.email` nullable.
-- Wizard commit-early: `acceptInvite` fires when Q&A is complete, not gated on a final "Confirm" tap. Confirm step becomes optional review.
-- Auto-redirect after wizard success → `/play/CODE` (client), skipping the mandatory waiting-room stop.
-- Waiting room invite form: un-gate email input; keep `isHost` gate on the sent-invites list only.
-- Email-on-flip fallback when L2 exits `preGame`.
-- `/create-game` script rewrite: calls lobby server actions via authenticated HTTP, no direct `/init` POST.
-- Deprecate `startDebugGame()` bypass path + remove `DEBUG_OVERRIDE` option from root `/` page.
+**In this spec (three implementation phases):**
 
-**Explicitly NOT in this spec (other session owns):**
-- Client pregame screen implementation (layout, arrival feed, Day 1 countdown, action cards).
-- Invite affordance UI inside the client pregame state.
-- Any visual design work on the Pulse pregame surface.
+**Phase 1 — Foundation (low blast radius, ship first)**
+- §5 Waiting-room invite form: un-gate email input; keep `isHost` gate on the sent-invites list only
+- §8 `/create-game` script rewrite: single code path through `createDebugGame()`
 
-**Deferred (follow-up):**
-- Status-gate cleanup on `/play/CODE` + `/api/refresh-token/CODE` for CC (latent ADR-067/118/086 drift — see "Follow-ups").
-- True late-join support (scenario B: wizard after L2 has left preGame). Out of scope per user direction.
+**Phase 2 — Frictionless + admin tooling**
+- §1 `/j/CODE` frictionless route
+- §2 Schema: `Users.contact_handle TEXT`, `Users.email` nullable, type audit across consumers
+- §6 Super-admin `/admin/create-debug` page + `createDebugGame()` server action
+- Deprecations: remove `DEBUG_OVERRIDE`, `startDebugGame()`, `DEBUG_PECKING_ORDER` enum
 
-## Interface with the other session
+**Phase 3 — Trap mitigation**
+- §3 Wizard commit-early at step 3 (idempotent, step 4 becomes read-only review)
+- §4 Auto-redirect after wizard
+- §7 Email-on-flip fallback + `INTERNAL.GAME_STARTED` callback + status-flip completion
 
-**Contract:** After wizard commits early, the player is redirected to `/play/CODE` which mints a JWT and redirects to `/game/CODE?_t=JWT`. By the time the client loads, `PLAYER_JOINED` has fired on the server and L2 roster contains the player. Whatever the client renders when L2 is in `preGame` is the other session's responsibility.
+**Explicitly NOT in this spec (parallel session owns):**
+- Client pregame screen implementation (layout, Day 1 countdown, arrival feed, action-card framework)
+- Cast-grid rendering — moves from lobby waiting room to client pregame
+- Share-URL invocation site — where `/j/CODE` is passed to `navigator.share()`
 
-**Share URL payload:** The `/j/CODE` URL is what the client pregame's invite-share-sheet affordance will share. This spec ships the route; the other session ships the surface that invokes `navigator.share()` with it.
+**Deferred (own spec, own ADR):**
+- True late-join support (scenario B — wizard entered after L2 has left `preGame`). Requires L2 `PLAYER_JOINED` handler in `dayLoop` + content hydration rules.
+
+## Interface with the parallel session
+
+**We own (lobby + wizard + auth + admin):**
+- `/j/CODE` URL and its unauth-safe welcome route
+- `acceptInvite` idempotency and early-commit semantics
+- Admin page + server action for creating debug games with magic links
+- Email-on-flip + L1→lobby `INTERNAL.GAME_STARTED` callback + status flip
+- `/create-game` script parity
+
+**They own (client pregame surface):**
+- What renders at `/game/CODE?_t=JWT` when L2 is in `preGame`
+- **Cast-grid ownership transfers**: the "see who joined" UI currently at `apps/lobby/app/game/[id]/waiting/page.tsx:280-296` (lobby waiting room) moves to client pregame
+- **Share-sheet invocation site**: the UI that calls `navigator.share({ url: '/j/CODE' })`. This spec ships the URL target; they ship the button that invokes it
+- Day 1 countdown, arrival feed, action-card framework
+
+**Contract:** By the time the player lands at `/game/CODE?_t=JWT`, `PLAYER_JOINED` has fired and the L2 roster contains them.
 
 ---
 
@@ -46,79 +62,80 @@ Three problems compound to make local/staging testing brittle and cause real pla
 
 ### 1. Frictionless `/j/CODE` route
 
-New Next.js route at `apps/lobby/app/j/[code]/route.ts` (matches existing `/invite/[token]` unauth-safe pattern) and a companion page `apps/lobby/app/j/[code]/page.tsx` for the welcome form.
+New Next.js route at `apps/lobby/app/j/[code]/page.tsx` with a co-located server action `claimSeat()` in `apps/lobby/app/j/[code]/actions.ts`.
 
-**Middleware exemption:** Add `/j/*` to `middleware.ts` matcher exemption (currently protects `/`, `/join/*`, `/game/*`). `/j/*` must work pre-auth — it's where new users create their identity.
+**Middleware behavior — no exemption needed.** Next.js middleware uses an **inclusion matcher** (`middleware.ts:27`), which currently lists `/`, `/join/:path*`, `/game/:path*`, `/admin/:path*`, `/playtest`, `/playtest/share/:path*`, `/share/:path*`. To make `/j/*` unauth-safe, simply **don't add it to the matcher**. No exemption mechanism exists; the matcher is the protection boundary.
 
 **Route behavior:**
 1. Look up game by `invite_code`. If not found → 404 page.
-2. If `GameSessions.status NOT IN ('RECRUITING', 'READY')` → render "This game already started" stale-link screen (mockup frame 2). No wizard entry.
-3. If caller has `po_session` cookie and is already a player (`Invites.accepted_by = session.userId`) → redirect to `/play/CODE` (they're already in; jump to client).
-4. Otherwise → render welcome form (mockup frame 3). Single field: "What should we call you?" with submit button.
+2. If `GameSessions.status NOT IN ('RECRUITING', 'READY')` → render stale-link screen (mockup frame 2). No wizard entry.
+3. If caller has `po_session` AND is already a player (`Invites.accepted_by = session.userId`) → redirect to `/play/CODE`.
+4. Otherwise → render welcome form (mockup frame 3): single field "What should we call you?" + submit.
 
-**Submit action** (`claimSeat` server action):
-1. If `po_session` exists → reuse. Else create new `Users` row (email=NULL, contact_handle=trimmed name).
-2. Set `po_session` cookie (same format as existing auth cookie in `lib/auth.ts`).
+**`claimSeat` server action:**
+1. If `po_session` exists → reuse session's `userId`. Else create new `Users` row with `email = NULL`, `contact_handle = trimmed name`, then create a fresh session via `createSession()` in `lib/auth.ts`.
+2. Set `po_session` cookie.
 3. Redirect to `/join/CODE` (existing persona wizard).
 
-**Name validation:** 1-24 chars, trimmed. Strip zero-width / control chars. No uniqueness constraint — multiple "Alex"s are fine; host reveals curate identity at game end per mockup frame 5.
+**Name validation:** 1-24 chars, trimmed; strip zero-width/control chars. No uniqueness — multiple "Alex"s are fine; host curates identity at game end (mockup frame 5).
 
-### 2. Schema migration
+**Rate limit:** IP-based throttle on `claimSeat` (e.g., 10 new-user creates per IP per hour) to prevent anonymous-user spam. Start generous; tighten if abused.
 
-New migration `apps/lobby/migrations/0015_contact_handle.sql`:
+### 2. Schema migration + nullable-email type audit
 
-```sql
--- Add contact_handle column for frictionless-invite users
-ALTER TABLE Users ADD COLUMN contact_handle TEXT;
+New migration `apps/lobby/migrations/0015_contact_handle_nullable_email.sql`:
+- Add `Users.contact_handle TEXT`
+- Drop `NOT NULL` constraint on `Users.email` (SQLite requires the 12-step table-recreation pattern — standard)
 
--- Make email nullable (was NOT NULL)
--- SQLite: recreate table since ALTER COLUMN isn't supported
--- (standard 12-step migration pattern)
-```
+**`UNIQUE` + `NULL` safety:** `Users.email` has `UNIQUE` per `migrations/0001_initial.sql:4`. SQLite allows multiple NULLs under `UNIQUE`, so the constraint survives unchanged — multiple `/j/*` users coexist without collision.
 
-Backfill existing rows: `contact_handle = email.split('@')[0]` where email is set (so their display names remain intact).
+**Backfill:** `contact_handle = split_part(email, '@', 1)` where `email IS NOT NULL` (or equivalent SQLite expression via `substr`/`instr`) so existing users' display names remain sensible.
 
-**PII:** `contact_handle` is low-sensitivity (user-typed, public at reveal) — does NOT need the `PII_ENCRYPTION_KEY` treatment that `email`/`phone` get per ADR-014-era lobby conventions.
+**Nullable-email type audit (explicit spec item, not a generic risk):**
+- `apps/lobby/lib/auth.ts:51,72,78` types `Session.email` as `string`. Change to `string | null`.
+- Grep every `.email` access in `apps/lobby/` (the interface `Session`, plus direct `user.email` reads). Each site must handle `null`.
+- Known affected paths: `/invite/[token]` route, login UI, `getAuthStatus()`, admin views that display user identity.
+- Work committed to the same PR as the migration — not a scattered follow-up.
 
-### 3. Wizard commit-early
+**PII:** `contact_handle` is low-sensitivity user-typed text. Does NOT need `PII_ENCRYPTION_KEY` treatment applied to `email_encrypted`/`phone_encrypted`.
 
-Current flow: `/join/CODE` wizard = persona draw → bio → Q&A → final **Confirm** button → `acceptInvite` fires.
+### 3. Wizard commit-early + confirm-is-read-only
 
-New flow: fire `acceptInvite` on the step where Q&A is submitted (step 3 of 4), before the confirm screen. Confirm screen becomes a review/polish state that has no effect on roster membership.
+Current flow: `/join/CODE` wizard = persona draw → bio → Q&A → Confirm → `acceptInvite` fires (`/join/[code]/page.tsx:167`).
 
-**Server-side:** `acceptInvite` is idempotent for the same user+game — if already joined, return `{ success: true, alreadyJoined: true }` instead of the current error. Safe to call from either step 3 or step 4 (or both, if someone taps back).
+New flow: `acceptInvite` fires when Q&A is submitted (end of step 3). **Step 4 becomes a read-only review with auto-redirect** — no back nav, no "change your mind" escape. Tradeoff accepted: eliminates the setup-loss trap for the scenario-3 window.
 
-**Client-side (lobby `/join/[code]/page.tsx`):** call `acceptInvite` at the moment Q&A is complete. Show a subtle "You're in" confirmation on the confirm step rather than "tap to commit." The only thing step 4 does is redirect to `/play/CODE` when tapped (or auto-redirect after a short delay if the user wanders away).
+**Server-side idempotency (answers review concern #2):**
+- `acceptInvite` idempotent only for the *same submission* — if called again with identical `(userId, gameId)` AND identical `(personaId, bio, qaAnswers)`, return `{ success: true, alreadyJoined: true }`.
+- Different persona/bio on re-submit: NOT supported. The wizard is locked after step 3; if somehow the client sends a different submission, return the existing "You have already joined this game" error. This preserves the current defense against mid-wizard persona swap.
 
-**Handling scenario 3 at step 3:** if `acceptInvite` returns the 409 error ("already started") at this earlier step, we still show a clean "game already started" state — but the player hasn't spent time on the Q&A yet. Less wasted effort.
+**Client-side:**
+- Call `acceptInvite` on step-3 submit.
+- Step 4 renders a read-only "you're in" summary + countdown → auto-redirects to `/play/CODE`.
+- Disable back navigation at step 4 (`router.push` not `router.replace` on step 3→4 transition; block beforeunload if pending).
+- Bigger "locking your choice" callout on step 3's submit button so users understand this is commit time.
 
-**Time saved:** median wizard has ~15-30s of Q&A + ~5-10s of confirm review. Commit-early shaves the confirm-review window off the scenario-3 trap.
+**Scope honesty:** this MITIGATES scenario-3 by shrinking the window from "~30-60s of Q&A + confirm review" to "~5s at Q&A submit." The 409 cleanup at `actions.ts:617-628` stays intact as correct behavior for true late-joiners.
 
 ### 4. Auto-redirect after wizard
 
-After `acceptInvite` success (either step 3 commit or step 4 confirm tap), redirect the user to `/play/CODE` instead of `/game/CODE/waiting`.
+After `acceptInvite` success (step 3 commit OR step 4 countdown), redirect to `/play/CODE`, which mints a JWT and redirects to `/game/CODE?_t=JWT`.
 
-`/play/CODE` mints the JWT and redirects to `/game/CODE?_t=JWT` (client). The client handles whatever pregame state L2 is in — that's the other session's problem.
+**Exception:** host of STATIC/non-CC games still needs the "Launch Game" button. For non-CC modes, redirect host to `/game/CODE/waiting`. CC hosts go straight to client.
 
-**Exception for hosts of STATIC/non-CC games:** they still need the waiting room's "Launch Game" button. Redirect host to `/game/CODE/waiting` for non-CC modes. CC hosts go to client.
+**Waiting room stays navigable:** `/game/CODE/waiting` remains a valid URL for deep links, bookmarks, PWA `start_url` recovery. Just no longer a mandatory stop in the happy path.
 
-**Waiting room stays navigable:** `/game/CODE/waiting` remains a valid URL. Deep links (PWA `start_url` fallbacks, bookmarks, shared links) continue to work. It's just no longer a mandatory stop in the happy path.
+### 5. Waiting-room invite form ungating
 
-### 5. Waiting room invite form ungating
+At `apps/lobby/app/game/[id]/waiting/page.tsx:301`, the entire invite section is gated on `isHost`. Split the gate:
+- **Form + email input + Send button + toasts:** visible to all participants.
+- **Sent-invites list (emails + status) at lines 364-381:** `isHost` only. Protects non-hosts from seeing other participants' email addresses (privacy, matches anonymous-game spirit).
 
-Current state: `/game/[id]/waiting/page.tsx:301` gates the entire invite section (form + sent-invites list) on `isHost`.
+Server-side `sendEmailInvite` already permits any participant per ADR-073 — UI-only change.
 
-New state:
-- **Form + email input + Send button + success/error toasts:** visible to all participants.
-- **Sent-invites list (emails + pending/joined status):** `isHost` only (privacy — non-hosts shouldn't see other participants' email addresses).
+### 6. Super-admin `/admin/create-debug`
 
-Server-side `sendEmailInvite` already permits any participant per ADR-073. Only the UI gate changes.
-
-### 6. Super-admin create-debug page
-
-New page `apps/lobby/app/admin/create-debug/page.tsx` + server action `createDebugGame()` in `apps/lobby/app/admin/create-debug/actions.ts`.
-
-Gated by existing `AdminLayout` (`isSuperAdmin()` check → redirect `/` if not allowed).
+New page `apps/lobby/app/admin/create-debug/page.tsx` + `createDebugGame()` server action in `apps/lobby/app/admin/create-debug/actions.ts`. Gated by the existing `AdminLayout` (redirects to `/` if not super-admin).
 
 **Form fields:**
 - Player count (1-8)
@@ -131,146 +148,164 @@ Gated by existing `AdminLayout` (`isSuperAdmin()` check → redirect `/` if not 
 - Push notifications on/off per trigger
 - "Mint N per-slot magic links" toggle (default on)
 
-**Env scoping:** the admin page creates games on whatever environment the lobby is running on. Designer wants a staging game → open staging admin page. The `/create-game` CLI tool keeps its `env=local|staging` flag (it's a cross-env tool by design) but routes through the same `createDebugGame()` action via HTTP.
+**Env scoping:** Admin page creates games only on the current lobby environment. Designer wants a staging game → open staging admin. Cross-env creation handled by the `/create-game` CLI (designed to be cross-env).
 
-**Server action `createDebugGame(config)`:**
-1. Call existing `createGame()` — real lobby path, real `GameSessions` + (if STATIC) real `Invites` rows.
-2. If `mintMagicLinks` → for each slot, sign a JWT via `signGameToken()` and return them in the response.
-3. Return `{ gameId, inviteCode, shareUrl: /j/CODE, magicLinks: { p1: ..., p2: ... } | null, adminUrl, stateUrl }`.
+**`createDebugGame(config)` action:**
+1. Call existing `createGame()` — real lobby path, real `GameSessions` + real `Invites` rows where applicable.
+2. If `mintMagicLinks`: for each slot, sign a JWT via `signGameToken()`; return per-slot tokens.
+3. Return `{ gameId, inviteCode, shareUrl: '/j/CODE', magicLinks: { p1, p2, ... } | null, adminUrl, stateUrl }`.
 
 **Output screen:**
-- Big invite code + copy button
-- `/j/CODE` share URL + copy + native share-sheet button
-- Per-slot magic link list with copy buttons (if minted)
+- Invite code + copy
+- `/j/CODE` share URL + copy + native share sheet
+- Per-slot magic link list with copy buttons (when minted)
 - Admin console link (`/admin/game/[gameId]`)
-- "Enter as p1" quick link for self-testing
+- "Enter as p1" self-test link
 
-**Deprecations:**
-- Remove `DEBUG_OVERRIDE (Manual)` option from the root `/` page's `<select>` (page.tsx:647).
-- Remove the "Skip invites" toggle and `handleDebugStart` handler.
-- Delete `startDebugGame()` from `actions.ts` (the bypass path — 823-919).
-- Keep `DEBUG_PECKING_ORDER` mode enum value for backward compat with existing games, but creation path only goes via `createDebugGame()`.
+**Deprecations — delete, don't preserve:**
+- `DEBUG_OVERRIDE (Manual)` option at `apps/lobby/app/page.tsx:647`
+- "Skip invites" toggle (`page.tsx:1100-1117`) + `handleDebugStart` handler (`:531-556`)
+- `startDebugGame()` in `actions.ts:823-919`
+- `DEBUG_PECKING_ORDER` enum value — deleted entirely. Any legacy D1 rows with `mode = 'DEBUG_PECKING_ORDER'` still render (read-only history); no new creation path uses the enum.
 
-### 7. Email-on-flip fallback
+### 7. Email-on-flip + status-flip completion
 
-Trigger: L2 transitions `preGame → dayLoop` (DYNAMIC CC) or `startGame()` runs (STATIC).
+**Trigger:** L2 `preGame → dayLoop` (DYNAMIC) or `startGame()` (STATIC).
 
-**DYNAMIC CC:** L2 emits a new `INTERNAL.GAME_STARTED` event on entry to `dayLoop` (entry action in `l2-orchestrator.ts`). L1's existing inspector / state subscription surfaces this; L1 HTTP-POSTs to a new lobby endpoint `POST /api/game-started` with `{ gameCode, startedAt }`. The lobby:
-1. Marks `GameSessions.status = STARTED` (fixes the ADR-067/118 drift latently — see Follow-ups).
-2. Queries all participants with `email IS NOT NULL` AND `email_encrypted IS NOT NULL`.
-3. For each, decrypt email, send a "Your game just started" Resend email with a one-click `/play/CODE` link.
+**DYNAMIC mechanism:**
+1. L2's `dayLoop` state entry action emits `INTERNAL.GAME_STARTED { gameCode }`.
+2. L1 already subscribes to L2 snapshots (inspector bridge per ADR-084); on observing this event, L1 HTTP-POSTs to lobby `POST /api/game-started` with `{ gameCode, startedAt }`.
+3. Endpoint auth: `Authorization: Bearer $AUTH_SECRET` (reuses the existing L1↔lobby shared secret — see `actions.ts:611`). **No new `LOBBY_CLI_SECRET` — one secret for all server-to-lobby traffic.**
+4. Endpoint is **idempotent at the endpoint level**: wraps everything in a `status !== 'STARTED'` guard. Second call is a no-op.
 
-**STATIC:** `startGame()` already flips status. Add the email-send loop to that path.
+**Lobby endpoint behavior:**
+1. If `status === 'STARTED'` already → 200 no-op.
+2. Otherwise, flip `GameSessions.status = 'STARTED'`.
+3. Query participants with `email_encrypted IS NOT NULL`. Decrypt. Send "Your game just started" Resend email with a one-click `/play/CODE` link.
 
-**Deduplication:** the endpoint is idempotent — only sends emails if `status` was previously non-STARTED. Guards against double-firing.
+**Status-flip completion (was a follow-up, now in-spec per review concern #10):**
 
-**Opt-out:** reuse existing unsubscribe/preferences infrastructure. MVP can send unconditionally to all participants; follow-up can add preference.
+Once §7 flips status on `preGame → dayLoop`, the `status !== 'STARTED'` gates in `/play/[code]/route.ts:43` and `/api/refresh-token/[code]/route.ts:67` start **correctly** gating CC games. They become load-bearing again, not latently-dead code. This closes the ADR-067/118/086 triangle.
+
+**In-flight token survival (verified against `packages/auth/src/index.ts`):** `verifyGameToken` does signature + expiry only. No D1 lookup. No status check. In-flight JWTs survive the status flip. Clients mid-session do not need to refresh.
+
+**STATIC:** `startGame()` already flips status in `actions.ts:798`. Add the email-send loop to that path; same endpoint-idempotency guard applies so a concurrent `/api/game-started` call from L1 (if STATIC ever goes through `preGame → dayLoop`) is a no-op.
 
 ### 8. `/create-game` script rewrite
 
-Current: `scripts/tmp-create-game.js` POSTs directly to game-server `/init`. Bypasses lobby D1 entirely.
+Current: `scripts/tmp-create-game.js` POSTs directly to game-server `/init`. New: calls lobby `POST /api/admin/create-debug` with `Authorization: Bearer $AUTH_SECRET` — same secret everywhere (reuses L1↔lobby + CLI↔lobby shared trust; one secret to rotate).
 
-New: the script becomes a thin CLI that authenticates against the lobby (or a super-admin API key) and calls `createDebugGame()` via HTTP. Parity is structural.
+**CLI endpoint** `POST /api/admin/create-debug`:
+- Auth: `Authorization: Bearer $AUTH_SECRET`
+- Body: same config shape as `createDebugGame()` action
+- Calls the action; returns same output shape.
 
-**Auth model for CLI:** add a `LOBBY_CLI_SECRET` env var that, if present on the lobby, allows calling `createDebugGame` via a dedicated POST endpoint `/api/admin/create-debug` (bearer-token gated, not UI-accessible). For local dev, this is `dev-secret-change-me` or similar. For staging, set via wrangler secret.
+**Script output unchanged:** still writes `/tmp/pecking-order-test-game.json`, still prints magic links per slot. `/create-game` slash-command contract preserved.
 
-**Script output unchanged:** still writes `/tmp/pecking-order-test-game.json` with the same shape for Playwright consumption. Still prints magic links per slot.
-
-**Slash command `/create-game`** continues to work; it just calls the rewritten script that calls the admin endpoint that calls `createDebugGame()`. Single code path.
-
-### 9. Middleware exemption
-
-`apps/lobby/middleware.ts` currently gates `/`, `/join/*`, `/game/*`. Add:
-- `/j/*` — unauth-safe welcome for frictionless flow.
-
-`/invite/[token]` and `/api/*` exemptions stay as-is.
-
----
-
-## Follow-ups (not shipped here)
-
-### Status-gate / refresh-token cleanup
-
-ADR-067 established status-stays-`RECRUITING` for CC pre-game; ADR-118 removed the "all slots filled" trigger for DYNAMIC CC; ADR-086 aligned PID calculation across three token-minting routes but didn't revisit the `status === 'STARTED'` gate in two of them.
-
-Residual issue: `/play/CODE` and `/api/refresh-token/CODE` both hardcode `status !== 'STARTED'` checks that break for DYNAMIC CC in `RECRUITING`. The email-on-flip trigger in §7 incidentally fixes this by flipping status correctly on L2's `preGame → dayLoop`. After §7 ships, the residual gates become dead code for DYNAMIC CC (status will be STARTED before anyone needs to refresh).
-
-Cleanup task: once §7 is verified in production, remove the gates entirely for CC (trust `Invites.accepted_by` as the authority). Optionally write an ADR documenting the ADR-067/118/086 triangle and the resolution. Not shipped in this spec.
-
-### True late-join (scenario B)
-
-A player who enters the wizard after L2 has already moved past `preGame` is rejected even with commit-early (L2's `PLAYER_JOINED` handler only fires in `preGame`). Supporting this requires extending L2 to accept `PLAYER_JOINED` in `dayLoop` with content-hydration rules. Out of scope; own spec + own ADR.
+**Env target `local|staging`:** CLI flag stays. Lobby URL + `AUTH_SECRET` differ per env; shape is identical.
 
 ---
 
 ## Data model changes
 
-- `Users.contact_handle TEXT` (new)
-- `Users.email TEXT NULL` (was `NOT NULL`)
-- Migration: `apps/lobby/migrations/0015_contact_handle.sql`
+- **New:** `Users.contact_handle TEXT` (nullable, user-typed)
+- **Changed:** `Users.email TEXT` — `NOT NULL` dropped, `UNIQUE` preserved (SQLite multi-NULL under UNIQUE is safe)
+- **Migration:** `apps/lobby/migrations/0015_contact_handle_nullable_email.sql`
+- **Type change:** `Session.email: string | null` in `apps/lobby/lib/auth.ts` + consumer audit across `apps/lobby/`
 
 ---
 
 ## New routes / endpoints
 
-- `GET /j/[code]` (unauth-safe welcome page)
-- `POST /j/[code]/claim` (server action: upsert user, set cookie, redirect to `/join/CODE`)
-- `GET /admin/create-debug` (super-admin page)
-- `POST /api/admin/create-debug` (CLI-facing, bearer-token gated)
-- `POST /api/game-started` (L1 → lobby callback on L2 `preGame → dayLoop` transition)
+- `GET /j/[code]` — unauth-safe welcome page (NOT in middleware matcher)
+- `claimSeat()` server action co-located with the page
+- `GET /admin/create-debug` — super-admin page
+- `POST /api/admin/create-debug` — CLI-facing, `Authorization: Bearer $AUTH_SECRET`
+- `POST /api/game-started` — L1→lobby callback, `Authorization: Bearer $AUTH_SECRET`, idempotent
 
 ---
 
-## Deleted / deprecated
+## Deleted
 
-- `startDebugGame()` in `apps/lobby/app/actions.ts` (the bypass path)
-- `DEBUG_OVERRIDE (Manual)` option from the root `/` page select
-- "Skip invites" toggle + `handleDebugStart` handler
-- `scripts/tmp-create-game.js` (rewritten, not deleted)
+- `startDebugGame()` in `apps/lobby/app/actions.ts:823-919`
+- `DEBUG_OVERRIDE (Manual)` option at `apps/lobby/app/page.tsx:647`
+- "Skip invites" toggle + `handleDebugStart` handler (`page.tsx:1100-1117`, `:531-556`)
+- `DEBUG_PECKING_ORDER` enum value (delete entirely; legacy rows render read-only)
+- `scripts/tmp-create-game.js` — rewritten (see §8), not deleted from disk
 
 ---
 
 ## Regression checklist
 
 - Existing `/invite/[token]` email flow works unchanged
-- `/play/[code]` redirect still works for RECRUITING CC games (landing on waiting room with token)
-- `/api/my-active-game` still includes RECRUITING games
-- Push notifications (`sendGameEntryPush`) still fire when STARTED
-- `/admin` dashboard, `/admin/inspector`, `/admin/game/[id]` still work
-- E2E Playwright tests (`e2e/tests/`) still pass after waiting-room auto-redirect change
-- Lobby E2E tests (`apps/lobby/e2e/`) updated for the new `/j/CODE` flow
-- `sendEmailInvite` still works for any participant (no server change; UI ungating only)
-- Host remains able to launch STATIC games via "Launch Game" button in waiting room
+- `/play/[code]` redirect still works for RECRUITING → STARTED transition (after §7)
+- `/api/my-active-game` still returns `RECRUITING + READY + STARTED` games
+- `sendGameEntryPush` still fires when STARTED
+- `/admin`, `/admin/inspector`, `/admin/game/[id]` still work
+- E2E Playwright tests pass after waiting-room auto-redirect change
+- Lobby E2E tests updated for `/j/CODE` flow
+- `sendEmailInvite` still works for any participant (UI ungating only)
+- Host still launches STATIC games via "Launch Game" button
+- Nullable-email audit finds and fixes every broken `.email` access path
+- Legacy D1 rows with `mode = 'DEBUG_PECKING_ORDER'` render without crash
 
 ---
 
 ## Test plan
 
-**Unit / component (apps/client, apps/lobby):**
-- `/j/[code]` route: RECRUITING state renders welcome; non-RECRUITING renders stale-link; already-joined redirects to `/play/CODE`.
-- `claimSeat` action: creates user with NULL email; sets po_session cookie; redirects.
-- Wizard commit-early: `acceptInvite` fires on Q&A submit, idempotent on step 4 tap.
-- Waiting room: non-host sees form but not sent-invites list.
+**Unit / component:**
+- `/j/[code]`: RECRUITING → welcome; non-RECRUITING → stale-link; already-joined → redirect
+- `claimSeat`: creates user with NULL email; sets `po_session`
+- `acceptInvite` idempotency: identical submission returns `alreadyJoined: true`; different persona/bio returns error
+- Waiting room: non-host sees form but not sent-invites list
+- `Session.email: null` handled at every read site (type checks catch most; runtime tests for logic that branches on presence)
 
-**Integration (apps/game-server):**
-- L2 `preGame → dayLoop` transition posts to lobby `/api/game-started`.
-- Repeated posts are idempotent (status already STARTED).
+**Integration:**
+- L2 `preGame → dayLoop` emits `INTERNAL.GAME_STARTED`
+- L1 observes and posts to `/api/game-started`
+- Repeated posts are idempotent (status guard)
+- In-flight JWT decodes + verifies post-flip
 
 **E2E (Playwright):**
-- Full frictionless flow: new user hits `/j/CODE` → types name → persona wizard → lands in client.
-- Commit-early: kill tab between Q&A and confirm; verify player is in roster.
-- Scenario-3 trap no longer fires at the confirm step (should only fire at Q&A step or earlier).
+- Full frictionless flow: new user hits `/j/CODE` → types name → persona wizard → lands in client
+- Commit-early: kill tab between step-3 submit and step-4 render; verify player is in L2 roster via `/state`
+- Scenario-3 trap: verify the window now only exists around Q&A submit, not around confirm tap
 
 **Manual checklist:**
-- Create a debug game via `/admin/create-debug` → open `/j/CODE` in incognito → complete flow → verify in game server state.
-- Staging designer flow: create debug game with mint-magic-links → share the `/j/CODE` URL with a colleague → verify they land in the client without a signup bounce.
+- Create debug game via `/admin/create-debug` → open `/j/CODE` in incognito → full flow → in-game
+- Designer flow: share `/j/CODE` → recipient lands without signup bounce → persona wizard → in-game
+- Legacy `mode='DEBUG_PECKING_ORDER'` row renders in `/admin` without crash
 
 ---
 
 ## Risks
 
-- **Middleware exemption** is a security-adjacent change. Audit carefully — `/j/*` must not leak session info or accept arbitrary input.
-- **Nullable email migration** may break code paths that assume `user.email` is set. Grep for unsafe dereferences before rollout. Likely candidates: email templates, login UI, any admin views.
-- **`po_session` creation for nameless users** — rate-limit the `claimSeat` action to prevent anonymous-user spam (lightweight: IP-based rate limit in the route handler).
-- **Idempotency of `acceptInvite`** needs careful review. Currently throws "already joined" on re-submission; changing to a success-return must not mask legitimate errors (wrong persona, wrong bio format, etc.).
-- **`/create-game` script auth rewrite** could break existing agent workflows. Ensure the slash-command continues working before merging.
+- **Middleware matcher edit** — add `/j/*` must NOT match (it's unauth). Verify with an actual request before merging. Matcher globs can be subtle.
+- **Nullable-email type audit** is spec-committed but needs grep discipline. Missing a consumer site silently runtimes-breaks for `/j/*` users. TypeScript strict-null checks will catch most.
+- **Wizard commit-early** loses the "change my mind" escape between Q&A and confirm. If users complain, mitigation is a bigger locking callout on step 3, not revert.
+- **Rate-limiting `claimSeat`** — easy to over-restrict. Start at 10/hr/IP, tighten only if abused.
+- **Status-flip side effects** — JWTs survive (verified). No current D1 triggers on status change. Any future additions must be audited.
+- **L1 state subscription** — L1 already observes L2 snapshots; `INTERNAL.GAME_STARTED` event adds an observable edge case to the existing stream. Verify L1's inspector bridge handles it without contention.
+
+---
+
+## Implementation phases (sequencing)
+
+Sized for independent PRs / review gates:
+
+**Phase 1 — Foundation** (~1-2 days)
+- §5 Waiting-room invite form un-gate (UI-only)
+- §8 `/create-game` script rewrite + new `/api/admin/create-debug` endpoint (no deprecations yet)
+
+**Phase 2 — Frictionless + admin** (~3-5 days — migration is the careful part)
+- §2 Schema migration + nullable-email type audit
+- §1 `/j/[code]` route + `claimSeat`
+- §6 `/admin/create-debug` page + `createDebugGame()` action
+- Deprecations (DEBUG_OVERRIDE, startDebugGame, enum)
+
+**Phase 3 — Trap mitigation** (~3-5 days — L2/L3 touches)
+- §3 Wizard commit-early + confirm-read-only
+- §4 Auto-redirect after wizard
+- §7 `INTERNAL.GAME_STARTED` L2 action + L1 callback + `/api/game-started` endpoint + email send + status-flip completion
+
+Phases are independently revertable. Phase 3 does not depend on Phase 2, but sequencing reduces total surface at any given merge point.
