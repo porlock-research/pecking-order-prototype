@@ -1,7 +1,7 @@
 {
   "id": "prompt-player-pick",
   "group": "Prompts",
-  "filePath": "src/machines/cartridges/prompts/player-pick-machine.ts",
+  "filePath": "packages/cartridges/src/prompts/player-pick-machine.ts",
   "stats": {
     "stateCount": 2,
     "transitionCount": 3,

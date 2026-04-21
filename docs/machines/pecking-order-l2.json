@@ -4,7 +4,7 @@
   "filePath": "src/machines/l2-orchestrator.ts",
   "stats": {
     "stateCount": 10,
-    "transitionCount": 46,
+    "transitionCount": 48,
     "eventTypes": [
       "*",
       "ADMIN.ELIMINATE_PLAYER",
@@ -52,7 +52,9 @@
       "events": [
         "SYSTEM.WAKEUP",
         "ADMIN.NEXT_STAGE",
-        "SYSTEM.PLAYER_JOINED"
+        "SYSTEM.PLAYER_JOINED",
+        "FACT.RECORD",
+        "*"
       ]
     },
     {
@@ -168,6 +170,16 @@
       "source": "preGame",
       "target": "preGame",
       "event": "SYSTEM.PLAYER_JOINED"
+    },
+    {
+      "source": "preGame",
+      "target": "preGame",
+      "event": "FACT.RECORD"
+    },
+    {
+      "source": "preGame",
+      "target": "preGame",
+      "event": "*"
     },
     {
       "source": "dayLoop.activeSession",

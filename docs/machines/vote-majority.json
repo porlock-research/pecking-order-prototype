@@ -1,7 +1,7 @@
 {
   "id": "vote-majority",
   "group": "Voting",
-  "filePath": "src/machines/cartridges/voting/majority-machine.ts",
+  "filePath": "packages/cartridges/src/voting/majority-machine.ts",
   "stats": {
     "stateCount": 2,
     "transitionCount": 2,

@@ -1,7 +1,7 @@
 {
   "id": "vote-trust-pairs",
   "group": "Voting",
-  "filePath": "src/machines/cartridges/voting/trust-pairs-machine.ts",
+  "filePath": "packages/cartridges/src/voting/trust-pairs-machine.ts",
   "stats": {
     "stateCount": 2,
     "transitionCount": 3,

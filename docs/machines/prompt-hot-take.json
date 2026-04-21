@@ -1,7 +1,7 @@
 {
   "id": "prompt-hot-take",
   "group": "Prompts",
-  "filePath": "src/machines/cartridges/prompts/hot-take-machine.ts",
+  "filePath": "packages/cartridges/src/prompts/hot-take-machine.ts",
   "stats": {
     "stateCount": 2,
     "transitionCount": 3,

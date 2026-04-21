@@ -5,7 +5,7 @@
     "filePath": "src/machines/l2-orchestrator.ts",
     "stats": {
       "stateCount": 10,
-      "transitionCount": 46,
+      "transitionCount": 48,
       "eventTypes": [
         "*",
         "ADMIN.ELIMINATE_PLAYER",
@@ -53,7 +53,9 @@
         "events": [
           "SYSTEM.WAKEUP",
           "ADMIN.NEXT_STAGE",
-          "SYSTEM.PLAYER_JOINED"
+          "SYSTEM.PLAYER_JOINED",
+          "FACT.RECORD",
+          "*"
         ]
       },
       {
@@ -169,6 +171,16 @@
         "source": "preGame",
         "target": "preGame",
         "event": "SYSTEM.PLAYER_JOINED"
+      },
+      {
+        "source": "preGame",
+        "target": "preGame",
+        "event": "FACT.RECORD"
+      },
+      {
+        "source": "preGame",
+        "target": "preGame",
+        "event": "*"
       },
       {
         "source": "dayLoop.activeSession",
@@ -916,7 +928,7 @@
   {
     "id": "vote-majority",
     "group": "Voting",
-    "filePath": "src/machines/cartridges/voting/majority-machine.ts",
+    "filePath": "packages/cartridges/src/voting/majority-machine.ts",
     "stats": {
       "stateCount": 2,
       "transitionCount": 2,
@@ -962,7 +974,7 @@
   {
     "id": "vote-executioner",
     "group": "Voting",
-    "filePath": "src/machines/cartridges/voting/executioner-machine.ts",
+    "filePath": "packages/cartridges/src/voting/executioner-machine.ts",
     "stats": {
       "stateCount": 3,
       "transitionCount": 3,
@@ -1023,7 +1035,7 @@
   {
     "id": "vote-bubble",
     "group": "Voting",
-    "filePath": "src/machines/cartridges/voting/bubble-machine.ts",
+    "filePath": "packages/cartridges/src/voting/bubble-machine.ts",
     "stats": {
       "stateCount": 2,
       "transitionCount": 2,
@@ -1069,7 +1081,7 @@
   {
     "id": "vote-podium-sacrifice",
     "group": "Voting",
-    "filePath": "src/machines/cartridges/voting/podium-sacrifice-machine.ts",
+    "filePath": "packages/cartridges/src/voting/podium-sacrifice-machine.ts",
     "stats": {
       "stateCount": 2,
       "transitionCount": 2,
@@ -1115,7 +1127,7 @@
   {
     "id": "vote-second-to-last",
     "group": "Voting",
-    "filePath": "src/machines/cartridges/voting/second-to-last-machine.ts",
+    "filePath": "packages/cartridges/src/voting/second-to-last-machine.ts",
     "stats": {
       "stateCount": 2,
       "transitionCount": 0,
@@ -1144,7 +1156,7 @@
   {
     "id": "vote-shield",
     "group": "Voting",
-    "filePath": "src/machines/cartridges/voting/shield-machine.ts",
+    "filePath": "packages/cartridges/src/voting/shield-machine.ts",
     "stats": {
       "stateCount": 2,
       "transitionCount": 2,
@@ -1190,7 +1202,7 @@
   {
     "id": "vote-trust-pairs",
     "group": "Voting",
-    "filePath": "src/machines/cartridges/voting/trust-pairs-machine.ts",
+    "filePath": "packages/cartridges/src/voting/trust-pairs-machine.ts",
     "stats": {
       "stateCount": 2,
       "transitionCount": 3,
@@ -1243,7 +1255,7 @@
   {
     "id": "vote-finals",
     "group": "Voting",
-    "filePath": "src/machines/cartridges/voting/finals-machine.ts",
+    "filePath": "packages/cartridges/src/voting/finals-machine.ts",
     "stats": {
       "stateCount": 2,
       "transitionCount": 2,
@@ -1289,7 +1301,7 @@
   {
     "id": "prompt-player-pick",
     "group": "Prompts",
-    "filePath": "src/machines/cartridges/prompts/player-pick-machine.ts",
+    "filePath": "packages/cartridges/src/prompts/player-pick-machine.ts",
     "stats": {
       "stateCount": 2,
       "transitionCount": 3,
@@ -1340,7 +1352,7 @@
   {
     "id": "prompt-prediction",
     "group": "Prompts",
-    "filePath": "src/machines/cartridges/prompts/prediction-machine.ts",
+    "filePath": "packages/cartridges/src/prompts/prediction-machine.ts",
     "stats": {
       "stateCount": 2,
       "transitionCount": 3,
@@ -1391,7 +1403,7 @@
   {
     "id": "prompt-would-you-rather",
     "group": "Prompts",
-    "filePath": "src/machines/cartridges/prompts/would-you-rather-machine.ts",
+    "filePath": "packages/cartridges/src/prompts/would-you-rather-machine.ts",
     "stats": {
       "stateCount": 2,
       "transitionCount": 3,
@@ -1442,7 +1454,7 @@
   {
     "id": "prompt-hot-take",
     "group": "Prompts",
-    "filePath": "src/machines/cartridges/prompts/hot-take-machine.ts",
+    "filePath": "packages/cartridges/src/prompts/hot-take-machine.ts",
     "stats": {
       "stateCount": 2,
       "transitionCount": 3,
@@ -1493,7 +1505,7 @@
   {
     "id": "prompt-confession",
     "group": "Prompts",
-    "filePath": "src/machines/cartridges/prompts/confession-machine.ts",
+    "filePath": "packages/cartridges/src/prompts/confession-machine.ts",
     "stats": {
       "stateCount": 3,
       "transitionCount": 6,
@@ -1570,7 +1582,7 @@
   {
     "id": "prompt-guess-who",
     "group": "Prompts",
-    "filePath": "src/machines/cartridges/prompts/guess-who-machine.ts",
+    "filePath": "packages/cartridges/src/prompts/guess-who-machine.ts",
     "stats": {
       "stateCount": 3,
       "transitionCount": 6,

@@ -207,6 +207,10 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     socket.send(JSON.stringify({ type: Events.Social.USE_PERK, perkType, targetId }));
   };
 
+  const revealPregameAnswer = (qIndex: number) => {
+    socket.send(JSON.stringify({ type: Events.Pregame.REVEAL_ANSWER, qIndex }));
+  };
+
   // Typing indicators with auto-stop after 3s of no keystrokes
   const typingTimeoutRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -247,5 +251,6 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     declineDm,
     sendTyping,
     stopTyping,
+    revealPregameAnswer,
   };
 };

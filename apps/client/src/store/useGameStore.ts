@@ -145,6 +145,15 @@ interface GameState {
      *  Null when inactive or when the day's timeline doesn't schedule one. */
     closesAt: number | null;
   };
+  /**
+   * Pregame slice from SYNC. Present only while server phase === 'pregame'
+   * (l3-pregame is alive). Drops to null automatically once Day 1 starts —
+   * pregame content is journaled to D1 but does not carry into game state.
+   */
+  pregame: {
+    revealedAnswers: Record<string, { qIndex: number; question: string; answer: string; revealedAt: number }>;
+    players: Record<string, { joinedAt: number }>;
+  } | null;
   tickerMessages: TickerMessage[];
   debugTicker: string | null;
 
@@ -882,6 +891,7 @@ export const useGameStore = create<GameState>((set) => ({
   lastPerkResult: null,
   playerActivity: {},
   confessionPhase: { active: false, myHandle: null, handleCount: 0, posts: [], closesAt: null },
+  pregame: null,
   tickerMessages: [],
   debugTicker: null,
   showcaseData: null,
@@ -963,6 +973,9 @@ export const useGameStore = create<GameState>((set) => ({
         state.confessionPhase,
         data.context?.confessionPhase ?? { active: false, myHandle: null, handleCount: 0, posts: [], closesAt: null },
       ),
+      // Pregame slice — server only sends it during phase==='pregame'; we
+      // drop to null otherwise so consumers can use it as a presence signal.
+      pregame: stableRef(state.pregame, data.context?.pregame ?? null),
       welcomeSeen: localStorage.getItem(`po-welcomeSeen-${data.context?.gameId || state.gameId}`) === 'true' || state.welcomeSeen,
       showcaseData: stableRef(state.showcaseData, data.context?.showcase ?? state.showcaseData),
       // Pulse Phase 4 — hydrate seen-state maps from localStorage inline (like welcomeSeen above).

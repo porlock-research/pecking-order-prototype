@@ -5,6 +5,7 @@ import { useHasOverflow } from '../../hooks/useHasOverflow';
 import { PULSE_Z } from '../../zIndex';
 import { CastChip } from './CastChip';
 import { GroupChip } from './GroupChip';
+import { DayPhases } from '@pecking-order/shared-types';
 
 /**
  * View Transitions: each CastChip carries `data-chip-player-id`, and the
@@ -21,7 +22,8 @@ export function CastStrip() {
   const pickingMode = useGameStore(s => s.pickingMode);
   const togglePicked = useGameStore(s => s.togglePicked);
   const channels = useGameStore(s => s.channels);
-  const { openDM, openSocialPanel } = usePulse();
+  const phase = useGameStore(s => s.phase);
+  const { openDM, openSocialPanel, openDossier } = usePulse();
 
   const lockedIds = useMemo(() => {
     if (pickingMode?.kind !== 'add-member') return new Set<string>();
@@ -37,12 +39,20 @@ export function CastStrip() {
       togglePicked(entry.id);
       return;
     }
+    // Pregame override — DMs are closed and the regular tap-to-DM gesture
+    // has nothing to bind to. Route taps (including self) to the Pregame
+    // Dossier sheet, which surfaces persona + bio + QA and (for self) the
+    // First Impressions reveal action.
+    if (phase === DayPhases.PREGAME && entry.kind !== 'group') {
+      openDossier(entry.id);
+      return;
+    }
     if (entry.kind === 'self') {
       openSocialPanel();
       return;
     }
     openDM(entry.id, entry.kind === 'group');
-  }, [pickingMode, lockedIds, togglePicked, openSocialPanel, openDM]);
+  }, [pickingMode, lockedIds, togglePicked, openSocialPanel, openDM, openDossier, phase]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const overflow = useHasOverflow(scrollRef);
