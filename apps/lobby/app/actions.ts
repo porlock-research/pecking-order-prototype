@@ -921,7 +921,7 @@ export async function startDebugGame(
 
 export async function getAuthStatus(): Promise<{
   authed: boolean;
-  email?: string | null;
+  email?: string;
   contactHandle?: string | null;
 }> {
   const session = await getSession();
@@ -1534,9 +1534,9 @@ export async function sendEmailInvite(
     }
   }
 
-  // Check if email is already a player in this game
-  // Duplicate-check by email. Frictionless-flow users (email IS NULL) are
-  // intentionally not matched — they can't be email-invited. Safe no-op.
+  // Check if email is already a player in this game.
+  // Frictionless-flow users hold a sentinel @frictionless.local email and
+  // can't be email-invited, so this match is naturally scoped to real emails.
   const existingPlayer = await db
     .prepare(
       `SELECT i.id FROM Invites i
@@ -1581,7 +1581,7 @@ export async function sendEmailInvite(
     const senderName =
       session.displayName ||
       session.contactHandle ||
-      (session.email ? session.email.split('@')[0] : 'Someone');
+      session.email.split('@')[0];
 
     const { subject, html } = buildInviteEmail({
       senderName,

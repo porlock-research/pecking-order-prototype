@@ -212,7 +212,13 @@ export default function LobbyRoot() {
 
   useEffect(() => {
     getAuthStatus().then(s => {
-      if (s.authed) setAuthEmail(s.email || s.contactHandle || null);
+      if (!s.authed) return;
+      // Frictionless users have an anon-*@frictionless.local sentinel email —
+      // prefer contactHandle for display when we have it.
+      const display =
+        s.contactHandle ||
+        (s.email && !s.email.endsWith('@frictionless.local') ? s.email : null);
+      setAuthEmail(display);
     });
     getActiveGames().then(setActiveGames);
   }, []);

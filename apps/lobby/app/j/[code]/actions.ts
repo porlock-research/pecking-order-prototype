@@ -72,15 +72,19 @@ export async function claimSeat(
   if (!rate.allowed) return { ok: false, error: 'rate_limited' };
 
   // Atomic user + session insert via db.batch().
+  // Users.email is NOT NULL (see migration 0015), so use an RFC-2606-reserved
+  // sentinel. The @frictionless.local domain can never collect a real login,
+  // and the UUID prefix avoids collisions. contactHandle is the display label.
   const userId = generateId();
   const sessionId = generateToken();
+  const sentinelEmail = `anon-${crypto.randomUUID()}@frictionless.local`;
   const now = Date.now();
 
   try {
     await db.batch([
       db
-        .prepare('INSERT INTO Users (id, email, contact_handle, created_at) VALUES (?, NULL, ?, ?)')
-        .bind(userId, handle, now),
+        .prepare('INSERT INTO Users (id, email, contact_handle, created_at) VALUES (?, ?, ?, ?)')
+        .bind(userId, sentinelEmail, handle, now),
       db
         .prepare('INSERT INTO Sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)')
         .bind(sessionId, userId, now + SESSION_EXPIRY_MS, now),
