@@ -105,7 +105,7 @@ export function EliminationReveal() {
   const accentColor = getPlayerColor(playerIndex);
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       <motion.div
         key={`elim-${eliminatedId}`}
         data-testid="elimination-reveal"
