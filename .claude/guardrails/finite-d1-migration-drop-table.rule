@@ -1,0 +1,38 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/lobby/migrations/[0-9]+_.+\.sql$
+MATCH_CONTENT: DROP TABLE [A-Za-z_]
+ADVISORY: |
+  D1 migrations that DROP TABLE for an FK-referenced table FAIL on staging
+  even though they succeed locally. Observed 2026-04-21 shipping migration
+  0015 (Users table recreation): local D1 (`--local`, better-sqlite3)
+  applied cleanly; staging D1 (`--remote`, workerd) errored with
+  SQLITE_CONSTRAINT_FOREIGNKEY [code: 7500].
+
+  **PRAGMA defer_foreign_keys = ON does NOT save you.** Adding it at the
+  top of the migration had no effect on staging — D1's transaction
+  wrapper doesn't honor the defer the way SQLite normally would. Multiple
+  attempts, multiple failure modes ("FOREIGN KEY constraint failed",
+  "internal error [code: 7500]").
+
+  **Check which tables FK-reference the one you're dropping** before
+  writing the migration:
+
+      grep -E "FOREIGN KEY.*REFERENCES [TableName]" apps/lobby/migrations/*.sql
+
+  If any match, DROP TABLE in a migration is the wrong tool. Alternatives:
+
+  1. Prefer `ALTER TABLE X ADD COLUMN ...` when you only need to add. No
+     recreation, no FK drama. Works for contact_handle, new nullable
+     columns, new indexes.
+  2. For column-type changes that require recreation, drop and recreate
+     the FK-referencing tables FIRST in the same migration, then the
+     target, then rebuild the FK tables with the preserved data. Tedious
+     but reliable.
+  3. For dropping NOT NULL: consider using a sentinel value in code
+     instead of changing the schema (e.g. `anon-${uuid}@frictionless.local`
+     for nullable-email use cases).
+
+  Why local works but staging doesn't: local D1 is better-sqlite3 with
+  default SQLite FK behavior; staging/prod D1 is workerd's SQLite with a
+  different transaction manager. Keep local-vs-remote in mind when
+  testing migrations.
