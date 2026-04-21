@@ -1744,7 +1744,7 @@ This document tracks significant architectural decisions, their context, and con
 
 ## [ADR-119] GM Briefing Messages for Dynamic Games
 *   **Date:** 2026-03-24
-*   **Status:** Accepted
+*   **Status:** Superseded by ADR-142 (2026-04-20) — the `INJECT_PROMPT`-based mechanism was removed because it duplicated `buildDayBriefingMessages`; the gap this ADR identified (dynamic games missing a briefing) is now solved via the silent `chatLog`-prepend path instead.
 *   **Context:** Static games included `INJECT_PROMPT` in the lobby's `buildManifestDays` (first event in `TIMELINE_EVENT_KEYS`). Dynamic games bypass `buildManifestDays` entirely — the Game Master's `resolveDay` generates the timeline via `generateDayTimeline` which had no `INJECT_PROMPT`. Result: no GM welcome message appeared in chat on Day 1 for dynamic games.
 *   **Decision:** `resolveDay` in the Game Master now prepends an `INJECT_PROMPT` event to the timeline, 1 second before the first event, with a briefing message sourced from `VOTE_TYPE_INFO`. The message includes day number, vote mechanism name, and how-it-works explanation.
 *   **Consequences:**
@@ -2235,3 +2235,37 @@ This document tracks significant architectural decisions, their context, and con
     *   **Platform floor implicit.** Chromium-only for morph; non-Chromium users get the previous framer-driven entry/exit (still correct, no morph). Reduced-motion users always get the non-VT path. Testing requires a Chromium browser; Playwright runs on Chrome by default so e2e coverage is preserved.
     *   **Anti-pattern caught by ADR:** Do NOT attempt to clear a view-transition-name via JSX re-render inside the callback (e.g., flipping a `shouldTag` state to `false`). React's commit happens inside `flushSync`, but AnimatePresence holds the previous render's DOM during exit — the JSX-driven change only lands on the next render, which is after the VT snapshot. Direct DOM mutation is the only reliable path.
     *   **Branch + merge:** Audit + implementation on `worktree-pulse-view-transitions` → merged to main as `92bdbb5` (no-ff merge commit). Single feature commit `b01cf2d` contains all four morphs + utility.
+
+## [ADR-142] GM day briefing uses silent chatLog prepend, not INJECT_PROMPT timeline event (supersedes ADR-119)
+*   **Date:** 2026-04-20
+*   **Status:** Accepted (supersedes ADR-119)
+*   **Context:** Every day-start emitted **two** near-duplicate GM briefings and **three** push notifications (`DAY_START` phase push + `OPEN_GROUP_CHAT` phase push + a `GROUP_CHAT_MSG` push from a `CHAT_MSG` fact). The duplication came from two independent features that landed one day apart:
+    *   **ADR-119 (2026-03-24)** — `resolveDay` prepends an `INJECT_PROMPT` event to each dynamic-game timeline, 1s before the first event, with message sourced from `VOTE_TYPE_INFO`. Static games had the same via the lobby's `buildManifestDays`. The event fires through L3's `INTERNAL.INJECT_PROMPT` handler, which appends a GM chat message AND emits a `CHAT_MSG` fact → triggers the `GROUP_CHAT_MSG` push.
+    *   **Player-engagement-ux spec (2026-03-23)** — introduced `buildDayBriefingMessages` in `packages/shared-types/src/gm-briefings.ts`, prepending a richer GM briefing (day overview + vote + game/activity/dilemma previews) directly to `chatLog` inside `buildL3Context` at L3 spawn. No fact, no push.
+
+    Neither feature removed the other. Both ran every day. The `INJECT_PROMPT` briefing carried only vote info (which the `DAY_START` phase push already conveys), so it was strictly redundant — both in chat content and in push notification purpose.
+
+*   **Decision:** `buildDayBriefingMessages` (silent `chatLog` prepend at L3 spawn) is the canonical path for day-start GM briefings. Auto-generated `INJECT_PROMPT` briefings removed from both generators:
+    *   `apps/game-server/src/machines/game-master.ts` — deleted the `timeline.unshift({ action: 'INJECT_PROMPT', ... })` block in `resolveDay`.
+    *   `apps/lobby/app/actions.ts` + `apps/lobby/app/page.tsx` — removed `INJECT_PROMPT` from `TIMELINE_EVENT_KEYS`, `EVENT_MESSAGES`, `DebugDayConfig.events` type, `CONFIGURABLE_EVENT_LABELS`, `DEFAULT_EVENT_TIMES`, `SPEED_RUN_SCHEDULE`, and all default `events: { ... }` objects.
+
+    `INJECT_PROMPT` as an event type, the `INTERNAL.INJECT_PROMPT` handler in `l3-session.ts`, and admin tooling (`ADMIN.INJECT_TIMELINE_EVENT` with `action: 'INJECT_PROMPT'`) **all stay** — the pipeline is retained for (a) admin-injected GM messages and (b) targeted GM→player DMs (payload `targetId`, which fires a `DM_SENT` push on a GM↔player DM channel).
+
+*   **The canonical pattern for GM-authored announcements in chat:**
+
+    | Purpose | Pipeline | Emits fact? | Fires push? |
+    |---|---|---|---|
+    | Day-start briefing | `buildDayBriefingMessages` → `chatLog` prepend in `buildL3Context` | No | No (the `DAY_START` phase push already covers the notification) |
+    | Dilemma announcement | `buildChatMessage(GAME_MASTER_ID, ...)` → direct `chatLog` append in `l3-dilemma.ts` | No | No (co-occurs with `DAY_START`) |
+    | Admin-injected GM message | `ADMIN.INJECT_TIMELINE_EVENT` → `INTERNAL.INJECT_PROMPT` handler | Yes (`CHAT_MSG`) | Yes (`GROUP_CHAT_MSG`) |
+    | Targeted GM→player DM | `INTERNAL.INJECT_PROMPT` with `payload.targetId` | Yes (`DM_SENT`) | Yes (`DM_SENT`) |
+
+    **Rule of thumb when adding a new GM chat path:** if a phase push already notifies the player at that moment, use the silent `chatLog` path. Only route through `INJECT_PROMPT` when you actually want a `GROUP_CHAT_MSG` / `DM_SENT` push notification as well.
+
+*   **Consequences:**
+    *   **Net notification count at day start: 3 → 2.** Players get the `DAY_START` push ("*A new day dawns at Pecking Order. Today's vote: X*") followed by `OPEN_GROUP_CHAT` when the channel opens. No redundant "GM posted in chat" ping.
+    *   **Net chat messages at morning: 2 → 1.** Single richer briefing from `buildDayBriefingMessages` (includes game/activity/dilemma previews, not just vote info).
+    *   **Pre-existing games keep the old behavior.** Static manifests are frozen at game-creation; dynamic manifests are frozen per-day at resolution. The fix only affects newly-created games (static) or days-not-yet-resolved (dynamic). See memory `feedback_manifest_freeze_on_create.md`.
+    *   **ADR-119 is superseded in mechanism but not in intent.** The gap ADR-119 identified (dynamic games had no briefing) is still solved — via `buildDayBriefingMessages` instead of via `INJECT_PROMPT`.
+    *   **Tests updated:** `apps/game-server/src/machines/__tests__/game-master.test.ts` flipped all `hasInjectPrompt` assertions from `true` → `false` with a comment explaining the shift. `e2e/staging-{lobby,hybrid}-sim.mjs` dropped the now-misleading "GM briefing: YES/MISSING" diagnostic log lines.
+    *   **Branch + merge:** `fix/gm-briefing-duplication` worktree → single commit `984165a` → merged to main as `8f40e26` (no-ff). Not pushed to origin at time of merge.

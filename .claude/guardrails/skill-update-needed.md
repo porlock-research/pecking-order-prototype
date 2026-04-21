@@ -80,3 +80,20 @@ Option 3 is lowest-effort and addresses the core pain (noise in the log).
 Optionally also add a pointer to `apps/game-server/src/sync.ts:extractL3Context` / `extractCartridges` for programmatic access.
 
 **Deletion condition:** Delete once the skill's Quick Diagnosis section reflects the actual `/state` shape.
+
+---
+
+## `finite-l3-test-parent-wrapper.rule` — MATCH_PATTERN too broad
+
+**Problem:** Rule fires on ANY edit to `apps/game-server/src/machines/__tests__/.+\.test\.ts$`. But most tests in that dir (game-master.test.ts, manifest-types.test.ts, event-coverage.test.ts, etc.) don't touch `dailySessionMachine` at all. Session 2026-04-20 (GM-briefing-duplication fix): fired 4× on `game-master.test.ts` edits where the L3 parent-wrapper advice was completely irrelevant. The 45-line advisory reprints on every fire.
+
+**Suggested fix:** Add MATCH_CONTENT so the rule only fires when the edit actually references the L3 machine or its test helper:
+
+```
+MATCH_CONTENT: (dailySessionMachine|createL3Actor|buildL3Context)
+```
+
+Keeps the advisory visible for the tests where it matters (l3-*.test.ts) while silencing it for sibling machine tests (game-master, l2-*, manifest-types, etc.).
+
+**Deletion condition:** Delete once the rule has MATCH_CONTENT added.
+
