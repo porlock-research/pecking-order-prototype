@@ -162,6 +162,13 @@ export const orchestratorMachine = setup({
             guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Pregame.PREFIX),
             actions: sendTo('l3-pregame', ({ event }: any) => event),
           },
+          {
+            // Narrow social allowlist — only SOCIAL.WHISPER is enabled in pregame.
+            // Other SOCIAL.* events (SEND_MSG, SEND_SILVER, REACT, NUDGE, ACCEPT_DM,
+            // etc.) remain silently dropped in pregame by design.
+            guard: ({ event }: any) => event.type === Events.Social.WHISPER,
+            actions: sendTo('l3-pregame', ({ event }: any) => event),
+          },
         ],
       }
     },

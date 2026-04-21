@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import type { ChannelType, ChannelCapability } from '@pecking-order/shared-types';
+import type { ChannelType, ChannelCapability, DayPhase } from '@pecking-order/shared-types';
+import { DayPhases } from '@pecking-order/shared-types';
 import type { Command } from '../../hooks/useCommandBuilder';
 
 type ChipVisibility =
@@ -31,6 +32,10 @@ interface HintChipsProps {
   capabilities?: ChannelCapability[];
   groupChatOpen?: boolean;
   dmsOpen?: boolean;
+  /** Phase-aware bypass: /whisper is valid during pregame even though
+   *  dmsOpen is false (l3-pregame's canWhisper guard skips the dmsOpen
+   *  check by design). */
+  phase?: DayPhase;
 }
 
 export function HintChips({
@@ -39,6 +44,7 @@ export function HintChips({
   capabilities = [],
   groupChatOpen = true,
   dmsOpen = true,
+  phase,
 }: HintChipsProps) {
   const visible = chips.filter(c => {
     const staticOk = c.visibility.kind === 'capability'
@@ -46,7 +52,11 @@ export function HintChips({
       : c.visibility.allow.includes(channelType);
     if (!staticOk) return false;
     if (c.requires === 'groupChatOpen' && !groupChatOpen) return false;
-    if (c.requires === 'dmsOpen' && !dmsOpen) return false;
+    if (c.requires === 'dmsOpen' && !dmsOpen) {
+      // Pregame exception: whisper is always allowed in pregame.
+      const whisperInPregame = c.command === 'whisper' && phase === DayPhases.PREGAME;
+      if (!whisperInPregame) return false;
+    }
     return true;
   });
 

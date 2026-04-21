@@ -6,7 +6,7 @@ import { PULSE_SPRING } from '../../springs';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import { PersonaImage } from '../common/PersonaImage';
 import { getPlayerColor } from '../../colors';
-import { ArrowLeft, Lightning, Sparkle } from '../../icons';
+import { ArrowLeft, Lightning, Lock, Sparkle } from '../../icons';
 import type { QaEntry } from '@pecking-order/shared-types';
 
 interface Props {
@@ -168,6 +168,10 @@ export function PregameDossierSheet({ targetId, onClose }: Props) {
               const revealedThis = myReveal?.qIndex === i;
               const canReveal = isSelf && !myReveal && submittingQ === null;
               const submittingThis = submittingQ === i;
+              // Server strips qa.answer for other players' un-revealed slots
+              // (sync.ts roster projection). Empty answer = locked, anything
+              // non-empty = visible to this viewer.
+              const isLocked = !isSelf && !qa.answer;
               return (
                 <article
                   key={i}
@@ -179,7 +183,9 @@ export function PregameDossierSheet({ targetId, onClose }: Props) {
                       : 'var(--pulse-surface)',
                     border: revealedThis
                       ? '1px solid color-mix(in oklch, var(--pulse-accent) 40%, transparent)'
-                      : '1px solid var(--pulse-border)',
+                      : isLocked
+                        ? '1px dashed color-mix(in oklch, var(--pulse-text-3) 40%, transparent)'
+                        : '1px solid var(--pulse-border)',
                   }}
                 >
                   <div style={{
@@ -189,12 +195,22 @@ export function PregameDossierSheet({ targetId, onClose }: Props) {
                   }}>
                     {qa.question}
                   </div>
-                  <div style={{
-                    fontSize: 15, lineHeight: 1.4, color: 'var(--pulse-text-1)',
-                    fontWeight: 500,
-                  }}>
-                    {qa.answer}
-                  </div>
+                  {isLocked ? (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      fontSize: 13, fontStyle: 'italic',
+                      color: 'var(--pulse-text-3)', opacity: 0.7,
+                    }}>
+                      <Lock size={14} weight="fill" /> Sealed — until {player.personaName.split(' ')[0]} chooses to reveal
+                    </div>
+                  ) : (
+                    <div style={{
+                      fontSize: 15, lineHeight: 1.4, color: 'var(--pulse-text-1)',
+                      fontWeight: 500,
+                    }}>
+                      {qa.answer}
+                    </div>
+                  )}
                   {isSelf && (
                     <div style={{ marginTop: 'var(--pulse-space-sm)' }}>
                       {revealedThis ? (

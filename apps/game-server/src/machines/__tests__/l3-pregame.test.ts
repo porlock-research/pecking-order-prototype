@@ -162,3 +162,71 @@ describe('l3-pregame — PREGAME.REVEAL_ANSWER', () => {
     h.stop();
   });
 });
+
+describe('l3-pregame — SOCIAL.WHISPER (v2)', () => {
+  function seed(h: ReturnType<typeof createPregameHarness>) {
+    h.send({
+      type: Events.System.PLAYER_JOINED,
+      player: { id: 'p1', personaName: 'P1', qaAnswers: [] },
+    });
+    h.send({
+      type: Events.System.PLAYER_JOINED,
+      player: { id: 'p2', personaName: 'P2', qaAnswers: [] },
+    });
+  }
+
+  it('appends a whisper ChatMessage to chatLog + emits WHISPER fact upward', () => {
+    const h = createPregameHarness();
+    seed(h);
+    h.send({ type: Events.Social.WHISPER, senderId: 'p1', targetId: 'p2', text: 'psst' });
+
+    const ctx: any = h.pregame().context;
+    expect(ctx.chatLog).toHaveLength(1);
+    const msg = ctx.chatLog[0];
+    expect(msg.senderId).toBe('p1');
+    expect(msg.content).toBe('psst');
+    expect(msg.whisperTarget).toBe('p2');
+    expect(msg.channelId).toBe('MAIN');
+
+    const whisperFact = h.facts().find(f => f.type === FactTypes.WHISPER);
+    expect(whisperFact).toBeDefined();
+    expect(whisperFact!.actorId).toBe('p1');
+    expect(whisperFact!.targetId).toBe('p2');
+    h.stop();
+  });
+
+  it('rejects whisper if sender or target is not in the pregame player set', () => {
+    const h = createPregameHarness();
+    seed(h);
+    h.send({ type: Events.Social.WHISPER, senderId: 'pX', targetId: 'p2', text: 'ghost' });
+    h.send({ type: Events.Social.WHISPER, senderId: 'p1', targetId: 'pZ', text: 'ghost' });
+    expect(h.pregame().context.chatLog).toHaveLength(0);
+    expect(h.facts().filter(f => f.type === FactTypes.WHISPER)).toHaveLength(0);
+    h.stop();
+  });
+
+  it('rejects whisper to self, or with empty text', () => {
+    const h = createPregameHarness();
+    seed(h);
+    h.send({ type: Events.Social.WHISPER, senderId: 'p1', targetId: 'p1', text: 'me' });
+    h.send({ type: Events.Social.WHISPER, senderId: 'p1', targetId: 'p2', text: '' });
+    expect(h.pregame().context.chatLog).toHaveLength(0);
+    h.stop();
+  });
+
+  it('seeds MAIN channel with WHISPER capability on spawn', () => {
+    const h = createPregameHarness();
+    const ctx: any = h.pregame().context;
+    expect(ctx.channels.MAIN).toBeDefined();
+    expect(ctx.channels.MAIN.capabilities).toContain('WHISPER');
+    h.stop();
+  });
+
+  it('adds each joined player to MAIN.memberIds (enables the whisper flow)', () => {
+    const h = createPregameHarness();
+    seed(h);
+    const ctx: any = h.pregame().context;
+    expect(ctx.channels.MAIN.memberIds.sort()).toEqual(['p1', 'p2']);
+    h.stop();
+  });
+});
