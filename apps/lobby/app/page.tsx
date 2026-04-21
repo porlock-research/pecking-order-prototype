@@ -70,7 +70,7 @@ function createDefaultDay(): DebugDayConfig {
     voteType: 'MAJORITY',
     gameType: 'TRIVIA',
     activityType: 'PLAYER_PICK',
-    events: { INJECT_PROMPT: true, OPEN_GROUP_CHAT: true, START_ACTIVITY: true, END_ACTIVITY: true, OPEN_DMS: true, START_GAME: true, END_GAME: true, OPEN_VOTING: true, CLOSE_VOTING: true, CLOSE_DMS: true, CLOSE_GROUP_CHAT: true, END_DAY: true },
+    events: { OPEN_GROUP_CHAT: true, START_ACTIVITY: true, END_ACTIVITY: true, OPEN_DMS: true, START_GAME: true, END_GAME: true, OPEN_VOTING: true, CLOSE_VOTING: true, CLOSE_DMS: true, CLOSE_GROUP_CHAT: true, END_DAY: true },
   };
 }
 
@@ -88,7 +88,6 @@ function createDefaultManifestConfig(): DebugManifestConfig {
 }
 
 const CONFIGURABLE_EVENT_LABELS: { key: string; label: string }[] = [
-  { key: 'INJECT_PROMPT', label: 'Inject Prompt' },
   { key: 'OPEN_GROUP_CHAT', label: 'Open Group Chat' },
   { key: 'START_ACTIVITY', label: 'Start Activity' },
   { key: 'END_ACTIVITY', label: 'End Activity' },
@@ -105,7 +104,6 @@ const CONFIGURABLE_EVENT_LABELS: { key: string; label: string }[] = [
 // Default times matching the spec daily schedule (PST)
 // 9-10am: Group Chat | 10am-noon: Game | 10am-11pm: DMs | Throughout: Activities | 8-11pm: Vote | Midnight: Elimination
 const DEFAULT_EVENT_TIMES: Record<string, string> = {
-  INJECT_PROMPT: '09:00',
   OPEN_GROUP_CHAT: '09:00',
   CLOSE_GROUP_CHAT: '10:00',
   OPEN_DMS: '10:00',
@@ -349,7 +347,6 @@ export default function LobbyRoot() {
     // Simultaneous events share the same offset (processed in one wakeup).
     //
     const SPEED_RUN_SCHEDULE: { key: string; offsetMin: number }[] = [
-      { key: 'INJECT_PROMPT', offsetMin: 0 },
       { key: 'OPEN_GROUP_CHAT', offsetMin: 0 },
       { key: 'CLOSE_GROUP_CHAT', offsetMin: 2 },
       { key: 'OPEN_DMS', offsetMin: 2 },

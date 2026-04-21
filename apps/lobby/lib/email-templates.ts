@@ -59,10 +59,10 @@ function logo(lobbyUrl: string): string {
     .replace(/,/g, ' \u00b7');
   return `<tr><td align="center" style="padding-bottom:40px;">
     <a href="${lobbyUrl}" target="_blank" style="text-decoration:none;display:inline-block;color:${GOLD};">
-      <div style="font-family:${DISPLAY};font-size:48px;font-weight:900;line-height:0.9;letter-spacing:-0.02em;color:${GOLD};text-transform:uppercase;">
+      <div style="font-family:${DISPLAY};font-size:60px;font-weight:900;line-height:0.85;letter-spacing:-0.03em;color:${GOLD};text-transform:uppercase;">
         Pecking<br>Order
       </div>
-      <div style="width:56px;height:2px;background-color:${GOLD};margin:14px auto 8px;line-height:0;font-size:0;">&nbsp;</div>
+      <div style="width:80px;height:3px;background-color:${GOLD};margin:18px auto 10px;line-height:0;font-size:0;">&nbsp;</div>
       <div style="font-family:${BODY};font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${GOLD_DIM};">
         ${issueDate}
       </div>
@@ -92,10 +92,12 @@ function button(label: string, href: string): string {
   </table>`;
 }
 
-/** Persona card-deck hero image */
+/** Persona card-deck hero image — fills the column; cover hook.
+ * object-fit crops the 650x630 source PNG to a tight band in Gmail/Apple Mail/etc.
+ * Outlook ignores object-fit and falls back to natural aspect; no worse than v1. */
 function hero(lobbyUrl: string): string {
-  return `<tr><td align="center" style="padding-bottom:28px;">
-    <img src="${lobbyUrl}/email-hero.png" alt="Pecking Order — a 7-day social deduction game on your phone" width="320" style="display:block;max-width:80%;height:auto;border:0;" />
+  return `<tr><td align="center" style="padding-bottom:32px;">
+    <img src="${lobbyUrl}/email-hero.png" alt="Pecking Order — a social deduction game played in a group chat" width="480" style="display:block;width:100%;max-width:480px;height:260px;object-fit:cover;object-position:center;border:0;" />
   </td></tr>`;
 }
 
@@ -165,8 +167,8 @@ export function buildInviteEmail(opts: {
   lobbyUrl: string;
 }): { subject: string; html: string } {
   const sender = opts.senderName.trim() || 'Someone';
-  const subject = `${sender} wants you in`;
-  const preheader = `${sender} just added you to their cast. 7 days, your phone, everyone against everyone.`;
+  const subject = `${sender} added you to Pecking Order`;
+  const preheader = `${sender} invited you to play Pecking Order &mdash; a social deduction game played in a group chat.`;
   const html = wrap(
     `
     ${logo(opts.lobbyUrl)}
@@ -174,7 +176,7 @@ export function buildInviteEmail(opts: {
     ${card(`
       ${eyebrow('Cast list')}
       ${hugeLine(`${sender} added you`)}
-      ${bodyLine('7 days. Your phone. Alliances, votes, eliminations &mdash; all in one group chat.')}
+      ${bodyLine('Pecking Order is a social deduction game you play in a group chat. Pick a character, form alliances, and try not to get voted out. A few minutes a day on your phone. Last one standing wins.')}
       ${buttonRow('Take your spot', opts.inviteLink, 28)}
       ${hairline()}
       ${codeBlock('Invite code', opts.inviteCode)}
@@ -192,7 +194,7 @@ export function buildLoginEmail(opts: {
   assetsUrl: string;
   lobbyUrl: string;
 }): { subject: string; html: string } {
-  const subject = 'One tap back in';
+  const subject = 'Your Pecking Order sign-in link';
   const preheader = 'One-tap link, live for 5 minutes.';
   const html = wrap(
     `
@@ -217,7 +219,7 @@ export function buildPlaytestConfirmationEmail(opts: {
   playtestUrl: string;
   referralCode?: string;
 }): { subject: string; html: string } {
-  const subject = 'You\u2019re on the list';
+  const subject = 'You\u2019re on the Pecking Order waitlist';
   const shareUrl = opts.referralCode
     ? `${opts.playtestUrl}/share/${opts.referralCode}`
     : opts.playtestUrl;
@@ -234,7 +236,7 @@ export function buildPlaytestConfirmationEmail(opts: {
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
         ${beat('01', 'Pick a face', 'Play a persona with their own history, drama, and enemies.')}
-        ${beat('02', 'Play from your phone', '7 days, real time. Things happen while you&rsquo;re at school.')}
+        ${beat('02', 'Play from your phone', 'Real time, day by day. Things happen while you&rsquo;re at school.')}
         ${beat('03', 'Last one standing wins', 'Form alliances. Send gifts. Vote someone out. Don&rsquo;t get voted out.', true)}
       </table>
 
@@ -246,7 +248,7 @@ export function buildPlaytestConfirmationEmail(opts: {
 
       ${buttonRow('Send to a friend', shareUrl)}
     `)}
-    ${footer('A social deduction game. On your phone. For 7 days.')}
+    ${footer('A social deduction game. On your phone. In the group chat.')}
   `,
     preheader,
     subject,
