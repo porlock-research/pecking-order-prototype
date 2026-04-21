@@ -112,10 +112,6 @@ export function EliminationReveal() {
         aria-modal="true"
         aria-live="assertive"
         aria-label={`${player.personaName} — ${info.revealLabel}. ${info.eliminatedSubtitle}`}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
         onClick={handleDismiss}
         style={{
           position: 'fixed',
@@ -124,6 +120,7 @@ export function EliminationReveal() {
           cursor: 'pointer',
           overflow: 'hidden',
           background: 'var(--pulse-bg)',
+          opacity: 1,
         }}
       >
         {/* Full-bleed portrait — enters in colour, desaturates over ~1.6s. */}
