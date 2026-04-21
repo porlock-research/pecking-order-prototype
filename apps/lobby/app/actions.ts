@@ -919,10 +919,14 @@ export async function startDebugGame(
 
 // ── Auth Status ─────────────────────────────────────────────────────────
 
-export async function getAuthStatus(): Promise<{ authed: boolean; email?: string }> {
+export async function getAuthStatus(): Promise<{
+  authed: boolean;
+  email?: string | null;
+  contactHandle?: string | null;
+}> {
   const session = await getSession();
   if (!session) return { authed: false };
-  return { authed: true, email: session.email };
+  return { authed: true, email: session.email, contactHandle: session.contactHandle };
 }
 
 // ── Active Games for Current User ───────────────────────────────────────
@@ -1531,6 +1535,8 @@ export async function sendEmailInvite(
   }
 
   // Check if email is already a player in this game
+  // Duplicate-check by email. Frictionless-flow users (email IS NULL) are
+  // intentionally not matched — they can't be email-invited. Safe no-op.
   const existingPlayer = await db
     .prepare(
       `SELECT i.id FROM Invites i
@@ -1572,7 +1578,10 @@ export async function sendEmailInvite(
 
   if (RESEND_API_KEY && LOBBY_HOST) {
     const inviteLink = `${LOBBY_HOST}/invite/${token}`;
-    const senderName = session.displayName || session.email.split('@')[0];
+    const senderName =
+      session.displayName ||
+      session.contactHandle ||
+      (session.email ? session.email.split('@')[0] : 'Someone');
 
     const { subject, html } = buildInviteEmail({
       senderName,

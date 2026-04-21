@@ -48,8 +48,9 @@ export { generateId, generateToken, generateInviteCode, getSessionCookieName };
 
 export interface SessionUser {
   userId: string;
-  email: string;
+  email: string | null;         // null for frictionless-flow users (joined via /j/CODE with no email)
   displayName: string | null;
+  contactHandle: string | null; // user-typed label; fallback for display when email is null
 }
 
 export async function getSession(): Promise<SessionUser | null> {
@@ -63,13 +64,13 @@ export async function getSession(): Promise<SessionUser | null> {
 
   const row = await db
     .prepare(
-      `SELECT s.id, s.user_id, u.email, u.display_name
+      `SELECT s.id, s.user_id, u.email, u.display_name, u.contact_handle
        FROM Sessions s
        JOIN Users u ON u.id = s.user_id
        WHERE s.id = ? AND s.expires_at > ?`
     )
     .bind(sessionId, now)
-    .first<{ id: string; user_id: string; email: string; display_name: string | null }>();
+    .first<{ id: string; user_id: string; email: string | null; display_name: string | null; contact_handle: string | null }>();
 
   if (!row) return null;
 
@@ -77,6 +78,7 @@ export async function getSession(): Promise<SessionUser | null> {
     userId: row.user_id,
     email: row.email,
     displayName: row.display_name,
+    contactHandle: row.contact_handle,
   };
 }
 
