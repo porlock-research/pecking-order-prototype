@@ -814,8 +814,9 @@ describe('Game Master — 10-player full tournament day resolution', () => {
       // Timeline has events
       expect(day.timeline.length).toBeGreaterThan(0);
 
-      // GM briefing message present
-      expect(entry.hasInjectPrompt).toBe(true);
+      // GM briefing is now appended to L3 chatLog at session spawn (buildL3Context),
+      // not injected as a timeline event. Timeline should have no INJECT_PROMPT.
+      expect(entry.hasInjectPrompt).toBe(false);
 
       // nextDayStart present (not last day)
       expect(day.nextDayStart).toBeDefined();
@@ -853,7 +854,7 @@ describe('Game Master — 10-player full tournament day resolution', () => {
 
     expect(finals.voteType).toBe('FINALS');
     expect(finals.nextDayStart).toBeUndefined();
-    expect(finals.timeline.some((e: any) => e.action === 'INJECT_PROMPT')).toBe(true);
+    expect(finals.timeline.some((e: any) => e.action === 'INJECT_PROMPT')).toBe(false);
 
     dayLog.push({
       day: finalsDay,
@@ -864,7 +865,7 @@ describe('Game Master — 10-player full tournament day resolution', () => {
       dilemmaType: finals.dilemmaType || 'NONE',
       dmChars: finals.dmCharsPerPlayer!,
       timelineEvents: finals.timeline.length,
-      hasInjectPrompt: true,
+      hasInjectPrompt: false,
       hasNextDayStart: false,
     });
 
@@ -875,7 +876,7 @@ describe('Game Master — 10-player full tournament day resolution', () => {
     // Every day resolved something
     for (const d of dayLog) {
       expect(d.timelineEvents).toBeGreaterThan(0);
-      expect(d.hasInjectPrompt).toBe(true);
+      expect(d.hasInjectPrompt).toBe(false);
     }
 
     // DM chars should decrease over time (DIMINISHING)

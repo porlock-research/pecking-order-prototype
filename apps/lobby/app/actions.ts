@@ -16,7 +16,6 @@ export interface DebugDayConfig {
   gameMode?: string;
   activityType: string;
   events: {
-    INJECT_PROMPT: boolean;
     OPEN_GROUP_CHAT: boolean;
     START_ACTIVITY: boolean;
     END_ACTIVITY: boolean;
@@ -974,7 +973,6 @@ export async function getActiveGames(): Promise<ActiveGame[]> {
 // ── Shared: Build manifest days ──────────────────────────────────────────
 
 const EVENT_MESSAGES: Record<string, string> = {
-  INJECT_PROMPT: 'Chat prompt injected.',
   OPEN_GROUP_CHAT: 'Group chat is now open!',
   START_ACTIVITY: 'Activity started!',
   END_ACTIVITY: 'Activity ended.',
@@ -992,7 +990,7 @@ const EVENT_MESSAGES: Record<string, string> = {
 // This keeps lobby (static games) and game-master (dynamic games) consistent.
 
 const TIMELINE_EVENT_KEYS = [
-  'INJECT_PROMPT', 'OPEN_GROUP_CHAT', 'START_ACTIVITY', 'END_ACTIVITY', 'OPEN_DMS',
+  'OPEN_GROUP_CHAT', 'START_ACTIVITY', 'END_ACTIVITY', 'OPEN_DMS',
   'START_GAME', 'END_GAME',
   'OPEN_GROUP_CHAT_2', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'CLOSE_GROUP_CHAT_2', 'CLOSE_GROUP_CHAT', 'END_DAY',
 ] as const;
@@ -1008,9 +1006,7 @@ function buildEventPayload(
   dayIndex: number,
   usedHotTakeIds: Set<string>,
 ) {
-  const msg = eventKey === 'INJECT_PROMPT'
-    ? `Welcome to Day ${dayIndex} of Pecking Order`
-    : EVENT_MESSAGES[eventKey];
+  const msg = EVENT_MESSAGES[eventKey];
   if (eventKey === 'START_ACTIVITY') {
     const actInfo = (ACTIVITY_TYPE_INFO as Record<string, any>)[activityType];
     const base = {
