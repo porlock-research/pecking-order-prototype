@@ -941,3 +941,33 @@ No commit for this task. Status: the frictionless flow is live end-to-end on the
 - §7 email-on-flip + status-flip completion
 - §8 /create-game script rewrite
 - All deprecations (DEBUG_OVERRIDE, startDebugGame, DEBUG_PECKING_ORDER enum)
+
+---
+
+## Handoff — 2026-04-21 05:20
+
+**What shipped:**
+- All 6 code commits merged to `origin/main` (migration 0015, migration 0016, SessionUser nullable, rate-limit helper, claimSeat, welcome page, e2e tests).
+- Plan + spec committed.
+- CI Pipeline passes.
+
+**What's blocked:**
+Staging deploy failed on migration 0015 with `SQLITE_CONSTRAINT_FOREIGNKEY [code: 7500]`. `Sessions.user_id` and `Invites.accepted_by` FK-reference `Users.id`; the 12-step table recreation triggers FK violation on D1 `--remote` despite `PRAGMA defer_foreign_keys = ON` (pragma doesn't behave on staging the way it does locally).
+
+**Already resolved (by a parallel session, commit `e5c93d0`):** Option A was shipped — migration 0015 simplified to `ALTER TABLE Users ADD COLUMN contact_handle TEXT`; `claimSeat` inserts `anon-<uuid>@frictionless.local` sentinel; `SessionUser.email` reverted to non-null. Consumer fixes simplified.
+
+**Exact next step:**
+
+1. `git fetch && git status` — confirm `e5c93d0` is in your tree and there are no conflicts.
+2. Watch the staging CI run triggered by `e5c93d0`. If green: verify `/j/CODE` works end-to-end on `staging-lobby.peckingorder.ca` (take a test game, open in incognito, type a name, confirm persona wizard renders).
+3. If staging CI is still failing on some new reason, triage per memory `feedback_recognize_flailing` — small fix or hand off; don't chain retries.
+4. Phase 2 remaining items (admin page §6, deprecations) are unshipped. Phase 3 (commit-early, auto-redirect, email-on-flip) is unshipped. Decide with user which slice comes next.
+
+**Additional CI fixes shipped this session (don't undo):**
+- `.github/workflows/{ci,deploy-staging,deploy-production}.yml` now use `rm -f package-lock.json && npm install --no-audit --no-fund` instead of `npm ci` — sidesteps npm 11 optional-deps bug (macOS lockfile missing linux binaries). See ADR-144 in `plans/DECISIONS.md`.
+- `apps/game-server/package.json` and `apps/client/package.json` gained `"@pecking-order/cartridges": "*"` in dependencies — another session's new package wasn't declared.
+
+**Critical guardrails:**
+- Another session is actively pushing. Re-check `git fetch && git status` before every commit. Stage by exact path, never `-A`.
+- Don't push without explicit user approval.
+- Don't retry migration 0015 in its table-recreation form — that path is a dead end on D1 staging.

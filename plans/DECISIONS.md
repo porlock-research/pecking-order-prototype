@@ -2291,3 +2291,15 @@ This document tracks significant architectural decisions, their context, and con
     *   **Cross-shell:** Pulse-only. Vivid/Classic/Immersive can read the SYNC slice but don't render anything new. The pregame slice is shell-agnostic; rendering elsewhere is just UI work.
     *   **Branch + merge:** `feature/pregame-engagement` worktree → single feature commit `dde18d8` → merge of main back into the branch (`a68d442`) → no-ff merge into main (`6943dff`). 36 files changed, +1255/-73, 6 new files. 15 new tests; 407 game-server + 143 client tests passing post-merge. Pushed to origin via parallel session sweep.
     *   **Known limitation:** ADMIN-mode `INJECT_TIMELINE_EVENT` with `action: 'START_CONFESSION_CHAT'` returns 200 OK from L2 but the L3 confessionLayer doesn't transition out of `idle`, even with `manifest.ruleset.confessions.enabled = true` (verified via /state). Group chat stays open (the `openConfessionChannel` action that closes group chat doesn't run). Hypothesis: a precondition in confessionLayer or its enclosing parallel layer that ADMIN mode doesn't satisfy (vs. the alarm-driven path that works in scheduled games). Not a regression from this work — the path was already used by the `playtest` SMOKE_TEST preset which is alarm-driven. See `.claude/guardrails/finite-confession-admin-inject-no-op.rule`.
+
+## [ADR-144] CI uses `npm install`, not `npm ci`, to cross platforms
+*   **Date:** 2026-04-21
+*   **Status:** Accepted
+*   **Context:** CI on ubuntu-latest started failing because npm 11 has a known bug (npm/cli#4828) where a lockfile generated on macOS (our dev platform) is missing linux-specific optional-dep entries like `@rollup/rollup-linux-x64-gnu` and `@emnapi/runtime`. `npm ci` refuses to proceed when the lockfile doesn't match package.json's resolved tree for the current platform. Symptoms cycled through successive regen attempts: `Missing: @emnapi/runtime@X from lock file` → after Mac regen → `Cannot find module @rollup/rollup-linux-x64-gnu` at build time. Multiple sessions had been blocked by this.
+*   **Decision:** Change every CI install step from `npm ci` to `rm -f package-lock.json && npm install --no-audit --no-fund` across `.github/workflows/{ci,deploy-staging,deploy-production}.yml`. Lockfile stays committed at repo root so local dev remains deterministic; CI discards it and resolves per-platform at runtime.
+*   **Consequences:**
+    *   CI unblocked across platforms. Any dev can land code regardless of whether they run npm install on Mac, Linux, or Windows.
+    *   Slightly slower CI installs (full resolution vs cached lockfile).
+    *   No lockfile-reproducibility guarantee inside CI runs — a CI install in Jan 2026 and one in July 2026 might pick up different patch versions of transitive deps. Acceptable trade-off given the alternative (ship nothing).
+    *   If the npm bug is fixed upstream (watch npm/cli#4828), revert to `npm ci` for reproducibility.
+    *   **Files:** `.github/workflows/ci.yml`, `.github/workflows/deploy-staging.yml`, `.github/workflows/deploy-production.yml`.
