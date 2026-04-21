@@ -213,7 +213,9 @@ export default function LobbyRoot() {
   const [emailInviteStatuses, setEmailInviteStatuses] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    getAuthStatus().then(s => { if (s.authed && s.email) setAuthEmail(s.email); });
+    getAuthStatus().then(s => {
+      if (s.authed) setAuthEmail(s.email || s.contactHandle || null);
+    });
     getActiveGames().then(setActiveGames);
   }, []);
 
