@@ -54,6 +54,17 @@ export function EliminationReveal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isShowing]);
 
+  // When a FINALS runner-up elimination gets queued, resolve -> null above
+  // (this overlay shouldn't render for non-winner finalists). Auto-dismiss so
+  // the queue advances to the winner reveal.
+  useEffect(() => {
+    if (!isShowing) return;
+    if (!current || current.kind !== 'elimination' || current.dayIndex == null) return;
+    const vt = manifest?.days?.[current.dayIndex - 1]?.voteType;
+    if (vt === 'FINALS') dismiss();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isShowing, current, manifest]);
+
   const resolved = useMemo(() => {
     if (!current || current.kind !== 'elimination' || current.dayIndex == null) return null;
     const dayIndex = current.dayIndex;
@@ -63,6 +74,11 @@ export function EliminationReveal() {
     const player = roster[eliminatedId];
     const playerIndex = Object.keys(roster).indexOf(eliminatedId);
     const voteType = (manifest?.days?.[dayIndex - 1]?.voteType ?? 'MAJORITY') as VoteType;
+    // FINALS emits an ELIMINATION fact for each runner-up (non-winner finalist).
+    // Rendering an elimination overlay for them uses VOTE_TYPE_INFO.FINALS's
+    // "Crowned" revealLabel + empty eliminatedSubtitle + empty narrator pool —
+    // all nonsense. The WinnerReveal handles the finale; suppress here.
+    if (voteType === 'FINALS') return null;
     const info = VOTE_TYPE_INFO[voteType];
     const lines = MECHANISM_NARRATOR_LINES[voteType] ?? MECHANISM_NARRATOR_LINES.MAJORITY;
     const seed = `${gameId}:${dayIndex}:${eliminatedId}`;
