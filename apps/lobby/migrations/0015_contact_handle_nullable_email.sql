@@ -2,6 +2,10 @@
 -- Add contact_handle for frictionless-invite users + make email nullable.
 -- SQLite can't drop NOT NULL via ALTER, so we recreate the table.
 -- Mirrors the 12-step pattern established in 0014_drop_plaintext_pii.sql.
+-- Defer FK checks: Sessions + Invites reference Users.id. Without deferring,
+-- DROP TABLE Users + RENAME Users_new triggers SQLITE_CONSTRAINT_FOREIGNKEY.
+
+PRAGMA defer_foreign_keys = ON;
 
 CREATE TABLE Users_new (
   id TEXT PRIMARY KEY,

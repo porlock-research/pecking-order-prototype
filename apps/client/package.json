@@ -12,6 +12,7 @@
   "dependencies": {
     "@khmyznikov/pwa-install": "^0.6.2",
     "@pecking-order/auth": "*",
+    "@pecking-order/cartridges": "*",
     "@pecking-order/game-cartridges": "*",
     "@pecking-order/shared-types": "*",
     "@pecking-order/ui-kit": "*",
