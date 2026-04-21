@@ -12,10 +12,10 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
 
   const game = await db
     .prepare(
-      'SELECT id, status, invite_code, player_count FROM GameSessions WHERE invite_code = ?',
+      'SELECT id, status, invite_code FROM GameSessions WHERE invite_code = ?',
     )
     .bind(code.toUpperCase())
-    .first<{ id: string; status: string; invite_code: string; player_count: number }>();
+    .first<{ id: string; status: string; invite_code: string }>();
 
   if (!game) notFound();
 
@@ -44,6 +44,13 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
     .bind(game.id)
     .first<{ n: number }>();
 
+  // Denominator-free copy: DYNAMIC games have no predefined ceiling, so "N of M"
+  // would be a lie. STATIC loses some social proof — tradeoff accepted.
+  const n = acceptedCount?.n ?? 0;
+  const socialLine = n === 0
+    ? 'Be the first in — don’t wait too long.'
+    : `${n} joined — don’t wait too long.`;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-skin-deep p-6">
       <div className="max-w-md w-full space-y-6">
@@ -54,10 +61,7 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
           <h1 className="font-display text-3xl font-black text-skin-base leading-tight">
             You&rsquo;re invited to a game
           </h1>
-          <p className="text-sm text-skin-dim">
-            {acceptedCount?.n ?? 0} of {game.player_count} joined &mdash; don&rsquo;t wait too
-            long.
-          </p>
+          <p className="text-sm text-skin-dim">{socialLine}</p>
         </header>
         <WelcomeForm code={game.invite_code} />
       </div>
