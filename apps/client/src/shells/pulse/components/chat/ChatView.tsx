@@ -10,8 +10,9 @@ import { NudgeTransferCard } from './NudgeTransferCard';
 import { TypingIndicator } from './TypingIndicator';
 import { NarratorLine } from './NarratorLine';
 import { ChatDivider } from './ChatDivider';
+import { EventCard } from './EventCard';
 import { DayPhases, GAME_MASTER_ID, TickerCategories } from '@pecking-order/shared-types';
-import type { TickerMessage } from '@pecking-order/shared-types';
+import type { TickerMessage, VoteType } from '@pecking-order/shared-types';
 
 // Map SOCIAL_INVITE ticker kind → NarratorLine visual kind.
 // 'initial' covers 1:1 and small-group creation ('talking' / 'scheming' copy
@@ -31,6 +32,8 @@ export function ChatView() {
   const phase = useGameStore(s => s.phase);
   const mainLastRead = useGameStore(s => s.lastReadTimestamp?.MAIN ?? 0);
   const markChannelRead = useGameStore(s => s.markChannelRead);
+  const roster = useGameStore(s => s.roster);
+  const manifest = useGameStore(s => s.manifest);
   const { playerId } = usePulse();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -69,16 +72,26 @@ export function ChatView() {
     t => t.category === TickerCategories.SOCIAL_INVITE,
   );
 
-  // Interleave messages, social events, and narrator lines by timestamp
+  // Dramatic event cards — ELIMINATION + PHASE_WINNER tickers are the day's
+  // peak-end beats. Server already emits these via factToTicker; we render
+  // them inline as mechanism-aware <EventCard>.
+  const eventTickers: TickerMessage[] = tickerMessages.filter(
+    t => t.category === TickerCategories.ELIMINATION
+      || t.category === TickerCategories.PHASE_WINNER,
+  );
+
+  // Interleave messages, social events, narrator lines, and event cards by timestamp
   type TimelineEntry =
     | { type: 'msg'; data: any; ts: number }
     | { type: 'social'; data: TickerMessage; ts: number }
-    | { type: 'narrator'; data: TickerMessage; ts: number };
+    | { type: 'narrator'; data: TickerMessage; ts: number }
+    | { type: 'event'; data: TickerMessage; ts: number };
 
   const timeline: TimelineEntry[] = [
     ...mainMessages.map(m => ({ type: 'msg' as const, data: m, ts: m.timestamp })),
     ...socialEvents.map(t => ({ type: 'social' as const, data: t, ts: t.timestamp })),
     ...narratorTickers.map(t => ({ type: 'narrator' as const, data: t, ts: t.timestamp })),
+    ...eventTickers.map(t => ({ type: 'event' as const, data: t, ts: t.timestamp })),
   ].sort((a, b) => a.ts - b.ts);
 
   // Auto-scroll on new entries
@@ -173,6 +186,38 @@ export function ChatView() {
               key={entry.data.id}
               kind={socialInviteToNarratorKind(entry.data)}
               text={entry.data.text}
+            />
+          );
+        }
+        // Dramatic event card — ELIMINATION / PHASE_WINNER tickers.
+        if (entry.type === 'event') {
+          const t = entry.data;
+          const playerId = t.involvedPlayerIds?.[0];
+          if (!playerId) return null;
+          const p = roster[playerId] as { personaName?: string; avatarUrl?: string; eliminatedOnDay?: number } | undefined;
+          if (!p) return null;
+          const playerIndex = Object.keys(roster).indexOf(playerId);
+          const isWinner = t.category === TickerCategories.PHASE_WINNER;
+          const days = manifest?.days ?? [];
+          // For elim, look up the day the player fell. For winner, use the
+          // last scheduled voting day (always FINALS by convention).
+          const dayIdx = isWinner
+            ? days.length
+            : (p.eliminatedOnDay ?? 0);
+          const dayEntry = days[dayIdx - 1];
+          const voteType = (dayEntry?.voteType ?? (isWinner ? 'FINALS' : 'MAJORITY')) as VoteType;
+          return (
+            <EventCard
+              key={t.id}
+              kind={isWinner ? 'winner' : 'elimination'}
+              player={{
+                id: playerId,
+                personaName: p.personaName ?? '',
+                avatarUrl: p.avatarUrl,
+              }}
+              playerIndex={playerIndex >= 0 ? playerIndex : 0}
+              dayIndex={dayIdx}
+              voteType={voteType}
             />
           );
         }
