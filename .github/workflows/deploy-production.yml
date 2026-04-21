@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install --no-audit --no-fund --prefer-offline
+      - run: rm -f package-lock.json && npm install --no-audit --no-fund
       - name: Build Lobby
         run: npx turbo run build --filter=lobby-service
       - name: Apply Lobby D1 Migrations (Production)
@@ -58,7 +58,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install --no-audit --no-fund --prefer-offline
+      - run: rm -f package-lock.json && npm install --no-audit --no-fund
       - name: Build Client (Production)
         run: npx turbo run build --filter=client
         env:
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install --no-audit --no-fund --prefer-offline
+      - run: rm -f package-lock.json && npm install --no-audit --no-fund
       - name: Build Sentry Tunnel
         run: npx turbo run build --filter=sentry-tunnel
       - name: Deploy Sentry Tunnel (Production)
@@ -97,7 +97,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install --no-audit --no-fund --prefer-offline
+      - run: rm -f package-lock.json && npm install --no-audit --no-fund
       - name: Build Game Server
         run: npx turbo run build --filter=game-server
       - name: Apply Game Server D1 Migrations (Production)

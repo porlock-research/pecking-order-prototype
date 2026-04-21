@@ -28,11 +28,12 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        # npm install (not npm ci) — npm 11 has a known bug with optional
-        # platform-specific deps where a lockfile generated on macOS is missing
-        # linux-x64-gnu binaries that CI needs (npm/cli#4828). npm install
-        # resolves optional deps per-platform at runtime.
-        run: npm install --no-audit --no-fund --prefer-offline
+        # Delete lockfile before install — npm 11 has a bug (npm/cli#4828)
+        # where a lockfile generated on one OS is missing optional platform
+        # deps for other OSes. npm's own error message recommends rm+regen
+        # as the fix. Cost: no lockfile reproducibility in CI. Benefit: CI
+        # works across dev platforms.
+        run: rm -f package-lock.json && npm install --no-audit --no-fund
 
       - name: Build
         run: npx turbo run build --filter=...[HEAD^1]
