@@ -104,3 +104,137 @@ describe('SYNC payload — pregame projection', () => {
     actor.stop();
   });
 });
+
+// v2 — roster qaAnswers.answer redaction (locked/revealed states on the dossier).
+describe('SYNC payload — v2 roster qaAnswers redaction during pregame', () => {
+  function setupWithP1AndP2QAs() {
+    // Build a game mirroring the real production flow: /init with an EMPTY
+    // roster, then each player's /player-joined fires SYSTEM.PLAYER_JOINED
+    // individually. l3-pregame's players map is built from those PLAYER_JOINED
+    // events, so the whisper/reveal guards can see participants.
+    const actor = createActor(orchestratorMachine);
+    actor.start();
+    actor.send({
+      type: Events.System.INIT,
+      payload: { roster: {}, manifest: minimalStaticManifest },
+      gameId: 'test-game',
+      inviteCode: 'TEST',
+    } as any);
+    actor.send({
+      type: Events.System.PLAYER_JOINED,
+      player: {
+        id: 'p1', realUserId: 'u1', personaName: 'P1', avatarUrl: '', bio: '',
+        silver: 50, gold: 0, qaAnswers: [QA(0), QA(1), QA(2)],
+      },
+    } as any);
+    actor.send({
+      type: Events.System.PLAYER_JOINED,
+      player: {
+        id: 'p2', realUserId: 'u2', personaName: 'P2', avatarUrl: '', bio: '',
+        silver: 50, gold: 0, qaAnswers: [QA(0), QA(1), QA(2)],
+      },
+    } as any);
+    actor.send({ type: Events.Pregame.REVEAL_ANSWER, senderId: 'p2', qIndex: 1 } as any);
+    return actor;
+  }
+
+  it('viewer sees own qaAnswers.answer intact (always)', () => {
+    const actor = setupWithP1AndP2QAs();
+    const payload = buildSyncPayload(buildSyncDeps(actor), 'p1');
+    expect(payload.context.roster.p1.qaAnswers).toHaveLength(3);
+    for (const qa of payload.context.roster.p1.qaAnswers) {
+      expect(qa.answer).not.toBe('');
+    }
+    actor.stop();
+  });
+
+  it("strips other players' un-revealed answers but keeps revealed one", () => {
+    const actor = setupWithP1AndP2QAs();
+    const payload = buildSyncPayload(buildSyncDeps(actor), 'p1');
+    const p2qa = payload.context.roster.p2.qaAnswers;
+    expect(p2qa).toHaveLength(3);
+    expect(p2qa[0].question).toBe('Q0');  // question always visible
+    expect(p2qa[0].answer).toBe('');       // unrevealed → stripped
+    expect(p2qa[1].question).toBe('Q1');
+    expect(p2qa[1].answer).toBe('A1');     // revealed → visible
+    expect(p2qa[2].answer).toBe('');       // unrevealed → stripped
+    actor.stop();
+  });
+
+  it('passes roster through unchanged once L2 leaves preGame (no redaction after Day 1)', () => {
+    const actor = setupWithP1AndP2QAs();
+    actor.send({ type: Events.System.WAKEUP } as any);
+    const payload = buildSyncPayload(buildSyncDeps(actor), 'p1');
+    // After WAKEUP, phase is not pregame, so the redaction passthrough
+    // doesn't run — full answers should be visible again.
+    const p2qa = payload.context.roster.p2.qaAnswers;
+    expect(p2qa[0].answer).toBe('A0');
+    expect(p2qa[2].answer).toBe('A2');
+    actor.stop();
+  });
+});
+
+// v2 — pregame chatLog projection via whispers.
+describe('SYNC payload — v2 pregame whisper chatLog merge', () => {
+  function setupWithWhisper() {
+    // Real flow: /init with empty roster, then /player-joined for each.
+    const actor = createActor(orchestratorMachine);
+    actor.start();
+    actor.send({
+      type: Events.System.INIT,
+      payload: { roster: {}, manifest: minimalStaticManifest },
+      gameId: 'test-game',
+      inviteCode: 'TEST',
+    } as any);
+    for (const id of ['p1', 'p2', 'p3']) {
+      actor.send({
+        type: Events.System.PLAYER_JOINED,
+        player: { id, realUserId: 'u' + id, personaName: id.toUpperCase(), avatarUrl: '', bio: '', silver: 50, gold: 0 },
+      } as any);
+    }
+    // p1 whispers to p2. p3 is a bystander.
+    actor.send({ type: Events.Social.WHISPER, senderId: 'p1', targetId: 'p2', text: 'meet me at the pool' } as any);
+    return actor;
+  }
+
+  it('sender sees whisper content intact in SYNC chatLog', () => {
+    const actor = setupWithWhisper();
+    const payload = buildSyncPayload(buildSyncDeps(actor), 'p1');
+    const msg = payload.context.chatLog.find((m: any) => m.whisperTarget === 'p2');
+    expect(msg).toBeDefined();
+    expect(msg.content).toBe('meet me at the pool');
+    expect(msg.redacted).toBeFalsy();
+    actor.stop();
+  });
+
+  it('target sees whisper content intact', () => {
+    const actor = setupWithWhisper();
+    const payload = buildSyncPayload(buildSyncDeps(actor), 'p2');
+    const msg = payload.context.chatLog.find((m: any) => m.whisperTarget === 'p2');
+    expect(msg).toBeDefined();
+    expect(msg.content).toBe('meet me at the pool');
+    expect(msg.redacted).toBeFalsy();
+    actor.stop();
+  });
+
+  it('bystander sees redacted whisper (content stripped)', () => {
+    const actor = setupWithWhisper();
+    const payload = buildSyncPayload(buildSyncDeps(actor), 'p3');
+    const msg = payload.context.chatLog.find((m: any) => m.whisperTarget === 'p2');
+    expect(msg).toBeDefined();
+    expect(msg.content).toBe('');
+    expect(msg.redacted).toBe(true);
+    actor.stop();
+  });
+
+  it('pregame chatLog disappears once L2 leaves preGame', () => {
+    const actor = setupWithWhisper();
+    actor.send({ type: Events.System.WAKEUP } as any);
+    const payload = buildSyncPayload(buildSyncDeps(actor), 'p1');
+    // Post-pregame, l3-pregame is dead and its chatLog is not projected.
+    // The only chatLog would come from l3-session (empty in this test fixture).
+    const whisperAfterStart = payload.context.chatLog.find((m: any) => m.whisperTarget === 'p2');
+    expect(whisperAfterStart).toBeUndefined();
+    actor.stop();
+  });
+});

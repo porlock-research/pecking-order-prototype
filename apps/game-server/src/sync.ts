@@ -56,10 +56,17 @@ export function extractCartridges(snapshot: any): CartridgeSnapshots {
  *  actor isn't alive (i.e. L2 has moved past `preGame` — l3-pregame dies on
  *  state exit, so the snapshot.children entry disappears too). Pregame data is
  *  not meant to survive into Day 1; the journal in D1 is the only persistent
- *  record (queryable via GameJournal WHERE day_index = 0). */
+ *  record (queryable via GameJournal WHERE day_index = 0).
+ *
+ *  Returns chatLog + channels too so buildSyncPayload can union them with
+ *  the empty l3-session equivalents during pregame — this lets pregame
+ *  whispers render through the existing ChatView / WhisperCard path without
+ *  special-casing the source. */
 export function extractPregameContext(snapshot: any): {
   revealedAnswers: Record<string, { qIndex: number; question: string; answer: string; revealedAt: number }>;
   players: Record<string, { joinedAt: number }>;
+  chatLog: any[];
+  channels: Record<string, any>;
 } | null {
   try {
     const ref = snapshot.children?.['l3-pregame'];
@@ -73,7 +80,12 @@ export function extractPregameContext(snapshot: any): {
     for (const [pid, info] of Object.entries(ctx.players || {})) {
       players[pid] = { joinedAt: (info as any).joinedAt };
     }
-    return { revealedAnswers: ctx.revealedAnswers || {}, players };
+    return {
+      revealedAnswers: ctx.revealedAnswers || {},
+      players,
+      chatLog: Array.isArray(ctx.chatLog) ? ctx.chatLog : [],
+      channels: ctx.channels || {},
+    };
   } catch (err) {
     console.error('[L1] Pregame context extraction failed:', err);
     return null;
@@ -174,8 +186,22 @@ function decorateCartridge(
 export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers?: string[]): any {
   const { snapshot, l3Context, chatLog, cartridges } = deps;
 
-  const channels = l3Context.channels || {};
-  const playerChatLog = chatLog.filter((msg: any) => {
+  // Resolve phase early — we need it to decide whether to merge in pregame
+  // chatLog/channels (and whether to strip qaAnswers below).
+  const phaseEarly = resolveDayPhase(snapshot.value, deps.l3SnapshotValue);
+  const pregameEarly = phaseEarly === DayPhases.PREGAME ? extractPregameContext(snapshot) : null;
+
+  // During pregame, l3-session doesn't exist — l3-pregame owns the chatLog +
+  // channels. Union them so the existing chat / whisper rendering paths just
+  // work without special-casing the source.
+  const channels = pregameEarly
+    ? { ...(l3Context.channels || {}), ...pregameEarly.channels }
+    : (l3Context.channels || {});
+  const effectiveChatLog = pregameEarly
+    ? [...chatLog, ...pregameEarly.chatLog]
+    : chatLog;
+
+  const playerChatLog = effectiveChatLog.filter((msg: any) => {
     if (msg.channelId) {
       const ch = channels[msg.channelId];
       if (!ch) return msg.channelId === 'MAIN';
@@ -192,8 +218,25 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
     return msg;
   });
 
-  const roster = snapshot.context.roster || {};
-  const phase = resolveDayPhase(snapshot.value, deps.l3SnapshotValue);
+  const rawRoster = snapshot.context.roster || {};
+  const phase = phaseEarly;
+  // During pregame, redact each roster entry's qaAnswers[i].answer EXCEPT for
+  // (a) the viewer's own row (always sees own answers) or (b) qIndex matches a
+  // recorded reveal in pregame.revealedAnswers. The question stays visible —
+  // it's the "locked slot" label the client renders. Once L2 leaves preGame,
+  // pregameEarly is null and roster passes through unchanged.
+  const roster = pregameEarly
+    ? Object.fromEntries(Object.entries(rawRoster).map(([pid, p]: [string, any]) => {
+        if (pid === playerId) return [pid, p];
+        const qaAnswers = Array.isArray(p?.qaAnswers) ? p.qaAnswers : null;
+        if (!qaAnswers) return [pid, p];
+        const revealedQIdx = pregameEarly.revealedAnswers[pid]?.qIndex;
+        const projected = qaAnswers.map((qa: any, i: number) =>
+          i === revealedQIdx ? qa : { ...qa, answer: '' }
+        );
+        return [pid, { ...p, qaAnswers: projected }];
+      }))
+    : rawRoster;
 
   const playerChannels = Object.fromEntries(
     Object.entries(channels).filter(([_, ch]: [string, any]) =>
@@ -267,7 +310,11 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
 
   // Pregame slice — only present while l3-pregame is alive (i.e. phase === 'pregame').
   // Drops automatically once L2 transitions to dayLoop and the invoked actor stops.
-  const pregame = phase === DayPhases.PREGAME ? extractPregameContext(snapshot) : null;
+  // Same data we extracted above for chatLog/channel merging — re-use the snapshot
+  // to keep the wire field identical to the v1 contract.
+  const pregame = pregameEarly
+    ? { revealedAnswers: pregameEarly.revealedAnswers, players: pregameEarly.players }
+    : null;
 
   return {
     type: Events.System.SYNC,
@@ -276,7 +323,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
     context: {
       gameId: snapshot.context.gameId,
       dayIndex: snapshot.context.dayIndex,
-      roster: snapshot.context.roster,
+      roster,
       manifest: snapshot.context.manifest,
       chatLog: playerChatLog,
       channels: playerChannels,

@@ -70,6 +70,11 @@ export function PulseInput() {
   }, []);
 
   const isSocialPhase = phase !== DayPhases.ELIMINATION && phase !== DayPhases.GAME_OVER;
+  // During pregame, group chat is closed but whispers are allowed — enable the
+  // composer so the user can reach the /whisper command via HintChips or the
+  // slash picker. Plain-text send stays gated on groupChatOpen (handleSend).
+  const isPregame = phase === DayPhases.PREGAME;
+  const composerEnabled = groupChatOpen || isPregame;
 
   const handleSend = useCallback(() => {
     if (!text.trim()) return;
@@ -253,6 +258,7 @@ export function PulseInput() {
               capabilities={mainCapabilities}
               groupChatOpen={groupChatOpen}
               dmsOpen={dmsOpen}
+              phase={phase}
             />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)', padding: 'var(--pulse-space-md) var(--pulse-space-md)' }}>
@@ -261,8 +267,12 @@ export function PulseInput() {
               value={text}
               onChange={e => handleTextChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={!groupChatOpen}
-              placeholder={groupChatOpen ? 'Message...' : 'Group chat is closed'}
+              disabled={!composerEnabled}
+              placeholder={
+                groupChatOpen ? 'Message...'
+                : isPregame ? 'Whisper a cast member — try /whisper'
+                : 'Group chat is closed'
+              }
               style={{
                 flex: 1,
                 padding: 'var(--pulse-space-md) var(--pulse-space-lg)',
@@ -273,8 +283,8 @@ export function PulseInput() {
                 fontSize: 14,
                 fontFamily: 'var(--po-font-body)',
                 outline: 'none',
-                opacity: groupChatOpen ? 1 : 0.55,
-                cursor: groupChatOpen ? 'text' : 'not-allowed',
+                opacity: composerEnabled ? 1 : 0.55,
+                cursor: composerEnabled ? 'text' : 'not-allowed',
               }}
             />
             {text.trim() && (

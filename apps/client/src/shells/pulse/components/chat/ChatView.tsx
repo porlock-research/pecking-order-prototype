@@ -10,6 +10,7 @@ import { NudgeTransferCard } from './NudgeTransferCard';
 import { TypingIndicator } from './TypingIndicator';
 import { NarratorLine } from './NarratorLine';
 import { PregameJoinLine } from './PregameJoinLine';
+import { PregameRevealCard } from './PregameRevealCard';
 import { ChatDivider } from './ChatDivider';
 import { EventCard } from './EventCard';
 import { DayPhases, GAME_MASTER_ID, TickerCategories } from '@pecking-order/shared-types';
@@ -250,20 +251,18 @@ export function ChatView() {
           );
         }
         if (entry.type === 'pregame-reveal') {
-          // First Impressions — public self-reveal of one QA answer. Format
-          // mirrors the narrator-line pattern: bold persona + italic body.
-          // The bold token is matched by NarratorLine against the roster to
-          // attach the inline avatar (see NarratorLine.tsx). Use 'talking'
-          // accent (calm pink) — these are introductions, not intrigue.
+          // First Impressions — public self-reveal of one QA answer. Bespoke
+          // PregameRevealCard ("ON THE RECORD" magazine treatment) since the
+          // whisper-tier NarratorLine doesn't carry enough weight for what
+          // is, in v2, the only way to learn anything substantive about a
+          // cast member (dossier QAs default to sealed).
           const r = entry.data;
-          const persona = roster[r.actorId];
-          const name = persona?.personaName ?? 'Someone';
-          const text = `**${name}** answers ${r.question} — "${r.answer}"`;
           return (
-            <NarratorLine
+            <PregameRevealCard
               key={`pregame-reveal-${r.actorId}-${entry.ts}`}
-              kind="talking"
-              text={text}
+              actorId={r.actorId}
+              question={r.question}
+              answer={r.answer}
             />
           );
         }
