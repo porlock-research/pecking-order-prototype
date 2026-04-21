@@ -107,7 +107,6 @@ export function EliminationReveal() {
   return (
     <AnimatePresence>
       <motion.div
-        key={`elim-${eliminatedId}`}
         data-testid="elimination-reveal"
         role="dialog"
         aria-modal="true"

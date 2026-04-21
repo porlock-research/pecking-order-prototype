@@ -92,7 +92,6 @@ export function WinnerReveal() {
   return (
     <AnimatePresence>
       <motion.div
-        key={`winner-${winnerId}`}
         data-testid="winner-reveal"
         role="dialog"
         aria-modal="true"
