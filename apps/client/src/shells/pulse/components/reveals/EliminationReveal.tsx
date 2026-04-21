@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { VOTE_TYPE_INFO, type VoteType } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../../store/useGameStore';
@@ -24,20 +24,33 @@ export function EliminationReveal() {
   const roster = useGameStore(s => s.roster);
   const manifest = useGameStore(s => s.manifest);
   const gameId = useGameStore(s => s.gameId);
-  const { current, dismiss } = useRevealQueue();
+  const { current, dismiss, dismissSpecific } = useRevealQueue();
   const reduce = useReducedMotion();
+  // Debounce rapid repeat dismisses — an event replay or VT-induced re-fire
+  // on the same frame shouldn't mark a second day seen.
+  const lastDismissAtRef = useRef(0);
 
   const isShowing = current?.kind === 'elimination';
 
   function handleDismiss() {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (now - lastDismissAtRef.current < 300) return;
+    lastDismissAtRef.current = now;
+    // Snapshot the specific reveal we're dismissing. Using the closure-based
+    // `dismiss()` opens a race if `current` advances between render and VT
+    // callback execution.
+    const snapKind = current?.kind;
+    const snapDay = current?.dayIndex;
+    if (snapKind !== 'elimination' || snapDay == null) return;
+    const apply = () => dismissSpecific(snapKind, snapDay);
     if (typeof document !== 'undefined' && 'startViewTransition' in document) {
       // The chat EventCard should already be mounted (ELIMINATION ticker
       // arrived in the same SYNC that surfaced the reveal). Wrap the dismiss
       // so the browser morphs the shared portrait from full-bleed to the
       // card's 72px slot.
-      (document as any).startViewTransition(() => dismiss());
+      (document as any).startViewTransition(apply);
     } else {
-      dismiss();
+      apply();
     }
   }
 
@@ -61,7 +74,7 @@ export function EliminationReveal() {
     if (!isShowing) return;
     if (!current || current.kind !== 'elimination' || current.dayIndex == null) return;
     const vt = manifest?.days?.[current.dayIndex - 1]?.voteType;
-    if (vt === 'FINALS') dismiss();
+    if (vt === 'FINALS') dismissSpecific(current.kind, current.dayIndex);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isShowing, current, manifest]);
 
@@ -92,8 +105,9 @@ export function EliminationReveal() {
   const accentColor = getPlayerColor(playerIndex);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       <motion.div
+        key={`elim-${eliminatedId}`}
         data-testid="elimination-reveal"
         role="dialog"
         aria-modal="true"

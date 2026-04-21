@@ -11,15 +11,31 @@ export function useRevealQueue() {
 
   const current = forced ?? queue[0] ?? null;
 
+  // `dismiss()` dismisses the CURRENT reveal at render time via closure.
+  // Safe for keyboard/idle dismiss, but NOT for click handlers that might
+  // fire across renders during rapid queue progression — use `dismissSpecific`
+  // instead, which binds to an explicit (kind, dayIndex) captured at
+  // click/callsite time.
   const dismiss = useCallback(() => {
     if (!current) return;
     markRevealSeen(current.kind, current.dayIndex);
     setForced(null);
   }, [current, markRevealSeen, setForced]);
 
-  const forcePlay = useCallback((reveal: Reveal) => {
-    setForced(reveal);
-  }, [setForced]);
+  const dismissSpecific = useCallback(
+    (kind: Reveal['kind'], dayIndex?: number) => {
+      markRevealSeen(kind, dayIndex);
+      setForced(null);
+    },
+    [markRevealSeen, setForced],
+  );
 
-  return { current, dismiss, forcePlay };
+  const forcePlay = useCallback(
+    (reveal: Reveal) => {
+      setForced(reveal);
+    },
+    [setForced],
+  );
+
+  return { current, dismiss, dismissSpecific, forcePlay };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { VOTE_TYPE_INFO, type VoteType } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../../store/useGameStore';
@@ -24,17 +24,25 @@ export function WinnerReveal() {
   const roster = useGameStore(s => s.roster);
   const manifest = useGameStore(s => s.manifest);
   const gameId = useGameStore(s => s.gameId);
-  const { current, dismiss } = useRevealQueue();
+  const { current, dismissSpecific } = useRevealQueue();
   const confettiFired = useRef(false);
   const reduce = useReducedMotion();
+  const lastDismissAtRef = useRef(0);
 
   const showing = current?.kind === 'winner' && !!winner;
 
   function handleDismiss() {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (now - lastDismissAtRef.current < 300) return;
+    lastDismissAtRef.current = now;
+    const snapKind = current?.kind;
+    const snapDay = current?.dayIndex;
+    if (snapKind !== 'winner') return;
+    const apply = () => dismissSpecific(snapKind, snapDay);
     if (typeof document !== 'undefined' && 'startViewTransition' in document) {
-      (document as any).startViewTransition(() => dismiss());
+      (document as any).startViewTransition(apply);
     } else {
-      dismiss();
+      apply();
     }
   }
 
@@ -82,8 +90,9 @@ export function WinnerReveal() {
   const accentColor = getPlayerColor(playerIndex);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       <motion.div
+        key={`winner-${winnerId}`}
         data-testid="winner-reveal"
         role="dialog"
         aria-modal="true"
