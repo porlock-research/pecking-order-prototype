@@ -153,8 +153,6 @@ async function main() {
         const day1 = s.manifest.days[0];
         console.log('Day 1: ' + day1.voteType + ' | game: ' + (day1.gameType || 'NONE') + ' | activity: ' + (day1.activityType || 'NONE') + ' | dilemma: ' + (day1.dilemmaType || 'NONE'));
         console.log('Timeline events: ' + day1.timeline.length);
-        const hasInjectPrompt = day1.timeline.some(e => e.action === 'INJECT_PROMPT');
-        console.log('GM briefing: ' + (hasInjectPrompt ? 'YES' : 'MISSING'));
       }
       break;
     }

@@ -122,7 +122,6 @@ async function main() {
       if (state.manifest?.days?.length > 0) {
         const d = state.manifest.days[0];
         console.log('Day 1: ' + d.voteType + ' | game: ' + (d.gameType||'NONE') + ' | activity: ' + (d.activityType||'NONE') + ' | dilemma: ' + (d.dilemmaType||'NONE'));
-        console.log('GM briefing: ' + (d.timeline.some(e => e.action === 'INJECT_PROMPT') ? 'YES' : 'MISSING'));
         console.log('Timeline: ' + d.timeline.length + ' events');
       }
       break;
