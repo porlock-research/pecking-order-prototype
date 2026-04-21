@@ -90,7 +90,7 @@ export function WinnerReveal() {
   const accentColor = getPlayerColor(playerIndex);
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       <motion.div
         key={`winner-${winnerId}`}
         data-testid="winner-reveal"
