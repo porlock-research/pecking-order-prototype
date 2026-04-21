@@ -146,10 +146,10 @@ function logo(lobbyUrl: string): string {
     .replace(/,/g, ' \u00b7');
   return `<tr><td align="center" style="padding-bottom:40px;">
     <a href="${lobbyUrl}" target="_blank" style="text-decoration:none;display:inline-block;color:${GOLD};">
-      <div style="font-family:${DISPLAY};font-size:48px;font-weight:900;line-height:0.9;letter-spacing:-0.02em;color:${GOLD};text-transform:uppercase;">
+      <div style="font-family:${DISPLAY};font-size:60px;font-weight:900;line-height:0.85;letter-spacing:-0.03em;color:${GOLD};text-transform:uppercase;">
         Pecking<br>Order
       </div>
-      <div style="width:56px;height:2px;background-color:${GOLD};margin:14px auto 8px;line-height:0;font-size:0;">&nbsp;</div>
+      <div style="width:80px;height:3px;background-color:${GOLD};margin:18px auto 10px;line-height:0;font-size:0;">&nbsp;</div>
       <div style="font-family:${BODY};font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${GOLD_DIM};">
         ${issueDate}
       </div>
@@ -178,8 +178,8 @@ function button(label: string, href: string): string {
 }
 
 function hero(lobbyUrl: string): string {
-  return `<tr><td align="center" style="padding-bottom:28px;">
-    <img src="${lobbyUrl}/email-hero.png" alt="Pecking Order \u2014 a 7-day social deduction game on your phone" width="320" style="display:block;max-width:80%;height:auto;border:0;" />
+  return `<tr><td align="center" style="padding-bottom:32px;">
+    <img src="${lobbyUrl}/email-hero.png" alt="Pecking Order \u2014 a social deduction game played in a group chat" width="480" style="display:block;width:100%;max-width:480px;height:260px;object-fit:cover;object-position:center;border:0;" />
   </td></tr>`;
 }
 
@@ -229,7 +229,7 @@ export function buildNudgeEmail(target: NudgeTarget, day1Start: Date, lobbyHost:
 
   switch (target.stage) {
     case 'NEVER_CLICKED': {
-      const subject = `Day 1 at ${day1Time}`;
+      const subject = `Pecking Order Day 1 starts at ${day1Time}`;
       const preheader = `Day 1 at ${day1Time}. Your spot\u2019s still warm.`;
       return {
         subject,
@@ -254,7 +254,7 @@ export function buildNudgeEmail(target: NudgeTarget, day1Start: Date, lobbyHost:
     }
 
     case 'CLICKED_NO_JOIN': {
-      const subject = 'You haven\u2019t picked your face';
+      const subject = 'Pecking Order starts soon \u2014 pick a character';
       const preheader = `No face = no cast. Day 1 at ${day1Time}.`;
       return {
         subject,
@@ -265,7 +265,7 @@ export function buildNudgeEmail(target: NudgeTarget, day1Start: Date, lobbyHost:
           ${card(`
             ${eyebrow('Almost there')}
             ${hugeLine('Pick your face')}
-            ${bodyLine(`Day 1 at <strong style="color:${GOLD};font-weight:700;">${day1Time}</strong>. Without a persona, you&rsquo;re not on the cast yet. Takes 60 seconds.`)}
+            ${bodyLine(`Day 1 at <strong style="color:${GOLD};font-weight:700;">${day1Time}</strong>. You&rsquo;re not on the cast until you pick one. Takes 60 seconds.`)}
             ${buttonRow('Pick a persona', joinUrl, 28)}
             ${hairline()}
             ${codeBlock('Invite code', target.inviteCode)}
@@ -280,8 +280,10 @@ export function buildNudgeEmail(target: NudgeTarget, day1Start: Date, lobbyHost:
 
     case 'JOINED_NO_APP': {
       const name = target.personaName;
-      const subject = name ? `${name} is in play` : 'Your cast is live';
-      const preheader = `${name ? `${name} is on screen.` : 'Your cast is live.'} Group chat\u2019s moving.`;
+      const subject = name
+        ? `Pecking Order is live \u2014 ${name}\u2019s on screen`
+        : 'Pecking Order Day 1 is live';
+      const preheader = `${name ? `${name} is in the chat.` : 'Your cast is live.'} Alliances are forming. Tap in.`;
       return {
         subject,
         html: wrap(

@@ -1,0 +1,31 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/(lobby/lib/email-templates|nudge-worker/src/index)\.ts$
+MATCH_CONTENT: style=
+ADVISORY: |
+  Inline-style double-quote trap in email HTML.
+
+  Template literals render HTML where `style="..."` is delimited by
+  double quotes. Double-quoted font names (`"Helvetica Neue"`,
+  `"Arial Black"`, `"Segoe UI"`) interpolated into the style attribute
+  terminate it early. Every property after the first inner `"` is
+  silently dropped by the browser.
+
+  Symptom: font stays as browser default, text-transform:uppercase
+  disappears, font-size reverts, text-decoration:none fails, etc.
+  The element still renders — just with a subset of intended styles.
+  No warnings, no errors.
+
+  Wrong — inner double quotes break the attribute:
+    const DISPLAY = `Impact, "Helvetica Neue", "Arial Black", sans-serif`;
+    `<p style="font-family:${DISPLAY};font-size:48px;font-weight:900;">`
+
+  Right — single quotes inside the style value:
+    const DISPLAY = `Impact, 'Helvetica Neue', 'Arial Black', sans-serif`;
+
+  Any multi-word font name in a stack that gets interpolated into a
+  `style="..."` attribute MUST be single-quoted at the source. Applies
+  to both email-templates files (lobby + nudge-worker are copy-pasted).
+
+  Debug hint: if preview text renders in wrong font / wrong size /
+  wrong case, grep the file for `"[A-Z][a-z]+ [A-Z]` inside backtick
+  strings — that's the pattern of a double-quoted font name.
