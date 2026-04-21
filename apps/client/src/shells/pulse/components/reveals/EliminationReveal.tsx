@@ -1,93 +1,233 @@
-import { useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { VOTE_TYPE_INFO, type VoteType } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../../store/useGameStore';
 import { useRevealQueue } from '../../hooks/useRevealQueue';
-import { PULSE_SPRING } from '../../springs';
-import { getPlayerColor } from '../../colors';
 import { PULSE_Z } from '../../zIndex';
+import { PersonaImage } from '../common/PersonaImage';
+import { getPlayerColor } from '../../colors';
+import { MECHANISM_NARRATOR_LINES, pickLine, renderLine } from './reveal-config';
 
+/**
+ * Full-bleed elimination overlay — dramatic interlude when the player opens the
+ * game after a push notification. Photo fills the viewport and desaturates over
+ * ~2s. Narrator line and mechanism subtitle fade up on a breathing schedule.
+ *
+ * Pairs with the chat EventCard via View Transitions API: overlay portrait and
+ * card portrait share `view-transition-name: elim-portrait-${playerId}` so the
+ * photo morphs from full-bleed down to the 72px chat thumbnail on dismiss.
+ *
+ * Per design direction: goal is drama, not detail — the voting cartridge's
+ * VotingResultHero handles tally + who-voted-whom when the player taps in.
+ */
 export function EliminationReveal() {
   const roster = useGameStore(s => s.roster);
-  const { current, dismiss } = useRevealQueue();
+  const manifest = useGameStore(s => s.manifest);
+  const gameId = useGameStore(s => s.gameId);
+  const { current, dismiss, dismissSpecific } = useRevealQueue();
+  const reduce = useReducedMotion();
+  // Debounce rapid repeat dismisses — an event replay or VT-induced re-fire
+  // on the same frame shouldn't mark a second day seen.
+  const lastDismissAtRef = useRef(0);
 
   const isShowing = current?.kind === 'elimination';
+
+  function handleDismiss() {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (now - lastDismissAtRef.current < 300) return;
+    lastDismissAtRef.current = now;
+    // Snapshot the specific reveal we're dismissing. Using the closure-based
+    // `dismiss()` opens a race if `current` advances between render and VT
+    // callback execution.
+    const snapKind = current?.kind;
+    const snapDay = current?.dayIndex;
+    if (snapKind !== 'elimination' || snapDay == null) return;
+    const apply = () => dismissSpecific(snapKind, snapDay);
+    if (typeof document !== 'undefined' && 'startViewTransition' in document) {
+      // The chat EventCard should already be mounted (ELIMINATION ticker
+      // arrived in the same SYNC that surfaced the reveal). Wrap the dismiss
+      // so the browser morphs the shared portrait from full-bleed to the
+      // card's 72px slot.
+      (document as any).startViewTransition(apply);
+    } else {
+      apply();
+    }
+  }
 
   useEffect(() => {
     if (!isShowing) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        dismiss();
+        handleDismiss();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isShowing, dismiss]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isShowing]);
 
-  if (!current || current.kind !== 'elimination') return null;
+  // When a FINALS runner-up elimination gets queued, resolve -> null above
+  // (this overlay shouldn't render for non-winner finalists). Auto-dismiss so
+  // the queue advances to the winner reveal.
+  useEffect(() => {
+    if (!isShowing) return;
+    if (!current || current.kind !== 'elimination' || current.dayIndex == null) return;
+    const vt = manifest?.days?.[current.dayIndex - 1]?.voteType;
+    if (vt === 'FINALS') dismissSpecific(current.kind, current.dayIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isShowing, current, manifest]);
 
-  const eliminatedId = Object.entries(roster)
-    .find(([, p]) => p.status === 'ELIMINATED' && (p as any).eliminatedOnDay === current.dayIndex)?.[0];
-  if (!eliminatedId) return null;
-  const player = roster[eliminatedId];
-  const playerIndex = Object.keys(roster).indexOf(eliminatedId);
+  const resolved = useMemo(() => {
+    if (!current || current.kind !== 'elimination' || current.dayIndex == null) return null;
+    const dayIndex = current.dayIndex;
+    const eliminatedId = Object.entries(roster)
+      .find(([, p]) => p.status === 'ELIMINATED' && (p as any).eliminatedOnDay === dayIndex)?.[0];
+    if (!eliminatedId) return null;
+    const player = roster[eliminatedId];
+    const playerIndex = Object.keys(roster).indexOf(eliminatedId);
+    const voteType = (manifest?.days?.[dayIndex - 1]?.voteType ?? 'MAJORITY') as VoteType;
+    // FINALS emits an ELIMINATION fact for each runner-up (non-winner finalist).
+    // Rendering an elimination overlay for them uses VOTE_TYPE_INFO.FINALS's
+    // "Crowned" revealLabel + empty eliminatedSubtitle + empty narrator pool —
+    // all nonsense. The WinnerReveal handles the finale; suppress here.
+    if (voteType === 'FINALS') return null;
+    const info = VOTE_TYPE_INFO[voteType];
+    const lines = MECHANISM_NARRATOR_LINES[voteType] ?? MECHANISM_NARRATOR_LINES.MAJORITY;
+    const seed = `${gameId}:${dayIndex}:${eliminatedId}`;
+    const line = renderLine(pickLine(lines, seed), player.personaName || '—');
+    return { eliminatedId, player, playerIndex, voteType, info, line };
+  }, [current, roster, manifest, gameId]);
+
+  if (!isShowing || !resolved) return null;
+  const { eliminatedId, player, playerIndex, info, line } = resolved;
+  const vtName = `elim-portrait-${eliminatedId}`;
+  const accentColor = getPlayerColor(playerIndex);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       <motion.div
+        key={`elim-${eliminatedId}`}
         data-testid="elimination-reveal"
         role="dialog"
         aria-modal="true"
-        aria-label={`${player.personaName} eliminated`}
+        aria-live="assertive"
+        aria-label={`${player.personaName} — ${info.revealLabel}. ${info.eliminatedSubtitle}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={dismiss}
+        transition={{ duration: 0.3 }}
+        onClick={handleDismiss}
         style={{
           position: 'fixed',
           inset: 0,
           zIndex: PULSE_Z.reveal,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'rgba(10, 10, 14, 0.92)',
           cursor: 'pointer',
-          boxShadow: 'inset 0 0 120px rgba(255, 40, 40, 0.15)',
+          overflow: 'hidden',
+          background: 'var(--pulse-bg)',
         }}
       >
-        <motion.img
-          initial={{ scale: 1.05, filter: 'grayscale(0)' }}
-          animate={{ scale: 1, filter: 'grayscale(1)' }}
-          transition={{ duration: 0.5 }}
-          src={player.avatarUrl}
-          alt=""
-          loading="lazy"
-          width={160}
-          height={200}
+        {/* Full-bleed portrait — enters in colour, desaturates over ~1.6s. */}
+        <motion.div
+          initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 1.05 }}
+          animate={
+            reduce
+              ? { opacity: 1 }
+              : {
+                  opacity: 1,
+                  scale: 1,
+                  filter: ['grayscale(0)', 'grayscale(0)', 'grayscale(1)'],
+                }
+          }
+          transition={
+            reduce
+              ? { duration: 0.3 }
+              : {
+                  opacity: { duration: 0.4, ease: [0.2, 0.9, 0.3, 1] },
+                  scale: { duration: 2.0, ease: [0.2, 0.9, 0.3, 1] },
+                  filter: { duration: 2.0, times: [0, 0.2, 1], ease: [0.2, 0.9, 0.3, 1] },
+                }
+          }
           style={{
-            width: 160,
-            height: 200,
-            borderRadius: 20,
-            objectFit: 'cover',
-            marginBottom: 20,
+            position: 'absolute',
+            inset: 0,
+            viewTransitionName: vtName,
+          } as React.CSSProperties}
+        >
+          <PersonaImage
+            avatarUrl={player.avatarUrl}
+            cacheKey={eliminatedId}
+            preferredVariant="full"
+            fallbackChain={['medium', 'headshot']}
+            initials={(player.personaName || '?').slice(0, 1).toUpperCase()}
+            playerColor={accentColor}
+            alt=""
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        </motion.div>
+
+        {/* Dim wash for text legibility — the photo carries mood. */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(180deg, rgba(10,10,14,0.35) 0%, rgba(10,10,14,0.15) 45%, rgba(10,10,14,0.75) 100%)',
+            pointerEvents: 'none',
           }}
         />
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, ...PULSE_SPRING.gentle }}
-          style={{ textAlign: 'center' }}
+
+        {/* Narrator copy block — lower third. */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            padding: '0 32px 56px',
+            textAlign: 'left',
+            pointerEvents: 'none',
+          }}
         >
-          <div style={{ fontWeight: 800, fontSize: 22, color: getPlayerColor(playerIndex), fontFamily: 'var(--po-font-display)', marginBottom: 4 }}>
-            {player.personaName}
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: '#ff4444', fontFamily: 'var(--po-font-body)', letterSpacing: 2, textTransform: 'uppercase' }}>
-            Eliminated
-          </div>
-        </motion.div>
-        <div style={{ position: 'absolute', bottom: 40, fontSize: 12, color: 'var(--pulse-text-3)' }}>
-          Tap to dismiss
+          <motion.p
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: reduce ? 0.2 : 0.9, ease: [0.2, 0.9, 0.3, 1] }}
+            style={{
+              fontFamily: 'var(--po-font-display)',
+              fontWeight: 600,
+              fontSize: 32,
+              lineHeight: 1.1,
+              letterSpacing: '-0.015em',
+              color: 'var(--pulse-text-1)',
+              margin: '0 0 16px',
+              textShadow: '0 2px 20px rgba(0,0,0,0.45)',
+            }}
+          >
+            {line}
+          </motion.p>
+          <motion.p
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: reduce ? 0.3 : 1.3, ease: [0.2, 0.9, 0.3, 1] }}
+            style={{
+              fontFamily: 'var(--po-font-body)',
+              fontWeight: 500,
+              fontSize: 13,
+              color: 'rgba(255,255,255,0.72)',
+              letterSpacing: 0.1,
+              textShadow: '0 1px 12px rgba(0,0,0,0.5)',
+              margin: 0,
+            }}
+          >
+            {info.eliminatedSubtitle}
+          </motion.p>
         </div>
       </motion.div>
     </AnimatePresence>

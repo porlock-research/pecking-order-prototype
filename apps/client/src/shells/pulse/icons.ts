@@ -65,4 +65,9 @@ export {
   Trophy,
   Users,
   UsersThree,
+
+  // Reveal (per-mechanism elimination icons)
+  HeartBreak,
+  HourglassLow,
+  Drop,
 } from '@phosphor-icons/react';
