@@ -1,7 +1,7 @@
 {
   "id": "vote-second-to-last",
   "group": "Voting",
-  "filePath": "src/machines/cartridges/voting/second-to-last-machine.ts",
+  "filePath": "packages/cartridges/src/voting/second-to-last-machine.ts",
   "stats": {
     "stateCount": 2,
     "transitionCount": 0,

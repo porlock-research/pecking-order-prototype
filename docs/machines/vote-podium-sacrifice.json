@@ -1,7 +1,7 @@
 {
   "id": "vote-podium-sacrifice",
   "group": "Voting",
-  "filePath": "src/machines/cartridges/voting/podium-sacrifice-machine.ts",
+  "filePath": "packages/cartridges/src/voting/podium-sacrifice-machine.ts",
   "stats": {
     "stateCount": 2,
     "transitionCount": 2,

@@ -28,6 +28,7 @@ import { PulseInput } from './components/input/PulseInput';
 import { SendSilverSheet } from './components/popover/SendSilverSheet';
 import { DmSheet } from './components/dm-sheet/DmSheet';
 import { ConfessionBoothSheet } from './components/confession-booth/ConfessionBoothSheet';
+import { PregameDossierSheet } from './components/pregame/PregameDossierSheet';
 import { SocialPanel } from './components/social-panel/SocialPanel';
 import { PulseHeader } from './components/header/PulseHeader';
 import { PickingBanner } from './components/caststrip/PickingBanner';
@@ -52,6 +53,7 @@ export const PulseContext = createContext<{
   openDM: (targetId: string, isGroup?: boolean) => void;
   openSocialPanel: () => void;
   openConfessionBooth: (channelId: string) => void;
+  openDossier: (targetId: string) => void;
 }>(null!);
 
 export function usePulse() {
@@ -89,6 +91,7 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
   const [dmIsGroup, setDmIsGroup] = useState(false);
   const [socialPanelOpen, setSocialPanelOpen] = useState(false);
   const [confessionChannelId, setConfessionChannelId] = useState<string | null>(null);
+  const [dossierTargetId, setDossierTargetId] = useState<string | null>(null);
 
   // Cartridge overlay — store-driven (shell-agnostic intent + Pulse rendering)
   const focusedCartridge = useGameStore(s => s.focusedCartridge);
@@ -237,6 +240,10 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
     setConfessionChannelId(channelId);
     setSocialPanelOpen(false);
   }, []);
+  const openDossier = useCallback((targetId: string) => {
+    setDossierTargetId(targetId);
+    setSocialPanelOpen(false);
+  }, []);
 
   // Auto-open the Confession Booth on phase open for participants. The ref
   // is set once we've actually opened (or once the phase ends), so a manual
@@ -261,7 +268,7 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
   }, [confessionActive, confessionMyHandle, liveConfessionChannelId]);
 
   return (
-    <PulseContext.Provider value={{ engine, playerId, openSendSilver, openNudge, openDM, openSocialPanel, openConfessionBooth }}>
+    <PulseContext.Provider value={{ engine, playerId, openSendSilver, openNudge, openDM, openSocialPanel, openConfessionBooth, openDossier }}>
       <div
         className="pulse-shell"
         style={{
@@ -309,6 +316,15 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
               key={confessionChannelId}
               channelId={confessionChannelId}
               onClose={() => setConfessionChannelId(null)}
+            />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {dossierTargetId && (
+            <PregameDossierSheet
+              key={dossierTargetId}
+              targetId={dossierTargetId}
+              onClose={() => setDossierTargetId(null)}
             />
           )}
         </AnimatePresence>

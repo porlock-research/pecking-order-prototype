@@ -1,7 +1,7 @@
 {
   "id": "prompt-guess-who",
   "group": "Prompts",
-  "filePath": "src/machines/cartridges/prompts/guess-who-machine.ts",
+  "filePath": "packages/cartridges/src/prompts/guess-who-machine.ts",
   "stats": {
     "stateCount": 3,
     "transitionCount": 6,

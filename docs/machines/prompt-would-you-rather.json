@@ -1,7 +1,7 @@
 {
   "id": "prompt-would-you-rather",
   "group": "Prompts",
-  "filePath": "src/machines/cartridges/prompts/would-you-rather-machine.ts",
+  "filePath": "packages/cartridges/src/prompts/would-you-rather-machine.ts",
   "stats": {
     "stateCount": 2,
     "transitionCount": 3,

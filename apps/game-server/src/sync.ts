@@ -52,6 +52,34 @@ export function extractCartridges(snapshot: any): CartridgeSnapshots {
   return { activeVotingCartridge, rawGameCartridge, activePromptCartridge, activeDilemmaCartridge };
 }
 
+/** Extract l3-pregame context from an L2 snapshot. Returns null when pregame
+ *  actor isn't alive (i.e. L2 has moved past `preGame` — l3-pregame dies on
+ *  state exit, so the snapshot.children entry disappears too). Pregame data is
+ *  not meant to survive into Day 1; the journal in D1 is the only persistent
+ *  record (queryable via GameJournal WHERE day_index = 0). */
+export function extractPregameContext(snapshot: any): {
+  revealedAnswers: Record<string, { qIndex: number; question: string; answer: string; revealedAt: number }>;
+  players: Record<string, { joinedAt: number }>;
+} | null {
+  try {
+    const ref = snapshot.children?.['l3-pregame'];
+    if (!ref) return null;
+    const ctx = ref.getSnapshot()?.context;
+    if (!ctx) return null;
+    // Strip qaAnswers from the per-player projection — full QA already lives on
+    // the roster (SocialPlayer.qaAnswers); the pregame slice only needs the
+    // join timestamp for ordering UI.
+    const players: Record<string, { joinedAt: number }> = {};
+    for (const [pid, info] of Object.entries(ctx.players || {})) {
+      players[pid] = { joinedAt: (info as any).joinedAt };
+    }
+    return { revealedAnswers: ctx.revealedAnswers || {}, players };
+  } catch (err) {
+    console.error('[L1] Pregame context extraction failed:', err);
+    return null;
+  }
+}
+
 /** Extract L3 context from an L2 snapshot, with fallback chatLog. */
 export function extractL3Context(snapshot: any, fallbackChatLog: any[]): {
   l3Context: any;
@@ -237,6 +265,10 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
     closesAt: rawConfession.closesAt ?? null,
   };
 
+  // Pregame slice — only present while l3-pregame is alive (i.e. phase === 'pregame').
+  // Drops automatically once L2 transitions to dayLoop and the invoked actor stops.
+  const pregame = phase === DayPhases.PREGAME ? extractPregameContext(snapshot) : null;
+
   return {
     type: Events.System.SYNC,
     state: snapshot.value,
@@ -262,6 +294,7 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       dmStats,
       playerActivity,
       confessionPhase,
+      ...(pregame ? { pregame } : {}),
       ...(onlinePlayers ? { onlinePlayers } : {}),
     },
   };

@@ -25,6 +25,7 @@ function Wrap({ children }: { children: React.ReactNode }) {
       openDM: () => {},
       openSocialPanel: () => {},
       openConfessionBooth: () => {},
+      openDossier: () => {},
     }}>
       {children}
     </PulseContext.Provider>
