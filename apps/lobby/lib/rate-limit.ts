@@ -1,4 +1,4 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1 } from './db';
 
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const RATE_LIMIT_MAX = 10;                    // 10 anonymous creates per hour per IP
@@ -15,7 +15,7 @@ export interface RateLimitResult {
 }
 
 export async function checkAnonymousRateLimit(
-  db: D1Database,
+  db: D1,
   ip: string,
 ): Promise<RateLimitResult> {
   const ipHash = await hashIp(ip);
@@ -36,7 +36,7 @@ export async function checkAnonymousRateLimit(
   return { allowed: true };
 }
 
-export async function recordAnonymousCreate(db: D1Database, ip: string): Promise<void> {
+export async function recordAnonymousCreate(db: D1, ip: string): Promise<void> {
   const ipHash = await hashIp(ip);
   await db
     .prepare('INSERT INTO AnonymousCreates (ip_hash, created_at) VALUES (?, ?)')
