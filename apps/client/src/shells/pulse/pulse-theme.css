@@ -359,6 +359,56 @@
   }
 }
 
+/* Reveal overlays — CSS-driven to avoid framer-motion initial-state flake. */
+@keyframes pulse-reveal-fade-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes pulse-reveal-desaturate {
+  0%   { filter: grayscale(0); transform: scale(1.04); }
+  20%  { filter: grayscale(0); transform: scale(1.02); }
+  100% { filter: grayscale(1); transform: scale(1); }
+}
+@keyframes pulse-reveal-text-in {
+  0%   { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-winner-crown-drop {
+  0%   { opacity: 0; transform: translate(-50%, -44px) scale(1.3); }
+  65%  { opacity: 1; transform: translate(-50%, 8px) scale(1.05); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+.pulse-reveal-enter {
+  animation: pulse-reveal-fade-in 300ms ease-out both;
+}
+.pulse-reveal-portrait {
+  animation: pulse-reveal-desaturate 2000ms cubic-bezier(0.2, 0.9, 0.3, 1) 200ms both;
+}
+.pulse-reveal-narrator {
+  animation: pulse-reveal-text-in 500ms cubic-bezier(0.2, 0.9, 0.3, 1) 900ms both;
+}
+.pulse-reveal-subtitle {
+  animation: pulse-reveal-text-in 500ms cubic-bezier(0.2, 0.9, 0.3, 1) 1300ms both;
+}
+.pulse-winner-enter {
+  animation: pulse-reveal-fade-in 300ms ease-out both;
+}
+.pulse-winner-crown {
+  animation: pulse-winner-crown-drop 700ms cubic-bezier(0.2, 0.9, 0.3, 1) 300ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-reveal-enter,
+  .pulse-reveal-portrait,
+  .pulse-reveal-narrator,
+  .pulse-reveal-subtitle,
+  .pulse-winner-enter,
+  .pulse-winner-crown {
+    animation: none !important;
+  }
+  .pulse-reveal-portrait { filter: grayscale(1); }
+}
+
 /* Message inline actions — collapse to zero space when hidden, expand on
    hover (desktop) or tap (touch). Inline layout, not absolute, so they can
    never overlap adjacent rows. The `.pulse-msg-group` wrapper is the hover

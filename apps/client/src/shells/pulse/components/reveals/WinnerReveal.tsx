@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useEffect, useRef, useMemo } from 'react';
 import { VOTE_TYPE_INFO, type VoteType } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../../store/useGameStore';
 import { useRevealQueue } from '../../hooks/useRevealQueue';
-import { PULSE_SPRING } from '../../springs';
 import { PULSE_Z } from '../../zIndex';
 import { PersonaImage } from '../common/PersonaImage';
 import { getPlayerColor } from '../../colors';
@@ -11,13 +9,10 @@ import { Crown } from '../../icons';
 import { WINNER_NARRATOR_LINES, pickLine, renderLine } from './reveal-config';
 
 /**
- * Full-bleed winner overlay — euphoric finale. Winner's photo fills the viewport
- * with a warm gold tint layer. Phosphor Crown lands on the avatar at +300ms.
- * Confetti fires once on reveal.
+ * Full-bleed winner overlay — euphoric finale. Gold tint + Crown icon drops in
+ * on the avatar. Confetti fires once.
  *
- * Pairs with the chat EventCard via View Transitions API: overlay portrait and
- * card portrait share `view-transition-name: winner-portrait-${playerId}` so the
- * photo morphs on dismiss.
+ * Pairs with the chat EventCard via View Transitions API.
  */
 export function WinnerReveal() {
   const winner = useGameStore(s => s.winner);
@@ -26,7 +21,6 @@ export function WinnerReveal() {
   const gameId = useGameStore(s => s.gameId);
   const { current, dismissSpecific } = useRevealQueue();
   const confettiFired = useRef(false);
-  const reduce = useReducedMotion();
   const lastDismissAtRef = useRef(0);
 
   const showing = current?.kind === 'winner' && !!winner;
@@ -47,16 +41,19 @@ export function WinnerReveal() {
   }
 
   useEffect(() => {
-    if (showing && !confettiFired.current && !reduce) {
-      confettiFired.current = true;
-      import('canvas-confetti')
-        .then(mod => {
-          const confetti = mod.default;
-          confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
-        })
-        .catch(() => {});
-    }
-  }, [showing, reduce]);
+    if (!showing || confettiFired.current) return;
+    const prefersReduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) return;
+    confettiFired.current = true;
+    import('canvas-confetti')
+      .then(mod => {
+        const confetti = mod.default;
+        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+      })
+      .catch(() => {});
+  }, [showing]);
 
   useEffect(() => {
     if (!showing) return;
@@ -90,138 +87,109 @@ export function WinnerReveal() {
   const accentColor = getPlayerColor(playerIndex);
 
   return (
-    <AnimatePresence>
-      <motion.div
-        data-testid="winner-reveal"
-        role="dialog"
-        aria-modal="true"
-        aria-live="polite"
-        aria-label={`${player.personaName} wins. ${info.winnerSubtitle ?? ''}`}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-        onClick={handleDismiss}
+    <div
+      data-testid="winner-reveal"
+      role="dialog"
+      aria-modal="true"
+      aria-live="polite"
+      aria-label={`${player.personaName} wins. ${info.winnerSubtitle ?? ''}`}
+      onClick={handleDismiss}
+      className="pulse-winner-enter"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: PULSE_Z.reveal,
+        cursor: 'pointer',
+        overflow: 'hidden',
+        background: 'var(--pulse-bg)',
+      }}
+    >
+      <div
         style={{
-          position: 'fixed',
+          position: 'absolute',
           inset: 0,
-          zIndex: PULSE_Z.reveal,
-          cursor: 'pointer',
-          overflow: 'hidden',
-          background: 'var(--pulse-bg)',
+          viewTransitionName: vtName,
+        } as React.CSSProperties}
+      >
+        <PersonaImage
+          avatarUrl={player.avatarUrl}
+          cacheKey={winnerId}
+          preferredVariant="full"
+          fallbackChain={['medium', 'headshot']}
+          initials={(player.personaName || '?').slice(0, 1).toUpperCase()}
+          playerColor={accentColor}
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      </div>
+
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'radial-gradient(ellipse 70% 60% at 50% 38%, transparent 0%, transparent 45%, rgba(10,10,14,0.35) 100%), linear-gradient(180deg, rgba(10,10,14,0.25) 0%, transparent 40%, color-mix(in oklch, var(--pulse-gold) 18%, transparent) 100%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div
+        aria-hidden
+        className="pulse-winner-crown"
+        style={{
+          position: 'absolute',
+          top: '18%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          color: 'var(--pulse-gold)',
+          filter: 'drop-shadow(0 0 24px var(--pulse-gold-glow))',
+          pointerEvents: 'none',
         }}
       >
-        {/* Full-bleed portrait — no desaturation, just a gentle entry. */}
-        <motion.div
-          initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 1.04 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: reduce ? 0.3 : 0.8, ease: [0.2, 0.9, 0.3, 1] }}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            viewTransitionName: vtName,
-          } as React.CSSProperties}
-        >
-          <PersonaImage
-            avatarUrl={player.avatarUrl}
-            cacheKey={winnerId}
-            preferredVariant="full"
-            fallbackChain={['medium', 'headshot']}
-            initials={(player.personaName || '?').slice(0, 1).toUpperCase()}
-            playerColor={accentColor}
-            alt=""
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              display: 'block',
-            }}
-          />
-        </motion.div>
+        <Crown size={88} weight="fill" />
+      </div>
 
-        {/* Warm gold tint — derives from --pulse-gold, subtle at top, building at bottom. */}
-        <div
-          aria-hidden
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          padding: '0 32px 56px',
+          textAlign: 'center',
+          pointerEvents: 'none',
+        }}
+      >
+        <p
           style={{
-            position: 'absolute',
-            inset: 0,
-            background:
-              'radial-gradient(ellipse 70% 60% at 50% 38%, transparent 0%, transparent 45%, rgba(10,10,14,0.35) 100%), linear-gradient(180deg, rgba(10,10,14,0.25) 0%, transparent 40%, color-mix(in oklch, var(--pulse-gold) 18%, transparent) 100%)',
-            pointerEvents: 'none',
-          }}
-        />
-
-        {/* Phosphor Crown — drops in at +300ms with a spring bounce. */}
-        <motion.div
-          aria-hidden
-          initial={reduce ? { opacity: 0 } : { opacity: 0, y: -44, scale: 1.3 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={
-            reduce
-              ? { duration: 0.3, delay: 0.2 }
-              : { ...PULSE_SPRING.bouncy, delay: 0.3 }
-          }
-          style={{
-            position: 'absolute',
-            top: '18%',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            fontFamily: 'var(--po-font-body)',
+            fontWeight: 700,
+            fontSize: 12,
+            letterSpacing: '0.24em',
+            textTransform: 'uppercase',
             color: 'var(--pulse-gold)',
-            filter: 'drop-shadow(0 0 24px var(--pulse-gold-glow))',
-            pointerEvents: 'none',
+            margin: '0 0 12px',
+            textShadow: '0 1px 12px rgba(0,0,0,0.5)',
           }}
         >
-          <Crown size={88} weight="fill" />
-        </motion.div>
-
-        {/* Narrator copy block — lower third. */}
-        <div
+          champion
+        </p>
+        <p
           style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: '0 32px 56px',
-            textAlign: 'center',
-            pointerEvents: 'none',
+            fontFamily: 'var(--po-font-display)',
+            fontWeight: 700,
+            fontSize: 30,
+            lineHeight: 1.12,
+            letterSpacing: '-0.015em',
+            color: 'var(--pulse-text-1)',
+            margin: 0,
+            textShadow: '0 2px 24px rgba(0,0,0,0.6)',
           }}
         >
-          <motion.p
-            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: reduce ? 0.3 : 0.5, ease: [0.2, 0.9, 0.3, 1] }}
-            style={{
-              fontFamily: 'var(--po-font-body)',
-              fontWeight: 700,
-              fontSize: 12,
-              letterSpacing: '0.24em',
-              textTransform: 'uppercase',
-              color: 'var(--pulse-gold)',
-              margin: '0 0 12px',
-              textShadow: '0 1px 12px rgba(0,0,0,0.5)',
-            }}
-          >
-            champion
-          </motion.p>
-          <motion.p
-            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: reduce ? 0.4 : 0.6, ease: [0.2, 0.9, 0.3, 1] }}
-            style={{
-              fontFamily: 'var(--po-font-display)',
-              fontWeight: 700,
-              fontSize: 30,
-              lineHeight: 1.12,
-              letterSpacing: '-0.015em',
-              color: 'var(--pulse-text-1)',
-              margin: 0,
-              textShadow: '0 2px 24px rgba(0,0,0,0.6)',
-            }}
-          >
-            {line}
-          </motion.p>
-        </div>
-      </motion.div>
-    </AnimatePresence>
+          {line}
+        </p>
+      </div>
+    </div>
   );
 }
