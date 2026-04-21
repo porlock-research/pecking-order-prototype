@@ -1,7 +1,7 @@
 {
   "id": "vote-finals",
   "group": "Voting",
-  "filePath": "src/machines/cartridges/voting/finals-machine.ts",
+  "filePath": "packages/cartridges/src/voting/finals-machine.ts",
   "stats": {
     "stateCount": 2,
     "transitionCount": 2,

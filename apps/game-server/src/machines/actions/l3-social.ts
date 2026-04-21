@@ -49,7 +49,7 @@ export const l3SocialActions = {
             createdAt: Date.now(),
             capabilities: channelType === 'DM'
               ? ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE']
-              : ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
+              : ['CHAT', 'INVITE_MEMBER'],
           };
         } else {
           channels[channelId] = {
@@ -60,7 +60,7 @@ export const l3SocialActions = {
             createdAt: Date.now(),
             capabilities: channelType === 'DM'
               ? ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE']
-              : ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
+              : ['CHAT', 'INVITE_MEMBER'],
           };
         }
         // Sender consumes a slot for new conversation
@@ -158,13 +158,39 @@ export const l3SocialActions = {
       }
     }
 
+    // Enrich MAIN messages with reply-to author and @mention target ids so
+    // handleFactPush can route MENTION/REPLY pushes without needing chatLog
+    // access. Scoped to MAIN — DMs already get DM_SENT pushes per-recipient.
+    let replyToAuthorId: string | undefined;
+    let mentionedIds: string[] | undefined;
+    if (!isDM) {
+      if (event.replyTo) {
+        const orig = context.chatLog.find((m: any) => m.id === event.replyTo);
+        if (orig && orig.senderId !== event.senderId) replyToAuthorId = orig.senderId;
+      }
+      const content: string = event.content || '';
+      const ids: string[] = [];
+      for (const [pid, p] of Object.entries(context.roster)) {
+        if (pid === event.senderId) continue;
+        const personaName = (p as any)?.personaName;
+        if (personaName && content.includes(`@${personaName}`)) ids.push(pid);
+      }
+      if (ids.length > 0) mentionedIds = ids;
+    }
+
     return {
       type: Events.Fact.RECORD,
       fact: {
         type: isDM ? FactTypes.DM_SENT : FactTypes.CHAT_MSG,
         actorId: event.senderId,
         targetId,
-        payload: { content: event.content, channelId, targetIds },
+        payload: {
+          content: event.content,
+          channelId,
+          targetIds,
+          ...(replyToAuthorId ? { replyToAuthorId } : {}),
+          ...(mentionedIds ? { mentionedIds } : {}),
+        },
         timestamp: Date.now(),
       },
     };
@@ -386,7 +412,7 @@ export const l3SocialActions = {
         : { memberIds: allMembers }),
       createdBy: senderId,
       createdAt: Date.now(),
-      capabilities: ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'],
+      capabilities: ['CHAT', 'INVITE_MEMBER'],
     };
 
     const dmGroupsByPlayer = { ...context.dmGroupsByPlayer };
@@ -457,8 +483,12 @@ export const l3SocialActions = {
     const totalMembers = updatedMemberIds.length + (updatedPendingIds?.length ?? 0);
     const shouldPromote = channel.type === 'DM' && totalMembers > 2;
 
+    // On promotion to GROUP_DM, strip caps that only make sense 1:1:
+    // NUDGE (spammy in groups) and SILVER_TRANSFER (silver is a 1:1 social proof).
     const promotedCaps = shouldPromote
-      ? (channel.capabilities ?? []).filter((c: ChannelCapability) => c !== 'NUDGE')
+      ? (channel.capabilities ?? []).filter(
+          (c: ChannelCapability) => c !== 'NUDGE' && c !== 'SILVER_TRANSFER',
+        )
       : channel.capabilities;
 
     channels[channelId] = {

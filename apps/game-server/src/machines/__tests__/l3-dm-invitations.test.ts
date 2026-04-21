@@ -1102,7 +1102,7 @@ describe('unified DM channels', () => {
       expect(ch.memberIds).toEqual(expect.arrayContaining(['p0', 'p1', 'p2']));
     });
 
-    it('strips NUDGE capability on promotion', () => {
+    it('strips NUDGE and SILVER_TRANSFER capabilities on promotion to GROUP_DM', () => {
       const actor = createL3Actor();
       create2MemberDm(actor);
       const channelId = findDmChannels(actor.getL3Context())[0].id;
@@ -1116,8 +1116,8 @@ describe('unified DM channels', () => {
 
       const ch = actor.getL3Context().channels[channelId];
       expect(ch.capabilities).not.toContain('NUDGE');
+      expect(ch.capabilities).not.toContain('SILVER_TRANSFER');
       expect(ch.capabilities).toContain('INVITE_MEMBER');
-      expect(ch.capabilities).toContain('SILVER_TRANSFER');
       expect(ch.capabilities).toContain('CHAT');
     });
 

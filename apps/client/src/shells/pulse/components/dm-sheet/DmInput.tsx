@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { toast } from 'sonner';
 import type { ChannelCapability, ChannelType } from '@pecking-order/shared-types';
 import { ChannelTypes } from '@pecking-order/shared-types';
 import { usePulse } from '../../PulseShell';
@@ -18,7 +17,9 @@ interface Props {
 // Defaults used before the server-side channel exists (first-message flow).
 // Match what l3-social.ts will create so chip affordance stays consistent.
 const DEFAULT_DM_CAPS: ChannelCapability[] = ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER', 'NUDGE'];
-const DEFAULT_GROUP_CAPS: ChannelCapability[] = ['CHAT', 'SILVER_TRANSFER', 'INVITE_MEMBER'];
+// Group DMs intentionally omit SILVER_TRANSFER and NUDGE — silver is a 1:1
+// social proof; nudging a group would be spammy. Keep in sync with l3-social.ts.
+const DEFAULT_GROUP_CAPS: ChannelCapability[] = ['CHAT', 'INVITE_MEMBER'];
 
 export function DmInput({ channelId, recipientIds, placeholderName, disabled }: Props) {
   const { engine, openSendSilver, openNudge, playerId } = usePulse();
@@ -55,17 +56,15 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
   };
 
   const handleChip = (command: Command) => {
+    // Silver + nudge chips only render when the channel has the matching
+    // capability, which group DMs never do — so in a group these branches
+    // are unreachable.
     if (command === 'silver') {
-      if (!isGroup) {
-        openSendSilver(recipientIds[0]);
-      } else {
-        // Group silver picker not yet built — point the user at the member list.
-        toast.message('Tap a member above to send silver');
-      }
+      openSendSilver(recipientIds[0]);
       return;
     }
     if (command === 'nudge') {
-      if (!isGroup) openNudge(recipientIds[0]);
+      openNudge(recipientIds[0]);
       return;
     }
     if (command === 'mention') {

@@ -50,6 +50,12 @@ const AVAILABLE_ACTIVITY_TYPES = [
 
 const PUSH_TRIGGER_LABELS: { key: string; label: string }[] = [
   { key: 'DM_SENT', label: 'DM Received' },
+  { key: 'GROUP_CHAT_MSG', label: 'Group Chat Message' },
+  { key: 'MENTION', label: '@Mention' },
+  { key: 'REPLY', label: 'Reply' },
+  { key: 'WHISPER', label: 'Whisper' },
+  { key: 'NUDGE', label: 'Nudge' },
+  { key: 'SILVER_RECEIVED', label: 'Silver Received' },
   { key: 'ELIMINATION', label: 'Elimination' },
   { key: 'WINNER_DECLARED', label: 'Winner Declared' },
   { key: 'DAY_START', label: 'Day Started' },
@@ -64,7 +70,7 @@ function createDefaultDay(): DebugDayConfig {
     voteType: 'MAJORITY',
     gameType: 'TRIVIA',
     activityType: 'PLAYER_PICK',
-    events: { INJECT_PROMPT: true, OPEN_GROUP_CHAT: true, START_ACTIVITY: true, END_ACTIVITY: true, OPEN_DMS: true, START_GAME: true, END_GAME: true, OPEN_VOTING: true, CLOSE_VOTING: true, CLOSE_DMS: true, CLOSE_GROUP_CHAT: true, END_DAY: true },
+    events: { OPEN_GROUP_CHAT: true, START_ACTIVITY: true, END_ACTIVITY: true, OPEN_DMS: true, START_GAME: true, END_GAME: true, OPEN_VOTING: true, CLOSE_VOTING: true, CLOSE_DMS: true, CLOSE_GROUP_CHAT: true, END_DAY: true },
   };
 }
 
@@ -73,14 +79,15 @@ function createDefaultManifestConfig(): DebugManifestConfig {
     dayCount: 2,
     days: [createDefaultDay(), createDefaultDay()],
     pushConfig: {
-      DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
+      DM_SENT: true, GROUP_CHAT_MSG: true, MENTION: true, REPLY: true,
+      WHISPER: true, NUDGE: true, SILVER_RECEIVED: true,
+      ELIMINATION: true, WINNER_DECLARED: true,
       DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
     },
   };
 }
 
 const CONFIGURABLE_EVENT_LABELS: { key: string; label: string }[] = [
-  { key: 'INJECT_PROMPT', label: 'Inject Prompt' },
   { key: 'OPEN_GROUP_CHAT', label: 'Open Group Chat' },
   { key: 'START_ACTIVITY', label: 'Start Activity' },
   { key: 'END_ACTIVITY', label: 'End Activity' },
@@ -97,7 +104,6 @@ const CONFIGURABLE_EVENT_LABELS: { key: string; label: string }[] = [
 // Default times matching the spec daily schedule (PST)
 // 9-10am: Group Chat | 10am-noon: Game | 10am-11pm: DMs | Throughout: Activities | 8-11pm: Vote | Midnight: Elimination
 const DEFAULT_EVENT_TIMES: Record<string, string> = {
-  INJECT_PROMPT: '09:00',
   OPEN_GROUP_CHAT: '09:00',
   CLOSE_GROUP_CHAT: '10:00',
   OPEN_DMS: '10:00',
@@ -147,7 +153,9 @@ function createDefaultConfigurableConfig(): ConfigurableManifestConfig {
     dayCount: DEFAULT_DAY_COUNT,
     days: buildConfigurableDays(DEFAULT_DAY_COUNT),
     pushConfig: {
-      DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true,
+      DM_SENT: true, GROUP_CHAT_MSG: true, MENTION: true, REPLY: true,
+      WHISPER: true, NUDGE: true, SILVER_RECEIVED: true,
+      ELIMINATION: true, WINNER_DECLARED: true,
       DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
     },
     requireDmInvite: false,
@@ -339,7 +347,6 @@ export default function LobbyRoot() {
     // Simultaneous events share the same offset (processed in one wakeup).
     //
     const SPEED_RUN_SCHEDULE: { key: string; offsetMin: number }[] = [
-      { key: 'INJECT_PROMPT', offsetMin: 0 },
       { key: 'OPEN_GROUP_CHAT', offsetMin: 0 },
       { key: 'CLOSE_GROUP_CHAT', offsetMin: 2 },
       { key: 'OPEN_DMS', offsetMin: 2 },
@@ -464,6 +471,7 @@ export default function LobbyRoot() {
           mode: 'ACTIVE_PLAYERS_MINUS_ONE' as const,
           maxDays: dynamicConfig.dayCount.maxDays,
         },
+        ...(dynamicConfig.confessions.enabled ? { confessions: { enabled: true } } : {}),
       };
 
       const result = await createGame('CONFIGURABLE_CYCLE', undefined, {
@@ -536,6 +544,7 @@ export default function LobbyRoot() {
     if (result.success) {
       setStatus(`LOBBY_CREATED: ${result.gameId}`);
       setGameId(result.gameId ?? null);
+      setInviteCode(result.inviteCode ?? null);
       if (result.clientHost) setClientHost(result.clientHost);
       if (result.tokens) setTokens(result.tokens);
     } else {
@@ -1275,7 +1284,7 @@ export default function LobbyRoot() {
               {tokens && gameId && (
                 <div className="grid grid-cols-1 gap-3 slide-up-in pt-2">
                   <a
-                    href={`${clientHost}/?token=${tokens['p1']}`}
+                    href={inviteCode ? `${clientHost}/game/${inviteCode}?token=${tokens['p1']}` : `${clientHost}/?token=${tokens['p1']}`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-between p-4 bg-skin-panel/30 hover:bg-skin-panel/50 text-skin-base rounded-lg transition-all border border-skin-base hover:border-skin-dim/30 group"

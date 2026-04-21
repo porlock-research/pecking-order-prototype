@@ -109,8 +109,15 @@ self.addEventListener('notificationclick', (event) => {
       console.log('[SW] Found', clients.length, 'client window(s)');
       for (const client of clients) {
         if (new URL(client.url).origin === self.location.origin) {
-          if ('navigate' in client) {
-            await (client as WindowClient).navigate(targetUrl);
+          const currentPath = new URL(client.url).pathname;
+          const targetPath = new URL(targetUrl).pathname;
+          // Same-pathname navigate() reloads the page, racing postMessage
+          // against the new mount (which has no ?intent= to fall back on).
+          // Only navigate on cross-page jumps, and carry the intent in the
+          // URL so the fresh useDeepLinkIntent mount can pick it up.
+          if (currentPath !== targetPath && 'navigate' in client) {
+            const navUrl = intent ? buildIntentUrl(targetUrl, intent) : targetUrl;
+            await (client as WindowClient).navigate(navUrl);
           }
           const focused = await (client as WindowClient).focus();
           if (intent) focused.postMessage({ type: 'DEEP_LINK_INTENT', intent });

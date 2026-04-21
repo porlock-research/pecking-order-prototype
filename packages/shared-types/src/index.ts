@@ -72,7 +72,7 @@ export const LobbySchema = z.object({
 
 export const TimelineEventSchema = z.object({
   time: z.string(), // "09:00" or ISO string
-  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "OPEN_GROUP_CHAT", "CLOSE_GROUP_CHAT", "START_GAME", "END_GAME", "START_DILEMMA", "END_DILEMMA", "END_DAY"]),
+  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "OPEN_GROUP_CHAT", "CLOSE_GROUP_CHAT", "START_GAME", "END_GAME", "START_DILEMMA", "END_DILEMMA", "START_CONFESSION_CHAT", "END_CONFESSION_CHAT", "END_DAY"]),
   payload: z.any().optional(),
 });
 
@@ -148,27 +148,35 @@ export type DailyManifest = z.infer<typeof DailyManifestSchema>;
 // --- Push Notification Config ---
 
 export const PushTriggerSchema = z.enum([
-  // Fact-driven
-  'DM_SENT',           // targeted -> DM recipient
-  'ELIMINATION',       // broadcast
-  'WINNER_DECLARED',   // broadcast
-  'GROUP_CHAT_MSG',    // broadcast (main channel messages)
+  // Fact-driven — targeted
+  'DM_SENT',           // DM recipient
+  'MENTION',           // @mention in main chat (targeted to mentioned player)
+  'REPLY',             // reply to your main-chat message (targeted to original author)
+  'WHISPER',           // whisper recipient
+  'NUDGE',             // nudge recipient
+  'SILVER_RECEIVED',   // silver recipient
+  // Fact-driven — broadcast
+  'ELIMINATION',
+  'WINNER_DECLARED',
+  'GROUP_CHAT_MSG',    // main-channel message (suppressed for mentioned / reply-to author)
   // Phase-transition
-  'DAY_START',         // broadcast (morningBriefing/groupChat)
-  'ACTIVITY',          // broadcast
-  'VOTING',            // broadcast
-  'NIGHT_SUMMARY',     // broadcast
-  'DAILY_GAME',        // broadcast
+  'DAY_START',
+  'ACTIVITY',
+  'VOTING',
+  'NIGHT_SUMMARY',
+  'DAILY_GAME',
   // Gate events
-  'OPEN_DMS',          // broadcast
-  'CLOSE_DMS',         // broadcast
-  'OPEN_GROUP_CHAT',   // broadcast
-  'CLOSE_GROUP_CHAT',  // broadcast
+  'OPEN_DMS',
+  'CLOSE_DMS',
+  'OPEN_GROUP_CHAT',
+  'CLOSE_GROUP_CHAT',
   // Cartridge lifecycle
-  'START_GAME',        // broadcast
-  'END_GAME',          // broadcast
-  'START_ACTIVITY',    // broadcast
-  'END_ACTIVITY',      // broadcast
+  'START_GAME',
+  'END_GAME',
+  'START_ACTIVITY',
+  'END_ACTIVITY',
+  // Confession phase
+  'CONFESSION_OPEN',
 ]);
 export type PushTrigger = z.infer<typeof PushTriggerSchema>;
 
@@ -176,10 +184,12 @@ export const PushConfigSchema = z.record(PushTriggerSchema, z.boolean()).default
 export type PushConfig = z.infer<typeof PushConfigSchema>;
 
 export const DEFAULT_PUSH_CONFIG: Record<PushTrigger, boolean> = {
-  DM_SENT: true, ELIMINATION: true, WINNER_DECLARED: true, GROUP_CHAT_MSG: true,
+  DM_SENT: true, MENTION: true, REPLY: true, WHISPER: true, NUDGE: true, SILVER_RECEIVED: true,
+  ELIMINATION: true, WINNER_DECLARED: true, GROUP_CHAT_MSG: true,
   DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
   OPEN_DMS: true, CLOSE_DMS: true, OPEN_GROUP_CHAT: true, CLOSE_GROUP_CHAT: true,
   START_GAME: true, END_GAME: true, START_ACTIVITY: true, END_ACTIVITY: true,
+  CONFESSION_OPEN: true,
 };
 
 // --- Scheduling Strategy (orthogonal to game type) ---
@@ -288,6 +298,9 @@ export const PeckingOrderRulesetSchema = z.object({
   inactivity: PeckingOrderInactivityRulesSchema,
   dayCount: PeckingOrderDayCountRulesSchema,
   dilemmas: PeckingOrderDilemmaRulesSchema.optional(),
+  confessions: z.object({
+    enabled: z.boolean(),
+  }).optional(),
 });
 export type PeckingOrderRuleset = z.infer<typeof PeckingOrderRulesetSchema>;
 
@@ -398,7 +411,7 @@ export const InitPayloadSchema = z.object({
 // --- Journal & Facts (Persistence) ---
 
 export const FactSchema = z.object({
-  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "PERK_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED", "PROMPT_RESULT", "DM_INVITE_SENT", "DM_INVITE_ACCEPTED", "DM_INVITE_DECLINED", "DILEMMA_RESULT", "REACTION", "NUDGE", "WHISPER"]),
+  type: z.enum(["CHAT_MSG", "SILVER_TRANSFER", "VOTE_CAST", "ELIMINATION", "DM_SENT", "POWER_USED", "PERK_USED", "GAME_RESULT", "PLAYER_GAME_RESULT", "WINNER_DECLARED", "PROMPT_RESULT", "DM_INVITE_SENT", "DM_INVITE_ACCEPTED", "DM_INVITE_DECLINED", "DILEMMA_RESULT", "REACTION", "NUDGE", "WHISPER", "PREGAME_PLAYER_JOINED", "PREGAME_REVEAL_ANSWER"]),
   actorId: z.string(),
   targetId: z.string().optional(),
   payload: z.any().optional(), // JSON details
@@ -512,13 +525,14 @@ export type DmRejectionReason = 'DMS_CLOSED' | 'GROUP_CHAT_CLOSED' | 'PARTNER_LI
 
 // --- Channel System ---
 
-export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM']);
+export const ChannelTypeSchema = z.enum(['MAIN', 'DM', 'GROUP_DM', 'GAME_DM', 'CONFESSION']);
 export type ChannelType = z.infer<typeof ChannelTypeSchema>;
 
 export type ChannelCapability =
   | 'CHAT' | 'SILVER_TRANSFER' | 'INVITE_MEMBER' | 'REACTIONS' | 'REPLIES' | 'GAME_ACTIONS'
   | 'NUDGE'     // MAIN + 1:1 DM — UI affordance flag (NUDGE event is player-scoped)
-  | 'WHISPER';  // MAIN only — whisper is MAIN-anonymous
+  | 'WHISPER'   // MAIN only — whisper is MAIN-anonymous
+  | 'CONFESS';  // CONFESSION channel only — anonymized post under per-phase handle
 
 export interface Channel {
   id: string;
@@ -619,6 +633,9 @@ export interface TickerMessage {
   // Optional structured discriminator for category variants (e.g. SOCIAL_INVITE
   // needs to distinguish 'initial' DM creation from 'add_member').
   kind?: string;
+  // Optional channel pointer — when present, a tap on the narrator line
+  // routes to the referenced channel (e.g. CONFESSION-d2 for phase opens).
+  channelId?: string;
 }
 
 // --- Game Phase (server-projected, consumed by all shells) ---

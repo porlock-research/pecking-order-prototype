@@ -9,10 +9,20 @@ import { SilverTransferCard } from './SilverTransferCard';
 import { NudgeTransferCard } from './NudgeTransferCard';
 import { TypingIndicator } from './TypingIndicator';
 import { NarratorLine } from './NarratorLine';
+import { PregameJoinLine } from './PregameJoinLine';
 import { ChatDivider } from './ChatDivider';
 import { EventCard } from './EventCard';
 import { DayPhases, GAME_MASTER_ID, TickerCategories } from '@pecking-order/shared-types';
 import type { TickerMessage, VoteType } from '@pecking-order/shared-types';
+
+// Predicate: is this ticker message a narrator line?
+// Fact-driven pipeline (see finite-narrator-lines-fact-driven rule):
+//   server fact → factToTicker → SOCIAL_INVITE | SOCIAL_PHASE category → this filter.
+// Do NOT derive narrator content from channel shape.
+export function isNarratorTicker(t: TickerMessage): boolean {
+  return t.category === TickerCategories.SOCIAL_INVITE
+    || t.category === TickerCategories.SOCIAL_PHASE;
+}
 
 // Map SOCIAL_INVITE ticker kind → NarratorLine visual kind.
 // 'initial' covers 1:1 and small-group creation ('talking' / 'scheming' copy
@@ -30,11 +40,12 @@ export function ChatView() {
   const chatLog = useGameStore(s => s.chatLog);
   const tickerMessages = useGameStore(s => s.tickerMessages);
   const phase = useGameStore(s => s.phase);
+  const pregame = useGameStore(s => s.pregame);
+  const roster = useGameStore(s => s.roster);
   const mainLastRead = useGameStore(s => s.lastReadTimestamp?.MAIN ?? 0);
   const markChannelRead = useGameStore(s => s.markChannelRead);
-  const roster = useGameStore(s => s.roster);
   const manifest = useGameStore(s => s.manifest);
-  const { playerId } = usePulse();
+  const { playerId, openConfessionBooth } = usePulse();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [openReactionId, setOpenReactionId] = useState<string | null>(null);
@@ -66,11 +77,34 @@ export function ChatView() {
       || t.category === TickerCategories.SOCIAL_PERK,
   );
 
-  // Narrator lines come from SOCIAL_INVITE ticker events (fact-driven).
+  // Narrator lines come from SOCIAL_INVITE + SOCIAL_PHASE ticker events (fact-driven).
   // Public intrigue copy only — never names targets, never viewer-relative.
-  const narratorTickers: TickerMessage[] = tickerMessages.filter(
-    t => t.category === TickerCategories.SOCIAL_INVITE,
-  );
+  const narratorTickers: TickerMessage[] = tickerMessages.filter(isNarratorTicker);
+
+  // Pregame "First Impressions" — players reveal one of their own pre-game
+  // interview answers publicly. Pregame slice is null outside phase==='pregame',
+  // so reveals naturally drop from the timeline once Day 1 starts (the journal
+  // in D1 still has the record). Render as NarratorLine, not chat bubbles —
+  // these are public flair, not conversation.
+  const pregameReveals: Array<{ ts: number; actorId: string; question: string; answer: string }> = useMemo(() => {
+    if (!pregame?.revealedAnswers) return [];
+    return Object.entries(pregame.revealedAnswers).map(([actorId, r]) => ({
+      ts: r.revealedAt,
+      actorId,
+      question: r.question,
+      answer: r.answer,
+    }));
+  }, [pregame]);
+
+  // Pregame "joined the cast" lines — derived from the SYNC pregame.players slice.
+  // Skip self (you don't need to see yourself arrive). Like reveals, these drop
+  // automatically once Day 1 starts and the slice goes away.
+  const pregameJoins: Array<{ ts: number; actorId: string }> = useMemo(() => {
+    if (!pregame?.players) return [];
+    return Object.entries(pregame.players)
+      .filter(([actorId]) => actorId !== playerId)
+      .map(([actorId, p]) => ({ ts: p.joinedAt, actorId }));
+  }, [pregame, playerId]);
 
   // Dramatic event cards — ELIMINATION + PHASE_WINNER tickers are the day's
   // peak-end beats. Server already emits these via factToTicker; we render
@@ -85,13 +119,25 @@ export function ChatView() {
     | { type: 'msg'; data: any; ts: number }
     | { type: 'social'; data: TickerMessage; ts: number }
     | { type: 'narrator'; data: TickerMessage; ts: number }
-    | { type: 'event'; data: TickerMessage; ts: number };
+    | { type: 'event'; data: TickerMessage; ts: number }
+    | { type: 'pregame-reveal'; data: { actorId: string; question: string; answer: string }; ts: number }
+    | { type: 'pregame-join'; data: { actorId: string }; ts: number };
 
   const timeline: TimelineEntry[] = [
     ...mainMessages.map(m => ({ type: 'msg' as const, data: m, ts: m.timestamp })),
     ...socialEvents.map(t => ({ type: 'social' as const, data: t, ts: t.timestamp })),
     ...narratorTickers.map(t => ({ type: 'narrator' as const, data: t, ts: t.timestamp })),
     ...eventTickers.map(t => ({ type: 'event' as const, data: t, ts: t.timestamp })),
+    ...pregameReveals.map(r => ({
+      type: 'pregame-reveal' as const,
+      data: { actorId: r.actorId, question: r.question, answer: r.answer },
+      ts: r.ts,
+    })),
+    ...pregameJoins.map(j => ({
+      type: 'pregame-join' as const,
+      data: { actorId: j.actorId },
+      ts: j.ts,
+    })),
   ].sort((a, b) => a.ts - b.ts);
 
   // Auto-scroll on new entries
@@ -181,11 +227,43 @@ export function ChatView() {
           : null;
 
         if (entry.type === 'narrator') {
+          // SOCIAL_PHASE tickers carry an entry action — tap opens the booth.
+          const t = entry.data;
+          const isConfessionOpen = t.category === TickerCategories.SOCIAL_PHASE
+            && (t as any).channelId
+            && t.kind === 'confession-open';
           return (
             <NarratorLine
-              key={entry.data.id}
-              kind={socialInviteToNarratorKind(entry.data)}
-              text={entry.data.text}
+              key={t.id}
+              kind={t.category === TickerCategories.SOCIAL_PHASE ? 'alliance' : socialInviteToNarratorKind(t)}
+              text={t.text}
+              onTap={isConfessionOpen ? () => openConfessionBooth((t as any).channelId) : undefined}
+            />
+          );
+        }
+        if (entry.type === 'pregame-join') {
+          return (
+            <PregameJoinLine
+              key={`pregame-join-${entry.data.actorId}-${entry.ts}`}
+              actorId={entry.data.actorId}
+            />
+          );
+        }
+        if (entry.type === 'pregame-reveal') {
+          // First Impressions — public self-reveal of one QA answer. Format
+          // mirrors the narrator-line pattern: bold persona + italic body.
+          // The bold token is matched by NarratorLine against the roster to
+          // attach the inline avatar (see NarratorLine.tsx). Use 'talking'
+          // accent (calm pink) — these are introductions, not intrigue.
+          const r = entry.data;
+          const persona = roster[r.actorId];
+          const name = persona?.personaName ?? 'Someone';
+          const text = `**${name}** answers ${r.question} — "${r.answer}"`;
+          return (
+            <NarratorLine
+              key={`pregame-reveal-${r.actorId}-${entry.ts}`}
+              kind="talking"
+              text={text}
             />
           );
         }

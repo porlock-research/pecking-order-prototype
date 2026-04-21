@@ -1,10 +1,12 @@
 import { setup, assign, sendTo, raise } from 'xstate';
 import type { AnyActorRef } from 'xstate';
 import { dailySessionMachine } from './l3-session';
+import { pregameMachine } from './l3-pregame';
 import { postGameMachine } from './l4-post-game';
-import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, DailyManifest, Events, QaEntry, type DilemmaOutput } from '@pecking-order/shared-types';
+import { SocialPlayer, Roster, GameManifest, Fact, SocialEvent, VoteResult, DmRejectedEvent, GameHistoryEntry, DailyManifest, Events, PlayerStatuses, QaEntry, type DilemmaOutput } from '@pecking-order/shared-types';
 import type { GameOutput } from '@pecking-order/game-cartridges';
 import type { PromptOutput } from '@pecking-order/cartridges';
+import { log } from '../log';
 
 import { l2InitializationActions } from './actions/l2-initialization';
 import { l2TimelineActions } from './actions/l2-timeline';
@@ -88,6 +90,7 @@ export const orchestratorMachine = setup({
   } as any,
   actors: {
     dailySessionMachine,
+    pregameMachine,
     postGameMachine,
     gameMasterMachine: createGameMasterMachine(),
   }
@@ -123,27 +126,43 @@ export const orchestratorMachine = setup({
     },
     preGame: {
       entry: ['spawnGameMasterIfDynamic'],
+      invoke: {
+        id: 'l3-pregame',
+        src: 'pregameMachine',
+      },
       on: {
         'SYSTEM.WAKEUP': { target: 'dayLoop' },
         'ADMIN.NEXT_STAGE': { target: 'dayLoop' },
         'SYSTEM.PLAYER_JOINED': {
-          actions: assign({
-            roster: ({ context, event }: any) => ({
-              ...context.roster,
-              [event.player.id]: {
-                id: event.player.id,
-                personaName: event.player.personaName,
-                avatarUrl: event.player.avatarUrl,
-                bio: event.player.bio || '',
-                status: 'ALIVE',
-                silver: event.player.silver,
-                gold: event.player.gold,
-                realUserId: event.player.realUserId,
-                qaAnswers: event.player.qaAnswers,
-              }
-            })
-          })
-        }
+          actions: [
+            assign({
+              roster: ({ context, event }: any) => ({
+                ...context.roster,
+                [event.player.id]: {
+                  id: event.player.id,
+                  personaName: event.player.personaName,
+                  avatarUrl: event.player.avatarUrl,
+                  bio: event.player.bio || '',
+                  status: 'ALIVE',
+                  silver: event.player.silver,
+                  gold: event.player.gold,
+                  realUserId: event.player.realUserId,
+                  qaAnswers: event.player.qaAnswers,
+                }
+              })
+            }),
+            sendTo('l3-pregame', ({ event }: any) => event),
+          ],
+        },
+        'FACT.RECORD': {
+          actions: ['updateJournalTimestamp', 'applyFactToRoster', 'persistFactToD1'],
+        },
+        '*': [
+          {
+            guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Pregame.PREFIX),
+            actions: sendTo('l3-pregame', ({ event }: any) => event),
+          },
+        ],
       }
     },
     dayLoop: {
@@ -226,6 +245,10 @@ export const orchestratorMachine = setup({
               {
                 guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Dilemma.PREFIX),
                 actions: sendTo('l3-session', ({ event }: any) => event),
+              },
+              {
+                guard: ({ event }: any) => typeof event.type === 'string' && event.type.startsWith(Events.Confession.PREFIX),
+                actions: sendTo('l3-session', ({ event }: any) => event),
               }
             ],
             'ADMIN.INJECT_TIMELINE_EVENT': [
@@ -235,6 +258,30 @@ export const orchestratorMachine = setup({
                   'logAdminInject',
                   raise({ type: 'ADMIN.NEXT_STAGE' } as any)
                 ]
+              },
+              {
+                // Ruleset gate: skip START_CONFESSION_CHAT when confessions.enabled !== true.
+                guard: ({ context, event }: any) =>
+                  event.payload?.action === 'START_CONFESSION_CHAT' &&
+                  (context.manifest as any)?.ruleset?.confessions?.enabled !== true,
+                actions: ({ event }: any) => log('info', 'confession', 'skip-start', {
+                  reason: 'ruleset-disabled',
+                  action: event.payload?.action,
+                }),
+              },
+              {
+                // Alive-count guard: at least 2 alive players required.
+                guard: ({ context, event }: any) => {
+                  if (event.payload?.action !== 'START_CONFESSION_CHAT') return false;
+                  const aliveCount = Object.values(context.roster || {})
+                    .filter((p: any) => p?.status === PlayerStatuses.ALIVE).length;
+                  return aliveCount < 2;
+                },
+                actions: ({ context }: any) => log('info', 'confession', 'skip-start', {
+                  reason: 'insufficient-players',
+                  aliveCount: Object.values(context.roster || {})
+                    .filter((p: any) => p?.status === PlayerStatuses.ALIVE).length,
+                }),
               },
               {
                 actions: [

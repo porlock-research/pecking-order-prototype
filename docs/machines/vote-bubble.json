@@ -1,7 +1,7 @@
 {
   "id": "vote-bubble",
   "group": "Voting",
-  "filePath": "src/machines/cartridges/voting/bubble-machine.ts",
+  "filePath": "packages/cartridges/src/voting/bubble-machine.ts",
   "stats": {
     "stateCount": 2,
     "transitionCount": 2,

@@ -1,0 +1,23 @@
+MATCH_TOOL: Bash
+MATCH_PATTERN: (npm run dev|wrangler dev( |$)|scripts/tmp-create-game)
+ADVISORY: |
+  Worktree gotcha: `.dev.vars` is gitignored, so new worktrees never have it.
+  Before starting dev servers or running scripts/tmp-create-game.* in a
+  worktree, copy from the main repo:
+
+    cp /Users/manu/Projects/pecking-order/apps/game-server/.dev.vars \
+       apps/game-server/.dev.vars
+    cp /Users/manu/Projects/pecking-order/apps/lobby/.dev.vars \
+       apps/lobby/.dev.vars
+
+  Without `AUTH_SECRET`, the worker rejects every magic-link WebSocket with
+  close code 4001/4003, and useGameEngine.ts redirects the browser to
+  `/?noRecover=1`. Symptom: magic link opens `/game/<code>?_t=...`, URL
+  strips to `/game/<code>`, then instantly redirects to `/`. No visible
+  error — console shows `[WS] Connection closed { code: 4001|4003 }`.
+
+  Check first: `ls apps/game-server/.dev.vars apps/lobby/.dev.vars`.
+  If either is missing, copy before proceeding.
+
+  Real session cost: user reports this as recurring ("why does this keep
+  happening"). See memory: feedback_worktree_devvars_setup.md.

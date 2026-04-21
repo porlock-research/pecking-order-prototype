@@ -159,6 +159,10 @@ export function phasePushPayload(
     case 'END_ACTIVITY':
       return { payload: { title: "Activity Complete", body: "Results are in — see who earned silver" }, ttl: EVENT_TTL,
                intent: { kind: 'cartridge_result', cartridgeId: `prompt-${dayIndex}-${promptType}` } };
+    case 'CONFESSION_OPEN':
+      // Plan 1 routes to chat-root (no deep-link intent into a cartridge yet — Plan 2's match
+      // cartridge gets its own START_ACTIVITY push when it spawns later).
+      return { payload: { title: 'Confession', body: 'A confession phase has opened.' }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     default:
       return null;
   }
@@ -174,11 +178,33 @@ export function handleFactPush(
   const name = (id: string) => ctx.roster[id]?.personaName || id;
 
   if (fact.type === FactTypes.CHAT_MSG && fact.payload?.channelId === 'MAIN') {
-    if (!isPushEnabled(manifest, 'GROUP_CHAT_MSG')) return;
-    return pushBroadcast(ctx, {
-      title: name(fact.actorId),
-      body: (fact.payload?.content || '').slice(0, 100),
-    }, EVENT_TTL, [fact.actorId], { kind: 'main' }).catch(err => console.error('[L1] [Push] Error:', err));
+    // Priority: REPLY > MENTION > GROUP_CHAT_MSG. Each recipient gets at
+    // most one push per message; more-specific triggers suppress the generic
+    // group-chat broadcast for that player.
+    const title = name(fact.actorId);
+    const body = (fact.payload?.content || '').slice(0, 100);
+    const payload = { title, body };
+    const replyToAuthorId: string | undefined = fact.payload?.replyToAuthorId;
+    const mentionedIds: string[] = Array.isArray(fact.payload?.mentionedIds) ? fact.payload.mentionedIds : [];
+    const exclude = new Set<string>([fact.actorId]);
+
+    const promises: Promise<void>[] = [];
+    if (replyToAuthorId && replyToAuthorId !== fact.actorId && isPushEnabled(manifest, 'REPLY')) {
+      promises.push(pushToPlayer(ctx, replyToAuthorId, payload, EVENT_TTL, { kind: 'main' }));
+      exclude.add(replyToAuthorId);
+    }
+    if (isPushEnabled(manifest, 'MENTION')) {
+      for (const mid of mentionedIds) {
+        if (exclude.has(mid)) continue;
+        promises.push(pushToPlayer(ctx, mid, payload, EVENT_TTL, { kind: 'main' }));
+        exclude.add(mid);
+      }
+    }
+    if (isPushEnabled(manifest, 'GROUP_CHAT_MSG')) {
+      promises.push(pushBroadcast(ctx, payload, EVENT_TTL, Array.from(exclude), { kind: 'main' }));
+    }
+    if (promises.length === 0) return;
+    return Promise.allSettled(promises).then(() => {}).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.DM_SENT) {
     if (!isPushEnabled(manifest, 'DM_SENT')) return;
     const snippet = (fact.payload?.content || '').slice(0, 100);
@@ -227,5 +253,25 @@ export function handleFactPush(
         }, DM_TTL, intent)
       )
     ).then(() => {}).catch(err => console.error('[L1] [Push] Error:', err));
+  } else if (fact.type === FactTypes.NUDGE && fact.targetId) {
+    if (!isPushEnabled(manifest, 'NUDGE')) return;
+    return pushToPlayer(ctx, fact.targetId, {
+      title: name(fact.actorId),
+      body: `${name(fact.actorId)} nudged you`,
+    }, EVENT_TTL, { kind: 'main' }).catch(err => console.error('[L1] [Push] Error:', err));
+  } else if (fact.type === FactTypes.WHISPER && fact.targetId) {
+    if (!isPushEnabled(manifest, 'WHISPER')) return;
+    const text = (fact.payload?.text || '').slice(0, 100);
+    return pushToPlayer(ctx, fact.targetId, {
+      title: `${name(fact.actorId)} whispered`,
+      body: text || 'Whispered to you',
+    }, EVENT_TTL, { kind: 'main' }).catch(err => console.error('[L1] [Push] Error:', err));
+  } else if (fact.type === FactTypes.SILVER_TRANSFER && fact.targetId) {
+    if (!isPushEnabled(manifest, 'SILVER_RECEIVED')) return;
+    const amount = fact.payload?.amount ?? 0;
+    return pushToPlayer(ctx, fact.targetId, {
+      title: name(fact.actorId),
+      body: `${name(fact.actorId)} sent you ${amount} silver`,
+    }, EVENT_TTL, { kind: 'main' }).catch(err => console.error('[L1] [Push] Error:', err));
   }
 }

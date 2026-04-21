@@ -1,11 +1,13 @@
 import { motion } from 'framer-motion';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePillStates, type PillState } from '../../hooks/usePillStates';
 import { PULSE_SPRING } from '../../springs';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import { usePulse } from '../../PulseShell';
+import { runViewTransition, supportsViewTransitions, prefersReducedMotion } from '../../viewTransitions';
 import { usePillOrigin } from './usePillOrigin';
 import { CartridgeOverlayHeader } from './CartridgeOverlayHeader';
 import { CartridgeInfoSplash } from './CartridgeInfoSplash';
@@ -55,6 +57,35 @@ export function CartridgeOverlay() {
     [focused?.cartridgeId],
   );
 
+  // All hooks must run before any early return — handleClose captures
+  // focused.cartridgeId via a nullable read so this hook is always called.
+  const focusedCartridgeId = focused?.cartridgeId ?? null;
+
+  // When View Transitions are available AND the user hasn't opted into
+  // reduced motion, the open/close animation is driven by the browser's
+  // `active-pill` morph — framer's scale/opacity would race with it.
+  const vtActive = supportsViewTransitions() && !prefersReducedMotion();
+
+  // Close wraps `unfocus` in the VT morph: the overlay panel currently
+  // carries `view-transition-name: active-pill`; inside the callback we
+  // unmount it (via flushSync) and move the name back onto the pill DOM
+  // node so the browser's "new" snapshot morphs overlay → pill.
+  const handleClose = useCallback(() => {
+    if (!vtActive || !focusedCartridgeId) {
+      unfocus();
+      return;
+    }
+    const pillEl = document.querySelector<HTMLElement>(
+      `[data-pill-cartridge-id="${focusedCartridgeId}"]`,
+    );
+    runViewTransition(() => {
+      flushSync(unfocus);
+      if (pillEl) pillEl.style.viewTransitionName = 'active-pill';
+    }).finally(() => {
+      if (pillEl) pillEl.style.viewTransitionName = '';
+    });
+  }, [vtActive, focusedCartridgeId, unfocus]);
+
   if (!focused) return null;
 
   // Missing-entirely path: no pill resolves this cartridge. Toast + unfocus.
@@ -81,11 +112,11 @@ export function CartridgeOverlay() {
   return (
     <>
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={PULSE_SPRING.exit}
-        onClick={unfocus}
+        initial={vtActive ? false : { opacity: 0 }}
+        animate={vtActive ? undefined : { opacity: 1 }}
+        exit={vtActive ? { opacity: 1, transition: { duration: 0 } } : { opacity: 0 }}
+        transition={vtActive ? undefined : PULSE_SPRING.exit}
+        onClick={handleClose}
         aria-hidden="true"
         style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
@@ -94,10 +125,10 @@ export function CartridgeOverlay() {
         }}
       />
       <motion.div
-        initial={isPush ? { opacity: 0 } : { scale: 0.92, opacity: 0 }}
-        animate={isPush ? { opacity: 1 } : { scale: 1, opacity: 1 }}
-        exit={{ opacity: 0, scale: 0.96, transition: PULSE_SPRING.exit }}
-        transition={isPush ? { duration: 0.1 } : PULSE_SPRING.snappy}
+        initial={vtActive ? false : (isPush ? { opacity: 0 } : { scale: 0.92, opacity: 0 })}
+        animate={vtActive ? undefined : (isPush ? { opacity: 1 } : { scale: 1, opacity: 1 })}
+        exit={vtActive ? { opacity: 1, transition: { duration: 0 } } : { opacity: 0, scale: 0.96, transition: PULSE_SPRING.exit }}
+        transition={vtActive ? undefined : (isPush ? { duration: 0.1 } : PULSE_SPRING.snappy)}
         style={{
           position: 'fixed', top: 40, left: 0, right: 0, bottom: 0,
           background: 'var(--pulse-bg)',
@@ -106,14 +137,15 @@ export function CartridgeOverlay() {
           boxShadow: '0 -6px 20px rgba(0,0,0,0.35)',
           display: 'flex', flexDirection: 'column',
           zIndex: PULSE_Z.drawer, overflow: 'hidden',
-          transformOrigin,
+          transformOrigin: vtActive ? undefined : transformOrigin,
+          viewTransitionName: vtActive ? 'active-pill' : undefined,
         }}
       >
         <CartridgeOverlayHeader
           kind={kind}
           label={match.label}
           deadline={resolveDeadline(match)}
-          onClose={unfocus}
+          onClose={handleClose}
         />
 
         {isUpcoming ? (

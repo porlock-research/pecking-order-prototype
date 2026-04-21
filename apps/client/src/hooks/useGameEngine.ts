@@ -129,6 +129,14 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     }));
   };
 
+  const sendConfession = (channelId: string, text: string) => {
+    socket.send(JSON.stringify({
+      type: Events.Confession.POST,
+      channelId,
+      text,
+    }));
+  };
+
   const sendFirstMessage = (recipientIds: string[], content: string) => {
     socket.send(JSON.stringify({
       type: Events.Social.SEND_MSG,
@@ -199,6 +207,10 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     socket.send(JSON.stringify({ type: Events.Social.USE_PERK, perkType, targetId }));
   };
 
+  const revealPregameAnswer = (qIndex: number) => {
+    socket.send(JSON.stringify({ type: Events.Pregame.REVEAL_ANSWER, qIndex }));
+  };
+
   // Typing indicators with auto-stop after 3s of no keystrokes
   const typingTimeoutRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -222,6 +234,7 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
   return {
     socket,
     sendMessage,
+    sendConfession,
     sendFirstMessage,
     addMember,
     sendSilver,
@@ -238,5 +251,6 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     declineDm,
     sendTyping,
     stopTyping,
+    revealPregameAnswer,
   };
 };

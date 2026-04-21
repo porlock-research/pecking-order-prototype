@@ -1,0 +1,37 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/game-server/src/machines/(actions|cartridges)/.+\.ts$
+MATCH_CONTENT: enqueue\.(raise|sendTo|assign|stopChild)
+ADVISORY: |
+  `enqueue` is only available inside `enqueueActions(fn)` — it is NOT passed
+  to a plain `assign(fn)` wrapper or a bare action function. Calling
+  `enqueue.raise(...)` / `enqueue.sendTo(...)` / `enqueue.assign(...)` /
+  `enqueue.stopChild(...)` from inside `assign(({ context, event, enqueue }) => …)`
+  fails silently: the raise never fires, the assign may still apply, and no
+  XState error is surfaced.
+
+  If the action needs BOTH a context patch AND a raise/sendTo, use
+  `enqueueActions` and call `enqueue.assign({...})` instead of returning a
+  patch:
+
+    WRONG
+      recordConfession: assign(({ context, event, enqueue }) => {
+        enqueue.raise({ type: 'FACT.RECORD', fact });       // undefined
+        return { posts: [...context.posts, post] };
+      })
+
+    RIGHT
+      recordConfession: enqueueActions(({ context, event, enqueue }) => {
+        enqueue.raise({ type: 'FACT.RECORD', fact });
+        enqueue.assign({ posts: [...context.posts, post] });
+      })
+
+  Similarly, a plain `({ context, enqueue }) => { enqueue.raise(...) }`
+  wrapper is not an action — xstate calls it with only `{ context, event }`.
+  Always wrap with `enqueueActions()` when you need `enqueue`.
+
+  Real cost: 2026-04-18 confessions T9. Three actions (recordConfession,
+  emitConfessionPhaseStartedFact, emitConfessionPhaseEndedFact) were the
+  wrong flavor. Symptom: "CONFESSION.POST appends a post" test failed with
+  posts length 0; "groupChatOpen toggles" failed because assign() never
+  reached its patch. All three fixed by switching `assign` / bare fn to
+  `enqueueActions`.

@@ -107,6 +107,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
       onClick={handleTap}
       disabled={disabledInPicking}
       aria-label={ariaLabel}
+      data-chip-player-id={entry.id}
       whileTap={disabledInPicking ? undefined : PULSE_TAP.card}
       style={{
         position: 'relative',

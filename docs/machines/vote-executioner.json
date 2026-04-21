@@ -1,7 +1,7 @@
 {
   "id": "vote-executioner",
   "group": "Voting",
-  "filePath": "src/machines/cartridges/voting/executioner-machine.ts",
+  "filePath": "packages/cartridges/src/voting/executioner-machine.ts",
   "stats": {
     "stateCount": 3,
     "transitionCount": 3,

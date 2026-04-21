@@ -1,7 +1,7 @@
 {
   "id": "prompt-prediction",
   "group": "Prompts",
-  "filePath": "src/machines/cartridges/prompts/prediction-machine.ts",
+  "filePath": "packages/cartridges/src/prompts/prediction-machine.ts",
   "stats": {
     "stateCount": 2,
     "transitionCount": 3,

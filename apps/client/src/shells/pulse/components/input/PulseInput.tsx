@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { PaperPlaneTilt } from '../../icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePulse } from '../../PulseShell';
@@ -6,6 +7,7 @@ import { useGameStore } from '../../../../store/useGameStore';
 import { useCommandBuilder } from '../../hooks/useCommandBuilder';
 import { PULSE_TAP } from '../../springs';
 import { PULSE_Z } from '../../zIndex';
+import { runViewTransition, supportsViewTransitions, prefersReducedMotion } from '../../viewTransitions';
 import { HintChips } from './HintChips';
 import { CommandPicker } from './CommandPicker';
 import { PlayerPicker } from './PlayerPicker';
@@ -37,6 +39,22 @@ export function PulseInput() {
     cancel,
     back,
   } = useCommandBuilder();
+
+  // Wrap commandMode transitions in a view transition so the hint-chip bar
+  // morphs into the picker panel (and back). All panels carry the same
+  // `command-panel` view-transition-name on a wrapper div — exactly one is
+  // rendered at a time, so there's no duplicate-name collision.
+  const withMorph = useCallback((fn: () => void) => {
+    if (!supportsViewTransitions() || prefersReducedMotion()) {
+      fn();
+      return;
+    }
+    runViewTransition(() => flushSync(fn));
+  }, []);
+  const vtActive = supportsViewTransitions() && !prefersReducedMotion();
+  const panelVtStyle: React.CSSProperties = vtActive
+    ? { viewTransitionName: 'command-panel' }
+    : {};
 
   // Listen for reply events from ReactionBar
   useEffect(() => {
@@ -144,13 +162,6 @@ export function PulseInput() {
     cancel();
   }, [commandMode, engine, cancel]);
 
-  // Breadcrumb for player picker
-  const getBreadcrumb = () => {
-    if (commandMode.mode !== 'player-picker') return '';
-    const labels: Record<string, string> = { silver: 'Send Silver', dm: 'Direct Message', nudge: 'Nudge', whisper: 'Whisper', mention: 'Mention' };
-    return `${labels[commandMode.command] || ''} — pick a player`;
-  };
-
   // When chat is closed the ChatView renders its own "Chat opens at dawn"
   // notice in the empty chat area. Hiding the input bar here avoids a
   // duplicate copy of the same message stacked at the bottom of the viewport.
@@ -158,46 +169,61 @@ export function PulseInput() {
 
   return (
     <div style={{ borderTop: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)', position: 'relative', zIndex: PULSE_Z.flow }}>
-      {/* Command overlays */}
+      {/* Command overlays — each panel wrapper carries `view-transition-name:
+          command-panel` so the hint-chip bar morphs into whichever panel is
+          active next (and back on cancel/back). */}
       {commandMode.mode === 'command-picker' && (
-        <CommandPicker onSelect={selectCommand} onClose={cancel} dmsOpen={dmsOpen} />
+        <div style={panelVtStyle}>
+          <CommandPicker
+            onSelect={(cmd) => withMorph(() => selectCommand(cmd))}
+            onClose={() => withMorph(() => cancel())}
+            dmsOpen={dmsOpen}
+          />
+        </div>
       )}
 
       {commandMode.mode === 'player-picker' && (
-        <PlayerPicker
-          breadcrumb={getBreadcrumb()}
-          command={commandMode.command}
-          onSelect={handlePlayerSelect}
-          onBack={back}
-        />
+        <div style={panelVtStyle}>
+          <PlayerPicker
+            command={commandMode.command}
+            onSelect={(player, pid) => withMorph(() => handlePlayerSelect(player, pid))}
+            onBack={() => withMorph(() => back())}
+          />
+        </div>
       )}
 
       {commandMode.mode === 'amount-picker' && (
-        <AmountPicker
-          player={commandMode.player}
-          playerId={commandMode.playerId}
-          onSelect={selectAmount}
-          onBack={back}
-        />
+        <div style={panelVtStyle}>
+          <AmountPicker
+            player={commandMode.player}
+            playerId={commandMode.playerId}
+            onSelect={(amount) => withMorph(() => selectAmount(amount))}
+            onBack={() => withMorph(() => back())}
+          />
+        </div>
       )}
 
       {commandMode.mode === 'preview' && (
-        <CommandPreview
-          player={commandMode.player}
-          playerId={commandMode.playerId}
-          amount={commandMode.amount}
-          onSend={handleSilverSend}
-          onCancel={cancel}
-        />
+        <div style={panelVtStyle}>
+          <CommandPreview
+            player={commandMode.player}
+            playerId={commandMode.playerId}
+            amount={commandMode.amount}
+            onSend={handleSilverSend}
+            onCancel={() => withMorph(() => cancel())}
+          />
+        </div>
       )}
 
       {commandMode.mode === 'whisper' && (
-        <WhisperMode
-          player={commandMode.player}
-          playerId={commandMode.playerId}
-          onSend={handleWhisperSend}
-          onCancel={cancel}
-        />
+        <div style={panelVtStyle}>
+          <WhisperMode
+            player={commandMode.player}
+            playerId={commandMode.playerId}
+            onSend={handleWhisperSend}
+            onCancel={() => withMorph(() => cancel())}
+          />
+        </div>
       )}
 
       {/* Reply bar */}
@@ -209,7 +235,7 @@ export function PulseInput() {
 
       {/* Default input (idle mode) */}
       {commandMode.mode === 'idle' && (
-        <>
+        <div style={panelVtStyle}>
           {/* Mention autocomplete */}
           {mentionQuery !== null && (
             <div style={{ position: 'relative' }}>
@@ -222,7 +248,7 @@ export function PulseInput() {
           )}
           <div style={{ padding: '6px 12px 2px' }}>
             <HintChips
-              onSelect={selectCommand}
+              onSelect={(cmd) => withMorph(() => selectCommand(cmd))}
               channelType="MAIN"
               capabilities={mainCapabilities}
               groupChatOpen={groupChatOpen}
@@ -275,7 +301,7 @@ export function PulseInput() {
               </motion.button>
             )}
           </div>
-        </>
+        </div>
       )}
 
       {/* Reply mode also shows input */}

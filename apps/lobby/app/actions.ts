@@ -6,7 +6,7 @@ import { getDB, getEnv } from '@/lib/db';
 import { requireAuth, getSession, generateId, generateInviteCode, generateToken } from '@/lib/auth';
 import { requireSuperAdmin } from '@/lib/super-admin';
 import { sendEmail } from '@/lib/email';
-import { buildInviteEmailHtml } from '@/lib/email-templates';
+import { buildInviteEmail } from '@/lib/email-templates';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -16,7 +16,6 @@ export interface DebugDayConfig {
   gameMode?: string;
   activityType: string;
   events: {
-    INJECT_PROMPT: boolean;
     OPEN_GROUP_CHAT: boolean;
     START_ACTIVITY: boolean;
     END_ACTIVITY: boolean;
@@ -826,6 +825,7 @@ export async function startDebugGame(
 ): Promise<{
   success: boolean;
   gameId?: string;
+  inviteCode?: string;
   clientHost?: string;
   tokens?: Record<string, string>;
   error?: string;
@@ -834,6 +834,10 @@ export async function startDebugGame(
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
   const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
   const GAME_ID = `game-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  // Per-game invite code (was hardcoded 'DEBUG', which clashed across
+  // concurrent debug games — same key in localStorage / po-tokens Cache, same
+  // push URL path → token lookups collided).
+  const inviteCode = generateInviteCode();
 
   const dayCount = debugConfig?.dayCount ?? 7;
   const playerCount = dayCount + 1;
@@ -882,7 +886,7 @@ export async function startDebugGame(
 
   const payload = {
     lobbyId: `lobby-${Date.now()}`,
-    inviteCode: 'DEBUG',
+    inviteCode,
     roster,
     manifest: { kind: 'STATIC' as const, id: 'manifest-1', gameMode: mode, scheduling: mode === 'DEBUG_PECKING_ORDER' ? 'ADMIN' as const : 'PRE_SCHEDULED' as const, days, pushConfig: debugConfig?.pushConfig },
   };
@@ -906,7 +910,7 @@ export async function startDebugGame(
     }
 
     const clientHost = (env.GAME_CLIENT_HOST as string) || 'http://localhost:5173';
-    return { success: true, gameId: GAME_ID, clientHost, tokens };
+    return { success: true, gameId: GAME_ID, inviteCode, clientHost, tokens };
   } catch (err: any) {
     console.error('[Lobby] Debug start failed:', err);
     return { success: false, error: err.message };
@@ -969,7 +973,6 @@ export async function getActiveGames(): Promise<ActiveGame[]> {
 // ── Shared: Build manifest days ──────────────────────────────────────────
 
 const EVENT_MESSAGES: Record<string, string> = {
-  INJECT_PROMPT: 'Chat prompt injected.',
   OPEN_GROUP_CHAT: 'Group chat is now open!',
   START_ACTIVITY: 'Activity started!',
   END_ACTIVITY: 'Activity ended.',
@@ -987,7 +990,7 @@ const EVENT_MESSAGES: Record<string, string> = {
 // This keeps lobby (static games) and game-master (dynamic games) consistent.
 
 const TIMELINE_EVENT_KEYS = [
-  'INJECT_PROMPT', 'OPEN_GROUP_CHAT', 'START_ACTIVITY', 'END_ACTIVITY', 'OPEN_DMS',
+  'OPEN_GROUP_CHAT', 'START_ACTIVITY', 'END_ACTIVITY', 'OPEN_DMS',
   'START_GAME', 'END_GAME',
   'OPEN_GROUP_CHAT_2', 'OPEN_VOTING', 'CLOSE_VOTING', 'CLOSE_DMS', 'CLOSE_GROUP_CHAT_2', 'CLOSE_GROUP_CHAT', 'END_DAY',
 ] as const;
@@ -1003,9 +1006,7 @@ function buildEventPayload(
   dayIndex: number,
   usedHotTakeIds: Set<string>,
 ) {
-  const msg = eventKey === 'INJECT_PROMPT'
-    ? `Welcome to Day ${dayIndex} of Pecking Order`
-    : EVENT_MESSAGES[eventKey];
+  const msg = EVENT_MESSAGES[eventKey];
   if (eventKey === 'START_ACTIVITY') {
     const actInfo = (ACTIVITY_TYPE_INFO as Record<string, any>)[activityType];
     const base = {
@@ -1573,12 +1574,14 @@ export async function sendEmailInvite(
     const inviteLink = `${LOBBY_HOST}/invite/${token}`;
     const senderName = session.displayName || session.email.split('@')[0];
 
-    const result = await sendEmail(
-      normalizedEmail,
-      "You've been invited to Pecking Order!",
-      buildInviteEmailHtml({ senderName, inviteLink, inviteCode: game.invite_code, assetsUrl: PERSONA_ASSETS_URL, lobbyUrl: LOBBY_HOST }),
-      RESEND_API_KEY,
-    );
+    const { subject, html } = buildInviteEmail({
+      senderName,
+      inviteLink,
+      inviteCode: game.invite_code,
+      assetsUrl: PERSONA_ASSETS_URL,
+      lobbyUrl: LOBBY_HOST,
+    });
+    const result = await sendEmail(normalizedEmail, subject, html, RESEND_API_KEY);
 
     if (result.success) return { success: true, sent: true };
     console.error('[Invite] Email send failed:', result.error);

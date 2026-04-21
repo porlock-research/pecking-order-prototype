@@ -15,6 +15,20 @@ const JOURNALABLE_TYPES = [
   // dropped. Confirmed via local Pulse test: 2026-04-14.
   FactTypes.DM_INVITE_SENT,
   FactTypes.NUDGE,
+  FactTypes.WHISPER,
+  // Confessions feature (Spec C, Plan 1). CONFESSION_POSTED is the load-bearing
+  // archive for the match cartridge (Plan 2) — actorId preserved in D1, stripped
+  // from SYNC by projections.ts. PHASE_STARTED drives the SOCIAL_PHASE ticker line.
+  FactTypes.CONFESSION_POSTED,
+  FactTypes.CONFESSION_PHASE_STARTED,
+  FactTypes.CONFESSION_PHASE_ENDED,
+  // Pregame engagement (l3-pregame). Journal-only — l3-pregame is invoked in
+  // L2's preGame state and dies on transition to dayLoop, so D1 is the only
+  // persistent record (queryable via GameJournal WHERE day_index = 0).
+  // No factToTicker / handleFactPush plumbing is wanted: pregame content is
+  // intentionally ephemeral and doesn't carry into Day 1.
+  FactTypes.PREGAME_PLAYER_JOINED,
+  FactTypes.PREGAME_REVEAL_ANSWER,
 ];
 
 /** Returns true if the fact type should be persisted to the D1 journal. */

@@ -1,0 +1,27 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/client/src/shells/pulse/components/input/PulseInput\.tsx
+MATCH_CONTENT: AnimatePresence
+ADVISORY: |
+  PulseInput's command branches (command-picker / player-picker / amount-picker /
+  preview / whisper / reply / idle) render as sibling conditionals inside the
+  same flow container. Wrapping JUST ONE branch in AnimatePresence for an exit
+  animation creates a layout race — the exiting branch stays mounted while the
+  next branch (usually idle UI) renders beside it, producing double-height then
+  snap-collapse when the exit completes.
+
+  Session cost: three iterations on PlayerPicker dismiss — plain AnimatePresence
+  had the stacking pop; mode="popLayout" instead made the parent snap to idle
+  height while the picker was still fading (worse). The clean fix was dropping
+  the exit animation entirely.
+
+  Two safe patterns:
+    1. Wrap ALL branches in a single AnimatePresence with keys on each
+       (optionally mode="wait"), so sibling transitions coordinate.
+    2. Skip exit animation entirely — instant unmount is clean against a
+       conditional-render parent.
+
+  Do NOT wrap just one branch while leaving the others bare.
+
+  ADR-141 already governs view-transition composition with AnimatePresence
+  for these panels (rules 4 + 5). Any new exit animation here must respect
+  the `vtActive` gate from that ADR AND follow one of the two patterns above.

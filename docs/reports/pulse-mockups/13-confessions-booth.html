@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pulse — Confession Booth</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700,800&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Pulse warm-ink ladder */
+    --bg:            #15121a;
+    --bg-deep:       #0d0a12;
+    --surface:       #1a1420;
+    --surface-2:     #1d1826;
+    --surface-3:     #231c2d;
+    --surface-4:     #2a2335;
+    --border:        rgba(255,255,255,0.06);
+    --border-lifted: rgba(255,255,255,0.10);
+
+    /* Pulse text ladder */
+    --text-1: #f2eef5;
+    --text-2: #a89fb3;
+    --text-3: #6b5f78;
+    --text-4: #3d3547;
+
+    /* Pulse accents */
+    --accent:    #ff3b6f;       /* pink — primary 10% */
+    --accent-g:  rgba(255,59,111,0.14);
+    --accent-g2: rgba(255,59,111,0.30);
+    --gold:      #ffc83d;       /* signal — silver/premium */
+
+    /* Booth-specific: warm amber sidelight + on-air red */
+    --booth-light:   #f9a94a;   /* studio lamp */
+    --booth-light-g: rgba(249,169,74,0.10);
+    --booth-light-rim: rgba(249,169,74,0.28);
+    --on-air:        #ff2a3d;
+    --on-air-g:      rgba(255,42,61,0.40);
+
+    --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px; --r-pill: 100px;
+
+    --font-display: 'Clash Display', system-ui, sans-serif;
+    --font-body:    'Satoshi', system-ui, sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height: 100%; }
+  body {
+    background:
+      radial-gradient(ellipse at top left, rgba(249,169,74,0.04), transparent 45%),
+      radial-gradient(ellipse at bottom right, rgba(255,59,111,0.03), transparent 50%),
+      #08060b;
+    color: var(--text-1);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    padding: 44px 24px 80px;
+    overflow-x: auto;
+  }
+
+  .page {
+    max-width: 1760px;
+    margin: 0 auto;
+  }
+  .page-head {
+    text-align: left;
+    margin-bottom: 44px;
+    max-width: 720px;
+  }
+  .page-head .tag {
+    display: inline-block;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    padding: 6px 10px;
+    background: var(--accent-g);
+    border-radius: var(--r-sm);
+    margin-bottom: 14px;
+  }
+  .page-head h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(36px, 5vw, 56px);
+    line-height: 0.98;
+    letter-spacing: -0.03em;
+    margin-bottom: 18px;
+  }
+  .page-head p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-2);
+    max-width: 60ch;
+  }
+
+  .stage {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    padding: 12px 4px 24px;
+    width: max-content;
+  }
+
+  .frame-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    flex: 0 0 auto;
+  }
+
+  .frame-label {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    padding: 6px 0 0;
+  }
+  .frame-sub {
+    font-size: 12px;
+    color: var(--text-2);
+    max-width: 320px;
+    text-align: center;
+    line-height: 1.45;
+    margin-top: -6px;
+  }
+
+  /* --- Phone shell --- */
+  .phone {
+    width: 390px;
+    height: 824px;
+    border-radius: 44px;
+    background: var(--bg);
+    border: 2px solid rgba(255,255,255,0.04);
+    box-shadow:
+      0 40px 80px rgba(0,0,0,0.5),
+      0 0 0 1px rgba(255,255,255,0.02) inset;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    isolation: isolate;
+  }
+  /* Status bar */
+  .status {
+    height: 38px;
+    padding: 0 22px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-2);
+    position: relative;
+    z-index: 2;
+  }
+  .status svg { width: 14px; height: 14px; fill: currentColor; opacity: .9; }
+  .status .right { display: flex; align-items: center; gap: 6px; }
+
+  /* --- Booth room shading overlay (single-lamp sidelight) --- */
+  .booth-light {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 70% 55% at 18% 12%, rgba(249,169,74,0.16), transparent 60%),
+      radial-gradient(ellipse 90% 90% at 90% 100%, rgba(255,59,111,0.08), transparent 60%),
+      linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.45) 100%);
+  }
+  /* Scan-line texture — subtle, VHS vibe */
+  .booth-scan {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.012) 0,
+      rgba(255,255,255,0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    mix-blend-mode: overlay;
+    opacity: 0.6;
+  }
+
+  /* --- Channel header (booth signage) --- */
+  .booth-head {
+    padding: 12px 20px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    z-index: 2;
+    border-bottom: 1px solid var(--border);
+  }
+  .booth-head-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .back-btn {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-2); cursor: pointer;
+  }
+  .back-btn svg { width: 14px; height: 14px; fill: currentColor; }
+  .booth-title {
+    text-align: center;
+    flex: 1;
+  }
+  .booth-title .eyebrow {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    color: var(--text-3);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .booth-title .name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    margin-top: 2px;
+  }
+  .on-air {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    color: var(--on-air);
+    padding: 4px 8px;
+    background: rgba(255,42,61,0.08);
+    border: 1px solid rgba(255,42,61,0.20);
+    border-radius: var(--r-sm);
+  }
+  .on-air .pip {
+    width: 7px; height: 7px;
+    background: var(--on-air);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--on-air-g);
+    animation: breathe 1.6s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.55; transform: scale(0.85); }
+  }
+  .booth-meta {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+  }
+  .booth-meta .sep { width: 3px; height: 3px; background: var(--text-4); border-radius: 50%; }
+
+  /* --- The feed / reel (scrollable area above composer) --- */
+  .feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 16px 22px;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .feed::-webkit-scrollbar { width: 0; }
+
+  /* --- Confession cassette card --- */
+  .cassette {
+    position: relative;
+    background:
+      radial-gradient(ellipse 80% 70% at 50% 0%, rgba(249,169,74,0.09), transparent 60%),
+      linear-gradient(180deg, var(--surface-2), var(--surface));
+    border: 1px solid var(--border-lifted);
+    border-radius: var(--r-lg);
+    padding: 22px 22px 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .cassette::before {
+    /* vignette that suggests a spotlight on the speaker */
+    content: '';
+    position: absolute;
+    inset: -30% -30% 30% -30%;
+    background: radial-gradient(ellipse 50% 60% at 50% 30%, rgba(249,169,74,0.07), transparent 60%);
+    pointer-events: none;
+  }
+
+  .tape-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    align-self: flex-start;
+    padding: 6px 12px 6px 10px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 3px;
+    transform: skewX(-8deg);
+    box-shadow:
+      0 2px 0 rgba(0,0,0,0.25),
+      0 10px 24px rgba(255,59,111,0.22);
+    position: relative;
+    z-index: 1;
+  }
+  .tape-label > * { transform: skewX(8deg); }
+  .tape-label .hole {
+    width: 6px; height: 6px;
+    background: rgba(0,0,0,0.35);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.14) inset;
+  }
+  .tape-label .txt {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    line-height: 1;
+  }
+
+  .cassette .quote-mark {
+    position: absolute;
+    top: 10px;
+    right: 18px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 80px;
+    line-height: 1;
+    color: var(--accent);
+    opacity: 0.10;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .cassette .text {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 20px;
+    line-height: 1.28;
+    letter-spacing: -0.01em;
+    color: var(--text-1);
+    z-index: 1;
+    position: relative;
+  }
+
+  .cassette .foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-body);
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+    z-index: 1;
+    position: relative;
+  }
+  .cassette .tc {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+  }
+
+  /* Short confession variant — smaller frame */
+  .cassette.short .text { font-size: 17px; }
+
+  /* Cassette tape-transport: two reels + visible tape ribbon */
+  .cassette .transport {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 2px 2px;
+    z-index: 1; position: relative;
+  }
+  .cassette .reel {
+    width: 26px; height: 26px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #18131e 0%, #0b080f 45%, #1d1826 100%);
+    position: relative;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.04),
+      inset 0 2px 3px rgba(0,0,0,0.7),
+      0 0 0 1px rgba(0,0,0,0.4);
+  }
+  .cassette .reel::before {
+    content: ''; position: absolute; inset: 3px; border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      rgba(255,255,255,0.09) 0deg 4deg, transparent 4deg 45deg,
+      rgba(255,255,255,0.09) 45deg 49deg, transparent 49deg 90deg,
+      rgba(255,255,255,0.09) 90deg 94deg, transparent 94deg 135deg,
+      rgba(255,255,255,0.09) 135deg 139deg, transparent 139deg 180deg,
+      rgba(255,255,255,0.09) 180deg 184deg, transparent 184deg 225deg,
+      rgba(255,255,255,0.09) 225deg 229deg, transparent 229deg 270deg,
+      rgba(255,255,255,0.09) 270deg 274deg, transparent 274deg 315deg,
+      rgba(255,255,255,0.09) 315deg 319deg, transparent 319deg 360deg
+    );
+    -webkit-mask: radial-gradient(circle, black 40%, transparent 72%);
+            mask: radial-gradient(circle, black 40%, transparent 72%);
+  }
+  .cassette .reel::after {
+    content: ''; position: absolute; inset: 38%; border-radius: 50%;
+    background: radial-gradient(circle, var(--accent) 0%, var(--accent) 60%, rgba(255,59,111,0.0) 100%);
+    box-shadow: 0 0 6px var(--accent-g2);
+  }
+  .cassette .tape-path {
+    flex: 1; height: 10px; position: relative;
+    background: linear-gradient(180deg, transparent 0 30%, #2a1f38 30% 70%, transparent 70% 100%);
+    border-radius: 2px; overflow: hidden;
+  }
+  .cassette .tape-path::before {
+    content: ''; position: absolute; inset: 30% 0 30%;
+    background-image: repeating-linear-gradient(to right, rgba(255,255,255,0.05) 0 2px, transparent 2px 5px);
+  }
+  .cassette .tape-path::after {
+    content: ''; position: absolute; left: 0; right: 0; top: 30%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(249,169,74,0.25) 30%, rgba(249,169,74,0.25) 70%, transparent);
+  }
+
+  /* --- The booth composer (bottom, dominant) --- */
+  .booth {
+    flex-shrink: 0;
+    padding: 18px 18px 22px;
+    position: relative;
+    z-index: 2;
+    background:
+      radial-gradient(ellipse 140% 80% at 50% 110%, rgba(249,169,74,0.08), transparent 60%),
+      linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.35) 100%);
+    border-top: 1px solid var(--border-lifted);
+    /* the "room rim light" */
+    box-shadow: inset 0 1px 0 rgba(249,169,74,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .booth-chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .booth-chrome .posting {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .booth-chrome .posting .tape-label {
+    /* slightly bigger for the composer */
+    padding: 7px 14px 7px 11px;
+  }
+  .booth-chrome .posting .tape-label .txt {
+    font-size: 12px;
+  }
+  .mask {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 30%, var(--surface-4), var(--surface-2) 65%, #0a0810 100%);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    box-shadow: 0 0 0 1px var(--border-lifted), inset 0 2px 3px rgba(249,169,74,0.12);
+  }
+  .mask::before, .mask::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 1px;
+    box-shadow: 0 0 8px var(--accent-g2);
+  }
+  .mask::before { transform: rotate(22deg); }
+  .mask::after { transform: rotate(-22deg); }
+
+  .rec-chrome {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--on-air);
+    letter-spacing: 0.08em;
+  }
+  .rec-chrome .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--on-air);
+    animation: breathe 1.4s ease-in-out infinite;
+    box-shadow: 0 0 10px var(--on-air-g);
+  }
+
+  .mic-frame {
+    background:
+      radial-gradient(ellipse 90% 75% at 50% 0%, rgba(249,169,74,0.08), transparent 70%),
+      #110d17;
+    border: 1px solid var(--border-lifted);
+    border-radius: var(--r-md);
+    padding: 16px 18px 14px;
+    position: relative;
+    min-height: 148px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    box-shadow:
+      0 2px 0 rgba(0,0,0,0.3),
+      inset 0 1px 0 rgba(249,169,74,0.08);
+  }
+  /* "Speak into the mic" icon mark in the corner */
+  .mic-frame::before {
+    content: '';
+    position: absolute;
+    top: 12px; right: 14px;
+    width: 28px; height: 28px;
+    background: radial-gradient(circle at 50% 35%, rgba(249,169,74,0.18), transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .mic-frame textarea, .mic-frame .mic-placeholder, .mic-frame .mic-text {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 19px;
+    line-height: 1.32;
+    color: var(--text-1);
+    letter-spacing: -0.005em;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    width: 100%;
+    min-height: 90px;
+    caret-color: var(--accent);
+  }
+  .mic-placeholder {
+    color: var(--text-3);
+    font-style: italic;
+    font-weight: 400;
+  }
+  /* Live typing cursor on the idle frame */
+  .cursor-bar {
+    display: inline-block;
+    width: 2px; height: 1em;
+    background: var(--accent);
+    transform: translateY(4px);
+    animation: cursor 1s steps(2,end) infinite;
+    margin-left: 2px;
+  }
+  @keyframes cursor { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+  .mic-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+  }
+  .mic-count {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.05em;
+  }
+  .mic-count .used { color: var(--text-1); font-weight: 700; }
+  .mic-count.warn .used { color: var(--gold); }
+  .mic-count.over .used { color: var(--on-air); }
+
+  .send-btn {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    padding: 10px 18px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--on-air);
+    background: linear-gradient(180deg, var(--on-air), #d01f2f);
+    color: #fff;
+    display: inline-flex; align-items: center; gap: 8px;
+    cursor: pointer;
+    box-shadow:
+      0 10px 24px rgba(255,42,61,0.32),
+      inset 0 1px 0 rgba(255,255,255,0.18);
+    text-transform: uppercase;
+  }
+  .send-btn.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    filter: grayscale(0.7);
+    box-shadow: none;
+  }
+  .send-btn .dot {
+    width: 7px; height: 7px; background: #fff; border-radius: 50%;
+    box-shadow: 0 0 8px rgba(255,255,255,0.6);
+  }
+
+  /* --- Rules footer: tiny explainer always visible --- */
+  .booth-rules {
+    font-size: 11px;
+    color: var(--text-3);
+    text-align: center;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+  }
+  .booth-rules strong { color: var(--text-2); font-weight: 700; }
+
+  /* ===== STATE 1 — Handle reveal overlay (entry nameplate moment) ===== */
+  .reveal-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background:
+      radial-gradient(ellipse 60% 80% at 50% 45%, rgba(249,169,74,0.10), transparent 65%),
+      linear-gradient(180deg, #05040a 0%, #0e0a14 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    gap: 26px;
+  }
+  .reveal-overlay::before {
+    /* film letterbox top */
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 8%;
+    background: linear-gradient(180deg, rgba(0,0,0,0.8), transparent);
+  }
+  .reveal-overlay::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 10%;
+    background: linear-gradient(0deg, rgba(0,0,0,0.8), transparent);
+  }
+  .reveal-mask {
+    width: 124px; height: 124px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 38% 30%, var(--surface-4), var(--surface) 60%, #08060d 100%);
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow:
+      0 0 0 2px var(--border-lifted),
+      0 0 60px rgba(249,169,74,0.18),
+      inset 0 4px 8px rgba(249,169,74,0.15);
+  }
+  .reveal-mask::before, .reveal-mask::after {
+    content: ''; position: absolute;
+    width: 74px; height: 7px;
+    background: var(--accent);
+    border-radius: 2px;
+    box-shadow: 0 0 18px var(--accent-g2);
+  }
+  .reveal-mask::before { transform: rotate(24deg); }
+  .reveal-mask::after { transform: rotate(-24deg); }
+
+  .reveal-eyebrow {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.34em;
+    color: var(--accent);
+    text-align: center;
+  }
+  .reveal-label {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    color: var(--text-1);
+    text-align: center;
+    margin-top: -4px;
+  }
+  .reveal-number {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 120px;
+    line-height: 0.88;
+    letter-spacing: -0.05em;
+    color: var(--text-1);
+    text-align: center;
+    text-shadow: 0 0 28px rgba(249,169,74,0.28);
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .reveal-number .hash { color: var(--accent); margin-right: 2px; font-weight: 600; }
+  .reveal-tag {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.24em;
+    text-align: center;
+    color: var(--text-2);
+  }
+  .reveal-caption {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-style: italic;
+    color: var(--text-3);
+    text-align: center;
+    max-width: 280px;
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+  .reveal-continue {
+    margin-top: 14px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    color: var(--text-3);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .reveal-continue .arrow {
+    width: 12px; height: 12px;
+    border-right: 2px solid var(--text-3);
+    border-bottom: 2px solid var(--text-3);
+    transform: rotate(-45deg);
+    margin-top: -2px;
+  }
+
+  /* ===== STATE 3 — Closing soon: amber warning tint on booth-head + timer ===== */
+  .phone.closing .booth-head { background: linear-gradient(180deg, rgba(255,200,61,0.06), transparent); }
+  .closing-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: var(--gold);
+    padding: 4px 8px;
+    background: rgba(255,200,61,0.08);
+    border: 1px solid rgba(255,200,61,0.22);
+    border-radius: var(--r-sm);
+  }
+  .closing-badge .pip {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--gold);
+    animation: breathe 1s ease-in-out infinite;
+  }
+  .closing-banner {
+    margin: 12px 16px 0;
+    padding: 12px 14px;
+    background: linear-gradient(180deg, rgba(255,200,61,0.06), rgba(255,200,61,0.02));
+    border: 1px solid rgba(255,200,61,0.22);
+    border-radius: var(--r-md);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+  }
+  .closing-banner .tc {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .closing-banner .msg {
+    font-family: var(--font-body);
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-2);
+  }
+  .closing-banner .msg strong { color: var(--text-1); }
+
+  /* ===== STATE 4 — Closed / archived: composer replaced with "BOOTH CLOSED" ===== */
+  .closed-plate {
+    flex-shrink: 0;
+    padding: 22px 20px 26px;
+    border-top: 1px solid var(--border);
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.4));
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    z-index: 2;
+  }
+  .closed-plate .stamp {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: 0.28em;
+    color: var(--text-3);
+    padding: 8px 18px;
+    border: 2px solid var(--text-4);
+    border-radius: var(--r-sm);
+    transform: rotate(-3deg);
+    display: inline-block;
+  }
+  .closed-plate .meta {
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text-3);
+    max-width: 300px;
+    line-height: 1.45;
+  }
+
+  /* Slight desaturation + reduced spotlight for archived state */
+  .phone.closed .booth-light { opacity: 0.4; }
+  .phone.closed .cassette { filter: saturate(0.85); }
+  .phone.closed .on-air { color: var(--text-3); background: transparent; border-color: var(--border); }
+  .phone.closed .on-air .pip { animation: none; background: var(--text-3); box-shadow: none; }
+
+  /* ===== Non-member variant (smaller, separate card) ===== */
+  .non-member-grid {
+    display: flex;
+    gap: 28px;
+    align-items: flex-start;
+    margin-top: 48px;
+    flex-wrap: wrap;
+  }
+  .non-member-note {
+    max-width: 360px;
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.6;
+  }
+  .non-member-note h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    color: var(--text-1);
+    margin-bottom: 10px;
+  }
+
+  .non-member-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    padding: 40px 30px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+  .non-member-state .icon {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, var(--surface-3), var(--surface) 70%, #05040a 100%);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0.6;
+  }
+  .non-member-state .icon::before {
+    content: '';
+    width: 32px; height: 2px;
+    background: var(--text-4);
+    transform: rotate(-25deg);
+  }
+  .non-member-state h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    color: var(--text-2);
+  }
+  .non-member-state p {
+    font-size: 13px;
+    color: var(--text-3);
+    max-width: 260px;
+    line-height: 1.5;
+  }
+  .non-member-state .sub {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 10px;
+    letter-spacing: 0.26em;
+    color: var(--text-4);
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* --- Design notes panel at bottom --- */
+  .notes {
+    margin-top: 64px;
+    max-width: 960px;
+    padding: 32px 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+  }
+  .notes h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    margin-bottom: 18px;
+  }
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 24px;
+  }
+  .note h3 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .note p {
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.55;
+  }
+  .note p + p { margin-top: 8px; }
+  .note code {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--text-1);
+    background: var(--surface-3);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="page-head">
+    <span class="tag">Pulse · Spec C · T14</span>
+    <h1>The Confession Booth</h1>
+    <p>Each day, the CONFESSION channel opens briefly. Alive players drop anonymous confessions under a daily handle (&ldquo;Confessor #3&rdquo;). The channel is not a chat thread &mdash; it&rsquo;s a reality-TV interrogation room: single warm sidelight, tape-label handles, a dominant &ldquo;on air&rdquo; composer, and a reel of cassette cards where others&rsquo; confessions sit framed like evidence. Posts arrive anonymized; the server never tells the client who said what.</p>
+  </div>
+
+  <div class="stage">
+
+    <!-- ===================================================================== -->
+    <!-- STATE 1 — ENTRY NAMEPLATE (handle reveal)                              -->
+    <!-- ===================================================================== -->
+    <div class="frame-col">
+      <div class="phone">
+        <div class="booth-light"></div>
+        <div class="booth-scan"></div>
+
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <svg viewBox="0 0 16 12"><path d="M1 8.5 3.5 11 15 2l-1.5-1.5L3.5 8 2.5 7z"/></svg>
+            <svg viewBox="0 0 20 12"><rect x="0" y="1" width="17" height="10" rx="2" fill="none" stroke="currentColor"/><rect x="2" y="3" width="13" height="6" rx="1"/></svg>
+          </span>
+        </div>
+
+        <!-- Faded booth head behind the reveal -->
+        <div class="booth-head" style="opacity: .25;">
+          <div class="booth-head-row">
+            <div class="back-btn"><svg viewBox="0 0 12 12"><path d="M8 1 3 6l5 5"/></svg></div>
+            <div class="booth-title">
+              <div class="eyebrow">DAY 3 · <span class="on-air"><span class="pip"></span>ON AIR</span></div>
+              <div class="name">Confession Booth</div>
+            </div>
+            <div style="width:34px;"></div>
+          </div>
+        </div>
+
+        <div class="reveal-overlay">
+          <div class="reveal-mask"></div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+            <div class="reveal-eyebrow">YOU ARE</div>
+            <div class="reveal-label">CONFESSOR</div>
+            <div class="reveal-number"><span class="hash">#</span>03</div>
+            <div class="reveal-tag">NAMELESS FOR TONIGHT</div>
+          </div>
+          <div class="reveal-caption">Anything you drop in here posts under this tape. The others won&rsquo;t know it&rsquo;s you &mdash; not even tomorrow.</div>
+          <div class="reveal-continue">TAP TO ENTER <span class="arrow"></span></div>
+        </div>
+      </div>
+      <div class="frame-label">01 · Nameplate</div>
+      <div class="frame-sub">One-time moment on first entry each phase. ~800ms ignition: mask drops, number stamps, settles. Replay by tapping the tape label.</div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- STATE 2 — BOOTH ACTIVE (reel + dominant composer, live)                -->
+    <!-- ===================================================================== -->
+    <div class="frame-col">
+      <div class="phone">
+        <div class="booth-light"></div>
+        <div class="booth-scan"></div>
+
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <svg viewBox="0 0 16 12"><path d="M1 8.5 3.5 11 15 2l-1.5-1.5L3.5 8 2.5 7z"/></svg>
+            <svg viewBox="0 0 20 12"><rect x="0" y="1" width="17" height="10" rx="2" fill="none" stroke="currentColor"/><rect x="2" y="3" width="13" height="6" rx="1"/></svg>
+          </span>
+        </div>
+
+        <div class="booth-head">
+          <div class="booth-head-row">
+            <div class="back-btn"><svg viewBox="0 0 12 12"><path d="M8 1 3 6l5 5"/></svg></div>
+            <div class="booth-title">
+              <div class="eyebrow">DAY 3 · <span class="on-air"><span class="pip"></span>ON AIR</span></div>
+              <div class="name">Confession Booth</div>
+            </div>
+            <div style="width:34px;"></div>
+          </div>
+          <div class="booth-meta">
+            <span>5 tapes tonight</span>
+            <span class="sep"></span>
+            <span>anonymous to everyone</span>
+            <span class="sep"></span>
+            <span>closes 10:42</span>
+          </div>
+        </div>
+
+        <div class="feed">
+          <div class="cassette">
+            <div class="tape-label"><span class="hole"></span><span class="txt">CONFESSOR · 05</span></div>
+            <div class="quote-mark">&ldquo;</div>
+            <div class="text">Maya and Lior aren&rsquo;t in an alliance. They&rsquo;re running two separate ones and trading notes.</div>
+            <div class="transport"><div class="reel"></div><div class="tape-path"></div><div class="reel"></div></div>
+            <div class="foot">
+              <span>tonight</span>
+              <span class="tc">22:14:06</span>
+            </div>
+          </div>
+
+          <div class="cassette short">
+            <div class="tape-label"><span class="hole"></span><span class="txt">CONFESSOR · 02</span></div>
+            <div class="quote-mark">&ldquo;</div>
+            <div class="text">I&rsquo;ve been faking the typos for a week now. It&rsquo;s working.</div>
+            <div class="transport"><div class="reel"></div><div class="tape-path"></div><div class="reel"></div></div>
+            <div class="foot">
+              <span>tonight</span>
+              <span class="tc">22:11:52</span>
+            </div>
+          </div>
+
+          <div class="cassette">
+            <div class="tape-label"><span class="hole"></span><span class="txt">CONFESSOR · 07</span></div>
+            <div class="quote-mark">&ldquo;</div>
+            <div class="text">If it comes down to me or Theo in finals, I&rsquo;m telling everyone about the Day 2 DM.</div>
+            <div class="transport"><div class="reel"></div><div class="tape-path"></div><div class="reel"></div></div>
+            <div class="foot">
+              <span>tonight</span>
+              <span class="tc">22:09:18</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="booth">
+          <div class="booth-chrome">
+            <div class="posting">
+              <div class="mask"></div>
+              <div class="tape-label"><span class="hole"></span><span class="txt">CONFESSOR · 03</span></div>
+            </div>
+            <div class="rec-chrome">
+              <span class="dot"></span>
+              <span>REC</span>
+            </div>
+          </div>
+
+          <div class="mic-frame">
+            <div class="mic-text">The truth is, I voted for Ava on Day 1 because she saw me copy the <span class="cursor-bar"></span></div>
+          </div>
+
+          <div class="mic-foot" style="border-top:none; padding-top:0; margin-top:0;">
+            <span class="mic-count"><span class="used">112</span> / 280</span>
+            <button class="send-btn"><span class="dot"></span>GO ON AIR</button>
+          </div>
+
+          <div class="booth-rules">
+            <strong>Once submitted, cannot be edited or taken back.</strong> Everyone sees the tape; no one sees the name.
+          </div>
+        </div>
+      </div>
+      <div class="frame-label">02 · On Air</div>
+      <div class="frame-sub">Default state. Composer always present as the booth frame; reel shows other confessions as cassette cards. Pink tape = the daily handle identity.</div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- STATE 3 — CLOSING SOON (30s warning)                                   -->
+    <!-- ===================================================================== -->
+    <div class="frame-col">
+      <div class="phone closing">
+        <div class="booth-light"></div>
+        <div class="booth-scan"></div>
+
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <svg viewBox="0 0 16 12"><path d="M1 8.5 3.5 11 15 2l-1.5-1.5L3.5 8 2.5 7z"/></svg>
+            <svg viewBox="0 0 20 12"><rect x="0" y="1" width="17" height="10" rx="2" fill="none" stroke="currentColor"/><rect x="2" y="3" width="13" height="6" rx="1"/></svg>
+          </span>
+        </div>
+
+        <div class="booth-head">
+          <div class="booth-head-row">
+            <div class="back-btn"><svg viewBox="0 0 12 12"><path d="M8 1 3 6l5 5"/></svg></div>
+            <div class="booth-title">
+              <div class="eyebrow">DAY 3 · <span class="closing-badge"><span class="pip"></span>CLOSING</span></div>
+              <div class="name">Confession Booth</div>
+            </div>
+            <div style="width:34px;"></div>
+          </div>
+          <div class="booth-meta">
+            <span>5 tapes tonight</span>
+            <span class="sep"></span>
+            <span>last call</span>
+          </div>
+        </div>
+
+        <div class="closing-banner">
+          <div class="tc">00:27</div>
+          <div class="msg"><strong>Booth closes in less than a minute.</strong><br>Anything you don&rsquo;t drop is lost &mdash; the tapes stay, the booth doesn&rsquo;t.</div>
+        </div>
+
+        <div class="feed">
+          <div class="cassette">
+            <div class="tape-label"><span class="hole"></span><span class="txt">CONFESSOR · 05</span></div>
+            <div class="quote-mark">&ldquo;</div>
+            <div class="text">Maya and Lior aren&rsquo;t in an alliance. They&rsquo;re running two separate ones and trading notes.</div>
+            <div class="transport"><div class="reel"></div><div class="tape-path"></div><div class="reel"></div></div>
+            <div class="foot">
+              <span>tonight</span>
+              <span class="tc">22:14:06</span>
+            </div>
+          </div>
+
+          <div class="cassette short">
+            <div class="tape-label"><span class="hole"></span><span class="txt">CONFESSOR · 02</span></div>
+            <div class="quote-mark">&ldquo;</div>
+            <div class="text">I&rsquo;ve been faking the typos for a week now. It&rsquo;s working.</div>
+            <div class="transport"><div class="reel"></div><div class="tape-path"></div><div class="reel"></div></div>
+            <div class="foot">
+              <span>tonight</span>
+              <span class="tc">22:11:52</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="booth">
+          <div class="booth-chrome">
+            <div class="posting">
+              <div class="mask"></div>
+              <div class="tape-label"><span class="hole"></span><span class="txt">CONFESSOR · 03</span></div>
+            </div>
+            <div class="rec-chrome">
+              <span class="dot" style="background:var(--gold); box-shadow:0 0 10px rgba(255,200,61,0.5);"></span>
+              <span style="color:var(--gold);">LAST CALL</span>
+            </div>
+          </div>
+
+          <div class="mic-frame">
+            <span class="mic-placeholder">Speak into the mic&hellip;</span>
+          </div>
+
+          <div class="mic-foot" style="border-top:none; padding-top:0; margin-top:0;">
+            <span class="mic-count"><span class="used">0</span> / 280</span>
+            <button class="send-btn disabled"><span class="dot"></span>GO ON AIR</button>
+          </div>
+        </div>
+      </div>
+      <div class="frame-label">03 · Last Call</div>
+      <div class="frame-sub">Under 60s left. Warm on-air red swaps for gold &ldquo;LAST CALL&rdquo;; banner counts down. Stays calm &mdash; the urgency is informational, not alarming.</div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- STATE 4 — CLOSED (archived, read-only)                                 -->
+    <!-- ===================================================================== -->
+    <div class="frame-col">
+      <div class="phone closed">
+        <div class="booth-light"></div>
+        <div class="booth-scan"></div>
+
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <svg viewBox="0 0 16 12"><path d="M1 8.5 3.5 11 15 2l-1.5-1.5L3.5 8 2.5 7z"/></svg>
+            <svg viewBox="0 0 20 12"><rect x="0" y="1" width="17" height="10" rx="2" fill="none" stroke="currentColor"/><rect x="2" y="3" width="13" height="6" rx="1"/></svg>
+          </span>
+        </div>
+
+        <div class="booth-head">
+          <div class="booth-head-row">
+            <div class="back-btn"><svg viewBox="0 0 12 12"><path d="M8 1 3 6l5 5"/></svg></div>
+            <div class="booth-title">
+              <div class="eyebrow">DAY 3 · <span class="on-air"><span class="pip"></span>OFF AIR</span></div>
+              <div class="name">Confession Booth</div>
+            </div>
+            <div style="width:34px;"></div>
+          </div>
+          <div class="booth-meta">
+            <span>5 tapes · archived</span>
+          </div>
+        </div>
+
+        <div class="feed">
+          <div class="cassette">
+            <div class="tape-label"><span class="hole"></span><span class="txt">CONFESSOR · 05</span></div>
+            <div class="quote-mark">&ldquo;</div>
+            <div class="text">Maya and Lior aren&rsquo;t in an alliance. They&rsquo;re running two separate ones and trading notes.</div>
+            <div class="transport"><div class="reel"></div><div class="tape-path"></div><div class="reel"></div></div>
+            <div class="foot">
+              <span>earlier tonight</span>
+              <span class="tc">22:14:06</span>
+            </div>
+          </div>
+
+          <div class="cassette short">
+            <div class="tape-label"><span class="hole"></span><span class="txt">CONFESSOR · 02</span></div>
+            <div class="quote-mark">&ldquo;</div>
+            <div class="text">I&rsquo;ve been faking the typos for a week now. It&rsquo;s working.</div>
+            <div class="transport"><div class="reel"></div><div class="tape-path"></div><div class="reel"></div></div>
+            <div class="foot">
+              <span>earlier tonight</span>
+              <span class="tc">22:11:52</span>
+            </div>
+          </div>
+
+          <div class="cassette">
+            <div class="tape-label"><span class="hole"></span><span class="txt">CONFESSOR · 07</span></div>
+            <div class="quote-mark">&ldquo;</div>
+            <div class="text">If it comes down to me or Theo in finals, I&rsquo;m telling everyone about the Day 2 DM.</div>
+            <div class="transport"><div class="reel"></div><div class="tape-path"></div><div class="reel"></div></div>
+            <div class="foot">
+              <span>earlier tonight</span>
+              <span class="tc">22:09:18</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="closed-plate">
+          <div class="stamp">BOOTH CLOSED</div>
+          <div class="meta">The door&rsquo;s locked. Tapes from tonight stay here until the game ends. A new booth opens tomorrow.</div>
+        </div>
+      </div>
+      <div class="frame-label">04 · Closed</div>
+      <div class="frame-sub">Phase ends. Composer is replaced with the rubber-stamp plate; cassettes dim slightly and stay browsable for the rest of the game.</div>
+    </div>
+
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- Non-member variant                                                      -->
+  <!-- ===================================================================== -->
+  <div class="non-member-grid">
+    <div class="non-member-note">
+      <h3>Edge: not in the booth</h3>
+      <p>A player with <code>myHandle === null</code> &mdash; typically eliminated before the phase opened, or joining the game mid-day &mdash; sees a minimal empty state. They can still browse the archived cassettes later, but during the live phase they see only the chrome and a single &ldquo;locked out&rdquo; plate where the composer would sit. The reel collapses; there&rsquo;s nothing to say, so the room doesn&rsquo;t try to fill itself with activity.</p>
+    </div>
+    <div class="frame-col">
+      <div class="phone">
+        <div class="booth-light" style="opacity:.5;"></div>
+        <div class="booth-scan"></div>
+
+        <div class="status">
+          <span>9:41</span>
+          <span class="right">
+            <svg viewBox="0 0 16 12"><path d="M1 8.5 3.5 11 15 2l-1.5-1.5L3.5 8 2.5 7z"/></svg>
+            <svg viewBox="0 0 20 12"><rect x="0" y="1" width="17" height="10" rx="2" fill="none" stroke="currentColor"/><rect x="2" y="3" width="13" height="6" rx="1"/></svg>
+          </span>
+        </div>
+
+        <div class="booth-head">
+          <div class="booth-head-row">
+            <div class="back-btn"><svg viewBox="0 0 12 12"><path d="M8 1 3 6l5 5"/></svg></div>
+            <div class="booth-title">
+              <div class="eyebrow">DAY 3 · <span class="on-air"><span class="pip"></span>ON AIR</span></div>
+              <div class="name">Confession Booth</div>
+            </div>
+            <div style="width:34px;"></div>
+          </div>
+        </div>
+
+        <div class="non-member-state">
+          <div class="icon"></div>
+          <h4>The booth isn&rsquo;t yours tonight.</h4>
+          <p>You weren&rsquo;t here when the tape was cut. Come back when the tapes drop at end-of-day.</p>
+          <div class="sub">· off the record ·</div>
+        </div>
+      </div>
+      <div class="frame-label">05 · Locked out</div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- Design notes                                                            -->
+  <!-- ===================================================================== -->
+  <div class="notes">
+    <h2>Design notes</h2>
+    <div class="notes-grid">
+      <div class="note">
+        <h3>Identity = tape, not name</h3>
+        <p>The daily handle is rendered as an evidence tape label (skewed pink strip, <code>Clash 800 · 0.22em</code>), never as body text. Avatars everywhere else in Pulse are photos; here, the mask-silhouette replaces the photo and the tape replaces the name. Two visual substitutions tell the player they&rsquo;re anonymous without writing a single word.</p>
+      </div>
+      <div class="note">
+        <h3>Room, not thread</h3>
+        <p>A single amber sidelight from top-left + pink undertone from bottom-right reads as &ldquo;one lamp, one speaker.&rdquo; The scan-line texture (1px / 3px at 1.2% opacity) adds a VHS tape feel without overstating it. Corner vignettes on cassettes reinforce spotlight-on-the-speaker.</p>
+      </div>
+      <div class="note">
+        <h3>Composer is the set</h3>
+        <p>~40% of viewport is the booth frame, not a 48px input. Placeholder is italic Satoshi (&ldquo;Speak into the mic&hellip;&rdquo;); live text is <code>Clash 500 · 19px</code> so the draft already reads like the final post. <strong>GO ON AIR</strong> replaces &ldquo;Send&rdquo; &mdash; cost-of-action is visible.</p>
+      </div>
+      <div class="note">
+        <h3>One accent per state</h3>
+        <p>Pink = identity (tape). Red = live (ON AIR, REC). Gold = warning (LAST CALL). Closed drops all three to neutral. Only one of these is ever &ldquo;the loud one&rdquo; in a given state &mdash; follows Pulse&rsquo;s 10% rule.</p>
+      </div>
+      <div class="note">
+        <h3>Nameplate, not reel</h3>
+        <p>Entry is a one-time ignition beat (~800ms: mask drops, number stamps, caption fades in, auto-continues on first tap). Not an every-day reveal-grade reel &mdash; that would overload a recurring event. Re-playable by tapping the tape label in the composer.</p>
+      </div>
+      <div class="note">
+        <h3>Rules always on</h3>
+        <p>One short line under the composer (&ldquo;Once submitted, cannot be edited or taken back. Everyone sees the tape; no one sees the name.&rdquo;) &mdash; no &ldquo;?&rdquo; button, no tooltip. Matches Pulse&rsquo;s rules-always-visible principle. Copy is the explainer.</p>
+      </div>
+      <div class="note">
+        <h3>Archive lives past closing</h3>
+        <p>Phase close replaces the composer with a rubber-stamp plate; cassettes stay browsable &mdash; desaturated slightly (<code>saturate(0.85)</code>), spotlight damped. The booth reads as &ldquo;closed door to the room, tapes on the shelf outside.&rdquo;</p>
+      </div>
+      <div class="note">
+        <h3>Non-member &ne; empty state</h3>
+        <p>If <code>myHandle === null</code>, don&rsquo;t show the reel. A player who wasn&rsquo;t in the phase shouldn&rsquo;t see live tapes in real time; they&rsquo;ll come to the archive at end-of-day. The &ldquo;locked out&rdquo; plate respects that and doesn&rsquo;t leak activity.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

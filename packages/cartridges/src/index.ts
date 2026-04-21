@@ -29,4 +29,4 @@ export { giftOrGriefMachine } from './dilemmas/gift-or-grief';
 export type { BaseDilemmaContext, DilemmaResults, DilemmaEvent } from './dilemmas/_contract';
 
 // Projections
-export { projectPromptCartridge, projectDilemmaCartridge } from './projections';
+export { projectPromptCartridge, projectDilemmaCartridge, projectFactForClient } from './projections';

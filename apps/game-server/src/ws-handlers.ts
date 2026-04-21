@@ -256,7 +256,9 @@ export function handleMessage(ctx: WsContext, ws: Connection, message: string): 
       || (typeof event.type === 'string' && event.type.startsWith(Events.Vote.PREFIX))
       || (typeof event.type === 'string' && event.type.startsWith(Events.Game.PREFIX))
       || (typeof event.type === 'string' && event.type.startsWith(Events.Activity.PREFIX))
-      || (typeof event.type === 'string' && event.type.startsWith(Events.Dilemma.PREFIX));
+      || (typeof event.type === 'string' && event.type.startsWith(Events.Dilemma.PREFIX))
+      || (typeof event.type === 'string' && event.type.startsWith(Events.Confession.PREFIX))
+      || (typeof event.type === 'string' && event.type.startsWith(Events.Pregame.PREFIX));
     if (!isAllowed) {
       log('warn', 'L1', 'Rejected event type from client', { eventType: event.type });
       return;

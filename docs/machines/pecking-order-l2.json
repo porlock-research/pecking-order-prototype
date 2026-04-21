@@ -4,7 +4,7 @@
   "filePath": "src/machines/l2-orchestrator.ts",
   "stats": {
     "stateCount": 10,
-    "transitionCount": 43,
+    "transitionCount": 48,
     "eventTypes": [
       "*",
       "ADMIN.ELIMINATE_PLAYER",
@@ -52,7 +52,9 @@
       "events": [
         "SYSTEM.WAKEUP",
         "ADMIN.NEXT_STAGE",
-        "SYSTEM.PLAYER_JOINED"
+        "SYSTEM.PLAYER_JOINED",
+        "FACT.RECORD",
+        "*"
       ]
     },
     {
@@ -170,6 +172,16 @@
       "event": "SYSTEM.PLAYER_JOINED"
     },
     {
+      "source": "preGame",
+      "target": "preGame",
+      "event": "FACT.RECORD"
+    },
+    {
+      "source": "preGame",
+      "target": "preGame",
+      "event": "*"
+    },
+    {
       "source": "dayLoop.activeSession",
       "target": "dayLoop.nightSummary",
       "event": "ADMIN.NEXT_STAGE"
@@ -273,6 +285,21 @@
       "source": "dayLoop.activeSession",
       "target": "dayLoop.activeSession",
       "event": "*"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "*"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "ADMIN.INJECT_TIMELINE_EVENT"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "ADMIN.INJECT_TIMELINE_EVENT"
     },
     {
       "source": "dayLoop.activeSession",
