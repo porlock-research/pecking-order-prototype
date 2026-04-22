@@ -11,9 +11,10 @@ interface CommandPreviewProps {
   amount: number;
   onSend: () => void;
   onCancel: () => void;
+  sending?: boolean;
 }
 
-export function CommandPreview({ player, playerId, amount, onSend, onCancel }: CommandPreviewProps) {
+export function CommandPreview({ player, playerId, amount, onSend, onCancel, sending = false }: CommandPreviewProps) {
   const roster = useGameStore(s => s.roster);
   const playerIndex = Object.keys(roster).indexOf(playerId);
 
@@ -29,11 +30,16 @@ export function CommandPreview({ player, playerId, amount, onSend, onCancel }: C
       <motion.button
         whileTap={PULSE_TAP.button}
         onClick={onSend}
+        disabled={sending}
+        aria-busy={sending}
         style={{
           padding: '8px 16px', borderRadius: 10,
           background: 'linear-gradient(135deg, var(--pulse-gold), #e6c200)',
-          color: 'var(--pulse-on-gold)', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+          color: 'var(--pulse-on-gold)', fontSize: 13, fontWeight: 700, border: 'none',
+          cursor: sending ? 'wait' : 'pointer',
           fontFamily: 'var(--po-font-body)',
+          opacity: sending ? 0.55 : 1,
+          pointerEvents: sending ? 'none' : 'auto',
         }}
       >
         Send

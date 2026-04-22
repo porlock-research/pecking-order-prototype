@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useImperativeHandle, useRef, forwardRef } from 'react';
 import { Config } from '@pecking-order/shared-types';
+import { useInFlight } from '../../hooks/useInFlight';
 
 const MAX = Config.confession.maxConfessionLength;
 
@@ -42,11 +43,12 @@ export const ConfessionInput = forwardRef<ConfessionInputHandle, ConfessionInput
   const [flashing, setFlashing] = useState(false);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { pending: sending, run: guard } = useInFlight();
 
   const trimmed = text.trim();
   const tooLong = text.length > MAX;
   const empty = trimmed.length === 0;
-  const canSend = !tooLong && !empty && myHandle !== null;
+  const canSend = !tooLong && !empty && myHandle !== null && !sending;
 
   useImperativeHandle(ref, () => ({
     tagSourceForMorph: () => {
@@ -60,17 +62,19 @@ export const ConfessionInput = forwardRef<ConfessionInputHandle, ConfessionInput
 
   const handleSend = useCallback(() => {
     if (!canSend) return;
-    // Parent typically calls clearText() via the imperative handle inside
-    // `flushSync` within a View Transitions callback (Polish E). The
-    // redundant internal setText('') here covers the non-VT path and is a
-    // no-op when the parent already cleared — both settle to empty.
-    onSend(trimmed);
-    setText('');
-    // Ignition beat: inner pink flash on the mic frame. ~420ms total.
-    setFlashing(true);
-    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = setTimeout(() => setFlashing(false), 420);
-  }, [canSend, onSend, trimmed]);
+    guard(() => {
+      // Parent typically calls clearText() via the imperative handle inside
+      // `flushSync` within a View Transitions callback (Polish E). The
+      // redundant internal setText('') here covers the non-VT path and is a
+      // no-op when the parent already cleared — both settle to empty.
+      onSend(trimmed);
+      setText('');
+      // Ignition beat: inner pink flash on the mic frame. ~420ms total.
+      setFlashing(true);
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+      flashTimerRef.current = setTimeout(() => setFlashing(false), 420);
+    });
+  }, [canSend, onSend, trimmed, guard]);
 
   useEffect(() => () => {
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);

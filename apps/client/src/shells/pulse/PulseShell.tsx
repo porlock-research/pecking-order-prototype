@@ -161,13 +161,20 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
   // cosmetic and (worse) the previous code never actually called engine.sendNudge.
   // Mirror the server's per-day guard client-side so we don't toast a false
   // success when the server would silently drop the event.
+  // Per-target double-tap guard: the SOCIAL_NUDGE ticker round-trips through the
+  // server before selectHaveINudged flips true, so rapid taps in the window
+  // before that would otherwise fire multiple WS events. 1s ceiling covers it.
+  const nudgeInFlight = useRef<Set<string>>(new Set());
   const openNudge = useCallback((targetId: string) => {
+    if (nudgeInFlight.current.has(targetId)) return;
     const state = useGameStore.getState();
     const name = state.roster[targetId]?.personaName ?? 'them';
     if (selectHaveINudged(state, targetId)) {
       toast.message(`Already nudged ${name} today`);
       return;
     }
+    nudgeInFlight.current.add(targetId);
+    setTimeout(() => nudgeInFlight.current.delete(targetId), 1000);
     engine.sendNudge(targetId);
     // Sender celebration — three-pulse haptic + NudgeBurst overdrive layer.
     // Success toast dropped in favor of the burst (inline public chat card

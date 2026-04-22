@@ -6,6 +6,7 @@ import { useGameStore } from '../../../../store/useGameStore';
 import { HintChips } from '../input/HintChips';
 import { SilverPip } from '../common/SilverPip';
 import type { Command } from '../../hooks/useCommandBuilder';
+import { useInFlight } from '../../hooks/useInFlight';
 
 interface Props {
   channelId: string | null;
@@ -29,6 +30,7 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
   const groupChatOpen = useGameStore(s => s.groupChatOpen);
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
+  const { pending: sending, run: guard } = useInFlight();
 
   const isGroup = recipientIds.length > 1;
   const channelType: ChannelType = channel?.type ?? (isGroup ? ChannelTypes.GROUP_DM : ChannelTypes.DM);
@@ -47,12 +49,14 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
 
   const submit = () => {
     if (!text.trim() || sendDisabled) return;
-    if (channelId) {
-      engine.sendToChannel(channelId, text.trim());
-    } else {
-      engine.sendFirstMessage(recipientIds, text.trim());
-    }
-    setText('');
+    guard(() => {
+      if (channelId) {
+        engine.sendToChannel(channelId, text.trim());
+      } else {
+        engine.sendFirstMessage(recipientIds, text.trim());
+      }
+      setText('');
+    });
   };
 
   const handleChip = (command: Command) => {
@@ -125,12 +129,14 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
           />
           <button
             onClick={submit}
-            disabled={sendDisabled || !text.trim()}
+            disabled={sendDisabled || !text.trim() || sending}
+            aria-busy={sending}
             style={{
               background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
               border: 'none', borderRadius: 16, padding: '6px 14px',
-              fontWeight: 700, cursor: 'pointer',
-              opacity: (sendDisabled || !text.trim()) ? 0.5 : 1,
+              fontWeight: 700, cursor: sending ? 'wait' : 'pointer',
+              opacity: (sendDisabled || !text.trim()) ? 0.5 : sending ? 0.55 : 1,
+              pointerEvents: sending ? 'none' : 'auto',
             }}
           >Send</button>
         </div>

@@ -9,9 +9,10 @@ interface WhisperModeProps {
   playerId: string;
   onSend: (text: string) => void;
   onCancel: () => void;
+  sending?: boolean;
 }
 
-export function WhisperMode({ player, playerId, onSend, onCancel }: WhisperModeProps) {
+export function WhisperMode({ player, playerId, onSend, onCancel, sending = false }: WhisperModeProps) {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -20,7 +21,7 @@ export function WhisperMode({ player, playerId, onSend, onCancel }: WhisperModeP
   }, []);
 
   const handleSubmit = () => {
-    if (!text.trim()) return;
+    if (!text.trim() || sending) return;
     onSend(text.trim());
     setText('');
   };
@@ -51,14 +52,17 @@ export function WhisperMode({ player, playerId, onSend, onCancel }: WhisperModeP
       <motion.button
         whileTap={PULSE_TAP.button}
         onClick={handleSubmit}
-        disabled={!text.trim()}
+        disabled={!text.trim() || sending}
         aria-label="Send whisper"
+        aria-busy={sending}
         style={{
           width: 44, height: 44, borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: text.trim() ? 'var(--pulse-whisper)' : 'var(--pulse-surface-2)',
-          border: 'none', cursor: text.trim() ? 'pointer' : 'default',
+          border: 'none', cursor: sending ? 'wait' : text.trim() ? 'pointer' : 'default',
           color: 'var(--pulse-on-accent)',
+          opacity: sending ? 0.55 : 1,
+          pointerEvents: sending ? 'none' : 'auto',
         }}
       >
         <PaperPlaneTilt size={18} weight="fill" />

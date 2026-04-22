@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePulse } from '../../PulseShell';
 import { useGameStore } from '../../../../store/useGameStore';
 import { useCommandBuilder } from '../../hooks/useCommandBuilder';
+import { useInFlight } from '../../hooks/useInFlight';
 import { PULSE_TAP } from '../../springs';
 import { PULSE_Z } from '../../zIndex';
 import { runViewTransition, supportsViewTransitions, prefersReducedMotion } from '../../viewTransitions';
@@ -28,6 +29,9 @@ export function PulseInput() {
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { pending: sending, run: guard } = useInFlight();
+  const { pending: silverSending, run: guardSilver } = useInFlight();
+  const { pending: whisperSending, run: guardWhisper } = useInFlight();
 
   const {
     commandMode,
@@ -79,10 +83,12 @@ export function PulseInput() {
   const handleSend = useCallback(() => {
     if (!text.trim()) return;
     if (!groupChatOpen) return; // defensive — input is also disabled visually
-    engine.sendMessage(text.trim(), replyTo ? { replyTo: replyTo.id } : undefined);
-    setText('');
-    setReplyTo(null);
-  }, [text, replyTo, engine, groupChatOpen]);
+    guard(() => {
+      engine.sendMessage(text.trim(), replyTo ? { replyTo: replyTo.id } : undefined);
+      setText('');
+      setReplyTo(null);
+    });
+  }, [text, replyTo, engine, groupChatOpen, guard]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -151,21 +157,25 @@ export function PulseInput() {
 
   const handleSilverSend = useCallback(() => {
     if (commandMode.mode !== 'preview') return;
-    engine.sendSilver(commandMode.amount, commandMode.playerId);
-    // Sender celebration — haptic + SilverBurst overdrive layer. Toast
-    // dropped; SOCIAL_TRANSFER chat card carries the announcement.
-    try { navigator.vibrate?.(25); } catch { /* no-op */ }
-    window.dispatchEvent(new CustomEvent('pulse:silver-burst', {
-      detail: { amount: commandMode.amount, recipient: commandMode.player.personaName },
-    }));
-    cancel();
-  }, [commandMode, engine, cancel]);
+    guardSilver(() => {
+      engine.sendSilver(commandMode.amount, commandMode.playerId);
+      // Sender celebration — haptic + SilverBurst overdrive layer. Toast
+      // dropped; SOCIAL_TRANSFER chat card carries the announcement.
+      try { navigator.vibrate?.(25); } catch { /* no-op */ }
+      window.dispatchEvent(new CustomEvent('pulse:silver-burst', {
+        detail: { amount: commandMode.amount, recipient: commandMode.player.personaName },
+      }));
+      cancel();
+    });
+  }, [commandMode, engine, cancel, guardSilver]);
 
   const handleWhisperSend = useCallback((whisperText: string) => {
     if (commandMode.mode !== 'whisper') return;
-    engine.sendWhisper(commandMode.playerId, whisperText);
-    cancel();
-  }, [commandMode, engine, cancel]);
+    guardWhisper(() => {
+      engine.sendWhisper(commandMode.playerId, whisperText);
+      cancel();
+    });
+  }, [commandMode, engine, cancel, guardWhisper]);
 
   // When chat is closed the ChatView renders its own "Chat opens at dawn"
   // notice in the empty chat area. Hiding the input bar here avoids a
@@ -216,6 +226,7 @@ export function PulseInput() {
             amount={commandMode.amount}
             onSend={handleSilverSend}
             onCancel={() => withMorph(() => cancel())}
+            sending={silverSending}
           />
         </div>
       )}
@@ -227,6 +238,7 @@ export function PulseInput() {
             playerId={commandMode.playerId}
             onSend={handleWhisperSend}
             onCancel={() => withMorph(() => cancel())}
+            sending={whisperSending}
           />
         </div>
       )}
@@ -291,9 +303,11 @@ export function PulseInput() {
               <motion.button
                 whileTap={PULSE_TAP.button}
                 initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
+                animate={{ scale: 1, opacity: sending ? 0.55 : 1 }}
                 onClick={handleSend}
+                disabled={sending}
                 aria-label="Send message"
+                aria-busy={sending}
                 style={{
                   width: 44,
                   height: 44,
@@ -303,8 +317,9 @@ export function PulseInput() {
                   justifyContent: 'center',
                   background: 'var(--pulse-accent)',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: sending ? 'wait' : 'pointer',
                   color: 'var(--pulse-on-accent)',
+                  pointerEvents: sending ? 'none' : 'auto',
                 }}
               >
                 <PaperPlaneTilt size={18} weight="fill" />
@@ -330,12 +345,15 @@ export function PulseInput() {
               color: 'var(--pulse-text-1)', fontSize: 14, fontFamily: 'var(--po-font-body)', outline: 'none',
             }}
           />
-          <motion.button whileTap={PULSE_TAP.button} onClick={handleSend} disabled={!text.trim()}
+          <motion.button whileTap={PULSE_TAP.button} onClick={handleSend} disabled={!text.trim() || sending}
             aria-label="Send reply"
+            aria-busy={sending}
             style={{
               width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: text.trim() ? 'var(--pulse-accent)' : 'var(--pulse-surface-2)',
-              border: 'none', cursor: text.trim() ? 'pointer' : 'default', color: 'var(--pulse-on-accent)',
+              border: 'none', cursor: sending ? 'wait' : text.trim() ? 'pointer' : 'default', color: 'var(--pulse-on-accent)',
+              opacity: sending ? 0.55 : 1,
+              pointerEvents: sending ? 'none' : 'auto',
             }}>
             <PaperPlaneTilt size={18} weight="fill" />
           </motion.button>
