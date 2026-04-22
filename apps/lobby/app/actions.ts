@@ -831,14 +831,18 @@ export async function startGame(
 // ── CC Start (host-triggered, doesn't require all slots filled) ─────────
 
 /**
- * Flip a CC game to STARTED and mint tokens for everyone who's accepted
- * an invite so far. Unlike startGame(), does NOT require all slots full —
- * CC games accept new joiners after the game has started.
+ * Flip a CC game to STARTED. Unlike startGame(), does NOT require all
+ * slots full — CC games accept new joiners after the game has started.
  *
- * Assumes the DO was auto-init'd at game-create time (see Task 1's
- * createGame branch). If for some reason the DO is still uninitialized,
- * the WebSocket reject path (Task 5) will kick in for any joiner; the
- * admin can recover via OverviewTab's Init action.
+ * Returns ONLY the caller's token (if they're an accepted player). Other
+ * players fetch their own token via /api/refresh-token/[code] when they
+ * navigate to /play/CODE — the lobby never broadcasts other players'
+ * tokens to the host's tab. If the host hasn't joined as a player,
+ * tokens is undefined and the host's "Enter Game" button stays hidden.
+ *
+ * Assumes the DO was auto-init'd at game-create time (see Task 1). If
+ * not, the WebSocket reject path (Task 5) covers any joiner; the admin
+ * can recover via OverviewTab's Init action.
  */
 export async function startCCGame(
   inviteCode: string,
@@ -867,39 +871,44 @@ export async function startCCGame(
     return { success: false, error: `Invalid status ${game.status}` };
   }
 
-  // Mint tokens for every accepted invite. CC uses slot_index directly as
-  // the playerId — matches refresh-token's CC branch and the lobby's
-  // 1-indexed slot creation.
-  const { results: invites } = await db
+  // Mint a token ONLY for the caller (host). CC uses slot_index directly
+  // as the playerId. Other players fetch their token from
+  // /api/refresh-token/[code] when they hit /play/CODE — never leak their
+  // tokens through this server action.
+  const myInvite = await db
     .prepare(
-      `SELECT i.slot_index, i.accepted_by, pp.name as persona_name
+      `SELECT i.slot_index, pp.name as persona_name
        FROM Invites i LEFT JOIN PersonaPool pp ON pp.id = i.persona_id
-       WHERE i.game_id = ? AND i.accepted_by IS NOT NULL
-       ORDER BY i.slot_index`,
+       WHERE i.game_id = ? AND i.accepted_by = ?`,
     )
-    .bind(game.id)
-    .all<{ slot_index: number; accepted_by: string; persona_name: string | null }>();
-
-  const tokens: Record<string, string> = {};
-  const tokenExpiry = `${(game.day_count || 7) * 2 + 7}d`;
-  for (const inv of invites) {
-    const pid = `p${inv.slot_index}`;
-    tokens[pid] = await signGameToken(
-      {
-        sub: inv.accepted_by,
-        gameId: game.id,
-        playerId: pid,
-        personaName: inv.persona_name || 'Unknown',
-      },
-      AUTH_SECRET,
-      tokenExpiry,
-    );
-  }
+    .bind(game.id, session.userId)
+    .first<{ slot_index: number; persona_name: string | null }>();
 
   await db
     .prepare("UPDATE GameSessions SET status = 'STARTED' WHERE id = ?")
     .bind(game.id)
     .run();
+
+  if (!myInvite) {
+    // Host is starting without joining as a player — that's fine.
+    // Return success with no tokens so the waiting page hides Enter Game.
+    return { success: true };
+  }
+
+  const tokenExpiry = `${(game.day_count || 7) * 2 + 7}d`;
+  const pid = `p${myInvite.slot_index}`;
+  const tokens: Record<string, string> = {
+    [pid]: await signGameToken(
+      {
+        sub: session.userId,
+        gameId: game.id,
+        playerId: pid,
+        personaName: myInvite.persona_name || 'Unknown',
+      },
+      AUTH_SECRET,
+      tokenExpiry,
+    ),
+  };
 
   return { success: true, tokens };
 }
