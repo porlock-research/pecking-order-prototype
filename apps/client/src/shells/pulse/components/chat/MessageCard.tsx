@@ -137,7 +137,7 @@ function MessageCardInner({ message, showHeader, isSelf, continuationDepth = 0, 
               style={{
                 width: AVATAR_SIZE,
                 height: AVATAR_SIZE,
-                borderRadius: 12,
+                borderRadius: 'var(--pulse-radius-md)',
                 objectFit: 'cover',
                 objectPosition: 'center top',
               }}
@@ -162,7 +162,7 @@ function MessageCardInner({ message, showHeader, isSelf, continuationDepth = 0, 
             maxWidth: '100%',
             minWidth: 0,
             position: 'relative',
-            borderRadius: hasBubble ? 14 : 0,
+            borderRadius: hasBubble ? 'var(--pulse-radius-md)' : 0,
             padding: hasBubble ? '8px 12px' : 0,
             ...bubbleStyle,
           }}
@@ -253,7 +253,7 @@ function MessageCardInner({ message, showHeader, isSelf, continuationDepth = 0, 
             gap: 2,
             marginTop: 4,
             padding: '2px',
-            borderRadius: 10,
+            borderRadius: 'var(--pulse-radius-sm)',
             background: 'var(--pulse-surface-2)',
             border: '1px solid var(--pulse-border)',
             // Tinted inner-glow instead of generic drop-shadow.
@@ -267,7 +267,7 @@ function MessageCardInner({ message, showHeader, isSelf, continuationDepth = 0, 
               width: 32, height: 32, border: 'none', background: 'transparent',
               cursor: 'pointer', color: 'var(--pulse-text-2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 8,
+              borderRadius: 'var(--pulse-radius-sm)',
             }}
           >
             <Reply size={14} weight="bold" />
@@ -281,7 +281,7 @@ function MessageCardInner({ message, showHeader, isSelf, continuationDepth = 0, 
               background: isBarOpen ? 'var(--pulse-accent-glow)' : 'transparent',
               cursor: 'pointer', color: isBarOpen ? 'var(--pulse-accent)' : 'var(--pulse-text-2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 8,
+              borderRadius: 'var(--pulse-radius-sm)',
             }}
           >
             <Smiley size={14} weight="fill" />

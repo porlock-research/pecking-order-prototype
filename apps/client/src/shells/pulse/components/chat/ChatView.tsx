@@ -386,7 +386,7 @@ export function ChatView() {
               alignItems: 'center',
               gap: 8,
               padding: '6px 14px',
-              borderRadius: 999,
+              borderRadius: 'var(--pulse-radius-pill)',
               background: 'var(--pulse-accent)',
               color: 'var(--pulse-on-accent)',
               border: 'none',

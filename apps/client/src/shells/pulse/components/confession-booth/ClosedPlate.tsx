@@ -36,7 +36,7 @@ const plateStyle = {
     color: 'var(--pulse-text-3)',
     padding: '8px 18px',
     border: '2px solid var(--pulse-text-4)',
-    borderRadius: 8,
+    borderRadius: 'var(--pulse-radius-sm)',
     transform: 'rotate(-3deg)',
     display: 'inline-block',
   },

@@ -428,7 +428,7 @@ function OnAirPip({ active, closingSoon = false }: { active: boolean; closingSoo
         padding: '3px 7px',
         background: bg,
         border: `1px solid ${borderColor}`,
-        borderRadius: 6,
+        borderRadius: 'var(--pulse-radius-xs)',
       }}
     >
       <span
@@ -472,7 +472,7 @@ const closingBannerStyle = {
     padding: '12px 14px',
     background: 'linear-gradient(180deg, rgba(255,200,61,0.06), rgba(255,200,61,0.02))',
     border: '1px solid rgba(255,200,61,0.22)',
-    borderRadius: 12,
+    borderRadius: 'var(--pulse-radius-md)',
     display: 'flex',
     alignItems: 'center',
     gap: 12,
@@ -510,9 +510,9 @@ const headerStyle = {
     zIndex: 2,
   },
   back: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 'var(--pulse-radius-sm)',
     background: 'var(--pulse-surface)',
     border: '1px solid var(--pulse-border)',
     display: 'flex',

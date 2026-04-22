@@ -5,8 +5,10 @@ import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
 import { PULSE_SPRING, PULSE_TAP } from '../../springs';
+import { useInFlight } from '../../hooks/useInFlight';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import { PersonaImage, initialsOf } from '../common/PersonaImage';
+import { SendButton } from '../input/SendButton';
 
 const AMOUNTS = [5, 10, 25, 50];
 
@@ -19,6 +21,7 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
   const roster = useGameStore(s => s.roster);
   const { engine, playerId } = usePulse();
   const [amount, setAmount] = useState<number | null>(null);
+  const { pending: sending, run: guard } = useInFlight();
 
   if (!targetId) return null;
 
@@ -29,15 +32,17 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
 
   const handleSend = () => {
     if (!amount || amount > balance) return;
-    engine.sendSilver(amount, targetId);
-    // Sender celebration — haptic + SilverBurst overdrive layer (coin shower
-    // + "+N silver" float). Toast dropped in favor of the burst; the public
-    // SOCIAL_TRANSFER chat card still carries the announcement for a11y.
-    try { navigator.vibrate?.(25); } catch { /* no-op */ }
-    window.dispatchEvent(new CustomEvent('pulse:silver-burst', {
-      detail: { amount, recipient: target?.personaName ?? 'player' },
-    }));
-    onClose();
+    guard(() => {
+      engine.sendSilver(amount, targetId);
+      // Sender celebration — haptic + SilverBurst overdrive layer (coin shower
+      // + "+N silver" float). Toast dropped in favor of the burst; the public
+      // SOCIAL_TRANSFER chat card still carries the announcement for a11y.
+      try { navigator.vibrate?.(25); } catch { /* no-op */ }
+      window.dispatchEvent(new CustomEvent('pulse:silver-burst', {
+        detail: { amount, recipient: target?.personaName ?? 'player' },
+      }));
+      onClose();
+    });
   };
 
   return (
@@ -54,7 +59,7 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
           left: 0,
           right: 0,
           zIndex: PULSE_Z.modal,
-          borderRadius: '20px 20px 0 0',
+          borderRadius: 'var(--pulse-radius-xl) var(--pulse-radius-xl) 0 0',
           background: 'var(--pulse-surface)',
           padding: '20px 20px 32px',
         }}
@@ -65,11 +70,11 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
           aria-label="Close send silver"
           style={{
             position: 'absolute', top: 8, right: 8,
-            width: 36, height: 36,
+            width: 44, height: 44,
             background: 'none', border: 'none', cursor: 'pointer',
             color: 'var(--pulse-text-3)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 8,
+            borderRadius: 'var(--pulse-radius-sm)',
           }}
         >
           <X size={20} weight="bold" />
@@ -85,7 +90,7 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
             initials={initialsOf(target?.personaName ?? '')}
             playerColor={getPlayerColor(playerIndex)}
             alt=""
-            style={{ width: 64, height: 64, borderRadius: 16, objectFit: 'cover' }}
+            style={{ width: 64, height: 64, borderRadius: 'var(--pulse-radius-lg)', objectFit: 'cover' }}
           />
           <div style={{ fontWeight: 700, fontSize: 16, color: getPlayerColor(playerIndex), fontFamily: 'var(--po-font-body)' }}>
             {target?.personaName}
@@ -101,7 +106,7 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
               onClick={() => setAmount(a)}
               style={{
                 padding: '10px 18px',
-                borderRadius: 12,
+                borderRadius: 'var(--pulse-radius-md)',
                 fontSize: 16,
                 fontWeight: 700,
                 fontFamily: 'var(--po-font-body)',
@@ -121,27 +126,18 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
             tap; the button itself stays calm so the burst owns the drama.
             One-shot sheen on mount (pulse-silver-arrive) glints the CTA into
             view, then settles. */}
-        <motion.button
-          whileTap={PULSE_TAP.button}
+        <SendButton
+          variant="silver"
+          shape="fullWidth"
           onClick={handleSend}
           disabled={!amount || amount > balance}
+          pending={sending}
+          ariaLabel={amount ? `Send ${amount} Silver` : 'Pick an amount to send'}
           className={amount ? 'pulse-silver-arrive' : undefined}
-          style={{
-            width: '100%',
-            padding: 14,
-            borderRadius: 14,
-            fontSize: 15,
-            fontWeight: 800,
-            letterSpacing: 0.1,
-            fontFamily: 'var(--po-font-body)',
-            background: amount ? 'var(--pulse-gold)' : 'var(--pulse-surface-2)',
-            color: amount ? 'var(--pulse-on-gold)' : 'var(--pulse-text-4)',
-            border: 'none',
-            cursor: amount ? 'pointer' : 'not-allowed',
-          }}
+          style={!amount ? { background: 'var(--pulse-surface-2)', color: 'var(--pulse-text-4)' } : undefined}
         >
           {amount ? `Send ${amount} Silver` : 'Pick an amount'}
-        </motion.button>
+        </SendButton>
 
         {/* Balance */}
         <div style={{ textAlign: 'center', marginTop: 8, fontSize: 11, color: 'var(--pulse-text-3)' }}>

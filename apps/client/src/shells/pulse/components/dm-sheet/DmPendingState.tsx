@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { usePulse } from '../../PulseShell';
 import { useGameStore } from '../../../../store/useGameStore';
+import { InviteActions } from '../common/InviteActions';
 
 interface Props { channelId: string; inviterName: string; onClose: () => void; }
 
@@ -22,7 +23,7 @@ export function DmPendingState({ channelId, inviterName, onClose }: Props) {
     }}>
       <div style={{
         background: 'var(--pulse-surface)', border: '1px solid var(--pulse-border)',
-        borderRadius: 14, padding: 20, textAlign: 'center',
+        borderRadius: 'var(--pulse-radius-md)', padding: 20, textAlign: 'center',
       }}>
         <div style={{
           fontSize: 10,
@@ -51,20 +52,11 @@ export function DmPendingState({ channelId, inviterName, onClose }: Props) {
           </div>
         )}
       </div>
-      <button
-        onClick={() => engine.acceptDm(channelId)}
-        style={{
-          width: '100%', background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)', border: 'none',
-          padding: '12px 16px', borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: 'pointer',
-        }}
-      >Accept</button>
-      <button
-        onClick={() => { engine.declineDm(channelId); onClose(); }}
-        style={{
-          width: '100%', background: 'transparent', color: 'var(--pulse-text-3)', border: 'none',
-          padding: '4px', fontSize: 13, cursor: 'pointer',
-        }}
-      >Decline</button>
+      <InviteActions
+        layout="vertical"
+        onAccept={() => engine.acceptDm(channelId)}
+        onDecline={() => { engine.declineDm(channelId); onClose(); }}
+      />
     </div>
   );
 }

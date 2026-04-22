@@ -34,7 +34,7 @@ export function ComposeButton({ onClick }: Props) {
       disabled={depleted}
       style={{
         position: 'relative', width: 44, height: 44,
-        borderRadius: 10, border: '1px solid var(--pulse-border)',
+        borderRadius: 'var(--pulse-radius-sm)', border: '1px solid var(--pulse-border)',
         background: 'var(--pulse-surface)',
         color: depleted ? 'var(--pulse-text-3)' : 'var(--pulse-text-1)',
         cursor: depleted ? 'not-allowed' : 'pointer',

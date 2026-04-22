@@ -41,7 +41,7 @@ function Slot({ entry, rank, onTap, colorIdx }: SlotProps) {
           alt=""
           style={{
             width: '100%', height: isFirst ? 140 : 74,
-            objectFit: 'cover', borderRadius: 10,
+            objectFit: 'cover', borderRadius: 'var(--pulse-radius-sm)',
             border: isFirst ? '2px solid var(--pulse-gold)' : '1px solid var(--pulse-border)',
             boxShadow: isFirst ? '0 0 18px color-mix(in oklch, var(--pulse-gold) 40%, transparent)' : 'none',
           }}

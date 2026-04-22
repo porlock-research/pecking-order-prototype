@@ -86,7 +86,7 @@ export function SocialPanel({ onClose }: Props) {
             padding: 'var(--pulse-space-md)',
             background: 'color-mix(in oklch, var(--pulse-pending) 10%, var(--pulse-surface))',
             border: '1px solid color-mix(in oklch, var(--pulse-pending) 32%, transparent)',
-            borderRadius: 14,
+            borderRadius: 'var(--pulse-radius-md)',
             display: 'flex', flexDirection: 'column', gap: 'var(--pulse-space-sm)',
           }}>
             <h3 style={{
@@ -100,7 +100,7 @@ export function SocialPanel({ onClose }: Props) {
                 background: 'var(--pulse-pending)', color: 'var(--pulse-on-accent)',
                 fontSize: 10,
                 padding: 'var(--pulse-space-2xs) var(--pulse-space-sm)',
-                borderRadius: 8,
+                borderRadius: 'var(--pulse-radius-sm)',
               }}>{pendingInvites.length}</span>
             </h3>
             {pendingInvites.map(ch => {

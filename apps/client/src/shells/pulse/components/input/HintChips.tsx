@@ -75,7 +75,7 @@ export function HintChips({
             alignItems: 'center',
             gap: 6,
             padding: '5px 11px 5px 9px',
-            borderRadius: 14,
+            borderRadius: 'var(--pulse-radius-md)',
             fontSize: 11,
             fontWeight: 700,
             fontFamily: 'var(--po-font-body)',

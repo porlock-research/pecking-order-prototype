@@ -54,7 +54,7 @@ export function CommandPicker({ onSelect, onClose, dmsOpen = true }: CommandPick
               alignItems: 'center',
               gap: 4,
               padding: '10px 6px',
-              borderRadius: 14,
+              borderRadius: 'var(--pulse-radius-md)',
               background: 'var(--pulse-surface-2)',
               border: '1px solid var(--pulse-border)',
               cursor: 'pointer',
@@ -74,7 +74,7 @@ export function CommandPicker({ onSelect, onClose, dmsOpen = true }: CommandPick
           style={{
             width: 44,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 14,
+            borderRadius: 'var(--pulse-radius-md)',
             background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)',
             cursor: 'pointer', color: 'var(--pulse-text-2)',
           }}
