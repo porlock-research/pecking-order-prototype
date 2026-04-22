@@ -223,7 +223,10 @@ async function refreshFromLobby(gameCode: string): Promise<string | null> {
 
 /** Ask the lobby which games the user is actively in.
  *  Returns the full game list + a Set of uppercased codes for fast lookup.
- *  Returns null if the lobby is unreachable or unauthenticated (no po_session). */
+ *  Returns null if the lobby is unreachable, or if the lobby reports the
+ *  visitor is unauthenticated. Both cases must skip downstream token
+ *  purges — cached game tokens may still be valid even if the session
+ *  cookie expired, and we don't want to evict them on a cold boot. */
 async function fetchActiveGames(): Promise<{
   games: Array<{ gameCode: string; personaName: string }>;
   codes: Set<string>;
@@ -237,6 +240,11 @@ async function fetchActiveGames(): Promise<{
       return null;
     }
     const data = await res.json();
+    if (data.reason === 'unauthenticated') {
+      // Lobby returned 200+empty for an unauth visitor — don't treat as an
+      // authoritative "no games" signal; preserve cached game tokens.
+      return null;
+    }
     const games: Array<{ gameCode: string; personaName: string }> = data.games || [];
     return { games, codes: new Set(games.map(g => g.gameCode.toUpperCase())) };
   } catch (err) {
