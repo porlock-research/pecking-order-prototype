@@ -230,3 +230,92 @@ describe('l3-pregame — SOCIAL.WHISPER (v2)', () => {
     h.stop();
   });
 });
+
+describe('l3-pregame — SYSTEM.PLAYER_CONNECTED auto-reveal (v3)', () => {
+  it('on first connect with qaAnswers, picks a random qIndex and emits PREGAME_REVEAL_ANSWER', () => {
+    const h = createPregameHarness();
+    h.send({
+      type: Events.System.PLAYER_JOINED,
+      player: { id: 'p1', personaName: 'P1', qaAnswers: [QA(0), QA(1), QA(2)] },
+    });
+    h.send({ type: Events.System.PLAYER_CONNECTED, playerId: 'p1' });
+
+    const ctx: any = h.pregame().context;
+    expect(ctx.players.p1.firstConnectedAt).toBeTypeOf('number');
+    const reveal = ctx.revealedAnswers.p1;
+    expect(reveal).toBeDefined();
+    expect(reveal.qIndex).toBeGreaterThanOrEqual(0);
+    expect(reveal.qIndex).toBeLessThan(3);
+    // Question + answer match the picked qIndex from the player's QAs
+    expect(reveal.question).toBe(`Q${reveal.qIndex}`);
+    expect(reveal.answer).toBe(`A${reveal.qIndex}`);
+
+    const fact = h.facts().find(f => f.type === FactTypes.PREGAME_REVEAL_ANSWER);
+    expect(fact).toBeDefined();
+    expect(fact!.actorId).toBe('p1');
+    expect((fact!.payload as any).qIndex).toBe(reveal.qIndex);
+    h.stop();
+  });
+
+  it('is idempotent: second PLAYER_CONNECTED does not change the recorded reveal', () => {
+    const h = createPregameHarness();
+    h.send({
+      type: Events.System.PLAYER_JOINED,
+      player: { id: 'p1', personaName: 'P1', qaAnswers: [QA(0), QA(1), QA(2)] },
+    });
+    h.send({ type: Events.System.PLAYER_CONNECTED, playerId: 'p1' });
+    const firstReveal = h.pregame().context.revealedAnswers.p1;
+    const firstStamp = h.pregame().context.players.p1.firstConnectedAt;
+
+    h.send({ type: Events.System.PLAYER_CONNECTED, playerId: 'p1' });
+    h.send({ type: Events.System.PLAYER_CONNECTED, playerId: 'p1' });
+
+    const ctx: any = h.pregame().context;
+    expect(ctx.players.p1.firstConnectedAt).toBe(firstStamp);
+    expect(ctx.revealedAnswers.p1).toEqual(firstReveal);
+    const reveals = h.facts().filter(f => f.type === FactTypes.PREGAME_REVEAL_ANSWER);
+    expect(reveals).toHaveLength(1); // Only the first connect emitted a fact
+    h.stop();
+  });
+
+  it('player without qaAnswers gets firstConnectedAt set but no reveal', () => {
+    const h = createPregameHarness();
+    h.send({
+      type: Events.System.PLAYER_JOINED,
+      player: { id: 'p1', personaName: 'P1', qaAnswers: [] },
+    });
+    h.send({ type: Events.System.PLAYER_CONNECTED, playerId: 'p1' });
+
+    const ctx: any = h.pregame().context;
+    expect(ctx.players.p1.firstConnectedAt).toBeTypeOf('number');
+    expect(ctx.revealedAnswers.p1).toBeUndefined();
+    expect(h.facts().filter(f => f.type === FactTypes.PREGAME_REVEAL_ANSWER)).toHaveLength(0);
+    h.stop();
+  });
+
+  it('PLAYER_CONNECTED for unknown player is a no-op', () => {
+    const h = createPregameHarness();
+    h.send({ type: Events.System.PLAYER_CONNECTED, playerId: 'pX' });
+    const ctx: any = h.pregame().context;
+    expect(ctx.players.pX).toBeUndefined();
+    expect(ctx.revealedAnswers).toEqual({});
+    h.stop();
+  });
+
+  it('after auto-reveal, manual REVEAL_ANSWER for the same player is rejected (defense in depth)', () => {
+    const h = createPregameHarness();
+    h.send({
+      type: Events.System.PLAYER_JOINED,
+      player: { id: 'p1', personaName: 'P1', qaAnswers: [QA(0), QA(1), QA(2)] },
+    });
+    h.send({ type: Events.System.PLAYER_CONNECTED, playerId: 'p1' });
+    const autoQIdx = h.pregame().context.revealedAnswers.p1.qIndex;
+    const otherIdx = (autoQIdx + 1) % 3;
+
+    h.send({ type: Events.Pregame.REVEAL_ANSWER, senderId: 'p1', qIndex: otherIdx });
+
+    // canRevealAnswer guard rejects (already in revealedAnswers); reveal sticks
+    expect(h.pregame().context.revealedAnswers.p1.qIndex).toBe(autoQIdx);
+    h.stop();
+  });
+});

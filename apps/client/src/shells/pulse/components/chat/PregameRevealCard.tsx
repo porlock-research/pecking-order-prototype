@@ -45,7 +45,10 @@ export function PregameRevealCard({ actorId, question, answer }: Props) {
         overflow: 'hidden',
       }}
     >
-      {/* Eyebrow — "ON THE RECORD" tracked-caps, pink, top-left */}
+      {/* Eyebrow — "JUST LANDED · ON THE RECORD" tracked-caps, pink.
+          Reads as the arrival-moment beat (v3 auto-reveal fires on first WS
+          connect). Ties the reveal back to the gold-ringed PregameJoinLine
+          that fired earlier on PLAYER_JOINED. */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -63,7 +66,7 @@ export function PregameRevealCard({ actorId, question, answer }: Props) {
           textTransform: 'uppercase',
           color: 'var(--pulse-accent)',
         }}>
-          On the record
+          Just landed · On the record
         </span>
       </div>
 

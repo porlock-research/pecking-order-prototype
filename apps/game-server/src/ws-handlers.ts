@@ -130,6 +130,12 @@ export async function handleConnect(ctx: WsContext, ws: Connection, connCtx: Con
     }
   }
 
+  // Notify L2 of the connection. l3-pregame uses this as the trigger for
+  // the auto-reveal "first impression" beat (one-shot per player, idempotent
+  // across reconnects/multi-tab via a firstConnectedAt flag in its context).
+  // Sent unconditionally — L2 only handles it during preGame; ignored otherwise.
+  ctx.actor?.send({ type: Events.System.PLAYER_CONNECTED, playerId } as any);
+
   broadcastPresence(ctx.connectedPlayers, ctx.getConnections);
 }
 

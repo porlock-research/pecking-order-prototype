@@ -8,8 +8,15 @@
  * l3-session context.
  *
  * Surfaces:
- *   - PREGAME.REVEAL_ANSWER     → QA reveal, one-shot per player
+ *   - PREGAME.REVEAL_ANSWER     → QA reveal, one-shot per player (manual path,
+ *                                 currently unused with v3 auto-reveal but kept
+ *                                 as a safe fallback if the client ever needs it)
  *   - SYSTEM.PLAYER_JOINED      → arrival tracking (roster mirror)
+ *   - SYSTEM.PLAYER_CONNECTED   → first-time client connect → auto-reveal one
+ *                                 random QA. Idempotent via firstConnectedAt
+ *                                 flag so reconnects/multi-tab don't re-fire.
+ *                                 Players with no qaAnswers get the flag set
+ *                                 but no reveal (graceful fallback).
  *   - SOCIAL.WHISPER            → pregame intrigue — reuses buildChatMessage +
  *                                 appendToChatLog from l3-social's helpers,
  *                                 WHISPER fact is already in JOURNALABLE_TYPES
@@ -48,8 +55,17 @@ const PREGAME_MAIN_CHANNEL: Channel = {
 
 export interface PregameContext {
   /** Roster snapshot built from forwarded PLAYER_JOINED events.
-   *  Mirrors L2 roster but only the fields pregame needs. */
-  players: Record<string, { joinedAt: number; personaName: string; status: 'ALIVE' | 'ELIMINATED'; qaAnswers: QaEntry[] }>;
+   *  Mirrors L2 roster but only the fields pregame needs.
+   *  `firstConnectedAt` is null until the player's first WS connect — used
+   *  by the SYSTEM.PLAYER_CONNECTED handler to make auto-reveal idempotent
+   *  across reconnects, multi-tab, and DO hibernation restores. */
+  players: Record<string, {
+    joinedAt: number;
+    personaName: string;
+    status: 'ALIVE' | 'ELIMINATED';
+    qaAnswers: QaEntry[];
+    firstConnectedAt: number | null;
+  }>;
   /** Recorded reveals — playerId → qIndex they revealed. One-shot per player. */
   revealedAnswers: Record<string, { qIndex: number; question: string; answer: string; revealedAt: number }>;
   /** Chat log for pregame whispers. Reuses the canonical ChatMessage shape
@@ -62,6 +78,7 @@ export interface PregameContext {
 
 export type PregameEvent =
   | { type: 'SYSTEM.PLAYER_JOINED'; player: { id: string; personaName?: string; qaAnswers?: QaEntry[] } }
+  | { type: 'SYSTEM.PLAYER_CONNECTED'; playerId: string }
   | { type: 'PREGAME.REVEAL_ANSWER'; senderId: string; qIndex: number }
   | { type: 'SOCIAL.WHISPER'; senderId: string; targetId: string; text: string };
 
@@ -77,6 +94,20 @@ export const pregameMachine = setup({
       if (!player) return false;
       if (event.senderId in context.revealedAnswers) return false;
       return event.qIndex >= 0 && event.qIndex < player.qaAnswers.length;
+    },
+    canAutoReveal: ({ context, event }: any) => {
+      if (event.type !== Events.System.PLAYER_CONNECTED) return false;
+      const p = context.players[event.playerId];
+      if (!p) return false;
+      if (p.firstConnectedAt !== null) return false; // already connected before
+      return Array.isArray(p.qaAnswers) && p.qaAnswers.length > 0;
+    },
+    isFirstConnectWithoutQAs: ({ context, event }: any) => {
+      if (event.type !== Events.System.PLAYER_CONNECTED) return false;
+      const p = context.players[event.playerId];
+      if (!p) return false;
+      if (p.firstConnectedAt !== null) return false;
+      return !Array.isArray(p.qaAnswers) || p.qaAnswers.length === 0;
     },
     // Cut-down copy of l3-social's isWhisperAllowed:
     //   - keeps: MAIN has WHISPER cap, alive check, self != target, text non-empty
@@ -117,6 +148,7 @@ export const pregameMachine = setup({
                   personaName: event.player.personaName ?? event.player.id,
                   status: PlayerStatuses.ALIVE,
                   qaAnswers: event.player.qaAnswers ?? [],
+                  firstConnectedAt: null,
                 },
               }),
               channels: ({ context, event }: any) => {
@@ -140,6 +172,62 @@ export const pregameMachine = setup({
             })),
           ],
         },
+        // Auto-reveal trigger. Three branches in priority order:
+        //   1. Player has qaAnswers AND not yet connected → pick random qIndex,
+        //      record reveal, set firstConnectedAt, emit PREGAME_REVEAL_ANSWER fact.
+        //   2. Player has no qaAnswers AND not yet connected → set firstConnectedAt
+        //      so reconnects don't re-evaluate; no reveal (graceful fallback).
+        //   3. Already-connected (firstConnectedAt set) OR unknown player → no-op.
+        // Fact-emission lives in a separate sendParent that reads the just-written
+        // revealedAnswers entry, mirroring the existing manual REVEAL_ANSWER pattern.
+        'SYSTEM.PLAYER_CONNECTED': [
+          {
+            guard: 'canAutoReveal',
+            actions: [
+              assign({
+                players: ({ context, event }: any) => ({
+                  ...context.players,
+                  [event.playerId]: { ...context.players[event.playerId], firstConnectedAt: Date.now() },
+                }),
+                revealedAnswers: ({ context, event }: any) => {
+                  const p = context.players[event.playerId];
+                  const qIndex = Math.floor(Math.random() * p.qaAnswers.length);
+                  const qa = p.qaAnswers[qIndex];
+                  return {
+                    ...context.revealedAnswers,
+                    [event.playerId]: {
+                      qIndex,
+                      question: qa.question,
+                      answer: qa.answer,
+                      revealedAt: Date.now(),
+                    },
+                  };
+                },
+              }),
+              sendParent(({ context, event }: any): { type: typeof Events.Fact.RECORD; fact: Fact } => {
+                const reveal = context.revealedAnswers[event.playerId];
+                return {
+                  type: Events.Fact.RECORD,
+                  fact: {
+                    type: FactTypes.PREGAME_REVEAL_ANSWER,
+                    actorId: event.playerId,
+                    timestamp: reveal.revealedAt,
+                    payload: { qIndex: reveal.qIndex, question: reveal.question, answer: reveal.answer },
+                  },
+                };
+              }),
+            ],
+          },
+          {
+            guard: 'isFirstConnectWithoutQAs',
+            actions: assign({
+              players: ({ context, event }: any) => ({
+                ...context.players,
+                [event.playerId]: { ...context.players[event.playerId], firstConnectedAt: Date.now() },
+              }),
+            }),
+          },
+        ],
         'PREGAME.REVEAL_ANSWER': {
           guard: 'canRevealAnswer',
           actions: [
