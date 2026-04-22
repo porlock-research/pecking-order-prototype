@@ -16,7 +16,7 @@ export function PanelButton({ onClick }: Props) {
       aria-label="Open standings"
       style={{
         position: 'relative', width: 44, height: 44,
-        borderRadius: 10, border: '1px solid var(--pulse-border)',
+        borderRadius: 'var(--pulse-radius-sm)', border: '1px solid var(--pulse-border)',
         background: 'var(--pulse-surface)', color: 'var(--pulse-text-1)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}

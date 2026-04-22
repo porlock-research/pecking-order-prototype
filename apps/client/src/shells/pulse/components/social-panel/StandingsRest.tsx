@@ -24,7 +24,7 @@ export function StandingsRest() {
             style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
               background: isSelf ? 'color-mix(in oklch, var(--pulse-accent) 12%, transparent)' : 'transparent',
-              border: 'none', borderRadius: 10,
+              border: 'none', borderRadius: 'var(--pulse-radius-sm)',
               cursor: isSelf ? 'default' : 'pointer', textAlign: 'left',
               width: '100%',
             }}
@@ -37,12 +37,12 @@ export function StandingsRest() {
               fontSize: 10, fontWeight: 800, letterSpacing: 0.2,
               color: 'var(--pulse-accent)',
               background: 'color-mix(in oklch, var(--pulse-accent) 20%, transparent)',
-              padding: '3px 7px', borderRadius: 8,
+              padding: '3px 7px', borderRadius: 'var(--pulse-radius-sm)',
               fontVariantNumeric: 'tabular-nums',
             }}>#{entry.rank}</span>
             <img src={resolveAvatarUrl(entry.player.avatarUrl) || ''} alt=""
               loading="lazy" width={32} height={32}
-              style={{ width: 32, height: 32, borderRadius: 7, objectFit: 'cover' }} />
+              style={{ width: 32, height: 32, borderRadius: 'var(--pulse-radius-xs)', objectFit: 'cover' }} />
             <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color }}>{entry.player.personaName}</span>
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,

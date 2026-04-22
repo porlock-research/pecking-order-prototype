@@ -82,7 +82,7 @@ export function StandingsOut() {
                 gap: 'var(--pulse-space-sm)',
                 padding: 'var(--pulse-space-sm) var(--pulse-space-sm)',
                 background: isSelf ? 'color-mix(in oklch, var(--pulse-accent) 10%, transparent)' : 'transparent',
-                border: 'none', borderRadius: 10,
+                border: 'none', borderRadius: 'var(--pulse-radius-sm)',
                 cursor: isSelf ? 'default' : 'pointer', textAlign: 'left',
                 width: '100%', opacity: 0.82,
               }}
@@ -94,7 +94,7 @@ export function StandingsOut() {
                 width={36}
                 height={36}
                 style={{
-                  width: 36, height: 36, borderRadius: 7, objectFit: 'cover',
+                  width: 36, height: 36, borderRadius: 'var(--pulse-radius-xs)', objectFit: 'cover',
                   filter: 'grayscale(1) contrast(0.95)',
                   border: '1px solid var(--pulse-border-2)',
                 }}
@@ -128,7 +128,7 @@ export function StandingsOut() {
                 textTransform: 'uppercase',
                 color: 'color-mix(in oklch, var(--pulse-gold) 82%, transparent)',
                 background: 'rgba(8,6,12,0.82)',
-                padding: '3px 7px', borderRadius: 7,
+                padding: '3px 7px', borderRadius: 'var(--pulse-radius-xs)',
                 fontVariantNumeric: 'tabular-nums',
                 whiteSpace: 'nowrap',
               }}>

@@ -6,6 +6,8 @@ import { useGameStore } from '../../../../store/useGameStore';
 import { HintChips } from '../input/HintChips';
 import { SilverPip } from '../common/SilverPip';
 import type { Command } from '../../hooks/useCommandBuilder';
+import { useInFlight } from '../../hooks/useInFlight';
+import { SendButton } from '../input/SendButton';
 
 interface Props {
   channelId: string | null;
@@ -29,6 +31,7 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
   const groupChatOpen = useGameStore(s => s.groupChatOpen);
   const inputRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
+  const { pending: sending, run: guard } = useInFlight();
 
   const isGroup = recipientIds.length > 1;
   const channelType: ChannelType = channel?.type ?? (isGroup ? ChannelTypes.GROUP_DM : ChannelTypes.DM);
@@ -47,12 +50,14 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
 
   const submit = () => {
     if (!text.trim() || sendDisabled) return;
-    if (channelId) {
-      engine.sendToChannel(channelId, text.trim());
-    } else {
-      engine.sendFirstMessage(recipientIds, text.trim());
-    }
-    setText('');
+    guard(() => {
+      if (channelId) {
+        engine.sendToChannel(channelId, text.trim());
+      } else {
+        engine.sendFirstMessage(recipientIds, text.trim());
+      }
+      setText('');
+    });
   };
 
   const handleChip = (command: Command) => {
@@ -108,7 +113,7 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
       <div style={{ padding: '8px 12px' }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          background: 'var(--pulse-bg)', borderRadius: 20, padding: '6px 8px 6px 14px',
+          background: 'var(--pulse-bg)', borderRadius: 'var(--pulse-radius-xl)', padding: '6px 8px 6px 14px',
           opacity: disabled || !dmsOpen ? 0.55 : 1,
         }}>
           <input
@@ -123,16 +128,17 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
               color: 'var(--pulse-text-1)', fontSize: 14, fontFamily: 'inherit',
             }}
           />
-          <button
+          <SendButton
+            variant="accent"
+            shape="pill"
             onClick={submit}
             disabled={sendDisabled || !text.trim()}
-            style={{
-              background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
-              border: 'none', borderRadius: 16, padding: '6px 14px',
-              fontWeight: 700, cursor: 'pointer',
-              opacity: (sendDisabled || !text.trim()) ? 0.5 : 1,
-            }}
-          >Send</button>
+            pending={sending}
+            ariaLabel="Send DM"
+            style={{ padding: '6px 14px', borderRadius: 'var(--pulse-radius-lg)' }}
+          >
+            Send
+          </SendButton>
         </div>
       </div>
     </div>

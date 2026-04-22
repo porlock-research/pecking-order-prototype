@@ -47,8 +47,8 @@ export function ReplyBar({ message, onCancel }: ReplyBarProps) {
         onClick={onCancel}
         aria-label="Cancel reply"
         style={{
-          width: 32,
-          height: 32,
+          width: 44,
+          height: 44,
           background: 'none',
           border: 'none',
           cursor: 'pointer',
@@ -57,7 +57,7 @@ export function ReplyBar({ message, onCancel }: ReplyBarProps) {
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          borderRadius: 8,
+          borderRadius: 'var(--pulse-radius-sm)',
         }}
       >
         <X size={14} weight="bold" />
