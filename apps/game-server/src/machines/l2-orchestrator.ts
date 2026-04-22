@@ -169,6 +169,15 @@ export const orchestratorMachine = setup({
             sendTo('l3-pregame', ({ event }: any) => event),
           ],
         },
+        // Player opened the WS for the first time. l3-pregame uses this as the
+        // trigger for the auto-reveal "first impression" beat. Idempotent —
+        // l3-pregame's handler checks firstConnectedAt and only fires once.
+        // Sent unconditionally from L1 for every connect; only handled here
+        // (in preGame). After dayLoop, no l3-pregame exists and the wildcard
+        // would otherwise route nowhere — explicit handler keeps semantics clear.
+        'SYSTEM.PLAYER_CONNECTED': {
+          actions: sendTo('l3-pregame', ({ event }: any) => event),
+        },
         'FACT.RECORD': {
           actions: ['updateJournalTimestamp', 'applyFactToRoster', 'persistFactToD1'],
         },

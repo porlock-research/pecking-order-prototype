@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { PULSE_SPRING } from '../../springs';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import { PersonaImage } from '../common/PersonaImage';
 import { getPlayerColor } from '../../colors';
-import { ArrowLeft, Lightning, Lock, Sparkle } from '../../icons';
+import { ArrowLeft, Lock, Sparkle } from '../../icons';
 import type { QaEntry } from '@pecking-order/shared-types';
 
 interface Props {
@@ -15,34 +15,23 @@ interface Props {
 }
 
 /**
- * Pregame Cast Dossier — opens on chip-tap during pregame phase (when DMs
- * are closed and the regular tap-to-DM gesture has nothing to do). Reads
- * roster + pregame-slice; if `targetId === playerId` the dossier exposes
- * "First Impressions" — reveal one of your own QA answers publicly. Reveal
- * is one-shot per player, server-enforced (l3-pregame guard).
+ * Pregame Cast Dossier — opens on chip-tap during pregame phase (DMs are
+ * closed; regular tap-to-DM has nothing to bind to). Reads roster + pregame
+ * slice. v3: reveals are now AUTO-fired by the server when the player first
+ * connects (l3-pregame's SYSTEM.PLAYER_CONNECTED handler). The self view no
+ * longer offers "Reveal this" pills — the auto-revealed answer renders with
+ * the public badge; the other two stay only-you-see-this until Day 1.
  */
 export function PregameDossierSheet({ targetId, onClose }: Props) {
   const roster = useGameStore(s => s.roster);
   const pregame = useGameStore(s => s.pregame);
-  const { engine, playerId } = usePulse();
+  const { playerId } = usePulse();
 
   const player = roster[targetId];
   const isSelf = targetId === playerId;
   const playerIndex = useMemo(() => Object.keys(roster).indexOf(targetId), [roster, targetId]);
   const myReveal = pregame?.revealedAnswers?.[targetId] ?? null;
   const qaAnswers: QaEntry[] = (player as any)?.qaAnswers ?? [];
-
-  const [submittingQ, setSubmittingQ] = useState<number | null>(null);
-
-  const handleReveal = useCallback((qIndex: number) => {
-    if (!isSelf || myReveal || submittingQ !== null) return;
-    setSubmittingQ(qIndex);
-    engine.revealPregameAnswer(qIndex);
-    // Optimistic settle — when SYNC arrives with the recorded reveal, myReveal
-    // becomes truthy and the buttons disable. If the server rejects (out-of-
-    // range, already revealed), the buttons re-enable on next render.
-    setTimeout(() => setSubmittingQ(null), 1500);
-  }, [isSelf, myReveal, submittingQ, engine]);
 
   if (!player) return null;
 
@@ -166,12 +155,13 @@ export function PregameDossierSheet({ targetId, onClose }: Props) {
             </h3>
             {qaAnswers.map((qa, i) => {
               const revealedThis = myReveal?.qIndex === i;
-              const canReveal = isSelf && !myReveal && submittingQ === null;
-              const submittingThis = submittingQ === i;
               // Server strips qa.answer for other players' un-revealed slots
-              // (sync.ts roster projection). Empty answer = locked, anything
-              // non-empty = visible to this viewer.
-              const isLocked = !isSelf && !qa.answer;
+              // (sync.ts roster projection). Empty answer = locked-from-this-
+              // viewer. Self always sees own answers in full; the "lock" for
+              // self entries is a UX framing — the answer hasn't been revealed
+              // PUBLICLY, but the player still sees their own.
+              const isLockedFromOthers = !isSelf && !qa.answer;
+              const isSelfPrivate = isSelf && !revealedThis;
               return (
                 <article
                   key={i}
@@ -183,7 +173,7 @@ export function PregameDossierSheet({ targetId, onClose }: Props) {
                       : 'var(--pulse-surface)',
                     border: revealedThis
                       ? '1px solid color-mix(in oklch, var(--pulse-accent) 40%, transparent)'
-                      : isLocked
+                      : (isLockedFromOthers || isSelfPrivate)
                         ? '1px dashed color-mix(in oklch, var(--pulse-text-3) 40%, transparent)'
                         : '1px solid var(--pulse-border)',
                   }}
@@ -195,13 +185,13 @@ export function PregameDossierSheet({ targetId, onClose }: Props) {
                   }}>
                     {qa.question}
                   </div>
-                  {isLocked ? (
+                  {isLockedFromOthers ? (
                     <div style={{
                       display: 'inline-flex', alignItems: 'center', gap: 8,
                       fontSize: 13, fontStyle: 'italic',
                       color: 'var(--pulse-text-3)', opacity: 0.7,
                     }}>
-                      <Lock size={14} weight="fill" /> Sealed — until {player.personaName.split(' ')[0]} chooses to reveal
+                      <Lock size={14} weight="fill" /> Sealed — unlocks when the game starts
                     </div>
                   ) : (
                     <div style={{
@@ -216,42 +206,32 @@ export function PregameDossierSheet({ targetId, onClose }: Props) {
                       {revealedThis ? (
                         <div style={{
                           display: 'inline-flex', alignItems: 'center', gap: 6,
-                          fontSize: 11, fontWeight: 700, letterSpacing: 0.6,
+                          fontSize: 11, fontWeight: 800, letterSpacing: 0.6,
                           color: 'var(--pulse-accent)', textTransform: 'uppercase',
                         }}>
-                          <Sparkle size={12} weight="fill" /> Revealed to everyone
+                          <Sparkle size={12} weight="fill" /> Your first impression — public
                         </div>
                       ) : (
-                        <button
-                          onClick={() => handleReveal(i)}
-                          disabled={!canReveal}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            padding: '6px 12px', borderRadius: 999,
-                            background: canReveal ? 'var(--pulse-accent)' : 'var(--pulse-surface)',
-                            color: canReveal ? 'var(--pulse-on-accent)' : 'var(--pulse-text-3)',
-                            border: canReveal ? 'none' : '1px solid var(--pulse-border)',
-                            fontSize: 12, fontWeight: 700,
-                            cursor: canReveal ? 'pointer' : 'not-allowed',
-                            opacity: submittingThis ? 0.6 : 1,
-                          }}
-                        >
-                          <Lightning size={12} weight="fill" />
-                          {submittingThis ? 'Revealing…' : 'Reveal this'}
-                        </button>
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          fontSize: 11, fontWeight: 700, letterSpacing: 0.6,
+                          color: 'var(--pulse-text-3)', textTransform: 'uppercase',
+                        }}>
+                          <Lock size={12} weight="fill" /> Only you see this until the game starts
+                        </div>
                       )}
                     </div>
                   )}
                 </article>
               );
             })}
-            {isSelf && !myReveal && (
+            {isSelf && (
               <p style={{
                 margin: 'var(--pulse-space-xs) var(--pulse-space-xs) 0',
                 fontSize: 12, fontStyle: 'italic',
                 color: 'var(--pulse-text-3)',
               }}>
-                Pick one to reveal publicly — first impressions stick.
+                Your first impression went out the moment you arrived — the rest stays yours until Day 1.
               </p>
             )}
           </section>
