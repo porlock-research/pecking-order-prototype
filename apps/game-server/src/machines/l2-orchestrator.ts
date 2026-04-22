@@ -99,6 +99,21 @@ export const orchestratorMachine = setup({
 }).createMachine({
   id: 'pecking-order-l2',
   initial: 'uninitialized',
+  // Top-level error handler for the spawned game-master actor. Without this,
+  // a GM crash (e.g. resolveDay throwing on a bad manifest) silently wedges
+  // L2 in `activeSession.waitingForChild` — events continue to arrive but
+  // transitions no-op. Consuming the error event here keeps L2 live and
+  // surfaces the failure in Axiom. See
+  // memory/reference_schedule_preset_required.md for the diagnosis.
+  on: {
+    'xstate.error.actor.game-master': {
+      actions: ({ event }: any) =>
+        log('error', 'L2', 'Game master actor errored', {
+          error: String((event as any)?.error ?? (event as any)?.data ?? 'unknown'),
+          stack: (event as any)?.error?.stack,
+        }),
+    },
+  },
   context: {
     gameId: '',
     inviteCode: '',

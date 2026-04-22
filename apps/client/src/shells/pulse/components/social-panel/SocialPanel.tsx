@@ -5,6 +5,7 @@ import { PULSE_SPRING } from '../../springs';
 import { PULSE_Z, backdropFor } from '../../zIndex';
 import { Podium } from './Podium';
 import { StandingsRest } from './StandingsRest';
+import { StandingsOut } from './StandingsOut';
 import { InviteRow } from './InviteRow';
 import { ConversationsList } from './ConversationsList';
 
@@ -75,6 +76,7 @@ export function SocialPanel({ onClose }: Props) {
           </div>
           <Podium />
           <StandingsRest />
+          <StandingsOut />
         </section>
 
         {/* PENDING INVITES — action (accent-tinted container to demand attention) */}

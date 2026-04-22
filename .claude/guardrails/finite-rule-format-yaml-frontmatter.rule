@@ -1,0 +1,19 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: \.claude/guardrails/.+\.rule$
+MATCH_CONTENT: ^(trigger:|glob:|---[[:space:]]*$)
+ADVISORY: |
+  Rule file appears to use YAML frontmatter format (`---` / `trigger:` / `glob:`).
+  The guardian hook parses `MATCH_TOOL:` / `MATCH_PATTERN:` / `MATCH_CONTENT:` /
+  `ADVISORY:` only — unmatched fields are silently treated as "always pass," so
+  a YAML-frontmatter rule fires on EVERY tool call, injecting its full advisory
+  body into the next agent's context.
+
+  Correct format:
+
+    MATCH_TOOL: Edit|Write
+    MATCH_PATTERN: apps/foo/src/bar\.ts$
+    MATCH_CONTENT: (optional regex on edit body)
+    ADVISORY: |
+      Short advisory text here.
+
+  See .claude/guardrails/README.md for details.
