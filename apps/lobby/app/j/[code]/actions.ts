@@ -58,7 +58,16 @@ export async function claimSeat(
     if (already) {
       redirect(`/play/${code}`);
     }
-    // Has a session but not in this game — route through the existing wizard.
+    // Has a session but not yet in this game — keep the authed user in the
+    // frictionless flow by reusing their session. Update their contact_handle
+    // to whatever they just typed so the persona-pick wizard uses the new
+    // name (rather than a stale handle from a previous login). Then continue
+    // to /join/${code} for persona pick — the wizard finds their session
+    // and never shows a login screen.
+    await db
+      .prepare('UPDATE Users SET contact_handle = ? WHERE id = ?')
+      .bind(handle, existing.userId)
+      .run();
     redirect(`/join/${code}`);
   }
 
