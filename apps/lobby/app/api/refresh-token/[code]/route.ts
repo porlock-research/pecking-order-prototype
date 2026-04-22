@@ -40,14 +40,17 @@ export async function GET(
   const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
   const headers = corsHeaders(clientHost);
 
+  // Benign "no token available" states return 200 with token:null so the
+  // browser's fetch instrumentation (Sentry, Datadog) doesn't auto-log them
+  // as errors. The client's recovery flow already treats null tokens as
+  // "fall through to lobby /play/ redirect" — so behavior is unchanged for
+  // every caller, but the Sentry dashboard stops drowning in 4xx noise.
+  const noToken = (reason: string) =>
+    Response.json({ token: null, reason }, { status: 200, headers });
+
   // Check auth via po_session cookie
   const session = await getSession();
-  if (!session) {
-    return Response.json(
-      { error: 'unauthorized' },
-      { status: 401, headers },
-    );
-  }
+  if (!session) return noToken('unauthenticated');
 
   const db = await getDB();
 
@@ -58,18 +61,15 @@ export async function GET(
     .first<{ id: string; status: string; invite_code: string; day_count: number; mode: string }>();
 
   if (!game) {
+    // Genuine 404 — the invite code doesn't resolve to any game in D1.
+    // Keep as 4xx so callers (and ops) can distinguish typos from no-op states.
     return Response.json(
       { error: 'game_not_found' },
       { status: 404, headers },
     );
   }
 
-  if (game.status !== 'STARTED') {
-    return Response.json(
-      { error: 'game_not_started' },
-      { status: 400, headers },
-    );
-  }
+  if (game.status !== 'STARTED') return noToken('game_not_started');
 
   // Find the user's player slot
   const invite = await db
@@ -82,12 +82,7 @@ export async function GET(
     .bind(game.id, session.userId)
     .first<{ slot_index: number; accepted_by: string; persona_id: string; persona_name: string }>();
 
-  if (!invite) {
-    return Response.json(
-      { error: 'not_a_player' },
-      { status: 403, headers },
-    );
-  }
+  if (!invite) return noToken('no_invite');
 
   // Determine player ID from slot ordering
   // CONFIGURABLE_CYCLE uses slot_index directly (players join mid-game);
