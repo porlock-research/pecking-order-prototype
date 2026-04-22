@@ -25,7 +25,7 @@ export function StatusRing({ playerId, size, children }: StatusRingProps) {
           style={{
             position: 'absolute',
             inset: -2,
-            borderRadius: size > 40 ? 14 : 8,
+            borderRadius: size > 40 ? 'var(--pulse-radius-md)' : 'var(--pulse-radius-sm)',
             border: '2px solid var(--pulse-accent)',
             pointerEvents: 'none',
             animation: 'pulse-breathe 2s ease-in-out infinite',

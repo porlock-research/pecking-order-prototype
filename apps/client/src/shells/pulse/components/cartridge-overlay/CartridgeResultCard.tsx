@@ -98,7 +98,7 @@ export function CartridgeResultCard({ cartridgeId, kind }: Props) {
           gap: 'var(--pulse-space-sm)',
           padding: 'var(--pulse-space-2xs) var(--pulse-space-md)',
           marginBottom: 'var(--pulse-space-sm)',
-          borderRadius: 999,
+          borderRadius: 'var(--pulse-radius-pill)',
           background: `${dotColor}1A`,
           border: `1px solid ${dotColor}40`,
           fontSize: 10,

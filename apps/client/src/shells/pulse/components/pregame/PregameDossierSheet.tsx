@@ -85,7 +85,7 @@ export function PregameDossierSheet({ targetId, onClose }: Props) {
             aria-label="Close dossier"
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 36, height: 36, borderRadius: 999,
+              width: 44, height: 44, borderRadius: 'var(--pulse-radius-pill)',
               background: 'var(--pulse-surface)', color: 'var(--pulse-text-1)',
               border: '1px solid var(--pulse-border)',
               cursor: 'pointer',
@@ -115,7 +115,7 @@ export function PregameDossierSheet({ targetId, onClose }: Props) {
             playerColor={portraitColor}
             alt={player.personaName}
             style={{
-              width: 132, height: 132, borderRadius: 22,
+              width: 132, height: 132, borderRadius: 'var(--pulse-radius-xl)',
               objectFit: 'cover',
               border: `2px solid ${portraitColor}`,
               boxShadow: `0 12px 32px -8px ${portraitColor}66`,
@@ -177,7 +177,7 @@ export function PregameDossierSheet({ targetId, onClose }: Props) {
                   key={i}
                   style={{
                     padding: 'var(--pulse-space-md)',
-                    borderRadius: 14,
+                    borderRadius: 'var(--pulse-radius-md)',
                     background: revealedThis
                       ? 'color-mix(in oklch, var(--pulse-accent) 8%, var(--pulse-surface))'
                       : 'var(--pulse-surface)',
@@ -227,7 +227,7 @@ export function PregameDossierSheet({ targetId, onClose }: Props) {
                           disabled={!canReveal}
                           style={{
                             display: 'inline-flex', alignItems: 'center', gap: 6,
-                            padding: '6px 12px', borderRadius: 999,
+                            padding: '6px 12px', borderRadius: 'var(--pulse-radius-pill)',
                             background: canReveal ? 'var(--pulse-accent)' : 'var(--pulse-surface)',
                             color: canReveal ? 'var(--pulse-on-accent)' : 'var(--pulse-text-3)',
                             border: canReveal ? 'none' : '1px solid var(--pulse-border)',

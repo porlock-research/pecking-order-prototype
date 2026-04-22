@@ -57,7 +57,7 @@ export function EventCard({ kind, player, playerIndex, dayIndex, voteType }: Eve
       transition={{ duration: 0.42, delay: 0.2, ease: [0.2, 0.9, 0.3, 1] }}
       style={{
         margin: '12px 12px',
-        borderRadius: 18,
+        borderRadius: 'var(--pulse-radius-lg)',
         background: `linear-gradient(180deg, color-mix(in oklch, ${accent} 6%, var(--pulse-surface)) 0%, var(--pulse-surface) 72%)`,
         border: `1px solid color-mix(in oklch, ${accent} 28%, transparent)`,
         padding: '20px 18px 18px',
@@ -128,7 +128,7 @@ export function EventCard({ kind, player, playerIndex, dayIndex, voteType }: Eve
           style={{
             width: 72,
             height: 72,
-            borderRadius: 14,
+            borderRadius: 'var(--pulse-radius-md)',
             overflow: 'hidden',
             position: 'relative',
             background: 'var(--pulse-surface-2)',

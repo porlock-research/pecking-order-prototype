@@ -259,7 +259,7 @@ function ReceivedBurstInstance({
             animate={{ filter: ['brightness(1.0)', 'brightness(1.15)', 'brightness(1.0)'] }}
             transition={{ duration: 3.2, times: [0, 0.5, 1], ease: 'easeInOut' }}
             style={{
-              width: 140, height: 168, borderRadius: 20,
+              width: 140, height: 168, borderRadius: 'var(--pulse-radius-xl)',
               overflow: 'hidden',
               boxShadow:
                 '0 0 0 3px color-mix(in oklch, var(--pulse-gold) 35%, transparent), 0 0 48px color-mix(in oklch, var(--pulse-gold) 50%, transparent), 0 20px 60px rgba(0,0,0,0.6)',

@@ -168,7 +168,7 @@ export function Pill({ pill, mini, onTap, buttonRef, unread, cartridgeId }: Pill
         alignItems: 'center',
         gap: mini ? 4 : 6,
         padding: mini ? '4px 8px' : '6px 12px',
-        borderRadius: 20,
+        borderRadius: 'var(--pulse-radius-xl)',
         cursor: 'pointer',
         fontSize: mini ? 10 : 11,
         fontWeight: 700,

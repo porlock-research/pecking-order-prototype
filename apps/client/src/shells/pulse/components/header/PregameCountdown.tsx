@@ -79,7 +79,7 @@ export function PregameCountdown({ startTime }: Props) {
         alignItems: 'baseline',
         gap: 6,
         padding: '4px 10px',
-        borderRadius: 999,
+        borderRadius: 'var(--pulse-radius-pill)',
         background: 'var(--pulse-surface-2)',
         border: `1px solid color-mix(in oklch, ${color} 30%, transparent)`,
       }}

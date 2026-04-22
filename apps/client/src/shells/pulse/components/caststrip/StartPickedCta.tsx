@@ -50,7 +50,7 @@ export function StartPickedCta() {
       <button onClick={go} style={{
         pointerEvents: 'auto',
         background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
-        padding: '12px 22px', borderRadius: 22,
+        padding: '12px 22px', borderRadius: 'var(--pulse-radius-xl)',
         fontSize: 14, fontWeight: 800, border: 'none',
         boxShadow: '0 4px 14px color-mix(in oklch, var(--pulse-accent) 45%, transparent)',
         cursor: 'pointer',

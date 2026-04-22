@@ -115,7 +115,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
         padding: 0,
         border: 'none',
         background: 'transparent',
-        borderRadius: 14,
+        borderRadius: 'var(--pulse-radius-md)',
         cursor: disabledInPicking ? 'not-allowed' : 'pointer',
         opacity: dimmed ? 0.82 : (disabledInPicking ? 0.4 : 1),
         scrollSnapAlign: 'start',
@@ -126,7 +126,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
     >
       <div
         style={{
-          position: 'absolute', inset: 0, borderRadius: 14,
+          position: 'absolute', inset: 0, borderRadius: 'var(--pulse-radius-md)',
           overflow: 'hidden',
           background: 'var(--pulse-surface-3)',
           boxShadow: glowColor ? `0 0 12px ${glowColor}` : 'none',
@@ -165,14 +165,14 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
       {isSelf && (
         <>
           <span aria-hidden="true" style={{
-            position: 'absolute', inset: 0, borderRadius: 14,
+            position: 'absolute', inset: 0, borderRadius: 'var(--pulse-radius-md)',
             border: '2px solid var(--pulse-accent)', pointerEvents: 'none',
           }} />
           <span aria-hidden="true" style={{
             position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)',
             background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
             fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
-            padding: '2px 7px', borderRadius: 7,
+            padding: '2px 7px', borderRadius: 'var(--pulse-radius-xs)',
             textTransform: 'uppercase', pointerEvents: 'none', whiteSpace: 'nowrap',
           }}>You</span>
         </>
@@ -199,7 +199,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
           display: 'inline-flex', alignItems: 'center', gap: 'var(--pulse-space-2xs)',
           background: 'var(--pulse-nudge)', color: 'var(--pulse-bg)',
           fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
-          padding: '2px 7px', borderRadius: 9,
+          padding: '2px 7px', borderRadius: 'var(--pulse-radius-sm)',
           textTransform: 'uppercase', animation: 'pulse-breathe 1.4s ease-in-out infinite',
           pointerEvents: 'none', whiteSpace: 'nowrap',
         }}>
@@ -213,7 +213,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
           position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
           background: 'var(--pulse-pending)', color: 'var(--pulse-bg)',
           fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
-          padding: '2px 7px', borderRadius: 9,
+          padding: '2px 7px', borderRadius: 'var(--pulse-radius-sm)',
           textTransform: 'uppercase', animation: 'pulse-breathe 1.0s ease-in-out infinite',
           pointerEvents: 'none', whiteSpace: 'nowrap',
         }}>Invite</span>
@@ -249,7 +249,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
           position: 'absolute', top: -4, right: -4,
           background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
           minWidth: 18, height: 18, padding: '0 4px',
-          borderRadius: 9, fontSize: 10, fontWeight: 800,
+          borderRadius: 'var(--pulse-radius-sm)', fontSize: 10, fontWeight: 800,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           border: '2px solid var(--pulse-bg)',
         }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
@@ -258,7 +258,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
       {isTypingToYou && (
         <span aria-hidden="true" style={{
           position: 'absolute', bottom: -3, right: -3,
-          background: 'var(--pulse-accent)', borderRadius: 10,
+          background: 'var(--pulse-accent)', borderRadius: 'var(--pulse-radius-sm)',
           padding: '2px 5px', display: 'flex', gap: 2,
           border: '2px solid var(--pulse-bg)',
         }}>
@@ -274,7 +274,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
       {pickingMode && picked && !locked && (
         <>
           <span aria-hidden="true" style={{
-            position: 'absolute', inset: 0, borderRadius: 14,
+            position: 'absolute', inset: 0, borderRadius: 'var(--pulse-radius-md)',
             border: '3px solid var(--pulse-accent)', pointerEvents: 'none',
           }} />
           <span aria-hidden="true" style={{
@@ -290,7 +290,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
       {locked && (
         <span aria-hidden="true" style={{
           position: 'absolute', top: -6, right: -6,
-          padding: '2px 6px', borderRadius: 9,
+          padding: '2px 6px', borderRadius: 'var(--pulse-radius-sm)',
           background: 'rgba(20,20,26,0.85)', color: 'var(--pulse-text-2)',
           fontSize: 9, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase',
           border: '2px solid var(--pulse-bg)', pointerEvents: 'none',

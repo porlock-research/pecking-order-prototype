@@ -52,7 +52,7 @@ export function CartridgeOverlayHeader({ kind, label, deadline, onClose }: Props
           background: 'rgba(255,255,255,0.06)',
           backdropFilter: 'blur(8px)',
           border: '1px solid var(--pulse-border)',
-          borderRadius: 999,
+          borderRadius: 'var(--pulse-radius-pill)',
           color: 'var(--pulse-text-1)',
           cursor: 'pointer',
           flexShrink: 0,

@@ -45,7 +45,7 @@ export function PregameJoinLine({ actorId }: Props) {
         animate={{ boxShadow: '0 0 0 0 transparent' }}
         transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
         style={{
-          width: 32, height: 32, borderRadius: 8,
+          width: 32, height: 32, borderRadius: 'var(--pulse-radius-sm)',
           flexShrink: 0,
           border: '1.5px solid var(--pulse-gold)',
           overflow: 'hidden',
