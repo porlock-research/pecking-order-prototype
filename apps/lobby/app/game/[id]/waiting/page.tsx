@@ -444,16 +444,113 @@ export default function WaitingRoom() {
                     We sent a notification to your app. Tap it to enter!
                   </div>
                 )}
-                <a
+                <motion.a
                   href={clientEntryUrl}
-                  className="block w-full py-4 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all hover:brightness-110 active:scale-[0.99]"
-                  style={{ backgroundColor: 'rgba(34, 197, 94, 0.2)', border: '1px solid rgba(34, 197, 94, 0.4)', color: 'var(--po-green)' }}
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                  whileHover={{ y: -1, filter: 'brightness(1.06)' }}
+                  whileTap={{ scale: 0.995 }}
+                  className="relative block w-full overflow-hidden rounded-2xl outline-none focus-visible:[outline:2px_solid_var(--po-gold)] focus-visible:[outline-offset:3px]"
+                  style={{
+                    backgroundColor:
+                      'color-mix(in oklab, var(--po-deep) 82%, var(--po-gold) 18%)',
+                    boxShadow:
+                      'inset 0 0 0 1px color-mix(in oklab, var(--po-gold) 45%, transparent), inset 0 30px 72px -36px color-mix(in oklab, var(--po-gold) 72%, transparent)',
+                  }}
                 >
-                  Enter Game as {myPlayerId?.toUpperCase()}
-                  <span className="block text-xs font-mono mt-1 opacity-60">
-                    {clientHost}/game/{code.toUpperCase()}
+                  <motion.span
+                    aria-hidden
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ delay: 0.22, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    className="pointer-events-none absolute left-0 right-0 top-0 h-[2px] origin-left"
+                    style={{
+                      background:
+                        'linear-gradient(90deg, transparent 0%, var(--po-gold) 22%, var(--po-gold) 78%, transparent 100%)',
+                    }}
+                  />
+
+                  <span className="flex items-center gap-4 px-5 py-5">
+                    {filledSlots.length > 0 && (
+                      <span aria-hidden className="flex -space-x-2.5 shrink-0">
+                        {filledSlots.slice(0, 4).map((slot, i) => (
+                          <motion.span
+                            key={slot.personaId || slot.slotIndex}
+                            initial={{ opacity: 0, scale: 0.82 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{
+                              delay: 0.34 + i * 0.08,
+                              duration: 0.32,
+                              ease: [0.22, 1, 0.36, 1],
+                            }}
+                            className="inline-block h-9 w-9 rounded-full bg-skin-input overflow-hidden"
+                            style={{
+                              boxShadow:
+                                'inset 0 0 0 1.5px color-mix(in oklab, var(--po-gold) 60%, transparent), 0 0 0 2px var(--po-deep)',
+                            }}
+                          >
+                            {slot.personaId && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={personaMediumUrl(slot.personaId)}
+                                alt=""
+                                className="h-full w-full object-cover object-top"
+                              />
+                            )}
+                          </motion.span>
+                        ))}
+                      </span>
+                    )}
+
+                    <span className="flex-1 min-w-0 text-left leading-[0.95]">
+                      <span
+                        className="block font-display font-black"
+                        style={{
+                          fontSize: 'clamp(30px, 8vw, 42px)',
+                          letterSpacing: '-0.03em',
+                          color: 'var(--po-gold)',
+                        }}
+                      >
+                        Enter
+                      </span>
+                      <span
+                        className="block mt-1.5 font-mono text-[12px] tracking-[0.08em] uppercase"
+                        style={{
+                          color: 'color-mix(in oklab, var(--po-gold) 62%, transparent)',
+                        }}
+                      >
+                        as {myPlayerId?.toUpperCase()}
+                      </span>
+                    </span>
+
+                    <motion.span
+                      aria-hidden
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.46, duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+                      className="shrink-0 grid place-items-center h-10 w-10 rounded-full"
+                      style={{
+                        backgroundColor: 'color-mix(in oklab, var(--po-gold) 16%, transparent)',
+                        boxShadow:
+                          'inset 0 0 0 1px color-mix(in oklab, var(--po-gold) 52%, transparent)',
+                      }}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="18"
+                        height="18"
+                        fill="none"
+                        stroke="var(--po-gold)"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M5 12h14M13 5l7 7-7 7" />
+                      </svg>
+                    </motion.span>
                   </span>
-                </a>
+                </motion.a>
               </motion.div>
             )}
 
