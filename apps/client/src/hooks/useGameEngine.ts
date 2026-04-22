@@ -50,11 +50,16 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     },
     onClose(event) {
       console.warn('[WS] Connection closed', { code: event.code, reason: event.reason, gameId });
-      if (event.code === 4001 || event.code === 4003) {
+      // 4001: Invalid Player ID (transient — clear tokens, redirect)
+      // 4003: Invalid token (transient — clear tokens, redirect)
+      // 4008: Server hit reject rate-limit for this client — DO NOT reconnect.
+      //       Treated identically to 4001/4003 plus a reason param so the
+      //       launcher can surface a clearer "we stopped trying" message.
+      if (event.code === 4001 || event.code === 4003 || event.code === 4008) {
         Sentry.addBreadcrumb({
           category: 'websocket',
           message: `Connection rejected (code ${event.code})`,
-          level: 'warning',
+          level: event.code === 4008 ? 'error' : 'warning',
           data: { code: event.code, reason: event.reason, gameId },
         });
         // Clear cached tokens for this game to prevent reconnect loop
@@ -70,8 +75,12 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
           ).catch(() => {});
         }
         // Redirect with ?noRecover=1 to prevent cookie recovery from
-        // immediately connecting to another stale game (GH-115)
-        window.location.replace('/?noRecover=1');
+        // immediately connecting to another stale game (GH-115).
+        // 4008 also passes reason=rejected so the launcher can show a
+        // distinct "we stopped retrying" notice rather than the generic
+        // archived-game state.
+        const target = event.code === 4008 ? '/?noRecover=1&reason=rejected' : '/?noRecover=1';
+        window.location.replace(target);
       }
     },
     onError(event) {
