@@ -78,7 +78,7 @@ export function PlayerPicker({ command, onSelect, onBack }: PlayerPickerProps) {
           onClick={onBack}
           aria-label="Back"
           style={{
-            width: 34, height: 34,
+            width: 44, height: 44,
             background: 'none', border: 'none', cursor: 'pointer',
             color: hue,
             display: 'flex', alignItems: 'center', justifyContent: 'center',

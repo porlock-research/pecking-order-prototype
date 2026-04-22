@@ -84,6 +84,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
           aria-label={alreadyNudged ? `Already nudged ${player.personaName} today` : `Nudge ${player.personaName}`}
           style={{
             display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-xs)',
+            minHeight: 44,
             padding: 'var(--pulse-space-sm) var(--pulse-space-md)', borderRadius: 'var(--pulse-radius-md)',
             background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255,255,255,0.12)',
@@ -124,7 +125,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
         <div role="group" aria-label="Photo variant" style={{ display: 'flex', gap: 0, alignItems: 'center' }}>
           {(['headshot', 'medium', 'full'] as const).map(v => (
             <button key={v} onClick={() => setVariant(v)} aria-label={`Show ${v} photo`} aria-pressed={variant === v} style={{
-              width: 36, height: 36, borderRadius: '50%',
+              width: 44, height: 44, borderRadius: '50%',
               border: 'none', padding: 0, cursor: 'pointer',
               background: 'transparent',
               display: 'flex', alignItems: 'center', justifyContent: 'center',

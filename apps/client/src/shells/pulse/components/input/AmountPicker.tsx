@@ -25,7 +25,7 @@ export function AmountPicker({ player, playerId, onSelect, onBack }: AmountPicke
           onClick={onBack}
           aria-label="Back"
           style={{
-            width: 36, height: 36,
+            width: 44, height: 44,
             background: 'none', border: 'none', cursor: 'pointer',
             color: 'var(--pulse-text-2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',

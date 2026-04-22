@@ -52,6 +52,7 @@ export function MentionAutocomplete({ query, onSelect, excludeId }: MentionAutoc
             onClick={() => onSelect(p.personaName)}
             style={{
               width: '100%',
+              minHeight: 44,
               display: 'flex',
               alignItems: 'center',
               gap: 10,

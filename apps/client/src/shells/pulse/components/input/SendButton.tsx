@@ -57,6 +57,10 @@ const SHAPE_STYLE: Record<Shape, React.CSSProperties> = {
     justifyContent: 'center',
   },
   pill: {
+    // 44px minimum tap target — teens on phones. Horizontal padding
+    // drives the button's visible width; the minHeight absorbs any
+    // shortfall from the typographic line-box.
+    minHeight: 44,
     padding: '8px 16px',
     borderRadius: 'var(--pulse-radius-sm)',
     display: 'inline-flex',

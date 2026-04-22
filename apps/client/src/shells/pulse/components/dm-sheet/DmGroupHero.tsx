@@ -68,6 +68,7 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
           style={{
             position: 'absolute', top: 10, right: 10,
             display: 'flex', alignItems: 'center', gap: 4,
+            minHeight: 44,
             padding: '8px 12px', borderRadius: 'var(--pulse-radius-md)',
             background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255,255,255,0.12)',
