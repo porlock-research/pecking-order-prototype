@@ -105,18 +105,21 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
           // Same 2px width as alive chips — keeps portrait rect identical,
           // avoids sub-pixel edges between adjacent chips.
           border: '2px solid var(--pulse-border-2)',
+          // Grayscale filter on the container so both <img> and the
+          // initials-fallback desaturate together (PersonaImage may render
+          // either). contrast(0.95) softens the desaturation slightly.
+          filter: 'grayscale(1) contrast(0.95)',
         }}>
-          {avatar && (
-            <img
-              src={avatar}
+          {player && (
+            <PersonaImage
+              avatarUrl={player.avatarUrl}
+              cacheKey={entry.id}
+              preferredVariant="full"
+              fallbackChain={['medium', 'headshot']}
+              initials={initialsOf(player.personaName)}
+              playerColor={color}
               alt=""
-              loading="lazy"
-              width={72}
-              height={100}
-              style={{
-                width: '100%', height: '100%', objectFit: 'cover',
-                filter: 'grayscale(1) contrast(0.95)',
-              }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           )}
           <div style={{
