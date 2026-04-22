@@ -30,11 +30,11 @@ export function GroupChip({ entry, onTap }: Props) {
       style={{
         position: 'relative', width: 72, height: 100,
         flexShrink: 0, padding: 0, border: 'none', background: 'transparent',
-        borderRadius: 14, cursor: 'pointer', scrollSnapAlign: 'start',
+        borderRadius: 'var(--pulse-radius-md)', cursor: 'pointer', scrollSnapAlign: 'start',
       }}
     >
       <div style={{
-        position: 'absolute', inset: 0, borderRadius: 14, overflow: 'hidden',
+        position: 'absolute', inset: 0, borderRadius: 'var(--pulse-radius-md)', overflow: 'hidden',
         background: 'var(--pulse-surface-3)', border: `2px solid ${edgeColor}`, boxShadow: glow,
         display: 'flex',
       }}>
@@ -62,7 +62,7 @@ export function GroupChip({ entry, onTap }: Props) {
           position: 'absolute', top: 4, right: 4,
           background: 'rgba(0,0,0,0.75)', color: 'var(--pulse-on-accent)',
           fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
-          padding: '2px 6px', borderRadius: 5, textTransform: 'uppercase',
+          padding: '2px 6px', borderRadius: 'var(--pulse-radius-xs)', textTransform: 'uppercase',
         }}>Group</span>
         <div aria-hidden="true" style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
@@ -78,7 +78,7 @@ export function GroupChip({ entry, onTap }: Props) {
           position: 'absolute', top: -4, right: -4,
           background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
           minWidth: 18, height: 18, padding: '0 4px',
-          borderRadius: 9, fontSize: 10, fontWeight: 800,
+          borderRadius: 'var(--pulse-radius-sm)', fontSize: 10, fontWeight: 800,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           border: '2px solid var(--pulse-bg)',
         }}>{entry.unreadCount > 9 ? '9+' : entry.unreadCount}</span>

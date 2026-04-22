@@ -86,7 +86,7 @@ function StageHowItWorks({ text }: { text: string }) {
     <div
       style={{
         padding: '12px 14px 13px',
-        borderRadius: 12,
+        borderRadius: 'var(--pulse-radius-md)',
         background: 'var(--pulse-surface-2)',
         border: '1px solid var(--pulse-border)',
         display: 'flex',

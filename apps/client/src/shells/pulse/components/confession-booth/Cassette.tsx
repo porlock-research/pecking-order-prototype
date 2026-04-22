@@ -65,7 +65,7 @@ const cassetteStyle: Record<string, React.CSSProperties> = {
       'radial-gradient(ellipse 80% 70% at 50% 0%, rgba(249,169,74,0.09), transparent 60%),' +
       'linear-gradient(180deg, var(--pulse-surface-2), var(--pulse-surface))',
     border: '1px solid var(--pulse-border-2)',
-    borderRadius: 14,
+    borderRadius: 'var(--pulse-radius-md)',
     padding: '20px 20px 16px',
     display: 'flex',
     flexDirection: 'column',

@@ -55,7 +55,7 @@ export function SilverPip({ variant = 'global' }: Props) {
         alignItems: 'center',
         gap: size.gap,
         padding: variant === 'global' ? '2px 8px' : '2px 6px',
-        borderRadius: 10,
+        borderRadius: 'var(--pulse-radius-sm)',
         background: variant === 'global' ? 'var(--pulse-surface-2)' : 'transparent',
         border: variant === 'global' ? '1px solid var(--pulse-border)' : 'none',
         position: 'relative',

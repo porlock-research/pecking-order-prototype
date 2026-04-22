@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import { PaperPlaneTilt } from '../../icons';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { usePulse } from '../../PulseShell';
 import { useGameStore } from '../../../../store/useGameStore';
 import { useCommandBuilder } from '../../hooks/useCommandBuilder';
-import { PULSE_TAP } from '../../springs';
+import { useInFlight } from '../../hooks/useInFlight';
 import { PULSE_Z } from '../../zIndex';
 import { runViewTransition, supportsViewTransitions, prefersReducedMotion } from '../../viewTransitions';
 import { HintChips } from './HintChips';
@@ -16,6 +16,7 @@ import { CommandPreview } from './CommandPreview';
 import { WhisperMode } from './WhisperMode';
 import { ReplyBar } from './ReplyBar';
 import { MentionAutocomplete } from './MentionAutocomplete';
+import { SendButton } from './SendButton';
 import { DayPhases } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 
@@ -28,6 +29,9 @@ export function PulseInput() {
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { pending: sending, run: guard } = useInFlight();
+  const { pending: silverSending, run: guardSilver } = useInFlight();
+  const { pending: whisperSending, run: guardWhisper } = useInFlight();
 
   const {
     commandMode,
@@ -79,10 +83,12 @@ export function PulseInput() {
   const handleSend = useCallback(() => {
     if (!text.trim()) return;
     if (!groupChatOpen) return; // defensive — input is also disabled visually
-    engine.sendMessage(text.trim(), replyTo ? { replyTo: replyTo.id } : undefined);
-    setText('');
-    setReplyTo(null);
-  }, [text, replyTo, engine, groupChatOpen]);
+    guard(() => {
+      engine.sendMessage(text.trim(), replyTo ? { replyTo: replyTo.id } : undefined);
+      setText('');
+      setReplyTo(null);
+    });
+  }, [text, replyTo, engine, groupChatOpen, guard]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -151,21 +157,25 @@ export function PulseInput() {
 
   const handleSilverSend = useCallback(() => {
     if (commandMode.mode !== 'preview') return;
-    engine.sendSilver(commandMode.amount, commandMode.playerId);
-    // Sender celebration — haptic + SilverBurst overdrive layer. Toast
-    // dropped; SOCIAL_TRANSFER chat card carries the announcement.
-    try { navigator.vibrate?.(25); } catch { /* no-op */ }
-    window.dispatchEvent(new CustomEvent('pulse:silver-burst', {
-      detail: { amount: commandMode.amount, recipient: commandMode.player.personaName },
-    }));
-    cancel();
-  }, [commandMode, engine, cancel]);
+    guardSilver(() => {
+      engine.sendSilver(commandMode.amount, commandMode.playerId);
+      // Sender celebration — haptic + SilverBurst overdrive layer. Toast
+      // dropped; SOCIAL_TRANSFER chat card carries the announcement.
+      try { navigator.vibrate?.(25); } catch { /* no-op */ }
+      window.dispatchEvent(new CustomEvent('pulse:silver-burst', {
+        detail: { amount: commandMode.amount, recipient: commandMode.player.personaName },
+      }));
+      cancel();
+    });
+  }, [commandMode, engine, cancel, guardSilver]);
 
   const handleWhisperSend = useCallback((whisperText: string) => {
     if (commandMode.mode !== 'whisper') return;
-    engine.sendWhisper(commandMode.playerId, whisperText);
-    cancel();
-  }, [commandMode, engine, cancel]);
+    guardWhisper(() => {
+      engine.sendWhisper(commandMode.playerId, whisperText);
+      cancel();
+    });
+  }, [commandMode, engine, cancel, guardWhisper]);
 
   // When chat is closed the ChatView renders its own "Chat opens at dawn"
   // notice in the empty chat area. Hiding the input bar here avoids a
@@ -216,6 +226,7 @@ export function PulseInput() {
             amount={commandMode.amount}
             onSend={handleSilverSend}
             onCancel={() => withMorph(() => cancel())}
+            sending={silverSending}
           />
         </div>
       )}
@@ -227,6 +238,7 @@ export function PulseInput() {
             playerId={commandMode.playerId}
             onSend={handleWhisperSend}
             onCancel={() => withMorph(() => cancel())}
+            sending={whisperSending}
           />
         </div>
       )}
@@ -276,7 +288,7 @@ export function PulseInput() {
               style={{
                 flex: 1,
                 padding: 'var(--pulse-space-md) var(--pulse-space-lg)',
-                borderRadius: 12,
+                borderRadius: 'var(--pulse-radius-md)',
                 background: 'var(--pulse-surface-2)',
                 border: '1px solid var(--pulse-border)',
                 color: 'var(--pulse-text-1)',
@@ -288,27 +300,16 @@ export function PulseInput() {
               }}
             />
             {text.trim() && (
-              <motion.button
-                whileTap={PULSE_TAP.button}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
+              <SendButton
+                variant="accent"
+                shape="icon"
                 onClick={handleSend}
-                aria-label="Send message"
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'var(--pulse-accent)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--pulse-on-accent)',
-                }}
+                pending={sending}
+                ariaLabel="Send message"
+                animateIn
               >
                 <PaperPlaneTilt size={18} weight="fill" />
-              </motion.button>
+              </SendButton>
             )}
           </div>
         </div>
@@ -325,20 +326,22 @@ export function PulseInput() {
             placeholder="Reply..."
             autoFocus
             style={{
-              flex: 1, padding: 'var(--pulse-space-md) var(--pulse-space-lg)', borderRadius: 12,
+              flex: 1, padding: 'var(--pulse-space-md) var(--pulse-space-lg)', borderRadius: 'var(--pulse-radius-md)',
               background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)',
               color: 'var(--pulse-text-1)', fontSize: 14, fontFamily: 'var(--po-font-body)', outline: 'none',
             }}
           />
-          <motion.button whileTap={PULSE_TAP.button} onClick={handleSend} disabled={!text.trim()}
-            aria-label="Send reply"
-            style={{
-              width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: text.trim() ? 'var(--pulse-accent)' : 'var(--pulse-surface-2)',
-              border: 'none', cursor: text.trim() ? 'pointer' : 'default', color: 'var(--pulse-on-accent)',
-            }}>
+          <SendButton
+            variant="accent"
+            shape="icon"
+            onClick={handleSend}
+            disabled={!text.trim()}
+            pending={sending}
+            ariaLabel="Send reply"
+            style={!text.trim() ? { background: 'var(--pulse-surface-2)' } : undefined}
+          >
             <PaperPlaneTilt size={18} weight="fill" />
-          </motion.button>
+          </SendButton>
         </div>
       )}
     </div>

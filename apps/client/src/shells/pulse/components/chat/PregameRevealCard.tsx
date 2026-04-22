@@ -37,7 +37,7 @@ export function PregameRevealCard({ actorId, question, answer }: Props) {
       style={{
         margin: '14px 12px',
         padding: '18px 20px 16px',
-        borderRadius: 16,
+        borderRadius: 'var(--pulse-radius-lg)',
         background: 'linear-gradient(180deg, color-mix(in oklch, var(--pulse-accent) 11%, var(--pulse-surface)) 0%, var(--pulse-surface) 100%)',
         border: '1px solid color-mix(in oklch, var(--pulse-accent) 28%, transparent)',
         boxShadow: '0 14px 36px -16px color-mix(in oklch, var(--pulse-accent) 60%, transparent), inset 0 1px 0 color-mix(in oklch, var(--pulse-accent) 18%, transparent)',
@@ -45,7 +45,10 @@ export function PregameRevealCard({ actorId, question, answer }: Props) {
         overflow: 'hidden',
       }}
     >
-      {/* Eyebrow — "ON THE RECORD" tracked-caps, pink, top-left */}
+      {/* Eyebrow — "JUST LANDED · ON THE RECORD" tracked-caps, pink.
+          Reads as the arrival-moment beat (v3 auto-reveal fires on first WS
+          connect). Ties the reveal back to the gold-ringed PregameJoinLine
+          that fired earlier on PLAYER_JOINED. */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -63,7 +66,7 @@ export function PregameRevealCard({ actorId, question, answer }: Props) {
           textTransform: 'uppercase',
           color: 'var(--pulse-accent)',
         }}>
-          On the record
+          Just landed · On the record
         </span>
       </div>
 
@@ -132,7 +135,7 @@ export function PregameRevealCard({ actorId, question, answer }: Props) {
           playerColor={portraitColor}
           alt=""
           style={{
-            width: 28, height: 28, borderRadius: 8,
+            width: 28, height: 28, borderRadius: 'var(--pulse-radius-sm)',
             objectFit: 'cover',
             border: `1.5px solid ${portraitColor}`,
             flexShrink: 0,

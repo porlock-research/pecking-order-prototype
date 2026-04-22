@@ -1,6 +1,7 @@
 import type { Channel, SocialPlayer } from '@pecking-order/shared-types';
 import { resolveAvatarUrl } from '../../../../utils/personaImage';
 import { usePulse } from '../../PulseShell';
+import { InviteActions } from '../common/InviteActions';
 
 interface Props { channel: Channel; inviter: SocialPlayer; }
 
@@ -21,12 +22,12 @@ export function InviteRow({ channel, inviter }: Props) {
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 14px',
       background: 'var(--pulse-surface)', border: '1px solid rgba(255,140,66,0.3)',
-      borderRadius: 12,
+      borderRadius: 'var(--pulse-radius-md)',
     }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <img src={resolveAvatarUrl(inviter.avatarUrl) || ''} alt=""
           loading="lazy" width={44} height={44}
-          style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+          style={{ width: 44, height: 44, borderRadius: 'var(--pulse-radius-sm)', objectFit: 'cover', flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--pulse-text-1)' }}>
             {inviter.personaName} wants to talk
@@ -40,17 +41,11 @@ export function InviteRow({ channel, inviter }: Props) {
           </div>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => engine.acceptDm(channel.id)} style={{
-          flex: 1, background: 'var(--pulse-online)', color: 'var(--pulse-on-accent)', border: 'none',
-          padding: '10px 12px', borderRadius: 10, fontSize: 13, fontWeight: 800, cursor: 'pointer',
-        }}>Accept</button>
-        <button onClick={() => engine.declineDm(channel.id)} style={{
-          flex: 1, background: 'var(--pulse-bg)', color: 'var(--pulse-text-2)',
-          border: '1px solid var(--pulse-border)',
-          padding: '10px 12px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-        }}>Decline</button>
-      </div>
+      <InviteActions
+        layout="horizontal"
+        onAccept={() => engine.acceptDm(channel.id)}
+        onDecline={() => engine.declineDm(channel.id)}
+      />
     </div>
   );
 }

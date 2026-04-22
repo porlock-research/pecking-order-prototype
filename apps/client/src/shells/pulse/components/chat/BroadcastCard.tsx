@@ -23,7 +23,7 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
           gap: 10,
           padding: '10px 12px',
           margin: '6px 0',
-          borderRadius: 12,
+          borderRadius: 'var(--pulse-radius-md)',
           background: 'color-mix(in oklch, var(--pulse-accent) 7%, transparent)',
           border: '1px solid color-mix(in oklch, var(--pulse-accent) 18%, transparent)',
           fontFamily: 'var(--po-font-body)',
@@ -31,7 +31,7 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
       >
         <div
           style={{
-            width: 24, height: 24, borderRadius: 7,
+            width: 24, height: 24, borderRadius: 'var(--pulse-radius-xs)',
             background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
@@ -63,7 +63,7 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
         gap: 8,
         padding: '8px 12px',
         margin: '3px 0',
-        borderRadius: 10,
+        borderRadius: 'var(--pulse-radius-sm)',
         fontSize: 12,
         fontWeight: 500,
         color: 'var(--pulse-text-2)',

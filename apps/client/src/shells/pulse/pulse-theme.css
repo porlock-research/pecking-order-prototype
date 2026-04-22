@@ -49,6 +49,16 @@
   --pulse-space-2xl: 32px;  /* major section break */
   --pulse-space-3xl: 48px;  /* page-level division */
 
+  /* Radius scale — pill/sheet/button radii. Snap inline borderRadius to
+     the nearest token; reach for `--pulse-radius-pill` (999px) or `50%`
+     for explicit circular shapes. */
+  --pulse-radius-xs: 6px;   /* chips, tight tags */
+  --pulse-radius-sm: 8px;   /* small buttons, close affordances */
+  --pulse-radius-md: 12px;  /* default card/input corner */
+  --pulse-radius-lg: 16px;  /* larger cards, CTAs */
+  --pulse-radius-xl: 20px;  /* sheets, top-of-modal */
+  --pulse-radius-pill: 999px;
+
   /* Ambient warm background: warm dark base, softer than pure ink.
      Tint stops reference the same OKLCH tokens as the palette so any
      future accent retune propagates here automatically. */

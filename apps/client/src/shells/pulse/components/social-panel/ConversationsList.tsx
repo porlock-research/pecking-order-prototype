@@ -14,7 +14,7 @@ const rowStyle: CSSProperties = {
 
 const pipStyle: CSSProperties = {
   background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
-  fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 8,
+  fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 'var(--pulse-radius-sm)',
 };
 
 export function ConversationsList() {
@@ -59,7 +59,7 @@ export function ConversationsList() {
                     width={26}
                     height={26}
                     style={{
-                      position: 'absolute', width: 26, height: 26, borderRadius: 6, objectFit: 'cover',
+                      position: 'absolute', width: 26, height: 26, borderRadius: 'var(--pulse-radius-xs)', objectFit: 'cover',
                       top: i === 0 ? 0 : 10, left: i === 0 ? 0 : 10,
                       border: '2px solid var(--pulse-bg)',
                     }}
@@ -85,7 +85,7 @@ export function ConversationsList() {
           <button key={t.channelId} onClick={() => openDM(t.partnerId)} style={rowStyle}>
             <img src={resolveAvatarUrl(partner.avatarUrl) || ''} alt=""
               loading="lazy" width={36} height={36}
-              style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+              style={{ width: 36, height: 36, borderRadius: 'var(--pulse-radius-sm)', objectFit: 'cover', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color }}>{partner.personaName}</div>
               <div style={{ fontSize: 11, color: 'var(--pulse-text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{preview}</div>

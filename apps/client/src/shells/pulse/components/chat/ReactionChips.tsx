@@ -47,7 +47,7 @@ export function ReactionChips({ message }: ReactionChipsProps) {
               alignItems: 'center',
               gap: 'var(--pulse-space-xs)',
               padding: 'var(--pulse-space-2xs) var(--pulse-space-sm)',
-              borderRadius: 12,
+              borderRadius: 'var(--pulse-radius-md)',
               fontSize: 12,
               background: isMine ? 'var(--pulse-accent-glow)' : 'var(--pulse-surface-2)',
               border: isMine

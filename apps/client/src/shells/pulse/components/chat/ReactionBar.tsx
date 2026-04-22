@@ -49,7 +49,7 @@ export function ReactionBar({ messageId, message: _message, isSelf, onClose }: R
           gap: 1,
           marginTop: 4,
           padding: '2px 4px',
-          borderRadius: 12,
+          borderRadius: 'var(--pulse-radius-md)',
           background: 'var(--pulse-surface-3)',
           border: '1px solid var(--pulse-border-2)',
           // Pink-tinted layered glow — replaces generic drop shadow.
@@ -78,7 +78,7 @@ export function ReactionBar({ messageId, message: _message, isSelf, onClose }: R
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              borderRadius: 8,
+              borderRadius: 'var(--pulse-radius-sm)',
               padding: 0,
             }}
           >

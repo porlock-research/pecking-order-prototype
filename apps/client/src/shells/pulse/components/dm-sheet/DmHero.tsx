@@ -63,7 +63,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
 
       <button onClick={onClose} aria-label="Close DM" style={{
         position: 'absolute', top: 'var(--pulse-space-md)', left: 'var(--pulse-space-md)',
-        width: 44, height: 44, borderRadius: 22,
+        width: 44, height: 44, borderRadius: '50%',
         background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
         border: '1px solid rgba(255,255,255,0.12)',
         color: 'var(--pulse-on-accent)',
@@ -84,7 +84,8 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
           aria-label={alreadyNudged ? `Already nudged ${player.personaName} today` : `Nudge ${player.personaName}`}
           style={{
             display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-xs)',
-            padding: 'var(--pulse-space-sm) var(--pulse-space-md)', borderRadius: 14,
+            minHeight: 44,
+            padding: 'var(--pulse-space-sm) var(--pulse-space-md)', borderRadius: 'var(--pulse-radius-md)',
             background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255,255,255,0.12)',
             color: alreadyNudged ? 'rgba(255,255,255,0.5)' : 'var(--pulse-on-accent)',
@@ -110,7 +111,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
             aria-label="Add members"
             style={{
               display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-xs)',
-              padding: 'var(--pulse-space-sm) var(--pulse-space-md)', borderRadius: 14,
+              padding: 'var(--pulse-space-sm) var(--pulse-space-md)', borderRadius: 'var(--pulse-radius-md)',
               background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
               border: '1px solid rgba(255,255,255,0.12)',
               color: 'var(--pulse-on-accent)', cursor: 'pointer',
@@ -124,7 +125,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
         <div role="group" aria-label="Photo variant" style={{ display: 'flex', gap: 0, alignItems: 'center' }}>
           {(['headshot', 'medium', 'full'] as const).map(v => (
             <button key={v} onClick={() => setVariant(v)} aria-label={`Show ${v} photo`} aria-pressed={variant === v} style={{
-              width: 36, height: 36, borderRadius: '50%',
+              width: 44, height: 44, borderRadius: '50%',
               border: 'none', padding: 0, cursor: 'pointer',
               background: 'transparent',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -196,7 +197,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
               background: 'rgba(46,204,113,0.25)', color: 'var(--pulse-online)',
-              padding: '3px 9px', borderRadius: 10, fontSize: 10, fontWeight: 700,
+              padding: '3px 9px', borderRadius: 'var(--pulse-radius-sm)', fontSize: 10, fontWeight: 700,
             }}>
               <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pulse-online)' }} />
               Online
@@ -206,7 +207,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
             <span style={{
               background: 'color-mix(in oklch, var(--pulse-accent) 20%, transparent)',
               color: 'var(--pulse-accent)',
-              padding: '3px 8px', borderRadius: 10, fontSize: 10, fontWeight: 800,
+              padding: '3px 8px', borderRadius: 'var(--pulse-radius-sm)', fontSize: 10, fontWeight: 800,
               letterSpacing: 0.2,
             }}>#{rank}</span>
           )}
@@ -217,7 +218,7 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
             display: 'inline-flex', alignItems: 'center', gap: 4,
             background: 'color-mix(in oklch, var(--pulse-gold) 14%, transparent)',
             color: 'var(--pulse-gold)',
-            padding: '3px 8px 3px 7px', borderRadius: 10, fontSize: 11, fontWeight: 800,
+            padding: '3px 8px 3px 7px', borderRadius: 'var(--pulse-radius-sm)', fontSize: 11, fontWeight: 800,
             border: '1px solid color-mix(in oklch, var(--pulse-gold) 30%, transparent)',
             fontVariantNumeric: 'tabular-nums',
           }}>

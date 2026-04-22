@@ -78,11 +78,11 @@ export function PlayerPicker({ command, onSelect, onBack }: PlayerPickerProps) {
           onClick={onBack}
           aria-label="Back"
           style={{
-            width: 34, height: 34,
+            width: 44, height: 44,
             background: 'none', border: 'none', cursor: 'pointer',
             color: hue,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 8,
+            borderRadius: 'var(--pulse-radius-sm)',
           }}
         >
           <ArrowLeft size={20} weight="bold" />
@@ -181,7 +181,7 @@ function PlayerCard({ id, player, index, disabled, onSelect }: PlayerCardProps) 
         alignItems: 'stretch',
         gap: 6,
         padding: 5,
-        borderRadius: 10,
+        borderRadius: 'var(--pulse-radius-sm)',
         background: 'var(--pulse-surface-2)',
         border: '1px solid var(--pulse-border)',
         cursor: disabled ? 'not-allowed' : 'pointer',
@@ -195,7 +195,7 @@ function PlayerCard({ id, player, index, disabled, onSelect }: PlayerCardProps) 
         position: 'relative',
         width: '100%',
         aspectRatio: '4 / 5',
-        borderRadius: 7,
+        borderRadius: 'var(--pulse-radius-xs)',
         overflow: 'hidden',
         background: 'var(--pulse-surface-3)',
       }}>

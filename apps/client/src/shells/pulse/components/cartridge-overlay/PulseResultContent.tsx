@@ -84,7 +84,7 @@ function Pill({ label, color }: { label: string; color: string }) {
     <span
       style={{
         fontSize: 9, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase',
-        padding: '2px 7px', borderRadius: 999,
+        padding: '2px 7px', borderRadius: 'var(--pulse-radius-pill)',
         background: `${color}20`, color, border: `1px solid ${color}40`,
         flexShrink: 0,
       }}
@@ -98,7 +98,7 @@ function SelfCallout({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        padding: '10px 14px', borderRadius: 12,
+        padding: '10px 14px', borderRadius: 'var(--pulse-radius-md)',
         background: 'var(--pulse-accent-glow)',
         border: '1px solid var(--pulse-accent)',
         fontSize: 13, color: 'var(--pulse-text-1)',
@@ -251,7 +251,7 @@ function VotingResult({ snapshot, roster, playerId }: {
                 <div
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '8px 12px', borderRadius: 10,
+                    padding: '8px 12px', borderRadius: 'var(--pulse-radius-sm)',
                     background: 'var(--pulse-surface-2)',
                     border: '1px solid var(--pulse-border)',
                     opacity: isElim ? 0.75 : 1,
@@ -307,7 +307,7 @@ function VotingResult({ snapshot, roster, playerId }: {
         <div
           style={{
             display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-            padding: '8px 12px', borderRadius: 10,
+            padding: '8px 12px', borderRadius: 'var(--pulse-radius-sm)',
             background: 'var(--pulse-surface)',
             border: '1px solid var(--pulse-border)',
           }}
@@ -366,7 +366,7 @@ function OutcomeRow({ pid, roster, label, color, icon, eliminated }: {
     <div
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
-        padding: '12px 14px', borderRadius: 14,
+        padding: '12px 14px', borderRadius: 'var(--pulse-radius-md)',
         background: `${color}12`, border: `1px solid ${color}40`,
       }}
     >
@@ -442,7 +442,7 @@ function GameResult({ snapshot, roster, playerId }: {
               key={pid}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '8px 12px', borderRadius: 10,
+                padding: '8px 12px', borderRadius: 'var(--pulse-radius-sm)',
                 background: 'var(--pulse-surface-2)',
                 border: '1px solid var(--pulse-border)',
                 opacity: isDnf ? 0.5 : 1,
@@ -503,7 +503,7 @@ function RankBadge({ rank }: { rank: number }) {
     return (
       <span
         style={{
-          width: 22, height: 22, borderRadius: 6,
+          width: 22, height: 22, borderRadius: 'var(--pulse-radius-xs)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: 'var(--pulse-surface-3)',
           color: 'var(--pulse-text-3)', fontSize: 11, fontWeight: 700, flexShrink: 0,
@@ -516,7 +516,7 @@ function RankBadge({ rank }: { rank: number }) {
   return (
     <div
       style={{
-        width: 22, height: 22, borderRadius: 6,
+        width: 22, height: 22, borderRadius: 'var(--pulse-radius-xs)',
         background: `${color}24`,
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         color,
@@ -581,7 +581,7 @@ function PromptResult({ snapshot, roster, playerId }: {
       {snapshot.promptText && (
         <blockquote
           style={{
-            margin: 0, padding: '14px 16px', borderRadius: 12,
+            margin: 0, padding: '14px 16px', borderRadius: 'var(--pulse-radius-md)',
             background: 'color-mix(in oklch, var(--pulse-prompt) 8%, var(--pulse-surface-2))',
             border: '1px solid color-mix(in oklch, var(--pulse-prompt) 22%, transparent)',
             fontSize: 14, lineHeight: 1.5, fontStyle: 'italic',
@@ -606,7 +606,7 @@ function PromptResult({ snapshot, roster, playerId }: {
                 key={pid}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 12px', borderRadius: 10,
+                  padding: '8px 12px', borderRadius: 'var(--pulse-radius-sm)',
                   background: isSelf ? 'var(--pulse-accent-glow)' : 'var(--pulse-surface-2)',
                   border: `1px solid ${isSelf ? 'var(--pulse-accent)' : 'var(--pulse-border)'}`,
                 }}
@@ -652,7 +652,7 @@ function PromptResult({ snapshot, roster, playerId }: {
             <blockquote
               key={c.index ?? i}
               style={{
-                margin: 0, padding: '10px 14px', borderRadius: 12,
+                margin: 0, padding: '10px 14px', borderRadius: 'var(--pulse-radius-md)',
                 background: 'var(--pulse-surface-2)',
                 border: '1px solid var(--pulse-border)',
                 fontSize: 13, lineHeight: 1.5, fontStyle: 'italic',
@@ -736,7 +736,7 @@ function DualBar({ leftLabel, rightLabel, leftCount, rightCount, leftColor, righ
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div
         style={{
-          display: 'flex', height: 26, borderRadius: 10, overflow: 'hidden',
+          display: 'flex', height: 26, borderRadius: 'var(--pulse-radius-sm)', overflow: 'hidden',
           border: '1px solid var(--pulse-border)',
         }}
       >
@@ -810,7 +810,7 @@ function PulseNAryBar({ options, tally, minorityIndices }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div
         style={{
-          display: 'flex', height: 26, borderRadius: 10, overflow: 'hidden',
+          display: 'flex', height: 26, borderRadius: 'var(--pulse-radius-sm)', overflow: 'hidden',
           border: '1px solid var(--pulse-border)',
         }}
       >
@@ -895,7 +895,7 @@ function DilemmaHero({
       style={{
         position: 'relative',
         padding: '22px 18px 20px',
-        borderRadius: 18,
+        borderRadius: 'var(--pulse-radius-lg)',
         background: `radial-gradient(120% 120% at 50% 0%, color-mix(in oklch, ${accent} 24%, transparent) 0%, color-mix(in oklch, ${accent} 8%, transparent) 55%, var(--pulse-surface-2)) 100%`,
         border: `1.5px solid color-mix(in oklch, ${accent} 48%, transparent)`,
         boxShadow: `0 0 42px color-mix(in oklch, ${accent} 32%, transparent), 0 0 96px color-mix(in oklch, ${accent} 14%, transparent)`,
@@ -1113,7 +1113,7 @@ function DilemmaResult({ snapshot, roster, playerId }: {
               key={pid}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '8px 12px', borderRadius: 10,
+                padding: '8px 12px', borderRadius: 'var(--pulse-radius-sm)',
                 background: `${color}10`,
                 border: `1px solid ${color}30`,
               }}
@@ -1162,7 +1162,7 @@ function OutcomeBanner({ tone, title, body, icon }: {
     <div
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-        padding: '14px 16px', borderRadius: 14,
+        padding: '14px 16px', borderRadius: 'var(--pulse-radius-md)',
         background: `${color}14`, border: `1px solid ${color}40`,
         textAlign: 'center',
       }}
