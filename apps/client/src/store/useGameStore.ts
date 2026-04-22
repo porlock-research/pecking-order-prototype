@@ -528,6 +528,11 @@ export interface CastStripEntry {
   /** True when lastNudgeFromThemTs > lastSeenNudgeFrom[id] (persisted per-sender). */
   hasUnseenNudgeFromThem: boolean;
   hasUnseenSilver: boolean;
+  /** Set when roster.status === 'ELIMINATED'. Chip renders as a grayscale
+   *  memorial card with a D{n}·OUT tag, no live status signals, sorted to
+   *  the tail behind a hairline divider. */
+  isEliminated?: boolean;
+  eliminatedOnDay?: number;
 }
 
 export const selectUnreadForChannel = (channelId: string) => (state: GameState): number => {
@@ -554,6 +559,23 @@ export const selectStandings = memoSelector(
       .filter(([, p]) => p.status === 'ALIVE')
       .sort((a, b) => b[1].silver - a[1].silver || a[1].personaName.localeCompare(b[1].personaName))
       .map(([id, p], i) => ({ id, player: p, rank: i + 1 }));
+  },
+);
+
+/** Eliminated players for the Standings "Out" section — most-recent
+ *  elimination first (matches cast strip tail order). */
+export const selectEliminated = memoSelector(
+  (s) => [s.roster],
+  (state: GameState): { id: string; player: SocialPlayer; eliminatedOnDay?: number }[] => {
+    return Object.entries(state.roster)
+      .filter(([, p]) => p.status === 'ELIMINATED')
+      .map(([id, p]) => ({ id, player: p, eliminatedOnDay: (p as any).eliminatedOnDay as number | undefined }))
+      .sort((a, b) => {
+        const ad = a.eliminatedOnDay ?? 0;
+        const bd = b.eliminatedOnDay ?? 0;
+        if (ad !== bd) return bd - ad;
+        return a.player.personaName.localeCompare(b.player.personaName);
+      });
   },
 );
 
@@ -647,6 +669,10 @@ export const selectCastStripEntries = memoSelector(
 
   const selfPlayer = state.roster[pid];
   if (selfPlayer) {
+    // When the player themselves has been eliminated (async re-open after
+    // their elimination reveal), forward the memorial flags so the chip
+    // renders grayscale with a D{n}·Out tag — the "You" badge stays on.
+    const selfEliminated = selfPlayer.status === 'ELIMINATED';
     entries.push({
       kind: 'self', id: pid, player: selfPlayer, priority: 0,
       unreadCount: 0, hasPendingInviteFromThem: false, hasOutgoingPendingInvite: false,
@@ -654,12 +680,34 @@ export const selectCastStripEntries = memoSelector(
       isLeader: leaderId === pid,
       lastNudgeFromThemTs: 0, hasUnseenNudgeFromThem: false,
       hasUnseenSilver: false,
+      ...(selfEliminated && {
+        isEliminated: true,
+        eliminatedOnDay: (selfPlayer as any).eliminatedOnDay as number | undefined,
+      }),
     });
   }
 
   for (const [id, p] of Object.entries(state.roster)) {
     if (id === pid) continue;
-    if (p.status !== 'ALIVE') continue;
+    if (p.status !== 'ALIVE') {
+      // Eliminated players stay in the cast strip as grayscale memorial
+      // chips — tail-sorted behind a hairline divider. They don't transmit
+      // (no online/typing/unread/nudge/silver signals), but DMs remain
+      // tap-openable so their chat history is re-readable.
+      if (p.status === 'ELIMINATED') {
+        entries.push({
+          kind: 'player', id, player: p, priority: 9,
+          unreadCount: 0,
+          hasPendingInviteFromThem: false, hasOutgoingPendingInvite: false,
+          isTypingToYou: false, isOnline: false, isLeader: false,
+          lastNudgeFromThemTs: 0, hasUnseenNudgeFromThem: false,
+          hasUnseenSilver: false,
+          isEliminated: true,
+          eliminatedOnDay: (p as any).eliminatedOnDay,
+        });
+      }
+      continue;
+    }
     const oneOnOneChannel = Object.values(state.channels).find(ch =>
       ch.type === ChannelTypes.DM && ch.memberIds.includes(pid) && ch.memberIds.includes(id)
     );
@@ -708,6 +756,12 @@ export const selectCastStripEntries = memoSelector(
     if (a.kind === 'self') return -1;
     if (b.kind === 'self') return 1;
     if (a.priority !== b.priority) return a.priority - b.priority;
+    // Eliminated chips: most-recent elimination first (freshest in memory).
+    if (a.isEliminated && b.isEliminated) {
+      const ad = a.eliminatedOnDay ?? 0;
+      const bd = b.eliminatedOnDay ?? 0;
+      if (ad !== bd) return bd - ad;
+    }
     if (a.unreadCount !== b.unreadCount) return b.unreadCount - a.unreadCount;
     const an = a.player?.personaName || '';
     const bn = b.player?.personaName || '';
