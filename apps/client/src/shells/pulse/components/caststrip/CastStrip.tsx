@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { useGameStore, selectCastStripEntries, type CastStripEntry } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { useHasOverflow } from '../../hooks/useHasOverflow';
@@ -86,26 +86,61 @@ export function CastStrip() {
           scrollbarWidth: 'none',
         }}
       >
-        {entries.map(entry => {
-          if (entry.kind === 'group') {
-            if (pickingMode) return null;
-            return <GroupChip key={entry.id} entry={entry} onTap={handleTap} />;
+        {(() => {
+          // Insert a single hairline divider before the first eliminated
+          // chip. Spatial grouping (gap + rule) reads better than a section
+          // header in a horizontal band.
+          let eliminatedDividerRendered = false;
+          const rendered: React.ReactNode[] = [];
+          for (const entry of entries) {
+            if (entry.kind === 'group') {
+              if (pickingMode) continue;
+              rendered.push(<GroupChip key={entry.id} entry={entry} onTap={handleTap} />);
+              continue;
+            }
+            if (entry.isEliminated) {
+              // Picking mode never shows non-self eliminated chips — you
+              // can't add an out-player to a channel. Self is rendered
+              // regardless (can't remove yourself from the strip).
+              if (pickingMode && entry.kind !== 'self') continue;
+              // Divider is a boundary between alive and non-self eliminated
+              // chips. If the current entry is self-eliminated (priority 0,
+              // position 0), do NOT render a divider before it — a divider
+              // at position 0 reads as broken, not as grouping.
+              if (!eliminatedDividerRendered && entry.kind !== 'self') {
+                rendered.push(<CastStripDivider key="__elim-divider" />);
+                eliminatedDividerRendered = true;
+              }
+              rendered.push(
+                <CastChip
+                  key={entry.id}
+                  entry={entry}
+                  onTap={handleTap}
+                  pickingMode={!!pickingMode}
+                  picked={false}
+                  pickable={false}
+                  locked={false}
+                />,
+              );
+              continue;
+            }
+            const locked = lockedIds.has(entry.id);
+            const pickable = !!pickingMode && entry.kind === 'player' && !locked;
+            const picked = pickingMode?.selected.includes(entry.id) ?? false;
+            rendered.push(
+              <CastChip
+                key={entry.id}
+                entry={entry}
+                onTap={handleTap}
+                pickingMode={!!pickingMode}
+                picked={picked}
+                pickable={pickable}
+                locked={locked}
+              />,
+            );
           }
-          const locked = lockedIds.has(entry.id);
-          const pickable = !!pickingMode && entry.kind === 'player' && !locked;
-          const picked = pickingMode?.selected.includes(entry.id) ?? false;
-          return (
-            <CastChip
-              key={entry.id}
-              entry={entry}
-              onTap={handleTap}
-              pickingMode={!!pickingMode}
-              picked={picked}
-              pickable={pickable}
-              locked={locked}
-            />
-          );
-        })}
+          return rendered;
+        })()}
       </div>
       <CastStripEdgeFade side="left" visible={overflow.left} />
       <CastStripEdgeFade side="right" visible={overflow.right} />
@@ -134,6 +169,34 @@ function CastStripEdgeFade({ side, visible }: { side: 'left' | 'right'; visible:
         background: `linear-gradient(to ${side}, transparent, var(--pulse-bg))`,
         opacity: visible ? 1 : 0,
         transition: 'opacity 0.18s ease',
+      }}
+    />
+  );
+}
+
+/**
+ * Hairline between alive and eliminated chips. Vertical rule that fades at
+ * the top/bottom so it doesn't hard-crop the strip's ambient gradient —
+ * reads as a quiet boundary, not a section bar. Role="separator" for AT.
+ */
+function CastStripDivider() {
+  return (
+    <span
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Eliminated cast"
+      style={{
+        flex: '0 0 auto',
+        width: 1,
+        alignSelf: 'stretch',
+        // xs (4px) each side keeps the rule tight to its neighbors; the
+        // flex `gap: sm` between chips adds the remaining breathing room.
+        // Vertical pads mirror the chip's top/bottom badge safety inside the
+        // scroll container so the rule sits within the chip-body band.
+        margin: '10px var(--pulse-space-xs) 8px',
+        background:
+          'linear-gradient(to bottom, transparent 0%, color-mix(in oklch, var(--pulse-text-3) 42%, transparent) 22%, color-mix(in oklch, var(--pulse-text-3) 42%, transparent) 78%, transparent 100%)',
+        scrollSnapAlign: 'start',
       }}
     />
   );

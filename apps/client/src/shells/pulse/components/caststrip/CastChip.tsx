@@ -18,7 +18,7 @@ interface Props {
 }
 
 function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = false }: Props) {
-  const { player, isOnline, isTypingToYou, hasPendingInviteFromThem, unreadCount, isLeader, lastNudgeFromThemTs, hasUnseenNudgeFromThem, hasUnseenSilver } = entry;
+  const { player, isOnline, isTypingToYou, hasPendingInviteFromThem, unreadCount, isLeader, lastNudgeFromThemTs, hasUnseenNudgeFromThem, hasUnseenSilver, isEliminated, eliminatedOnDay } = entry;
   const roster = useGameStore(s => s.roster);
   const slotStatus = useGameStore(s => selectChipSlotStatus(s, entry.id));
   const markNudgeSeen = useGameStore(s => s.markNudgeSeen);
@@ -60,6 +60,117 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
     if (hasUnseenSilver) markSilverSeen(entry.id);
     onTap(entry);
   };
+
+  // Eliminated chip — early return. Grayscale memorial card with a single
+  // "D{n} · OUT" tag; no status signals (online/typing/unread/nudge/silver
+  // don't apply once a player is out). Still tappable so DM chat history is
+  // re-readable. Sorted to the tail by the store (priority 9). When the
+  // eliminated entry IS self (player opened the app after their own
+  // elimination), the self treatment layers onto the memorial: pink ring +
+  // "You" badge, pointing the memorial inward.
+  if (isEliminated) {
+    const elimIsSelf = entry.kind === 'self';
+    // Defensive: roster.eliminatedOnDay is an unbounded int from the server
+    // schema. Only render a day chip for positive ints — 0 and negatives
+    // collapse to a bare "Out".
+    const outDay = typeof eliminatedOnDay === 'number' && eliminatedOnDay > 0 ? eliminatedOnDay : null;
+    const elimAriaLabel = elimIsSelf
+      ? `You (${player?.personaName ?? ''}), out${outDay ? ` on day ${outDay}` : ''}`
+      : `${player?.personaName ?? 'Player'}, out${outDay ? ` on day ${outDay}` : ''}`;
+    return (
+      <motion.button
+        onClick={() => onTap(entry)}
+        aria-label={elimAriaLabel}
+        data-chip-player-id={entry.id}
+        data-chip-eliminated="true"
+        whileTap={PULSE_TAP.card}
+        style={{
+          position: 'relative',
+          width: 72, height: 100,
+          flexShrink: 0,
+          padding: 0,
+          border: 'none',
+          background: 'transparent',
+          borderRadius: 14,
+          cursor: 'pointer',
+          opacity: elimIsSelf ? 0.82 : 0.72,
+          scrollSnapAlign: 'start',
+          transition: 'opacity 0.3s ease',
+        }}
+      >
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: 14,
+          overflow: 'hidden',
+          background: 'var(--pulse-surface-3)',
+          // Same 2px width as alive chips — keeps portrait rect identical,
+          // avoids sub-pixel edges between adjacent chips.
+          border: '2px solid var(--pulse-border-2)',
+          // Grayscale filter on the container so both <img> and the
+          // initials-fallback desaturate together (PersonaImage may render
+          // either). contrast(0.95) softens the desaturation slightly.
+          filter: 'grayscale(1) contrast(0.95)',
+        }}>
+          {player && (
+            <PersonaImage
+              avatarUrl={player.avatarUrl}
+              cacheKey={entry.id}
+              preferredVariant="full"
+              fallbackChain={['medium', 'headshot']}
+              initials={initialsOf(player.personaName)}
+              playerColor={color}
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          )}
+          <div style={{
+            position: 'absolute', left: 0, right: 0, bottom: 0,
+            padding: 'var(--pulse-space-md) var(--pulse-space-xs) var(--pulse-space-2xs)',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.88), transparent)',
+            color: 'var(--pulse-text-3)',
+            fontSize: 12, fontWeight: 600, textAlign: 'center',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {player?.personaName}
+          </div>
+        </div>
+        {/* D{n} · OUT tag — dark plaque with gold-80% engraved type. The
+            inverse fill grammar (bg dark, text gold) deliberately reads as
+            historical marker, not a live badge like invite/nudge. */}
+        <span aria-hidden="true" style={{
+          position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(8,6,12,0.82)',
+          color: 'color-mix(in oklch, var(--pulse-gold) 82%, transparent)',
+          fontSize: 10, fontWeight: 900, letterSpacing: '0.2em',
+          padding: '2px 7px', borderRadius: 7,
+          textTransform: 'uppercase',
+          pointerEvents: 'none', whiteSpace: 'nowrap',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {outDay ? `D${outDay} · Out` : 'Out'}
+        </span>
+
+        {elimIsSelf && (
+          <>
+            {/* Pink self-ring layered over the grayscale portrait — still
+                reads as "you" even in memorial mode. */}
+            <span aria-hidden="true" style={{
+              position: 'absolute', inset: 0, borderRadius: 14,
+              border: '2px solid var(--pulse-accent)', pointerEvents: 'none',
+            }} />
+            {/* You badge offset to bottom-left so the top-center D{n}·Out
+                plaque stays the primary signal at the top. */}
+            <span aria-hidden="true" style={{
+              position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)',
+              background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
+              fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
+              padding: '2px 7px', borderRadius: 7,
+              textTransform: 'uppercase', pointerEvents: 'none', whiteSpace: 'nowrap',
+            }}>You</span>
+          </>
+        )}
+      </motion.button>
+    );
+  }
 
   // Edge/glow grammar — each state gets a distinct hue. Pink is reserved
   // for UNREAD so it's not overloaded across typing/unread/self. Typing
