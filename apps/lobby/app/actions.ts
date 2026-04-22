@@ -1263,7 +1263,7 @@ function buildManifestDays(
  * SchedulePreset is set explicitly to SMOKE_TEST so generateDayTimeline never
  * crashes the GM actor (see ADR-145 for the historical regression).
  */
-export function buildCCDefaultInitPayload(args: {
+function buildCCDefaultInitPayload(args: {
   gameId: string;
   inviteCode: string;
   playerCount: number;
