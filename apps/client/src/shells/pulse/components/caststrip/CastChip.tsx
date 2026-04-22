@@ -91,7 +91,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
           padding: 0,
           border: 'none',
           background: 'transparent',
-          borderRadius: 14,
+          borderRadius: 'var(--pulse-radius-md)',
           cursor: 'pointer',
           opacity: elimIsSelf ? 0.82 : 0.72,
           scrollSnapAlign: 'start',
@@ -99,7 +99,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
         }}
       >
         <div style={{
-          position: 'absolute', inset: 0, borderRadius: 14,
+          position: 'absolute', inset: 0, borderRadius: 'var(--pulse-radius-md)',
           overflow: 'hidden',
           background: 'var(--pulse-surface-3)',
           // Same 2px width as alive chips — keeps portrait rect identical,
@@ -141,7 +141,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
           background: 'rgba(8,6,12,0.82)',
           color: 'color-mix(in oklch, var(--pulse-gold) 82%, transparent)',
           fontSize: 10, fontWeight: 900, letterSpacing: '0.2em',
-          padding: '2px 7px', borderRadius: 7,
+          padding: '2px 7px', borderRadius: 'var(--pulse-radius-xs)',
           textTransform: 'uppercase',
           pointerEvents: 'none', whiteSpace: 'nowrap',
           fontVariantNumeric: 'tabular-nums',
@@ -154,7 +154,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
             {/* Pink self-ring layered over the grayscale portrait — still
                 reads as "you" even in memorial mode. */}
             <span aria-hidden="true" style={{
-              position: 'absolute', inset: 0, borderRadius: 14,
+              position: 'absolute', inset: 0, borderRadius: 'var(--pulse-radius-md)',
               border: '2px solid var(--pulse-accent)', pointerEvents: 'none',
             }} />
             {/* You badge offset to bottom-left so the top-center D{n}·Out
@@ -163,7 +163,7 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
               position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)',
               background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
               fontSize: 10, fontWeight: 800, letterSpacing: 0.4,
-              padding: '2px 7px', borderRadius: 7,
+              padding: '2px 7px', borderRadius: 'var(--pulse-radius-xs)',
               textTransform: 'uppercase', pointerEvents: 'none', whiteSpace: 'nowrap',
             }}>You</span>
           </>
