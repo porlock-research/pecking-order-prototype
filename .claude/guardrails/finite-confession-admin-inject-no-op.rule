@@ -29,9 +29,14 @@ ADVISORY: |
   INSPECT.SUBSCRIBE and look for `xstate.error.actor.game-master` as the
   actual diagnostic signal. Whatever triggers that error wedges L2.
 
-  Framework debt worth paying down when touching this code:
-    1. Validate with GameManifestSchema.safeParse() in handleInit.
-    2. DynamicManifestSchema.schedulePreset: add .default('DEFAULT').
-    3. Add onError to the game-master spawn in l2-orchestrator.ts.
+  All three framework debt items are now SHIPPED (see ADR-145,
+  commit ea3c591 + a577184 on 2026-04-21):
+    1. /init runs GameManifestSchema.safeParse → 400 on invalid.
+    2. DynamicManifestSchema.schedulePreset defaults to 'DEFAULT'.
+    3. L2 consumes xstate.error.actor.game-master and logs to Axiom.
+
+  After 2026-05-21, if no new START_CONFESSION_CHAT no-op incidents
+  have been reported, delete this rule — the symptom class is no
+  longer reachable through the documented game-creation paths.
 
   This is NOT caused by ADR-143 pregame work.
