@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: apps/game-server/src/machines/__tests__/.+\.test\.ts$
+MATCH_CONTENT: (dailySessionMachine|createL3Actor|buildL3Context|parentWrapper|l3-session)
 ADVISORY: |
   Testing `dailySessionMachine` (L3) directly with `createActor()` will throw
   "Unable to send event to actor '#_parent'" the moment any action calls
