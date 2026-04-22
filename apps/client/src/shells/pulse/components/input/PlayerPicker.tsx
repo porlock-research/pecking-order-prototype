@@ -5,6 +5,8 @@ import { ArrowLeft, HandWaving, UsersThree } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
 import { PULSE_SPRING, PULSE_TAP } from '../../springs';
+import { PersonaImage, initialsOf } from '../common/PersonaImage';
+import { getPlayerColor } from '../../colors';
 import type { SocialPlayer } from '@pecking-order/shared-types';
 import type { Command } from '../../hooks/useCommandBuilder';
 
@@ -197,15 +199,18 @@ function PlayerCard({ id, player, index, disabled, onSelect }: PlayerCardProps) 
         overflow: 'hidden',
         background: 'var(--pulse-surface-3)',
       }}>
-        <img
-          src={player.avatarUrl}
+        <PersonaImage
+          avatarUrl={player.avatarUrl}
+          cacheKey={id}
+          preferredVariant="medium"
+          fallbackChain={['headshot', 'full']}
+          initials={initialsOf(player.personaName)}
+          playerColor={getPlayerColor(index)}
           alt=""
-          loading="lazy"
           style={{
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            objectPosition: 'center 22%',
             display: 'block',
           }}
         />

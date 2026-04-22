@@ -945,7 +945,8 @@ function DilemmaHero({
           <PersonaImage
             avatarUrl={player?.avatarUrl}
             cacheKey={pid}
-            preferredVariant="headshot"
+            preferredVariant="medium"
+            fallbackChain={['headshot', 'full']}
             initials={initialsOf(name)}
             playerColor={getPlayerColor(idx)}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}

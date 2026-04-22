@@ -1,5 +1,5 @@
 import { useGameStore, selectStandings } from '../../../../store/useGameStore';
-import { resolveAvatarUrl } from '../../../../utils/personaImage';
+import { PersonaImage, initialsOf } from '../common/PersonaImage';
 import { getPlayerColor } from '../../colors';
 import { usePulse } from '../../PulseShell';
 import { Coins } from '../../icons';
@@ -31,10 +31,14 @@ function Slot({ entry, rank, onTap, colorIdx }: SlotProps) {
       }}
     >
       <div style={{ position: 'relative', width: '100%', maxWidth: isFirst ? 150 : 84 }}>
-        <img
-          src={resolveAvatarUrl(entry.player.avatarUrl) || ''}
+        <PersonaImage
+          avatarUrl={entry.player.avatarUrl}
+          cacheKey={entry.id}
+          preferredVariant="medium"
+          fallbackChain={['headshot', 'full']}
+          initials={initialsOf(entry.player.personaName)}
+          playerColor={color}
           alt=""
-          loading="lazy"
           style={{
             width: '100%', height: isFirst ? 140 : 74,
             objectFit: 'cover', borderRadius: 10,

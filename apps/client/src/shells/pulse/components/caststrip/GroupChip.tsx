@@ -1,6 +1,7 @@
 import type { CastStripEntry } from '../../../../store/useGameStore';
 import { useGameStore } from '../../../../store/useGameStore';
-import { resolveAvatarUrl } from '../../../../utils/personaImage';
+import { PersonaImage, initialsOf } from '../common/PersonaImage';
+import { getPlayerColor } from '../../colors';
 
 interface Props {
   entry: CastStripEntry;
@@ -38,10 +39,22 @@ export function GroupChip({ entry, onTap }: Props) {
         display: 'flex',
       }}>
         {others.map((id) => {
-          const avatar = resolveAvatarUrl(roster[id]?.avatarUrl);
+          const member = roster[id];
+          const memberColor = getPlayerColor(Math.max(0, Object.keys(roster).indexOf(id)));
           return (
             <div key={id} style={{ flex: 1, position: 'relative' }}>
-              {avatar && <img src={avatar} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+              {member && (
+                <PersonaImage
+                  avatarUrl={member.avatarUrl}
+                  cacheKey={id}
+                  preferredVariant="full"
+                  fallbackChain={['medium', 'headshot']}
+                  initials={initialsOf(member.personaName)}
+                  playerColor={memberColor}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              )}
             </div>
           );
         })}
