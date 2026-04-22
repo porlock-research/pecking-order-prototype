@@ -79,19 +79,17 @@ export async function querySpyDms(
   }));
 }
 
-/** Insert Game + Player rows on POST /init. Fire-and-forget. */
+/** Insert Game + Player rows on POST /init. Fire-and-forget, but Players
+ *  are chained to wait on the Games insert — D1 can otherwise process the
+ *  Players batch before Games commits, hitting `FOREIGN KEY constraint
+ *  failed` on fresh gameIds (observed twice during 2026-04-21 testing on
+ *  scripted parallel inits). */
 export function insertGameAndPlayers(
   db: D1Database,
   gameId: string,
   mode: string,
   roster: Record<string, any>,
 ): void {
-  db.prepare(
-    `INSERT OR IGNORE INTO Games (id, mode, status, created_at) VALUES (?, ?, 'IN_PROGRESS', ?)`
-  ).bind(gameId, mode, Date.now()).run().catch((err: any) =>
-    console.error('[L1] Failed to insert Game row:', err)
-  );
-
   const playerStmt = db.prepare(
     `INSERT OR IGNORE INTO Players (game_id, player_id, real_user_id, persona_name, avatar_url, status, silver, gold, destiny_id)
      VALUES (?, ?, ?, ?, ?, 'ALIVE', ?, ?, ?)`
@@ -99,11 +97,16 @@ export function insertGameAndPlayers(
   const batch = Object.entries(roster).map(([pid, p]: [string, any]) =>
     playerStmt.bind(gameId, pid, p.realUserId || '', p.personaName || '', p.avatarUrl || '', p.silver || 50, p.gold || 0, p.destinyId || null)
   );
-  if (batch.length > 0) {
-    db.batch(batch).catch((err: any) =>
-      console.error('[L1] Failed to insert Player rows:', err)
-    );
-  }
+
+  db.prepare(
+    `INSERT OR IGNORE INTO Games (id, mode, status, created_at) VALUES (?, ?, 'IN_PROGRESS', ?)`
+  )
+    .bind(gameId, mode, Date.now())
+    .run()
+    .then(() => {
+      if (batch.length > 0) return db.batch(batch);
+    })
+    .catch((err: any) => console.error('[L1] Failed to insert Game/Player rows:', err));
 }
 
 // --- Push Subscriptions (D1-backed, replaces DO storage) ---
