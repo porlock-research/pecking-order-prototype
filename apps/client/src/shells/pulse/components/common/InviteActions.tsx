@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useInFlight } from '../../hooks/useInFlight';
+import { usePulse } from '../../PulseShell';
+import { useGameStore } from '../../../../store/useGameStore';
 
 // 3-second reconsider window, matching AvatarPicker's LOCK_IN_MS so all
 // "commit with an escape hatch" moments in Pulse share the same teen-tested
@@ -39,6 +41,25 @@ export function InviteActions({
   acceptLabel = 'Accept',
   declineLabel = 'Decline',
 }: InviteActionsProps) {
+  const { playerId } = usePulse();
+  const dmsOpen = useGameStore(s => s.dmsOpen);
+  const ownSilver = useGameStore(s => s.roster[playerId]?.silver ?? 0);
+  const noSilver = ownSilver === 0;
+
+  // Phase-level gate: if DMs are closed, neither accept nor decline can
+  // land server-side this phase. Silver-level gate is accept-only — the
+  // player can still clear the invite (decline) to tidy up, then re-engage
+  // once they've earned more. Matches DmInput's sendDisabled policy.
+  const acceptLocked = !dmsOpen || noSilver;
+  const declineLocked = !dmsOpen;
+  const lockReason = !dmsOpen && noSilver
+    ? "DMs are closed — and you're out of silver"
+    : !dmsOpen
+      ? 'DMs are closed for this phase'
+      : noSilver
+        ? "Out of silver — play today's game to earn more"
+        : null;
+
   const { pending: accepting, run: guardAccept } = useInFlight();
   const [declining, setDeclining] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -48,7 +69,7 @@ export function InviteActions({
   }, []);
 
   const startDecline = () => {
-    if (declining || accepting) return;
+    if (declining || accepting || declineLocked) return;
     setDeclining(true);
     timerRef.current = setTimeout(() => {
       onDecline();
@@ -65,52 +86,73 @@ export function InviteActions({
     return <UndoBar onCancel={cancelDecline} />;
   }
 
-  const container: React.CSSProperties = layout === 'vertical'
+  const wrapper: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 8 };
+  const row: React.CSSProperties = layout === 'vertical'
     ? { display: 'flex', flexDirection: 'column', gap: 10 }
     : { display: 'flex', gap: 8 };
 
   return (
-    <div style={container}>
-      <button
-        onClick={() => guardAccept(onAccept)}
-        disabled={accepting}
-        aria-busy={accepting}
-        style={{
-          flex: 1,
-          minHeight: 44,
-          background: 'var(--pulse-accent)',
-          color: 'var(--pulse-on-accent)',
-          border: 'none',
-          padding: '12px 16px',
-          borderRadius: 'var(--pulse-radius-md)',
-          fontSize: 14,
-          fontWeight: 800,
-          cursor: accepting ? 'wait' : 'pointer',
-          opacity: accepting ? 0.55 : 1,
-          pointerEvents: accepting ? 'none' : 'auto',
-          fontFamily: 'var(--po-font-body)',
-        }}
-      >
-        {acceptLabel}
-      </button>
-      <button
-        onClick={startDecline}
-        style={{
-          flex: 1,
-          minHeight: 44,
-          background: 'transparent',
-          color: 'var(--pulse-text-2)',
-          border: '1px solid var(--pulse-border-2)',
-          padding: '12px 16px',
-          borderRadius: 'var(--pulse-radius-md)',
-          fontSize: 14,
-          fontWeight: 700,
-          cursor: 'pointer',
-          fontFamily: 'var(--po-font-body)',
-        }}
-      >
-        {declineLabel}
-      </button>
+    <div style={wrapper}>
+      <div style={row}>
+        <button
+          onClick={() => guardAccept(onAccept)}
+          disabled={acceptLocked || accepting}
+          aria-busy={accepting}
+          aria-disabled={acceptLocked || accepting}
+          style={{
+            flex: 1,
+            minHeight: 44,
+            background: 'var(--pulse-accent)',
+            color: 'var(--pulse-on-accent)',
+            border: 'none',
+            padding: '12px 16px',
+            borderRadius: 'var(--pulse-radius-md)',
+            fontSize: 14,
+            fontWeight: 800,
+            cursor: acceptLocked ? 'not-allowed' : accepting ? 'wait' : 'pointer',
+            opacity: acceptLocked ? 0.45 : accepting ? 0.55 : 1,
+            pointerEvents: accepting ? 'none' : 'auto',
+            fontFamily: 'var(--po-font-body)',
+          }}
+        >
+          {acceptLabel}
+        </button>
+        <button
+          onClick={startDecline}
+          disabled={declineLocked}
+          aria-disabled={declineLocked}
+          style={{
+            flex: 1,
+            minHeight: 44,
+            background: 'transparent',
+            color: 'var(--pulse-text-2)',
+            border: '1px solid var(--pulse-border-2)',
+            padding: '12px 16px',
+            borderRadius: 'var(--pulse-radius-md)',
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: declineLocked ? 'not-allowed' : 'pointer',
+            opacity: declineLocked ? 0.45 : 1,
+            fontFamily: 'var(--po-font-body)',
+          }}
+        >
+          {declineLabel}
+        </button>
+      </div>
+      {lockReason && (
+        <div
+          role="status"
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: 'var(--pulse-pending)',
+            textAlign: 'center',
+            fontFamily: 'var(--po-font-body)',
+          }}
+        >
+          {lockReason}
+        </div>
+      )}
     </div>
   );
 }
