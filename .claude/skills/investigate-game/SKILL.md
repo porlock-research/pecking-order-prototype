@@ -45,7 +45,7 @@ Invite codes (e.g., `M48TJ8`) appear in **lobby logs**, not game-server logs. Ga
 
 **WARNING:** The PartyServer room ID (e.g., `game-c24fz9` — lowercase invite code with `game-` prefix) is NOT the internal game ID. Using it for Axiom queries will return zero application-level events. You MUST resolve to the real internal ID.
 
-**Do NOT waste queries on lobby HTTP logs** — they only contain URL routing (`GET /join/CODE`), not application data with game IDs.
+**Lobby HTTP logs scope:** for XState transitions, cartridge lifecycle, voting, etc., query `game-server-*` — lobby logs only carry URL routing. But for invite/join funnel work (share-link taps, login bounces, email-invite conversion), lobby HTTP logs ARE the primary dataset; cross-reference D1 (`InviteTokens`, `Invites`, `GameSessions`) for token-used state.
 
 **Efficient resolution — find the DO initialization event:**
 ```apl
