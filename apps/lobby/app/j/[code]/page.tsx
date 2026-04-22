@@ -27,7 +27,7 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
 
   if (!isAcceptingPlayers) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-skin-deep p-6">
+      <div className="min-h-dvh flex items-center justify-center bg-skin-deep px-5 py-8">
         <div className="max-w-md text-center space-y-4">
           <h1 className="font-display text-2xl font-black text-skin-dim">
             This game already started
@@ -83,7 +83,7 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
   const hasCast = players.length > 0;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-skin-deep p-6 overflow-hidden">
+    <div className="relative min-h-dvh flex items-center justify-center bg-skin-deep px-4 py-8 sm:px-6 sm:py-10 overflow-hidden">
       {/* Warm radial tint — pulls attention center, respects skin-deep palette */}
       <div
         aria-hidden
@@ -94,7 +94,7 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
         }}
       />
 
-      <div className="relative max-w-md w-full space-y-7">
+      <div className="relative w-full max-w-md space-y-7 sm:space-y-8">
         {hasCast && (
           <div className="pt-2">
             <JoinedCast players={players} assetsUrl={assetsUrl} />
@@ -107,7 +107,8 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
           </div>
           <h1
             className="font-display font-black text-skin-base leading-[0.95]"
-            style={{ fontSize: 'clamp(2rem, 7vw + 0.5rem, 3rem)' }}
+            // Fluid headline — 2rem on ~320px phones, 3.25rem on tablets+.
+            style={{ fontSize: 'clamp(2rem, 8vw + 0.25rem, 3.25rem)' }}
           >
             {hasCast ? 'You’re invited.' : 'You’re in first.'}
           </h1>
