@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getGameSessionStatus, startGame, startCCGame, sendEmailInvite, getGameInvites, sendGameEntryPush } from '../../../actions';
+import { getGameSessionStatus, startGame, sendEmailInvite, getGameInvites, sendGameEntryPush } from '../../../actions';
 import type { GameSlot, SentInvite } from '../../../actions';
 
 function personaFullUrl(id: string): string {
@@ -75,21 +75,6 @@ export default function WaitingRoom() {
     setError(null);
 
     const result = await startGame(code);
-    setIsStarting(false);
-
-    if (result.success) {
-      if (result.tokens) setTokens(result.tokens);
-      setStatus('STARTED');
-    } else {
-      setError(result.error || 'Failed to start game');
-    }
-  }
-
-  async function handleStartCC() {
-    setIsStarting(true);
-    setError(null);
-
-    const result = await startCCGame(code);
     setIsStarting(false);
 
     if (result.success) {
@@ -493,42 +478,10 @@ export default function WaitingRoom() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="space-y-3"
               >
-                {isHost && filledSlots.length >= 2 ? (
-                  <>
-                    <button
-                      onClick={handleStartCC}
-                      disabled={isStarting}
-                      className={`w-full py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all flex items-center justify-center gap-3
-                        ${isStarting
-                          ? 'bg-skin-input text-skin-dim/40 cursor-wait'
-                          : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
-                        }`}
-                    >
-                      {isStarting ? (
-                        <>
-                          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce" />
-                          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-75" />
-                          <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150" />
-                        </>
-                      ) : (
-                        <>Start Game</>
-                      )}
-                    </button>
-                    <p className="text-center text-xs text-skin-dim font-mono">
-                      {filledSlots.length} player{filledSlots.length === 1 ? '' : 's'} joined. Tap Start when ready — more can join after.
-                    </p>
-                  </>
-                ) : isHost ? (
-                  <p className="text-center text-xs text-skin-dim font-mono">
-                    Waiting for at least 2 players. Share the invite code below.
-                  </p>
-                ) : (
-                  <p className="text-center text-xs text-skin-dim font-mono">
-                    Waiting for the host to start the game.
-                  </p>
-                )}
+                <p className="text-center text-xs text-skin-dim font-mono">
+                  Share the invite code. You can enter the game while waiting for other players.
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
