@@ -1,12 +1,8 @@
 import { notFound } from 'next/navigation';
 import { getDB, getEnv } from '@/lib/db';
 import { WelcomeForm } from './welcome-form';
-import {
-  JoinedCast,
-  buildSocialLine,
-  displayLabelFor,
-  type JoinedPlayer,
-} from './joined-cast';
+import { JoinedCast } from './joined-cast';
+import { buildSocialLine, displayLabelFor, type JoinedPlayer } from './cast-helpers';
 
 interface PageProps {
   params: Promise<{ code: string }>;
