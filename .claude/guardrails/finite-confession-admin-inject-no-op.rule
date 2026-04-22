@@ -1,43 +1,37 @@
 MATCH_TOOL: Edit|Write|Bash
 MATCH_CONTENT: START_CONFESSION_CHAT
 ADVISORY: |
-  Heads up: ADMIN-mode `INJECT_TIMELINE_EVENT` with
-  `action: 'START_CONFESSION_CHAT'` returns 200 OK but the L3
-  confessionLayer does NOT transition out of `idle`. Confirmed on
-  staging 2026-04-21 with two separate STATIC/ADMIN games (TYC2ZF,
-  DSMHCR). Symptoms after the inject:
-    - groupChatOpen stays `true` (the `openConfessionChannel` action
-      that closes group chat would have run if the layer transitioned)
-    - No `CONFESSION_PHASE_STARTED` fact in D1 GameJournal
-    - No `SOCIAL_PHASE` ticker entry / no narrator line in chat
-    - No `confessionPhase.active === true` in SYNC payload
+  ROOT CAUSE FOUND 2026-04-21 via INSPECT.SUBSCRIBE (see
+  reference_schedule_preset_required memory):
 
-  L2 guards in l2-orchestrator.ts ADMIN.INJECT_TIMELINE_EVENT do NOT
-  explain the no-op:
-    - `ruleset-disabled` guard: skipped because enabled IS true
-    - `insufficient-players` guard: skipped because alive=5 (>= 2)
-    - default branch sends INTERNAL.START_CONFESSION_CHAT to l3-session
-      via sendTo — that path is what's not landing the layer in `posting`
+  The symptom ("START_CONFESSION_CHAT inject returns OK but confessionLayer
+  stays in idle") is caused by L2 being frozen in
+  `dayLoop.activeSession.waitingForChild` because the DYNAMIC manifest was
+  created without `schedulePreset`. `generateDayTimeline(undefined, …)`
+  throws in `timeline-presets.ts:219` (`PRESET_CONFIGS[undefined].type`),
+  the spawned game-master actor crashes, L2 has no onError handler, so L2
+  enters a degraded state where events still arrive but state transitions
+  silently no-op — including the confession transition. `/init` does NOT
+  validate the manifest with Zod, so the missing field is accepted raw.
 
-  Hypothesis (UNVERIFIED — open to disproof): some precondition in L3's
-  confessionLayer or its enclosing parallel region that the alarm-driven
-  path satisfies but ADMIN injection does not. Possibly:
-    - Layer is conditionally added to the parallel state set based on
-      manifest fields beyond `ruleset.confessions.enabled`
-    - Idle state has a silent guard on context (channels.MAIN, dmsOpen,
-      first-day flag, etc.)
-    - The `playtest` SMOKE_TEST preset (which DOES surface confessions
-      in normal play) drives START_CONFESSION_CHAT through the timeline
-      alarm pipeline, not via ADMIN.INJECT_TIMELINE_EVENT
+  The earlier guardrail hypothesis ("sendTo to l3-session silently drops")
+  was wrong — `sendTo` does resolve and `INTERNAL.START_CONFESSION_CHAT` is
+  visible in L3's event stream. It's L2 that's frozen, not the child
+  registry.
 
-  When debugging:
-    1. Hit INSPECT.SUBSCRIBE via WS to confirm INTERNAL.START_CONFESSION_CHAT
-       actually arrives at l3-session
-    2. Walk l3-session.ts confessionLayer (~line 347) for conditional
-       state inclusion or transition guards
-    3. Diff the L3 snapshot against a working alarm-driven game
+  Fix when creating games via test scripts / lobby / curl:
+    Always include `schedulePreset: 'SMOKE_TEST' | 'DEFAULT' | ...` on
+    DYNAMIC manifests, even ADMIN-scheduled ones. For ADMIN the preset
+    only shapes the cosmetic timeline — alarms never fire — but it must
+    be defined or GM crashes.
 
-  Demo workaround: skip START_CONFESSION_CHAT in ADMIN mode. Use
-  SMOKE_TEST/SPEED_RUN scheduling if confessions must be visible.
+  If the symptom recurs despite `schedulePreset` being set, subscribe
+  INSPECT.SUBSCRIBE and look for `xstate.error.actor.game-master` as the
+  actual diagnostic signal. Whatever triggers that error wedges L2.
 
-  This is NOT caused by ADR-143 pregame work — pre-existing behavior.
+  Framework debt worth paying down when touching this code:
+    1. Validate with GameManifestSchema.safeParse() in handleInit.
+    2. DynamicManifestSchema.schedulePreset: add .default('DEFAULT').
+    3. Add onError to the game-master spawn in l2-orchestrator.ts.
+
+  This is NOT caused by ADR-143 pregame work.

@@ -334,7 +334,7 @@ export const DynamicManifestSchema = z.object({
   scheduling: SchedulingStrategySchema.default('PRE_SCHEDULED'),
   startTime: z.string(), // ISO 8601 — when Day 1 begins
   ruleset: GameRulesetSchema,
-  schedulePreset: SchedulePresetSchema,
+  schedulePreset: SchedulePresetSchema.default('DEFAULT'),
   maxPlayers: z.number().optional(),
   minPlayers: z.number().min(2).default(3),
   days: z.array(DailyManifestSchema),
