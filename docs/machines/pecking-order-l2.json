@@ -4,7 +4,7 @@
   "filePath": "src/machines/l2-orchestrator.ts",
   "stats": {
     "stateCount": 10,
-    "transitionCount": 48,
+    "transitionCount": 50,
     "eventTypes": [
       "*",
       "ADMIN.ELIMINATE_PLAYER",
@@ -29,7 +29,8 @@
       "SYSTEM.INIT",
       "SYSTEM.PLAYER_JOINED",
       "SYSTEM.WAKEUP",
-      "xstate.done.actor.l3-session"
+      "xstate.done.actor.l3-session",
+      "xstate.error.actor.game-master"
     ],
     "hasParallelRegions": false,
     "hasFinalState": true
@@ -152,6 +153,11 @@
   ],
   "transitions": [
     {
+      "source": "pecking-order-l2",
+      "target": "pecking-order-l2",
+      "event": "xstate.error.actor.game-master"
+    },
+    {
       "source": "uninitialized",
       "target": "preGame",
       "event": "SYSTEM.INIT"
@@ -175,6 +181,11 @@
       "source": "preGame",
       "target": "preGame",
       "event": "FACT.RECORD"
+    },
+    {
+      "source": "preGame",
+      "target": "preGame",
+      "event": "*"
     },
     {
       "source": "preGame",
