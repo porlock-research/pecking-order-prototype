@@ -828,6 +828,131 @@ export async function startGame(
   }
 }
 
+// ── CC Start (host-triggered, doesn't require all slots filled) ─────────
+
+/**
+ * Flip a CC game to STARTED and mint tokens for everyone who's accepted
+ * an invite so far. Unlike startGame(), does NOT require all slots full —
+ * CC games accept new joiners after the game has started.
+ *
+ * Assumes the DO was auto-init'd at game-create time (see Task 1's
+ * createGame branch). If for some reason the DO is still uninitialized,
+ * the WebSocket reject path (Task 5) will kick in for any joiner; the
+ * admin can recover via OverviewTab's Init action.
+ */
+export async function startCCGame(
+  inviteCode: string,
+): Promise<{ success: boolean; error?: string; tokens?: Record<string, string> }> {
+  const session = await requireAuth();
+  const db = await getDB();
+  const env = await getEnv();
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+
+  const game = await db
+    .prepare('SELECT * FROM GameSessions WHERE invite_code = ?')
+    .bind(inviteCode.toUpperCase())
+    .first<{ id: string; host_user_id: string; mode: string; status: string; day_count: number }>();
+
+  if (!game) return { success: false, error: 'Game not found' };
+  if (game.mode !== 'CONFIGURABLE_CYCLE') {
+    return { success: false, error: 'Only CC games use startCCGame' };
+  }
+  if (game.host_user_id !== session.userId) {
+    return { success: false, error: 'Only the host can start the game' };
+  }
+  if (game.status === 'STARTED') {
+    return { success: false, error: 'Game already started' };
+  }
+  if (game.status !== 'RECRUITING' && game.status !== 'READY') {
+    return { success: false, error: `Invalid status ${game.status}` };
+  }
+
+  // Mint tokens for every accepted invite. CC uses slot_index directly as
+  // the playerId — matches refresh-token's CC branch and the lobby's
+  // 1-indexed slot creation.
+  const { results: invites } = await db
+    .prepare(
+      `SELECT i.slot_index, i.accepted_by, pp.name as persona_name
+       FROM Invites i LEFT JOIN PersonaPool pp ON pp.id = i.persona_id
+       WHERE i.game_id = ? AND i.accepted_by IS NOT NULL
+       ORDER BY i.slot_index`,
+    )
+    .bind(game.id)
+    .all<{ slot_index: number; accepted_by: string; persona_name: string | null }>();
+
+  const tokens: Record<string, string> = {};
+  const tokenExpiry = `${(game.day_count || 7) * 2 + 7}d`;
+  for (const inv of invites) {
+    const pid = `p${inv.slot_index}`;
+    tokens[pid] = await signGameToken(
+      {
+        sub: inv.accepted_by,
+        gameId: game.id,
+        playerId: pid,
+        personaName: inv.persona_name || 'Unknown',
+      },
+      AUTH_SECRET,
+      tokenExpiry,
+    );
+  }
+
+  await db
+    .prepare("UPDATE GameSessions SET status = 'STARTED' WHERE id = ?")
+    .bind(game.id)
+    .run();
+
+  return { success: true, tokens };
+}
+
+/**
+ * Manually re-init a CC game's DO using the same DYNAMIC/ADMIN default
+ * payload as createGame's no-config branch. For admin recovery only —
+ * the DO is normally auto-init'd at game-create time.
+ */
+export async function adminInitGame(
+  gameId: string,
+): Promise<{ success: boolean; error?: string }> {
+  await requireSuperAdmin();
+  const db = await getDB();
+  const env = await getEnv();
+  const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
+  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+
+  const game = await db
+    .prepare('SELECT id, invite_code, player_count FROM GameSessions WHERE id = ?')
+    .bind(gameId)
+    .first<{ id: string; invite_code: string; player_count: number }>();
+
+  if (!game) return { success: false, error: 'Game not found' };
+
+  try {
+    const payload = buildCCDefaultInitPayload({
+      gameId: game.id,
+      inviteCode: game.invite_code,
+      playerCount: game.player_count,
+      now: Date.now(),
+    });
+    const validated = InitPayloadSchema.parse(payload);
+    const res = await fetch(`${GAME_SERVER_HOST}/parties/game-server/${game.id}/init`, {
+      method: 'POST',
+      body: JSON.stringify(validated),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${AUTH_SECRET}`,
+      },
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { success: false, error: `Server ${res.status}: ${text}` };
+    }
+    res.body?.cancel();
+    return { success: true };
+  } catch (err: any) {
+    console.error('[Lobby] adminInitGame failed:', err);
+    return { success: false, error: err.message || 'init failed' };
+  }
+}
+
 // ── Debug: Quick Start (replaces old startGameStub) ──────────────────────
 
 export async function startDebugGame(
