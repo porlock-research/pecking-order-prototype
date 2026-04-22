@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import { PaperPlaneTilt } from '../../icons';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { usePulse } from '../../PulseShell';
 import { useGameStore } from '../../../../store/useGameStore';
 import { useCommandBuilder } from '../../hooks/useCommandBuilder';
 import { useInFlight } from '../../hooks/useInFlight';
-import { PULSE_TAP } from '../../springs';
 import { PULSE_Z } from '../../zIndex';
 import { runViewTransition, supportsViewTransitions, prefersReducedMotion } from '../../viewTransitions';
 import { HintChips } from './HintChips';
@@ -17,6 +16,7 @@ import { CommandPreview } from './CommandPreview';
 import { WhisperMode } from './WhisperMode';
 import { ReplyBar } from './ReplyBar';
 import { MentionAutocomplete } from './MentionAutocomplete';
+import { SendButton } from './SendButton';
 import { DayPhases } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 
@@ -288,7 +288,7 @@ export function PulseInput() {
               style={{
                 flex: 1,
                 padding: 'var(--pulse-space-md) var(--pulse-space-lg)',
-                borderRadius: 12,
+                borderRadius: 'var(--pulse-radius-md)',
                 background: 'var(--pulse-surface-2)',
                 border: '1px solid var(--pulse-border)',
                 color: 'var(--pulse-text-1)',
@@ -300,30 +300,16 @@ export function PulseInput() {
               }}
             />
             {text.trim() && (
-              <motion.button
-                whileTap={PULSE_TAP.button}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: sending ? 0.55 : 1 }}
+              <SendButton
+                variant="accent"
+                shape="icon"
                 onClick={handleSend}
-                disabled={sending}
-                aria-label="Send message"
-                aria-busy={sending}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'var(--pulse-accent)',
-                  border: 'none',
-                  cursor: sending ? 'wait' : 'pointer',
-                  color: 'var(--pulse-on-accent)',
-                  pointerEvents: sending ? 'none' : 'auto',
-                }}
+                pending={sending}
+                ariaLabel="Send message"
+                animateIn
               >
                 <PaperPlaneTilt size={18} weight="fill" />
-              </motion.button>
+              </SendButton>
             )}
           </div>
         </div>
@@ -340,23 +326,22 @@ export function PulseInput() {
             placeholder="Reply..."
             autoFocus
             style={{
-              flex: 1, padding: 'var(--pulse-space-md) var(--pulse-space-lg)', borderRadius: 12,
+              flex: 1, padding: 'var(--pulse-space-md) var(--pulse-space-lg)', borderRadius: 'var(--pulse-radius-md)',
               background: 'var(--pulse-surface-2)', border: '1px solid var(--pulse-border)',
               color: 'var(--pulse-text-1)', fontSize: 14, fontFamily: 'var(--po-font-body)', outline: 'none',
             }}
           />
-          <motion.button whileTap={PULSE_TAP.button} onClick={handleSend} disabled={!text.trim() || sending}
-            aria-label="Send reply"
-            aria-busy={sending}
-            style={{
-              width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: text.trim() ? 'var(--pulse-accent)' : 'var(--pulse-surface-2)',
-              border: 'none', cursor: sending ? 'wait' : text.trim() ? 'pointer' : 'default', color: 'var(--pulse-on-accent)',
-              opacity: sending ? 0.55 : 1,
-              pointerEvents: sending ? 'none' : 'auto',
-            }}>
+          <SendButton
+            variant="accent"
+            shape="icon"
+            onClick={handleSend}
+            disabled={!text.trim()}
+            pending={sending}
+            ariaLabel="Send reply"
+            style={!text.trim() ? { background: 'var(--pulse-surface-2)' } : undefined}
+          >
             <PaperPlaneTilt size={18} weight="fill" />
-          </motion.button>
+          </SendButton>
         </div>
       )}
     </div>

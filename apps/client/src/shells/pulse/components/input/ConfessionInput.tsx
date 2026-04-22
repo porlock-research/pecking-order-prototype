@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useImperativeHandle, useRef, forwardRef } from 'react';
 import { Config } from '@pecking-order/shared-types';
 import { useInFlight } from '../../hooks/useInFlight';
+import { SendButton } from './SendButton';
 
 const MAX = Config.confession.maxConfessionLength;
 
@@ -48,7 +49,9 @@ export const ConfessionInput = forwardRef<ConfessionInputHandle, ConfessionInput
   const trimmed = text.trim();
   const tooLong = text.length > MAX;
   const empty = trimmed.length === 0;
-  const canSend = !tooLong && !empty && myHandle !== null && !sending;
+  // Intent-level enablement. The in-flight cooldown is a separate concern
+  // handled by SendButton's `pending` prop + `guard()` in handleSend.
+  const canSend = !tooLong && !empty && myHandle !== null;
 
   useImperativeHandle(ref, () => ({
     tagSourceForMorph: () => {
@@ -130,16 +133,18 @@ export const ConfessionInput = forwardRef<ConfessionInputHandle, ConfessionInput
         <span style={tooLong ? boothStyle.countOver : boothStyle.count}>
           {`${text.length} / ${MAX}`}
         </span>
-        <button
-          type="button"
+        <SendButton
+          variant="confession"
+          shape="pill"
           onClick={handleSend}
           disabled={!canSend}
-          style={canSend ? boothStyle.sendBtn : boothStyle.sendBtnDisabled}
-          aria-label="GO ON AIR"
+          pending={sending}
+          ariaLabel="GO ON AIR"
+          style={boothStyle.sendBtnShape}
         >
           <span style={boothStyle.sendDot} />
           GO ON AIR
-        </button>
+        </SendButton>
       </div>
 
       <div style={boothStyle.rules}>
@@ -295,7 +300,7 @@ const boothStyle = {
       'radial-gradient(ellipse 90% 75% at 50% 0%, rgba(249,169,74,0.08), transparent 70%),' +
       '#110d17',
     border: '1px solid var(--pulse-border-2)',
-    borderRadius: 10,
+    borderRadius: 'var(--pulse-radius-sm)',
     padding: '14px 16px 12px',
     position: 'relative',
     minHeight: 110,
@@ -347,39 +352,18 @@ const boothStyle = {
     color: 'var(--pulse-text-1)',
     fontWeight: 700,
   },
-  sendBtn: {
+  // Shape/typography overrides layered onto SendButton's `confession` variant.
+  // SendButton owns bg/color/border/shadow/opacity; this style only carries
+  // the booth's type personality (Outfit, tracked-out uppercase) and the
+  // tighter 9px vertical padding.
+  sendBtnShape: {
     fontFamily: 'Outfit, sans-serif',
     fontWeight: 800,
     fontSize: 11,
     letterSpacing: '0.22em',
     padding: '9px 16px',
-    borderRadius: 6,
-    border: '1px solid #ff2a3d',
-    background: 'linear-gradient(180deg, #ff2a3d, #d01f2f)',
-    color: '#fff',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    cursor: 'pointer',
-    boxShadow: '0 10px 24px rgba(255,42,61,0.32), inset 0 1px 0 rgba(255,255,255,0.18)',
+    borderRadius: 'var(--pulse-radius-xs)',
     textTransform: 'uppercase',
-  },
-  sendBtnDisabled: {
-    fontFamily: 'Outfit, sans-serif',
-    fontWeight: 800,
-    fontSize: 11,
-    letterSpacing: '0.22em',
-    padding: '9px 16px',
-    borderRadius: 6,
-    border: '1px solid var(--pulse-border-2)',
-    background: 'var(--pulse-surface-2)',
-    color: 'var(--pulse-text-3)',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    cursor: 'not-allowed',
-    textTransform: 'uppercase',
-    opacity: 0.6,
   },
   sendDot: {
     width: 7,

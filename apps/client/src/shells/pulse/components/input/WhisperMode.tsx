@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Lock, X, PaperPlaneTilt } from '../../icons';
-import { motion } from 'framer-motion';
-import { PULSE_TAP } from '../../springs';
 import type { SocialPlayer } from '@pecking-order/shared-types';
+import { SendButton } from './SendButton';
 
 interface WhisperModeProps {
   player: SocialPlayer;
@@ -39,7 +38,7 @@ export function WhisperMode({ player, playerId, onSend, onCancel, sending = fals
         style={{
           flex: 1,
           padding: '8px 12px',
-          borderRadius: 10,
+          borderRadius: 'var(--pulse-radius-sm)',
           background: 'rgba(155, 89, 182, 0.08)',
           border: '1px solid rgba(155, 89, 182, 0.3)',
           color: 'var(--pulse-text-1)',
@@ -49,24 +48,17 @@ export function WhisperMode({ player, playerId, onSend, onCancel, sending = fals
         }}
       />
 
-      <motion.button
-        whileTap={PULSE_TAP.button}
+      <SendButton
+        variant="whisper"
+        shape="icon"
         onClick={handleSubmit}
-        disabled={!text.trim() || sending}
-        aria-label="Send whisper"
-        aria-busy={sending}
-        style={{
-          width: 44, height: 44, borderRadius: '50%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: text.trim() ? 'var(--pulse-whisper)' : 'var(--pulse-surface-2)',
-          border: 'none', cursor: sending ? 'wait' : text.trim() ? 'pointer' : 'default',
-          color: 'var(--pulse-on-accent)',
-          opacity: sending ? 0.55 : 1,
-          pointerEvents: sending ? 'none' : 'auto',
-        }}
+        disabled={!text.trim()}
+        pending={sending}
+        ariaLabel="Send whisper"
+        style={!text.trim() ? { background: 'var(--pulse-surface-2)' } : undefined}
       >
         <PaperPlaneTilt size={18} weight="fill" />
-      </motion.button>
+      </SendButton>
 
       <button
         onClick={onCancel}
@@ -76,7 +68,7 @@ export function WhisperMode({ player, playerId, onSend, onCancel, sending = fals
           background: 'none', border: 'none', cursor: 'pointer',
           color: 'var(--pulse-text-3)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          borderRadius: 8,
+          borderRadius: 'var(--pulse-radius-sm)',
         }}
       >
         <X size={16} weight="bold" />

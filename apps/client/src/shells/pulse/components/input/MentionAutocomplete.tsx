@@ -38,7 +38,7 @@ export function MentionAutocomplete({ query, onSelect, excludeId }: MentionAutoc
         marginBottom: 4,
         background: 'var(--pulse-surface-3)',
         border: '1px solid var(--pulse-border)',
-        borderRadius: 14,
+        borderRadius: 'var(--pulse-radius-md)',
         boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
         overflow: 'hidden',
         zIndex: PULSE_Z.popup,
@@ -73,7 +73,7 @@ export function MentionAutocomplete({ query, onSelect, excludeId }: MentionAutoc
               loading="lazy"
               width={28}
               height={28}
-              style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover', objectPosition: 'center top', flexShrink: 0 }}
+              style={{ width: 28, height: 28, borderRadius: 'var(--pulse-radius-sm)', objectFit: 'cover', objectPosition: 'center top', flexShrink: 0 }}
             />
             <span style={{ fontSize: 14, fontWeight: 700, color }}>{p.personaName}</span>
           </button>

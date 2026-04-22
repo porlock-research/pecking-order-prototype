@@ -39,7 +39,7 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
               {isPending && (
                 <span style={{
                   position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
-                  padding: '2px 8px', borderRadius: 9,
+                  padding: '2px 8px', borderRadius: 'var(--pulse-radius-sm)',
                   background: 'rgba(20,20,26,0.8)', color: 'var(--pulse-text-2)',
                   fontSize: 9, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase',
                   border: '1px solid rgba(255,255,255,0.15)',
@@ -52,7 +52,7 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
 
       <button onClick={onClose} aria-label="Close group DM" style={{
         position: 'absolute', top: 10, left: 10,
-        width: 44, height: 44, borderRadius: 22,
+        width: 44, height: 44, borderRadius: '50%',
         background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
         border: '1px solid rgba(255,255,255,0.12)', color: 'var(--pulse-on-accent)',
         cursor: 'pointer', padding: 0,
@@ -68,7 +68,7 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
           style={{
             position: 'absolute', top: 10, right: 10,
             display: 'flex', alignItems: 'center', gap: 4,
-            padding: '8px 12px', borderRadius: 14,
+            padding: '8px 12px', borderRadius: 'var(--pulse-radius-md)',
             background: 'rgba(20,20,26,0.55)', backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255,255,255,0.12)',
             color: 'var(--pulse-on-accent)', cursor: 'pointer',
@@ -111,7 +111,7 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
             return (
               <span key={m.id} style={{
                 background: `${color}33`, color,
-                padding: '3px 8px', borderRadius: 8, fontSize: 10, fontWeight: 700,
+                padding: '3px 8px', borderRadius: 'var(--pulse-radius-sm)', fontSize: 10, fontWeight: 700,
               }}>{m.player.personaName.split(' ')[0]}</span>
             );
           })}
@@ -120,7 +120,7 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
             return (
               <span key={`pending-${m.id}`} style={{
                 background: 'rgba(20,20,26,0.55)', color: 'rgba(255,255,255,0.6)',
-                padding: '3px 8px', borderRadius: 8, fontSize: 10, fontWeight: 700,
+                padding: '3px 8px', borderRadius: 'var(--pulse-radius-sm)', fontSize: 10, fontWeight: 700,
                 border: `1px dashed ${color}66`,
               }}>{m.player.personaName.split(' ')[0]} · pending</span>
             );

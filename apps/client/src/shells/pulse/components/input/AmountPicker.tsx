@@ -29,7 +29,7 @@ export function AmountPicker({ player, playerId, onSelect, onBack }: AmountPicke
             background: 'none', border: 'none', cursor: 'pointer',
             color: 'var(--pulse-text-2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 8,
+            borderRadius: 'var(--pulse-radius-sm)',
           }}
         >
           <ArrowLeft size={20} weight="bold" />
@@ -51,7 +51,7 @@ export function AmountPicker({ player, playerId, onSelect, onBack }: AmountPicke
             aria-label={`Send ${a} silver`}
             style={{
               padding: '12px 20px',
-              borderRadius: 12,
+              borderRadius: 'var(--pulse-radius-md)',
               fontSize: 18,
               fontWeight: 700,
               fontFamily: 'var(--po-font-body)',

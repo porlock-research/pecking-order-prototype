@@ -57,7 +57,7 @@ export function ReplyBar({ message, onCancel }: ReplyBarProps) {
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          borderRadius: 8,
+          borderRadius: 'var(--pulse-radius-sm)',
         }}
       >
         <X size={14} weight="bold" />

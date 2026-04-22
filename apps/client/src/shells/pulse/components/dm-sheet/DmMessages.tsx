@@ -56,7 +56,7 @@ export function DmMessages({ channelId, isGroup = false }: Props) {
               background: isSelf ? 'color-mix(in oklch, var(--pulse-accent) 10%, transparent)' : 'transparent',
               border: isSelf ? '1px solid color-mix(in oklch, var(--pulse-accent) 20%, transparent)' : 'none',
               padding: isSelf ? '8px 12px' : 0,
-              borderRadius: isSelf ? 14 : 0,
+              borderRadius: isSelf ? 'var(--pulse-radius-md)' : 0,
               maxWidth: '85%',
             }}>{m.content}</div>
           </div>

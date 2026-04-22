@@ -7,6 +7,7 @@ import { HintChips } from '../input/HintChips';
 import { SilverPip } from '../common/SilverPip';
 import type { Command } from '../../hooks/useCommandBuilder';
 import { useInFlight } from '../../hooks/useInFlight';
+import { SendButton } from '../input/SendButton';
 
 interface Props {
   channelId: string | null;
@@ -112,7 +113,7 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
       <div style={{ padding: '8px 12px' }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          background: 'var(--pulse-bg)', borderRadius: 20, padding: '6px 8px 6px 14px',
+          background: 'var(--pulse-bg)', borderRadius: 'var(--pulse-radius-xl)', padding: '6px 8px 6px 14px',
           opacity: disabled || !dmsOpen ? 0.55 : 1,
         }}>
           <input
@@ -127,18 +128,17 @@ export function DmInput({ channelId, recipientIds, placeholderName, disabled }: 
               color: 'var(--pulse-text-1)', fontSize: 14, fontFamily: 'inherit',
             }}
           />
-          <button
+          <SendButton
+            variant="accent"
+            shape="pill"
             onClick={submit}
-            disabled={sendDisabled || !text.trim() || sending}
-            aria-busy={sending}
-            style={{
-              background: 'var(--pulse-accent)', color: 'var(--pulse-on-accent)',
-              border: 'none', borderRadius: 16, padding: '6px 14px',
-              fontWeight: 700, cursor: sending ? 'wait' : 'pointer',
-              opacity: (sendDisabled || !text.trim()) ? 0.5 : sending ? 0.55 : 1,
-              pointerEvents: sending ? 'none' : 'auto',
-            }}
-          >Send</button>
+            disabled={sendDisabled || !text.trim()}
+            pending={sending}
+            ariaLabel="Send DM"
+            style={{ padding: '6px 14px', borderRadius: 'var(--pulse-radius-lg)' }}
+          >
+            Send
+          </SendButton>
         </div>
       </div>
     </div>
