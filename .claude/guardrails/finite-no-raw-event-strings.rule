@@ -1,24 +1,8 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: (apps|packages)/.+\.(ts|tsx)$
-MATCH_CONTENT: ['"](SYSTEM|SOCIAL|INTERNAL|CARTRIDGE|ADMIN|FACT|PRESENCE|TICKER|REJECTION)\.[A-Z_]+['"]
+MATCH_CONTENT: (===\s*['"](SYSTEM|SOCIAL|INTERNAL|CARTRIDGE|ADMIN|FACT|PRESENCE|TICKER|REJECTION)\.|type:\s*['"](SYSTEM|SOCIAL|INTERNAL|CARTRIDGE|ADMIN|FACT|PRESENCE|TICKER|REJECTION)\.|\[\s*['"](SYSTEM|SOCIAL|INTERNAL|CARTRIDGE|ADMIN|FACT|PRESENCE|TICKER|REJECTION)\.)
 ADVISORY: |
-  (Skip if editing packages/shared-types/src/events.ts — the source of truth
-  — or a test snapshot where the string form is intentionally asserted.)
-
-  Raw event-namespace string literal detected in the proposed edit.
-  Pecking Order convention forbids raw strings for event types — import
-  constants from `packages/shared-types/src/events.ts` instead.
-
-  Wrong:
-    if (type === 'SOCIAL.SEND_MSG') { ... }
-    sendParent({ type: 'INTERNAL.READY' });
-    const allowed = ['SYSTEM.SYNC', 'SOCIAL.SEND_MSG'];
-
-  Right:
-    import { Events } from '@pecking-order/shared-types';
-    if (type === Events.Social.SEND_MSG) { ... }
-    sendParent({ type: Events.Internal.READY });
-    const allowed = [Events.System.SYNC, Events.Social.SEND_MSG];
-
-  Applies to XState machines, WS handlers, allowlists, and client code.
-  Source of truth: packages/shared-types/src/events.ts (Events namespace).
+  Raw event-namespace string literal in non-definition position. Import
+  `Events` from `@pecking-order/shared-types` instead — e.g.
+  `Events.Social.SEND_MSG`, not `'SOCIAL.SEND_MSG'`.
+  Source of truth: packages/shared-types/src/events.ts.

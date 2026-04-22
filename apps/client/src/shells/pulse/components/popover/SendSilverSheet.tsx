@@ -6,6 +6,7 @@ import { usePulse } from '../../PulseShell';
 import { getPlayerColor } from '../../colors';
 import { PULSE_SPRING, PULSE_TAP } from '../../springs';
 import { PULSE_Z, backdropFor } from '../../zIndex';
+import { PersonaImage, initialsOf } from '../common/PersonaImage';
 
 const AMOUNTS = [5, 10, 25, 50];
 
@@ -76,12 +77,14 @@ export function SendSilverSheet({ targetId, onClose }: SendSilverSheetProps) {
 
         {/* Recipient */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-          <img
-            src={target?.avatarUrl}
+          <PersonaImage
+            avatarUrl={target?.avatarUrl}
+            cacheKey={targetId}
+            preferredVariant="medium"
+            fallbackChain={['headshot', 'full']}
+            initials={initialsOf(target?.personaName ?? '')}
+            playerColor={getPlayerColor(playerIndex)}
             alt=""
-            loading="lazy"
-            width={64}
-            height={64}
             style={{ width: 64, height: 64, borderRadius: 16, objectFit: 'cover' }}
           />
           <div style={{ fontWeight: 700, fontSize: 16, color: getPlayerColor(playerIndex), fontFamily: 'var(--po-font-body)' }}>

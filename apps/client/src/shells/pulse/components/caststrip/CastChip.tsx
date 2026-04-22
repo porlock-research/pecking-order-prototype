@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import type { CastStripEntry } from '../../../../store/useGameStore';
 import { useGameStore, selectChipSlotStatus } from '../../../../store/useGameStore';
 import { getPlayerColor } from '../../colors';
-import { resolveAvatarUrl } from '../../../../utils/personaImage';
+import { PersonaImage, initialsOf } from '../common/PersonaImage';
 import { HandWaving } from '../../icons';
 import { PULSE_TAP } from '../../springs';
 
@@ -40,7 +40,6 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
 
   const colorIdx = useMemo(() => Object.keys(roster).indexOf(entry.id), [roster, entry.id]);
   const color = getPlayerColor(colorIdx);
-  const avatar = resolveAvatarUrl(player?.avatarUrl);
 
   const isSelf = entry.kind === 'self';
   // Offline chips stay mostly visible — faces are the visual interest
@@ -247,7 +246,18 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
             : undefined,
         }}
       >
-        {avatar && <img src={avatar} alt="" loading="lazy" width={72} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+        {player && (
+          <PersonaImage
+            avatarUrl={player.avatarUrl}
+            cacheKey={entry.id}
+            preferredVariant="full"
+            fallbackChain={['medium', 'headshot']}
+            initials={initialsOf(player.personaName)}
+            playerColor={color}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        )}
         <div style={{
           position: 'absolute', left: 0, right: 0, bottom: 0,
           padding: 'var(--pulse-space-md) var(--pulse-space-xs) var(--pulse-space-2xs)',

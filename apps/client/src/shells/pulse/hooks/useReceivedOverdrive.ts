@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../../../store/useGameStore';
 import { TickerCategories } from '@pecking-order/shared-types';
-import { resolveAvatarUrl } from '../../../utils/personaImage';
+import { resolvePersonaVariant } from '../../../utils/personaImage';
 
 /**
  * Recipient overdrive — dispatches the existing `pulse:silver-burst` /
@@ -114,7 +114,7 @@ export function useReceivedOverdrive() {
           kind: 'silver',
           amount: s.amount,
           fromName: roster[s.senderId]?.personaName ?? 'someone',
-          senderAvatarUrl: resolveAvatarUrl(roster[s.senderId]?.avatarUrl),
+          senderAvatarUrl: resolvePersonaVariant(roster[s.senderId]?.avatarUrl, 'full'),
           senderIds: [s.senderId],
           keys: [`silver:${s.senderId}:${s.ts}`],
         });
@@ -135,7 +135,7 @@ export function useReceivedOverdrive() {
         bursts.push({
           kind: 'nudge',
           fromName: roster[n.senderId]?.personaName ?? 'someone',
-          senderAvatarUrl: resolveAvatarUrl(roster[n.senderId]?.avatarUrl),
+          senderAvatarUrl: resolvePersonaVariant(roster[n.senderId]?.avatarUrl, 'full'),
           senderIds: [n.senderId],
           keys: [`nudge:${n.senderId}:${n.ts}`],
         });

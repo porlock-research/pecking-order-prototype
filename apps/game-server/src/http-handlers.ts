@@ -1,7 +1,7 @@
 import type { ActorRefFrom } from "xstate";
 import type { Scheduler } from "partywhen";
 import type { orchestratorMachine } from "./machines/l2-orchestrator";
-import { Events, FactTypes } from "@pecking-order/shared-types";
+import { Events, FactTypes, GameManifestSchema } from "@pecking-order/shared-types";
 import { readGoldBalances, insertGameAndPlayers, getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { sendPushNotification } from "./push-send";
 import { log } from "./log";
@@ -83,6 +83,26 @@ async function handleInit(ctx: HandlerContext, req: Request, url: URL): Promise<
     const json = await req.json() as any;
     const pathParts = url.pathname.split('/');
     const gameId = pathParts[pathParts.length - 2];
+
+    // Validate manifest before handing it to the actor. Without this, invalid
+    // manifests (e.g. missing schedulePreset on a DYNAMIC manifest) create
+    // zombie DOs: /init returns 200, but the Game Master crashes on
+    // resolveDay and L2 silently wedges in waitingForChild. Return 400 with
+    // the Zod error so the caller knows what's wrong.
+    const manifestParse = GameManifestSchema.safeParse(json.manifest);
+    if (!manifestParse.success) {
+      log('warn', 'L1', 'POST /init rejected: invalid manifest', {
+        gameId,
+        issues: manifestParse.error.issues.map((i) => ({ path: i.path.join('.'), code: i.code, message: i.message })),
+      });
+      return new Response(
+        JSON.stringify({ status: 'INVALID_MANIFEST', issues: manifestParse.error.issues }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    // Use the parsed manifest so Zod defaults (e.g. schedulePreset: 'DEFAULT')
+    // are applied before the actor sees it.
+    json.manifest = manifestParse.data;
 
     // Enrich roster with persistent gold from D1
     const realUserIds = Object.values(json.roster || {}).map((p: any) => p.realUserId).filter(Boolean);

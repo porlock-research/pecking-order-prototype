@@ -29,8 +29,8 @@ export function DmGroupHero({ members, pendingMembers = [], channelId, onClose }
               <PersonaImage
                 avatarUrl={m.player.avatarUrl}
                 cacheKey={m.id}
-                preferredVariant="headshot"
-                fallbackChain={['headshot']}
+                preferredVariant="full"
+                fallbackChain={['medium', 'headshot']}
                 initials={initialsOf(m.player.personaName)}
                 playerColor={getPlayerColor(m.colorIdx)}
                 alt={m.player.personaName}

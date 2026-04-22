@@ -21,7 +21,8 @@ interface Props {
 
 export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, onClose }: Props) {
   const color = getPlayerColor(colorIdx);
-  const [variant, setVariant] = useState<'headshot' | 'medium' | 'full'>('headshot');
+  // Default `medium`: the hero is landscape-aspect, so `full` cover-crops to torso and hides the face.
+  const [variant, setVariant] = useState<'headshot' | 'medium' | 'full'>('medium');
   const [waveToken, setWaveToken] = useState(0);
   const canAdd = useGameStore(s => channelId ? selectCanAddMemberTo(s, channelId) : false);
   const startAddMember = useGameStore(s => s.startAddMember);

@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write|Agent
 MATCH_PATTERN: (arcade.*spec|arcade.*design|arcade.*plan|new.*game.*cartridge|batch.*arcade|shared-types/src/(index\.ts|config\.ts|game-type-info\.ts|cycle-defaults\.ts)|game-cartridges/src/machines/(index\.ts|[a-z-]+\.ts)|GameDevHarness\.tsx)
+MATCH_CONTENT: (GameTypeSchema|GAME_TYPE_INFO|GAME_POOL|GAME_REGISTRY|GAME_COMPONENTS|GAME_STAT_CONFIG|GAME_DEFS|ARCADE_TYPES|LIVE_GAMES|ClientEvent|GameType\s*=)
 ADVISORY: |
   Adding or reviewing a new arcade game cartridge — verify ALL 10 integration
   touchpoints are addressed. Easy to forget the client-side ones because the

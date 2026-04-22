@@ -1,26 +1,18 @@
----
-trigger: file_edit
-glob: apps/client/src/shells/*/hooks/*.ts,apps/client/src/store/useGameStore.ts
----
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/client/src/(shells/[^/]+/hooks/.+\.ts|store/useGameStore\.ts)$
+MATCH_CONTENT: (stances|responses|submitted|decisions|votes|confessions|answers|guesses|choices|submissions|participated|completedPhases)
+ADVISORY: |
+  Cartridge SYNC projections in `apps/game-server/src/projections.ts` strip
+  sensitive fields by phase. Before reading a cartridge field client-side,
+  verify it exists in the projection for the relevant phase:
 
-VERIFY CLIENT FIELD READS AGAINST SERVER PROJECTIONS.
+  - CONFESSION: `confessions` stripped during COLLECTING/VOTING; `votes` only during VOTING
+  - GUESS_WHO: `answers` stripped during ANSWERING; `guesses` stripped during GUESSING
+  - DILEMMA: `decisions` stripped during COLLECTING; `submitted` is the pre-REVEAL signal
+  - WOULD_YOU_RATHER: uses `choices`, NOT `stances`/`responses`
+  - HOT_TAKE / PLAYER_PICK / PREDICTION: use `stances` / `responses`
 
-Cartridge SYNC projections in `apps/game-server/src/projections.ts` strip sensitive
-fields by phase. Before writing client code that reads a cartridge field
-(e.g. `prompt.stances`, `dilemma.decisions`, `voting.votes`), verify the field
-exists in the projection for the relevant phase:
-
-- CONFESSION: `confessions` STRIPPED during COLLECTING/VOTING; `votes` only during VOTING
-- GUESS_WHO: `answers` STRIPPED during ANSWERING; `guesses` STRIPPED during GUESSING
-- DILEMMA: `decisions` STRIPPED during COLLECTING; `submitted: Record<playerId, bool>` is the pre-REVEAL signal
-- WOULD_YOU_RATHER: uses `choices`, NOT `stances`/`responses`
-- HOT_TAKE / PLAYER_PICK / PREDICTION: use `stances` / `responses`
-
-If you need a uniform "did this player act" signal across prompt/dilemma types,
-prefer reading an existing `submitted`-style field OR propose a new
-`participated: Record<playerId, boolean>` projection — DO NOT invent fields
-like `submissions` that don't exist in any machine.
-
-Grep `apps/game-server/src/machines/cartridges/` for the machine shape, then
-grep `apps/game-server/src/projections.ts` for the projection shape, BEFORE
-proposing a client-side field read.
+  Grep `apps/game-server/src/machines/cartridges/` for machine shape, then
+  `apps/game-server/src/projections.ts` for projected shape BEFORE proposing
+  a client-side read. Don't invent fields like `submissions` that exist in
+  no machine.
