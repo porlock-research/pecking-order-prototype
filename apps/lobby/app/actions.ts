@@ -216,29 +216,38 @@ export async function createGame(
     }
   }
 
-  // For CONFIGURABLE_CYCLE: auto-init the DO immediately (empty roster, scheduler starts)
-  if (mode === 'CONFIGURABLE_CYCLE' && config) {
+  // For CONFIGURABLE_CYCLE: auto-init the DO immediately. Always fires for CC
+  // games (even with no per-day config) — without /init the DO stays
+  // `uninitialized` forever and every downstream flow breaks. STATIC payload
+  // when admin set per-day config, DYNAMIC/ADMIN default otherwise.
+  // Skipped when the caller passed a dynamicManifestOverride — that block
+  // above already handled init.
+  if (mode === 'CONFIGURABLE_CYCLE' && !dynamicManifestOverride) {
     try {
       const env = await getEnv();
       const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
       const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
 
-      const t = (offset: number) => new Date(now + offset).toISOString();
-      const days = buildManifestDays(mode, dayCount, config, t);
-
-      const payload = {
-        lobbyId: `lobby-${now}`,
-        inviteCode,
-        roster: {},
-        manifest: {
-          kind: 'STATIC' as const,
-          id: `manifest-${gameId}`,
-          gameMode: mode, // legacy compat
-          scheduling: 'PRE_SCHEDULED' as const,
-          days,
-          pushConfig: config.pushConfig,
-        },
-      };
+      let payload: unknown;
+      if (config) {
+        const t = (offset: number) => new Date(now + offset).toISOString();
+        const days = buildManifestDays(mode, dayCount, config, t);
+        payload = {
+          lobbyId: `lobby-${now}`,
+          inviteCode,
+          roster: {},
+          manifest: {
+            kind: 'STATIC' as const,
+            id: `manifest-${gameId}`,
+            gameMode: mode,
+            scheduling: 'PRE_SCHEDULED' as const,
+            days,
+            pushConfig: config.pushConfig,
+          },
+        };
+      } else {
+        payload = buildCCDefaultInitPayload({ gameId, inviteCode, playerCount, now });
+      }
 
       const validated = InitPayloadSchema.parse(payload);
       const targetUrl = `${GAME_SERVER_HOST}/parties/game-server/${gameId}/init`;
@@ -253,10 +262,12 @@ export async function createGame(
       });
       res.body?.cancel();
 
-      console.log(`[Lobby] Auto-initialized DO for CONFIGURABLE_CYCLE game ${gameId}`);
+      console.log(
+        `[Lobby] Auto-initialized DO for CC game ${gameId} (${config ? 'STATIC' : 'DYNAMIC/ADMIN default'})`,
+      );
     } catch (err: any) {
-      console.error('[Lobby] Failed to auto-init DO:', err);
-      // Non-fatal: game is created in DB, DO init can be retried
+      console.error('[Lobby] Failed to auto-init CC DO:', err);
+      // Non-fatal: game row exists in D1; init can be retried from admin panel.
     }
   }
 
@@ -1118,6 +1129,59 @@ function buildManifestDays(
       timeline: [] as { time: string; action: string; payload: any }[],
     };
   });
+}
+
+/**
+ * Build a default DYNAMIC/ADMIN init payload for a CC game with no per-day config.
+ * Used by createGame's no-config branch and by adminInitGame for recovery.
+ *
+ * SchedulePreset is set explicitly to SMOKE_TEST so generateDayTimeline never
+ * crashes the GM actor (see ADR-145 for the historical regression).
+ */
+export function buildCCDefaultInitPayload(args: {
+  gameId: string;
+  inviteCode: string;
+  playerCount: number;
+  now: number;
+}) {
+  const { gameId, inviteCode, playerCount, now } = args;
+  return {
+    lobbyId: `lobby-${now}`,
+    inviteCode,
+    roster: {},
+    manifest: {
+      kind: 'DYNAMIC' as const,
+      id: `manifest-${gameId}`,
+      gameMode: 'CONFIGURABLE_CYCLE' as const,
+      scheduling: 'ADMIN' as const,
+      startTime: new Date(now).toISOString(),
+      maxPlayers: playerCount,
+      minPlayers: 2,
+      schedulePreset: 'SMOKE_TEST' as const,
+      days: [] as { time: string; action: string; payload: any }[],
+      ruleset: {
+        kind: 'PECKING_ORDER' as const,
+        voting: { mode: 'SEQUENCE' as const, sequence: ['MAJORITY', 'FINALS'] },
+        games: { mode: 'NONE' as const, avoidRepeat: true },
+        activities: {
+          mode: 'POOL' as const,
+          allowed: ['HOT_TAKE', 'WOULD_YOU_RATHER', 'CONFESSION'],
+          avoidRepeat: true,
+        },
+        social: {
+          dmChars: { mode: 'FIXED' as const, base: 1200 },
+          dmPartners: { mode: 'FIXED' as const, base: 3 },
+          dmCost: 1,
+          groupDmEnabled: true,
+          requireDmInvite: false,
+          dmSlotsPerPlayer: 5,
+        },
+        inactivity: { enabled: false, thresholdDays: 2, action: 'ELIMINATE' as const },
+        dayCount: { mode: 'FIXED' as const, fixedCount: 2 },
+        confessions: { enabled: true },
+      },
+    },
+  };
 }
 
 // ── Existing Admin Actions ───────────────────────────────────────────────
