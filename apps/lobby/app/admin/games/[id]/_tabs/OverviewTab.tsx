@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useState } from 'react';
+import { adminInitGame } from '../../../../actions';
 
 interface OverviewTabProps {
   state: any;
@@ -44,7 +45,23 @@ export function OverviewTab({ state, gameId, inviteCode, clientHost, onCommand, 
         <CardContent className="flex gap-3 items-center">
           <Button
             variant="destructive"
-            onClick={() => onCommand({ type: 'NEXT_STAGE' })}
+            onClick={async () => {
+              // If the DO is uninitialized, NEXT_STAGE silently no-ops.
+              // Offer to manually POST /init with the DYNAMIC/ADMIN default
+              // payload (same shape createGame uses for no-config CC games)
+              // so the operator isn't stranded in a wedged state.
+              if (state.state === 'uninitialized') {
+                if (!confirm('Game DO is uninitialized — POST /init with the default DYNAMIC/ADMIN manifest first?')) {
+                  return;
+                }
+                const result = await adminInitGame(gameId);
+                if (!result.success) {
+                  alert(`Init failed: ${result.error}`);
+                  return;
+                }
+              }
+              onCommand({ type: 'NEXT_STAGE' });
+            }}
           >
             {state.day === 0 ? 'Start Day 1' : 'Force Next Phase'}
           </Button>
@@ -55,6 +72,17 @@ export function OverviewTab({ state, gameId, inviteCode, clientHost, onCommand, 
             }}
           >
             Flush Alarms
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => onCommand({
+              type: 'INJECT_TIMELINE_EVENT',
+              action: 'START_CONFESSION_CHAT',
+              payload: {},
+            })}
+            title="Triggers START_CONFESSION_CHAT. L2 gates on ruleset.confessions.enabled — no-ops if confessions are disabled for this game."
+          >
+            Start Confession
           </Button>
           {inviteCode && clientHost && (
             <a

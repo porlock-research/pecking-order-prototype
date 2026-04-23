@@ -228,17 +228,19 @@ export function ChatView() {
           : null;
 
         if (entry.type === 'narrator') {
-          // SOCIAL_PHASE tickers carry an entry action — tap opens the booth.
           const t = entry.data;
-          const isConfessionOpen = t.category === TickerCategories.SOCIAL_PHASE
-            && (t as any).channelId
-            && t.kind === 'confession-open';
+          // Confession-open narrators are no longer emitted — the
+          // ConfessionPhaseBanner above the cast strip is the only surface
+          // that announces the phase. Defensively skip any stale entries
+          // already in the chat log from before that change shipped.
+          if (t.category === TickerCategories.SOCIAL_PHASE && t.kind === 'confession-open') {
+            return null;
+          }
           return (
             <NarratorLine
               key={t.id}
               kind={t.category === TickerCategories.SOCIAL_PHASE ? 'alliance' : socialInviteToNarratorKind(t)}
               text={t.text}
-              onTap={isConfessionOpen ? () => openConfessionBooth((t as any).channelId) : undefined}
             />
           );
         }

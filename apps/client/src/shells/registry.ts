@@ -25,8 +25,12 @@ export const SHELL_REGISTRY: ShellManifest[] = [
 
 const STORAGE_KEY = 'po_shell';
 
+// Pulse is the only actively-supported shell — force it for everyone,
+// ignoring any stale po_shell preference. ShellPicker writes still go to
+// localStorage so a later relax-back to read-from-storage is one-line, but
+// for now the read always returns 'pulse'.
 export function getActiveShellId(): string {
-  return localStorage.getItem(STORAGE_KEY) ?? 'vivid';
+  return 'pulse';
 }
 
 export function setActiveShellId(id: string): void {

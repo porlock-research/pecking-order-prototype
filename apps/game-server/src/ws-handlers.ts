@@ -11,6 +11,40 @@ import type { Env } from "./types";
 
 const ALLOWED_CLIENT_EVENTS = CLIENT_EVENTS as readonly string[];
 
+// --- WS reject rate limit ---
+//
+// The 2026-04-21 PO session showed 30+ reject events for the same playerId
+// over 3 minutes — clients can land in reconnect loops when redirect logic
+// fails to fire (PWA route mismatches, bg-suspended sockets, etc.). We track
+// recent rejects per token-suffix / playerId and escalate to close code 4008
+// after the 4th attempt in a 30s window. The client treats 4008 as permanent
+// and stops reconnecting.
+//
+// Module-scoped + per-DO. A Worker recycle resets the counter, which softens
+// the rate-limit but doesn't break it — the goal is to protect against
+// runaway clients, not to provide DDoS-grade enforcement.
+export const REJECT_CACHE = new Map<string, { count: number; firstAt: number }>();
+const REJECT_WINDOW_MS = 30_000;
+const REJECT_LIMIT = 4;
+
+export function recordReject(key: string): 'first' | 'repeated' | 'permanent' {
+  const now = Date.now();
+  const entry = REJECT_CACHE.get(key);
+  if (!entry || now - entry.firstAt > REJECT_WINDOW_MS) {
+    REJECT_CACHE.set(key, { count: 1, firstAt: now });
+    return 'first';
+  }
+  entry.count++;
+  if (entry.count >= REJECT_LIMIT) return 'permanent';
+  return 'repeated';
+}
+
+function rejectCacheKey(token: string | null, playerId: string | null): string {
+  if (token) return `t:${token.slice(-16)}`;
+  if (playerId) return `p:${playerId}`;
+  return 'anon';
+}
+
 export interface WsContext {
   actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
   env: Env;
@@ -91,8 +125,13 @@ export async function handleConnect(ctx: WsContext, ws: Connection, connCtx: Con
       const payload = await verifyGameToken(token, ctx.env.AUTH_SECRET);
       playerId = payload.playerId;
     } catch (err) {
-      log('warn', 'L1', 'JWT verification failed', { error: String(err) });
-      ws.close(4003, "Invalid token");
+      const verdict = recordReject(rejectCacheKey(token, null));
+      log('warn', 'L1', 'JWT verification failed', { error: String(err), verdict });
+      // Permanent close (4008) tells the client to stop reconnecting; transient
+      // close (4003) keeps the existing onClose-clears-token behavior intact.
+      ws.close(verdict === 'permanent' ? 4008 : 4003, verdict === 'permanent'
+        ? 'Repeated invalid token — stop reconnecting'
+        : 'Invalid token');
       return;
     }
   } else {
@@ -100,8 +139,11 @@ export async function handleConnect(ctx: WsContext, ws: Connection, connCtx: Con
   }
 
   if (!playerId || !roster[playerId]) {
-    log('warn', 'L1', 'Rejecting connection: invalid player ID', { playerId });
-    ws.close(4001, "Invalid Player ID");
+    const verdict = recordReject(rejectCacheKey(token, playerId));
+    log('warn', 'L1', 'Rejecting connection: invalid player ID', { playerId, verdict });
+    ws.close(verdict === 'permanent' ? 4008 : 4001, verdict === 'permanent'
+      ? 'Repeated invalid player ID — stop reconnecting'
+      : 'Invalid Player ID');
     return;
   }
 

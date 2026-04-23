@@ -37,7 +37,13 @@ export async function GET() {
 
   const session = await getSession();
   if (!session) {
-    return Response.json({ error: 'unauthorized' }, { status: 401, headers });
+    // Return 200 + empty list instead of 401 so anon visitors (PWA boots,
+    // home-page polling) don't generate spurious Sentry fetch errors.
+    // `reason: 'unauthenticated'` lets clients distinguish "we asked the
+    // server and the user has no active games" from "the user has no
+    // session" — the latter must NOT trigger token purges (cached game
+    // tokens may still be valid even if the session cookie expired).
+    return Response.json({ games: [], reason: 'unauthenticated' }, { status: 200, headers });
   }
 
   const db = await getDB();
