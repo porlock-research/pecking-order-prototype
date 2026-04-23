@@ -28,6 +28,7 @@ import { PulseInput } from './components/input/PulseInput';
 import { SendSilverSheet } from './components/popover/SendSilverSheet';
 import { DmSheet } from './components/dm-sheet/DmSheet';
 import { ConfessionBoothSheet } from './components/confession-booth/ConfessionBoothSheet';
+import { ConfessionPhaseBanner } from './components/confession-booth/ConfessionPhaseBanner';
 import { PregameDossierSheet } from './components/pregame/PregameDossierSheet';
 import { SocialPanel } from './components/social-panel/SocialPanel';
 import { PulseHeader } from './components/header/PulseHeader';
@@ -288,6 +289,9 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
       >
         <AmbientBackground />
         <PulseHeader onCompose={startPicking} onOpenPanel={openSocialPanel} />
+        <AnimatePresence>
+          {confessionActive && <ConfessionPhaseBanner key="confession-banner" />}
+        </AnimatePresence>
         {pickingActive && <PickingBanner />}
         <CastStrip />
         <PulseBar />
