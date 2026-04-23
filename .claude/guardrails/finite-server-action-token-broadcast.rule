@@ -1,0 +1,30 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/lobby/app/.+actions\.ts$
+MATCH_CONTENT: tokens\??:\s*Record<string,\s*string>
+ADVISORY: |
+  Server action returns `tokens: Record<string, string>` (multi-player token map).
+  This is a host-impersonation footgun — the lobby waiting page picks
+  `Object.keys(tokens)[0]` to drive Enter Game, and a non-self-joined host
+  enters the client impersonating p1 (lowest slot index).
+
+  Rule: server actions mint ONE token per request, scoped to the caller.
+  Look up the caller's invite by `session.userId`, sign for that pid only.
+
+      // ❌ Wrong (broadcasts every player's token to the host's tab):
+      for (const inv of invites) {
+        tokens[`p${inv.slot_index}`] = await signGameToken({ sub: inv.accepted_by, ... })
+      }
+
+      // ✅ Right (caller-only):
+      const myInvite = await db.prepare('SELECT slot_index, persona_name FROM Invites …')
+        .bind(game.id, session.userId).first()
+      if (!myInvite) return { success: true }            // host w/o self-join
+      const tokens = { [`p${myInvite.slot_index}`]: await signGameToken({ sub: session.userId, ... }) }
+
+  Other players fetch their own token via `/api/refresh-token/[code]` when
+  they navigate to /play/CODE — never broadcast it through a server action.
+
+  Caught in code review on `startCCGame` (commit edf5cb0, 2026-04-23).
+  The original `startGame` (apps/lobby/app/actions.ts:665) still has the
+  multi-token shape; out of scope for the original fix branch but the
+  same pattern.

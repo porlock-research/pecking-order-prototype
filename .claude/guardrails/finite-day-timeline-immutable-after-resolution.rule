@@ -1,0 +1,26 @@
+MATCH_TOOL: Edit|Write
+MATCH_PATTERN: apps/game-server/src/machines/timeline-presets\.ts$
+ADVISORY: |
+  Heads-up: timeline template changes do NOT backfill in-flight games.
+
+  `sendAndCaptureGameMasterDay` (apps/game-server/src/machines/actions/
+  l2-day-resolution.ts:24,87) appends a resolved day to `manifest.days[]`
+  ONLY if `dayIndex` doesn't already exist:
+
+      const alreadyExists = manifest.days.some(d => d.dayIndex === resolvedDay.dayIndex);
+      if (alreadyExists) return {};
+
+  Practical implication of any edit here:
+  - Days resolved BEFORE the deploy keep their old timeline forever
+  - In-flight games on day N → fix only takes effect on day N+1
+  - Brand-new games created post-deploy → fix applies from day 1
+
+  If a fix needs to apply to an in-flight game's CURRENT day:
+  - Add an admin button that fires the specific event via INJECT_TIMELINE_EVENT
+    (see OverviewTab.tsx "Start Confession" pattern), OR
+  - Curl the admin endpoint with the event payload, OR
+  - Wait for the next day transition
+
+  Discovered 2026-04-23 while debugging "I added confession to the day
+  template, why doesn't it appear in TimelineTab for this game?" Answer:
+  the day's manifest was already resolved without it.
