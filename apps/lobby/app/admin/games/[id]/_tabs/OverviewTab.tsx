@@ -73,6 +73,17 @@ export function OverviewTab({ state, gameId, inviteCode, clientHost, onCommand, 
           >
             Flush Alarms
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => onCommand({
+              type: 'INJECT_TIMELINE_EVENT',
+              action: 'START_CONFESSION_CHAT',
+              payload: {},
+            })}
+            title="Triggers START_CONFESSION_CHAT. L2 gates on ruleset.confessions.enabled — no-ops if confessions are disabled for this game."
+          >
+            Start Confession
+          </Button>
           {inviteCode && clientHost && (
             <a
               href={`${clientHost}/game/${inviteCode}`}
