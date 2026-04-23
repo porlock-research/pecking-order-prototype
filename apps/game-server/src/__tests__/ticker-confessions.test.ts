@@ -8,18 +8,18 @@ const roster = {
 };
 
 describe('factToTicker — confession phase facts', () => {
-  it('CONFESSION_PHASE_STARTED → SOCIAL_PHASE ticker with booth copy', () => {
+  it('CONFESSION_PHASE_STARTED produces no ticker entry — banner owns the surface', () => {
+    // The Pulse ConfessionPhaseBanner (sticky strip below the header)
+    // is the only "booth open" surface. A chat-stream narrator was
+    // dropped because it gets buried by subsequent messages and persists
+    // past phase close, misleading players who land cold.
     const fact = {
       type: FactTypes.CONFESSION_PHASE_STARTED,
       actorId: 'SYSTEM',
       payload: { dayIndex: 2, channelId: 'CONFESSION-d2' },
       timestamp: 1_700_000_000_000,
     };
-    const msg = factToTicker(fact, roster);
-    expect(msg).not.toBeNull();
-    expect(msg!.category).toBe(TickerCategories.SOCIAL_PHASE);
-    expect(msg!.text).toBe('The confession booth is open.');
-    expect(msg!.timestamp).toBe(1_700_000_000_000);
+    expect(factToTicker(fact, roster)).toBeNull();
   });
 
   it('CONFESSION_PHASE_ENDED produces no ticker entry', () => {
