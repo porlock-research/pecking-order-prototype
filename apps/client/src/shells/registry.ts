@@ -26,7 +26,7 @@ export const SHELL_REGISTRY: ShellManifest[] = [
 const STORAGE_KEY = 'po_shell';
 
 export function getActiveShellId(): string {
-  return localStorage.getItem(STORAGE_KEY) ?? 'vivid';
+  return localStorage.getItem(STORAGE_KEY) ?? 'pulse';
 }
 
 export function setActiveShellId(id: string): void {
