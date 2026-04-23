@@ -454,9 +454,9 @@ export default function WaitingRoom() {
                   className="relative block w-full overflow-hidden rounded-2xl outline-none focus-visible:[outline:2px_solid_var(--po-gold)] focus-visible:[outline-offset:3px]"
                   style={{
                     backgroundColor:
-                      'color-mix(in oklab, var(--po-deep) 82%, var(--po-gold) 18%)',
+                      'color-mix(in oklch, #2c003e 82%, var(--po-gold) 18%)',
                     boxShadow:
-                      'inset 0 0 0 1px color-mix(in oklab, var(--po-gold) 45%, transparent), inset 0 30px 72px -36px color-mix(in oklab, var(--po-gold) 72%, transparent)',
+                      'inset 0 0 0 1px color-mix(in oklch, var(--po-gold) 45%, transparent), inset 0 30px 72px -36px color-mix(in oklch, var(--po-gold) 72%, transparent)',
                   }}
                 >
                   <motion.span
@@ -467,7 +467,9 @@ export default function WaitingRoom() {
                     className="pointer-events-none absolute left-0 right-0 top-0 h-[2px] origin-left"
                     style={{
                       background:
-                        'linear-gradient(90deg, transparent 0%, var(--po-gold) 22%, var(--po-gold) 78%, transparent 100%)',
+                        'linear-gradient(90deg, transparent 0%, var(--po-gold) 18%, var(--po-gold) 82%, transparent 100%)',
+                      boxShadow:
+                        '0 0 12px 0 color-mix(in oklch, var(--po-gold) 55%, transparent)',
                     }}
                   />
 
@@ -487,7 +489,7 @@ export default function WaitingRoom() {
                             className="inline-block h-9 w-9 rounded-full bg-skin-input overflow-hidden"
                             style={{
                               boxShadow:
-                                'inset 0 0 0 1.5px color-mix(in oklab, var(--po-gold) 60%, transparent), 0 0 0 2px var(--po-deep)',
+                                'inset 0 0 0 1.5px color-mix(in oklch, var(--po-gold) 60%, transparent), 0 0 0 2px #2c003e',
                             }}
                           >
                             {slot.personaId && (
@@ -517,7 +519,7 @@ export default function WaitingRoom() {
                       <span
                         className="block mt-1.5 font-mono text-[12px] tracking-[0.08em] uppercase"
                         style={{
-                          color: 'color-mix(in oklab, var(--po-gold) 62%, transparent)',
+                          color: 'color-mix(in oklch, var(--po-gold) 62%, transparent)',
                         }}
                       >
                         as {myPlayerId?.toUpperCase()}
@@ -531,9 +533,9 @@ export default function WaitingRoom() {
                       transition={{ delay: 0.46, duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
                       className="shrink-0 grid place-items-center h-10 w-10 rounded-full"
                       style={{
-                        backgroundColor: 'color-mix(in oklab, var(--po-gold) 16%, transparent)',
+                        backgroundColor: 'color-mix(in oklch, var(--po-gold) 16%, transparent)',
                         boxShadow:
-                          'inset 0 0 0 1px color-mix(in oklab, var(--po-gold) 52%, transparent)',
+                          'inset 0 0 0 1px color-mix(in oklch, var(--po-gold) 52%, transparent)',
                       }}
                     >
                       <svg
