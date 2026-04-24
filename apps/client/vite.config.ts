@@ -5,6 +5,14 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    // Allow Tailscale-bound multi-device dev. Vite 5+ defaults to denying
+    // any host header that isn't localhost; the `--host 0.0.0.0` flag in
+    // dev opens the listener but doesn't whitelist the host header.
+    // `.ts.net` covers any Tailscale tailnet hostname; add specific
+    // hostnames if you want to be stricter.
+    allowedHosts: ['.ts.net', 'localhost', '127.0.0.1'],
+  },
   build: {
     sourcemap: true,
     rollupOptions: {
