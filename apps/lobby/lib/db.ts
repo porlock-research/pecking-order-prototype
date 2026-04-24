@@ -5,8 +5,13 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 // D1Database type isn't available in the lobby's TS config (no @cloudflare/workers-types).
 // We type it loosely here — all D1 usage is via prepared statements which are untyped anyway.
 
+export interface D1RunResult {
+  success: boolean;
+  meta?: { changes?: number; rows_written?: number; duration?: number };
+}
+
 export interface D1PreparedResult {
-  run(): Promise<{ success: boolean }>;
+  run(): Promise<D1RunResult>;
   first<T = unknown>(): Promise<T | null>;
   all<T = unknown>(): Promise<{ results: T[] }>;
 }

@@ -224,17 +224,15 @@ async function refreshFromLobby(
   }
 }
 
-/** Return any locally-cached JWT to use as an identity hint for the lobby's
- *  /enter/CODE recovery endpoint. Prefers the most recently-issued (highest
- *  iat) so we hand the lobby the freshest proof-of-identity available.
- *  Returns null if nothing is stored — caller should route to /j/CODE. */
+/** Return the freshest locally-cached JWT to use as an identity hint for
+ *  the lobby's /enter/CODE recovery endpoint. localStorage and cookie
+ *  caches are unified into a single pool ranked by iat — a fresher token
+ *  in cookies beats a stale one in localStorage and vice versa. Returns
+ *  null if nothing is stored — caller should route to /j/CODE. */
 function findAnyJwtHint(): string | null {
   let best: { jwt: string; iat: number } | null = null;
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key?.startsWith('po_token_')) continue;
-    const jwt = localStorage.getItem(key);
-    if (!jwt) continue;
+  const consider = (jwt: string | null | undefined) => {
+    if (!jwt) return;
     try {
       const decoded = decodeGameToken(jwt);
       const iat = decoded.iat ?? 0;
@@ -242,20 +240,16 @@ function findAnyJwtHint(): string | null {
     } catch {
       // Malformed — skip.
     }
+  };
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith('po_token_')) continue;
+    consider(localStorage.getItem(key));
   }
-  if (best) return best.jwt;
-  // Fallback: scan po_pwa_* cookies
-  const matches = document.cookie.matchAll(/po_pwa_([^=]+)=([^;]+)/g);
-  for (const m of matches) {
-    try {
-      const jwt = m[2];
-      decodeGameToken(jwt); // parseable check
-      return jwt;
-    } catch {
-      // skip
-    }
+  for (const m of document.cookie.matchAll(/po_pwa_([^=]+)=([^;]+)/g)) {
+    consider(m[2]);
   }
-  return null;
+  return best ? (best as { jwt: string; iat: number }).jwt : null;
 }
 
 /** Ask the lobby which games the user is actively in.

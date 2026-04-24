@@ -127,7 +127,18 @@ export async function POST(
   }
 
   const db = await getDB();
-  await db.prepare('UPDATE InviteTokens SET used = 1 WHERE token = ?').bind(token).run();
+  // Race-safe consume: guard on used = 0 so two concurrent POSTs (browser
+  // double-tap, auto-submit + user tap, two tabs) don't both mint sessions.
+  // If meta.changes is 0, someone else consumed the token between our
+  // loadInvite() read and this UPDATE — treat as already-used.
+  const updateResult = await db
+    .prepare('UPDATE InviteTokens SET used = 1 WHERE token = ? AND used = 0')
+    .bind(token)
+    .run();
+  if ((updateResult.meta?.changes ?? 0) === 0) {
+    logInvite('info', 'invite.already_used', tokenPrefix, { method: 'POST', race: true });
+    return NextResponse.redirect(new URL(`/j/${invite.invite_code}`, req.url), 303);
+  }
 
   const normalizedEmail = invite.email.toLowerCase().trim();
   let user = await db

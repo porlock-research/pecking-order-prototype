@@ -17,6 +17,9 @@ function createMockDb(invite: InviteRow | null) {
   const users = new Map<string, { id: string }>();
   const sessions: Array<{ id: string; user_id: string }> = [];
   let inviteState = invite ? { ...invite } : null;
+  // Simulates a concurrent consumer that flips used 0→1 between the
+  // route's SELECT and its UPDATE. Set to true before calling POST.
+  let simulateRace = false;
 
   const db = {
     log,
@@ -24,6 +27,9 @@ function createMockDb(invite: InviteRow | null) {
       return inviteState;
     },
     sessions,
+    triggerRace: () => {
+      simulateRace = true;
+    },
     prepare(sql: string) {
       return {
         bind(...args: unknown[]) {
@@ -39,26 +45,41 @@ function createMockDb(invite: InviteRow | null) {
               return null;
             },
             run: async () => {
-              if (sql.startsWith('UPDATE InviteTokens SET used = 1')) {
+              if (sql.startsWith('UPDATE InviteTokens SET used = 1 WHERE token = ? AND used = 0')) {
+                // Race-safe consume: only "changes" when the row was still unused.
+                // If simulateRace was triggered, a concurrent consumer flipped
+                // used to 1 between the route's SELECT and this UPDATE.
+                if (simulateRace && inviteState) {
+                  inviteState = { ...inviteState, used: 1 };
+                  return { success: true, meta: { changes: 0 } };
+                }
+                if (inviteState && inviteState.token === args[0] && inviteState.used === 0) {
+                  inviteState = { ...inviteState, used: 1 };
+                  return { success: true, meta: { changes: 1 } };
+                }
+                return { success: true, meta: { changes: 0 } };
+              }
+              if (sql.startsWith('UPDATE InviteTokens SET used = 1 WHERE token = ?')) {
+                // Legacy unguarded consume kept for older callers.
                 if (inviteState && inviteState.token === args[0]) {
                   inviteState = { ...inviteState, used: 1 };
                 }
-                return { success: true };
+                return { success: true, meta: { changes: 1 } };
               }
               if (sql.startsWith('INSERT INTO Users')) {
                 const [id, email] = args as [string, string];
                 users.set(email, { id });
-                return { success: true };
+                return { success: true, meta: { changes: 1 } };
               }
               if (sql.startsWith('UPDATE Users SET last_login_at')) {
-                return { success: true };
+                return { success: true, meta: { changes: 1 } };
               }
               if (sql.startsWith('INSERT INTO Sessions')) {
                 const [id, user_id] = args as [string, string];
                 sessions.push({ id, user_id });
-                return { success: true };
+                return { success: true, meta: { changes: 1 } };
               }
-              return { success: true };
+              return { success: true, meta: { changes: 0 } };
             },
           };
         },
@@ -220,6 +241,23 @@ describe('/invite/[token]', () => {
       expect(res2.status).toBe(303);
       expect(res2.headers.get('location')).toContain(`/j/${INVITE_CODE}`);
       expect(mockDb.sessions).toHaveLength(1);
+    });
+
+    it('D1-level race (concurrent consumer wins) → UPDATE changes=0, no session created', async () => {
+      // Simulates two concurrent POSTs both reading used=0 under the
+      // route's loadInvite(). The guarded UPDATE ... AND used = 0 ensures
+      // only one wins at the DB level. The loser gets meta.changes === 0
+      // and must bail to the already-used branch.
+      mockDb = createMockDb(freshInvite());
+      mockDb.triggerRace();
+      const form = new FormData();
+      const res = await POST(req('POST', VALID_TOKEN, form), {
+        params: Promise.resolve({ token: VALID_TOKEN }),
+      });
+      expect(res.status).toBe(303);
+      expect(res.headers.get('location')).toContain(`/j/${INVITE_CODE}`);
+      expect(mockDb.sessions).toHaveLength(0);
+      expect(res.headers.get('set-cookie')).toBeFalsy();
     });
   });
 });
