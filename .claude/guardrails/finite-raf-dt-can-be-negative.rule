@@ -1,27 +1,27 @@
-RULE_TYPE: finite
-NAME: finite-raf-dt-can-be-negative
-SEVERITY: advisory
-MATCH_PATTERN: requestAnimationFrame|performance\.now\(\)|lastTime(Ref)?\.current
 MATCH_TOOL: Edit|Write
-MATCH_FILE_GLOBS: apps/client/src/cartridges/**/*Renderer.tsx
+MATCH_PATTERN: apps/client/src/cartridges/.+Renderer\.tsx$
+MATCH_CONTENT: (requestAnimationFrame|performance\.now\(\)|lastTime(Ref)?\.current)
+ADVISORY: |
+  When computing dt from `requestAnimationFrame`'s `now` minus a prior
+  timestamp, clamp dt ≥ 0. Chrome can pass a `now` value earlier than
+  `performance.now()` captured during the effect setup — producing a
+  small negative dt on the first frame.
 
-ADVISORY:
-When computing dt from `requestAnimationFrame`'s `now` minus a prior
-timestamp, clamp dt ≥ 0. Chrome can pass a `now` value earlier than
-`performance.now()` captured during the effect setup — producing a
-small negative dt on the first frame.
+  Common symptom: game state drifts slightly negative (distance,
+  elapsed, score), and any `Math.floor(negative)` used as an array
+  index returns -1 → `ARRAY[-1] = undefined` → downstream crash.
 
-Common symptom: game state drifts slightly negative (distance,
-elapsed, score), and any `Math.floor(negative)` used as an array
-index returns -1 → `ARRAY[-1] = undefined` → downstream crash.
+  Safe pattern:
+    const rawDtMs = Math.max(0, Math.min(50, now - lastTimeRef.current));
+    lastTimeRef.current = now;
 
-Safe pattern:
-  const rawDtMs = Math.max(0, Math.min(50, now - lastTimeRef.current));
-  lastTimeRef.current = now;
+  Or: initialize `lastTimeRef.current = now` on the first frame instead
+  of in the effect body.
 
-Or: initialize `lastTimeRef.current = now` on the first frame instead
-of in the effect body.
+  This bit Gap Run on 2026-04-12 — the crash surfaced as
+  "Cannot read properties of undefined (reading 'startsWith')" from
+  withAlpha(zoneColor, ...) because `ZONES[-1]` was undefined.
 
-This bit Gap Run on 2026-04-12 — the crash surfaced as
-"Cannot read properties of undefined (reading 'startsWith')" from
-withAlpha(zoneColor, ...) because `ZONES[-1]` was undefined.
+  Kill condition: delete once all arcade renderers have been audited
+  and the `Math.max(0, ...)` clamp is either present at every `dt =
+  now - lastTime` site or replaced with a shared RAF-dt helper.

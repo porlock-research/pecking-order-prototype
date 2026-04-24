@@ -1,5 +1,27 @@
 # Guardrails Needing Update / Promotion
 
+## Resolved 2026-04-24 (retirement pass — 72 → 63 rules)
+
+**Retired (8):**
+- `finite-decisions-before-architecture` — path-only on commonly-edited server files; advice duplicates root CLAUDE.md "Key Documentation" section pointing at `plans/DECISIONS.md`.
+- `finite-ticker-update-not-sync` — duplicated by memory `reference_facts_ticker_pipeline.md`; `MATCH_PATTERN` matched any path containing "ticker" (too broad). Previously flagged "low urgency" below — closing the loop.
+- `finite-game-id-format` — duplicated by memory `reference_lobby_logs_shape.md` + `reference_axiom_sre.md`.
+- `finite-nudge-player-scoped` — misconfigured: `MATCH_PATTERN` contained code patterns, not file paths. Content lives in memory `reference_nudge_whisper_main_only.md`.
+- `finite-silver-transfer-channel-auth` — same misconfiguration as nudge-player-scoped; covered by same memory.
+- `finite-send-silver-no-channel-id` — same misconfiguration; regression test at `apps/client/src/hooks/__tests__/silverRouting.test.ts` already guards the invariant. Memory `reference_silver_routes_to_1on1_dm.md` covers behavior.
+- `guardrail-pattern-specificity` — self-referential advice now lives in `.claude/guardrails/README.md`.
+- `finite-projection-strips-mid-phase` — empty `ADVISORY:` body (fires but injects nothing); covered by `finite-verify-fields-against-projections` with a real body and `feedback_verify_projection_fields` memory.
+
+**Fixed (1):**
+- `finite-raf-dt-can-be-negative` — was using invalid `MATCH_FILE_GLOBS:` field (guardian.sh doesn't parse it), and `MATCH_PATTERN` carried code patterns instead of a file path. Rule was almost certainly not firing in its intended contexts. Rewrote with `MATCH_PATTERN: apps/client/src/cartridges/.+Renderer\.tsx$` and `MATCH_CONTENT` holding the RAF symbols. Added kill condition.
+
+**Promoted (2):**
+- `finite-arcade-spec-integration-checklist` → `packages/game-cartridges/CLAUDE.md` ("Adding a new arcade game — 10-point integration checklist"). A 10-point checklist is more naturally procedural documentation than an injected advisory, and the cartridge package is where agents start when adding a game.
+- `finite-pulse-mockup-conventions` → `docs/reports/pulse-mockups/README.md`. Conventions belong beside the files they govern.
+
+**Still pending from 2026-04-16 (updated):**
+- `broad-commit-check-artifacts` — unchanged. Still fires on every `git commit` but advisory is short and appears to be doing useful work (today's session-start flagged 14 stale .png files at project root).
+
 ## Resolved 2026-04-16 (noise-reduction pass)
 
 - `finite-reactions-not-persisted` — **deleted**. Premise became false once
@@ -53,9 +75,29 @@ diff without shelling out. Options if this becomes noisy: shorten further to a
 single line, or refactor the guardian to support a `MATCH_SHELL_CHECK` hook
 that runs a quick shell predicate before firing.
 
-### `finite-ticker-update-not-sync` — `MATCH_PATTERN: ticker|Ticker|TICKER`
+### Tighten candidates identified 2026-04-24 (not yet done)
 
-Matches any file path containing "ticker" in any case. In practice this is
-narrow enough (only ticker-related files have the substring) and the advisory
-is short (4 lines). Not currently a noise source. Leave as-is unless it starts
-firing on unrelated work.
+Arcade / canvas renderers that fire on every `cartridges/games/**/*Renderer.tsx`
+edit regardless of the edit's topic:
+- `finite-arcade-end-game-single-flag` — needs `MATCH_CONTENT` gating on
+  `ending|timeLimit|floatingText|solveCelebrate|finish\(`
+- `finite-arcade-pickup-place-ownership` — gate on `floating`, `tubes[`,
+  `pickupFromTube`
+- `finite-canvas-theme-capture-at-init` — gate on `useCartridgeTheme|themeRef|
+  useLayoutEffect|colorKey`
+- `finite-canvas-trail-sampling-threshold` — gate on `trail|threshold|unshift`
+- `finite-canvas-playtest-hidden-tab` — gate on `visibilityState|mcp__.*chrome`
+  or promote to a workflow doc (procedural, not reactive)
+
+Misconfigured MATCH_PATTERN (code patterns in the path field):
+- `finite-arcade-result-integer-coercion` — scope MATCH_PATTERN to a file
+  regex; move current patterns to MATCH_CONTENT.
+- `finite-ts-config-as-const-literal-pin` — same fix.
+- `finite-game-dev-harness-local-types` — same fix; scope to
+  `apps/.*GameDevHarness\.tsx`.
+
+Broad path, worth a content gate:
+- `finite-claude-md-placement` — fires on every CLAUDE.md edit. Gate on
+  structural additions (new `^##` heading etc.).
+- `finite-shared-types-rebuild` — fires on every shared-types source edit.
+  Gate on significant surface changes.
