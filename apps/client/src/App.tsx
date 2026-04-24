@@ -592,6 +592,9 @@ export default function App() {
         }
       } catch (err) {
         console.error('[App] runAsyncRecovery: unexpected error for', code, ':', err);
+        // Tag this distinctly so "fell through from an error" hits don't
+        // look identical in Sentry to "reached step 4 as a normal fallback".
+        setSentryAuthMethod('lobby-recover-error');
         window.location.href = `${LOBBY_HOST}/j/${code}`;
       } finally {
         setRecovering(false);

@@ -60,7 +60,7 @@ export function setSentryPwaContext(data: {
 }
 
 /** Set a tag for how the player's token was resolved. */
-export function setSentryAuthMethod(method: 'transient' | 'cached' | 'cookie' | 'cache-api' | 'lobby-refresh' | 'lobby-redirect' | 'lobby-recover' | 'raw-token' | 'debug') {
+export function setSentryAuthMethod(method: 'transient' | 'cached' | 'cookie' | 'cache-api' | 'lobby-refresh' | 'lobby-recover' | 'lobby-recover-error' | 'raw-token' | 'debug') {
   Sentry.setTag('authMethod', method);
 }
 

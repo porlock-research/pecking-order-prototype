@@ -32,6 +32,19 @@ describe('verifyGameToken', () => {
     expect(payload.gameId).toBe('g');
   });
 
+  it('returns payload for a valid unexpired token with ignoreExpiration: true', async () => {
+    // Happy path when a caller defensively passes the flag even though
+    // the token is still live. Should NOT enter the JWTExpired catch.
+    const token = await signGameToken(
+      { sub: 'u', gameId: 'g', playerId: 'p1', personaName: 'X' },
+      SECRET,
+      '5m',
+    );
+    const payload = await verifyGameToken(token, SECRET, { ignoreExpiration: true });
+    expect(payload.sub).toBe('u');
+    expect(payload.gameId).toBe('g');
+  });
+
   it('throws JWTExpired on expired token when ignoreExpiration is omitted', async () => {
     const token = await signExpired(SECRET);
     await expect(verifyGameToken(token, SECRET)).rejects.toBeInstanceOf(

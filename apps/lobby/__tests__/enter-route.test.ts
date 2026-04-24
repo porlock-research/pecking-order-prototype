@@ -120,6 +120,21 @@ describe('/enter/[code]', () => {
       expect(res.status).toBe(307);
       expect(res.headers.get('location')).toContain(`/play/${CODE}`);
     });
+
+    it('nonexistent game (no session) → 307 /login?error=Game+not+found', async () => {
+      mockDb = createMockDb(null);
+      const res = await GET(getReq(CODE), { params: Promise.resolve({ code: CODE }) });
+      expect(res.status).toBe(307);
+      expect(res.headers.get('location')).toContain('Game+not+found');
+    });
+
+    it('nonexistent game (session present) → also /login?error=Game+not+found (symmetry)', async () => {
+      mockDb = createMockDb(null);
+      sessionReturn = { userId: USER_ID };
+      const res = await GET(getReq(CODE), { params: Promise.resolve({ code: CODE }) });
+      expect(res.status).toBe(307);
+      expect(res.headers.get('location')).toContain('Game+not+found');
+    });
   });
 
   describe('POST', () => {
