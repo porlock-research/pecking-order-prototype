@@ -55,8 +55,10 @@ An agent editing `apps/game-server/src/machines/` gets root + game-server contex
 1. Agent works → advisory hooks fire for known issues
 2. Agent hits a NEW problem → struggles → recovers (or user helps)
 3. User types `/reflect` before ending the session
-4. Agent reviews the session and creates new `.rule` files in `.claude/guardrails/`
-5. Next session → new guardrails active automatically
+4. Agent reviews the session, first retires dead rules, then — only when no existing rule/memory/skill fits — creates a narrow `.rule` file
+5. Next session → updated guardrails active automatically
+
+**Counter-pressure to addition:** active enforcement works, but every rule costs context budget in every future session forever. Rule addition without symmetric retirement turns the corpus into noise that slows agents down (we observed this: path-only rules firing 5–6× on unrelated edits before being retroactively narrowed). Creation requires `MATCH_CONTENT`, a narrow path, and a kill condition. `/reflect` step 1 is a retirement & tightening pass. Deletion is as routine as addition. See `README.md` for the rule lifecycle.
 
 **Promotion path:** Guardrail rules are narrow and immediate. Over time, related rules accumulate and should be promoted into skills, workflows, or CLAUDE.md entries. The rules then get deleted. See `README.md` in this directory.
 
@@ -74,7 +76,8 @@ An agent editing `apps/game-server/src/machines/` gets root + game-server contex
 
 | Command | Purpose |
 |---------|---------|
-| `/reflect` | Review session for learnings, create guardrail rules |
+| `/reflect` | Retire/tighten stale rules, capture new learnings, draft ADRs, commit |
+| `/handoff` | Generate a self-contained prompt for the next session |
 
 ## File Layout
 
