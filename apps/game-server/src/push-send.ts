@@ -36,7 +36,13 @@ export async function sendPushNotification(
     await response.body?.cancel();
 
     if (response.status === 201 || response.status === 200) return "sent";
-    if (response.status === 410 || response.status === 404) return "expired";
+    // 404/410 are the RFC 8030 codes for "subscription no longer valid"; FCM
+    // also returns 403 for tokens whose registration was revoked on the client
+    // (app uninstall, browser storage wipe, etc.) — treat all three as expired
+    // so the upstream caller prunes the row instead of re-sending forever.
+    // Playtest LR8W3U logged ~30 error-level 403s for a single dead token
+    // before this change.
+    if (response.status === 410 || response.status === 404 || response.status === 403) return "expired";
 
     console.error(`[Push] Unexpected status ${response.status} from ${endpoint}`);
     return "error";

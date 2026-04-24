@@ -498,6 +498,7 @@ export default function LobbyRoot() {
         setStatus(`GAME_CREATED: ${result.gameId}`);
         setGameId(result.gameId ?? null);
         setInviteCode(result.inviteCode ?? null);
+        dispatchInviteEmails(result.inviteCode);
       } else {
         setStatus(`ERROR: ${result.error}`);
       }
@@ -517,20 +518,25 @@ export default function LobbyRoot() {
       setStatus(`GAME_CREATED: ${result.gameId}`);
       setGameId(result.gameId ?? null);
       setInviteCode(result.inviteCode ?? null);
-
-      // Send email invites if any were entered
-      const validEmails = inviteEmails.filter(e => e.trim() && e.includes('@'));
-      if (validEmails.length > 0 && result.inviteCode) {
-        for (const email of validEmails) {
-          sendEmailInvite(result.inviteCode, email.trim()).catch(() => {});
-        }
-        setEmailInviteStatuses(
-          Object.fromEntries(validEmails.map((_, i) => [i, 'sent']))
-        );
-      }
+      dispatchInviteEmails(result.inviteCode);
     } else {
       setStatus(`ERROR: ${result.error}`);
     }
+  }
+
+  // Fires the invite loop for the emails the host entered in the "Invite
+  // Players by Email" expander. Shared across the DYNAMIC and static create
+  // branches — without this both branches had to remember to run it, and
+  // the DYNAMIC branch silently skipped invites (LR8W3U playtest 2026-04-23).
+  function dispatchInviteEmails(createdInviteCode: string | undefined) {
+    const validEmails = inviteEmails.filter(e => e.trim() && e.includes('@'));
+    if (validEmails.length === 0 || !createdInviteCode) return;
+    for (const email of validEmails) {
+      sendEmailInvite(createdInviteCode, email.trim()).catch(() => {});
+    }
+    setEmailInviteStatuses(
+      Object.fromEntries(validEmails.map((_, i) => [i, 'sent']))
+    );
   }
 
   async function handleDebugStart() {

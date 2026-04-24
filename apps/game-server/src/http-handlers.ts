@@ -27,6 +27,23 @@ export const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+/**
+ * Pure predicate backing the ADR-148 late-arrival WAKEUP trigger. Returns true
+ * when a DYNAMIC game is still in preGame, startTime has passed, and the roster
+ * has reached minPlayers. Taking nowMs as an argument keeps the function
+ * deterministic for unit tests.
+ */
+export function shouldFireLateArrivalWakeup(snapshot: any, nowMs: number): boolean {
+  if (snapshot?.value !== 'preGame') return false;
+  const manifest = snapshot.context?.manifest;
+  if (manifest?.kind !== 'DYNAMIC') return false;
+  if (!manifest.startTime) return false;
+  if (new Date(manifest.startTime).getTime() > nowMs) return false;
+  const rosterCount = Object.keys(snapshot.context?.roster || {}).length;
+  const minPlayers = manifest.minPlayers ?? 3;
+  return rosterCount >= minPlayers;
+}
+
 export interface HandlerContext {
   actor: ActorRefFrom<typeof orchestratorMachine> | undefined;
   env: Env;
@@ -169,6 +186,25 @@ async function handlePlayerJoined(ctx: HandlerContext, req: Request, url: URL): 
       type: Events.System.PLAYER_JOINED,
       player: { id: playerId, realUserId, personaName, avatarUrl: avatarUrl || '', bio: bio || '', silver: silver || 50, gold, qaAnswers },
     });
+
+    // Late-arrival WAKEUP — see ADR-148. The scheduled wakeup-game-start alarm
+    // suppresses WAKEUP when roster < minPlayers at fire time, and there's no
+    // retry path; without this check a DYNAMIC game whose players arrive after
+    // startTime gets stuck in preGame (LR8W3U playtest 2026-04-23). When this
+    // join pushes the roster past minPlayers and startTime has already passed,
+    // send WAKEUP directly. Idempotent — the guard short-circuits once L2
+    // leaves preGame.
+    const postJoinSnap = ctx.actor?.getSnapshot();
+    if (postJoinSnap && shouldFireLateArrivalWakeup(postJoinSnap, Date.now())) {
+      // Helper already guaranteed DYNAMIC + startTime passed; cast past the
+      // STATIC|DYNAMIC union so minPlayers narrows for the log.
+      const dm = postJoinSnap.context.manifest as { minPlayers?: number };
+      log('info', 'L1', 'Late-arrival WAKEUP: quorum reached past startTime', {
+        rosterCount: Object.keys(postJoinSnap.context.roster || {}).length,
+        minPlayers: dm.minPlayers ?? 3,
+      });
+      ctx.actor?.send({ type: Events.System.WAKEUP });
+    }
 
     // Insert player into D1 Players table
     const pathParts = url.pathname.split('/');

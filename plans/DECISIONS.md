@@ -2346,3 +2346,14 @@ This document tracks significant architectural decisions, their context, and con
     *   The `reason` field is a structured signal for the client; never user-facing copy. Add new reason strings as new states emerge; keep the set small (one per branch).
     *   Other lobby endpoints (`/api/persona-image/...`, `/api/my-active-game-share/...` if added later) should follow the same convention.
     *   **Files:** `apps/lobby/app/api/refresh-token/[code]/route.ts`, `apps/lobby/app/api/my-active-game/route.ts`, `apps/client/src/App.tsx` (`refreshFromLobby`, `fetchActiveGames`).
+
+## [ADR-148] Late-arrival WAKEUP retry on PLAYER_JOINED
+*   **Date:** 2026-04-24
+*   **Status:** Accepted
+*   **Context:** ADR-118 added a `minPlayers` suppression guard in `onAlarm()` so a DYNAMIC game does not start before quorum. But there is no retry path: if the scheduled `wakeup-game-start` alarm fires before any player has joined (common when a host creates the game a few minutes ahead of startTime and share links arrive staggered), the WAKEUP is suppressed and the PartyWhen task is consumed. Subsequent joiners reach quorum but the game stays wedged in `preGame` until an admin hits `NEXT_STAGE`. Playtest LR8W3U (2026-04-23) hit this exactly — alarm fired at 00:05:00 with empty roster, 3 players joined 00:06:10-00:06:47, game did not advance until admin intervened at 00:25:50.
+*   **Decision:** In `handlePlayerJoined` (L1 HTTP handler), after dispatching `SYSTEM.PLAYER_JOINED`, check whether: (a) L2 is still in `preGame`, (b) manifest is DYNAMIC with a `startTime`, (c) `startTime <= now`, (d) roster size is now `>= minPlayers`. When all true, send `SYSTEM.WAKEUP` directly to the actor. This is a retry trigger, not a new alarm source — ADR-093 still holds because the scheduled delivery path remains onAlarm-only.
+*   **Consequences:**
+    *   DYNAMIC games auto-start as soon as quorum is reached past startTime, matching the user intent documented in ADR-118 ("Game starts at startTime if >= minPlayers joined").
+    *   The admin `NEXT_STAGE` early-start path is unchanged and still works for below-quorum starts.
+    *   Idempotent: once L2 leaves `preGame`, the guard short-circuits; repeat joins (late arrivers) no-op.
+    *   **Files:** `apps/game-server/src/http-handlers.ts`.
