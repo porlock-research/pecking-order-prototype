@@ -47,6 +47,8 @@ yarn-error.log*
 # Claude Code (machine-local)
 .claude/projects/
 .claude/skills/
+.claude/scheduled_tasks.lock
+.claude/worktrees/
 skills-lock.json
 
 # AI agent tool caches
