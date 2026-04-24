@@ -725,8 +725,6 @@ export async function startGame(
 
   // Build roster
   const roster: Roster = {};
-  const tokens: Record<string, string> = {};
-
   for (let i = 0; i < invites.length; i++) {
     const inv = invites[i];
     const pid = `p${i + 1}`;
@@ -743,18 +741,27 @@ export async function startGame(
       gold: 0,
       destinyId: 'FLOAT',
     };
+  }
 
-    // Mint JWT for each player (expiry = 2× game length + 7 day buffer)
+  // Mint JWT ONLY for the calling user, not all players. Handing every
+  // player's token back to the starter opened the host-impersonation
+  // pitfall where the waiting room's `Object.keys(tokens)[0]` drove any
+  // slot other than p1 into the client as p1. Mirror getGameSessionStatus.
+  const myInviteIndex = invites.findIndex((i) => i.accepted_by === session.userId);
+  const tokens: Record<string, string> = {};
+  if (myInviteIndex >= 0) {
+    const myPid = `p${myInviteIndex + 1}`;
+    const myInvite = invites[myInviteIndex];
     const tokenExpiry = `${game.day_count * 2 + 7}d`;
-    tokens[pid] = await signGameToken(
+    tokens[myPid] = await signGameToken(
       {
-        sub: inv.accepted_by,
+        sub: session.userId,
         gameId: game.id,
-        playerId: pid,
-        personaName: inv.persona_name,
+        playerId: myPid,
+        personaName: myInvite.persona_name,
       },
       AUTH_SECRET,
-      tokenExpiry
+      tokenExpiry,
     );
   }
 

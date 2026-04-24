@@ -11,6 +11,20 @@ import { generateToken, setSessionCookie } from '@/lib/auth';
 
 const SESSION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Log an invite-flow event as structured JSON (Axiom picks it up from
+// Workers Logs). tokenPrefix gives enough correlation to join against the
+// InviteTokens.token column in D1 without writing the full secret to logs.
+function logInvite(
+  level: 'info' | 'warn' | 'error',
+  event: string,
+  tokenPrefix: string,
+  extra?: Record<string, unknown>,
+) {
+  console.log(
+    JSON.stringify({ level, component: 'invite-route', event, tokenPrefix, ...extra }),
+  );
+}
+
 type Invite = {
   token: string;
   email: string;
@@ -72,17 +86,22 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
+  const tokenPrefix = token.slice(0, 8);
   const invite = await loadInvite(token);
   const now = Date.now();
   if (!invite) {
+    logInvite('warn', 'invite.invalid', tokenPrefix, { method: 'GET' });
     return NextResponse.redirect(new URL('/login?error=Invalid+invite+link', req.url));
   }
   if (invite.expires_at < now) {
+    logInvite('info', 'invite.expired', tokenPrefix, { method: 'GET' });
     return NextResponse.redirect(new URL('/login?error=Invite+link+expired', req.url));
   }
   if (invite.used) {
+    logInvite('info', 'invite.already_used', tokenPrefix, { method: 'GET' });
     return NextResponse.redirect(new URL(`/j/${invite.invite_code}`, req.url));
   }
+  logInvite('info', 'invite.confirm_page_rendered', tokenPrefix);
   return renderConfirmPage(token, invite.invite_code);
 }
 
@@ -91,15 +110,19 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
+  const tokenPrefix = token.slice(0, 8);
   const invite = await loadInvite(token);
   const now = Date.now();
   if (!invite) {
+    logInvite('warn', 'invite.invalid', tokenPrefix, { method: 'POST' });
     return NextResponse.redirect(new URL('/login?error=Invalid+invite+link', req.url), 303);
   }
   if (invite.expires_at < now) {
+    logInvite('info', 'invite.expired', tokenPrefix, { method: 'POST' });
     return NextResponse.redirect(new URL('/login?error=Invite+link+expired', req.url), 303);
   }
   if (invite.used) {
+    logInvite('info', 'invite.already_used', tokenPrefix, { method: 'POST' });
     return NextResponse.redirect(new URL(`/j/${invite.invite_code}`, req.url), 303);
   }
 
@@ -127,6 +150,10 @@ export async function POST(
     .bind(sessionId, user.id, now + SESSION_EXPIRY_MS, now)
     .run();
 
+  logInvite('info', 'invite.consumed', tokenPrefix, {
+    inviteCode: invite.invite_code,
+    gameId: invite.game_id,
+  });
   const response = NextResponse.redirect(new URL(`/join/${invite.invite_code}`, req.url), 303);
   await setSessionCookie(response, sessionId, req.nextUrl.hostname);
   return response;

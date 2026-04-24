@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify, decodeJwt } from 'jose';
+import { SignJWT, jwtVerify, decodeJwt, errors as joseErrors } from 'jose';
 
 // ── Game Token (lobby → client → game server) ──────────────────────────
 
@@ -27,10 +27,22 @@ export async function signGameToken(
 export async function verifyGameToken(
   token: string,
   secret: string,
+  opts?: { ignoreExpiration?: boolean },
 ): Promise<GameTokenPayload> {
   const key = new TextEncoder().encode(secret);
-  const { payload } = await jwtVerify(token, key);
-  return payload as unknown as GameTokenPayload;
+  try {
+    const { payload } = await jwtVerify(token, key);
+    return payload as unknown as GameTokenPayload;
+  } catch (err) {
+    // jose verifies the signature BEFORE the exp claim, so a JWTExpired
+    // error means the signature was trusted. Safe to decode and return
+    // when the caller opts in — used by /enter/CODE recovery to accept
+    // expired-but-still-authentic identity proofs.
+    if (opts?.ignoreExpiration && err instanceof joseErrors.JWTExpired) {
+      return decodeJwt(token) as unknown as GameTokenPayload;
+    }
+    throw err;
+  }
 }
 
 /** Client-side decode (no verification — for display only) */

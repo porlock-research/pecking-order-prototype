@@ -203,20 +203,57 @@ async function recoverFromCacheApi(gameCode: string): Promise<string | null> {
 }
 
 /** Try to mint a fresh JWT via the lobby's refresh-token API (requires po_session cookie). */
-async function refreshFromLobby(gameCode: string): Promise<string | null> {
+async function refreshFromLobby(
+  gameCode: string,
+): Promise<{ token: string | null; reason?: string }> {
   try {
     const res = await fetch(`${LOBBY_HOST}/api/refresh-token/${gameCode}`, {
       credentials: 'include', // sends po_session cookie
     });
     if (!res.ok) {
       console.warn('[App] refreshFromLobby: lobby returned', res.status, 'for', gameCode);
-      return null;
+      return { token: null, reason: `http_${res.status}` };
     }
-    const { token } = await res.json();
-    if (token) return token;
+    const { token, reason } = await res.json();
+    if (token) return { token, reason };
     console.warn('[App] refreshFromLobby: lobby returned 200 but no token for', gameCode);
+    return { token: null, reason: reason || 'no_token' };
   } catch (err) {
     console.warn('[App] Lobby token refresh failed:', err);
+    return { token: null, reason: 'network_error' };
+  }
+}
+
+/** Return any locally-cached JWT to use as an identity hint for the lobby's
+ *  /enter/CODE recovery endpoint. Prefers the most recently-issued (highest
+ *  iat) so we hand the lobby the freshest proof-of-identity available.
+ *  Returns null if nothing is stored — caller should route to /j/CODE. */
+function findAnyJwtHint(): string | null {
+  let best: { jwt: string; iat: number } | null = null;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith('po_token_')) continue;
+    const jwt = localStorage.getItem(key);
+    if (!jwt) continue;
+    try {
+      const decoded = decodeGameToken(jwt);
+      const iat = decoded.iat ?? 0;
+      if (!best || iat > best.iat) best = { jwt, iat };
+    } catch {
+      // Malformed — skip.
+    }
+  }
+  if (best) return best.jwt;
+  // Fallback: scan po_pwa_* cookies
+  const matches = document.cookie.matchAll(/po_pwa_([^=]+)=([^;]+)/g);
+  for (const m of matches) {
+    try {
+      const jwt = m[2];
+      decodeGameToken(jwt); // parseable check
+      return jwt;
+    } catch {
+      // skip
+    }
   }
   return null;
 }
@@ -524,22 +561,44 @@ export default function App() {
         console.log('[App] recovery step 2: no Cache API token for', code);
 
         // Step 3: Lobby API (mint fresh JWT via po_session cookie)
-        const fromLobby = await refreshFromLobby(code);
+        const { token: fromLobby, reason: refreshReason } = await refreshFromLobby(code);
         if (fromLobby) {
           console.log('[App] recovery step 3: refreshed from lobby for', code);
           applyToken(fromLobby, code, setGameId, setPlayerId, setToken);
           setSentryAuthMethod('lobby-refresh');
           return;
         }
-        console.log('[App] recovery step 3: lobby refresh failed for', code);
+        console.log('[App] recovery step 3: lobby refresh failed for', code, refreshReason);
 
-        // Step 4: Redirect to lobby (last resort — user may need to log in)
-        console.log('[App] recovery step 4: redirecting to lobby for', code);
-        setSentryAuthMethod('lobby-redirect');
-        window.location.href = `${LOBBY_HOST}/play/${code}`;
+        // Step 4: Hand off to lobby's /enter/CODE with any JWT we can find
+        // as an identity hint — lobby restores session from sub if the
+        // signature is valid (even if expired). POSTed via form to keep
+        // the JWT out of URL params, browser history, and access logs.
+        // No hint → straight to /j/CODE welcome.
+        const hint = findAnyJwtHint();
+        console.log(
+          '[App] recovery step 4: redirecting to /enter/',
+          code,
+          hint ? '(with JWT hint)' : '(no hint)',
+        );
+        setSentryAuthMethod('lobby-recover');
+        if (hint) {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = `${LOBBY_HOST}/enter/${code}`;
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'hint';
+          input.value = hint;
+          form.appendChild(input);
+          document.body.appendChild(form);
+          form.submit();
+        } else {
+          window.location.href = `${LOBBY_HOST}/j/${code}`;
+        }
       } catch (err) {
         console.error('[App] runAsyncRecovery: unexpected error for', code, ':', err);
-        window.location.href = `${LOBBY_HOST}/play/${code}`;
+        window.location.href = `${LOBBY_HOST}/j/${code}`;
       } finally {
         setRecovering(false);
       }
@@ -738,6 +797,18 @@ function LauncherScreen({ lobbyGames, archivedGameCode }: {
           </button>
         </div>
       </form>
+
+      {cachedGames.length === 0 && (
+        <div className="w-full max-w-sm text-center space-y-2">
+          <p className="text-xs text-skin-dim/60 font-body">Played before?</p>
+          <a
+            href={`${LOBBY_HOST}/login`}
+            className="inline-block px-4 py-2 rounded-lg border border-skin-gold/30 bg-glass text-xs font-mono font-bold text-skin-gold uppercase tracking-widest hover:border-skin-gold/60 transition-all"
+          >
+            Sign in with email
+          </a>
+        </div>
+      )}
 
       {/* Lobby link */}
       <a
