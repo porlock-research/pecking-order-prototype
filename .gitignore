@@ -51,6 +51,9 @@ yarn-error.log*
 .claude/worktrees/
 skills-lock.json
 
+# Remember plugin session buffer (auto-managed, churns every session)
+.remember/now.md
+
 # AI agent tool caches
 .agent/
 .agents/
