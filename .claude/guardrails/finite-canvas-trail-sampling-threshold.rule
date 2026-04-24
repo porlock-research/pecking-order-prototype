@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: cartridges/games/.*Renderer\.tsx
+MATCH_CONTENT: (trail\.(length|unshift|push|pop|shift)|THRESHOLD|sampling|arc-?length)
 ADVISORY: |
   Continuous-motion canvas renderers with "trail sampling" (only pushing a
   new point when distance >= THRESHOLD) have a subtle bug: if THRESHOLD

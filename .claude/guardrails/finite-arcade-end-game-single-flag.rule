@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: cartridges/games/[^/]+/[^/]+Renderer\.tsx
+MATCH_CONTENT: (elapsed\s*[><]=|setTimeout\s*\([^)]*finish|let ending|ending\s*=\s*(true|false)|solveCelebrate|gameOver\s*\|\|\s*ending)
 ADVISORY: |
   End-of-game conditions (time up, solve, crash, game over) must be
   gated by a SINGLE `let ending = false` flag checked AND set

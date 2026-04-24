@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: cartridges/games/[^/]+/[^/]+Renderer\.tsx
+MATCH_CONTENT: (visibilityState|document\.hidden|cancelAnimationFrame|requestAnimationFrame\(\s*(null|undefined)|chrome-profile|--isolated)
 ADVISORY: |
   When play-testing a canvas renderer via a browser MCP, verify the
   tab is foregrounded BEFORE debugging the renderer code.

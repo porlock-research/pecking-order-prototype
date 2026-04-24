@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: apps/client/src/cartridges/games/.+Renderer\.tsx$
+MATCH_CONTENT: (useCartridgeTheme|themeRef\.current|gameLoop\s*=\s*useCallback|colorKey|DEFAULT_CARTRIDGE_THEME|setTheme\()
 ADVISORY: |
   Canvas theme-timing race — discovered in orbit's "no stars first time" bug:
 

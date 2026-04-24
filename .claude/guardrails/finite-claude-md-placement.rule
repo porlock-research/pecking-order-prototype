@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: (^|/)CLAUDE\.md$
+MATCH_CONTENT: (^#{2,4}\s+[A-Z]|NEVER|ALWAYS|^\*\*|MUST( not)?\s|[Dd]on't\s|[Dd]o not\s|should never)
 ADVISORY: |
   Before adding or modifying a rule in CLAUDE.md, apply the placement rubric:
 

@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: cartridges/games/(color-sort|stacker|the-split|[^/]*puzzle[^/]*)/[^/]+Renderer\.tsx
+MATCH_CONTENT: (floating\s*=\s*\{|floating\.(phase|fromTube)|pickupFromTube|tryPlaceInto|tubes\[|dropSelected)
 ADVISORY: |
   Pickup-and-place puzzle games (pick an item, animate it, drop into
   a target) should use a POP-ON-PICKUP ownership model, not a defer-

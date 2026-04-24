@@ -22,6 +22,29 @@
 **Still pending from 2026-04-16 (updated):**
 - `broad-commit-check-artifacts` — unchanged. Still fires on every `git commit` but advisory is short and appears to be doing useful work (today's session-start flagged 14 stale .png files at project root).
 
+## Resolved 2026-04-24 (tightening pass — 10 rules gated)
+
+Follow-on to the retirement pass. All 10 tighten-candidates listed below
+now have `MATCH_CONTENT` gates; regexes hand-tested against positive and
+negative inputs.
+
+Arcade / canvas renderers (previously fired on every renderer edit):
+- `finite-arcade-end-game-single-flag` — `(elapsed\s*[><]=|setTimeout\s*\([^)]*finish|let ending|ending\s*=\s*(true|false)|solveCelebrate|gameOver\s*\|\|\s*ending)`
+- `finite-arcade-pickup-place-ownership` — `(floating\s*=\s*\{|floating\.(phase|fromTube)|pickupFromTube|tryPlaceInto|tubes\[|dropSelected)`
+- `finite-canvas-theme-capture-at-init` — `(useCartridgeTheme|themeRef\.current|gameLoop\s*=\s*useCallback|colorKey|DEFAULT_CARTRIDGE_THEME|setTheme\()`
+- `finite-canvas-trail-sampling-threshold` — `(trail\.(length|unshift|push|pop|shift)|THRESHOLD|sampling|arc-?length)`
+- `finite-canvas-playtest-hidden-tab` — `(visibilityState|document\.hidden|cancelAnimationFrame|...|chrome-profile|--isolated)` (tightened to fire only on visibility/RAF plumbing or chrome-profile diagnostics, not every renderer edit)
+
+Misconfigured `MATCH_PATTERN` (code patterns moved to `MATCH_CONTENT`,
+file scope added to `MATCH_PATTERN`):
+- `finite-arcade-result-integer-coercion` — now scoped to `apps/client/src/cartridges/games/.+Renderer\.tsx$`
+- `finite-ts-config-as-const-literal-pin` — now scoped to `(packages/game-cartridges/src/machines/|apps/client/src/cartridges/games/).+\.(ts|tsx)$`
+- `finite-game-dev-harness-local-types` — now scoped to `apps/.*GameDevHarness\.tsx$`
+
+Broad path rules:
+- `finite-claude-md-placement` — gated on structural additions (`^#{2,4}\s+[A-Z]|NEVER|ALWAYS|^\*\*|MUST|Don't|Do not|should never`) so minor copy edits don't fire the full 33-line rubric.
+- `finite-shared-types-rebuild` — gated on export/type declarations so comment and formatting edits skip the advisory.
+
 ## Resolved 2026-04-16 (noise-reduction pass)
 
 - `finite-reactions-not-persisted` — **deleted**. Premise became false once

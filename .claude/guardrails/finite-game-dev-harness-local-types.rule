@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
-MATCH_PATTERN: (GameType\s*=|GAME_DEFS|ARCADE_TYPES)
+MATCH_PATTERN: apps/.*GameDevHarness\.tsx$
+MATCH_CONTENT: (GameType\s*=|GAME_DEFS|ARCADE_TYPES)
 ADVISORY: |
   GameDevHarness has a LOCAL hardcoded GameType union (line ~7) that is
   NOT imported from shared-types. When adding new game types, you must

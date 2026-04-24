@@ -1,5 +1,6 @@
 MATCH_TOOL: Edit|Write
 MATCH_PATTERN: packages/shared-types/src/.+\.ts$
+MATCH_CONTENT: (^export\s+(type|interface|const|function|enum|default|\*|\{)|^[[:space:]]*(type|interface)\s+[A-Z])
 ADVISORY: |
   `@pecking-order/shared-types` is a **built** package, not a source import.
   After editing files in `packages/shared-types/src/`, you MUST rebuild
