@@ -231,6 +231,84 @@ describe('l3-pregame — SOCIAL.WHISPER (v2)', () => {
   });
 });
 
+describe('l3-pregame — SOCIAL.SEND_MSG (group chat)', () => {
+  function seed(h: ReturnType<typeof createPregameHarness>) {
+    h.send({ type: Events.System.PLAYER_JOINED, player: { id: 'p1', personaName: 'Alex', qaAnswers: [] } });
+    h.send({ type: Events.System.PLAYER_JOINED, player: { id: 'p2', personaName: 'Sam',  qaAnswers: [] } });
+  }
+
+  it('MAIN channel carries CHAT + REACTIONS + WHISPER capabilities', () => {
+    const h = createPregameHarness();
+    const caps = h.pregame().context.channels.MAIN.capabilities;
+    expect(caps).toEqual(expect.arrayContaining(['CHAT', 'REACTIONS', 'WHISPER']));
+    h.stop();
+  });
+
+  it('appends message to chatLog and emits CHAT_MSG fact', () => {
+    const h = createPregameHarness();
+    seed(h);
+    h.send({ type: Events.Social.SEND_MSG, senderId: 'p1', content: 'hey cast' });
+    const ctx: any = h.pregame().context;
+    expect(ctx.chatLog).toHaveLength(1);
+    expect(ctx.chatLog[0].content).toBe('hey cast');
+    expect(ctx.chatLog[0].channelId).toBe('MAIN');
+    expect(ctx.chatLog[0].whisperTarget).toBeUndefined();
+    const f = h.facts().find(x => x.type === FactTypes.CHAT_MSG);
+    expect(f).toBeDefined();
+    expect(f!.actorId).toBe('p1');
+    expect((f!.payload as any).channelId).toBe('MAIN');
+    h.stop();
+  });
+
+  it('resolves @mention personaNames into payload.mentionedIds', () => {
+    const h = createPregameHarness();
+    seed(h);
+    h.send({ type: Events.Social.SEND_MSG, senderId: 'p1', content: 'hey @Sam how are you' });
+    const f = h.facts().find(x => x.type === FactTypes.CHAT_MSG);
+    expect((f!.payload as any).mentionedIds).toEqual(['p2']);
+    h.stop();
+  });
+
+  it('rejects a DM-shaped payload (recipientIds or targetId present)', () => {
+    const h = createPregameHarness();
+    seed(h);
+    h.send({ type: Events.Social.SEND_MSG, senderId: 'p1', content: 'dm attempt', recipientIds: ['p2'] } as any);
+    h.send({ type: Events.Social.SEND_MSG, senderId: 'p1', content: 'dm attempt', targetId: 'p2' } as any);
+    expect(h.pregame().context.chatLog).toHaveLength(0);
+    expect(h.facts().filter(f => f.type === FactTypes.CHAT_MSG)).toHaveLength(0);
+    h.stop();
+  });
+});
+
+describe('l3-pregame — SOCIAL.REACT', () => {
+  function seedWithMsg(h: ReturnType<typeof createPregameHarness>) {
+    h.send({ type: Events.System.PLAYER_JOINED, player: { id: 'p1', personaName: 'P1', qaAnswers: [] } });
+    h.send({ type: Events.System.PLAYER_JOINED, player: { id: 'p2', personaName: 'P2', qaAnswers: [] } });
+    h.send({ type: Events.Social.SEND_MSG, senderId: 'p1', content: 'hi' });
+    return h.pregame().context.chatLog[0].id as string;
+  }
+
+  it('adds the emoji reactor to the message and emits a REACTION fact', () => {
+    const h = createPregameHarness();
+    const msgId = seedWithMsg(h);
+    h.send({ type: Events.Social.REACT, senderId: 'p2', messageId: msgId, emoji: '🔥' });
+    const msg = h.pregame().context.chatLog[0];
+    expect(msg.reactions['🔥']).toEqual(['p2']);
+    expect(h.facts().some(f => f.type === FactTypes.REACTION)).toBe(true);
+    h.stop();
+  });
+
+  it('toggles a reactor off on second send (same emoji + same sender)', () => {
+    const h = createPregameHarness();
+    const msgId = seedWithMsg(h);
+    h.send({ type: Events.Social.REACT, senderId: 'p2', messageId: msgId, emoji: '🔥' });
+    h.send({ type: Events.Social.REACT, senderId: 'p2', messageId: msgId, emoji: '🔥' });
+    const msg = h.pregame().context.chatLog[0];
+    expect(msg.reactions).toBeUndefined();
+    h.stop();
+  });
+});
+
 describe('l3-pregame — SYSTEM.PLAYER_CONNECTED auto-reveal (v3)', () => {
   it('on first connect with qaAnswers, picks a random qIndex and emits PREGAME_REVEAL_ANSWER', () => {
     const h = createPregameHarness();

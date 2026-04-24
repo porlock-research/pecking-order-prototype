@@ -17,6 +17,13 @@
  *                                 flag so reconnects/multi-tab don't re-fire.
  *                                 Players with no qaAnswers get the flag set
  *                                 but no reveal (graceful fallback).
+ *   - SOCIAL.SEND_MSG           → group chat in pregame (MAIN only). DMs stay
+ *                                 closed; guard rejects any payload naming
+ *                                 recipients. Emits CHAT_MSG fact with
+ *                                 mentionedIds/replyToAuthorId resolved the
+ *                                 same way as l3-social.emitChatFact.
+ *   - SOCIAL.REACT              → emoji reactions on pregame MAIN messages.
+ *                                 Mirrors l3-social's processReaction.
  *   - SOCIAL.WHISPER            → pregame intrigue — reuses buildChatMessage +
  *                                 appendToChatLog from l3-social's helpers,
  *                                 WHISPER fact is already in JOURNALABLE_TYPES
@@ -40,17 +47,17 @@ import {
 } from '@pecking-order/shared-types';
 import { buildChatMessage, appendToChatLog } from './actions/social-helpers';
 
-/** Synthetic MAIN channel seeded at spawn. WHISPER cap is load-bearing —
- *  the guard below (and any reuse of the standard whisper projection on
- *  the client) checks for it. CHAT/REACTIONS/SILVER are omitted because
- *  those surfaces are NOT available in pregame. */
+/** Synthetic MAIN channel seeded at spawn. Pregame allows group chat
+ *  (CHAT + REACTIONS) and whispers; silver/nudge/DMs stay closed — the
+ *  design is "meet the cast, gossip before Day 1 starts" without the
+ *  economy yet. */
 const PREGAME_MAIN_CHANNEL: Channel = {
   id: 'MAIN',
   type: 'MAIN' as const,
   memberIds: [],
   createdBy: 'SYSTEM',
   createdAt: Date.now(),
-  capabilities: ['WHISPER'] as const,
+  capabilities: ['CHAT', 'REACTIONS', 'WHISPER'] as const,
 };
 
 export interface PregameContext {
@@ -80,6 +87,8 @@ export type PregameEvent =
   | { type: 'SYSTEM.PLAYER_JOINED'; player: { id: string; personaName?: string; qaAnswers?: QaEntry[] } }
   | { type: 'SYSTEM.PLAYER_CONNECTED'; playerId: string }
   | { type: 'PREGAME.REVEAL_ANSWER'; senderId: string; qIndex: number }
+  | { type: 'SOCIAL.SEND_MSG'; senderId: string; content: string; replyTo?: string }
+  | { type: 'SOCIAL.REACT'; senderId: string; messageId: string; emoji: string }
   | { type: 'SOCIAL.WHISPER'; senderId: string; targetId: string; text: string };
 
 export const pregameMachine = setup({
@@ -124,6 +133,26 @@ export const pregameMachine = setup({
       if (!sender || sender.status !== PlayerStatuses.ALIVE) return false;
       if (!target || target.status !== PlayerStatuses.ALIVE) return false;
       return true;
+    },
+    canSendMsg: ({ context, event }: any) => {
+      if (event.type !== Events.Social.SEND_MSG) return false;
+      const mainCaps = context.channels?.MAIN?.capabilities ?? [];
+      if (!mainCaps.includes('CHAT')) return false;
+      // Pregame only ever lands a SEND_MSG on MAIN — no DMs exist. Reject any
+      // payload that names recipients (defensive; clients shouldn't produce
+      // one but the L2 allowlist is broad by design).
+      if (event.recipientIds?.length || event.targetId) return false;
+      if (!event.senderId || !event.content || event.content.length === 0) return false;
+      const sender = context.players[event.senderId];
+      return !!sender && sender.status === PlayerStatuses.ALIVE;
+    },
+    canReact: ({ context, event }: any) => {
+      if (event.type !== Events.Social.REACT) return false;
+      const mainCaps = context.channels?.MAIN?.capabilities ?? [];
+      if (!mainCaps.includes('REACTIONS')) return false;
+      if (!event.senderId || !event.messageId || !event.emoji) return false;
+      const sender = context.players[event.senderId];
+      return !!sender && sender.status === PlayerStatuses.ALIVE;
     },
   } as any,
 }).createMachine({
@@ -281,6 +310,86 @@ export const pregameMachine = setup({
                 actorId: event.senderId,
                 targetId: event.targetId,
                 payload: {},
+                timestamp: Date.now(),
+              },
+            })),
+          ],
+        },
+        // Group chat in pregame. Only lands on MAIN — the guard rejects any
+        // payload that names recipients, and we intentionally don't reuse
+        // l3-social's processChannelMessage (which would try to spin up a
+        // DM channel on first message and charge silver). @mention routing
+        // for pushes mirrors the l3-social emitChatFact code path.
+        'SOCIAL.SEND_MSG': {
+          guard: 'canSendMsg',
+          actions: [
+            assign({
+              chatLog: ({ context, event }: any) => {
+                const msg = buildChatMessage(event.senderId, event.content, 'MAIN', {
+                  replyTo: event.replyTo,
+                });
+                return appendToChatLog(context.chatLog, msg);
+              },
+            }),
+            sendParent(({ context, event }: any): { type: typeof Events.Fact.RECORD; fact: Fact } => {
+              let replyToAuthorId: string | undefined;
+              if (event.replyTo) {
+                const orig = context.chatLog.find((m: any) => m.id === event.replyTo);
+                if (orig && orig.senderId !== event.senderId) replyToAuthorId = orig.senderId;
+              }
+              const content: string = event.content || '';
+              const mentionedIds: string[] = [];
+              for (const [pid, p] of Object.entries(context.players)) {
+                if (pid === event.senderId) continue;
+                const personaName = (p as any)?.personaName;
+                if (personaName && content.includes(`@${personaName}`)) mentionedIds.push(pid);
+              }
+              return {
+                type: Events.Fact.RECORD,
+                fact: {
+                  type: FactTypes.CHAT_MSG,
+                  actorId: event.senderId,
+                  payload: {
+                    content: event.content,
+                    channelId: 'MAIN',
+                    ...(replyToAuthorId ? { replyToAuthorId } : {}),
+                    ...(mentionedIds.length > 0 ? { mentionedIds } : {}),
+                  },
+                  timestamp: Date.now(),
+                },
+              };
+            }),
+          ],
+        },
+        'SOCIAL.REACT': {
+          guard: 'canReact',
+          actions: [
+            assign({
+              chatLog: ({ context, event }: any) => {
+                const ALLOWED_EMOJIS = ['😂', '👀', '🔥', '💀', '❤️'];
+                if (!ALLOWED_EMOJIS.includes(event.emoji)) return context.chatLog;
+                return context.chatLog.map((msg: any) => {
+                  if (msg.id !== event.messageId) return msg;
+                  const reactions: Record<string, string[]> = { ...(msg.reactions || {}) };
+                  const reactors = reactions[event.emoji] ? [...reactions[event.emoji]] : [];
+                  const idx = reactors.indexOf(event.senderId);
+                  if (idx >= 0) {
+                    reactors.splice(idx, 1);
+                    if (reactors.length === 0) delete reactions[event.emoji];
+                    else reactions[event.emoji] = reactors;
+                  } else {
+                    reactions[event.emoji] = [...reactors, event.senderId];
+                  }
+                  return { ...msg, reactions: Object.keys(reactions).length > 0 ? reactions : undefined };
+                });
+              },
+            }),
+            sendParent(({ event }: any): { type: typeof Events.Fact.RECORD; fact: Fact } => ({
+              type: Events.Fact.RECORD,
+              fact: {
+                type: FactTypes.REACTION,
+                actorId: event.senderId,
+                payload: { messageId: event.messageId, emoji: event.emoji },
                 timestamp: Date.now(),
               },
             })),

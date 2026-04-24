@@ -327,8 +327,11 @@ export function buildSyncPayload(deps: SyncDeps, playerId: string, onlinePlayers
       manifest: snapshot.context.manifest,
       chatLog: playerChatLog,
       channels: playerChannels,
-      groupChatOpen: l3Context.groupChatOpen ?? false,
-      dmsOpen: l3Context.dmsOpen ?? false,
+      // Pregame override: l3-session hasn't spawned yet, so its default (both
+      // false) would close the composer entirely. Pregame allows group chat on
+      // MAIN (SEND_MSG + REACT) but not DMs — reflect that to clients.
+      groupChatOpen: pregameEarly ? true : (l3Context.groupChatOpen ?? false),
+      dmsOpen: pregameEarly ? false : (l3Context.dmsOpen ?? false),
       activeVotingCartridge: decoratedVoting,
       activeGameCartridge: decoratedGame,
       activePromptCartridge: decoratedPrompt,

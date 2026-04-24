@@ -31,8 +31,16 @@ export function DmSheet({ targetId, isGroup, onClose }: Props) {
 
   const channel = useMemo(() => {
     if (isGroup) return channels[targetId] ?? null;
+    // Treat pendingMemberIds as valid membership when resolving: when someone
+    // has sent me a DM invite, I'm in pendingMemberIds until I accept. Without
+    // this, tapping the inviter's avatar would miss the existing channel,
+    // render the first-message empty state, and the first send would then get
+    // rejected server-side with INVITE_REQUIRED (LR8W3U playtest pattern, 4
+    // rejects in 2 minutes). Mirrors Vivid's DMChat resolver.
+    const inCh = (ch: any, pid: string) =>
+      ch.memberIds.includes(pid) || (ch.pendingMemberIds || []).includes(pid);
     return Object.values(channels).find(ch =>
-      ch.type === ChannelTypes.DM && ch.memberIds.includes(playerId) && ch.memberIds.includes(targetId)
+      ch.type === ChannelTypes.DM && inCh(ch, playerId) && inCh(ch, targetId)
     ) ?? null;
   }, [channels, targetId, isGroup, playerId]);
 

@@ -2,23 +2,48 @@ import { motion } from 'framer-motion';
 import { Coins, ChatCircle, HandWaving, Lock, X } from '../../icons';
 import { PULSE_SPRING, PULSE_TAP } from '../../springs';
 import { PULSE_Z, backdropFor } from '../../zIndex';
+import { DayPhases } from '@pecking-order/shared-types';
+import type { ChannelCapability, DayPhase } from '@pecking-order/shared-types';
 import type { Command } from '../../hooks/useCommandBuilder';
 
-const commands: Array<{ id: Command; icon: typeof Coins; label: string; desc: string; color: string; requires?: 'dmsOpen' }> = [
-  { id: 'silver', icon: Coins, label: 'Silver', desc: 'Send silver', color: 'var(--pulse-gold)' },
-  { id: 'dm', icon: ChatCircle, label: 'DM', desc: 'Start a chat', color: 'var(--pulse-accent)', requires: 'dmsOpen' },
-  { id: 'nudge', icon: HandWaving, label: 'Nudge', desc: 'Poke a player', color: 'var(--pulse-nudge)' },
-  { id: 'whisper', icon: Lock, label: 'Whisper', desc: 'Secret message', color: 'var(--pulse-whisper)', requires: 'dmsOpen' },
+const commands: Array<{
+  id: Command;
+  icon: typeof Coins;
+  label: string;
+  desc: string;
+  color: string;
+  requires?: 'dmsOpen';
+  cap?: ChannelCapability;
+}> = [
+  { id: 'silver',  icon: Coins,       label: 'Silver',  desc: 'Send silver',    color: 'var(--pulse-gold)',    cap: 'SILVER_TRANSFER' },
+  { id: 'dm',      icon: ChatCircle,  label: 'DM',      desc: 'Start a chat',   color: 'var(--pulse-accent)',  requires: 'dmsOpen' },
+  { id: 'nudge',   icon: HandWaving,  label: 'Nudge',   desc: 'Poke a player',  color: 'var(--pulse-nudge)',   cap: 'NUDGE' },
+  { id: 'whisper', icon: Lock,        label: 'Whisper', desc: 'Secret message', color: 'var(--pulse-whisper)', requires: 'dmsOpen', cap: 'WHISPER' },
 ];
 
 interface CommandPickerProps {
   onSelect: (cmd: Command) => void;
   onClose: () => void;
   dmsOpen?: boolean;
+  /** MAIN channel capabilities — silver/nudge only show when the channel can
+   *  actually perform them (pregame MAIN has CHAT+REACTIONS+WHISPER only). */
+  capabilities?: ChannelCapability[];
+  /** Pregame exception: /whisper is allowed even though dmsOpen is false. */
+  phase?: DayPhase;
 }
 
-export function CommandPicker({ onSelect, onClose, dmsOpen = true }: CommandPickerProps) {
-  const visible = commands.filter(c => !(c.requires === 'dmsOpen' && !dmsOpen));
+export function CommandPicker({ onSelect, onClose, dmsOpen = true, capabilities, phase }: CommandPickerProps) {
+  const visible = commands.filter(c => {
+    if (c.cap && capabilities && !capabilities.includes(c.cap)) return false;
+    if (c.requires === 'dmsOpen' && !dmsOpen) {
+      // Whisper stays reachable in pregame even though DMs are closed
+      // (mirrors HintChips' pregame bypass). All other dmsOpen-gated
+      // commands hide — there's no valid target channel for them.
+      if (c.id === 'whisper' && phase === DayPhases.PREGAME) return true;
+      return false;
+    }
+    return true;
+  });
   return (
     <>
       <div

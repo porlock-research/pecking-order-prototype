@@ -187,10 +187,14 @@ export const orchestratorMachine = setup({
             actions: sendTo('l3-pregame', ({ event }: any) => event),
           },
           {
-            // Narrow social allowlist — only SOCIAL.WHISPER is enabled in pregame.
-            // Other SOCIAL.* events (SEND_MSG, SEND_SILVER, REACT, NUDGE, ACCEPT_DM,
-            // etc.) remain silently dropped in pregame by design.
-            guard: ({ event }: any) => event.type === Events.Social.WHISPER,
+            // Pregame social allowlist: group chat is open (SEND_MSG + REACT on
+            // MAIN), whispers are intrigue-only. Silver/nudge/DM stay closed —
+            // the pregame MAIN channel doesn't carry those capabilities and the
+            // pregame actor has no handler, so those events silently no-op.
+            guard: ({ event }: any) =>
+              event.type === Events.Social.WHISPER ||
+              event.type === Events.Social.SEND_MSG ||
+              event.type === Events.Social.REACT,
             actions: sendTo('l3-pregame', ({ event }: any) => event),
           },
         ],

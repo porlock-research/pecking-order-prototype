@@ -193,6 +193,8 @@ export function PulseInput() {
             onSelect={(cmd) => withMorph(() => selectCommand(cmd))}
             onClose={() => withMorph(() => cancel())}
             dmsOpen={dmsOpen}
+            capabilities={mainCapabilities}
+            phase={phase}
           />
         </div>
       )}

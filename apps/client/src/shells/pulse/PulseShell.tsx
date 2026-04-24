@@ -8,13 +8,19 @@ import { useGameStore, selectHaveINudged, selectPendingInvitesForMe } from '../.
 import { useDeepLinkIntent } from '../../hooks/useDeepLinkIntent';
 import { useRevealQueue } from './hooks/useRevealQueue';
 import { useReceivedOverdrive } from './hooks/useReceivedOverdrive';
-import { ChannelTypes } from '@pecking-order/shared-types';
+import { ChannelTypes, DayPhases } from '@pecking-order/shared-types';
 import type { DeepLinkIntent, CartridgeKind } from '@pecking-order/shared-types';
 import { PULSE_Z } from './zIndex';
 import { runViewTransition, supportsViewTransitions, prefersReducedMotion } from './viewTransitions';
 
 const DM_REJECTION_LABELS: Record<string, string> = {
   DMS_CLOSED: 'DMs are closed right now',
+  INVITE_REQUIRED: "They haven't accepted the invite yet",
+  GROUP_CHAT_CLOSED: 'Group chat is closed',
+  INSUFFICIENT_SILVER: 'Not enough silver',
+  CHAR_LIMIT: 'Daily character limit reached',
+  CONVERSATION_LIMIT: 'Conversation limit reached for today',
+  SELF_DM: "You can't DM yourself",
   INVALID_MEMBERS: 'Invalid members',
   TARGET_ELIMINATED: 'That player has been eliminated',
   GROUP_LIMIT: 'Group DM limit reached',
@@ -184,6 +190,15 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
     window.dispatchEvent(new CustomEvent('pulse:nudge-burst', { detail: { recipient: name } }));
   }, [engine]);
   const openDM = useCallback((targetId: string, isGroup = false) => {
+    // Pregame has no DM channel (design: group chat only, DMs closed). All
+    // tap-to-DM entry points (message avatar, @mention, social panel, etc.)
+    // route to the Pregame Dossier sheet instead — matches CastStrip's own
+    // pregame override so the cast-chip → dossier → chip morph stays coherent.
+    if (useGameStore.getState().phase === DayPhases.PREGAME && !isGroup) {
+      setDossierTargetId(targetId);
+      setSocialPanelOpen(false);
+      return;
+    }
     // 1:1 DMs morph from the tapped cast chip into the DmHero portrait via
     // the `chip-${playerId}` view-transition-name. Group DMs don't have a
     // single-face hero (DmGroupHero is a multi-avatar composition), so we
