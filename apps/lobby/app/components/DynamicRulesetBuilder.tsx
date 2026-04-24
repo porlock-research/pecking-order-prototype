@@ -746,14 +746,14 @@ export function DynamicRulesetBuilder({
               type="button"
               data-testid="start-time-now-btn"
               onClick={() => {
-                const soon = new Date(Date.now() + 2 * 60_000);
+                const soon = new Date(Date.now() + 5 * 60_000);
                 const local = new Date(soon.getTime() - soon.getTimezoneOffset() * 60_000)
                   .toISOString().slice(0, 16);
                 onChange({ ...config, startTime: local });
               }}
               className="text-[10px] font-mono text-skin-gold/70 hover:text-skin-gold border border-skin-gold/20 rounded-lg px-2 py-1 transition-all"
             >
-              Set to now + 2 min
+              Set to now + 5 min
             </button>
           )}
           <p className="text-[8px] font-mono text-skin-dim/30">
