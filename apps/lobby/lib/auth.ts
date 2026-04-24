@@ -1,6 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import type { NextResponse } from 'next/server';
 import { redirect } from 'next/navigation';
 import { getDB, getEnv } from './db';
 import { sendEmail } from './email';
@@ -89,6 +90,38 @@ export async function requireAuth(redirectTo?: string): Promise<SessionUser> {
     redirect(loginUrl);
   }
   return session;
+}
+
+// ── Session Cookie Helpers ───────────────────────────────────────────────
+
+function buildSessionCookieOptions(hostname: string) {
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  return {
+    httpOnly: true,
+    secure: !isLocal,
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: SESSION_EXPIRY_MS / 1000,
+    ...(isLocal ? {} : { domain: '.peckingorder.ca' }),
+  };
+}
+
+export async function setSessionCookie(
+  response: NextResponse,
+  sessionId: string,
+  hostname: string,
+): Promise<void> {
+  const cookieName = await getSessionCookieName();
+  response.cookies.set(cookieName, sessionId, buildSessionCookieOptions(hostname));
+}
+
+export async function setSessionCookieOnRequest(
+  sessionId: string,
+  hostname: string,
+): Promise<void> {
+  const cookieName = await getSessionCookieName();
+  const cookieStore = await cookies();
+  cookieStore.set(cookieName, sessionId, buildSessionCookieOptions(hostname));
 }
 
 // ── Magic Link ───────────────────────────────────────────────────────────

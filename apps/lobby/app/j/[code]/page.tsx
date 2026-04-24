@@ -1,5 +1,6 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getDB, getEnv } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 import { WelcomeForm } from './welcome-form';
 import { JoinedCast } from './joined-cast';
 import { buildSocialLine, displayLabelFor, type JoinedPlayer } from './cast-helpers';
@@ -39,6 +40,22 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
         </div>
       </div>
     );
+  }
+
+  // Short-circuit based on visitor session. Anon visitors fall through to
+  // the welcome form below. Authed players either continue into /play
+  // (already enrolled) or /join (need persona pick).
+  // D1 is eventually-consistent across replicas; an Invites row written
+  // sub-second ago might miss here and show the welcome form instead of
+  // redirecting. The next reload picks it up. Acceptable residual gap.
+  const session = await getSession();
+  if (session) {
+    const enrolled = await db
+      .prepare('SELECT id FROM Invites WHERE game_id = ? AND accepted_by = ?')
+      .bind(game.id, session.userId)
+      .first();
+    if (enrolled) redirect(`/play/${code}`);
+    redirect(`/join/${code}`);
   }
 
   // Joined cast: fetch up to 6 accepted players with persona + user labels,

@@ -1,9 +1,9 @@
 'use server';
 
-import { cookies, headers } from 'next/headers';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getDB } from '@/lib/db';
-import { getSession, generateId, generateToken, getSessionCookieName } from '@/lib/auth';
+import { getSession, generateId, generateToken, setSessionCookieOnRequest } from '@/lib/auth';
 import { checkAnonymousRateLimit, recordAnonymousCreate } from '@/lib/rate-limit';
 
 const SESSION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days, mirrors lib/auth.ts
@@ -106,16 +106,10 @@ export async function claimSeat(
   // Record rate-limit tally AFTER successful commit.
   await recordAnonymousCreate(db, ip);
 
-  // Set cookie.
-  const cookieName = await getSessionCookieName();
-  const cookieStore = await cookies();
-  cookieStore.set(cookieName, sessionId, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    maxAge: SESSION_EXPIRY_MS / 1000,
-    path: '/',
-  });
+  // Set session cookie via shared helper — adapts `secure` to the request
+  // hostname so HTTP responses in mixed-HTTPS environments don't strip it.
+  const hostname = hdrs.get('host')?.split(':')[0] || '';
+  await setSessionCookieOnRequest(sessionId, hostname);
 
   // Redirect into the existing persona wizard.
   redirect(`/join/${code}`);
