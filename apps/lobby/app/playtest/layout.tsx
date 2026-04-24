@@ -1,17 +1,25 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { getEnv } from '@/lib/db';
 
 const FALLBACK_TITLE = 'Pecking Order — Join the Playtest';
 const FALLBACK_DESCRIPTION =
   'A social game of alliances, betrayal & strategy. Sign up to play.';
 
+// Distinct magenta for the signup funnel — visually separates the playtest
+// onboarding from the in-game `#0f0a1a` palette. Root lobby layout sets
+// `#0f0a1a`; this override applies only to the /playtest subtree.
+export const viewport: Viewport = {
+  themeColor: '#2c003e',
+};
+
 export async function generateMetadata(): Promise<Metadata> {
   const env = await getEnv();
-  const lobbyHost = (env.LOBBY_HOST as string) || '';
+  const lobbyHost = (env.LOBBY_HOST as string) || 'https://lobby.peckingorder.ca';
   const playtestUrl = (env.PLAYTEST_URL as string) || `${lobbyHost}/playtest`;
   const ogImage = `${lobbyHost}/og-playtest.png`;
 
   return {
+    metadataBase: new URL(lobbyHost),
     title: FALLBACK_TITLE,
     description: FALLBACK_DESCRIPTION,
     openGraph: {
@@ -28,15 +36,13 @@ export async function generateMetadata(): Promise<Metadata> {
         },
       ],
       type: 'website',
+      locale: 'en_US',
     },
     twitter: {
       card: 'summary_large_image',
       title: FALLBACK_TITLE,
       description: FALLBACK_DESCRIPTION,
       images: [ogImage],
-    },
-    other: {
-      'theme-color': '#2c003e',
     },
   };
 }

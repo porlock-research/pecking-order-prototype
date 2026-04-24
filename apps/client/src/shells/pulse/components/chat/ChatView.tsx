@@ -9,7 +9,6 @@ import { SilverTransferCard } from './SilverTransferCard';
 import { NudgeTransferCard } from './NudgeTransferCard';
 import { TypingIndicator } from './TypingIndicator';
 import { NarratorLine } from './NarratorLine';
-import { PregameJoinLine } from './PregameJoinLine';
 import { PregameRevealCard } from './PregameRevealCard';
 import { ChatDivider } from './ChatDivider';
 import { EventCard } from './EventCard';
@@ -97,16 +96,6 @@ export function ChatView() {
     }));
   }, [pregame]);
 
-  // Pregame "joined the cast" lines — derived from the SYNC pregame.players slice.
-  // Skip self (you don't need to see yourself arrive). Like reveals, these drop
-  // automatically once Day 1 starts and the slice goes away.
-  const pregameJoins: Array<{ ts: number; actorId: string }> = useMemo(() => {
-    if (!pregame?.players) return [];
-    return Object.entries(pregame.players)
-      .filter(([actorId]) => actorId !== playerId)
-      .map(([actorId, p]) => ({ ts: p.joinedAt, actorId }));
-  }, [pregame, playerId]);
-
   // Dramatic event cards — ELIMINATION + PHASE_WINNER tickers are the day's
   // peak-end beats. Server already emits these via factToTicker; we render
   // them inline as mechanism-aware <EventCard>.
@@ -121,8 +110,7 @@ export function ChatView() {
     | { type: 'social'; data: TickerMessage; ts: number }
     | { type: 'narrator'; data: TickerMessage; ts: number }
     | { type: 'event'; data: TickerMessage; ts: number }
-    | { type: 'pregame-reveal'; data: { actorId: string; question: string; answer: string }; ts: number }
-    | { type: 'pregame-join'; data: { actorId: string }; ts: number };
+    | { type: 'pregame-reveal'; data: { actorId: string; question: string; answer: string }; ts: number };
 
   const timeline: TimelineEntry[] = [
     ...mainMessages.map(m => ({ type: 'msg' as const, data: m, ts: m.timestamp })),
@@ -133,11 +121,6 @@ export function ChatView() {
       type: 'pregame-reveal' as const,
       data: { actorId: r.actorId, question: r.question, answer: r.answer },
       ts: r.ts,
-    })),
-    ...pregameJoins.map(j => ({
-      type: 'pregame-join' as const,
-      data: { actorId: j.actorId },
-      ts: j.ts,
     })),
   ].sort((a, b) => a.ts - b.ts);
 
@@ -241,14 +224,6 @@ export function ChatView() {
               key={t.id}
               kind={t.category === TickerCategories.SOCIAL_PHASE ? 'alliance' : socialInviteToNarratorKind(t)}
               text={t.text}
-            />
-          );
-        }
-        if (entry.type === 'pregame-join') {
-          return (
-            <PregameJoinLine
-              key={`pregame-join-${entry.data.actorId}-${entry.ts}`}
-              actorId={entry.data.actorId}
             />
           );
         }

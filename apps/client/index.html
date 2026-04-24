@@ -2,14 +2,40 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover → env(safe-area-inset-*) reports real values on
+         notched/rounded devices.
+         interactive-widget=resizes-content → when the on-screen keyboard
+         opens the browser resizes the *layout* viewport (not just the visual
+         one); this keeps 100dvh-anchored chat UIs stable when the keyboard
+         dismisses on iOS Chrome. Without it the layout gets stuck in a
+         post-keyboard half-state with clipped header/footer. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <meta name="theme-color" content="#0f0a1a" />
-    <meta name="description" content="A social deduction game. Keep your friends close..." />
+    <meta name="description" content="A social game of alliances, betrayal, and strategy. Your friends are your rivals." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+    <!-- Open Graph + Twitter Card for link unfurling. SPA index.html is served
+         for every /game/* route, so rich previews work from any share URL the
+         client hands out. %VITE_LOBBY_HOST% is substituted by Vite at build
+         time (env-dependent absolute URL — required; iMessage/Slack/Discord
+         ignore relative og:image). og-playtest.png is the existing 1200x630
+         share card hosted on the lobby; see apps/lobby/app/layout.tsx. -->
+    <meta property="og:title" content="Pecking Order" />
+    <meta property="og:description" content="A social game of alliances, betrayal, and strategy. Your friends are your rivals." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Pecking Order" />
+    <meta property="og:image" content="%VITE_LOBBY_HOST%/og-playtest.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Pecking Order — a social game of alliances, betrayal, and strategy" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Pecking Order" />
+    <meta name="twitter:description" content="A social game of alliances, betrayal, and strategy. Your friends are your rivals." />
+    <meta name="twitter:image" content="%VITE_LOBBY_HOST%/og-playtest.png" />
     <title>Pecking Order</title>
   </head>
   <body>

@@ -13,9 +13,9 @@ interface Props {
 
 /**
  * Bespoke pregame reveal — distinct visual identity from NarratorLine
- * (whisper intrigue) and PregameJoinLine (gold ambient arrival). Reveals
- * are signature moments — the only way to learn anything substantive
- * about a cast member, since the dossier defaults to sealed answers.
+ * (whisper intrigue). Reveals are the single arrival beat per player and
+ * the only way to learn anything substantive about a cast member, since
+ * the dossier defaults to sealed answers.
  *
  * Treatment: portrait-led card, display-font question label in pink
  * tracked-caps, large quote in display weight, attribution row, single
@@ -45,10 +45,10 @@ export function PregameRevealCard({ actorId, question, answer }: Props) {
         overflow: 'hidden',
       }}
     >
-      {/* Eyebrow — "JUST LANDED · ON THE RECORD" tracked-caps, pink.
-          Reads as the arrival-moment beat (v3 auto-reveal fires on first WS
-          connect). Ties the reveal back to the gold-ringed PregameJoinLine
-          that fired earlier on PLAYER_JOINED. */}
+      {/* Eyebrow — "ON THE RECORD" tracked-caps, pink. Magazine-quote framing;
+          the card's own presence is the arrival beat now (the separate
+          PregameJoinLine was dropped to consolidate the two-beat pattern
+          into a single message). */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -66,7 +66,7 @@ export function PregameRevealCard({ actorId, question, answer }: Props) {
           textTransform: 'uppercase',
           color: 'var(--pulse-accent)',
         }}>
-          Just landed · On the record
+          On the record
         </span>
       </div>
 
