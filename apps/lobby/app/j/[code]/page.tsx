@@ -42,20 +42,25 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
     );
   }
 
-  // Short-circuit based on visitor session. Anon visitors fall through to
-  // the welcome form below. Authed players either continue into /play
-  // (already enrolled) or /join (need persona pick).
+  // Short-circuit based on visitor session:
+  //   authed + not enrolled    → /join (persona pick)
+  //   authed + enrolled + STARTED → /play (into the running game)
+  //   anon OR authed + enrolled + pre-start → fall through to the welcome
+  //     view so the visitor sees the joined cast + social context. /play
+  //     would bounce pre-start players into /game/CODE/waiting (host
+  //     panel, reads as empty for non-host enrolled players).
   // D1 is eventually-consistent across replicas; an Invites row written
   // sub-second ago might miss here and show the welcome form instead of
-  // redirecting. The next reload picks it up. Acceptable residual gap.
+  // redirecting. Next reload picks it up. Acceptable residual gap.
   const session = await getSession();
   if (session) {
     const enrolled = await db
       .prepare('SELECT id FROM Invites WHERE game_id = ? AND accepted_by = ?')
       .bind(game.id, session.userId)
       .first();
-    if (enrolled) redirect(`/play/${code}`);
-    redirect(`/join/${code}`);
+    if (!enrolled) redirect(`/join/${code}`);
+    if (game.status === 'STARTED') redirect(`/play/${code}`);
+    // enrolled + RECRUITING/READY → render the welcome view below.
   }
 
   // Joined cast: fetch up to 6 accepted players with persona + user labels,
