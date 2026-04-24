@@ -748,12 +748,26 @@ export async function startGame(
   // pitfall where the waiting room's `Object.keys(tokens)[0]` drove any
   // slot other than p1 into the client as p1. Mirror getGameSessionStatus.
   const myInviteIndex = invites.findIndex((i) => i.accepted_by === session.userId);
-  const tokens: Record<string, string> = {};
-  if (myInviteIndex >= 0) {
-    const myPid = `p${myInviteIndex + 1}`;
-    const myInvite = invites[myInviteIndex];
-    const tokenExpiry = `${game.day_count * 2 + 7}d`;
-    tokens[myPid] = await signGameToken(
+  if (myInviteIndex < 0) {
+    // Guaranteed impossible by the isParticipant check above — both queries
+    // look at `Invites WHERE game_id = ? AND accepted_by = session.userId`.
+    // The only way to reach here is a concurrent DELETE between them. Fail
+    // loudly so the waiting room doesn't silently ship tokens: {} into a
+    // client that would then render Object.keys(tokens)[0] === undefined.
+    console.error(
+      '[startGame] race: isParticipant passed but invite missing from roster',
+      { gameId: game.id, userId: session.userId },
+    );
+    return {
+      success: false,
+      error: 'Could not reserve a seat — please refresh and try again.',
+    };
+  }
+  const myPid = `p${myInviteIndex + 1}`;
+  const myInvite = invites[myInviteIndex];
+  const tokenExpiry = `${game.day_count * 2 + 7}d`;
+  const tokens: Record<string, string> = {
+    [myPid]: await signGameToken(
       {
         sub: session.userId,
         gameId: game.id,
@@ -762,8 +776,8 @@ export async function startGame(
       },
       AUTH_SECRET,
       tokenExpiry,
-    );
-  }
+    ),
+  };
 
   const now = Date.now();
 

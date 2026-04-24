@@ -224,19 +224,28 @@ async function refreshFromLobby(
   }
 }
 
+type JwtHintSource = 'localStorage' | 'cookie';
+
 /** Return the freshest locally-cached JWT to use as an identity hint for
  *  the lobby's /enter/CODE recovery endpoint. localStorage and cookie
  *  caches are unified into a single pool ranked by iat — a fresher token
  *  in cookies beats a stale one in localStorage and vice versa. Returns
- *  null if nothing is stored — caller should route to /j/CODE. */
-function findAnyJwtHint(): string | null {
-  let best: { jwt: string; iat: number } | null = null;
-  const consider = (jwt: string | null | undefined) => {
+ *  null if nothing is stored — caller should route to /j/CODE.
+ *
+ *  Also reports which source the winning JWT came from so callers can
+ *  tag distinct Sentry paths — helps spot "recovery succeeds only via
+ *  cookie fallback" patterns that point at a bigger localStorage-loss
+ *  issue. Safari private mode (or a sandboxed iframe) can throw on
+ *  localStorage access; the throw bubbles to runAsyncRecovery's outer
+ *  catch which redirects to /j/CODE — a clean degraded fallback. */
+function findAnyJwtHint(): { jwt: string; source: JwtHintSource } | null {
+  let best: { jwt: string; iat: number; source: JwtHintSource } | null = null;
+  const consider = (jwt: string | null | undefined, source: JwtHintSource) => {
     if (!jwt) return;
     try {
       const decoded = decodeGameToken(jwt);
       const iat = decoded.iat ?? 0;
-      if (!best || iat > best.iat) best = { jwt, iat };
+      if (!best || iat > best.iat) best = { jwt, iat, source };
     } catch {
       // Malformed — skip.
     }
@@ -244,12 +253,15 @@ function findAnyJwtHint(): string | null {
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (!key?.startsWith('po_token_')) continue;
-    consider(localStorage.getItem(key));
+    consider(localStorage.getItem(key), 'localStorage');
   }
   for (const m of document.cookie.matchAll(/po_pwa_([^=]+)=([^;]+)/g)) {
-    consider(m[2]);
+    consider(m[2], 'cookie');
   }
-  return best ? (best as { jwt: string; iat: number }).jwt : null;
+  // Cast: the `consider` callback mutates `best` from inside a closure,
+  // which defeats TS control-flow narrowing after the truthy check.
+  const winner = best as { jwt: string; iat: number; source: JwtHintSource } | null;
+  return winner ? { jwt: winner.jwt, source: winner.source } : null;
 }
 
 /** Ask the lobby which games the user is actively in.
@@ -573,21 +585,30 @@ export default function App() {
         console.log(
           '[App] recovery step 4: redirecting to /enter/',
           code,
-          hint ? '(with JWT hint)' : '(no hint)',
+          hint ? `(with JWT hint from ${hint.source})` : '(no hint)',
         );
-        setSentryAuthMethod('lobby-recover');
+        // Tag the hint source so Sentry can distinguish localStorage
+        // recovery from cookie-fallback recovery. If data shows cookie
+        // dominates, that signals a localStorage-loss issue worth
+        // investigating separately.
         if (hint) {
+          setSentryAuthMethod(
+            hint.source === 'localStorage'
+              ? 'lobby-recover-localStorage'
+              : 'lobby-recover-cookie',
+          );
           const form = document.createElement('form');
           form.method = 'POST';
           form.action = `${LOBBY_HOST}/enter/${code}`;
           const input = document.createElement('input');
           input.type = 'hidden';
           input.name = 'hint';
-          input.value = hint;
+          input.value = hint.jwt;
           form.appendChild(input);
           document.body.appendChild(form);
           form.submit();
         } else {
+          setSentryAuthMethod('lobby-recover-none');
           window.location.href = `${LOBBY_HOST}/j/${code}`;
         }
       } catch (err) {

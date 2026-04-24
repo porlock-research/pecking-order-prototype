@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDB } from '@/lib/db';
 import { generateToken, setSessionCookie } from '@/lib/auth';
-import { log } from '@/lib/log';
+import { log, LOG_TOKEN_PREFIX_LEN } from '@/lib/log';
 import { renderConfirmPage } from '@/lib/render-confirm-page';
 
 // Bot-safe render: GET validates (read-only) + renders an auto-submitting
@@ -48,7 +48,7 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
-  const tokenPrefix = token.slice(0, 8);
+  const tokenPrefix = token.slice(0, LOG_TOKEN_PREFIX_LEN);
   const invite = await loadInvite(token);
   const now = Date.now();
   if (!invite) {
@@ -72,7 +72,7 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
-  const tokenPrefix = token.slice(0, 8);
+  const tokenPrefix = token.slice(0, LOG_TOKEN_PREFIX_LEN);
   const invite = await loadInvite(token);
   const now = Date.now();
   if (!invite) {

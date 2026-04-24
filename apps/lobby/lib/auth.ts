@@ -94,8 +94,27 @@ export async function requireAuth(redirectTo?: string): Promise<SessionUser> {
 
 // ── Session Cookie Helpers ───────────────────────────────────────────────
 
+// Classify a request hostname as "local" for cookie-attribute purposes.
+// "Local" means: skip `secure` (HTTP is expected) and skip the production
+// `domain`. We recognise the obvious localhost pair, mDNS *.local, the
+// user's Tailscale magic DNS namespace, and RFC1918 private IPv4 ranges
+// — see reference_multi_device_dev.md for why these matter in practice:
+// mobile dev over Tailscale would otherwise silently drop the session
+// cookie (secure cookie on HTTP, wrong domain on *.ts.net).
+function isLocalHostname(hostname: string): boolean {
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
+  if (hostname === '::1') return true;
+  if (hostname.endsWith('.ts.net')) return true;
+  if (hostname.endsWith('.local')) return true;
+  // RFC1918 private IPv4 ranges (LAN dev hosts).
+  if (/^10\./.test(hostname)) return true;
+  if (/^192\.168\./.test(hostname)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
+  return false;
+}
+
 function buildSessionCookieOptions(hostname: string) {
-  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  const isLocal = isLocalHostname(hostname);
   return {
     httpOnly: true,
     secure: !isLocal,

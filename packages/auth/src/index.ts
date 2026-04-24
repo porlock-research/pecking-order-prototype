@@ -35,9 +35,11 @@ export async function verifyGameToken(
     return payload as unknown as GameTokenPayload;
   } catch (err) {
     // jose verifies the signature BEFORE the exp claim, so a JWTExpired
-    // error means the signature was trusted. Safe to decode and return
-    // when the caller opts in — used by /enter/CODE recovery to accept
-    // expired-but-still-authentic identity proofs.
+    // error means the signature is trusted. We deliberately narrow to
+    // JWTExpired only — other JWTClaimValidationFailed subclasses (nbf,
+    // iss, aud) are still rejected even with ignoreExpiration: true.
+    // If future callers need a broader trust surface, add opts.flags
+    // rather than loosening this branch.
     if (opts?.ignoreExpiration && err instanceof joseErrors.JWTExpired) {
       return decodeJwt(token) as unknown as GameTokenPayload;
     }

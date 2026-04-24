@@ -228,7 +228,7 @@ describe('/invite/[token]', () => {
       expect(setCookie).toContain('po_session=');
     });
 
-    it('POST twice in rapid succession → second hits already-used branch (single session)', async () => {
+    it('POST twice serially (idempotency, not concurrency) → second hits already-used branch', async () => {
       mockDb = createMockDb(freshInvite());
       const form1 = new FormData();
       await POST(req('POST', VALID_TOKEN, form1), {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyMagicLink, setSessionCookie } from '@/lib/auth';
-import { log } from '@/lib/log';
+import { log, LOG_TOKEN_PREFIX_LEN } from '@/lib/log';
 import { renderConfirmPage } from '@/lib/render-confirm-page';
 
 // Bot-safe render: GET renders a tiny auto-submitting confirm page (no token
@@ -10,6 +10,22 @@ import { renderConfirmPage } from '@/lib/render-confirm-page';
 
 const COMPONENT = 'magic-link-route';
 const MISSING_TOKEN_PREFIX = '<missing>';
+
+// Reject anything that isn't a strict same-origin relative path. An
+// unchecked `next=//evil.com` would resolve to https://evil.com once
+// fed through `new URL(next, req.url)` — a post-auth open redirect.
+// Valid: "/", "/admin", "/j/CODE". Invalid: "//evil.com",
+// "/\\evil.com", "https://evil.com", "". Any reject falls back to "/".
+function safeRelativeNext(raw: string | null | undefined): string {
+  if (!raw || typeof raw !== 'string') return '/';
+  if (!raw.startsWith('/')) return '/';
+  // Protocol-relative (//host) or backslash-prefixed (browsers normalize
+  // \\ to //) both resolve cross-origin.
+  if (raw.startsWith('//') || raw.startsWith('/\\') || raw.startsWith('/%2f')) {
+    return '/';
+  }
+  return raw;
+}
 
 function magicLinkConfirmPage(token: string, next: string): Response {
   return renderConfirmPage({
@@ -23,7 +39,7 @@ function magicLinkConfirmPage(token: string, next: string): Response {
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');
-  const next = req.nextUrl.searchParams.get('next') || '/';
+  const next = safeRelativeNext(req.nextUrl.searchParams.get('next'));
 
   if (!token) {
     log('warn', COMPONENT, 'magic_link.no_token', {
@@ -37,7 +53,7 @@ export async function GET(req: NextRequest) {
   // scanner GETs to be cheap and side-effect-free. Any token validity
   // check is deferred to POST.
   log('info', COMPONENT, 'magic_link.confirm_page_rendered', {
-    tokenPrefix: token.slice(0, 8),
+    tokenPrefix: token.slice(0, LOG_TOKEN_PREFIX_LEN),
   });
   return magicLinkConfirmPage(token, next);
 }
@@ -45,8 +61,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const token = (formData.get('token') as string | null) ?? '';
-  const next = (formData.get('next') as string | null) || '/';
-  const tokenPrefix = token ? token.slice(0, 8) : MISSING_TOKEN_PREFIX;
+  const next = safeRelativeNext(formData.get('next') as string | null);
+  const tokenPrefix = token ? token.slice(0, LOG_TOKEN_PREFIX_LEN) : MISSING_TOKEN_PREFIX;
 
   if (!token) {
     log('warn', COMPONENT, 'magic_link.no_token', { tokenPrefix, method: 'POST' });
