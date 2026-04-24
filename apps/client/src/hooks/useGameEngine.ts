@@ -40,8 +40,16 @@ export const useGameEngine = (gameId: string, playerId: string, token?: string |
     console.warn('[WS] Connecting without token — using playerId fallback (debug mode)');
   }
 
+  // Derive ws/wss from VITE_GAME_SERVER_HOST's scheme. PartySocket defaults
+  // to wss for any non-localhost host, which silently breaks Tailscale-style
+  // dev where the page is served from a real hostname over plain HTTP and
+  // the game server is also plain HTTP. Production (https://api.…) → wss.
+  const gsUrl = new URL(import.meta.env.VITE_GAME_SERVER_HOST || "http://localhost:8787");
+  const wsProtocol: 'ws' | 'wss' = gsUrl.protocol === 'https:' ? 'wss' : 'ws';
+
   const socket = usePartySocket({
-    host: new URL(import.meta.env.VITE_GAME_SERVER_HOST || "http://localhost:8787").host,
+    host: gsUrl.host,
+    protocol: wsProtocol,
     room: gameId,
     party,
     query,
