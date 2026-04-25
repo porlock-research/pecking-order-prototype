@@ -112,16 +112,23 @@ export default function WaitingRoom() {
     }
   }
 
+  // Canonical share URL is /j/CODE — the frictionless welcome, not the
+  // auth-walled /join/CODE. Strangers who tap the shared link land on a
+  // welcome form instead of the magic-link wall.
+  const shareLink =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/j/${code.toUpperCase()}`
+      : '';
+
   async function handleCopyLink() {
-    const link = `${window.location.origin}/join/${code.toUpperCase()}`;
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(shareLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback for older browsers
       const textarea = document.createElement('textarea');
-      textarea.value = link;
+      textarea.value = shareLink;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand('copy');
@@ -175,16 +182,24 @@ export default function WaitingRoom() {
           <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow">
             PECKING ORDER
           </h1>
-          <div className="flex items-center justify-center gap-2">
-            <p className="text-sm text-skin-dim font-mono">
-              Game: <span className="text-skin-gold font-bold tracking-wider">{code.toUpperCase()}</span>
-            </p>
-            <button
-              onClick={handleCopyLink}
-              className="text-xs font-mono px-2 py-1 rounded-md border border-skin-base/50 text-skin-dim hover:text-skin-base hover:border-skin-gold/50 transition-all"
-            >
-              {copied ? 'Copied!' : 'Copy Link'}
-            </button>
+          <p className="text-sm text-skin-dim font-mono">
+            Game: <span className="text-skin-gold font-bold tracking-wider">{code.toUpperCase()}</span>
+          </p>
+          <div className="mt-2 max-w-sm mx-auto space-y-1.5">
+            <div className="text-[10px] font-bold text-skin-dim uppercase tracking-widest text-left">
+              Invite link
+            </div>
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-skin-input/60">
+              <code className="flex-1 text-xs font-mono text-skin-base truncate text-left">
+                {shareLink}
+              </code>
+              <button
+                onClick={handleCopyLink}
+                className="text-xs font-bold text-skin-gold px-2 py-1 rounded border border-skin-gold/30 hover:border-skin-gold/60 transition-all whitespace-nowrap"
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
           </div>
         </header>
 

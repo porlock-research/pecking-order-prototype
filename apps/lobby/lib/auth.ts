@@ -1,6 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import type { NextResponse } from 'next/server';
 import { redirect } from 'next/navigation';
 import { getDB, getEnv } from './db';
 import { sendEmail } from './email';
@@ -89,6 +90,57 @@ export async function requireAuth(redirectTo?: string): Promise<SessionUser> {
     redirect(loginUrl);
   }
   return session;
+}
+
+// ── Session Cookie Helpers ───────────────────────────────────────────────
+
+// Classify a request hostname as "local" for cookie-attribute purposes.
+// "Local" means: skip `secure` (HTTP is expected) and skip the production
+// `domain`. We recognise the obvious localhost pair, mDNS *.local, the
+// user's Tailscale magic DNS namespace, and RFC1918 private IPv4 ranges
+// — see reference_multi_device_dev.md for why these matter in practice:
+// mobile dev over Tailscale would otherwise silently drop the session
+// cookie (secure cookie on HTTP, wrong domain on *.ts.net).
+function isLocalHostname(hostname: string): boolean {
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
+  if (hostname === '::1') return true;
+  if (hostname.endsWith('.ts.net')) return true;
+  if (hostname.endsWith('.local')) return true;
+  // RFC1918 private IPv4 ranges (LAN dev hosts).
+  if (/^10\./.test(hostname)) return true;
+  if (/^192\.168\./.test(hostname)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
+  return false;
+}
+
+function buildSessionCookieOptions(hostname: string) {
+  const isLocal = isLocalHostname(hostname);
+  return {
+    httpOnly: true,
+    secure: !isLocal,
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: SESSION_EXPIRY_MS / 1000,
+    ...(isLocal ? {} : { domain: '.peckingorder.ca' }),
+  };
+}
+
+export async function setSessionCookie(
+  response: NextResponse,
+  sessionId: string,
+  hostname: string,
+): Promise<void> {
+  const cookieName = await getSessionCookieName();
+  response.cookies.set(cookieName, sessionId, buildSessionCookieOptions(hostname));
+}
+
+export async function setSessionCookieOnRequest(
+  sessionId: string,
+  hostname: string,
+): Promise<void> {
+  const cookieName = await getSessionCookieName();
+  const cookieStore = await cookies();
+  cookieStore.set(cookieName, sessionId, buildSessionCookieOptions(hostname));
 }
 
 // ── Magic Link ───────────────────────────────────────────────────────────

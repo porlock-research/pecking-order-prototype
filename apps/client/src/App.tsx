@@ -203,22 +203,65 @@ async function recoverFromCacheApi(gameCode: string): Promise<string | null> {
 }
 
 /** Try to mint a fresh JWT via the lobby's refresh-token API (requires po_session cookie). */
-async function refreshFromLobby(gameCode: string): Promise<string | null> {
+async function refreshFromLobby(
+  gameCode: string,
+): Promise<{ token: string | null; reason?: string }> {
   try {
     const res = await fetch(`${LOBBY_HOST}/api/refresh-token/${gameCode}`, {
       credentials: 'include', // sends po_session cookie
     });
     if (!res.ok) {
       console.warn('[App] refreshFromLobby: lobby returned', res.status, 'for', gameCode);
-      return null;
+      return { token: null, reason: `http_${res.status}` };
     }
-    const { token } = await res.json();
-    if (token) return token;
+    const { token, reason } = await res.json();
+    if (token) return { token, reason };
     console.warn('[App] refreshFromLobby: lobby returned 200 but no token for', gameCode);
+    return { token: null, reason: reason || 'no_token' };
   } catch (err) {
     console.warn('[App] Lobby token refresh failed:', err);
+    return { token: null, reason: 'network_error' };
   }
-  return null;
+}
+
+type JwtHintSource = 'localStorage' | 'cookie';
+
+/** Return the freshest locally-cached JWT to use as an identity hint for
+ *  the lobby's /enter/CODE recovery endpoint. localStorage and cookie
+ *  caches are unified into a single pool ranked by iat — a fresher token
+ *  in cookies beats a stale one in localStorage and vice versa. Returns
+ *  null if nothing is stored — caller should route to /j/CODE.
+ *
+ *  Also reports which source the winning JWT came from so callers can
+ *  tag distinct Sentry paths — helps spot "recovery succeeds only via
+ *  cookie fallback" patterns that point at a bigger localStorage-loss
+ *  issue. Safari private mode (or a sandboxed iframe) can throw on
+ *  localStorage access; the throw bubbles to runAsyncRecovery's outer
+ *  catch which redirects to /j/CODE — a clean degraded fallback. */
+function findAnyJwtHint(): { jwt: string; source: JwtHintSource } | null {
+  let best: { jwt: string; iat: number; source: JwtHintSource } | null = null;
+  const consider = (jwt: string | null | undefined, source: JwtHintSource) => {
+    if (!jwt) return;
+    try {
+      const decoded = decodeGameToken(jwt);
+      const iat = decoded.iat ?? 0;
+      if (!best || iat > best.iat) best = { jwt, iat, source };
+    } catch {
+      // Malformed — skip.
+    }
+  };
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith('po_token_')) continue;
+    consider(localStorage.getItem(key), 'localStorage');
+  }
+  for (const m of document.cookie.matchAll(/po_pwa_([^=]+)=([^;]+)/g)) {
+    consider(m[2], 'cookie');
+  }
+  // Cast: the `consider` callback mutates `best` from inside a closure,
+  // which defeats TS control-flow narrowing after the truthy check.
+  const winner = best as { jwt: string; iat: number; source: JwtHintSource } | null;
+  return winner ? { jwt: winner.jwt, source: winner.source } : null;
 }
 
 /** Ask the lobby which games the user is actively in.
@@ -524,22 +567,56 @@ export default function App() {
         console.log('[App] recovery step 2: no Cache API token for', code);
 
         // Step 3: Lobby API (mint fresh JWT via po_session cookie)
-        const fromLobby = await refreshFromLobby(code);
+        const { token: fromLobby, reason: refreshReason } = await refreshFromLobby(code);
         if (fromLobby) {
           console.log('[App] recovery step 3: refreshed from lobby for', code);
           applyToken(fromLobby, code, setGameId, setPlayerId, setToken);
           setSentryAuthMethod('lobby-refresh');
           return;
         }
-        console.log('[App] recovery step 3: lobby refresh failed for', code);
+        console.log('[App] recovery step 3: lobby refresh failed for', code, refreshReason);
 
-        // Step 4: Redirect to lobby (last resort — user may need to log in)
-        console.log('[App] recovery step 4: redirecting to lobby for', code);
-        setSentryAuthMethod('lobby-redirect');
-        window.location.href = `${LOBBY_HOST}/play/${code}`;
+        // Step 4: Hand off to lobby's /enter/CODE with any JWT we can find
+        // as an identity hint — lobby restores session from sub if the
+        // signature is valid (even if expired). POSTed via form to keep
+        // the JWT out of URL params, browser history, and access logs.
+        // No hint → straight to /j/CODE welcome.
+        const hint = findAnyJwtHint();
+        console.log(
+          '[App] recovery step 4: redirecting to /enter/',
+          code,
+          hint ? `(with JWT hint from ${hint.source})` : '(no hint)',
+        );
+        // Tag the hint source so Sentry can distinguish localStorage
+        // recovery from cookie-fallback recovery. If data shows cookie
+        // dominates, that signals a localStorage-loss issue worth
+        // investigating separately.
+        if (hint) {
+          setSentryAuthMethod(
+            hint.source === 'localStorage'
+              ? 'lobby-recover-localStorage'
+              : 'lobby-recover-cookie',
+          );
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = `${LOBBY_HOST}/enter/${code}`;
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'hint';
+          input.value = hint.jwt;
+          form.appendChild(input);
+          document.body.appendChild(form);
+          form.submit();
+        } else {
+          setSentryAuthMethod('lobby-recover-none');
+          window.location.href = `${LOBBY_HOST}/j/${code}`;
+        }
       } catch (err) {
         console.error('[App] runAsyncRecovery: unexpected error for', code, ':', err);
-        window.location.href = `${LOBBY_HOST}/play/${code}`;
+        // Tag this distinctly so "fell through from an error" hits don't
+        // look identical in Sentry to "reached step 4 as a normal fallback".
+        setSentryAuthMethod('lobby-recover-error');
+        window.location.href = `${LOBBY_HOST}/j/${code}`;
       } finally {
         setRecovering(false);
       }
@@ -738,6 +815,18 @@ function LauncherScreen({ lobbyGames, archivedGameCode }: {
           </button>
         </div>
       </form>
+
+      {cachedGames.length === 0 && (
+        <div className="w-full max-w-sm text-center space-y-2">
+          <p className="text-xs text-skin-dim/60 font-body">Played before?</p>
+          <a
+            href={`${LOBBY_HOST}/login`}
+            className="inline-block px-4 py-2 rounded-lg border border-skin-gold/30 bg-glass text-xs font-mono font-bold text-skin-gold uppercase tracking-widest hover:border-skin-gold/60 transition-all"
+          >
+            Sign in with email
+          </a>
+        </div>
+      )}
 
       {/* Lobby link */}
       <a
