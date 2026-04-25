@@ -83,6 +83,9 @@ export function readD1CompletionWritten(storage: DurableObjectStorage): boolean 
 export function readLobbyCompletionNotified(storage: DurableObjectStorage): boolean {
   return readBooleanFlag(storage, 'lobby_completion_notified');
 }
+export function readLobbyStartedNotified(storage: DurableObjectStorage): boolean {
+  return readBooleanFlag(storage, 'lobby_started_notified');
+}
 
 /** Result of parsing a stored snapshot for actor restoration. */
 export interface ParsedSnapshot {

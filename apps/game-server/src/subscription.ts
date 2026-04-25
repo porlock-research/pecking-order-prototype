@@ -11,6 +11,29 @@ import { log } from "./log";
 import type { Env } from "./types";
 import { getOnlinePlayerIds } from "./ws-handlers";
 
+/**
+ * Pure gate for the IN_PROGRESS → lobby STARTED callback. Fires once when
+ * L2 first leaves `preGame` (i.e. when joiners are no longer accepted —
+ * handlePlayerJoined already 409s past preGame). dayLoop is a compound
+ * state so `snapshot.value` is `{ dayLoop: ... }` (object); excluding only
+ * the two simple pre-game atomic states keeps this correct without
+ * enumerating dayLoop's substates.
+ *
+ * The original PR #130 fired this at /init time, which broke email
+ * invites: invitees who hadn't yet clicked their link found the game
+ * already STARTED and were rejected by getInviteInfo() with "this game is
+ * no longer accepting players".
+ */
+export function shouldFireInProgress(
+  l2State: unknown,
+  gameId: unknown,
+  alreadyNotified: boolean,
+): boolean {
+  if (alreadyNotified) return false;
+  if (typeof gameId !== 'string' || gameId.length === 0) return false;
+  return l2State !== 'uninitialized' && l2State !== 'preGame';
+}
+
 /** Mutable state owned by the server, updated by the subscription callback. */
 export interface SubscriptionState {
   lastKnownChatLog: any[];
@@ -27,6 +50,11 @@ export interface SubscriptionState {
    *  full retry-on-failure is a future improvement. Issue #49 review. */
   d1CompletionWritten: boolean;
   lobbyCompletionNotified: boolean;
+  /** IN_PROGRESS → lobby STARTED is fired exactly once on the first
+   *  subscription tick where L2 has left preGame (the original PR #130
+   *  fired this on /init, which broke email invites — invitees would land
+   *  on a STARTED game that no longer accepted joiners). */
+  lobbyStartedNotified: boolean;
 }
 
 export interface SubscriptionDeps {
@@ -133,6 +161,17 @@ export function setupActorSubscription(
     // states are simple strings) avoids any substring collision with L3
     // state JSON.
     const l2State = snapshot.value;
+
+    // IN_PROGRESS → lobby STARTED. See shouldFireInProgress() for the gate
+    // rationale and the regression it prevents.
+    if (shouldFireInProgress(l2State, snapshot.context.gameId, state.lobbyStartedNotified)) {
+      state.lobbyStartedNotified = true;
+      deps.storage.sql.exec(
+        `INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('lobby_started_notified', 'true', unixepoch())`
+      );
+      deps.waitUntil(notifyLobbyGameStatus(deps.env, snapshot.context.gameId, 'IN_PROGRESS'));
+    }
+
     const isGameEnded = l2State === 'gameSummary' || l2State === 'gameOver';
     if (isGameEnded && snapshot.context.gameId) {
       // game-server D1: write Games.status='COMPLETED' once.
