@@ -86,6 +86,29 @@ describe('POST /api/internal/game-status', () => {
       expect(res.status).toBe(401);
       expect(mockDb.row?.status).toBe('RECRUITING');
     });
+
+    it('401 on length-mismatched secret (timingSafeBearer)', async () => {
+      mockDb = createMockDb({ id: GAME_ID, status: 'RECRUITING' });
+      const res = await POST(
+        req({ gameId: GAME_ID, status: 'IN_PROGRESS' }, 'Bearer x'),
+      );
+      expect(res.status).toBe(401);
+      expect(mockDb.row?.status).toBe('RECRUITING');
+    });
+
+    it('500 misconfigured when AUTH_SECRET is unset', async () => {
+      const { getEnv } = await import('@/lib/db');
+      vi.mocked(getEnv).mockResolvedValueOnce({} as any);
+      mockDb = createMockDb({ id: GAME_ID, status: 'RECRUITING' });
+      const res = await POST(
+        req({ gameId: GAME_ID, status: 'IN_PROGRESS' }, 'Bearer test-secret'),
+      );
+      expect(res.status).toBe(500);
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe('misconfigured');
+      // Critical: route must NOT touch the DB when fail-closed.
+      expect(mockDb.row?.status).toBe('RECRUITING');
+    });
   });
 
   describe('payload validation', () => {

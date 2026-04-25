@@ -12,7 +12,7 @@ import { handleConnect, handleMessage, handleClose, rebuildConnectedPlayers, typ
 import { setupActorSubscription, type SubscriptionState } from "./subscription";
 import { handleGlobalRoutes } from "./global-routes";
 import { buildActionOverrides, type ActionContext } from "./machine-actions";
-import { ensureSnapshotsTable, readSnapshot, readGoldCredited, readCompletionNotified, parseSnapshot } from "./snapshot";
+import { ensureSnapshotsTable, readSnapshot, readGoldCredited, readD1CompletionWritten, readLobbyCompletionNotified, parseSnapshot } from "./snapshot";
 
 export { DemoServer } from './demo/demo-server';
 export type { Env } from "./types";
@@ -31,7 +31,8 @@ export class GameServer extends Server<Env> {
   scheduler: Scheduler<Env>;
   private realSchedulerAlarm: (() => Promise<void>) | undefined;
   goldCredited = false;
-  completionNotified = false;
+  d1CompletionWritten = false;
+  lobbyCompletionNotified = false;
   connectedPlayers = new Map<string, Set<string>>();
   inspectSubscribers = new Set<Connection>();
 
@@ -66,6 +67,7 @@ export class GameServer extends Server<Env> {
       storage: this.ctx.storage,
       scheduleManifestAlarms: (manifest) => scheduleManifestAlarms(this.scheduler, manifest),
       deleteAllStorage: () => this.ctx.storage.deleteAll(),
+      waitUntil: (p) => this.ctx.waitUntil(p),
     };
   }
 
@@ -103,7 +105,8 @@ export class GameServer extends Server<Env> {
     // 2. Restore persisted state (SQL first, KV fallback for legacy games)
     const snapshotStr = await readSnapshot(this.ctx.storage);
     this.goldCredited = await readGoldCredited(this.ctx.storage);
-    this.completionNotified = readCompletionNotified(this.ctx.storage);
+    this.d1CompletionWritten = readD1CompletionWritten(this.ctx.storage);
+    this.lobbyCompletionNotified = readLobbyCompletionNotified(this.ctx.storage);
 
     // 3. Create machine with DO-context action overrides
     const machine = orchestratorMachine.provide({
@@ -126,6 +129,7 @@ export class GameServer extends Server<Env> {
       state: this as SubscriptionState,
       connectedPlayers: this.connectedPlayers,
       getConnections: () => this.getConnections(),
+      waitUntil: (p) => this.ctx.waitUntil(p),
     });
 
     // 7. Start actor + rebuild presence from surviving WebSocket attachments
@@ -182,16 +186,28 @@ export class GameServer extends Server<Env> {
       // Validate L3 child survived serialization
       if (restoredState.includes('activeSession') && !actor.getSnapshot().children['l3-session']) {
         log('warn', 'L1', 'L3 missing after restore — snapshot was corrupted. Clearing state for fresh start.');
-        this.ctx.storage.sql.exec("DELETE FROM snapshots WHERE key = 'game_state'");
+        this.wipeRunStateOnCorruption();
         return createActor(machine, { inspect });
       }
 
       return actor;
     } catch (err) {
       log('error', 'L1', 'Snapshot restore failed — starting fresh', { error: String(err) });
-      this.ctx.storage.sql.exec("DELETE FROM snapshots WHERE key = 'game_state'");
+      this.wipeRunStateOnCorruption();
       return createActor(machine, { inspect });
     }
+  }
+
+  /** Wipe game-scoped state on snapshot corruption — including completion
+   *  flags + gold_credited so a fresh game starting in this DO doesn't
+   *  inherit stale idempotency markers. Issue #49 review I6. */
+  private wipeRunStateOnCorruption(): void {
+    this.ctx.storage.sql.exec(
+      "DELETE FROM snapshots WHERE key IN ('game_state','d1_completion_written','lobby_completion_notified','gold_credited')"
+    );
+    this.d1CompletionWritten = false;
+    this.lobbyCompletionNotified = false;
+    this.goldCredited = false;
   }
 
   // --- HTTP ---

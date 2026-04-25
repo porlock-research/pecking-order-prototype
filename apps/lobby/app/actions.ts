@@ -1032,7 +1032,7 @@ export async function getActiveGames(): Promise<ActiveGame[]> {
        FROM Invites i
        JOIN GameSessions gs ON gs.id = i.game_id
        WHERE i.accepted_by = ?
-         AND gs.status IN ('RECRUITING','READY','STARTED')
+         AND gs.status IN ('RECRUITING','READY','STARTED','COMPLETED')
        ORDER BY gs.created_at DESC`
     )
     .bind(session.userId)

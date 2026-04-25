@@ -36,7 +36,17 @@ export function notifyLobbyGameStatus(
     return Promise.resolve();
   }
 
-  const url = `${env.LOBBY_HOST}/api/internal/game-status`;
+  // Strip trailing slashes so a misconfigured LOBBY_HOST="http://host/" doesn't
+  // hit "//api/internal/game-status" (Next 15 does redirect, but we eat a
+  // round-trip and risk losing the auth header on the bounce).
+  const base = env.LOBBY_HOST.replace(/\/+$/, '');
+  const url = `${base}/api/internal/game-status`;
+
+  // Fetch timeout — if the lobby is wedged, the cross-isolate promise
+  // shouldn't block waitUntil's eviction window indefinitely.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+
   return fetch(url, {
     method: 'POST',
     headers: {
@@ -44,7 +54,9 @@ export function notifyLobbyGameStatus(
       Authorization: `Bearer ${env.AUTH_SECRET}`,
     },
     body: JSON.stringify({ gameId, status }),
+    signal: controller.signal,
   }).then(async (res) => {
+    clearTimeout(timer);
     if (!res.ok) {
       // Reading the body consumes the stream — no separate cancel() needed.
       const text = await res.text().catch(() => '');
@@ -59,6 +71,7 @@ export function notifyLobbyGameStatus(
     // OK path: drain the body so the runtime doesn't keep the stream open.
     res.body?.cancel();
   }).catch((err) => {
+    clearTimeout(timer);
     log('error', 'L1', 'lobby-callback: fetch failed', {
       gameId,
       status,

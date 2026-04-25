@@ -1,6 +1,22 @@
 import { NextRequest } from 'next/server';
 import { getDB, getEnv } from '@/lib/db';
 
+/** Constant-time bearer comparison — prevents timing attacks against the
+ *  shared internal secret. Mirrors the intent of game-server's
+ *  crypto.subtle.timingSafeEqual (a CF Workers extension that isn't in
+ *  the lobby's TS lib). Manual XOR is fine for the fixed-length
+ *  `Bearer <secret>` shape this route accepts. */
+function timingSafeBearer(headerValue: string | null, secret: string): boolean {
+  const expected = `Bearer ${secret}`;
+  const actual = headerValue || '';
+  if (actual.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) {
+    diff |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 /**
  * POST /api/internal/game-status — game-server → lobby status sync (issue #49).
  *
@@ -33,10 +49,18 @@ const GAME_SERVER_TO_LOBBY: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   const env = await getEnv();
-  const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';
+  const AUTH_SECRET = env.AUTH_SECRET as string | undefined;
 
-  const authHeader = req.headers.get('authorization') || '';
-  if (authHeader !== `Bearer ${AUTH_SECRET}`) {
+  // Fail closed: this route accepts only system-to-system traffic, so a
+  // missing secret should reject everything rather than fall back to a
+  // well-known dev string. The user-facing routes (refresh-token, etc.)
+  // use the dev fallback so local-without-vars still works; this internal
+  // path has no such requirement.
+  if (!AUTH_SECRET) {
+    return Response.json({ error: 'misconfigured' }, { status: 500 });
+  }
+
+  if (!timingSafeBearer(req.headers.get('authorization'), AUTH_SECRET)) {
     return Response.json({ error: 'unauthorized' }, { status: 401 });
   }
 

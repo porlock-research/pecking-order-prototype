@@ -20,7 +20,13 @@ export interface SubscriptionState {
   tickerHistory: TickerMessage[];
   lastDebugSummary: string;
   goldCredited: boolean;
-  completionNotified: boolean;
+  /** Per-side flags so a transient failure on one path doesn't strand the
+   *  other (one shared flag would mean a D1 hiccup permanently skips the
+   *  lobby callback, or vice versa). Both still set optimistically — the
+   *  underlying calls are fire-and-forget and don't surface failures, so
+   *  full retry-on-failure is a future improvement. Issue #49 review. */
+  d1CompletionWritten: boolean;
+  lobbyCompletionNotified: boolean;
 }
 
 export interface SubscriptionDeps {
@@ -31,6 +37,8 @@ export interface SubscriptionDeps {
   state: SubscriptionState;
   connectedPlayers: Map<string, Set<string>>;
   getConnections: () => Iterable<Connection>;
+  /** Keep cross-isolate promises alive past the actor's tick. */
+  waitUntil: (p: Promise<unknown>) => void;
 }
 
 /**
@@ -121,18 +129,27 @@ export function setupActorSubscription(
     // so gating on gameOver leaves the lobby AND game-server `Games.status`
     // stranded at STARTED/IN_PROGRESS indefinitely after the winner is
     // decided. Issue #49 surfaced the lobby half; the game-server half had
-    // the same wedge. Both writes are now gated by `completionNotified` so
-    // they fire exactly once on first entry to either terminal state.
-    const isGameEnded =
-      currentStateStr.includes('gameSummary') || currentStateStr.includes('gameOver');
+    // the same wedge. Strict equality on snapshot.value (top-level L2
+    // states are simple strings) avoids any substring collision with L3
+    // state JSON.
+    const l2State = snapshot.value;
+    const isGameEnded = l2State === 'gameSummary' || l2State === 'gameOver';
     if (isGameEnded && snapshot.context.gameId) {
-      if (!state.completionNotified) {
-        state.completionNotified = true;
+      // game-server D1: write Games.status='COMPLETED' once.
+      if (!state.d1CompletionWritten) {
+        state.d1CompletionWritten = true;
         deps.storage.sql.exec(
-          `INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('completion_notified', 'true', unixepoch())`
+          `INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('d1_completion_written', 'true', unixepoch())`
         );
         updateGameEnd(deps.env.DB, snapshot.context.gameId, snapshot.context.roster);
-        notifyLobbyGameStatus(deps.env, snapshot.context.gameId, 'COMPLETED');
+      }
+      // Lobby: notify once, kept alive past the actor's tick via waitUntil.
+      if (!state.lobbyCompletionNotified) {
+        state.lobbyCompletionNotified = true;
+        deps.storage.sql.exec(
+          `INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('lobby_completion_notified', 'true', unixepoch())`
+        );
+        deps.waitUntil(notifyLobbyGameStatus(deps.env, snapshot.context.gameId, 'COMPLETED'));
       }
 
       // Persist gold payouts to cross-tournament wallets (idempotent guard)
