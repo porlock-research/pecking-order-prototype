@@ -12,7 +12,7 @@ import { handleConnect, handleMessage, handleClose, rebuildConnectedPlayers, typ
 import { setupActorSubscription, type SubscriptionState } from "./subscription";
 import { handleGlobalRoutes } from "./global-routes";
 import { buildActionOverrides, type ActionContext } from "./machine-actions";
-import { ensureSnapshotsTable, readSnapshot, readGoldCredited, parseSnapshot } from "./snapshot";
+import { ensureSnapshotsTable, readSnapshot, readGoldCredited, readD1CompletionWritten, readLobbyCompletionNotified, parseSnapshot } from "./snapshot";
 
 export { DemoServer } from './demo/demo-server';
 export type { Env } from "./types";
@@ -31,6 +31,8 @@ export class GameServer extends Server<Env> {
   scheduler: Scheduler<Env>;
   private realSchedulerAlarm: (() => Promise<void>) | undefined;
   goldCredited = false;
+  d1CompletionWritten = false;
+  lobbyCompletionNotified = false;
   connectedPlayers = new Map<string, Set<string>>();
   inspectSubscribers = new Set<Connection>();
 
@@ -65,6 +67,7 @@ export class GameServer extends Server<Env> {
       storage: this.ctx.storage,
       scheduleManifestAlarms: (manifest) => scheduleManifestAlarms(this.scheduler, manifest),
       deleteAllStorage: () => this.ctx.storage.deleteAll(),
+      waitUntil: (p) => this.ctx.waitUntil(p),
     };
   }
 
@@ -102,6 +105,8 @@ export class GameServer extends Server<Env> {
     // 2. Restore persisted state (SQL first, KV fallback for legacy games)
     const snapshotStr = await readSnapshot(this.ctx.storage);
     this.goldCredited = await readGoldCredited(this.ctx.storage);
+    this.d1CompletionWritten = readD1CompletionWritten(this.ctx.storage);
+    this.lobbyCompletionNotified = readLobbyCompletionNotified(this.ctx.storage);
 
     // 3. Create machine with DO-context action overrides
     const machine = orchestratorMachine.provide({
@@ -113,7 +118,7 @@ export class GameServer extends Server<Env> {
     const inspect = createInspector(gameId, this.broadcastInspect.bind(this));
 
     // 5. Create actor (restore from snapshot or fresh boot)
-    this.actor = this.createActor(machine, inspect, snapshotStr);
+    this.actor = await this.createActor(machine, inspect, snapshotStr);
 
     // 6. Wire up subscription (auto-save, broadcast, ticker, push)
     setupActorSubscription(this.actor, {
@@ -124,6 +129,7 @@ export class GameServer extends Server<Env> {
       state: this as SubscriptionState,
       connectedPlayers: this.connectedPlayers,
       getConnections: () => this.getConnections(),
+      waitUntil: (p) => this.ctx.waitUntil(p),
     });
 
     // 7. Start actor + rebuild presence from surviving WebSocket attachments
@@ -153,11 +159,11 @@ export class GameServer extends Server<Env> {
    * Create the XState actor — restore from snapshot if available,
    * fall back to fresh boot if snapshot is corrupted or missing.
    */
-  private createActor(
+  private async createActor(
     machine: typeof orchestratorMachine,
     inspect: ReturnType<typeof createInspector>,
     snapshotStr: string | undefined,
-  ): ActorRefFrom<typeof orchestratorMachine> {
+  ): Promise<ActorRefFrom<typeof orchestratorMachine>> {
     if (!snapshotStr) {
       log('info', 'L1', 'Fresh Boot');
       return createActor(machine, { inspect });
@@ -180,16 +186,34 @@ export class GameServer extends Server<Env> {
       // Validate L3 child survived serialization
       if (restoredState.includes('activeSession') && !actor.getSnapshot().children['l3-session']) {
         log('warn', 'L1', 'L3 missing after restore — snapshot was corrupted. Clearing state for fresh start.');
-        this.ctx.storage.sql.exec("DELETE FROM snapshots WHERE key = 'game_state'");
+        await this.wipeRunStateOnCorruption();
         return createActor(machine, { inspect });
       }
 
       return actor;
     } catch (err) {
       log('error', 'L1', 'Snapshot restore failed — starting fresh', { error: String(err) });
-      this.ctx.storage.sql.exec("DELETE FROM snapshots WHERE key = 'game_state'");
+      await this.wipeRunStateOnCorruption();
       return createActor(machine, { inspect });
     }
+  }
+
+  /** Wipe game-scoped state on snapshot corruption — including completion
+   *  flags + gold_credited so a fresh game starting in this DO doesn't
+   *  inherit stale idempotency markers. Issue #49 review I6.
+   *
+   *  Also clears the legacy KV fallback keys (`goldCredited`,
+   *  `game_state_snapshot`) — without that delete, a pre-ADR-092 DO would
+   *  silently re-migrate the stale KV value back into SQL on next
+   *  onStart, defeating the wipe (review follow-up). */
+  private async wipeRunStateOnCorruption(): Promise<void> {
+    this.ctx.storage.sql.exec(
+      "DELETE FROM snapshots WHERE key IN ('game_state','d1_completion_written','lobby_completion_notified','gold_credited')"
+    );
+    await this.ctx.storage.delete(['goldCredited', 'game_state_snapshot']);
+    this.d1CompletionWritten = false;
+    this.lobbyCompletionNotified = false;
+    this.goldCredited = false;
   }
 
   // --- HTTP ---

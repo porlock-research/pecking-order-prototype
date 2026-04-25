@@ -31,6 +31,7 @@ database_id = "00000000-0000-0000-0000-000000000001"
 [vars]
 GAME_CLIENT_HOST = "http://localhost:5173"
 ALLOW_DB_RESET = "true"
+LOBBY_HOST = "http://localhost:3000"
 
 [observability]
 enabled = true
@@ -74,6 +75,7 @@ AXIOM_DATASET = "pecking-order-staging"
 VAPID_PUBLIC_KEY = "BCGjVUVQUKz31CzbSrBGfJgAl98xXfS9sY4XfVK7MiIvCWBA5oUmwe_dBWMf_MXCOrs6WW9PPL59pHYG8vYV5ac"
 GAME_CLIENT_HOST = "https://staging-play.peckingorder.ca"
 PERSONA_ASSETS_URL = "https://staging-assets.peckingorder.ca"
+LOBBY_HOST = "https://staging-lobby.peckingorder.ca"
 
 # ── Production ───────────────────────────────────────────
 [env.production]
@@ -110,3 +112,4 @@ AXIOM_DATASET = "pecking-order"
 VAPID_PUBLIC_KEY = "BDCbn388daKAMq3g1PyJ5nqfi3btLvsjIFllFkwN4S_hgoXwLBWI0JYY9XMTXhXyX-fEqPDfZKoP0EJ9hNM1OzQ"
 GAME_CLIENT_HOST = "https://play.peckingorder.ca"
 PERSONA_ASSETS_URL = "https://assets.peckingorder.ca"
+LOBBY_HOST = "https://lobby.peckingorder.ca"

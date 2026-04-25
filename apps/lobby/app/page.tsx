@@ -611,7 +611,10 @@ export default function LobbyRoot() {
                   </label>
                   <div className="space-y-2">
                     {activeGames.map(game => {
-                      const isStarted = game.status === 'STARTED';
+                      // Treat STARTED and COMPLETED the same here: both mean
+                      // "game lifecycle past the lobby", so the launcher
+                      // links into /play (which accepts both — issue #49).
+                      const isStarted = game.status === 'STARTED' || game.status === 'COMPLETED';
                       const href = isStarted
                         ? `/play/${game.inviteCode}`
                         : `/game/${game.inviteCode}/waiting`;

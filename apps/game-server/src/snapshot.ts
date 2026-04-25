@@ -66,6 +66,24 @@ export async function readGoldCredited(storage: DurableObjectStorage): Promise<b
   return false;
 }
 
+/** Generic boolean-flag reader for the `snapshots` key/value table. */
+function readBooleanFlag(storage: DurableObjectStorage, key: string): boolean {
+  const rows = storage.sql.exec(
+    "SELECT value FROM snapshots WHERE key = ?",
+    key,
+  ).toArray();
+  return rows.length > 0 && rows[0].value === 'true';
+}
+
+/** Issue #49 idempotency flags — split per side so a transient failure on
+ *  one path doesn't strand the other. */
+export function readD1CompletionWritten(storage: DurableObjectStorage): boolean {
+  return readBooleanFlag(storage, 'd1_completion_written');
+}
+export function readLobbyCompletionNotified(storage: DurableObjectStorage): boolean {
+  return readBooleanFlag(storage, 'lobby_completion_notified');
+}
+
 /** Result of parsing a stored snapshot for actor restoration. */
 export interface ParsedSnapshot {
   l2Snapshot: any;

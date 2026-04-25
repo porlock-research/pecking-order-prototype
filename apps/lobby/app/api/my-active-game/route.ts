@@ -54,7 +54,7 @@ export async function GET() {
        FROM Invites i
        JOIN GameSessions g ON g.id = i.game_id
        JOIN PersonaPool pp ON pp.id = i.persona_id
-       WHERE i.accepted_by = ? AND g.status IN ('RECRUITING', 'READY', 'STARTED')
+       WHERE i.accepted_by = ? AND g.status IN ('RECRUITING', 'READY', 'STARTED', 'COMPLETED')
        ORDER BY g.created_at DESC`
     )
     .bind(session.userId)

@@ -4,6 +4,7 @@ import type { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Events, FactTypes, GameManifestSchema } from "@pecking-order/shared-types";
 import { readGoldBalances, insertGameAndPlayers, getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { sendPushNotification } from "./push-send";
+import { notifyLobbyGameStatus } from "./lobby-callback";
 import { log } from "./log";
 import type { Env } from "./types";
 
@@ -51,6 +52,8 @@ export interface HandlerContext {
   storage: DurableObjectStorage;
   scheduleManifestAlarms: (manifest: any) => Promise<void>;
   deleteAllStorage: () => Promise<void>;
+  /** Keep promises alive across the response/isolate boundary. */
+  waitUntil: (p: Promise<unknown>) => void;
 }
 
 /** Route incoming DO HTTP requests to the appropriate handler. */
@@ -145,6 +148,13 @@ async function handleInit(ctx: HandlerContext, req: Request, url: URL): Promise<
     await ctx.scheduleManifestAlarms(json.manifest);
 
     insertGameAndPlayers(ctx.env.DB, gameId, json.manifest?.gameMode || json.manifest?.scheduling || 'CONFIGURABLE_CYCLE', json.roster || {});
+
+    // Notify lobby — bridges game-server IN_PROGRESS to lobby STARTED.
+    // Covers both STATIC games (lobby's startGame already self-marks STARTED;
+    // this is idempotent) and CC games (whose only prior trigger was a 409
+    // from a late joiner — issue #49). waitUntil keeps the fetch alive past
+    // the response boundary so the isolate isn't evicted mid-flight.
+    ctx.waitUntil(notifyLobbyGameStatus(ctx.env, gameId, 'IN_PROGRESS'));
 
     return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
   } catch (err) {

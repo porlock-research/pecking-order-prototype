@@ -40,7 +40,9 @@ export async function GET(
     return new Response('Game not found', { status: 404 });
   }
 
-  if (game.status !== 'STARTED') {
+  // Allow STARTED (live game) and COMPLETED (post-game summary access — the
+  // game-server still serves L4 game-summary state). Issue #49.
+  if (game.status !== 'STARTED' && game.status !== 'COMPLETED') {
     // Game hasn't started yet — redirect to waiting room
     return NextResponse.redirect(new URL(`/game/${game.id}/waiting`, req.url));
   }

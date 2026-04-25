@@ -10,4 +10,6 @@ export interface Env {
   VAPID_PRIVATE_JWK: string;
   GAME_CLIENT_HOST: string;
   PERSONA_ASSETS_URL?: string;
+  /** Lobby base URL — target for game-status callbacks (issue #49). */
+  LOBBY_HOST?: string;
 }

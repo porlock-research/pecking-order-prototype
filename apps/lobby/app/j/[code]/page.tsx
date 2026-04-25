@@ -59,7 +59,7 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
       .bind(game.id, session.userId)
       .first();
     if (!enrolled) redirect(`/join/${code}`);
-    if (game.status === 'STARTED') redirect(`/play/${code}`);
+    if (game.status === 'STARTED' || game.status === 'COMPLETED') redirect(`/play/${code}`);
     // enrolled + RECRUITING/READY → render the welcome view below.
   }
 
