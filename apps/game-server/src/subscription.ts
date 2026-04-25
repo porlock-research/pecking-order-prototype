@@ -115,18 +115,23 @@ export function setupActorSubscription(
     }
 
     // E. Update D1 when game ends + persist gold payouts + flush scheduled tasks
-    if (currentStateStr.includes('gameOver') && snapshot.context.gameId) {
-      updateGameEnd(deps.env.DB, snapshot.context.gameId, snapshot.context.roster);
-
-      // Notify lobby of completion — bridges game-server COMPLETED to lobby
-      // COMPLETED (issue #49). Subscription fires repeatedly while in
-      // gameOver, including on DO restart/snapshot restore, so guard with a
-      // persisted flag mirroring goldCredited.
+    //
+    // Fire on `gameSummary` (winner declared) rather than `gameOver` (actor
+    // stopped). gameSummary → gameOver requires an admin NEXT_STAGE today,
+    // so gating on gameOver leaves the lobby AND game-server `Games.status`
+    // stranded at STARTED/IN_PROGRESS indefinitely after the winner is
+    // decided. Issue #49 surfaced the lobby half; the game-server half had
+    // the same wedge. Both writes are now gated by `completionNotified` so
+    // they fire exactly once on first entry to either terminal state.
+    const isGameEnded =
+      currentStateStr.includes('gameSummary') || currentStateStr.includes('gameOver');
+    if (isGameEnded && snapshot.context.gameId) {
       if (!state.completionNotified) {
         state.completionNotified = true;
         deps.storage.sql.exec(
           `INSERT OR REPLACE INTO snapshots (key, value, updated_at) VALUES ('completion_notified', 'true', unixepoch())`
         );
+        updateGameEnd(deps.env.DB, snapshot.context.gameId, snapshot.context.roster);
         notifyLobbyGameStatus(deps.env, snapshot.context.gameId, 'COMPLETED');
       }
 
