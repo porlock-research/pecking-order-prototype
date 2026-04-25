@@ -5,7 +5,17 @@ import { useHasOverflow } from '../../hooks/useHasOverflow';
 import { PULSE_Z } from '../../zIndex';
 import { CastChip } from './CastChip';
 import { GroupChip } from './GroupChip';
+import { ShareChip } from './ShareChip';
 import { DayPhases } from '@pecking-order/shared-types';
+
+/** Pull the invite code from the client URL (`/game/CODE`). The shell only
+ *  mounts under that route so the match is reliable; returns null in dev
+ *  harnesses or when the path shape differs (no chip rendered then). */
+function getGameCodeFromPath(): string | null {
+  if (typeof window === 'undefined') return null;
+  const m = window.location.pathname.match(/^\/game\/([A-Za-z0-9]+)/);
+  return m ? m[1] : null;
+}
 
 /**
  * View Transitions: each CastChip carries `data-chip-player-id`, and the
@@ -138,6 +148,16 @@ export function CastStrip() {
                 locked={locked}
               />,
             );
+          }
+          // Share chip — pregame only, hidden during picking mode
+          // (picking is a focused-action context; share would distract).
+          // Tail position so it reads as "extend the cast" rather than
+          // displacing real chips.
+          if (phase === DayPhases.PREGAME && !pickingMode) {
+            const gameCode = getGameCodeFromPath();
+            if (gameCode) {
+              rendered.push(<ShareChip key="__share-chip" gameCode={gameCode} />);
+            }
           }
           return rendered;
         })()}

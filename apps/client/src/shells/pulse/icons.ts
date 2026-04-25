@@ -26,6 +26,7 @@ export {
   Lock,
   HandWaving,
   PencilSimple,
+  Plus,
   PlusCircle,
   UserPlus,
 
