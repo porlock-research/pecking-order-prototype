@@ -66,6 +66,14 @@ export async function readGoldCredited(storage: DurableObjectStorage): Promise<b
   return false;
 }
 
+/** Read completionNotified flag (lobby callback idempotency — issue #49). */
+export function readCompletionNotified(storage: DurableObjectStorage): boolean {
+  const rows = storage.sql.exec(
+    "SELECT value FROM snapshots WHERE key = 'completion_notified'"
+  ).toArray();
+  return rows.length > 0 && rows[0].value === 'true';
+}
+
 /** Result of parsing a stored snapshot for actor restoration. */
 export interface ParsedSnapshot {
   l2Snapshot: any;

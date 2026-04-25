@@ -69,7 +69,11 @@ export async function GET(
     );
   }
 
-  if (game.status !== 'STARTED') return noToken('game_not_started');
+  // Allow STARTED (live game) and COMPLETED (post-game summary access — the
+  // game-server still serves L4 game-summary state). Issue #49.
+  if (game.status !== 'STARTED' && game.status !== 'COMPLETED') {
+    return noToken('game_not_started');
+  }
 
   // Find the user's player slot
   const invite = await db

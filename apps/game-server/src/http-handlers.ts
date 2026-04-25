@@ -4,6 +4,7 @@ import type { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Events, FactTypes, GameManifestSchema } from "@pecking-order/shared-types";
 import { readGoldBalances, insertGameAndPlayers, getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { sendPushNotification } from "./push-send";
+import { notifyLobbyGameStatus } from "./lobby-callback";
 import { log } from "./log";
 import type { Env } from "./types";
 
@@ -145,6 +146,12 @@ async function handleInit(ctx: HandlerContext, req: Request, url: URL): Promise<
     await ctx.scheduleManifestAlarms(json.manifest);
 
     insertGameAndPlayers(ctx.env.DB, gameId, json.manifest?.gameMode || json.manifest?.scheduling || 'CONFIGURABLE_CYCLE', json.roster || {});
+
+    // Notify lobby — bridges game-server IN_PROGRESS to lobby STARTED.
+    // Covers both STATIC games (lobby's startGame already self-marks STARTED;
+    // this is idempotent) and CC games (whose only prior trigger was a 409
+    // from a late joiner — issue #49).
+    notifyLobbyGameStatus(ctx.env, gameId, 'IN_PROGRESS');
 
     return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
   } catch (err) {

@@ -12,7 +12,7 @@ import { handleConnect, handleMessage, handleClose, rebuildConnectedPlayers, typ
 import { setupActorSubscription, type SubscriptionState } from "./subscription";
 import { handleGlobalRoutes } from "./global-routes";
 import { buildActionOverrides, type ActionContext } from "./machine-actions";
-import { ensureSnapshotsTable, readSnapshot, readGoldCredited, parseSnapshot } from "./snapshot";
+import { ensureSnapshotsTable, readSnapshot, readGoldCredited, readCompletionNotified, parseSnapshot } from "./snapshot";
 
 export { DemoServer } from './demo/demo-server';
 export type { Env } from "./types";
@@ -31,6 +31,7 @@ export class GameServer extends Server<Env> {
   scheduler: Scheduler<Env>;
   private realSchedulerAlarm: (() => Promise<void>) | undefined;
   goldCredited = false;
+  completionNotified = false;
   connectedPlayers = new Map<string, Set<string>>();
   inspectSubscribers = new Set<Connection>();
 
@@ -102,6 +103,7 @@ export class GameServer extends Server<Env> {
     // 2. Restore persisted state (SQL first, KV fallback for legacy games)
     const snapshotStr = await readSnapshot(this.ctx.storage);
     this.goldCredited = await readGoldCredited(this.ctx.storage);
+    this.completionNotified = readCompletionNotified(this.ctx.storage);
 
     // 3. Create machine with DO-context action overrides
     const machine = orchestratorMachine.provide({
