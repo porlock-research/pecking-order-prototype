@@ -35,6 +35,7 @@ export function PregameRevealCard({ actorId, question, answer }: Props) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={PULSE_SPRING.pop}
       style={{
+        flexShrink: 0,
         margin: '14px 12px',
         padding: '18px 20px 16px',
         borderRadius: 'var(--pulse-radius-lg)',

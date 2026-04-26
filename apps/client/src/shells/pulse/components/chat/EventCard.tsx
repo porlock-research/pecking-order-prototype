@@ -56,6 +56,7 @@ export function EventCard({ kind, player, playerIndex, dayIndex, voteType }: Eve
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.42, delay: 0.2, ease: [0.2, 0.9, 0.3, 1] }}
       style={{
+        flexShrink: 0,
         margin: '12px 12px',
         borderRadius: 'var(--pulse-radius-lg)',
         background: `linear-gradient(180deg, color-mix(in oklch, ${accent} 6%, var(--pulse-surface)) 0%, var(--pulse-surface) 72%)`,

@@ -38,6 +38,7 @@ export function TypingIndicator({ channelId }: TypingIndicatorProps) {
       exit={{ opacity: 0, y: 4 }}
       transition={PULSE_SPRING.gentle}
       style={{
+        flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
         gap: 6,

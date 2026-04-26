@@ -45,6 +45,7 @@ export function NarratorLine({ kind, text, onTap }: Props) {
       onClick={onTap}
       onKeyDown={onTap ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap(); } } : undefined}
       style={{
+        flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
         gap: 10,

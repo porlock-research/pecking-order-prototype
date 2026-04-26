@@ -104,6 +104,7 @@ function MessageCardInner({ message, showHeader, isSelf, continuationDepth = 0, 
     <motion.div
       {...ownSendMotion}
       style={{
+        flexShrink: 0,
         display: 'flex',
         flexDirection: isSelf ? 'row-reverse' : 'row',
         gap: 'var(--pulse-space-sm)',

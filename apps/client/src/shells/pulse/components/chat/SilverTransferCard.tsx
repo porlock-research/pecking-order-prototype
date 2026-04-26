@@ -78,6 +78,7 @@ export function SilverTransferCard({ text }: SilverTransferCardProps) {
       animate={{ opacity: 1 }}
       transition={PULSE_SPRING.gentle}
       style={{
+        flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
         gap: 10,

@@ -45,7 +45,7 @@ export function DmMessages({ channelId, isGroup = false }: Props) {
         const prev = i > 0 ? messages[i - 1] : null;
         const showGroupName = isGroup && !isSelf && (!prev || prev.senderId !== m.senderId);
         return (
-          <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
+          <div key={m.id} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
             {showGroupName && (
               <div style={{ fontSize: 10, color: 'var(--pulse-text-3)', marginBottom: 2 }}>
                 <span style={{ color, fontWeight: 700 }}>{sender?.personaName ?? m.senderId}</span>

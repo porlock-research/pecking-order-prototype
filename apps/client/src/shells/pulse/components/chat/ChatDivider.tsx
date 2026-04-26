@@ -50,6 +50,7 @@ export function ChatDivider({ onCleared }: Props) {
     <div
       ref={ref}
       style={{
+        flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
         gap: 10,

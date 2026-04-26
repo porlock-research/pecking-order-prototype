@@ -60,6 +60,7 @@ function formatTimecode(ts: number): string {
 
 const cassetteStyle: Record<string, React.CSSProperties> = {
   wrap: {
+    flexShrink: 0,
     position: 'relative',
     background:
       'radial-gradient(ellipse 80% 70% at 50% 0%, rgba(249,169,74,0.09), transparent 60%),' +

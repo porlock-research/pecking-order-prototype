@@ -24,6 +24,18 @@ export function isNarratorTicker(t: TickerMessage): boolean {
     || t.category === TickerCategories.SOCIAL_PHASE;
 }
 
+// Predicate: does this msg render as a left/right MessageCard bubble (i.e.
+// the only renderer that paints an avatar + persona-name header)? Anything
+// else — redacted whispers (centered WhisperCard), SYSTEM/GM broadcasts
+// (BroadcastCard) — must NOT participate in same-sender clustering, otherwise
+// a following MAIN msg from the same author renders without a header to
+// continue from.
+export function rendersAsBubble(msg: { senderId: string; whisperTarget?: string; redacted?: boolean }): boolean {
+  if (msg.whisperTarget && msg.redacted) return false;
+  if (msg.senderId === 'SYSTEM' || msg.senderId === 'GM' || msg.senderId === GAME_MASTER_ID) return false;
+  return true;
+}
+
 // Map SOCIAL_INVITE ticker kind → NarratorLine visual kind.
 // 'initial' covers 1:1 and small-group creation ('talking' / 'scheming' copy
 // share the same calm accent color); alliance sizes trigger 'alliance' styling.
@@ -148,6 +160,15 @@ export function ChatView() {
   // but conversation gaps break the group so the persona avatar returns
   // to remind you who's talking.
   //
+  // Cluster ONLY when both prev and current render as a left/right MessageCard
+  // bubble. Redacted whispers (centered WhisperCard) and SYSTEM/GM broadcasts
+  // (BroadcastCard) don't have an avatar header to "continue from", so a
+  // following MAIN message from the same sender must show its own header. The
+  // bug this guards against: a player whispers, then sends a group message —
+  // both are msg-type with the same senderId, but observers see the whisper
+  // as a centered "Someone whispered to X" line, then the next message would
+  // mount as a name-less, avatar-less bubble continuation of nothing.
+  //
   // continuationDepth is 0 for the first message of a stack, 1+ for
   // continuations. MessageCard uses it to fade the self-bubble fill on
   // successive messages so a stack has visible rhythm.
@@ -159,7 +180,10 @@ export function ChatView() {
     const entry = timeline[i];
     const prev = i > 0 ? timeline[i - 1] : null;
     let showHeader = true;
-    if (entry.type === 'msg' && prev?.type === 'msg') {
+    if (
+      entry.type === 'msg' && prev?.type === 'msg'
+      && rendersAsBubble(entry.data) && rendersAsBubble(prev.data)
+    ) {
       const sameSender = prev.data.senderId === entry.data.senderId;
       const isSelf = entry.data.senderId === playerId;
       const windowMs = isSelf ? SELF_STACK_WINDOW_MS : OTHER_STACK_WINDOW_MS;

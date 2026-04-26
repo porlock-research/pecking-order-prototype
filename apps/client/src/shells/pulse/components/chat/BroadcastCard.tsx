@@ -18,6 +18,7 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={PULSE_SPRING.gentle}
         style={{
+          flexShrink: 0,
           display: 'flex',
           alignItems: 'flex-start',
           gap: 10,
@@ -58,6 +59,7 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
       animate={{ opacity: 1, x: 0 }}
       transition={PULSE_SPRING.gentle}
       style={{
+        flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
         gap: 8,
