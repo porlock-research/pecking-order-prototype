@@ -79,6 +79,7 @@ export default function RecallRenderer({ seed, timeLimit, onResult }: ArcadeRend
     let roundIndex = 0; // 0 = first size, increments per round
     let highestSize = 0;
     let fullClear = 0;
+    let tilesRemembered = 0; // cumulative correct taps across all grids
     let missesThisRound = 0; // free-pass allowance: first miss reveals, second miss ends
     let freePassRevealMs = 0; // countdown while the free-pass reveal is showing
     let freePassTileNum = 0;  // which number was being revealed
@@ -180,6 +181,7 @@ export default function RecallRenderer({ seed, timeLimit, onResult }: ArcadeRend
         // Correct tap
         tapped.cleared = true;
         nextNumber += 1;
+        tilesRemembered += 1;
         scorePulse.target = 1.4;
 
         const r = tileRect(tapped, currentSize);
@@ -395,6 +397,7 @@ export default function RecallRenderer({ seed, timeLimit, onResult }: ArcadeRend
           roundsCleared: Math.floor(roundsCleared),
           highestSize: Math.floor(highestSize),
           fullClear: Math.floor(fullClear),
+          tilesRemembered: Math.floor(tilesRemembered),
           timeElapsed: Math.floor(elapsed),
         });
       }, 1200);

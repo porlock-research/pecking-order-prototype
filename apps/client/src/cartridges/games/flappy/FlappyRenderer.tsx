@@ -27,6 +27,11 @@ const MAX_FALL_VEL = 500;
 const SCROLL_BASE = 140;
 const PIPE_W = 52;
 
+// Brief startup buffer after PLAYING begins. Gravity and collisions are
+// suspended so players can orient before having to flap. Gap Run uses an
+// equivalent height-grace zone for the first 600 world pixels.
+const STARTUP_GRACE_MS = 1600;
+
 // --- Super Mario 3 palette ---
 // Locked to a chunky NES-style scheme — cheerful sky blue, saturated green pipes,
 // orange/brown dirt ground, gold coins, yellow bird. Themed cartridge colors
@@ -183,6 +188,8 @@ export default function FlappyRenderer({ seed, difficulty, timeLimit, onResult }
     let scrollSpeed = SCROLL_BASE;
     let groundScroll = 0;
     let flapStart: number | null = null;
+    let graceStartEmitted = false;
+    let graceEndEmitted = false;
     const milestonesHit = new Set<number>();
 
     // Difficulty: harder difficulty → phase floor bumps. 0..1.
@@ -248,6 +255,7 @@ export default function FlappyRenderer({ seed, difficulty, timeLimit, onResult }
     // --- Input ---
     function flapRelease(duration: number) {
       if (!alive) return;
+      if (elapsed < STARTUP_GRACE_MS) return;
       const t = Math.min(1, duration / FLAP_CHARGE_MS);
       const eased = 1 - (1 - t) * (1 - t);
       bird.vy = FLAP_VEL_MIN + (FLAP_VEL_MAX - FLAP_VEL_MIN) * eased;
@@ -477,10 +485,41 @@ export default function FlappyRenderer({ seed, difficulty, timeLimit, onResult }
 
       if (alive) {
         const dtSec = dt / 1000;
+        const inGrace = elapsed < STARTUP_GRACE_MS;
 
-        // Bird physics
-        bird.vy = Math.min(bird.vy + GRAVITY * dtSec, MAX_FALL_VEL);
-        bird.y += bird.vy * dtSec;
+        if (!graceStartEmitted) {
+          graceStartEmitted = true;
+          floatingText.emit({
+            text: 'READY',
+            x: CANVAS_SIZE / 2,
+            y: CANVAS_SIZE * 0.42,
+            color: SMB.coin,
+            fontSize: 26,
+            duration: Math.max(200, STARTUP_GRACE_MS - 100),
+            drift: 0,
+          });
+        }
+        if (!inGrace && !graceEndEmitted) {
+          graceEndEmitted = true;
+          floatingText.emit({
+            text: 'GO!',
+            x: CANVAS_SIZE / 2,
+            y: CANVAS_SIZE * 0.42,
+            color: SMB.coin,
+            fontSize: 36,
+            duration: 550,
+            drift: 8,
+          });
+          flash.trigger(withAlpha(colors.gold, 0.16), 90);
+        }
+
+        // Bird physics — frozen during the startup grace.
+        if (inGrace) {
+          bird.vy = 0;
+        } else {
+          bird.vy = Math.min(bird.vy + GRAVITY * dtSec, MAX_FALL_VEL);
+          bird.y += bird.vy * dtSec;
+        }
         const targetAngle = Math.max(-0.5, Math.min(Math.PI / 2.5, bird.vy / 400));
         bird.angle += (targetAngle - bird.angle) * Math.min(1, dtSec * 8);
         if (bird.wingPhase > 0) bird.wingPhase = Math.max(0, bird.wingPhase - dtSec * 5);
@@ -517,14 +556,14 @@ export default function FlappyRenderer({ seed, difficulty, timeLimit, onResult }
         coins = coins.filter(c => c.x > -20);
         enemies = enemies.filter(en => en.x > -40);
 
-        // Ground/ceiling collision
-        if (bird.y + BIRD_R > GROUND_Y || bird.y - BIRD_R < HUD_H) {
+        // Ground/ceiling collision — suppressed during grace (vy is held at 0).
+        if (!inGrace && (bird.y + BIRD_R > GROUND_Y || bird.y - BIRD_R < HUD_H)) {
           bird.y = Math.max(HUD_H + BIRD_R, Math.min(GROUND_Y - BIRD_R, bird.y));
           die();
         }
 
         // Obstacle collision
-        if (alive) {
+        if (alive && !inGrace) {
           for (const o of obstacles) {
             if (o.type === 'pipe') {
               if (BIRD_X + BIRD_R - 4 > o.x && BIRD_X - BIRD_R + 4 < o.x + o.w) {
@@ -554,7 +593,7 @@ export default function FlappyRenderer({ seed, difficulty, timeLimit, onResult }
         }
 
         // Enemy collision
-        if (alive) {
+        if (alive && !inGrace) {
           for (const en of enemies) {
             const dx = BIRD_X - en.x;
             const dy = bird.y - en.y;
@@ -722,6 +761,16 @@ export default function FlappyRenderer({ seed, difficulty, timeLimit, onResult }
 
       // --- HUD strip (top 22px) ---
       drawHudBar(ctx);
+
+      // Grace countdown bar — drains left→right while gravity is suspended.
+      if (elapsed < STARTUP_GRACE_MS) {
+        const remaining = 1 - elapsed / STARTUP_GRACE_MS;
+        const w = Math.max(0, Math.floor(CANVAS_SIZE * remaining));
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, HUD_H, CANVAS_SIZE, 3);
+        ctx.fillStyle = SMB.coin;
+        ctx.fillRect(0, HUD_H, w, 3);
+      }
 
       // Flash + shake restore
       flash.draw(ctx, CANVAS_SIZE, CANVAS_SIZE);

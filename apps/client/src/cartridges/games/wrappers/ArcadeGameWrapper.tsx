@@ -104,6 +104,15 @@ export default function ArcadeGameWrapper({
     setGameDeadline(null);
   }, []);
 
+  // Once the user has engaged with the cartridge locally (started, played, or
+  // chose retry), the hydration branches below must NOT bounce them back based
+  // on stale SYNC. Otherwise: clicking RETRY flips local to NOT_STARTED while
+  // server `status` is still AWAITING_DECISION, and the next render bumps the
+  // user straight back to the decision screen — the "try 2 always skipped"
+  // bug. Gate hydration on "user has never advanced past NOT_STARTED."
+  const hasEngagedRef = useRef(gamePhase !== 'NOT_STARTED');
+  if (gamePhase !== 'NOT_STARTED') hasEngagedRef.current = true;
+
   // Transition from DEAD -> AWAITING_DECISION or COMPLETED when server confirms
   useEffect(() => {
     if (status === ArcadePhases.AWAITING_DECISION && gamePhase === 'DEAD') {
@@ -114,6 +123,9 @@ export default function ArcadeGameWrapper({
       const timer = setTimeout(() => setGamePhase('COMPLETED'), 1400);
       return () => clearTimeout(timer);
     }
+    // Hydration: catch up to server status if SYNC arrives after mount with the
+    // game already past NOT_STARTED. Skipped after the user has engaged.
+    if (hasEngagedRef.current) return;
     if (status === ArcadePhases.COMPLETED && gamePhase === 'NOT_STARTED') {
       setGamePhase('COMPLETED');
     }

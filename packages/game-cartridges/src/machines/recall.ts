@@ -9,23 +9,32 @@
 import { Config } from '@pecking-order/shared-types';
 import { createArcadeMachine } from './arcade-machine';
 
-const { timeLimitMs, silverBySize, fullClearGold, maxSize } = Config.game.recall;
+const { timeLimitMs, fullClearGold, maxSize } = Config.game.recall;
+
+// Recall is harder than the average arcade — reward it at 2× the standard
+// arcade ceiling. Saturates at 50 correct tiles (clearing through 5×5).
+// Full clear adds a gold bonus on top.
+const RECALL_MAX_SILVER = Config.game.arcade.maxSilver * 2;
+const TILES_FOR_MAX_SILVER = 50;
 
 export const recallMachine = createArcadeMachine({
   gameType: 'RECALL',
   defaultTimeLimit: timeLimitMs,
   computeRewards: (result) => {
+    const tilesRemembered = result.tilesRemembered || 0;
     const highestSize = result.highestSize || 0;
     const fullClear = result.fullClear || 0;
 
-    // Cumulative silver for every size completed
     let silver = 0;
-    for (let n = 0; n <= highestSize; n++) {
-      silver += silverBySize[n] ?? 0;
+    if (tilesRemembered > 0) {
+      silver = Math.max(
+        1,
+        Math.ceil((tilesRemembered * RECALL_MAX_SILVER) / TILES_FOR_MAX_SILVER),
+      );
     }
-    silver = Math.min(Config.game.arcade.maxSilver, silver);
+    silver = Math.min(RECALL_MAX_SILVER, silver);
 
-    const gold = fullClear ? fullClearGold : (highestSize >= maxSize ? fullClearGold : 0);
+    const gold = fullClear || highestSize >= maxSize ? fullClearGold : 0;
     return { silver, gold };
   },
 });
