@@ -103,7 +103,8 @@ function getGameCodeFromPath(): string | null {
  * All URLs must be absolute — data: URLs have no origin to resolve relative
  * paths against.
  */
-function updatePwaManifest(gameCode?: string, jwt?: string) {
+/** @internal — exported for unit tests; not part of the module's public API. */
+export function updatePwaManifest(gameCode?: string, jwt?: string) {
   const origin = window.location.origin;
   const startUrl = gameCode && jwt
     ? `${origin}/game/${gameCode}?_t=${jwt}`
@@ -383,13 +384,24 @@ function applyToken(
 
   // Bake the JWT into the PWA manifest's `start_url` so a subsequent "Add
   // to Home Screen" produces a standalone PWA whose cold launch lands at
-  // `/game/CODE?_t=<jwt>` and hits applyToken's fast path. This is the
-  // only recovery mechanism that survives iOS Web App container isolation
-  // unconditionally — cookies/localStorage/Cache API all depend on
-  // install-time copy heuristics that fail when auth happened in a
-  // different browser context (Chrome iOS, in-app browsers, etc.). See
-  // ADR-149.
-  updatePwaManifest(key, jwt);
+  // `/game/CODE?_t=<jwt>` and hits applyToken's fast path. See ADR-149.
+  //
+  // Guard: only bake when we know the invite-code form (e.g. "M4P9BG"),
+  // because that's what `getGameCodeFromPath` accepts on cold launch.
+  // The `?token=` debug entry path passes gameCode=null, which would
+  // otherwise fall back to `decoded.gameId` ("game-<ts>-<rand>") — a
+  // hyphenated string the cold-launch regex rejects, producing a manifest
+  // whose start_url no human flow can resolve. Letting that path keep
+  // the launcher-only `start_url: '/'` is harmless (debug entries don't
+  // need a baked PWA) and preserves the function's "with both args ⇒
+  // resolvable URL" contract.
+  //
+  // NOTE: this overwrites whichever game previously baked itself into
+  // the manifest. A user in multiple active games will get a PWA that
+  // opens to whichever game `applyToken` ran for most recently.
+  if (gameCode) {
+    updatePwaManifest(gameCode, jwt);
+  }
 
   // Clean transient params from URL — but stash debug params first so the
   // Pulse hooks can pick them up after the strip.
