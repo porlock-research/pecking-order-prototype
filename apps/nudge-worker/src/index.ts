@@ -201,6 +201,19 @@ function bodyLine(text: string): string {
   return `<p style="margin:0 0 28px;font-family:${BODY};font-size:16px;line-height:1.55;color:${TEXT};">${text}</p>`;
 }
 
+/** Stacked-verb statement — brand mantra. Mirrors apps/lobby/lib/email-templates.ts.
+ * Outlook-safe: line-height 1.0 + explicit margin between lines. */
+function verbStack(words: string[], colors?: string[]): string {
+  const palette = colors ?? [TEXT, GOLD, TEXT, CTA];
+  return `<div style="margin:0 0 32px;text-align:center;">${words
+    .map((word, i) => {
+      const color = palette[i % palette.length];
+      const isLast = i === words.length - 1;
+      return `<div style="font-family:${DISPLAY};font-size:52px;font-weight:900;line-height:1.0;letter-spacing:-0.02em;color:${color};text-transform:uppercase;${isLast ? '' : 'margin-bottom:6px;'}">${word}</div>`;
+    })
+    .join('')}</div>`;
+}
+
 function codeBlock(label: string, code: string): string {
   return `<div style="text-align:left;">
     <p style="margin:0 0 6px;font-family:${BODY};font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${FAINT};">${label}</p>
@@ -241,6 +254,7 @@ export function buildNudgeEmail(target: NudgeTarget, day1Start: Date, lobbyHost:
             ${eyebrow('Starting soon')}
             ${hugeLine(`Day 1 at ${day1Time}`)}
             ${bodyLine('Your cast starts without you if you don&rsquo;t claim a spot. Pick a face and drop in.')}
+            ${verbStack(['Vote.', 'Ally.', 'Betray.', 'Survive.'])}
             ${buttonRow('Claim your spot', joinUrl, 28)}
             ${hairline()}
             ${codeBlock('Invite code', target.inviteCode)}

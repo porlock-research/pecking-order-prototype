@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { getDB, getEnv } from '@/lib/db';
 import { getSession } from '@/lib/auth';
@@ -7,6 +8,69 @@ import { buildSocialLine, displayLabelFor, type JoinedPlayer } from './cast-help
 
 interface PageProps {
   params: Promise<{ code: string }>;
+}
+
+// Per-link OG metadata. The previous behavior fell through to the root
+// layout's "Pecking Order — A social game of..." generic copy, so every
+// invite link unfurled identically in iMessage / WhatsApp / Discord
+// regardless of who sent it. This generates a contextual unfurl card per
+// invite: when the host's persona is known, name it; otherwise lean on
+// the brand mantra. Always falls back gracefully — if the game/code
+// doesn't exist, the page itself 404s and the unfurl never matters.
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { code } = await params;
+  const env = await getEnv();
+  const lobbyHost = (env.LOBBY_HOST as string) || 'https://lobby.peckingorder.ca';
+  const ogImage = `${lobbyHost}/og-playtest.png`;
+
+  let hostLabel: string | null = null;
+  try {
+    const db = await getDB();
+    // Host = the persona who created the game. Pull their persona name for
+    // unfurl context. One lightweight query at metadata time; runs in
+    // parallel with page rendering on the same request.
+    const row = await db
+      .prepare(
+        `SELECT pp.name AS persona_name
+         FROM GameSessions gs
+         INNER JOIN Invites i ON i.game_id = gs.id AND i.accepted_by = gs.host_user_id
+         LEFT JOIN PersonaPool pp ON pp.id = i.persona_id
+         WHERE gs.invite_code = ?
+         LIMIT 1`,
+      )
+      .bind(code.toUpperCase())
+      .first<{ persona_name: string | null }>();
+    hostLabel = row?.persona_name ?? null;
+  } catch {
+    // DB failure shouldn't block metadata. Fall back to mantra-only copy.
+  }
+
+  const title = hostLabel
+    ? `${hostLabel} added you to Pecking Order`
+    : `You're invited to Pecking Order`;
+  const description = 'Vote. Ally. Betray. Survive. A social deduction game in your group chat. Seven days. One winner.';
+  const url = `${lobbyHost}/j/${code.toUpperCase()}`;
+
+  return {
+    metadataBase: new URL(lobbyHost),
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: 'Pecking Order',
+      images: [{ url: ogImage, width: 1200, height: 630, alt: 'Pecking Order — Vote. Ally. Betray. Survive.' }],
+      type: 'website',
+      locale: 'en_US',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImage],
+    },
+  };
 }
 
 export default async function FrictionlessWelcomePage({ params }: PageProps) {
@@ -124,9 +188,9 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
         )}
 
         <header className="text-center space-y-3">
-          <div className="text-[10px] font-display font-bold text-skin-accent uppercase tracking-[0.3em]">
+          <p className="text-[10px] font-display font-bold text-skin-gold uppercase tracking-[0.3em]">
             Pecking Order
-          </div>
+          </p>
           <h1
             className="font-display font-black text-skin-base leading-[0.95]"
             // Fluid headline — 2rem on ~320px phones, 3.25rem on tablets+.
@@ -139,7 +203,29 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
           </p>
         </header>
 
+        {/* Brand verb-stack — only on the empty state. With cast present, the
+            JoinedCast component IS the visual interest; the verb stack here
+            would compete. With no cast, the page would otherwise be a logo
+            + headline + form — the stack fills that void with the same brand
+            mantra used on /playtest and in invite emails. */}
+        {!hasCast && (
+          <div
+            aria-hidden
+            className="text-center font-display font-black uppercase leading-[0.92] tracking-tight"
+            style={{ fontSize: 'clamp(2.25rem, 10vw, 3.5rem)' }}
+          >
+            <div className="text-skin-base">Vote.</div>
+            <div className="text-skin-gold">Ally.</div>
+            <div className="text-skin-base">Betray.</div>
+            <div className="text-skin-pink">Survive.</div>
+          </div>
+        )}
+
         <WelcomeForm code={game.invite_code} />
+
+        <p className="text-center text-[11px] text-skin-dim tracking-wide">
+          Seven days. One winner. Don’t get voted out.
+        </p>
       </div>
     </div>
   );

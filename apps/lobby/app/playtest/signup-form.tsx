@@ -121,7 +121,7 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
           required
-          className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-dim/30"
+          className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-faint"
         />
       </div>
 
@@ -131,7 +131,7 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
           className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display"
         >
           Phone
-          <span className="normal-case tracking-normal font-normal text-skin-dim/50 ml-1">optional</span>
+          <span className="normal-case tracking-normal font-normal text-skin-faint ml-1">optional</span>
         </label>
         <input
           id="signup-phone"
@@ -140,7 +140,7 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
           onChange={(e) => setPhone(e.target.value)}
           placeholder="+1 (555) 123-4567"
           maxLength={20}
-          className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-dim/30"
+          className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-faint"
         />
       </div>
 
@@ -150,7 +150,7 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
           className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display"
         >
           Preferred Messaging App
-          <span className="normal-case tracking-normal font-normal text-skin-dim/50 ml-1">optional</span>
+          <span className="normal-case tracking-normal font-normal text-skin-faint ml-1">optional</span>
         </label>
         <select
           id="signup-messaging"
@@ -199,7 +199,7 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
             className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display"
           >
             Who referred you?
-            <span className="normal-case tracking-normal font-normal text-skin-dim/50 ml-1">optional</span>
+            <span className="normal-case tracking-normal font-normal text-skin-faint ml-1">optional</span>
           </label>
           <input
             id="signup-referral-detail"
@@ -208,7 +208,7 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
             onChange={(e) => setReferralDetail(e.target.value)}
             placeholder="Their name or email"
             maxLength={200}
-            className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-dim/30"
+            className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-faint"
           />
         </div>
       )}
@@ -228,7 +228,7 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
             onChange={(e) => setReferralDetail(e.target.value)}
             placeholder="Where did you find us?"
             maxLength={200}
-            className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-dim/30"
+            className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-faint"
           />
         </div>
       )}
@@ -256,7 +256,7 @@ export function SignupForm({ turnstileSiteKey, playtestUrl }: { turnstileSiteKey
         className={`w-full py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl transition-all flex items-center justify-center gap-3
           ${
             isLoading
-              ? 'bg-skin-input text-skin-dim/40 cursor-wait'
+              ? 'bg-skin-input text-skin-faint cursor-wait'
               : 'bg-skin-gold text-skin-deep shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
           }`}
       >
