@@ -477,34 +477,59 @@ export function usePillStates(): PillState[] {
       }
     }
 
-    // ── Cartridge close-time stamping + urgent upgrade ──────────────────────
-    // PRE_SCHEDULED only. Walks CLOSE_VOTING / END_GAME / END_ACTIVITY /
-    // END_DILEMMA timeline entries. For every matching active pill, stamp
-    // endTime so countdowns can be formatted. Additionally upgrade
-    // needs-action → urgent when the player hasn't acted and close is within
-    // URGENT_THRESHOLD_MS.
+    // ── Cartridge open/close-time stamping + urgent upgrade ───────────────
+    // PRE_SCHEDULED only. Walks the day's timeline. For OPEN_* events stamps
+    // startTime on the matching active cartridge pill so chronological sort
+    // keeps it in its original row position when it transitions from
+    // upcoming → active (without this, active pills sort to startTime ?? 0
+    // and jump to the front of the row). For CLOSE_* events stamps endTime
+    // (so countdowns format) and upgrades needs-action → urgent when
+    // close is within URGENT_THRESHOLD_MS and player hasn't acted.
     if (day?.timeline && manifest?.scheduling === 'PRE_SCHEDULED') {
       const now = tickNow;
       for (const ev of day.timeline as any[]) {
         if (!ev.time?.includes('T')) continue;
-        const closeTime = new Date(ev.time).getTime();
+        const evTime = new Date(ev.time).getTime();
+
+        // OPEN side — stamp startTime on the matching active pill.
+        const openKind = ACTION_TO_KIND[ev.action];
+        if (openKind) {
+          const live = pills.find(
+            p => p.kind === openKind &&
+                 (p.lifecycle === 'needs-action' ||
+                  p.lifecycle === 'in-progress' ||
+                  p.lifecycle === 'urgent' ||
+                  p.lifecycle === 'completed'),
+          );
+          if (live && live.startTime === undefined) live.startTime = evTime;
+        }
+
+        // CLOSE side — stamp endTime + urgent upgrade.
         for (const k of Object.keys(CLOSE_ACTION_FOR_CARTRIDGE) as CartridgeKind[]) {
           if (CLOSE_ACTION_FOR_CARTRIDGE[k] !== ev.action) continue;
-          // Stamp endTime on every active-or-acted pill of this kind.
           const live = pills.find(
             p => p.kind === k && (p.lifecycle === 'needs-action' || p.lifecycle === 'in-progress'),
           );
-          if (live && live.endTime === undefined) live.endTime = closeTime;
-          // Urgent upgrade
-          if (closeTime > now && closeTime - now <= URGENT_THRESHOLD_MS) {
+          if (live && live.endTime === undefined) live.endTime = evTime;
+          // Urgent upgrade — within 5 min of close + player hasn't acted.
+          if (evTime > now && evTime - now <= URGENT_THRESHOLD_MS) {
             const pill = pills.find(p => p.kind === k && p.lifecycle === 'needs-action');
             if (pill && !pill.playerActed) {
               pill.lifecycle = 'urgent';
-              pill.endTime = closeTime;
+              pill.endTime = evTime;
             }
           }
         }
       }
+    }
+
+    // ── Voting always escalates to urgent while open + not voted ──────────
+    // Voting is the central game mechanic; the user wants the urgent
+    // treatment from the moment voting opens, not just inside the 5-min
+    // close threshold. Other cartridges keep the timing-based escalation.
+    {
+      const voting = pills.find(p => p.kind === 'voting' && p.lifecycle === 'needs-action');
+      if (voting && !voting.playerActed) voting.lifecycle = 'urgent';
     }
 
     // ── Phase detection ────────────────────────────────────────────────────

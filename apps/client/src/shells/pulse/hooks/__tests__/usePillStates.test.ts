@@ -239,7 +239,10 @@ describe('usePillStates — per-player needs-action', () => {
     } as any);
   });
 
-  it('voting pill stays needs-action for players who havent voted even if others have', () => {
+  it('voting pill goes urgent for players who havent voted even if others have', () => {
+    // Voting always escalates to urgent while open + not voted, regardless
+    // of close-time (it's the central game mechanic — user wants urgency
+    // immediately, not just inside the 5-min close window).
     useGameStore.setState({
       activeVotingCartridge: {
         phase: 'VOTING',
@@ -250,7 +253,7 @@ describe('usePillStates — per-player needs-action', () => {
     });
     const { result } = renderHook(() => usePillStates());
     expect(result.current[0].kind).toBe('voting');
-    expect(result.current[0].lifecycle).toBe('needs-action');
+    expect(result.current[0].lifecycle).toBe('urgent');
     expect(result.current[0].playerActed).toBe(false);
   });
 

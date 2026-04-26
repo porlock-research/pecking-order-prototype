@@ -188,6 +188,17 @@ export function PulseInput() {
 
   return (
     <div style={{ borderTop: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)', position: 'relative', zIndex: PULSE_Z.flow }}>
+      {/* Floating vote chip — mounted at the input's outer wrapper (not
+          inside the idle-mode block) so it survives command/reply/whisper
+          mode transitions. Voting urgency shouldn't disappear when the user
+          starts typing /silver. */}
+      <VoteFloatingChip
+        onTap={() => {
+          if (!voting) return;
+          const typeKey = (voting as any).mechanism || (voting as any).voteType || 'UNKNOWN';
+          focusCartridge(`voting-${dayIndex}-${typeKey}`, 'voting', 'manual');
+        }}
+      />
       {/* Command overlays — each panel wrapper carries `view-transition-name:
           command-panel` so the hint-chip bar morphs into whichever panel is
           active next (and back on cancel/back). */}
@@ -279,19 +290,7 @@ export function PulseInput() {
               phase={phase}
             />
           </div>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)', padding: 'var(--pulse-space-md) var(--pulse-space-md)' }}>
-            {/* Floating vote chip — special case for voting since voting is
-                the central game mechanic and always lives at the right edge
-                of the pill row (risks scrolling off on small phones). The
-                chip absolute-positions itself above the input via
-                bottom: calc(100% + 10px). */}
-            <VoteFloatingChip
-              onTap={() => {
-                if (!voting) return;
-                const typeKey = (voting as any).mechanism || (voting as any).voteType || 'UNKNOWN';
-                focusCartridge(`voting-${dayIndex}-${typeKey}`, 'voting', 'manual');
-              }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)', padding: 'var(--pulse-space-md) var(--pulse-space-md)' }}>
             <input
               ref={inputRef}
               value={text}
