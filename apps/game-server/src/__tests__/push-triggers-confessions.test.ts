@@ -13,10 +13,11 @@ describe('PushTriggerSchema — CONFESSION_OPEN', () => {
 });
 
 describe('phasePushPayload — CONFESSION_OPEN', () => {
-  it('returns "A confession phase has opened." with main intent', () => {
+  it('returns confession booth copy with main intent', () => {
     const result = phasePushPayload('CONFESSION_OPEN', 2);
     expect(result).not.toBeNull();
-    expect(result!.payload.body).toBe('A confession phase has opened.');
+    expect(result!.payload.title).toBe('Confession booth · Open');
+    expect(result!.payload.body).toBe('Spill in private. Just for you.');
     expect(result!.intent).toEqual({ kind: 'main' });
   });
 });

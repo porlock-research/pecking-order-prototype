@@ -79,9 +79,13 @@ function ShareChipInner({ gameCode }: Props) {
   const [success, setSuccess] = useState(false);
 
   const handleTap = useCallback(async () => {
+    // Personal voice — the player IS the cast, not a marketer. iOS share-sheet
+    // appends the URL separately, so we don't repeat the code in the text.
+    // Recipients still see the verb-stack mantra via the unfurl card on /j/CODE
+    // (set in apps/lobby/app/j/[code]/page.tsx generateMetadata).
     const shareData = {
       title: 'Pecking Order',
-      text: `I'm in a game on Pecking Order — you're cast. Code ${gameCode.toUpperCase()}`,
+      text: `You're cast in my Pecking Order game — tap in.`,
       url: shareUrl,
     };
 

@@ -28,8 +28,8 @@ function PersonaCard({
     <div
       className={`relative overflow-hidden flex-shrink-0 ${
         featured
-          ? 'w-40 h-56 md:w-48 md:h-64 rounded-2xl shadow-[0_0_40px_rgba(251,191,36,0.2)] z-10'
-          : 'w-28 h-40 md:w-32 md:h-44 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)]'
+          ? 'w-40 h-56 md:w-48 md:h-64 rounded-2xl shadow-glow z-10'
+          : 'w-28 h-40 md:w-32 md:h-44 rounded-2xl shadow-card'
       }`}
     >
       <img

@@ -196,8 +196,8 @@ export default function InvitePage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen h-dvh bg-skin-deep bg-grid-pattern flex items-center justify-center font-body text-skin-base">
-        <div className="text-skin-dim font-mono text-sm animate-pulse">Loading...</div>
+      <div className="h-dvh bg-skin-deep bg-grid-pattern flex items-center justify-center font-body text-skin-base">
+        <div className="text-skin-dim text-sm animate-pulse">Pulling your cast…</div>
       </div>
     );
   }
@@ -233,7 +233,7 @@ export default function InvitePage() {
   const bgConfig = STEP_BG[step] || STEP_BG[1];
 
   return (
-    <div className="h-screen h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
+    <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
       {/* Blurred full-body background — crossfades with persona, blur/opacity varies by step */}
       <AnimatePresence mode="popLayout">
         {bgPersona && (
@@ -251,7 +251,10 @@ export default function InvitePage() {
           />
         )}
       </AnimatePresence>
-      <div className="absolute inset-0 bg-skin-deep/60 pointer-events-none" />
+      {/* Page-bg overlay over the blurred persona photo. Bumped from /60
+          to /72 so text-skin-faint and text-skin-dim hit ≥4.5:1 even when
+          the photo behind is light (faces, gold-toned wardrobe, etc.). */}
+      <div className="absolute inset-0 bg-skin-deep/72 pointer-events-none" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
 
       {/* Content area — fills viewport above the bottom bar */}
@@ -261,8 +264,8 @@ export default function InvitePage() {
           <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow">
             PECKING ORDER
           </h1>
-          <p className="text-sm text-skin-dim font-mono">
-            Invite Code: <span className="text-skin-gold font-bold tracking-wider">{code}</span>
+          <p className="text-sm text-skin-dim">
+            Invite Code: <span className="text-skin-gold font-mono font-bold tracking-wider">{code}</span>
           </p>
         </header>
 
@@ -286,18 +289,23 @@ export default function InvitePage() {
         {/* Character Select Wizard */}
         {!alreadyJoined && game.status === 'RECRUITING' && (
           <div className="flex-1 min-h-0 flex flex-col pt-2 gap-2">
-            {/* Step indicator — fixed, animated fill bars */}
-            <div className="flex items-center justify-center flex-shrink-0">
+            {/* Step indicator — pips at 44×44 hit area, 36×36 visible disc. */}
+            <nav aria-label="Wizard progress" className="flex items-center justify-center flex-shrink-0 -mx-0.5">
               {[1, 2, 3, 4].map((s) => (
                 <div key={s} className="flex items-center">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-display font-bold transition-all duration-300
-                      ${step >= s ? 'bg-skin-gold text-skin-deep' : 'bg-skin-input text-skin-dim/40'}`}
+                    className="w-11 h-11 flex items-center justify-center"
+                    aria-current={step === s ? 'step' : undefined}
                   >
-                    {step > s ? '\u2713' : s}
+                    <div
+                      className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-display font-bold transition-all duration-300
+                        ${step >= s ? 'bg-skin-gold text-skin-deep' : 'bg-skin-input text-skin-faint'}`}
+                    >
+                      {step > s ? '\u2713' : s}
+                    </div>
                   </div>
                   {s < 4 && (
-                    <div className="w-10 h-0.5 bg-skin-input relative overflow-hidden">
+                    <div className="w-8 h-0.5 bg-skin-input relative overflow-hidden">
                       <motion.div
                         className="absolute inset-0 bg-skin-gold origin-left"
                         animate={{ scaleX: step > s ? 1 : 0 }}
@@ -307,7 +315,7 @@ export default function InvitePage() {
                   )}
                 </div>
               ))}
-            </div>
+            </nav>
 
             {/* Step content — slides left/right on step change */}
             <div className="flex-1 min-h-0 relative overflow-hidden">
@@ -324,10 +332,13 @@ export default function InvitePage() {
                     transition={SPRING_SWIPE}
                     className="h-full flex flex-col gap-3"
                   >
-                    <div className="text-center flex-shrink-0">
-                      <div className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+                    <div className="text-center flex-shrink-0 space-y-1">
+                      <h2 className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
                         Choose Your Persona
-                      </div>
+                      </h2>
+                      <p className="text-[11px] text-skin-dim tracking-wide">
+                        Swipe to browse. Tap one to lock in.
+                      </p>
                     </div>
 
                     {isDrawing || personas.length === 0 ? (
@@ -398,7 +409,7 @@ export default function InvitePage() {
                                 <div className="text-xs font-display font-bold text-skin-gold uppercase tracking-[0.2em]">
                                   {activePersona?.stereotype}
                                 </div>
-                                <p className="text-sm text-skin-dim/80 leading-snug pt-1">
+                                <p className="text-sm text-skin-base/90 leading-snug pt-1">
                                   {activePersona?.description}
                                 </p>
                               </div>
@@ -408,23 +419,27 @@ export default function InvitePage() {
                           {activeIndex > 0 && (
                             <button
                               onClick={() => setActiveIndex((i) => i - 1)}
-                              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-skin-deep/60 backdrop-blur-sm flex items-center justify-center text-skin-dim/80 hover:text-skin-base transition-colors"
+                              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center text-skin-base/90 hover:text-skin-base transition-colors"
                               aria-label="Previous character"
                             >
-                              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                <path d="M10 4L6 8L10 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
+                              <span className="w-9 h-9 rounded-full bg-skin-deep/85 flex items-center justify-center shadow-card">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                                  <path d="M10 4L6 8L10 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </span>
                             </button>
                           )}
                           {activeIndex < personas.length - 1 && (
                             <button
                               onClick={() => setActiveIndex((i) => i + 1)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-skin-deep/60 backdrop-blur-sm flex items-center justify-center text-skin-dim/80 hover:text-skin-base transition-colors"
+                              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center text-skin-base/90 hover:text-skin-base transition-colors"
                               aria-label="Next character"
                             >
-                              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
+                              <span className="w-9 h-9 rounded-full bg-skin-deep/85 flex items-center justify-center shadow-card">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                                  <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </span>
                             </button>
                           )}
                         </div>
@@ -459,7 +474,7 @@ export default function InvitePage() {
                               </div>
                               <span
                                 className={`text-[10px] font-display font-bold text-center transition-colors ${
-                                  idx === activeIndex ? 'text-skin-gold' : 'text-skin-dim/40'
+                                  idx === activeIndex ? 'text-skin-gold' : 'text-skin-faint'
                                 }`}
                               >
                                 {persona.name.split(' ')[0]}
@@ -486,10 +501,10 @@ export default function InvitePage() {
                   >
                     <div className="my-auto space-y-4 py-2">
                       <div className="text-center flex-shrink-0">
-                        <div className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+                        <h2 className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
                           Write Your Catfish Bio
-                        </div>
-                        <p className="text-xs text-skin-dim/60 mt-1">This is what other players will see</p>
+                        </h2>
+                        <p className="text-xs text-skin-dim mt-1">First impression. Make it stick.</p>
                       </div>
 
                       {/* Persona identity — prominent, no card (blurred bg IS the card) */}
@@ -502,19 +517,20 @@ export default function InvitePage() {
                         </div>
                       </div>
 
-                      {/* Bio textarea with glass effect */}
+                      {/* Bio textarea — opaque deep panel, gold border for the
+                          one active commit moment (per principle 2: single accent at a time). */}
                       <div className="space-y-2">
                         <textarea
                           value={customBio}
                           onChange={(e) => setCustomBio(e.target.value.slice(0, 280))}
                           placeholder="Write your catfish bio... Who are you pretending to be?"
                           rows={4}
-                          className="w-full px-4 py-3 backdrop-blur-sm rounded-xl text-base font-bold text-skin-gold text-glow placeholder:text-skin-dim placeholder:font-normal focus:outline-none resize-none"
-                          style={{ backgroundColor: 'rgba(44, 0, 62, 0.8)', border: '1px solid var(--po-gold)' }}
+                          aria-label="Catfish bio"
+                          className="w-full px-4 py-3 bg-skin-deep/80 border border-skin-gold rounded-xl text-base font-bold text-skin-gold text-glow placeholder:text-skin-faint placeholder:font-normal focus:outline-none focus:ring-1 focus:ring-skin-gold resize-none"
                         />
-                        <div className="flex justify-between text-xs font-mono">
-                          <span className="text-skin-dim/40">Max 280 characters</span>
-                          <span className={customBio.length > 260 ? 'text-skin-pink' : 'text-skin-dim/40'}>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-skin-faint">Max 280 characters</span>
+                          <span className={customBio.length > 260 ? 'text-skin-pink font-mono tabular-nums' : 'text-skin-faint font-mono tabular-nums'}>
                             {customBio.length}/280
                           </span>
                         </div>
@@ -548,9 +564,13 @@ export default function InvitePage() {
                         setStep(4);
                       }}
                       onSkip={() => {
+                        // Randomize defaults per question. Earlier code defaulted
+                        // every skipped answer to selectedIndex 0, which made
+                        // skippers cluster (every "skip" dossier looked identical
+                        // and told other players "this person didn't engage").
                         const defaultSubs = questions.map(q => ({
                           questionId: q.id,
-                          selectedIndex: 0,
+                          selectedIndex: Math.floor(Math.random() * Math.max(1, q.options.length)),
                         }));
                         const resolved = resolveAnswers(questions, defaultSubs, {
                           name: selectedPersona!.name,
@@ -577,14 +597,23 @@ export default function InvitePage() {
                     className="h-full flex flex-col overflow-y-auto"
                   >
                     <div className="my-auto space-y-3 py-2">
-                      <div className="text-center flex-shrink-0">
-                        <div className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
-                          Confirm Your Identity
-                        </div>
-                        <p className="text-xs text-skin-dim/60 mt-1">This is who you'll be in the game</p>
+                      <div className="text-center flex-shrink-0 space-y-1">
+                        <p className="text-[10px] font-display font-bold text-skin-faint uppercase tracking-[0.3em]">
+                          You’ll be playing as
+                        </p>
+                        <h2 className="font-display font-black text-skin-base uppercase leading-[0.92] tracking-tight" style={{ fontSize: 'clamp(2.5rem, 11vw, 3.75rem)' }}>
+                          <span className="sr-only">Confirm Your Identity. </span>
+                          {selectedPersona.name}
+                        </h2>
+                        <p className="text-xs font-display font-bold text-skin-gold uppercase tracking-[0.2em]">
+                          {selectedPersona.stereotype}
+                        </p>
                       </div>
 
-                      <div className="bg-skin-panel/30 border border-skin-gold/30 rounded-2xl overflow-hidden">
+                      <div className="relative bg-skin-deep/85 border border-skin-gold/30 rounded-2xl overflow-hidden">
+                        {/* Title-card accent stripe — narrow gold band along the
+                            top of the reveal card. Reads as a cinema slate. */}
+                        <div aria-hidden className="h-[3px] bg-gradient-to-r from-transparent via-skin-gold to-transparent" />
                         <div className="aspect-[16/9] bg-skin-input/30 relative overflow-hidden">
                           <img
                             src={selectedPersona.fullImageUrl}
@@ -599,16 +628,21 @@ export default function InvitePage() {
                             }}
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-skin-deep/80 to-transparent" />
-                          <div className="absolute bottom-4 left-4 right-4">
-                            <div className="text-lg font-display font-black text-skin-base">{selectedPersona.name}</div>
-                            <div className="text-xs text-skin-gold font-display uppercase tracking-wider">
-                              {selectedPersona.stereotype}
-                            </div>
+
+                          {/* Locked-in stamp — top-right, slightly skewed; reads as
+                              tabloid press-stamp. Reinforces commitment moment without
+                              relying on a banned side-stripe pattern. */}
+                          <div
+                            aria-hidden
+                            className="absolute top-3 right-3 px-2.5 py-1 bg-skin-pink text-skin-base font-display font-black text-[10px] uppercase tracking-[0.18em] rounded-sm"
+                            style={{ transform: 'rotate(3deg)' }}
+                          >
+                            Locked In
                           </div>
                         </div>
                         <div className="p-4 space-y-4">
                           <div>
-                            <div className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest mb-2">
+                            <div className="text-[10px] font-display font-bold text-skin-faint uppercase tracking-widest mb-2">
                               Your Bio
                             </div>
                             <p className="text-sm text-skin-base leading-relaxed">{customBio}</p>
@@ -619,13 +653,13 @@ export default function InvitePage() {
                             const answers: { question: string; answer: string }[] = JSON.parse(qaAnswersJson);
                             return answers.length > 0 ? (
                               <div>
-                                <div className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest mb-2">
+                                <div className="text-[10px] font-display font-bold text-skin-faint uppercase tracking-widest mb-2">
                                   Your Answers
                                 </div>
                                 <div className="space-y-2">
                                   {answers.map((qa, i) => (
-                                    <div key={i} className="bg-skin-deep/40 rounded-lg px-3 py-2">
-                                      <div className="text-[10px] font-mono text-skin-dim/40 leading-snug">
+                                    <div key={i} className="bg-skin-deep/60 border border-skin-base/40 rounded-lg px-3 py-2">
+                                      <div className="text-[10px] text-skin-dim leading-snug">
                                         {qa.question}
                                       </div>
                                       <div className="text-xs text-skin-gold font-bold leading-snug mt-0.5">
@@ -653,7 +687,7 @@ export default function InvitePage() {
         <div className="flex-shrink-0 relative z-20 bg-gradient-to-b from-skin-deep/0 to-skin-deep pt-3 px-4" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
           <div className="max-w-lg mx-auto">
             {error && (
-              <div className="p-3 mb-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm font-mono text-center">
+              <div role="alert" className="p-3 mb-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm text-center">
                 {error}
               </div>
             )}
@@ -702,7 +736,7 @@ export default function InvitePage() {
                       className={`flex-1 py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all
                         ${
                           !selectedPersona
-                            ? 'bg-skin-input text-skin-dim/40 cursor-not-allowed'
+                            ? 'bg-skin-input text-skin-faint cursor-not-allowed'
                             : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
                         }`}
                     >
@@ -740,7 +774,7 @@ export default function InvitePage() {
                       className={`flex-1 py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all
                         ${
                           !customBio.trim()
-                            ? 'bg-skin-input text-skin-dim/40 cursor-not-allowed'
+                            ? 'bg-skin-input text-skin-faint cursor-not-allowed'
                             : 'bg-skin-gold text-skin-deep shadow-btn hover:brightness-110 active:scale-[0.99]'
                         }`}
                     >
@@ -771,7 +805,7 @@ export default function InvitePage() {
                       className={`flex-1 py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all flex items-center justify-center gap-3
                         ${
                           isJoining
-                            ? 'bg-skin-input text-skin-dim/40 cursor-wait'
+                            ? 'bg-skin-input text-skin-faint cursor-wait'
                             : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
                         }`}
                     >
@@ -782,7 +816,7 @@ export default function InvitePage() {
                           <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce delay-150"></span>
                         </>
                       ) : (
-                        <>Join Game</>
+                        <>Take the seat</>
                       )}
                     </button>
                   </div>

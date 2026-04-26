@@ -257,8 +257,8 @@ async function handlePushGameEntry(ctx: HandlerContext, req: Request): Promise<R
 
     const url = `${ctx.env.GAME_CLIENT_HOST}/game/${inviteCode}`;
     const result = await sendPushNotification(sub, {
-      title: 'Pecking Order',
-      body: 'Your game is ready! Tap to play.',
+      title: 'Your game starts now',
+      body: 'Day 1. Your cast is waiting.',
       url,
       token,
     }, ctx.env.VAPID_PRIVATE_JWK);

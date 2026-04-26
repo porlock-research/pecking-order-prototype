@@ -23,10 +23,10 @@ describe('phasePushPayload — intents', () => {
   });
 
   it('ACTIVITY returns cartridge_active with prompt kind', () => {
-    const result = phasePushPayload('ACTIVITY', 3, { ...dayManifest, promptType: 'POLL' } as any);
+    const result = phasePushPayload('ACTIVITY', 3, { ...dayManifest, activityType: 'HOT_TAKE' } as any);
     expect(result?.intent).toEqual({
       kind: 'cartridge_active',
-      cartridgeId: 'prompt-3-POLL',
+      cartridgeId: 'prompt-3-HOT_TAKE',
       cartridgeKind: 'prompt',
     });
   });
@@ -37,8 +37,8 @@ describe('phasePushPayload — intents', () => {
   });
 
   it('END_ACTIVITY returns cartridge_result with prompt kind', () => {
-    const result = phasePushPayload('END_ACTIVITY', 3, { promptType: 'POLL' } as any);
-    expect(result?.intent).toEqual({ kind: 'cartridge_result', cartridgeId: 'prompt-3-POLL' });
+    const result = phasePushPayload('END_ACTIVITY', 3, { activityType: 'HOT_TAKE' } as any);
+    expect(result?.intent).toEqual({ kind: 'cartridge_result', cartridgeId: 'prompt-3-HOT_TAKE' });
   });
 
   it('DAY_START, NIGHT_SUMMARY, OPEN/CLOSE gates return main intent', () => {

@@ -18,24 +18,33 @@ export function SharePageClient({ code, playtestUrl }: { code: string; playtestU
   }, [referralCode]);
 
   return (
-    <div className="min-h-screen bg-skin-deep bg-grid-pattern font-body text-skin-base selection:bg-skin-gold/30 relative overflow-hidden flex items-center justify-center">
+    <div className="min-h-dvh bg-skin-deep bg-grid-pattern font-body text-skin-base selection:bg-skin-gold/30 relative overflow-hidden flex items-center justify-center pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       {/* Ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-gradient-radial from-skin-panel/60 via-skin-panel/20 to-transparent opacity-80 pointer-events-none" />
 
       <main className="relative px-5 py-10 max-w-md mx-auto w-full">
-        <div className="bg-skin-panel/30 backdrop-blur-sm rounded-3xl p-7 md:p-8 shadow-[0_8px_40px_rgba(0,0,0,0.3)]">
+        <div className="bg-skin-deep/70 border border-skin-base rounded-3xl p-7 md:p-8 shadow-card">
           <div className="text-center space-y-3 mb-6">
             <h1 className="font-display font-black text-2xl md:text-3xl text-skin-gold tracking-tight text-glow">
               PECKING ORDER
             </h1>
-            <p className="text-skin-dim text-sm font-display">
+            <p className="text-skin-dim text-sm">
               Share your link to recruit players for the next playtest.
             </p>
           </div>
 
-          {/* Referral code display */}
+          {/* Brand verb-stack — same mantra as /playtest hero, gives the share
+              surface its own typographic anchor instead of just listing chrome. */}
+          <div className="text-center mb-6 font-display font-black uppercase leading-[0.95] tracking-tight" style={{ fontSize: 'clamp(1.75rem, 8vw, 2.5rem)' }}>
+            <div className="text-skin-base">Vote.</div>
+            <div className="text-skin-gold">Ally.</div>
+            <div className="text-skin-base">Betray.</div>
+            <div className="text-skin-pink">Survive.</div>
+          </div>
+
+          {/* Referral code display — mono is the right call here, this IS a code */}
           <div className="text-center py-3 mb-6 bg-skin-deep/40 rounded-xl border border-skin-gold/15">
-            <p className="text-[10px] font-bold text-skin-dim uppercase tracking-[0.2em] mb-1.5 font-display">
+            <p className="text-[10px] font-display font-bold text-skin-dim uppercase tracking-[0.2em] mb-1.5">
               Your Referral Code
             </p>
             <p className="text-2xl font-mono font-bold text-skin-gold tracking-[0.3em]">
@@ -49,7 +58,7 @@ export function SharePageClient({ code, playtestUrl }: { code: string; playtestU
         <footer className="mt-8 text-center">
           <a
             href="https://peckingorder.ca"
-            className="text-skin-dim/30 text-xs hover:text-skin-dim transition-colors font-mono tracking-wider"
+            className="text-skin-faint text-xs hover:text-skin-dim transition-colors tracking-wider"
           >
             peckingorder.ca
           </a>
