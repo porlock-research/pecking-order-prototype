@@ -12,7 +12,7 @@ import { handleConnect, handleMessage, handleClose, rebuildConnectedPlayers, typ
 import { setupActorSubscription, type SubscriptionState } from "./subscription";
 import { handleGlobalRoutes } from "./global-routes";
 import { buildActionOverrides, type ActionContext } from "./machine-actions";
-import { ensureSnapshotsTable, readSnapshot, readGoldCredited, readD1CompletionWritten, readLobbyCompletionNotified, parseSnapshot } from "./snapshot";
+import { ensureSnapshotsTable, readSnapshot, readGoldCredited, readD1CompletionWritten, readLobbyCompletionNotified, readLobbyStartedNotified, parseSnapshot } from "./snapshot";
 
 export { DemoServer } from './demo/demo-server';
 export type { Env } from "./types";
@@ -33,6 +33,7 @@ export class GameServer extends Server<Env> {
   goldCredited = false;
   d1CompletionWritten = false;
   lobbyCompletionNotified = false;
+  lobbyStartedNotified = false;
   connectedPlayers = new Map<string, Set<string>>();
   inspectSubscribers = new Set<Connection>();
 
@@ -107,6 +108,7 @@ export class GameServer extends Server<Env> {
     this.goldCredited = await readGoldCredited(this.ctx.storage);
     this.d1CompletionWritten = readD1CompletionWritten(this.ctx.storage);
     this.lobbyCompletionNotified = readLobbyCompletionNotified(this.ctx.storage);
+    this.lobbyStartedNotified = readLobbyStartedNotified(this.ctx.storage);
 
     // 3. Create machine with DO-context action overrides
     const machine = orchestratorMachine.provide({
@@ -208,11 +210,12 @@ export class GameServer extends Server<Env> {
    *  onStart, defeating the wipe (review follow-up). */
   private async wipeRunStateOnCorruption(): Promise<void> {
     this.ctx.storage.sql.exec(
-      "DELETE FROM snapshots WHERE key IN ('game_state','d1_completion_written','lobby_completion_notified','gold_credited')"
+      "DELETE FROM snapshots WHERE key IN ('game_state','d1_completion_written','lobby_completion_notified','lobby_started_notified','gold_credited')"
     );
     await this.ctx.storage.delete(['goldCredited', 'game_state_snapshot']);
     this.d1CompletionWritten = false;
     this.lobbyCompletionNotified = false;
+    this.lobbyStartedNotified = false;
     this.goldCredited = false;
   }
 

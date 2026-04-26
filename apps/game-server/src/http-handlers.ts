@@ -4,7 +4,6 @@ import type { orchestratorMachine } from "./machines/l2-orchestrator";
 import { Events, FactTypes, GameManifestSchema } from "@pecking-order/shared-types";
 import { readGoldBalances, insertGameAndPlayers, getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { sendPushNotification } from "./push-send";
-import { notifyLobbyGameStatus } from "./lobby-callback";
 import { log } from "./log";
 import type { Env } from "./types";
 
@@ -149,12 +148,13 @@ async function handleInit(ctx: HandlerContext, req: Request, url: URL): Promise<
 
     insertGameAndPlayers(ctx.env.DB, gameId, json.manifest?.gameMode || json.manifest?.scheduling || 'CONFIGURABLE_CYCLE', json.roster || {});
 
-    // Notify lobby — bridges game-server IN_PROGRESS to lobby STARTED.
-    // Covers both STATIC games (lobby's startGame already self-marks STARTED;
-    // this is idempotent) and CC games (whose only prior trigger was a 409
-    // from a late joiner — issue #49). waitUntil keeps the fetch alive past
-    // the response boundary so the isolate isn't evicted mid-flight.
-    ctx.waitUntil(notifyLobbyGameStatus(ctx.env, gameId, 'IN_PROGRESS'));
+    // The IN_PROGRESS → lobby STARTED callback used to fire here, but DO
+    // auto-init for CC games happens at game-CREATE time (before any invitee
+    // has clicked their email link). Flipping the lobby to STARTED at that
+    // moment makes getInviteInfo() reject every subsequent invitee with
+    // "this game is no longer accepting players" — a regression introduced
+    // by PR #130 and seen on staging (PHH3FJ). The callback now lives in
+    // subscription.ts gated on L2 leaving preGame.
 
     return new Response(JSON.stringify({ status: "OK" }), { status: 200 });
   } catch (err) {

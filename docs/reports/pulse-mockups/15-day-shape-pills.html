@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pulse — Day Shape via Pills (v4)</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700,800,900&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #15121a;
+    --surface: #1a1420;
+    --surface-2: #1d1826;
+    --surface-3: #231c2d;
+    --surface-4: #2a2335;
+    --border: rgba(255,255,255,0.06);
+    --border-lifted: rgba(255,255,255,0.10);
+
+    --text-1: #f2eef5;
+    --text-2: #a89fb3;
+    --text-3: #6b5f78;
+    --text-4: #3d3547;
+
+    --accent: #ff3b6f;
+    --accent-g: rgba(255,59,111,0.14);
+    --gold: #ffc83d;
+    --gold-soft: rgba(255,200,61,0.28);
+
+    --k-voting: #4ade80;
+    --k-game:   #fbbf24;
+    --k-prompt: #60a5fa;
+    --k-dilemma:#c084fc;
+    --k-social: #f0d9a8;
+    --k-boundary: #ffc83d;
+
+    --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-pill: 100px;
+
+    --font-display: 'Clash Display', system-ui, sans-serif;
+    --font-body: 'Satoshi', system-ui, sans-serif;
+
+    --active-glow-strength: 24px;
+    --active-glow-alpha: 0.55;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background:
+      radial-gradient(ellipse at top left, rgba(255,200,61,0.03), transparent 45%),
+      radial-gradient(ellipse at bottom right, rgba(255,59,111,0.04), transparent 50%),
+      #08060b;
+    color: var(--text-1);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    padding: 44px 24px 96px;
+  }
+  .page { max-width: 1280px; margin: 0 auto; }
+
+  .page-head { text-align: left; max-width: 760px; margin-bottom: 40px; }
+  .tag {
+    display: inline-block;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    padding: 6px 10px;
+    background: var(--accent-g);
+    border-radius: var(--r-sm);
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(36px, 5vw, 56px);
+    line-height: 1.0;
+    letter-spacing: -0.03em;
+    margin-bottom: 14px;
+  }
+  .lede { color: var(--text-2); font-size: 16px; line-height: 1.5; max-width: 640px; }
+  .lede + .lede { margin-top: 8px; }
+
+  section { margin: 56px 0; }
+  .section-head { margin-bottom: 22px; }
+  .section-head .num {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--text-3);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .section-head h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .section-head p { color: var(--text-2); font-size: 14px; line-height: 1.55; max-width: 640px; }
+
+  .stage {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 28px;
+  }
+
+  /* ---------- Pill ---------- */
+  .pill {
+    --kind: var(--k-voting);
+    --kind-rgb: 74, 222, 128;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: var(--r-pill);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.01em;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    white-space: nowrap;
+    transition: background 240ms ease, border-color 240ms ease, color 240ms ease, opacity 240ms ease, box-shadow 240ms ease, transform 240ms ease;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .pill .ico { width: 14px; height: 14px; display: grid; place-items: center; color: var(--kind); flex-shrink: 0; }
+  .pill .ico svg { width: 100%; height: 100%; }
+  .pill .label { color: inherit; }
+  .pill .meta { color: var(--text-3); font-weight: 500; font-size: 12px; margin-left: 2px; }
+  .pill .lead {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(255,59,111,0.7);
+    flex-shrink: 0;
+    margin-right: -2px;
+  }
+  .pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-left: 4px;
+    box-shadow: 0 0 0 2px var(--surface);
+    flex-shrink: 0;
+  }
+
+  .pill.is-upcoming {
+    background: transparent;
+    border: 1px solid color-mix(in oklch, var(--kind) 40%, var(--border-lifted));
+    color: var(--text-2);
+    opacity: 1;
+  }
+  .pill.is-upcoming .ico { color: color-mix(in oklch, var(--kind) 60%, var(--text-3)); }
+  .pill.is-upcoming .meta { color: var(--text-3); }
+
+  .pill.is-active {
+    background: color-mix(in oklch, var(--kind) 32%, var(--surface-2));
+    border: 1.5px solid var(--kind);
+    color: var(--text-1);
+    box-shadow:
+      0 0 var(--active-glow-strength) rgba(var(--kind-rgb), var(--active-glow-alpha)),
+      inset 0 0 0 1px rgba(255,255,255,0.04);
+    animation: heartbeat 2.4s ease-in-out infinite;
+  }
+  .pill.is-active .meta { color: var(--text-1); opacity: 0.85; }
+  .pill.is-active.is-just-ignited {
+    animation: ignition 450ms cubic-bezier(0.22, 1, 0.36, 1) 1 forwards,
+               heartbeat 2.4s ease-in-out 450ms infinite;
+  }
+
+  /* Acted: verb-driven (cast / placed / sent / chosen) — no ✓ icon */
+  .pill.is-acted {
+    background: color-mix(in oklch, var(--kind) 12%, var(--surface-2));
+    border: 1px solid color-mix(in oklch, var(--kind) 55%, var(--border));
+    color: var(--text-1);
+    opacity: 1;
+  }
+  .pill.is-acted .meta { color: var(--text-2); }
+  .pill.is-acted .meta .verb {
+    color: var(--kind);
+    font-weight: 700;
+    font-style: italic;
+    font-size: 12px;
+    letter-spacing: 0.01em;
+  }
+  .pill.is-acted .ico { color: var(--kind); }
+
+  .pill.is-urgent {
+    background: color-mix(in oklch, var(--accent) 12%, var(--surface-2));
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    box-shadow:
+      0 0 28px rgba(255, 59, 111, 0.65),
+      inset 0 0 0 1px rgba(255,255,255,0.06);
+    animation: urgentPulse 700ms ease-in-out infinite;
+  }
+  .pill.is-urgent .label { color: var(--accent); font-weight: 800; }
+  .pill.is-urgent .meta { color: color-mix(in oklch, var(--accent) 70%, var(--text-1)); }
+  .pill.is-urgent .ico { color: var(--accent); }
+
+  .pill.is-completed-unread {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    opacity: 1;
+  }
+  .pill.is-completed-unread .ico { color: color-mix(in oklch, var(--kind) 60%, var(--text-3)); }
+  .pill.is-completed-unread .label { color: var(--text-1); }
+
+  .pill.is-completed-read {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-3);
+    opacity: 0.55;
+    padding: 0 9px;
+  }
+  .pill.is-completed-read .ico { opacity: 0.6; }
+  .pill.is-completed-read .label, .pill.is-completed-read .meta { display: none; }
+
+  /* ---------- Boundary pill — mini variant (during day) ---------- */
+  .pill.is-boundary {
+    --kind: var(--k-boundary);
+    --kind-rgb: 255, 200, 61;
+    background: linear-gradient(180deg, rgba(255,200,61,0.10), rgba(255,200,61,0.02));
+    border: 1.5px solid var(--gold-soft);
+    color: var(--gold);
+  }
+  .pill.is-boundary .ico { color: var(--gold); }
+  .pill.is-boundary .label { color: var(--gold); font-weight: 700; letter-spacing: 0.02em; }
+  .pill.is-boundary .meta { color: color-mix(in oklch, var(--gold) 65%, var(--text-2)); }
+  .pill.is-boundary.is-imminent {
+    border-color: var(--gold);
+    box-shadow: 0 0 18px rgba(255,200,61,0.40);
+    animation: heartbeat 2s ease-in-out infinite;
+  }
+
+  /* ---------- Boundary HERO variant (pregame + night) — bolder, default LARGE ---------- */
+  .pill.is-boundary.is-hero {
+    height: 72px;
+    padding: 0 28px;
+    gap: 16px;
+    background:
+      radial-gradient(ellipse at top, rgba(255,200,61,0.20), rgba(255,200,61,0.04) 70%),
+      var(--surface-2);
+    border: 1.5px solid var(--gold);
+    box-shadow:
+      0 0 40px rgba(255,200,61,0.32),
+      inset 0 0 0 1px rgba(255,200,61,0.18),
+      inset 0 -14px 36px rgba(255,200,61,0.06);
+  }
+  .pill.is-boundary.is-hero .ico {
+    width: 26px; height: 26px;
+    color: var(--gold);
+    filter: drop-shadow(0 0 10px rgba(255,200,61,0.60));
+  }
+  .pill.is-boundary.is-hero .hero-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    line-height: 1;
+  }
+  .pill.is-boundary.is-hero .hero-eyebrow {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(255,200,61,0.72);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .pill.is-boundary.is-hero .hero-body {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--gold);
+    line-height: 1;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .pill.is-boundary.is-hero .hero-rel {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(255,200,61,0.72);
+  }
+  .pill.is-boundary.is-hero.is-imminent {
+    animation: heroBreathe 1.6s ease-in-out infinite;
+    border-color: #fff0bb;
+  }
+  @keyframes heroBreathe {
+    0%, 100% {
+      box-shadow:
+        0 0 32px rgba(255,200,61,0.30),
+        inset 0 0 0 1px rgba(255,200,61,0.18),
+        inset 0 -10px 28px rgba(255,200,61,0.06);
+    }
+    50% {
+      box-shadow:
+        0 0 56px rgba(255,200,61,0.65),
+        inset 0 0 0 1px rgba(255,200,61,0.32),
+        inset 0 -10px 28px rgba(255,200,61,0.10);
+    }
+  }
+
+  /* ---------- Per-kind hue assignment ---------- */
+  .pill[data-kind="voting"]  { --kind: var(--k-voting);  --kind-rgb: 74, 222, 128; }
+  .pill[data-kind="game"]    { --kind: var(--k-game);    --kind-rgb: 251, 191, 36; }
+  .pill[data-kind="prompt"]  { --kind: var(--k-prompt);  --kind-rgb: 96, 165, 250; }
+  .pill[data-kind="dilemma"] { --kind: var(--k-dilemma); --kind-rgb: 192, 132, 252; }
+  .pill[data-kind="dms"]     { --kind: var(--k-social);  --kind-rgb: 240, 217, 168; }
+  .pill[data-kind="group"]   { --kind: var(--k-social);  --kind-rgb: 240, 217, 168; }
+  .pill[data-kind="boundary"]{ --kind: var(--k-boundary);--kind-rgb: 255, 200, 61; }
+
+  /* ---------- Animations ---------- */
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.025); }
+  }
+  @keyframes ignition {
+    0% { transform: scale(0.94); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  @keyframes urgentPulse {
+    0%, 100% { box-shadow: 0 0 28px rgba(255,59,111,0.55), inset 0 0 0 1px rgba(255,255,255,0.06); }
+    50%      { box-shadow: 0 0 36px rgba(255,59,111,0.85), inset 0 0 0 1px rgba(255,255,255,0.06); }
+  }
+  @keyframes settle {
+    0% { transform: scale(1.04); }
+    100% { transform: scale(1); }
+  }
+  .pill.is-just-settled { animation: settle 500ms cubic-bezier(0.22, 1, 0.36, 1) 1 forwards; }
+
+  @keyframes floatBob {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-3px); }
+  }
+  @keyframes floatBobUrgent {
+    0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
+    50% { transform: translateX(-50%) translateY(-5px) scale(1.04); }
+  }
+  @keyframes voteUrgentPulse {
+    0%, 100% {
+      box-shadow:
+        0 8px 24px rgba(255,59,111,0.45),
+        0 0 0 4px rgba(255,59,111,0.18);
+    }
+    50% {
+      box-shadow:
+        0 14px 36px rgba(255,59,111,0.85),
+        0 0 0 10px rgba(255,59,111,0.30);
+    }
+  }
+
+  /* ---------- State catalog ---------- */
+  .state-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+  }
+  .state-cell {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 22px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .state-cell .pill-wrap { min-height: 60px; display: flex; align-items: center; }
+  .state-cell .state-name {
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    font-weight: 800;
+  }
+  .state-cell .state-desc {
+    font-size: 12px;
+    color: var(--text-3);
+    line-height: 1.55;
+  }
+
+  /* ---------- Day stage ---------- */
+  .day-stage { padding: 32px 28px 28px; }
+  .shell-preview {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cast-fake {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .cast-fake .av {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--surface-3), var(--surface-4));
+    border: 1px solid var(--border-lifted);
+    flex-shrink: 0;
+  }
+  .cast-fake .av:nth-child(1) { background: linear-gradient(135deg, #c084fc, #ff3b6f); }
+  .cast-fake .av:nth-child(2) { background: linear-gradient(135deg, #fbbf24, #f87171); }
+  .cast-fake .av:nth-child(3) { background: linear-gradient(135deg, #60a5fa, #34d399); }
+  .cast-fake .av:nth-child(4) { background: linear-gradient(135deg, #a78bfa, #f0d9a8); opacity: 0.5; filter: grayscale(0.6); }
+  .cast-fake .av:nth-child(5) { background: linear-gradient(135deg, #f0d9a8, #fb7185); }
+  .cast-fake .av:nth-child(6) { background: linear-gradient(135deg, #34d399, #60a5fa); }
+  .cast-fake .av:nth-child(7) { background: linear-gradient(135deg, #fbbf24, #c084fc); }
+
+  .chat-fake {
+    margin-top: 18px;
+    padding: 12px 14px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    color: var(--text-3);
+    font-size: 14px;
+    position: relative;
+  }
+  .vote-floating {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 10px);
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--accent);
+    color: #1a0710;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    border-radius: var(--r-pill);
+    box-shadow: 0 8px 24px rgba(255,59,111,0.45), 0 0 0 4px rgba(255,59,111,0.16);
+    cursor: pointer;
+    visibility: hidden;
+    animation: floatBob 2.4s ease-in-out infinite;
+  }
+  .vote-floating::before {
+    content: '';
+    width: 7px; height: 7px;
+    background: #1a0710;
+    border-radius: 50%;
+  }
+  .vote-floating.is-on { visibility: visible; }
+  .vote-floating.is-urgent {
+    animation: floatBobUrgent 900ms ease-in-out infinite, voteUrgentPulse 700ms ease-in-out infinite;
+    background: #ff5183;
+    font-size: 14px;
+    padding: 12px 18px;
+  }
+  .vote-floating.is-urgent::before {
+    background: #1a0710;
+    width: 8px; height: 8px;
+    box-shadow: 0 0 0 2px rgba(26,7,16,0.4);
+  }
+
+  /* ---------- Now-line ---------- */
+  .now-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 4px 14px 4px;
+    flex-wrap: wrap;
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: var(--text-3);
+  }
+  .now-line .slot { display: flex; align-items: center; gap: 8px; }
+  .now-line .slot .lbl { color: var(--text-3); }
+  .now-line .slot .body { color: var(--text-1); }
+  .now-line.now-faded .slot:first-child .body { color: var(--text-3); }
+  .now-line.now-faded .slot:last-child .lbl,
+  .now-line.now-faded .slot:last-child .body { color: var(--gold); }
+  .now-line.has-urgent .slot:first-child .body,
+  .now-line.has-urgent .slot:first-child .lbl { color: var(--accent); }
+
+  /* ---------- Pill row + edge pin ---------- */
+  .pill-row-wrap {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 18px 16px;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    position: relative;
+    min-height: 80px;
+  }
+  .pill-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-width: max-content;
+  }
+  .row-frame { position: relative; }
+  .edge-pin {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 4;
+    background: var(--surface-3);
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 8px 12px;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    box-shadow: 0 4px 18px rgba(255,59,111,0.45), 0 0 0 4px rgba(255,59,111,0.10);
+    display: none;
+    align-items: center;
+    gap: 6px;
+    pointer-events: auto;
+    animation: heartbeat 2s ease-in-out infinite;
+  }
+  .edge-pin.is-on { display: inline-flex; }
+  .edge-pin.at-left  { left: 14px; }
+  .edge-pin.at-right { right: 14px; }
+
+  .now-rail { margin: 22px 0 14px; position: relative; height: 36px; }
+  .now-rail .track {
+    position: absolute; left: 0; right: 0; top: 14px;
+    height: 4px; background: var(--surface-3); border-radius: 2px;
+  }
+  .now-rail .fill {
+    position: absolute; left: 0; top: 14px;
+    height: 4px; background: linear-gradient(90deg, var(--accent), color-mix(in oklch, var(--accent) 50%, var(--gold)));
+    border-radius: 2px; width: 0%;
+  }
+  .now-rail .day-band {
+    position: absolute; top: 12px; height: 8px;
+    background: rgba(255,200,61,0.10);
+    border: 1px solid rgba(255,200,61,0.30);
+    border-radius: 3px;
+  }
+  .scrubber {
+    width: 100%; appearance: none;
+    background: transparent; margin-top: 6px; cursor: ew-resize;
+  }
+  .scrubber::-webkit-slider-runnable-track { height: 4px; background: transparent; }
+  .scrubber::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--surface), 0 0 14px rgba(255,59,111,0.55);
+    margin-top: -10px;
+    cursor: ew-resize;
+  }
+
+  .day-meta {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px; gap: 16px; flex-wrap: wrap;
+  }
+  .day-meta .clock {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-1);
+  }
+  .day-meta .now-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    font-weight: 800;
+  }
+  .day-meta .phase-tag {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+    padding: 4px 10px;
+    border: 1px solid var(--gold-soft);
+    border-radius: var(--r-pill);
+  }
+  .day-meta .phase-tag[data-phase="day"] { color: var(--text-1); border-color: var(--border-lifted); }
+
+  .scrub-actions {
+    display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap;
+  }
+  .pill-btn {
+    background: var(--surface-3);
+    border: 1px solid var(--border-lifted);
+    color: var(--text-2);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
+  }
+  .pill-btn:hover { background: var(--surface-4); color: var(--text-1); }
+  .pill-btn.is-playing {
+    background: var(--accent-g); border-color: var(--accent); color: var(--accent);
+  }
+  .pill-btn.is-tertiary {
+    background: transparent; border: 1px solid var(--border); color: var(--text-3);
+  }
+
+  /* ---------- A/B controls ---------- */
+  .controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .control {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 18px;
+  }
+  .control h4 {
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .control .control-desc {
+    color: var(--text-3); font-size: 12px; line-height: 1.5; margin-bottom: 14px;
+  }
+  .control.is-locked {
+    background: linear-gradient(180deg, rgba(255,200,61,0.04), var(--surface-2));
+    border-color: var(--gold-soft);
+  }
+  .control.is-locked h4::after {
+    content: ' · LOCKED';
+    color: var(--gold);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+  }
+  .seg {
+    display: inline-flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    padding: 3px;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+  .seg button {
+    background: transparent; border: 0;
+    color: var(--text-3);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: var(--r-pill);
+    cursor: pointer;
+    transition: background 180ms ease, color 180ms ease;
+  }
+  .seg button:hover { color: var(--text-2); }
+  .seg button.is-on { background: var(--accent); color: #1a0710; }
+
+  .notes {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 22px;
+    margin-top: 16px;
+    color: var(--text-2);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .notes b { color: var(--text-1); font-weight: 700; }
+  .notes ul { padding-left: 18px; margin-top: 8px; }
+  .notes li { margin-bottom: 6px; }
+
+  @media (max-width: 720px) {
+    body { padding: 28px 16px 64px; }
+    .stage { padding: 18px; }
+    .day-meta .clock { font-size: 24px; }
+  }
+</style>
+</head>
+<body data-vote-indicator="floating">
+
+<div class="page">
+
+  <header class="page-head">
+    <div class="tag">Mockup · 15 · v5</div>
+    <h1>Pulse — Day shape, told by the pills.</h1>
+    <p class="lede">v5: completed pills now read <code>· result</code> (universal noun) instead of cartridge-specific past-tense — the acted state's verb (<i>cast / placed / sent / chosen</i>) describes <i>your action</i>; the completed state's noun describes <i>the artifact</i>. Different word categories for different concepts; the player's lifecycle no longer reads as two synonyms of the same verb.</p>
+    <p class="lede" style="margin-top:14px;">Hero boundary defaults to large (72px) with bigger typography. Social windows (DMs, group chat) keep their own copy — <i>closed</i> / <i>ended</i> — because they aren't cartridges and don't have results.</p>
+  </header>
+
+  <section>
+    <div class="section-head">
+      <div class="num">01 · Pill state catalog</div>
+      <h2>Six lifecycle states + boundary (mini &amp; hero)</h2>
+      <p>Cartridges run all six states. Social windows skip the action states. Boundary pill comes in two sizes — mini during day, hero in pregame and night.</p>
+    </div>
+    <div class="stage">
+      <div class="state-grid" id="stateGrid"></div>
+    </div>
+    <div class="notes">
+      <b>The verb-vs-noun split (v5):</b> the acted and completed-unread states describe <i>different concepts</i>, so they use <i>different word categories</i>:
+      <ul>
+        <li><b>Acted</b> meta = <b>action verb</b> (<i>cast / placed / sent / chosen</i>) — describes what <i>you</i> did. Tap → review your own submission.</li>
+        <li><b>Completed-unread</b> meta = <b>artifact noun</b> (<i>result</i>) — describes what <i>now exists</i>. Tap → read the all-player result card.</li>
+      </ul>
+      No more "<i>placed</i> → <i>wagered</i>" doublet. Verb stays unique to acted; noun stays unique to completed. They stop competing because they're talking about different things.
+      <br><br>
+      <b>Social windows</b> (DMs, group chat) use <i>closed</i> / <i>ended</i> — they're not cartridges and don't have results. Different word because different concept; consistency within category, distinction between categories.
+      <br><br>
+      Also in v5: hero boundary default is now <b>large (72px)</b>; eyebrow + big "10:00" + relative countdown. Bolder than the previous medium default.
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="num">02 · Day shape, in shell context</div>
+      <h2>Pregame → Day → Night</h2>
+      <p>Pregame: only the hero <i>Day starts</i> anchor. Day: chronological pills + mini boundary at right edge. Night: completed pills + hero <i>Day 4 starts</i> anchor. Try the jump buttons and the <i>Sim: act</i> button (acts on the live cartridge so you see verb microcopy).</p>
+    </div>
+
+    <div class="stage day-stage">
+      <div class="day-meta">
+        <div>
+          <div class="now-label">Day 3 · sim clock</div>
+          <div class="clock" id="clock">10:00</div>
+        </div>
+        <div class="phase-tag" id="phaseTag" data-phase="pregame">Pregame</div>
+      </div>
+
+      <div class="shell-preview">
+        <div class="cast-fake" id="castFake">
+          <div class="av"></div><div class="av"></div><div class="av"></div><div class="av"></div><div class="av"></div><div class="av"></div><div class="av"></div>
+        </div>
+
+        <div class="now-line" id="nowLine">
+          <div class="slot"><span class="lbl">Now</span> <span class="body" id="nowBody">—</span></div>
+          <div class="slot"><span class="lbl">Next</span> <span class="body" id="nextBody">—</span></div>
+        </div>
+
+        <div class="row-frame">
+          <div class="pill-row-wrap" id="rowWrap">
+            <div class="pill-row" id="pillRow"></div>
+          </div>
+          <button class="edge-pin" id="edgePin">
+            <span id="edgePinArrow">←</span>
+            <span id="edgePinText">Vote · 4m</span>
+          </button>
+        </div>
+
+        <div class="chat-fake">
+          <span>Type a message…</span>
+          <div class="vote-floating" id="voteFloating">
+            <span id="voteFloatingText">Tap to vote · 4m</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="now-rail">
+        <div class="track"></div>
+        <div class="day-band" id="dayBand"></div>
+        <div class="fill" id="fill"></div>
+        <input class="scrubber" id="scrubber" type="range" min="-60" max="480" value="-30" step="1" aria-label="Scrub day time">
+      </div>
+
+      <div class="scrub-actions">
+        <button class="pill-btn" id="playBtn">▶ Play 12×</button>
+        <button class="pill-btn" data-jump="-30">9:30 · pregame</button>
+        <button class="pill-btn" data-jump="-2">9:58 · imminent</button>
+        <button class="pill-btn" data-jump="0">10:00 · day open</button>
+        <button class="pill-btn" data-jump="200">13:20 · midday</button>
+        <button class="pill-btn" data-jump="305">15:05 · vote opens</button>
+        <button class="pill-btn" data-jump="414">16:54 · vote urgent</button>
+        <button class="pill-btn" data-jump="430">17:10 · night</button>
+        <button class="pill-btn is-tertiary" id="actBtn">Sim: act on the live cartridge</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="num">03 · Decisions</div>
+      <h2>Locked + still open</h2>
+      <p>Locked items shown for traceability; toggles still work for recompare.</p>
+    </div>
+
+    <div class="controls-grid">
+
+      <div class="control is-locked">
+        <h4>Voting indicator</h4>
+        <div class="control-desc">Floating chip above the chat input, with a distinct urgent state (faster bob + bolder shadow swing).</div>
+        <div class="seg" data-control="vote-indicator">
+          <button data-val="floating" class="is-on">Floating chip</button>
+          <button data-val="none">None (pill only)</button>
+        </div>
+      </div>
+
+      <div class="control is-locked">
+        <h4>Active glow strength</h4>
+        <div class="control-desc">Strong (24px @ 0.55).</div>
+        <div class="seg" data-control="active-glow">
+          <button data-val="subtle">Subtle</button>
+          <button data-val="standard">Standard</button>
+          <button data-val="strong" class="is-on">Strong</button>
+        </div>
+      </div>
+
+      <div class="control is-locked">
+        <h4>Past-pill density</h4>
+        <div class="control-desc">Mini (icon-only) once read.</div>
+        <div class="seg" data-control="past-density">
+          <button data-val="mini" class="is-on">Mini</button>
+          <button data-val="full">Full</button>
+        </div>
+      </div>
+
+      <div class="control is-locked">
+        <h4>Social-window hue</h4>
+        <div class="control-desc">DMs + group chat share cream — distinct from cartridges.</div>
+        <div class="seg" data-control="social-hue">
+          <button data-val="cream" class="is-on">Cream</button>
+          <button data-val="warm-grey">Warm grey</button>
+          <button data-val="dusk">Dusk-rose</button>
+        </div>
+      </div>
+
+      <div class="control">
+        <h4>Boundary copy (day-end)</h4>
+        <div class="control-desc">How does the day-end pill read during the day phase?</div>
+        <div class="seg" data-control="boundary-copy">
+          <button data-val="ends" class="is-on">Day ends</button>
+          <button data-val="closes">Day closes</button>
+          <button data-val="lights">Lights out</button>
+        </div>
+      </div>
+
+      <div class="control">
+        <h4>Hero size</h4>
+        <div class="control-desc">How big is the pregame/night anchor?</div>
+        <div class="seg" data-control="hero-size">
+          <button data-val="large" class="is-on">Large (72px)</button>
+          <button data-val="medium">Medium (56px)</button>
+          <button data-val="small">Small (44px)</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="notes" style="margin-top:24px;">
+      <b>Still open:</b>
+      <ul>
+        <li><b>Eliminated cast</b> — out players still see the row. Voting/game pills they can't act on: full but desaturated, or mini regardless of state?</li>
+        <li><b>Multiple simultaneous active cartridges</b> — at noon, dilemma + DMs + group + (later) wager + prompt are all live. Cap concurrent glows, or trust per-pill priority?</li>
+        <li><b>Whispers</b> — currently a separate cartridge kind in Pulse with its own violet hue. Folding into the social-window cream means losing that distinction. Confirm intended, or whispers stay violet-as-cartridge.</li>
+        <li><b>Misspelling at <code>timeline-presets.ts:137</code></b> (<code>START_ACTIVITY</code> where <code>END_ACTIVITY</code> is meant) — fix in this branch.</li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  function h(tag, props, children) {
+    const el = document.createElement(tag);
+    if (props) {
+      for (const k of Object.keys(props)) {
+        if (k === 'class') el.className = props[k];
+        else if (k === 'text') el.textContent = props[k];
+        else if (k === 'style') Object.assign(el.style, props[k]);
+        else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), props[k]);
+        else el.setAttribute(k, props[k]);
+      }
+    }
+    if (children) {
+      for (const c of children) {
+        if (c == null || c === false) continue;
+        el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+      }
+    }
+    return el;
+  }
+  function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+  const ICON_SRC = {
+    voting:  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>',
+    game:    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM10 13H8v2H6v-2H4v-2h2V9h2v2h2zm4.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm4-3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>',
+    prompt:  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-7 12h-2v-2h2zm0-4h-2V6h2z"/></svg>',
+    dilemma: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 2 22h20zm-1 6v6h2V8zm0 8v2h2v-2z"/></svg>',
+    dms:     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h3l3 3 3-3h7a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM7 9h10v2H7zm0 4h7v2H7z"/></svg>',
+    group:   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm-8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.7 0-8 1.3-8 4v3h16v-3c0-2.7-5.3-4-8-4zm8 0c-.4 0-.8 0-1.2.1A5.6 5.6 0 0 1 18 17v3h6v-3c0-2.7-5.3-4-8-4z"/></svg>',
+    boundary:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a11 11 0 1 0 11 11A11 11 0 0 0 12 1zm0 20a9 9 0 1 1 9-9 9 9 0 0 1-9 9zm0-15v6l4 2"/></svg>',
+  };
+  function svgNode(kind) {
+    const src = ICON_SRC[kind];
+    if (!src) return document.createTextNode('');
+    const doc = new DOMParser().parseFromString(src, 'image/svg+xml');
+    return document.importNode(doc.documentElement, true);
+  }
+
+  // ---------- Formatters ----------
+  // fmtCountdown — standalone, has trailing "left"
+  function fmtCountdown(mins) {
+    const m = Math.max(0, mins);
+    const mInt = Math.floor(m);
+    const sInt = Math.max(0, Math.floor((m - mInt) * 60));
+    if (m < 60) return `${mInt}m ${String(sInt).padStart(2,'0')}s left`;
+    const hh = Math.floor(mInt / 60);
+    const mm = mInt % 60;
+    return `${hh}h ${String(mm).padStart(2,'0')}m left`;
+  }
+  // fmtRelative — used after "in" prefix; no trailing "left"
+  function fmtRelative(mins) {
+    const m = Math.max(0, mins);
+    const mInt = Math.floor(m);
+    const sInt = Math.max(0, Math.floor((m - mInt) * 60));
+    if (m < 1) return `${sInt}s`;
+    if (m < 60) return `${mInt}m`;
+    const hh = Math.floor(mInt / 60);
+    const mm = mInt % 60;
+    if (mm === 0) return `${hh}h`;
+    return `${hh}h ${String(mm).padStart(2,'0')}m`;
+  }
+
+  function clockLabel(t) {
+    const totalMin = 600 + Math.floor(t);
+    const inDay = ((totalMin % 1440) + 1440) % 1440;
+    const hh = Math.floor(inDay / 60);
+    const mm = inDay % 60;
+    return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+  }
+  function phaseFor(t) {
+    if (t < 0) return 'pregame';
+    if (t > 420) return 'night';
+    return 'day';
+  }
+
+  // ---------- Pill builder ----------
+  function pill({ kind, label, meta, state, dot, mini, lead, title, isBoundary, isHero, hero }) {
+    const cls = ['pill'];
+    if (state) cls.push('is-' + state);
+    if (mini) cls.push('is-mini');
+    if (isBoundary) cls.push('is-boundary');
+    if (isHero) cls.push('is-hero');
+    if (state === 'completed-unread' || state === 'completed-read') cls.push('is-past-completed');
+
+    const children = [];
+    if (lead) children.push(h('span', { class: 'lead', 'aria-hidden': 'true' }));
+    children.push(h('span', { class: 'ico', 'aria-hidden': 'true' }, [svgNode(kind)]));
+
+    if (isHero && hero) {
+      const stack = h('div', { class: 'hero-stack' }, [
+        h('span', { class: 'hero-eyebrow' }, [hero.eyebrow]),
+        h('span', { class: 'hero-body' }, [
+          hero.body,
+          hero.rel ? h('span', { class: 'hero-rel' }, ['in ' + hero.rel]) : null,
+        ].filter(Boolean)),
+      ]);
+      children.push(stack);
+    } else {
+      children.push(h('span', { class: 'label' }, [label]));
+      children.push(h('span', { class: 'meta' }, meta ? ['· ' + meta] : []));
+    }
+
+    if (dot) children.push(h('span', { class: 'dot', 'aria-hidden': 'true' }));
+
+    const btn = h('button', { class: cls.join(' '), 'data-kind': kind }, children);
+    if (title) btn.setAttribute('title', title);
+    return btn;
+  }
+
+  // Same as pill() but the meta carries a verb-styled span for acted state
+  function actedPill({ kind, label, verb, countdown }) {
+    const btn = h('button', { class: 'pill is-acted', 'data-kind': kind }, [
+      h('span', { class: 'ico', 'aria-hidden': 'true' }, [svgNode(kind)]),
+      h('span', { class: 'label' }, [label]),
+      h('span', { class: 'meta' }, [
+        '· ',
+        h('span', { class: 'verb' }, [verb]),
+        ' · ' + countdown,
+      ]),
+    ]);
+    return btn;
+  }
+
+  // ---------- State catalog ----------
+  function buildStateGrid() {
+    const grid = document.getElementById('stateGrid');
+    clear(grid);
+
+    const cells = [
+      {
+        node: pill({ kind: 'voting', label: 'Vote', meta: '16:00', state: 'upcoming' }),
+        name: 'Upcoming',
+        desc: 'Solid kind-color border at 40%. The future is already coloured-in.',
+      },
+      {
+        node: pill({ kind: 'prompt', label: 'Prompt', meta: '12m 00s left', state: 'active' }),
+        name: 'Active',
+        desc: 'Cartridge open, you haven\'t acted. Kind glow + breathing.',
+      },
+      {
+        node: actedPill({ kind: 'prompt', label: 'Prompt', verb: 'sent', countdown: '8m 00s left' }),
+        name: 'Acted',
+        desc: 'Verb microcopy carries the meaning — no ✓ icon to clash with past-tense in completed states.',
+      },
+      {
+        node: pill({ kind: 'voting', label: 'Vote now', meta: '4m 00s left', state: 'urgent', lead: true }),
+        name: 'Urgent',
+        desc: 'Closing soon AND you haven\'t acted. Accent-pink ring; kind glow dropped.',
+      },
+      {
+        node: pill({ kind: 'game', label: 'Wager', meta: 'result', state: 'completed-unread', dot: true }),
+        name: 'Completed · unread',
+        desc: 'Cartridge tallied. Universal noun "result" — different word category from the acted-state verb to keep them visually and verbally distinct.',
+      },
+      {
+        node: pill({ kind: 'dilemma', label: 'Dilemma', state: 'completed-read', mini: true, title: 'Dilemma · result' }),
+        name: 'Completed · read',
+        desc: 'Mini, dim. Icon-only. Tooltip on hover: "Dilemma · result".',
+      },
+      {
+        node: pill({ kind: 'dms', label: 'DMs', meta: '11:00', state: 'upcoming' }),
+        name: 'Social window · upcoming',
+        desc: 'Cream hue, shared with whispers + group chat. No urgent / acted / unread states.',
+      },
+      {
+        node: pill({ kind: 'group', label: 'Group', meta: 'open · ends 12:00', state: 'active' }),
+        name: 'Social window · active',
+        desc: 'Same active glow treatment, cream hue.',
+      },
+      {
+        node: pill({ kind: 'boundary', label: 'Day ends', meta: '17:00 · in 12m', state: 'upcoming', isBoundary: true }),
+        name: 'Boundary · mini',
+        desc: 'Used during the day, anchored at the right edge of the row. Gold gradient.',
+      },
+      {
+        node: pill({ kind: 'boundary', state: 'upcoming', isBoundary: true, isHero: true,
+                    hero: { eyebrow: 'Day 1 starts', body: '10:00', rel: '5m 32s' } }),
+        name: 'Boundary · hero',
+        desc: 'Used in pregame and night. Two-line layout, gold glow that breathes when imminent.',
+      },
+    ];
+
+    cells.forEach((c) => {
+      grid.appendChild(h('div', { class: 'state-cell' }, [
+        h('div', { class: 'pill-wrap' }, [c.node]),
+        h('div', null, [
+          h('div', { class: 'state-name' }, [c.name]),
+          h('div', { class: 'state-desc' }, [c.desc]),
+        ]),
+      ]));
+    });
+  }
+
+  // ---------- Day timeline ----------
+  // hasAct + actVerb: the past-tense action verb shown during ACTED state.
+  const DAY_EVENTS = [
+    { id: 'group-1', kind: 'group',   label: 'Group',   start: 0,   end: 120, hasAct: false, socialWindow: true,  copyUpcoming: '10:00', copyActiveLong: 'open · ends 12:00', pastTense: 'ended' },
+    { id: 'dilemma', kind: 'dilemma', label: 'Dilemma', start: 1,   end: 299, hasAct: true,  socialWindow: false, copyUpcoming: '10:01', copyActiveLong: 'ends 14:59',         pastTense: 'chosen', actVerb: 'chosen', simActedAt: 60 },
+    { id: 'dms-1',   kind: 'dms',     label: 'DMs',     start: 60,  end: 360, hasAct: false, socialWindow: true,  copyUpcoming: '11:00', copyActiveLong: 'ends 16:00',         pastTense: 'closed' },
+    { id: 'game',    kind: 'game',    label: 'Wager',   start: 121, end: 240, hasAct: true,  socialWindow: false, copyUpcoming: '12:01', copyActiveLong: null,                 pastTense: 'wagered', actVerb: 'placed', simActedAt: 200 },
+    { id: 'prompt',  kind: 'prompt',  label: 'Prompt',  start: 122, end: 302, hasAct: true,  socialWindow: false, copyUpcoming: '12:02', copyActiveLong: 'ends 15:02',         pastTense: 'sent',    actVerb: 'sent',   simActedAt: 220 },
+    { id: 'group-2', kind: 'group',   label: 'Group',   start: 300, end: 361, hasAct: false, socialWindow: true,  copyUpcoming: '15:00', copyActiveLong: 'open · ends 16:01',  pastTense: 'ended' },
+    { id: 'voting',  kind: 'voting',  label: 'Vote',    start: 301, end: 419, hasAct: true,  socialWindow: false, copyUpcoming: '15:01', copyActiveLong: null,                 pastTense: 'voted',   actVerb: 'cast',   urgentBefore: 8 },
+  ];
+
+  const playerActed = new Map();
+  let actSimUsed = false;
+
+  function deriveState(ev, t) {
+    if (t < ev.start) return 'upcoming';
+    if (t >= ev.end) {
+      if (ev.socialWindow) return (t - ev.end > 5) ? 'completed-read' : 'completed-unread';
+      return (t - ev.end > 30) ? 'completed-read' : 'completed-unread';
+    }
+    if (ev.urgentBefore && (ev.end - t) <= ev.urgentBefore && !playerActed.get(ev.id)) return 'urgent';
+    if (ev.hasAct && playerActed.get(ev.id)) return 'acted';
+    return 'active';
+  }
+
+  // ---------- Build row ----------
+  const row = document.getElementById('pillRow');
+  const rowWrap = document.getElementById('rowWrap');
+  const pillNodes = new Map();
+  const prevState = new Map();
+  let boundaryNode = null;
+
+  function buildRow() {
+    clear(row);
+    pillNodes.clear();
+    DAY_EVENTS.forEach((ev) => {
+      const node = pill({ kind: ev.kind, label: ev.label, meta: '', state: 'upcoming' });
+      node.dataset.id = ev.id;
+      row.appendChild(node);
+      pillNodes.set(ev.id, node);
+    });
+    // Boundary placeholder — content rebuilt every tick by updateBoundary
+    boundaryNode = h('button', { class: 'pill is-boundary', 'data-kind': 'boundary', 'data-id': 'boundary' });
+    row.appendChild(boundaryNode);
+  }
+
+  function getBoundaryCopy() {
+    const seg = document.querySelector('.seg[data-control="boundary-copy"]');
+    if (!seg) return 'Day ends';
+    const on = seg.querySelector('button.is-on');
+    if (!on) return 'Day ends';
+    if (on.dataset.val === 'closes') return 'Day closes';
+    if (on.dataset.val === 'lights') return 'Lights out';
+    return 'Day ends';
+  }
+  function getHeroSize() {
+    const seg = document.querySelector('.seg[data-control="hero-size"]');
+    if (!seg) return 'large';
+    const on = seg.querySelector('button.is-on');
+    return on ? on.dataset.val : 'large';
+  }
+
+  function rebuildBoundary(t) {
+    if (!boundaryNode) return;
+    clear(boundaryNode);
+    boundaryNode.classList.remove('is-imminent', 'is-hero');
+    boundaryNode.style.removeProperty('height');
+    boundaryNode.style.removeProperty('padding');
+
+    const phase = phaseFor(t);
+    const size = getHeroSize();
+
+    if (phase === 'pregame') {
+      const minsTo = 0 - t;
+      boundaryNode.classList.add('is-hero');
+      if (minsTo < 5) boundaryNode.classList.add('is-imminent');
+      // Default = large (72px) from CSS; override for medium / small
+      if (size === 'medium') { boundaryNode.style.height = '56px'; boundaryNode.style.padding = '0 22px'; }
+      if (size === 'small')  { boundaryNode.style.height = '44px'; boundaryNode.style.padding = '0 16px'; }
+      boundaryNode.appendChild(h('span', { class: 'ico', 'aria-hidden': 'true' }, [svgNode('boundary')]));
+      boundaryNode.appendChild(h('div', { class: 'hero-stack' }, [
+        h('span', { class: 'hero-eyebrow' }, ['Day 1 starts']),
+        h('span', { class: 'hero-body' }, [
+          '10:00',
+          h('span', { class: 'hero-rel' }, ['in ' + fmtRelative(minsTo)]),
+        ]),
+      ]));
+    } else if (phase === 'night') {
+      // Day 4 starts 24h after t=0, i.e., t=1440. We're past 420.
+      const remaining = 1440 - t;
+      boundaryNode.classList.add('is-hero');
+      if (remaining < 5) boundaryNode.classList.add('is-imminent');
+      if (size === 'medium') { boundaryNode.style.height = '56px'; boundaryNode.style.padding = '0 22px'; }
+      if (size === 'small')  { boundaryNode.style.height = '44px'; boundaryNode.style.padding = '0 16px'; }
+      boundaryNode.appendChild(h('span', { class: 'ico', 'aria-hidden': 'true' }, [svgNode('boundary')]));
+      boundaryNode.appendChild(h('div', { class: 'hero-stack' }, [
+        h('span', { class: 'hero-eyebrow' }, ['Day 4 starts']),
+        h('span', { class: 'hero-body' }, [
+          '10:00',
+          h('span', { class: 'hero-rel' }, ['in ' + fmtRelative(remaining)]),
+        ]),
+      ]));
+    } else {
+      const minsTo = 420 - t;
+      if (minsTo < 15) boundaryNode.classList.add('is-imminent');
+      boundaryNode.appendChild(h('span', { class: 'ico', 'aria-hidden': 'true' }, [svgNode('boundary')]));
+      boundaryNode.appendChild(h('span', { class: 'label' }, [getBoundaryCopy()]));
+      boundaryNode.appendChild(h('span', { class: 'meta' }, ['· 17:00 · in ' + fmtRelative(minsTo)]));
+    }
+  }
+
+  function updatePillNode(ev, state, t) {
+    const node = pillNodes.get(ev.id);
+    if (!node) return;
+
+    // Pregame: hide all cartridge / window pills
+    const phase = phaseFor(t);
+    if (phase === 'pregame') {
+      node.style.display = 'none';
+      return;
+    } else {
+      node.style.display = '';
+    }
+
+    clear(node);
+
+    const showLead = state === 'urgent';
+    const showDot = state === 'completed-unread' && !ev.socialWindow;
+    const isMini = state === 'completed-read';
+
+    ['is-upcoming','is-active','is-acted','is-urgent','is-completed-unread','is-completed-read','is-mini','is-past-completed','is-just-ignited','is-just-settled']
+      .forEach((c) => node.classList.remove(c));
+    node.classList.add('is-' + state);
+    if (isMini) node.classList.add('is-mini');
+    if (state === 'completed-unread' || state === 'completed-read') node.classList.add('is-past-completed');
+
+    if (showLead) node.appendChild(h('span', { class: 'lead', 'aria-hidden': 'true' }));
+    node.appendChild(h('span', { class: 'ico', 'aria-hidden': 'true' }, [svgNode(ev.kind)]));
+
+    let labelText = ev.label;
+    if (state === 'urgent' && ev.kind === 'voting') labelText = 'Vote now';
+    node.appendChild(h('span', { class: 'label' }, [labelText]));
+
+    let metaChildren = [];
+    if (state === 'upcoming') {
+      metaChildren = ['· ' + ev.copyUpcoming];
+    } else if (state === 'active' || state === 'urgent') {
+      const minsLeft = ev.end - t;
+      if (ev.copyActiveLong && minsLeft > 60 && state !== 'urgent') {
+        metaChildren = ['· ' + ev.copyActiveLong];
+      } else {
+        metaChildren = ['· ' + fmtCountdown(minsLeft)];
+      }
+    } else if (state === 'acted') {
+      const minsLeft = ev.end - t;
+      metaChildren = [
+        '· ',
+        h('span', { class: 'verb' }, [ev.actVerb || 'in']),
+        ' · ' + fmtCountdown(minsLeft),
+      ];
+    } else if (state === 'completed-unread') {
+      // Cartridges → universal noun "result" (artifact). Social windows → "closed"/"ended" (window state).
+      metaChildren = ['· ' + (ev.socialWindow ? ev.pastTense : 'result')];
+    } else if (state === 'completed-read') {
+      metaChildren = ['· ' + (ev.socialWindow ? ev.pastTense : 'result')];
+    }
+
+    node.appendChild(h('span', { class: 'meta' }, metaChildren));
+
+    if (showDot) node.appendChild(h('span', { class: 'dot', 'aria-hidden': 'true' }));
+
+    if (state === 'completed-read') {
+      const tooltipNoun = ev.socialWindow ? ev.pastTense : 'result';
+      node.setAttribute('title', `${ev.label} · ${tooltipNoun}`);
+    } else node.removeAttribute('title');
+  }
+
+  let lastSnappedId = null;
+
+  function applyRow(t) {
+    DAY_EVENTS.forEach((ev) => {
+      if (ev.hasAct && !playerActed.get(ev.id) && ev.simActedAt && t >= ev.simActedAt && !actSimUsed) {
+        playerActed.set(ev.id, true);
+      }
+      const state = deriveState(ev, t);
+      const wasState = prevState.get(ev.id);
+      updatePillNode(ev, state, t);
+      const node = pillNodes.get(ev.id);
+      if (wasState && wasState !== state) {
+        if (wasState === 'upcoming' && (state === 'active' || state === 'urgent')) {
+          node.classList.add('is-just-ignited');
+        }
+        if ((wasState === 'active' || wasState === 'urgent' || wasState === 'acted') && state.indexOf('completed') === 0) {
+          node.classList.add('is-just-settled');
+        }
+      }
+      prevState.set(ev.id, state);
+    });
+    rebuildBoundary(t);
+
+    const mostUrgent = DAY_EVENTS.find(ev => deriveState(ev, t) === 'urgent')
+      || DAY_EVENTS.find(ev => deriveState(ev, t) === 'active' && !ev.socialWindow);
+    if (mostUrgent && lastSnappedId !== mostUrgent.id) {
+      const node = pillNodes.get(mostUrgent.id);
+      if (node) {
+        const wrapRect = rowWrap.getBoundingClientRect();
+        const aRect = node.getBoundingClientRect();
+        const targetLeft = rowWrap.scrollLeft + (aRect.left - wrapRect.left) - (rowWrap.clientWidth / 2) + (aRect.width / 2);
+        rowWrap.scrollTo({ left: targetLeft, behavior: 'smooth' });
+        lastSnappedId = mostUrgent.id;
+      }
+    }
+    if (!mostUrgent) lastSnappedId = null;
+
+    updateEdgePin(t);
+  }
+
+  // ---------- Now-line ----------
+  function updateNowLine(t) {
+    const nowLine = document.getElementById('nowLine');
+    const nowBody = document.getElementById('nowBody');
+    const nextBody = document.getElementById('nextBody');
+    nowLine.classList.remove('has-urgent', 'now-faded');
+
+    const phase = phaseFor(t);
+
+    if (phase === 'pregame') {
+      const minsTo = 0 - t;
+      nowBody.textContent = `Pregame · starts in ${fmtRelative(minsTo)}`;
+      nextBody.textContent = `Day 3 · 10:00`;
+      nowLine.classList.add('now-faded');
+      return;
+    }
+    if (phase === 'night') {
+      nowBody.textContent = 'Night · day closed';
+      const remaining = 1440 - t;
+      nextBody.textContent = `Day 4 · 10:00 · in ${fmtRelative(remaining)}`;
+      nowLine.classList.add('now-faded');
+      return;
+    }
+
+    const states = DAY_EVENTS.map(ev => ({ ev, st: deriveState(ev, t) }));
+    const urgent = states.find(s => s.st === 'urgent');
+    const activeCart = states.find(s => s.st === 'active' && !s.ev.socialWindow);
+    const actedCart  = states.find(s => s.st === 'acted');
+    const window     = states.find(s => s.st === 'active' && s.ev.socialWindow);
+    const primary = urgent || activeCart || actedCart || window;
+
+    if (urgent) nowLine.classList.add('has-urgent');
+
+    if (primary) {
+      const minsLeft = primary.ev.end - t;
+      const tail = (primary.ev.copyActiveLong && minsLeft > 60 && !urgent)
+        ? primary.ev.copyActiveLong
+        : fmtCountdown(minsLeft);
+      nowBody.textContent = `${primary.ev.label} · ${tail}`;
+    } else {
+      nowBody.textContent = 'Day clear';
+    }
+
+    const isPassiveLong = primary && primary.ev.socialWindow && (primary.ev.end - t) > 60;
+    if (isPassiveLong && !urgent) nowLine.classList.add('now-faded');
+
+    const next = DAY_EVENTS.find(ev => ev.start > t);
+    if (next) {
+      const minsTo = next.start - t;
+      const tail = (minsTo < 60) ? `in ${fmtRelative(minsTo)}` : `${clockLabel(next.start)}`;
+      nextBody.textContent = `${next.label} · ${tail}`;
+    } else {
+      const minsTo = 420 - t;
+      nextBody.textContent = `Day ends · in ${fmtRelative(minsTo)}`;
+    }
+  }
+
+  // ---------- Voting indicator ----------
+  function updateVoteIndicator(t) {
+    const voteEv = DAY_EVENTS.find(e => e.kind === 'voting');
+    const voteState = voteEv ? deriveState(voteEv, t) : 'upcoming';
+    const isVoteOpen = voteState === 'active' || voteState === 'urgent' || voteState === 'acted';
+    const isVoteUrgent = voteState === 'urgent';
+    const hasActed = !!playerActed.get('voting');
+
+    const floating = document.getElementById('voteFloating');
+    const floatingText = document.getElementById('voteFloatingText');
+
+    floating.classList.toggle('is-on', isVoteOpen);
+    floating.classList.toggle('is-urgent', isVoteUrgent);
+
+    if (isVoteOpen) {
+      const minsLeft = voteEv.end - t;
+      let text;
+      if (hasActed) text = `Vote cast · ${fmtCountdown(minsLeft)}`;
+      else if (isVoteUrgent) text = `Vote closing · ${fmtCountdown(minsLeft)}`;
+      else text = `Tap to vote · ${fmtCountdown(minsLeft)}`;
+      floatingText.textContent = text;
+    }
+  }
+
+  // ---------- Edge pin ----------
+  function updateEdgePin(t) {
+    const pin = document.getElementById('edgePin');
+    const arrow = document.getElementById('edgePinArrow');
+    const text = document.getElementById('edgePinText');
+
+    const target = DAY_EVENTS.find(ev => deriveState(ev, t) === 'urgent')
+      || DAY_EVENTS.find(ev => deriveState(ev, t) === 'active' && !ev.socialWindow);
+
+    if (!target) { pin.classList.remove('is-on'); return; }
+    const node = pillNodes.get(target.id);
+    if (!node || node.style.display === 'none') { pin.classList.remove('is-on'); return; }
+
+    const wrapRect = rowWrap.getBoundingClientRect();
+    const aRect = node.getBoundingClientRect();
+    const visible = aRect.right > wrapRect.left + 24 && aRect.left < wrapRect.right - 24;
+
+    if (visible) {
+      pin.classList.remove('is-on');
+      pin.removeAttribute('data-pin-target');
+    } else {
+      pin.classList.add('is-on');
+      pin.classList.toggle('at-left', aRect.left < wrapRect.left);
+      pin.classList.toggle('at-right', aRect.left > wrapRect.left);
+      arrow.textContent = (aRect.left < wrapRect.left) ? '←' : '→';
+      const minsLeft = target.end - t;
+      text.textContent = `${target.label} · ${fmtCountdown(minsLeft)}`;
+      pin.setAttribute('data-pin-target', target.id);
+    }
+  }
+  rowWrap.addEventListener('scroll', () => updateEdgePin(parseFloat(scrubber.value)));
+  document.getElementById('edgePin').addEventListener('click', () => {
+    const id = document.getElementById('edgePin').getAttribute('data-pin-target');
+    if (!id) return;
+    const node = pillNodes.get(id);
+    if (!node) return;
+    const wrapRect = rowWrap.getBoundingClientRect();
+    const aRect = node.getBoundingClientRect();
+    const targetLeft = rowWrap.scrollLeft + (aRect.left - wrapRect.left) - (rowWrap.clientWidth / 2) + (aRect.width / 2);
+    rowWrap.scrollTo({ left: targetLeft, behavior: 'smooth' });
+  });
+
+  function updatePhaseTag(t) {
+    const tag = document.getElementById('phaseTag');
+    const phase = phaseFor(t);
+    tag.dataset.phase = phase;
+    if (phase === 'pregame') tag.textContent = 'Pregame';
+    else if (phase === 'night') tag.textContent = 'Night';
+    else tag.textContent = 'Day 3';
+  }
+
+  function setupDayBand() {
+    const band = document.getElementById('dayBand');
+    const min = -60, max = 480, range = max - min;
+    band.style.left = (((0 - min) / range) * 100) + '%';
+    band.style.width = (((420 - 0) / range) * 100) + '%';
+  }
+
+  // ---------- Scrubber ----------
+  const scrubber = document.getElementById('scrubber');
+  const fill = document.getElementById('fill');
+  const clock = document.getElementById('clock');
+  function setT(t) {
+    scrubber.value = t;
+    const min = -60, max = 480, range = max - min;
+    fill.style.width = (((t - min) / range) * 100) + '%';
+    clock.textContent = clockLabel(t);
+    applyRow(t);
+    updateNowLine(t);
+    updateVoteIndicator(t);
+    updatePhaseTag(t);
+  }
+  scrubber.addEventListener('input', () => setT(parseInt(scrubber.value, 10)));
+  document.querySelectorAll('[data-jump]').forEach((b) => {
+    b.addEventListener('click', () => setT(parseInt(b.dataset.jump, 10)));
+  });
+
+  document.getElementById('actBtn').addEventListener('click', () => {
+    actSimUsed = true;
+    const t = parseFloat(scrubber.value);
+    const target = DAY_EVENTS.find(ev => ev.hasAct && (deriveState(ev, t) === 'active' || deriveState(ev, t) === 'urgent'));
+    if (target) {
+      playerActed.set(target.id, true);
+      setT(t);
+    }
+  });
+
+  const playBtn = document.getElementById('playBtn');
+  let playing = false; let playRAF = null; let lastTick = 0;
+  function loop(ts) {
+    if (!playing) return;
+    if (!lastTick) lastTick = ts;
+    const dt = (ts - lastTick) / 1000;
+    lastTick = ts;
+    let v = parseFloat(scrubber.value) + dt * 12;
+    if (v >= 480) {
+      v = 480; playing = false;
+      playBtn.classList.remove('is-playing'); playBtn.textContent = '▶ Play 12×';
+    }
+    setT(v);
+    if (playing) playRAF = requestAnimationFrame(loop);
+  }
+  playBtn.addEventListener('click', () => {
+    playing = !playing;
+    if (playing) {
+      if (parseFloat(scrubber.value) >= 480) {
+        playerActed.clear(); actSimUsed = false; setT(-60);
+      }
+      lastTick = 0;
+      playBtn.classList.add('is-playing'); playBtn.textContent = '❚❚ Pause';
+      playRAF = requestAnimationFrame(loop);
+    } else {
+      playBtn.classList.remove('is-playing'); playBtn.textContent = '▶ Play 12×';
+      cancelAnimationFrame(playRAF);
+    }
+  });
+
+  // ---------- A/B ----------
+  document.querySelectorAll('.seg').forEach((seg) => {
+    const ctrl = seg.dataset.control;
+    seg.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        seg.querySelectorAll('button').forEach(b => b.classList.remove('is-on'));
+        btn.classList.add('is-on');
+        const val = btn.dataset.val;
+        if (ctrl === 'active-glow') {
+          if (val === 'subtle')   { document.documentElement.style.setProperty('--active-glow-strength', '8px');  document.documentElement.style.setProperty('--active-glow-alpha', '0.28'); }
+          if (val === 'standard') { document.documentElement.style.setProperty('--active-glow-strength', '14px'); document.documentElement.style.setProperty('--active-glow-alpha', '0.40'); }
+          if (val === 'strong')   { document.documentElement.style.setProperty('--active-glow-strength', '24px'); document.documentElement.style.setProperty('--active-glow-alpha', '0.55'); }
+        } else if (ctrl === 'past-density') {
+          document.body.dataset.pastDensity = val;
+        } else if (ctrl === 'social-hue') {
+          let hue = '#f0d9a8', rgb = '240, 217, 168';
+          if (val === 'warm-grey') { hue = '#bcb3a8'; rgb = '188, 179, 168'; }
+          if (val === 'dusk') { hue = '#e8a3a3'; rgb = '232, 163, 163'; }
+          document.documentElement.style.setProperty('--k-social', hue);
+          document.querySelectorAll('.pill[data-kind="dms"], .pill[data-kind="group"]').forEach(p => {
+            p.style.setProperty('--kind', hue);
+            p.style.setProperty('--kind-rgb', rgb);
+          });
+        } else if (ctrl === 'vote-indicator') {
+          document.body.dataset.voteIndicator = val;
+        } else if (ctrl === 'boundary-copy' || ctrl === 'hero-size') {
+          rebuildBoundary(parseFloat(scrubber.value));
+        }
+      });
+    });
+  });
+
+  // ---------- Init ----------
+  buildStateGrid();
+  buildRow();
+  setupDayBand();
+  setT(-30);
+</script>
+
+</body>
+</html>

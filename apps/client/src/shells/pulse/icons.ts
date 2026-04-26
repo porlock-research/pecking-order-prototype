@@ -66,6 +66,7 @@ export {
   Trophy,
   Users,
   UsersThree,
+  Clock,
 
   // Reveal (per-mechanism elimination icons)
   HeartBreak,

@@ -88,9 +88,35 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
 
   if (!game) notFound();
 
+  // Resolve session + enrollment up front so already-joined players who
+  // return to the email link AFTER game start bypass the "no longer
+  // accepting players" wall and get funneled into /play. The previous
+  // ordering ran the !isAcceptingPlayers gate first, which blocked enrolled
+  // players too — surfaced once PR #130 began flipping STARTED at the
+  // right moment instead of leaving CC games stuck at RECRUITING.
+  //
+  // D1 is eventually-consistent across replicas; an Invites row written
+  // sub-second ago might miss here and show the welcome form instead of
+  // redirecting. Next reload picks it up. Acceptable residual gap.
+  const session = await getSession();
+  const enrolled = session
+    ? !!(await db
+        .prepare('SELECT id FROM Invites WHERE game_id = ? AND accepted_by = ?')
+        .bind(game.id, session.userId)
+        .first())
+    : false;
+
+  // Already-joined player coming back to a started/completed game →
+  // /play mints a fresh JWT and forwards into the client.
+  if (enrolled && (game.status === 'STARTED' || game.status === 'COMPLETED')) {
+    redirect(`/play/${code}`);
+  }
+
   const isAcceptingPlayers = game.status === 'RECRUITING' || game.status === 'READY';
 
   if (!isAcceptingPlayers) {
+    // Unenrolled visitor (or admin-archived game) post-start. Genuinely
+    // can't join.
     return (
       <div className="min-h-dvh flex items-center justify-center bg-skin-deep px-5 py-8">
         <div className="max-w-md text-center space-y-4">
@@ -106,25 +132,13 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
     );
   }
 
-  // Short-circuit based on visitor session:
-  //   authed + not enrolled    → /join (persona pick)
-  //   authed + enrolled + STARTED → /play (into the running game)
-  //   anon OR authed + enrolled + pre-start → fall through to the welcome
-  //     view so the visitor sees the joined cast + social context. /play
-  //     would bounce pre-start players into /game/CODE/waiting (host
-  //     panel, reads as empty for non-host enrolled players).
-  // D1 is eventually-consistent across replicas; an Invites row written
-  // sub-second ago might miss here and show the welcome form instead of
-  // redirecting. Next reload picks it up. Acceptable residual gap.
-  const session = await getSession();
-  if (session) {
-    const enrolled = await db
-      .prepare('SELECT id FROM Invites WHERE game_id = ? AND accepted_by = ?')
-      .bind(game.id, session.userId)
-      .first();
-    if (!enrolled) redirect(`/join/${code}`);
-    if (game.status === 'STARTED' || game.status === 'COMPLETED') redirect(`/play/${code}`);
-    // enrolled + RECRUITING/READY → render the welcome view below.
+  // Authed + not enrolled + still accepting → persona pick.
+  // Anon OR authed + enrolled + pre-start → fall through to the welcome
+  // view so the visitor sees the joined cast + social context. /play
+  // would otherwise bounce pre-start players into /game/CODE/waiting
+  // (host panel, reads as empty for non-host enrolled players).
+  if (session && !enrolled) {
+    redirect(`/join/${code}`);
   }
 
   // Joined cast: fetch up to 6 accepted players with persona + user labels,

@@ -26,17 +26,20 @@ export default function Recall(props: RecallProps) {
         const fullClear = (result.fullClear || 0) > 0;
         return <RecallHero roundsCleared={roundsCleared} highestSize={highestSize} fullClear={fullClear} />;
       }}
-      renderBreakdown={(result) => {
+      renderBreakdown={(result, silverReward) => {
         const roundsCleared = result.roundsCleared || 0;
         const highestSize = result.highestSize || 0;
         const fullClear = result.fullClear || 0;
-        const { silverBySize, fullClearGold } = Config.game.recall;
-        let silver = 0;
-        for (let n = 0; n <= highestSize; n++) silver += silverBySize[n] ?? 0;
+        const tilesRemembered = result.tilesRemembered || 0;
+        const { fullClearGold } = Config.game.recall;
         const gold = fullClear ? fullClearGold : 0;
 
         return (
           <div style={{ background: 'var(--po-bg-glass)', border: '1px solid var(--po-border)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--po-font-body)', fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--po-text-dim)' }}>Tiles remembered</span>
+              <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{tilesRemembered}</span>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--po-text-dim)' }}>Rounds cleared</span>
               <span style={{ color: 'var(--po-text)', fontFamily: 'var(--po-font-display)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{roundsCleared}</span>
@@ -53,7 +56,7 @@ export default function Recall(props: RecallProps) {
             )}
             <div style={{ borderTop: '1px solid var(--po-border)', paddingTop: 8, marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--po-text-dim)' }}>Rewards</span>
-              <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{silver} silver · {gold} gold</span>
+              <span style={{ color: 'var(--po-gold)', fontFamily: 'var(--po-font-display)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{silverReward} silver · {gold} gold</span>
             </div>
           </div>
         );
