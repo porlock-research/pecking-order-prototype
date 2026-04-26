@@ -84,12 +84,30 @@ function getGameCodeFromPath(): string | null {
 /**
  * Replace the static <link rel="manifest"> with a data: URL manifest.
  * This avoids the browser fetching manifest.webmanifest from the server (which
- * intermittently returns 403 on Cloudflare Pages). Uses `start_url: '/'` so the
- * PWA always launches into the discovery/launcher flow.
- * All URLs must be absolute — data: URLs have no origin to resolve relative paths against.
+ * intermittently returns 403 on Cloudflare Pages).
+ *
+ * When called with a (gameCode, jwt), bakes a tokenised `start_url` so iOS
+ * "Add to Home Screen" produces a PWA whose cold launch lands on
+ * `/game/CODE?_t=<jwt>` and applies the token via the fast path. This is
+ * structurally robust against iOS Web App container isolation, where
+ * cookies/localStorage/Cache API don't reliably survive the install
+ * boundary. See ADR-149 for why this reverses ADR-088's `start_url: '/'`
+ * choice (the stale-game failure mode that drove ADR-088 is now caught by
+ * ADR-088 onClose, ADR-089 fetchActiveGames, and ADR-146 server-side WS
+ * reject rate-limit).
+ *
+ * Without args, falls back to launcher-only `start_url: '/'` — used at init
+ * before any game is known, so an unauthenticated install lands on the
+ * launcher and discovers the user's active games via fetchActiveGames.
+ *
+ * All URLs must be absolute — data: URLs have no origin to resolve relative
+ * paths against.
  */
-function updatePwaManifest() {
+function updatePwaManifest(gameCode?: string, jwt?: string) {
   const origin = window.location.origin;
+  const startUrl = gameCode && jwt
+    ? `${origin}/game/${gameCode}?_t=${jwt}`
+    : `${origin}/`;
   const manifest = {
     name: 'Pecking Order',
     short_name: 'Pecking Order',
@@ -98,7 +116,7 @@ function updatePwaManifest() {
     background_color: '#0f0a1a',
     display: 'standalone',
     scope: `${origin}/`,
-    start_url: `${origin}/`,
+    start_url: startUrl,
     icons: [
       { src: `${origin}/icons/icon-192.png`, sizes: '192x192', type: 'image/png' },
       { src: `${origin}/icons/icon-512.png`, sizes: '512x512', type: 'image/png' },
@@ -362,6 +380,16 @@ function applyToken(
 
   // Set game-specific cookie (iOS 17.2+ copies cookies from Safari to standalone PWA)
   setPwaAuthCookie(key, jwt);
+
+  // Bake the JWT into the PWA manifest's `start_url` so a subsequent "Add
+  // to Home Screen" produces a standalone PWA whose cold launch lands at
+  // `/game/CODE?_t=<jwt>` and hits applyToken's fast path. This is the
+  // only recovery mechanism that survives iOS Web App container isolation
+  // unconditionally — cookies/localStorage/Cache API all depend on
+  // install-time copy heuristics that fail when auth happened in a
+  // different browser context (Chrome iOS, in-app browsers, etc.). See
+  // ADR-149.
+  updatePwaManifest(key, jwt);
 
   // Clean transient params from URL — but stash debug params first so the
   // Pulse hooks can pick them up after the strip.
