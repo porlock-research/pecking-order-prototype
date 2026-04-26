@@ -17,6 +17,7 @@ import { WhisperMode } from './WhisperMode';
 import { ReplyBar } from './ReplyBar';
 import { MentionAutocomplete } from './MentionAutocomplete';
 import { SendButton } from './SendButton';
+import { VoteFloatingChip } from '../VoteFloatingChip';
 import { DayPhases } from '@pecking-order/shared-types';
 import type { ChatMessage } from '@pecking-order/shared-types';
 
@@ -26,6 +27,9 @@ export function PulseInput() {
   const mainCapabilities = useGameStore(s => s.channels?.['MAIN']?.capabilities);
   const groupChatOpen = useGameStore(s => s.groupChatOpen);
   const dmsOpen = useGameStore(s => s.dmsOpen);
+  const focusCartridge = useGameStore(s => s.focusCartridge);
+  const dayIndex = useGameStore(s => s.dayIndex);
+  const voting = useGameStore(s => s.activeVotingCartridge);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -275,7 +279,19 @@ export function PulseInput() {
               phase={phase}
             />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)', padding: 'var(--pulse-space-md) var(--pulse-space-md)' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-sm)', padding: 'var(--pulse-space-md) var(--pulse-space-md)' }}>
+            {/* Floating vote chip — special case for voting since voting is
+                the central game mechanic and always lives at the right edge
+                of the pill row (risks scrolling off on small phones). The
+                chip absolute-positions itself above the input via
+                bottom: calc(100% + 10px). */}
+            <VoteFloatingChip
+              onTap={() => {
+                if (!voting) return;
+                const typeKey = (voting as any).mechanism || (voting as any).voteType || 'UNKNOWN';
+                focusCartridge(`voting-${dayIndex}-${typeKey}`, 'voting', 'manual');
+              }}
+            />
             <input
               ref={inputRef}
               value={text}

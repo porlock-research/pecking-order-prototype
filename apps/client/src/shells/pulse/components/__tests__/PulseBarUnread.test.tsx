@@ -33,8 +33,15 @@ describe('PulseBar — unread dot', () => {
   });
 
   it('marks the cartridge seen and focuses it when the pill is tapped', () => {
-    render(<PulseBar />);
-    fireEvent.click(screen.getByRole('button'));
+    const { container } = render(<PulseBar />);
+    // Multiple pill buttons may render now (cartridges + boundary anchor).
+    // Target the voting pill specifically via the data attribute the
+    // component sets.
+    const votingPill = container.querySelector(
+      '[data-pill-cartridge-id="voting-3-MAJORITY"]',
+    ) as HTMLButtonElement;
+    expect(votingPill).not.toBeNull();
+    fireEvent.click(votingPill);
     const state = useGameStore.getState();
     expect(state.lastSeenCartridge['voting-3-MAJORITY']).toBeDefined();
     expect(state.focusedCartridge).toEqual({

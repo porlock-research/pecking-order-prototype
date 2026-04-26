@@ -24,6 +24,10 @@
   --pulse-game: oklch(0.837 0.164 84);
   --pulse-prompt: oklch(0.714 0.143 255);
   --pulse-dilemma: oklch(0.722 0.177 306);
+  /* Social-window family — DMs + group chat share one cream hue. Distinct
+     from saturated cartridge palette; differentiated by icon, not color. */
+  --pulse-social: oklch(0.890 0.060 80);
+  --pulse-gold-soft: color-mix(in oklch, var(--pulse-gold) 28%, transparent);
   --pulse-online: oklch(0.746 0.181 152);
   --pulse-pending: oklch(0.754 0.164 50);
   --pulse-on-accent: #fff;
@@ -100,10 +104,63 @@
   50% { opacity: 1; }
 }
 
-/* Pill urgency pulse */
+/* Pill urgency pulse — accent-pink shadow swing. The kind-glow is dropped on
+   urgent (vs. needs-action / active) so the alarm reads as categorically
+   different, not "louder version of active". 700ms outpaces the active
+   heartbeat (2.4s) so it visibly demands attention. */
 @keyframes pulse-pill-urgent {
+  0%, 100% {
+    box-shadow:
+      0 0 28px color-mix(in oklch, var(--pulse-accent) 55%, transparent),
+      inset 0 0 0 1px color-mix(in oklch, var(--pulse-text-1) 6%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 36px color-mix(in oklch, var(--pulse-accent) 85%, transparent),
+      inset 0 0 0 1px color-mix(in oklch, var(--pulse-text-1) 6%, transparent);
+  }
+}
+.pulse-pill-urgent {
+  animation: pulse-pill-urgent 700ms ease-in-out infinite;
+}
+
+/* Boundary imminence — gold base + accent overlay swing. Gold stays
+   load-bearing; the accent layer is the "the day's ending" overlay. Faster
+   than calm, slower than cartridge-urgent so it doesn't read as identical. */
+@keyframes pulse-pill-boundary-imminent {
+  0%, 100% {
+    box-shadow:
+      0 0 22px color-mix(in oklch, var(--pulse-gold) 60%, transparent),
+      0 0 14px color-mix(in oklch, var(--pulse-accent) 40%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 32px color-mix(in oklch, var(--pulse-gold) 90%, transparent),
+      0 0 22px color-mix(in oklch, var(--pulse-accent) 70%, transparent);
+  }
+}
+.pulse-pill-boundary-imminent {
+  animation: pulse-pill-boundary-imminent 1.1s ease-in-out infinite;
+}
+
+/* Active pill heartbeat — applied to a child wrapper inside the pill button,
+   not the button itself, so framer-motion's hover/tap transforms (translateY,
+   scale) don't conflict with this keyframe's transform. CSS keyframes and
+   inline transform on the same element overwrite each other; nesting keeps
+   them on separate transform stacks.
+   Duration tuned softer (3s) than initial 2.4s after multi-active feedback
+   read as strobing. Pill.tsx applies a deterministic per-pill animation-delay
+   so two simultaneously-active pills don't pulse in lockstep. */
+@keyframes pulse-pill-active-heartbeat {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); }
+  50%      { transform: scale(1.025); }
+}
+.pulse-pill-active-heartbeat {
+  animation: pulse-pill-active-heartbeat 3s ease-in-out infinite;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-pill-active-heartbeat { animation: none; }
 }
 
 /* Upcoming pill breathing — reads as "coming, don't forget me" instead of

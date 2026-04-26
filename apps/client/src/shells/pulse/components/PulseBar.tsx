@@ -1,12 +1,18 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useGameStore, selectCartridgeUnread } from '../../../store/useGameStore';
-import { usePillStates, type PillState } from '../hooks/usePillStates';
+import { usePillStates, useDayPhase, type PillState, type CartridgeKind } from '../hooks/usePillStates';
+
+const CARTRIDGE_KINDS: CartridgeKind[] = ['voting', 'game', 'prompt', 'dilemma'];
+const isCartridgePill = (p: PillState): p is PillState & { kind: CartridgeKind } =>
+  (CARTRIDGE_KINDS as PillState['kind'][]).includes(p.kind);
 import { useHasOverflow } from '../hooks/useHasOverflow';
 import { PULSE_Z } from '../zIndex';
 import { runViewTransition, supportsViewTransitions, prefersReducedMotion } from '../viewTransitions';
 import { usePillOrigin } from './cartridge-overlay/usePillOrigin';
 import { Pill } from './Pill';
+import { NowLine } from './NowLine';
+import { EdgePin } from './EdgePin';
 
 /**
  * PulseBar shows cartridge pills in chronological order.
@@ -23,7 +29,14 @@ import { Pill } from './Pill';
  * collide with the transient `active-pill` tag used for tap-to-open.
  */
 export function PulseBar() {
-  const pills = usePillStates();
+  const allPills = usePillStates();
+  const phase = useDayPhase();
+  // Pregame: only the boundary anchor renders. Cartridge / social-window
+  // pills stay in the data layer (so CartridgeOverlay's id lookup still
+  // resolves a deep-linked cartridge during pregame), but they don't show
+  // in the row — consistent with the dynamic-day reality where the
+  // manifest may not be built yet.
+  const pills = phase === 'pregame' ? allPills.filter((p) => p.kind === 'boundary') : allPills;
   const focusCartridge = useGameStore(s => s.focusCartridge);
   const markCartridgeSeen = useGameStore(s => s.markCartridgeSeen);
   const dayIndex = useGameStore(s => s.dayIndex);
@@ -35,12 +48,27 @@ export function PulseBar() {
   useGameStore(s => s.lastSeenCartridge);
   const { set: setPillOrigin } = usePillOrigin();
   const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Mirror scrollRef into state so EdgePin re-renders when the row mounts
+  // (refs aren't reactive — passing scrollRef.current as a prop on the first
+  // render passes null and never updates).
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const overflow = useHasOverflow(scrollRef);
 
   if (pills.length === 0) return null;
 
   const handleTap = (pill: PillState) => {
+    // Social windows (DMs, group chat) and boundary pills don't open the
+    // cartridge overlay. Wiring for tap-to-open-DM-panel / tap-to-show-day-
+    // shape-detail is a follow-up; for now, no-op on non-cartridge taps so
+    // the row still receives the click without crashing focusCartridge's
+    // CartridgeKind contract.
+    if (!isCartridgePill(pill)) {
+      // TODO(pulse-day-shape): wire DM/group-chat pill taps → DM panel /
+      // group-chat opener; boundary tap → day-shape detail sheet.
+      return;
+    }
+
     const el = pillRefs.current[pill.id];
     const cartridgeId = pillToCartridgeId(pill, dayIndex);
     const vtActive = supportsViewTransitions() && !prefersReducedMotion();
@@ -74,33 +102,44 @@ export function PulseBar() {
         background: 'var(--pulse-surface)',
       }}
     >
-      <div
-        ref={scrollRef}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '6px 12px',
-          height: 48,
-          overflowX: 'auto',
-          overflowY: 'hidden',
-          scrollbarWidth: 'none',
-        }}
-      >
-        {pills.map(pill => {
-          const cartridgeId = pillToCartridgeId(pill, dayIndex);
-          const unread = selectCartridgeUnread(useGameStore.getState(), cartridgeId);
-          return (
-            <Pill
-              key={pill.id}
-              pill={pill}
-              cartridgeId={cartridgeId}
-              unread={unread}
-              onTap={() => handleTap(pill)}
-              buttonRef={(el) => { pillRefs.current[pill.id] = el; }}
-            />
-          );
-        })}
+      <NowLine pills={pills} />
+      <div style={{ position: 'relative' }}>
+        <div
+          ref={(el) => {
+            scrollRef.current = el;
+            setScrollEl(el);
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '6px 12px',
+            height: 64,
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            scrollbarWidth: 'none',
+          }}
+        >
+          {pills.map(pill => {
+            const cartridgeId = pillToCartridgeId(pill, dayIndex);
+            const unread = selectCartridgeUnread(useGameStore.getState(), cartridgeId);
+            return (
+              <Pill
+                key={pill.id}
+                pill={pill}
+                cartridgeId={cartridgeId}
+                unread={unread}
+                onTap={() => handleTap(pill)}
+                buttonRef={(el) => { pillRefs.current[pill.id] = el; }}
+              />
+            );
+          })}
+        </div>
+        <EdgePin
+          scrollContainer={scrollEl}
+          pills={pills}
+          pillNodes={pillRefs.current}
+        />
       </div>
       <EdgeFade side="left" visible={overflow.left} bg="var(--pulse-surface)" />
       <EdgeFade side="right" visible={overflow.right} bg="var(--pulse-surface)" />

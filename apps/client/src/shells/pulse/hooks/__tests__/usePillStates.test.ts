@@ -34,9 +34,10 @@ describe('usePillStates — ADR-128 gap detection', () => {
       } as any,
     });
     const { result } = renderHook(() => usePillStates());
-    expect(result.current).toHaveLength(1);
-    expect(result.current[0].lifecycle).toBe('starting');
-    expect(result.current[0].kind).toBe('voting');
+    const cartridgePills = result.current.filter(p => p.kind !== 'boundary');
+    expect(cartridgePills).toHaveLength(1);
+    expect(cartridgePills[0].lifecycle).toBe('starting');
+    expect(cartridgePills[0].kind).toBe('voting');
   });
 
   it('emits upcoming pill when timeline event is still in the future', () => {
@@ -51,8 +52,9 @@ describe('usePillStates — ADR-128 gap detection', () => {
       } as any,
     });
     const { result } = renderHook(() => usePillStates());
-    expect(result.current).toHaveLength(1);
-    expect(result.current[0].lifecycle).toBe('upcoming');
+    const cartridgePills = result.current.filter(p => p.kind !== 'boundary');
+    expect(cartridgePills).toHaveLength(1);
+    expect(cartridgePills[0].lifecycle).toBe('upcoming');
   });
 
   it('suppresses starting when the active slot is populated', () => {
@@ -182,11 +184,12 @@ describe('usePillStates — upcoming pill labels from manifest day fields', () =
       } as any,
     });
     const { result } = renderHook(() => usePillStates());
-    expect(result.current).toHaveLength(1);
-    expect(result.current[0].lifecycle).toBe('upcoming');
-    expect(result.current[0].cartridgeData).toEqual({ promptType: 'WOULD_YOU_RATHER' });
+    const cartridgePills = result.current.filter(p => p.kind !== 'boundary');
+    expect(cartridgePills).toHaveLength(1);
+    expect(cartridgePills[0].lifecycle).toBe('upcoming');
+    expect(cartridgePills[0].cartridgeData).toEqual({ promptType: 'WOULD_YOU_RATHER' });
     // Label should be CARTRIDGE_INFO['WOULD_YOU_RATHER'].displayName, not 'Activity'
-    expect(result.current[0].label).not.toBe('Activity');
+    expect(cartridgePills[0].label).not.toBe('Activity');
   });
 
   it('renders a specific label for an upcoming Vote when the day has voteType', () => {
@@ -200,8 +203,9 @@ describe('usePillStates — upcoming pill labels from manifest day fields', () =
       } as any,
     });
     const { result } = renderHook(() => usePillStates());
-    expect(result.current[0].cartridgeData).toEqual({ voteType: 'EXECUTIONER' });
-    expect(result.current[0].label).not.toBe('Vote');
+    const votingPill = result.current.find(p => p.kind === 'voting')!;
+    expect(votingPill.cartridgeData).toEqual({ voteType: 'EXECUTIONER' });
+    expect(votingPill.label).not.toBe('Vote');
   });
 
   it('falls back to generic label when day field is NONE', () => {
@@ -215,8 +219,9 @@ describe('usePillStates — upcoming pill labels from manifest day fields', () =
       } as any,
     });
     const { result } = renderHook(() => usePillStates());
-    expect(result.current[0].cartridgeData).toBeUndefined();
-    expect(result.current[0].label).toBe('Activity');
+    const promptPill = result.current.find(p => p.kind === 'prompt')!;
+    expect(promptPill.cartridgeData).toBeUndefined();
+    expect(promptPill.label).toBe('Activity');
   });
 });
 
