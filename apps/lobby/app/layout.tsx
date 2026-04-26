@@ -11,7 +11,7 @@ export const viewport: Viewport = {
 
 const SITE_TITLE = "Pecking Order";
 const SITE_DESCRIPTION =
-  "A social game of alliances, betrayal, and strategy. Your friends are your rivals.";
+  "Vote. Ally. Betray. Survive. A social deduction game in your group chat. Seven days. One winner.";
 
 // `generateMetadata` (instead of the static `metadata` export) so we can read
 // LOBBY_HOST from the Cloudflare env and emit absolute og:image / og:url.

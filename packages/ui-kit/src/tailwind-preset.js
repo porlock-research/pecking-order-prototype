@@ -44,6 +44,7 @@ module.exports = {
                     // Core
                     base: 'var(--po-text)',
                     dim: 'var(--po-text-dim)',
+                    faint: 'var(--po-text-faint)',
                     inverted: 'var(--po-text-inverted)',
                     gold: 'var(--po-gold)',
                     pink: 'var(--po-pink)',
@@ -126,6 +127,7 @@ module.exports = {
             boxShadow: {
                 card: 'var(--po-shadow-card)',
                 glow: 'var(--po-shadow-glow)',
+                'glow-pink': 'var(--po-shadow-glow-pink)',
                 btn: 'var(--po-shadow-btn)',
             },
             animation: {

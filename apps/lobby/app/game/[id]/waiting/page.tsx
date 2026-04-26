@@ -120,23 +120,89 @@ export default function WaitingRoom() {
       ? `${window.location.origin}/j/${code.toUpperCase()}`
       : '';
 
-  async function handleCopyLink() {
+  // Brand mantra echoed in every host-share. Recipients see the verb stack
+  // before the URL — the same hook they'd see if they tapped the link and
+  // unfurled in iMessage. Repetition is the point.
+  const shareText = `Vote. Ally. Betray. Survive. I’m running a Pecking Order game — you’re cast.`;
+
+  // Robust clipboard write — `navigator.clipboard` is unavailable in
+  // non-secure contexts (some embedded browsers, older iOS in-app webviews)
+  // and rejects silently when the document isn't focused.
+  async function writeClipboard(text: string): Promise<boolean> {
     try {
-      await navigator.clipboard.writeText(shareLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
     } catch {
-      // Fallback for older browsers
-      const textarea = document.createElement('textarea');
-      textarea.value = shareLink;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
+      // fall through
+    }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'absolute';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async function handleCopyLink() {
+    const ok = await writeClipboard(shareLink);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   }
+
+  // Native Web Share API — preferred when available because the OS share
+  // sheet covers iMessage/WhatsApp/Messenger/etc without us hard-coding each.
+  // AbortError = user dismissed the sheet (deliberate cancel, not a failure).
+  async function handleNativeShare() {
+    if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') {
+      handleCopyLink();
+      return;
+    }
+    try {
+      await navigator.share({
+        title: 'Pecking Order',
+        text: shareText,
+        url: shareLink,
+      });
+    } catch (err) {
+      if ((err as DOMException)?.name === 'AbortError') return;
+      // Share-sheet open failed — fall back to copy so the host doesn't lose
+      // the invite link to the void.
+      handleCopyLink();
+    }
+  }
+
+  function handleSmsShare() {
+    // sms:?&body= is the cross-platform form (iOS + Android both honor it).
+    window.location.href = `sms:?&body=${encodeURIComponent(`${shareText} ${shareLink}`)}`;
+  }
+
+  function handleWhatsAppShare() {
+    // WA renders \n as visual line breaks — stack mantra over URL for
+    // a poster-shaped chat preview.
+    const text = `${shareText}\n\n${shareLink}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    const win = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!win) window.location.href = url;
+  }
+
+  // Native share is rare on desktop, common on mobile. Capture once on
+  // mount so the button row doesn't ship and immediately disappear.
+  const [hasNativeShare, setHasNativeShare] = useState(false);
+  useEffect(() => {
+    setHasNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
+  }, []);
 
   const filledSlots = slots.filter((s) => s.acceptedBy);
   const emptySlots = slots.filter((s) => !s.acceptedBy);
@@ -154,7 +220,7 @@ export default function WaitingRoom() {
   const bgPersonaId = myPersonaId || filledSlots[0]?.personaId;
 
   return (
-    <div className="h-screen h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
+    <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
       {/* Blurred persona background */}
       <AnimatePresence mode="popLayout">
         {bgPersonaId && (
@@ -182,11 +248,11 @@ export default function WaitingRoom() {
           <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow">
             PECKING ORDER
           </h1>
-          <p className="text-sm text-skin-dim font-mono">
-            Game: <span className="text-skin-gold font-bold tracking-wider">{code.toUpperCase()}</span>
+          <p className="text-sm text-skin-dim">
+            Game: <span className="text-skin-gold font-mono font-bold tracking-wider">{code.toUpperCase()}</span>
           </p>
-          <div className="mt-2 max-w-sm mx-auto space-y-1.5">
-            <div className="text-[10px] font-bold text-skin-dim uppercase tracking-widest text-left">
+          <div className="mt-2 max-w-sm mx-auto space-y-2">
+            <div className="text-[10px] font-display font-bold text-skin-dim uppercase tracking-widest text-left">
               Invite link
             </div>
             <div className="flex items-center gap-2 p-2 rounded-lg bg-skin-input/60">
@@ -195,9 +261,54 @@ export default function WaitingRoom() {
               </code>
               <button
                 onClick={handleCopyLink}
-                className="text-xs font-bold text-skin-gold px-2 py-1 rounded border border-skin-gold/30 hover:border-skin-gold/60 transition-all whitespace-nowrap"
+                aria-label={copied ? 'Invite link copied' : 'Copy invite link'}
+                className="min-h-[36px] text-xs font-display font-bold text-skin-gold px-3 py-2 rounded border border-skin-gold/30 hover:border-skin-gold/60 transition-all whitespace-nowrap"
               >
                 {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+
+            {/* Per-channel share row — sits below the link copy. On mobile,
+                the native-share button leads (opens the OS share sheet,
+                which covers iMessage/WhatsApp/Discord/etc in one tap). On
+                desktop where the Web Share API is rare, SMS + WhatsApp
+                shortcuts pick up the slack. Mantra-led text in every
+                channel so unfurls and chat previews carry the brand. */}
+            <div className="flex gap-2 pt-1">
+              {hasNativeShare && (
+                <button
+                  onClick={handleNativeShare}
+                  className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-skin-pink text-skin-base text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <circle cx="18" cy="5" r="3" />
+                    <circle cx="6" cy="12" r="3" />
+                    <circle cx="18" cy="19" r="3" />
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                  </svg>
+                  Share
+                </button>
+              )}
+              <button
+                onClick={handleSmsShare}
+                aria-label="Share via SMS"
+                className={`${hasNativeShare ? 'w-10' : 'flex-1'} min-h-[40px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#22c55e] text-white text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all`}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+                {!hasNativeShare && <span>SMS</span>}
+              </button>
+              <button
+                onClick={handleWhatsAppShare}
+                aria-label="Share via WhatsApp"
+                className={`${hasNativeShare ? 'w-10' : 'flex-1'} min-h-[40px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#25D366] text-white text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all`}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+                {!hasNativeShare && <span>WhatsApp</span>}
               </button>
             </div>
           </div>
@@ -206,42 +317,40 @@ export default function WaitingRoom() {
         {/* Status badge */}
         <div className="flex justify-center mt-2 flex-shrink-0">
           <motion.div
+            role="status"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.3 }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm text-xs font-mono font-bold uppercase tracking-widest
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-skin-deep/60 text-xs font-display font-bold uppercase tracking-widest border
               ${
                 isStarted
-                  ? 'text-skin-green'
+                  ? 'text-skin-green border-skin-green'
                   : isReady
-                    ? 'text-skin-gold'
-                    : 'text-skin-dim'
+                    ? 'text-skin-gold border-skin-gold'
+                    : 'text-skin-dim border-skin-base'
               }`}
-            style={{
-              backgroundColor: 'rgba(44, 0, 62, 0.6)',
-              border: `1px solid ${isStarted ? 'var(--po-green)' : isReady ? 'var(--po-gold)' : 'var(--po-border)'}`,
-            }}
           >
             <span
               className={`w-2 h-2 rounded-full ${
                 isStarted ? 'bg-skin-green' : isReady ? 'bg-skin-gold' : 'bg-skin-dim'
               } ${!isStarted ? 'animate-pulse' : ''}`}
+              aria-hidden
             />
             {isStarted
               ? 'Game Started'
               : isReady
                 ? 'Ready to Launch'
                 : isLoading
-                  ? 'Loading...'
+                  ? 'Cueing the room…'
                   : `Waiting for Players (${filledSlots.length}/${totalSlots})`}
           </motion.div>
         </div>
 
         {/* Cast title */}
         <div className="text-center mt-2 flex-shrink-0">
-          <div className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+          <h2 className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
             The Cast
-          </div>
+          </h2>
         </div>
 
         {/* Cast grid */}
@@ -260,51 +369,58 @@ export default function WaitingRoom() {
               transition={{ duration: 0.4 }}
               className="grid grid-cols-2 gap-3"
             >
-              {/* Filled slots — cast portrait cards */}
-              {filledSlots.map((slot, idx) => (
-                <motion.div
-                  key={slot.slotIndex}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: idx * 0.08, duration: 0.35 }}
-                  className="aspect-[3/4] relative rounded-2xl overflow-hidden glow-breathe"
-                >
-                  {slot.personaId ? (
-                    <img
-                      src={personaMediumUrl(slot.personaId)}
-                      alt={slot.personaName || ''}
-                      className="absolute inset-0 w-full h-full object-cover object-top"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-skin-input" />
-                  )}
-                  {/* Gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/40 via-30% to-transparent pointer-events-none" />
-                  {/* Name + stereotype */}
-                  <div className="absolute bottom-0 left-0 right-0 p-3 pointer-events-none">
-                    <div className="text-sm font-display font-black text-skin-base text-glow leading-tight truncate">
-                      {slot.personaName}
+              {/* Filled slots — cast portrait cards. Only the most-recent join
+                  (last in the list) gets the breathing glow, so the eye lands
+                  on what just happened instead of every card competing. */}
+              {filledSlots.map((slot, idx) => {
+                const isMostRecent = idx === filledSlots.length - 1;
+                return (
+                  <motion.div
+                    key={slot.slotIndex}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.08, duration: 0.35 }}
+                    className={`aspect-[3/4] relative rounded-2xl overflow-hidden ${isMostRecent ? 'glow-breathe' : ''}`}
+                  >
+                    {slot.personaId ? (
+                      <img
+                        src={personaMediumUrl(slot.personaId)}
+                        alt={slot.personaName || ''}
+                        loading={idx < 4 ? 'eager' : 'lazy'}
+                        className="absolute inset-0 w-full h-full object-cover object-top"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-skin-input" />
+                    )}
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/40 via-30% to-transparent pointer-events-none" />
+                    {/* Name + stereotype */}
+                    <div className="absolute bottom-0 left-0 right-0 p-3 pointer-events-none">
+                      <div className="text-sm font-display font-black text-skin-base text-glow leading-tight truncate">
+                        {slot.personaName}
+                      </div>
+                      <div className="text-[9px] font-display font-bold text-skin-gold uppercase tracking-[0.15em] truncate">
+                        {slot.personaStereotype}
+                      </div>
                     </div>
-                    <div className="text-[9px] font-display font-bold text-skin-gold uppercase tracking-[0.15em] truncate">
-                      {slot.personaStereotype}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
 
-              {/* Empty slots — mysterious placeholders */}
+              {/* Empty slots — casting-call placeholder, not "TBD" project-status. */}
               {emptySlots.map((slot) => (
                 <motion.div
                   key={slot.slotIndex}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: filledSlots.length * 0.08 + 0.1, duration: 0.3 }}
-                  className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed flex items-center justify-center"
-                  style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(44, 0, 62, 0.4)' }}
+                  className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed border-skin-base/40 bg-skin-deep/40 flex items-center justify-center"
                 >
-                  <div className="text-center space-y-2">
-                    <div className="text-4xl text-skin-dim/20 animate-pulse">?</div>
-                    <div className="text-[10px] font-mono text-skin-dim/30 uppercase tracking-widest">TBD</div>
+                  <div className="text-center space-y-1">
+                    <div className="text-[10px] font-display font-bold text-skin-faint uppercase tracking-[0.2em]">
+                      Open seat
+                    </div>
+                    <div className="text-xs text-skin-faint/70">Waiting on someone</div>
                   </div>
                 </motion.div>
               ))}
@@ -317,8 +433,8 @@ export default function WaitingRoom() {
             <div className="mt-4">
               <button
                 onClick={() => setShowInviteSection(!showInviteSection)}
-                className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-skin-base/50 backdrop-blur-sm text-sm font-display font-bold text-skin-dim hover:text-skin-base hover:border-skin-gold/30 transition-all"
-                style={{ backgroundColor: 'rgba(44, 0, 62, 0.5)' }}
+                aria-expanded={showInviteSection}
+                className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-skin-base/50 bg-skin-deep/50 text-sm font-display font-bold text-skin-dim hover:text-skin-base hover:border-skin-gold/30 transition-all"
               >
                 <span>Invite by Email</span>
                 <svg
@@ -345,18 +461,21 @@ export default function WaitingRoom() {
                       <form onSubmit={handleSendInvite} className="flex gap-2">
                         <input
                           type="email"
+                          inputMode="email"
+                          autoComplete="off"
                           value={inviteEmail}
                           onChange={(e) => setInviteEmail(e.target.value)}
                           placeholder="player@example.com"
+                          aria-label="Player email"
                           required
-                          className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 placeholder:text-skin-dim/30"
+                          className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 placeholder:text-skin-faint"
                         />
                         <button
                           type="submit"
                           disabled={isSendingInvite || !inviteEmail.trim()}
                           className={`px-4 py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-all whitespace-nowrap
                             ${isSendingInvite || !inviteEmail.trim()
-                              ? 'bg-skin-input text-skin-dim/40 cursor-wait'
+                              ? 'bg-skin-input text-skin-faint cursor-wait'
                               : 'bg-skin-gold text-skin-deep hover:brightness-110 active:scale-[0.98]'
                             }`}
                         >
@@ -365,30 +484,29 @@ export default function WaitingRoom() {
                       </form>
 
                       {inviteStatus && (
-                        <div className="p-2.5 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs font-mono text-center">
+                        <div role="status" className="p-2.5 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs text-center">
                           {inviteStatus}
                         </div>
                       )}
 
                       {inviteError && (
-                        <div className="p-2.5 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-xs font-mono text-center">
+                        <div role="alert" className="p-2.5 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-xs text-center">
                           {inviteError}
                         </div>
                       )}
 
                       {sentInvites.length > 0 && (
                         <div className="space-y-1.5">
-                          <div className="text-[10px] font-mono text-skin-dim/50 uppercase tracking-widest px-1">
+                          <div className="text-[10px] font-display font-bold text-skin-faint uppercase tracking-widest px-1">
                             Sent Invites
                           </div>
                           {sentInvites.map((inv) => (
                             <div
                               key={inv.email + inv.createdAt}
-                              className="flex items-center justify-between py-1.5 px-3 rounded-lg text-xs font-mono"
-                              style={{ backgroundColor: 'rgba(44, 0, 62, 0.4)' }}
+                              className="flex items-center justify-between py-1.5 px-3 rounded-lg text-xs bg-skin-deep/40"
                             >
                               <span className="text-skin-dim truncate">{inv.email}</span>
-                              <span className={`text-[10px] uppercase tracking-wider ${inv.used ? 'text-skin-green' : 'text-skin-dim/40'}`}>
+                              <span className={`text-[10px] font-display font-bold uppercase tracking-wider ${inv.used ? 'text-skin-green' : 'text-skin-faint'}`}>
                                 {inv.used ? 'Joined' : 'Pending'}
                               </span>
                             </div>
@@ -408,7 +526,7 @@ export default function WaitingRoom() {
       <div className="flex-shrink-0 relative z-20 bg-gradient-to-b from-skin-deep/0 to-skin-deep pt-3 px-4" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
         <div className="max-w-lg mx-auto">
           {error && (
-            <div className="p-3 mb-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm font-mono text-center">
+            <div role="alert" className="p-3 mb-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm text-center">
               {error}
             </div>
           )}
@@ -428,7 +546,7 @@ export default function WaitingRoom() {
                   className={`w-full py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all flex items-center justify-center gap-3
                     ${
                       isStarting
-                        ? 'bg-skin-input text-skin-dim/40 cursor-wait'
+                        ? 'bg-skin-input text-skin-faint cursor-wait'
                         : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
                     }`}
                 >
@@ -455,7 +573,7 @@ export default function WaitingRoom() {
                 className="space-y-3"
               >
                 {pushSent && (
-                  <div className="p-3 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs font-mono text-center">
+                  <div role="status" className="p-3 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs text-center">
                     We sent a notification to your app. Tap it to enter!
                   </div>
                 )}
@@ -579,8 +697,8 @@ export default function WaitingRoom() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                <p className="text-center text-xs text-skin-dim font-mono">
-                  Share the invite code and refresh when everyone has joined.
+                <p className="text-center text-xs text-skin-dim">
+                  Share the invite code. We'll refresh when everyone joins.
                 </p>
               </motion.div>
             )}
@@ -593,7 +711,7 @@ export default function WaitingRoom() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                <p className="text-center text-xs text-skin-dim font-mono">
+                <p className="text-center text-xs text-skin-dim">
                   Share the invite code. You can enter the game while waiting for other players.
                 </p>
               </motion.div>

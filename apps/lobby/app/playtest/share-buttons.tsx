@@ -2,8 +2,51 @@
 
 import { useState } from 'react';
 
-const SHARE_TEXT =
-  'Check out Pecking Order — a social game of alliances, betrayal & strategy. Sign up for the next playtest!';
+// Brand mantra echoed across every channel — recipients should see the same
+// four-word hook regardless of where the link lands. Per-channel variants
+// adapt format (Twitter trims hard, WhatsApp likes line-breaks, Discord uses
+// markdown bolds) but the verbs stay consistent.
+const MANTRA = 'Vote. Ally. Betray. Survive.';
+const TAGLINE = 'A social deduction game in your group chat.';
+const SHARE_TEXT = `${MANTRA} ${TAGLINE} Reserve your seat for the next Pecking Order playtest.`;
+
+// Robust clipboard write — `navigator.clipboard` is unavailable in
+// non-secure contexts (some embedded browsers, older iOS in-app webviews)
+// and can reject silently when the document isn't focused. The textarea
+// fallback covers most of those cases.
+async function writeClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through
+  }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'absolute';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+// Popup blockers can return null from window.open; fall back to navigation
+// in the same tab so the share intent still completes.
+function openShareIntent(url: string) {
+  const win = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!win) {
+    window.location.href = url;
+  }
+}
 
 function TwitterIcon() {
   return (
@@ -46,6 +89,14 @@ function EmailIcon() {
   );
 }
 
+function SmsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    </svg>
+  );
+}
+
 function LinkIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -60,39 +111,59 @@ export function ShareButtons({ emphasis = false, referralCode, playtestUrl }: { 
 
   const shareUrl = referralCode ? `${playtestUrl}?ref=${referralCode}` : playtestUrl;
 
+  // Twitter has the tightest budget (display ~280 chars including URL).
+  // Lead with the mantra; let the URL preview carry the rest.
   function shareTwitter() {
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(SHARE_TEXT)}&url=${encodeURIComponent(shareUrl)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    const tweet = `${MANTRA} The group-chat reality show is forming. Reserve a seat:`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet)}&url=${encodeURIComponent(shareUrl)}`;
+    openShareIntent(url);
   }
 
+  // WhatsApp renders newlines as visual line breaks in the chat preview, so
+  // we stack the mantra over the tagline over the URL — reads like a poster.
   function shareWhatsApp() {
-    const url = `https://wa.me/?text=${encodeURIComponent(`${SHARE_TEXT}\n${shareUrl}`)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    const text = `${MANTRA}\n${TAGLINE}\n\nReserve a seat:\n${shareUrl}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    openShareIntent(url);
   }
 
   function shareReddit() {
-    const url = `https://reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent('Pecking Order — A social game of alliances, betrayal & strategy')}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    const url = `https://reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(`Pecking Order — ${MANTRA} A social deduction game in your group chat`)}`;
+    openShareIntent(url);
   }
 
-  function shareDiscord() {
-    navigator.clipboard.writeText(
-      `**Pecking Order** — A social game of alliances, betrayal & strategy\nSign up for the next playtest:\n${shareUrl}`,
-    );
-    setCopiedBtn('discord');
-    setTimeout(() => setCopiedBtn(null), 2000);
+  // Discord supports markdown — bold the title, surface the mantra as its
+  // own line for visual punch in the channel.
+  async function shareDiscord() {
+    const text = `**Pecking Order**\n${MANTRA}\n${TAGLINE}\nReserve a seat: ${shareUrl}`;
+    const ok = await writeClipboard(text);
+    if (ok) {
+      setCopiedBtn('discord');
+      setTimeout(() => setCopiedBtn(null), 2000);
+    }
+  }
+
+  // SMS share — sms: link works on iOS, Android, and macOS Messages.app.
+  // Mantra-led, short enough to land cleanly in a single SMS bubble.
+  function shareSms() {
+    const text = `${MANTRA} ${shareUrl}`;
+    // iOS uses ?&body=, Android uses ?body= — the &-prefix form works on both.
+    const url = `sms:?&body=${encodeURIComponent(text)}`;
+    window.location.href = url;
   }
 
   function shareEmail() {
-    const subject = encodeURIComponent('Check out Pecking Order');
-    const body = encodeURIComponent(`${SHARE_TEXT}\n\n${shareUrl}`);
+    const subject = encodeURIComponent(`${MANTRA} (Pecking Order playtest)`);
+    const body = encodeURIComponent(`${MANTRA}\n${TAGLINE}\n\nReserve a seat in the next Pecking Order playtest:\n${shareUrl}`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   }
 
-  function copyLink() {
-    navigator.clipboard.writeText(shareUrl);
-    setCopiedBtn('link');
-    setTimeout(() => setCopiedBtn(null), 2000);
+  async function copyLink() {
+    const ok = await writeClipboard(shareUrl);
+    if (ok) {
+      setCopiedBtn('link');
+      setTimeout(() => setCopiedBtn(null), 2000);
+    }
   }
 
   const circleSize = emphasis ? 'w-12 h-12' : 'w-11 h-11';
@@ -101,16 +172,16 @@ export function ShareButtons({ emphasis = false, referralCode, playtestUrl }: { 
     <div className="text-center">
       {emphasis ? (
         <>
-          <p className="text-skin-gold font-display font-bold text-lg mb-1">
-            Spread the word!
+          <p className="text-skin-gold font-display font-black uppercase tracking-tight text-2xl mb-1">
+            Bring your people
           </p>
-          <p className="text-skin-dim text-sm font-display mb-5">
-            Pecking Order is better with friends...or enemies.
+          <p className="text-skin-dim text-sm mb-5">
+            Pecking Order is better with friends. Or enemies.
           </p>
         </>
       ) : (
-        <p className="text-skin-dim text-sm font-display mb-4">
-          Pecking Order is better with friends...or enemies.
+        <p className="text-skin-dim text-sm mb-4">
+          Pecking Order is better with friends. Or enemies.
         </p>
       )}
       <div className="flex gap-3 justify-center items-center">
@@ -145,6 +216,13 @@ export function ShareButtons({ emphasis = false, referralCode, playtestUrl }: { 
           className={`${circleSize} rounded-full bg-[#FF4500] text-white hover:brightness-110 transition-all flex items-center justify-center hover:scale-110`}
         >
           <RedditIcon />
+        </button>
+        <button
+          onClick={shareSms}
+          aria-label="Share via SMS"
+          className={`${circleSize} rounded-full bg-[#22c55e] text-white hover:brightness-110 transition-all flex items-center justify-center hover:scale-110`}
+        >
+          <SmsIcon />
         </button>
         <button
           onClick={shareEmail}

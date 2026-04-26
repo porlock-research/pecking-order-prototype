@@ -57,7 +57,7 @@ export function JoinedCast({
                     delay: 0.05 + i * 0.08,
                   }
             }
-            className={`relative w-[84px] h-[120px] sm:w-[110px] sm:h-[156px] rounded-[14px] overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.55)] ring-1 ring-white/5 ${overlapClass}`}
+            className={`relative w-[84px] h-[120px] sm:w-[110px] sm:h-[156px] rounded-[14px] overflow-hidden shadow-card ring-1 ring-white/5 ${overlapClass}`}
             style={{
               // Neutral dark fill behind the image. If the CDN 404s the
               // onError handler below hides the <img>, leaving this fill

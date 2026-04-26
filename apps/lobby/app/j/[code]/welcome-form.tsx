@@ -11,6 +11,10 @@ export function WelcomeForm({ code }: { code: string }) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (handle.trim().length === 0) {
+      setError('Name your character first.');
+      return;
+    }
     startTransition(async () => {
       const result = await claimSeat(code, handle);
       if (!result.ok) {
@@ -19,7 +23,7 @@ export function WelcomeForm({ code }: { code: string }) {
             setError('Name must be 1-24 characters.');
             break;
           case 'rate_limited':
-            setError('Too many attempts from this network. Try again later.');
+            setError('Too many tries from this network. Give it a sec.');
             break;
           case 'game_not_found':
             setError('Game not found.');
@@ -28,7 +32,7 @@ export function WelcomeForm({ code }: { code: string }) {
             setError('This game already started.');
             break;
           default:
-            setError('Something went wrong. Try again.');
+            setError('Something went sideways. Try again.');
         }
       }
       // Success: the server action redirected, this callback never reaches here.
@@ -36,9 +40,9 @@ export function WelcomeForm({ code }: { code: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <label className="block">
-        <span className="text-xs font-bold text-skin-dim uppercase tracking-widest">
+        <span className="block text-xs font-bold text-skin-dim uppercase tracking-widest">
           What should we call you?
         </span>
         <input
@@ -46,11 +50,12 @@ export function WelcomeForm({ code }: { code: string }) {
           value={handle}
           onChange={(e) => setHandle(e.target.value)}
           autoFocus
+          autoComplete="given-name"
           maxLength={24}
           placeholder="Your name"
-          className="mt-2 w-full px-4 py-3 bg-skin-input border border-skin-base rounded-xl text-skin-base placeholder:text-skin-dim/40 focus:outline-none focus:border-skin-gold/50"
+          className="mt-2 w-full px-4 py-3 bg-skin-input border border-skin-base rounded-xl text-skin-base placeholder:text-skin-dim/70 focus:outline-none focus:border-skin-gold/50 text-base"
         />
-        <span className="mt-2 block text-[11px] text-skin-dim/60">
+        <span className="mt-2 block text-[11px] text-skin-dim">
           This is so the group knows you in-game and in the reveal at the end.
         </span>
       </label>
@@ -66,8 +71,9 @@ export function WelcomeForm({ code }: { code: string }) {
 
       <button
         type="submit"
-        disabled={isPending || handle.trim().length === 0}
-        className="w-full py-4 bg-skin-gold text-skin-deep font-display font-black text-sm uppercase tracking-widest rounded-xl disabled:opacity-40"
+        disabled={isPending}
+        aria-busy={isPending}
+        className="w-full min-h-[52px] py-4 bg-skin-gold text-skin-deep font-display font-black text-sm uppercase tracking-widest rounded-xl disabled:opacity-50 active:scale-[0.99] transition-transform"
       >
         {isPending ? 'Joining…' : "Let's go →"}
       </button>

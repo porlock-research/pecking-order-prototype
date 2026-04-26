@@ -363,7 +363,13 @@ function applyToken(
   // Set game-specific cookie (iOS 17.2+ copies cookies from Safari to standalone PWA)
   setPwaAuthCookie(key, jwt);
 
-  // Clean transient params from URL
+  // Clean transient params from URL — but stash debug params first so the
+  // Pulse hooks can pick them up after the strip.
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const forceUrgent = params.get('force-urgent');
+    if (forceUrgent) sessionStorage.setItem('po-force-urgent', forceUrgent);
+  }
   if (gameCode) {
     window.history.replaceState({}, '', `/game/${gameCode}`);
   }

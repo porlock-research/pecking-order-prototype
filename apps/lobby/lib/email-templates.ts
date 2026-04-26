@@ -124,6 +124,24 @@ function bodyLine(text: string): string {
   return `<p style="margin:0 0 28px;font-family:${BODY};font-size:16px;line-height:1.55;color:${TEXT};">${text}</p>`;
 }
 
+/** Stacked-verb statement. Each word becomes its own line in giant display
+ * type with alternating accents. Used as a typographic moment that names the
+ * game shape with no chrome. Mirrors the `/playtest` web treatment.
+ *
+ * Default colors rotate TEXT → GOLD → TEXT → CTA. Pass a `colors` array to
+ * override per-line. Line-height is set to 1.0 for Outlook safety; we add an
+ * explicit margin between lines so the stack still has air on tight rendererss. */
+function verbStack(words: string[], colors?: string[]): string {
+  const palette = colors ?? [TEXT, GOLD, TEXT, CTA];
+  return `<div style="margin:0 0 32px;text-align:center;">${words
+    .map((word, i) => {
+      const color = palette[i % palette.length];
+      const isLast = i === words.length - 1;
+      return `<div style="font-family:${DISPLAY};font-size:52px;font-weight:900;line-height:1.0;letter-spacing:-0.02em;color:${color};text-transform:uppercase;${isLast ? '' : 'margin-bottom:6px;'}">${word}</div>`;
+    })
+    .join('')}</div>`;
+}
+
 /** Code block — tracked display glyphs over tiny label */
 function codeBlock(label: string, code: string): string {
   return `<div style="text-align:left;">
@@ -176,7 +194,8 @@ export function buildInviteEmail(opts: {
     ${card(`
       ${eyebrow('Cast list')}
       ${hugeLine(`${sender} added you`)}
-      ${bodyLine('Pecking Order is a social deduction game you play in a group chat. Pick a character, form alliances, and try not to get voted out. A few minutes a day on your phone. Last one standing wins.')}
+      ${bodyLine('Pecking Order is a social deduction game you play in a group chat. A few minutes a day on your phone. Last one standing wins.')}
+      ${verbStack(['Vote.', 'Ally.', 'Betray.', 'Survive.'])}
       ${buttonRow('Take your spot', opts.inviteLink, 28)}
       ${hairline()}
       ${codeBlock('Invite code', opts.inviteCode)}
@@ -232,7 +251,9 @@ export function buildPlaytestConfirmationEmail(opts: {
     ${card(`
       ${eyebrow('Confirmed')}
       ${hugeLine('You&rsquo;re in', GOLD)}
-      ${bodyLine('Next playtest drops soon. Here&rsquo;s the shape of it:')}
+      ${bodyLine('Next playtest drops soon. The shape of it:')}
+
+      ${verbStack(['Vote.', 'Ally.', 'Betray.', 'Survive.'])}
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
         ${beat('01', 'Pick a face', 'Play a persona with their own history, drama, and enemies.')}

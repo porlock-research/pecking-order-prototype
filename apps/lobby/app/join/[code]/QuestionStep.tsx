@@ -62,10 +62,10 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="text-center flex-shrink-0 space-y-1">
-        <div className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+        <h2 className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
           Get Into Character
-        </div>
-        <p className="text-xs text-skin-dim/60">
+        </h2>
+        <p className="text-xs text-skin-dim">
           Answer as <span className="text-skin-gold font-bold">{personaName}</span> — or{' '}
           <button
             onClick={onSkip}
@@ -108,8 +108,8 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
             >
               {/* Question text */}
               <div className="text-center px-2">
-                <span className="text-xs font-mono text-skin-dim/40">
-                  {currentIndex + 1}/{questions.length}
+                <span className="text-xs font-display font-bold text-skin-dim tracking-widest tabular-nums">
+                  {currentIndex + 1} / {questions.length}
                 </span>
                 <h2 className="text-lg font-display font-bold text-skin-base mt-1 leading-snug">
                   {question.text}
@@ -131,7 +131,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                           : 'bg-skin-panel/30 border border-skin-base/30 text-skin-base hover:bg-skin-panel/50'
                       }`}
                     >
-                      <span className="text-skin-dim/40 font-mono text-xs mr-2">
+                      <span className="text-skin-dim font-display font-bold text-xs mr-2">
                         {String.fromCharCode(65 + idx)}.
                       </span>
                       {option}
@@ -146,7 +146,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                     : 'bg-skin-panel/30 border border-skin-base/30'
                 }`}>
                   <div className="flex items-center gap-2 px-4 py-2">
-                    <span className="text-skin-dim/40 font-mono text-xs">D.</span>
+                    <span className="text-skin-dim font-display font-bold text-xs">D.</span>
                     <input
                       type="text"
                       value={currentSub?.selectedIndex === 3 ? (currentSub.customAnswer ?? '') : customText}
@@ -162,7 +162,8 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                         }
                       }}
                       placeholder="Write your own..."
-                      className="flex-1 bg-transparent text-sm text-skin-base placeholder:text-skin-dim/40 focus:outline-none"
+                      aria-label="Custom answer"
+                      className="flex-1 bg-transparent text-sm text-skin-base placeholder:text-skin-dim/70 focus:outline-none"
                       maxLength={140}
                     />
                     {customText.trim() && currentSub?.selectedIndex !== 3 && (
@@ -188,7 +189,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
           animate={{ opacity: 1, y: 0 }}
           className="flex-shrink-0 pt-2 space-y-1"
         >
-          <p className="text-center text-xs text-skin-dim/50 font-mono">
+          <p className="text-center text-xs text-skin-dim">
             {allAnswered ? 'All done!' : `${totalAnswered}/${questions.length} answered — unanswered use defaults`}
           </p>
           <button
