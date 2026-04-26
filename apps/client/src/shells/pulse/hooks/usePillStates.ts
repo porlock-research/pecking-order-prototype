@@ -148,15 +148,27 @@ export function derivePhase(manifest: any, dayIndex: number, now: number): DayPh
 }
 
 /**
- * Hook variant of derivePhase. Re-evaluates on store mutations only —
- * callers that need second-level granularity should pair this with their
- * own setInterval-driven re-render. (Most consumers are fine with the
- * mutation cadence + the natural re-renders on pill state changes.)
+ * Hook variant of derivePhase. Re-evaluates each tick so phase transitions
+ * (pregame → day, day → night) flip live without requiring a store mutation
+ * or page reload. Without the tick dep the memo would stay frozen on the
+ * phase computed at last manifest/dayIndex change — and the game-server
+ * doesn't push manifest updates at time-only boundaries, so pregame would
+ * outlast the day-open until the next unrelated re-render.
  */
 export function useDayPhase(): DayPhase {
   const manifest = useGameStore((s) => s.manifest);
   const dayIndex = useGameStore((s) => s.dayIndex);
-  return useMemo(() => derivePhase(manifest, dayIndex, Date.now()), [manifest, dayIndex]);
+  // 1s tick so a page that's been open across the day-open boundary flips
+  // out of pregame within a second, matching the meta-countdown cadence.
+  // PulseBar already re-renders at 1s via usePillStates → no extra work.
+  // Fresh navigation (push-notification → mount) is unaffected: useNowTick's
+  // useState initializer samples Date.now() synchronously on mount, so first
+  // render computes phase from the actual current time.
+  const tickNow = useNowTick(1000);
+  return useMemo(
+    () => derivePhase(manifest, dayIndex, tickNow),
+    [manifest, dayIndex, tickNow],
+  );
 }
 
 /** Pull the day-level type field for a given action kind from the manifest day. */
