@@ -188,6 +188,14 @@ function resolveDeadline(pill: PillState): number | null {
 }
 
 function upcomingScheduling(pill: PillState): number | null {
-  if (pill.lifecycle !== 'upcoming' || typeof pill.timeRemaining !== 'number') return null;
-  return Date.now() + pill.timeRemaining * 1000;
+  if (pill.lifecycle !== 'upcoming') return null;
+  // Prefer the stable absolute startTime (set by usePillStates from the
+  // manifest event's ISO timestamp). Without this, deriving the scheduled
+  // moment as Date.now() + timeRemaining*1000 jitters: timeRemaining is a
+  // stale integer-second from the last 1s tick, while Date.now() samples
+  // fresh on every parent render — so scheduledAt drifts up between ticks
+  // and the countdown can skip seconds or appear to increment.
+  if (typeof pill.startTime === 'number') return pill.startTime;
+  if (typeof pill.timeRemaining === 'number') return Date.now() + pill.timeRemaining * 1000;
+  return null;
 }
