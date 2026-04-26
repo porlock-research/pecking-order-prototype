@@ -355,6 +355,32 @@ function purgeInactiveTokens(activeCodes: Set<string>) {
 }
 
 /**
+ * Decide whether to bake a tokenised PWA manifest, and do it.
+ *
+ * Only bakes when we know the invite-code form (e.g. "M4P9BG"), because
+ * that's what `getGameCodeFromPath` accepts on cold launch. The `?token=`
+ * debug entry path passes gameCode=null, which would otherwise fall back
+ * to `decoded.gameId` ("game-<ts>-<rand>") — a hyphenated string the
+ * cold-launch regex rejects, producing a manifest whose start_url no
+ * human flow can resolve. Letting that path keep the launcher-only
+ * `start_url: '/'` is harmless (debug entries don't need a baked PWA)
+ * and preserves `updatePwaManifest`'s "with both args ⇒ resolvable URL"
+ * contract.
+ *
+ * NOTE: this overwrites whichever game previously baked itself into the
+ * manifest. A user in multiple active games will get a PWA that opens
+ * to whichever game `applyToken` ran for most recently. See ADR-149
+ * Consequences.
+ *
+ * @internal exported for unit tests; not part of the module's public API.
+ */
+export function bakeManifestForActiveGame(gameCode: string | null, jwt: string): void {
+  if (gameCode) {
+    updatePwaManifest(gameCode, jwt);
+  }
+}
+
+/**
  * Applies a JWT token: decodes it, sets state, stores in localStorage + Cache API.
  * If a gameCode is provided, keys the storage by that code and cleans the URL.
  */
@@ -385,23 +411,8 @@ function applyToken(
   // Bake the JWT into the PWA manifest's `start_url` so a subsequent "Add
   // to Home Screen" produces a standalone PWA whose cold launch lands at
   // `/game/CODE?_t=<jwt>` and hits applyToken's fast path. See ADR-149.
-  //
-  // Guard: only bake when we know the invite-code form (e.g. "M4P9BG"),
-  // because that's what `getGameCodeFromPath` accepts on cold launch.
-  // The `?token=` debug entry path passes gameCode=null, which would
-  // otherwise fall back to `decoded.gameId` ("game-<ts>-<rand>") — a
-  // hyphenated string the cold-launch regex rejects, producing a manifest
-  // whose start_url no human flow can resolve. Letting that path keep
-  // the launcher-only `start_url: '/'` is harmless (debug entries don't
-  // need a baked PWA) and preserves the function's "with both args ⇒
-  // resolvable URL" contract.
-  //
-  // NOTE: this overwrites whichever game previously baked itself into
-  // the manifest. A user in multiple active games will get a PWA that
-  // opens to whichever game `applyToken` ran for most recently.
-  if (gameCode) {
-    updatePwaManifest(gameCode, jwt);
-  }
+  // The guard is in `bakeManifestForActiveGame` (exported for tests).
+  bakeManifestForActiveGame(gameCode, jwt);
 
   // Clean transient params from URL — but stash debug params first so the
   // Pulse hooks can pick them up after the strip.
@@ -486,7 +497,18 @@ export default function App() {
             return;
           }
           applyToken(urlToken, gameCode, setGameId, setPlayerId, setToken);
-          setSentryAuthMethod(transientToken ? 'transient' : 'raw-token');
+          // Distinguish PWA cold launches via the manifest-baked start_url
+          // (ADR-149) from lobby `/play/CODE → /game/CODE?_t=<jwt>` redirects.
+          // Both arrive via the same `?_t=` fast path but tell us very
+          // different things in incident triage: 'manifest-cold-launch'
+          // confirms the ADR-149 path is working in the wild;
+          // 'transient' is the browser-tab path that has been working since
+          // before ADR-149.
+          setSentryAuthMethod(
+            transientToken
+              ? (isStandalone ? 'manifest-cold-launch' : 'transient')
+              : 'raw-token',
+          );
         } catch (err) {
           console.error('[App] init: URL token decode failed:', err);
           window.location.href = '/';

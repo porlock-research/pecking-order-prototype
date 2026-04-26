@@ -63,6 +63,7 @@ export function setSentryPwaContext(data: {
 export function setSentryAuthMethod(
   method:
     | 'transient'
+    | 'manifest-cold-launch'
     | 'cached'
     | 'cookie'
     | 'cache-api'

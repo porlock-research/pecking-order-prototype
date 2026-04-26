@@ -15,7 +15,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { updatePwaManifest } from '../App';
+import { bakeManifestForActiveGame, updatePwaManifest } from '../App';
 
 function readManifest(): { start_url: string; scope: string } | null {
   const link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
@@ -85,6 +85,32 @@ describe('updatePwaManifest', () => {
     updatePwaManifest('CODE2', 'jwt2');
     expect(document.querySelectorAll('link[rel="manifest"]')).toHaveLength(1);
     expect(readManifest()!.start_url).toBe(`${origin}/game/CODE2?_t=jwt2`);
+  });
+
+  describe('bakeManifestForActiveGame (call-site guard)', () => {
+    // Locks in the contract that `applyToken(jwt, null, …)` (debug `?token=`
+    // entry) does NOT bake a tokenised manifest. Without this guard, the
+    // baked URL would use `decoded.gameId` ("game-<ts>-<rand>") which the
+    // cold-launch regex `[A-Za-z0-9]+` rejects, producing a manifest no
+    // human flow can resolve. This is the call-site invariant; the
+    // function-level invariants live in the suite above.
+
+    it('does NOT bake the manifest when gameCode is null (debug ?token= path)', () => {
+      // Establish a launcher baseline first so we can assert it doesn't change.
+      updatePwaManifest();
+      const before = readManifest()!;
+      expect(before.start_url).toBe(`${origin}/`);
+
+      bakeManifestForActiveGame(null, 'eyJhbGciOiJIUzI1NiJ9.payload.sig');
+
+      const after = readManifest()!;
+      expect(after.start_url).toBe(`${origin}/`);
+    });
+
+    it('bakes the manifest when gameCode is present', () => {
+      bakeManifestForActiveGame('M4P9BG', 'jwt-value');
+      expect(readManifest()!.start_url).toBe(`${origin}/game/M4P9BG?_t=jwt-value`);
+    });
   });
 
   it('produces a start_url whose path matches getGameCodeFromPath regex', () => {
