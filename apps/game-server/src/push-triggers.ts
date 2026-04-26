@@ -9,7 +9,7 @@
  * so each push fires exactly once. No client-side tag dedup needed.
  */
 import type { PushTrigger, GameManifest, DailyManifest, DeepLinkIntent } from "@pecking-order/shared-types";
-import { DEFAULT_PUSH_CONFIG, FactTypes } from "@pecking-order/shared-types";
+import { DEFAULT_PUSH_CONFIG, FactTypes, CARTRIDGE_INFO } from "@pecking-order/shared-types";
 import { getPushSubscriptionD1, deletePushSubscriptionD1 } from "./d1-persistence";
 import { sendPushNotification } from "./push-send";
 
@@ -20,38 +20,24 @@ const DM_TTL = 3600;          // 1 hour — direct messages
 const ELIMINATION_TTL = 3600; // 1 hour
 const WINNER_TTL = 86400;     // 24 hours — game conclusion
 
-// --- Human-friendly mechanic labels for push notifications ---
+// Display name + tagline for a cartridge type. Falls back gracefully if the
+// type is missing from CARTRIDGE_INFO (e.g. mid-rollout enum additions). We
+// read from CARTRIDGE_INFO (the canonical registry) instead of a local map so
+// that new games/votes/activities surface in pushes without a parallel update
+// here — see `reference_cartridge_info.md`.
+function displayOf(type: string, fallback: string): string {
+  return CARTRIDGE_INFO[type]?.displayName ?? fallback;
+}
+function taglineOf(type: string): string | null {
+  return CARTRIDGE_INFO[type]?.tagline ?? null;
+}
 
-const GAME_LABELS: Record<string, string> = {
-  TRIVIA: 'Trivia',
-  REALTIME_TRIVIA: 'Live Trivia',
-  GAP_RUN: 'Gap Run',
-  GRID_PUSH: 'Grid Push',
-  SEQUENCE: 'Sequence',
-  REACTION_TIME: 'Reaction Time',
-  COLOR_MATCH: 'Color Match',
-  STACKER: 'Stacker',
-  QUICK_MATH: 'Quick Math',
-  SIMON_SAYS: 'Simon Says',
-  AIM_TRAINER: 'Aim Trainer',
-  BET_BET_BET: 'Bet Bet Bet',
-  BLIND_AUCTION: 'Blind Auction',
-  KINGS_RANSOM: "King's Ransom",
-  THE_SPLIT: 'The Split',
-  TOUCH_SCREEN: 'Touch Screen',
-};
-
-const VOTE_LABELS: Record<string, string> = {
-  MAJORITY: 'Majority Vote',
-  EXECUTIONER: 'The Executioner',
-  BUBBLE: 'The Bubble',
-  SECOND_TO_LAST: 'Second to Last',
-  PODIUM_SACRIFICE: 'Podium Sacrifice',
-  SHIELD: 'The Shield',
-  TRUST_PAIRS: 'Trust Pairs',
-  FINALS: 'The Finals',
-  DUELS: 'Duels',
-};
+// Pick a random entry from a non-empty list. Used for body-copy pools where
+// variation across repeated firings keeps the notification feeling alive
+// instead of templated.
+function pick<T>(items: readonly T[]): T {
+  return items[Math.floor(Math.random() * items.length)] as T;
+}
 
 export interface PushContext {
   roster: Record<string, any>;
@@ -127,42 +113,68 @@ export function phasePushPayload(
 ): { payload: Record<string, string>; ttl: number; intent: DeepLinkIntent } | null {
   const gameType = dayManifest?.gameType || 'UNKNOWN';
   const voteType = dayManifest?.voteType || 'UNKNOWN';
-  const promptType = (dayManifest as any)?.promptType || 'UNKNOWN';
-  const gameLabel = GAME_LABELS[gameType] || 'Game';
-  const voteLabel = VOTE_LABELS[voteType] || 'Voting';
+  // Manifest field is `activityType` (PromptType), NOT `promptType` — earlier
+  // versions of this file read the wrong key and silently degraded to 'UNKNOWN',
+  // which is why ACTIVITY/END_ACTIVITY pushes never named the prompt.
+  const activityType = dayManifest?.activityType || 'UNKNOWN';
+  const dilemmaType = dayManifest?.dilemmaType || 'UNKNOWN';
+  const gameDisplay = displayOf(gameType, 'Game');
+  const voteDisplay = displayOf(voteType, 'Vote');
+  const activityDisplay = displayOf(activityType, 'Today\'s prompt');
+  const dilemmaDisplay = displayOf(dilemmaType, 'Dilemma');
+  const voteTagline = taglineOf(voteType) ?? 'Sundown decides.';
+  const gameTagline = taglineOf(gameType) ?? 'Show off, or get shown up.';
+  const activityTagline = taglineOf(activityType) ?? 'Drop your answer for silver.';
+  const dilemmaTagline = taglineOf(dilemmaType) ?? 'Choose carefully.';
 
   switch (trigger) {
     case 'DAY_START':
-      return { payload: { title: `Day ${dayIndex}`, body: `A new day dawns at Pecking Order. Today's vote: ${voteLabel}` }, ttl: EVENT_TTL, intent: { kind: 'main' } };
+      return { payload: { title: `Day ${dayIndex} · ${voteDisplay}`, body: voteTagline }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     case 'VOTING':
-      return { payload: { title: voteLabel, body: `Day ${dayIndex} voting is open — cast your vote now` }, ttl: EVENT_TTL,
+      return { payload: { title: `Vote · ${voteDisplay}`, body: `${voteTagline} Cast yours.` }, ttl: EVENT_TTL,
                intent: { kind: 'cartridge_active', cartridgeId: `voting-${dayIndex}-${voteType}`, cartridgeKind: 'voting' } };
-    case 'NIGHT_SUMMARY':
-      return { payload: { title: "Night has fallen", body: `Day ${dayIndex} results are in...` }, ttl: EVENT_TTL, intent: { kind: 'main' } };
+    case 'NIGHT_SUMMARY': {
+      // Name what actually happened today (game + vote) when we can; fall back
+      // to a generic recap line if the manifest doesn't carry both.
+      const hasGame = gameType !== 'UNKNOWN' && gameType !== 'NONE';
+      const hasVote = voteType !== 'UNKNOWN';
+      const body = hasGame && hasVote
+        ? `${gameDisplay} · ${voteDisplay}. Recap inside.`
+        : hasVote
+          ? `${voteDisplay}. Recap inside.`
+          : 'Recap is in. Spoilers inside.';
+      return { payload: { title: `Day ${dayIndex} wrap`, body }, ttl: EVENT_TTL, intent: { kind: 'main' } };
+    }
     case 'DAILY_GAME':
-      return { payload: { title: `${gameLabel} Time`, body: `Today's game is ${gameLabel} — jump in and play` }, ttl: EVENT_TTL,
+      return { payload: { title: `${gameDisplay} is live`, body: gameTagline }, ttl: EVENT_TTL,
                intent: { kind: 'cartridge_active', cartridgeId: `game-${dayIndex}-${gameType}`, cartridgeKind: 'game' } };
     case 'ACTIVITY':
-      return { payload: { title: "Activity Time", body: `A new activity is live — earn some silver` }, ttl: EVENT_TTL,
-               intent: { kind: 'cartridge_active', cartridgeId: `prompt-${dayIndex}-${promptType}`, cartridgeKind: 'prompt' } };
+      return { payload: { title: `${activityDisplay} is live`, body: activityTagline }, ttl: EVENT_TTL,
+               intent: { kind: 'cartridge_active', cartridgeId: `prompt-${dayIndex}-${activityType}`, cartridgeKind: 'prompt' } };
     case 'OPEN_DMS':
-      return { payload: { title: "DMs Open", body: "Send private messages, form alliances, make deals" }, ttl: EVENT_TTL, intent: { kind: 'main' } };
+      return { payload: { title: 'DMs are open', body: 'Plot in private. Strike a deal. Or break one.' }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     case 'CLOSE_DMS':
-      return { payload: { title: "DMs Closed", body: "Private messages are closed for the day" }, ttl: EVENT_TTL, intent: { kind: 'main' } };
+      return { payload: { title: 'DMs are locked', body: 'Whatever you said, you said. Until tomorrow.' }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     case 'OPEN_GROUP_CHAT':
-      return { payload: { title: "Group Chat Open", body: "The floor is open — make your case" }, ttl: EVENT_TTL, intent: { kind: 'main' } };
+      return { payload: { title: 'The floor is open', body: 'Make your case. Plot moves. Bluff hard.' }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     case 'CLOSE_GROUP_CHAT':
-      return { payload: { title: "Group Chat Closed", body: "The group chat has closed for the day" }, ttl: EVENT_TTL, intent: { kind: 'main' } };
+      return { payload: { title: 'Main chat is closed', body: 'Plays are in. Sundown comes for someone.' }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     case 'END_GAME':
-      return { payload: { title: `${gameLabel} Complete`, body: "Results are in — check how you did" }, ttl: EVENT_TTL,
+      return { payload: { title: `${gameDisplay} · Recap`, body: 'See who flexed, see who flopped.' }, ttl: EVENT_TTL,
                intent: { kind: 'cartridge_result', cartridgeId: `game-${dayIndex}-${gameType}` } };
     case 'END_ACTIVITY':
-      return { payload: { title: "Activity Complete", body: "Results are in — see who earned silver" }, ttl: EVENT_TTL,
-               intent: { kind: 'cartridge_result', cartridgeId: `prompt-${dayIndex}-${promptType}` } };
+      return { payload: { title: `${activityDisplay} · Recap`, body: 'Silver hit. See who got paid.' }, ttl: EVENT_TTL,
+               intent: { kind: 'cartridge_result', cartridgeId: `prompt-${dayIndex}-${activityType}` } };
+    case 'DILEMMA':
+      return { payload: { title: `${dilemmaDisplay} is live`, body: dilemmaTagline }, ttl: EVENT_TTL,
+               intent: { kind: 'cartridge_active', cartridgeId: `dilemma-${dayIndex}-${dilemmaType}`, cartridgeKind: 'dilemma' } };
+    case 'END_DILEMMA':
+      return { payload: { title: `${dilemmaDisplay} · Recap`, body: 'Choices made. See the fallout.' }, ttl: EVENT_TTL,
+               intent: { kind: 'cartridge_result', cartridgeId: `dilemma-${dayIndex}-${dilemmaType}` } };
     case 'CONFESSION_OPEN':
       // Plan 1 routes to chat-root (no deep-link intent into a cartridge yet — Plan 2's match
       // cartridge gets its own START_ACTIVITY push when it spawns later).
-      return { payload: { title: 'Confession', body: 'A confession phase has opened.' }, ttl: EVENT_TTL, intent: { kind: 'main' } };
+      return { payload: { title: 'Confession booth · Open', body: 'Spill in private. Just for you.' }, ttl: EVENT_TTL, intent: { kind: 'main' } };
     default:
       return null;
   }
@@ -180,35 +192,36 @@ export function handleFactPush(
   if (fact.type === FactTypes.CHAT_MSG && fact.payload?.channelId === 'MAIN') {
     // Priority: REPLY > MENTION > GROUP_CHAT_MSG. Each recipient gets at
     // most one push per message; more-specific triggers suppress the generic
-    // group-chat broadcast for that player.
-    const title = name(fact.actorId);
+    // group-chat broadcast for that player. Mentions and replies get a
+    // distinguishing title so they stand out from group-chat noise.
+    const senderName = name(fact.actorId);
     const body = (fact.payload?.content || '').slice(0, 100);
-    const payload = { title, body };
     const replyToAuthorId: string | undefined = fact.payload?.replyToAuthorId;
     const mentionedIds: string[] = Array.isArray(fact.payload?.mentionedIds) ? fact.payload.mentionedIds : [];
     const exclude = new Set<string>([fact.actorId]);
 
     const promises: Promise<void>[] = [];
     if (replyToAuthorId && replyToAuthorId !== fact.actorId && isPushEnabled(manifest, 'REPLY')) {
-      promises.push(pushToPlayer(ctx, replyToAuthorId, payload, EVENT_TTL, { kind: 'main' }));
+      promises.push(pushToPlayer(ctx, replyToAuthorId, { title: `${senderName} replied to you`, body }, EVENT_TTL, { kind: 'main' }));
       exclude.add(replyToAuthorId);
     }
     if (isPushEnabled(manifest, 'MENTION')) {
       for (const mid of mentionedIds) {
         if (exclude.has(mid)) continue;
-        promises.push(pushToPlayer(ctx, mid, payload, EVENT_TTL, { kind: 'main' }));
+        promises.push(pushToPlayer(ctx, mid, { title: `${senderName} mentioned you`, body }, EVENT_TTL, { kind: 'main' }));
         exclude.add(mid);
       }
     }
     if (isPushEnabled(manifest, 'GROUP_CHAT_MSG')) {
-      promises.push(pushBroadcast(ctx, payload, EVENT_TTL, Array.from(exclude), { kind: 'main' }));
+      promises.push(pushBroadcast(ctx, { title: senderName, body }, EVENT_TTL, Array.from(exclude), { kind: 'main' }));
     }
     if (promises.length === 0) return;
     return Promise.allSettled(promises).then(() => {}).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.DM_SENT) {
     if (!isPushEnabled(manifest, 'DM_SENT')) return;
+    const senderName = name(fact.actorId);
     const snippet = (fact.payload?.content || '').slice(0, 100);
-    const payload = { title: name(fact.actorId), body: snippet || 'Sent you a message' };
+    const payload = { title: senderName, body: snippet || `${senderName} DM'd you` };
     const channelId = fact.payload?.channelId as string | undefined;
     const intent: DeepLinkIntent | undefined = channelId ? { kind: 'dm', channelId } : undefined;
 
@@ -231,47 +244,59 @@ export function handleFactPush(
     const intent: DeepLinkIntent | undefined = dayIndex !== undefined
       ? { kind: 'elimination_reveal', dayIndex }
       : undefined;
+    const targetName = name(fact.targetId || fact.actorId);
+    const dayLabel = typeof dayIndex === 'number' ? `Day ${dayIndex}` : 'Today';
     return pushBroadcast(ctx, {
-      title: 'Pecking Order',
-      body: `${name(fact.targetId || fact.actorId)} has been eliminated!`,
+      title: `${targetName} is OUT`,
+      body: pick([
+        `${dayLabel} is brutal. Tap in.`,
+        `It's bad. Tap to watch.`,
+        `The replay's wild. Catch up.`,
+      ]),
     }, ELIMINATION_TTL, undefined, intent).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.WINNER_DECLARED) {
     if (!isPushEnabled(manifest, 'WINNER_DECLARED')) return;
+    const winnerName = name(fact.targetId || fact.actorId);
     return pushBroadcast(ctx, {
-      title: 'Pecking Order',
-      body: `${name(fact.targetId || fact.actorId)} wins!`,
+      title: `${winnerName} is CROWNED`,
+      body: '7 days. One winner. Tap to watch.',
     }, WINNER_TTL, undefined, { kind: 'winner_reveal' }).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.DM_INVITE_SENT && fact.payload?.memberIds) {
     if (!isPushEnabled(manifest, 'DM_SENT')) return;  // reuse DM_SENT toggle
     const memberIds = fact.payload.memberIds as string[];
+    const inviterName = name(fact.actorId);
     const intent: DeepLinkIntent = { kind: 'dm_invite', senderId: fact.actorId };
     return Promise.all(
       memberIds.map((memberId: string) =>
         pushToPlayer(ctx, memberId, {
-          title: name(fact.actorId),
-          body: `${name(fact.actorId)} invited you to chat`,
+          title: `${inviterName} opened a DM with you`,
+          body: 'Tap to accept.',
         }, DM_TTL, intent)
       )
     ).then(() => {}).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.NUDGE && fact.targetId) {
     if (!isPushEnabled(manifest, 'NUDGE')) return;
     return pushToPlayer(ctx, fact.targetId, {
-      title: name(fact.actorId),
-      body: `${name(fact.actorId)} nudged you`,
+      title: `${name(fact.actorId)} nudged you`,
+      body: pick(['Hey. Look up.', "Don't ghost.", 'Eyes on you.']),
     }, EVENT_TTL, { kind: 'main' }).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.WHISPER && fact.targetId) {
     if (!isPushEnabled(manifest, 'WHISPER')) return;
     const text = (fact.payload?.text || '').slice(0, 100);
     return pushToPlayer(ctx, fact.targetId, {
       title: `${name(fact.actorId)} whispered`,
-      body: text || 'Whispered to you',
+      body: text || 'Tap to read.',
     }, EVENT_TTL, { kind: 'main' }).catch(err => console.error('[L1] [Push] Error:', err));
   } else if (fact.type === FactTypes.SILVER_TRANSFER && fact.targetId) {
     if (!isPushEnabled(manifest, 'SILVER_RECEIVED')) return;
     const amount = fact.payload?.amount ?? 0;
     return pushToPlayer(ctx, fact.targetId, {
-      title: name(fact.actorId),
-      body: `${name(fact.actorId)} sent you ${amount} silver`,
+      title: `${name(fact.actorId)} sent ${amount} silver`,
+      body: pick([
+        'Tap. They probably want something.',
+        'Bribe? Gift? Tap to see.',
+        'Suspicious. Tap in.',
+      ]),
     }, EVENT_TTL, { kind: 'main' }).catch(err => console.error('[L1] [Push] Error:', err));
   }
 }

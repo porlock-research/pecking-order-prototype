@@ -175,6 +175,8 @@ export const PushTriggerSchema = z.enum([
   'END_GAME',
   'START_ACTIVITY',
   'END_ACTIVITY',
+  'DILEMMA',
+  'END_DILEMMA',
   // Confession phase
   'CONFESSION_OPEN',
 ]);
@@ -189,6 +191,7 @@ export const DEFAULT_PUSH_CONFIG: Record<PushTrigger, boolean> = {
   DAY_START: true, ACTIVITY: true, VOTING: true, NIGHT_SUMMARY: true, DAILY_GAME: true,
   OPEN_DMS: true, CLOSE_DMS: true, OPEN_GROUP_CHAT: true, CLOSE_GROUP_CHAT: true,
   START_GAME: true, END_GAME: true, START_ACTIVITY: true, END_ACTIVITY: true,
+  DILEMMA: true, END_DILEMMA: true,
   CONFESSION_OPEN: true,
 };
 
