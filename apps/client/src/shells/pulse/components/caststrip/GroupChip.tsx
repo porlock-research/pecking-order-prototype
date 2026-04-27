@@ -47,8 +47,8 @@ export function GroupChip({ entry, onTap }: Props) {
                 <PersonaImage
                   avatarUrl={member.avatarUrl}
                   cacheKey={id}
-                  preferredVariant="full"
-                  fallbackChain={['medium', 'headshot']}
+                  preferredVariant="headshot"
+                  fallbackChain={['medium', 'full']}
                   initials={initialsOf(member.personaName)}
                   playerColor={memberColor}
                   alt=""

@@ -114,8 +114,8 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
             <PersonaImage
               avatarUrl={player.avatarUrl}
               cacheKey={entry.id}
-              preferredVariant="full"
-              fallbackChain={['medium', 'headshot']}
+              preferredVariant="headshot"
+              fallbackChain={['medium', 'full']}
               initials={initialsOf(player.personaName)}
               playerColor={color}
               alt=""
@@ -253,8 +253,8 @@ function CastChipInner({ entry, onTap, pickingMode, picked, pickable, locked = f
           <PersonaImage
             avatarUrl={player.avatarUrl}
             cacheKey={entry.id}
-            preferredVariant="full"
-            fallbackChain={['medium', 'headshot']}
+            preferredVariant="headshot"
+            fallbackChain={['medium', 'full']}
             initials={initialsOf(player.personaName)}
             playerColor={color}
             alt=""
