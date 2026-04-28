@@ -104,6 +104,12 @@ export async function requireAuth(redirectTo?: string): Promise<SessionUser> {
 function isLocalHostname(hostname: string): boolean {
   if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
   if (hostname === '::1') return true;
+  // `next dev -H 0.0.0.0` (turbo's default) binds to all interfaces and
+  // surfaces 0.0.0.0 as `req.nextUrl.hostname`; without this branch, cookies
+  // get `secure:true + domain:'.peckingorder.ca'` and silently drop on a
+  // dev login redirect — the magic-link verify completes server-side but
+  // the browser never persists the session cookie.
+  if (hostname === '0.0.0.0') return true;
   if (hostname.endsWith('.ts.net')) return true;
   if (hostname.endsWith('.local')) return true;
   // RFC1918 private IPv4 ranges (LAN dev hosts).
