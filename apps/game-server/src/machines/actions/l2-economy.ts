@@ -189,8 +189,10 @@ export const l2EconomyActions = {
 
   // --- Completed phase recording (for timeline) ---
 
-  /** Record voting result in completedPhases. Called at nightSummary entry
-   *  (not at CARTRIDGE.VOTE_RESULT time) so the reveal is delayed for dramatic effect. */
+  /** Record voting result in completedPhases. Default fire site is nightSummary
+   *  entry (delayed reveal). Presets that schedule the ELIMINATE timeline event
+   *  fire this earlier, in activeSession; the second call at nightSummary entry
+   *  no-ops because pendingElimination has already been cleared. */
   recordCompletedVoting: assign({
     completedPhases: ({ context }: any) => {
       const result = context.pendingElimination;

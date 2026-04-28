@@ -162,6 +162,36 @@ const PRESET_CONFIGS: Record<SchedulePreset, PresetConfig> = {
       { action: 'END_DAY',         clockTime: '20:01' },
     ],
   },
+  // PLAYTEST_NEXT — 10-hour day, host sets startTime at 10:00 local (PDT).
+  // Schedules ELIMINATE 2 min after CLOSE_VOTING so processNightSummary fires
+  // before END_DAY: status flips, push fires, and the 28 min until END_DAY is
+  // real post-elim chat time (L3 still alive). Confession booth opens 1 min
+  // after the elim push so players already on screen see the booth banner;
+  // CONFESSION_OPEN push self-suppresses when scheduled (see l3-session.ts
+  // confessionLayer.posting entry).
+  PLAYTEST_NEXT: {
+    type: 'calendar',
+    firstEventTime: '10:00',
+    events: [
+      { action: 'OPEN_GROUP_CHAT',      clockTime: '10:00' },
+      { action: 'START_DILEMMA',        clockTime: '10:01', condition: 'hasDilemma' },
+      { action: 'OPEN_DMS',             clockTime: '11:00' },
+      { action: 'START_GAME',           clockTime: '12:00', condition: 'hasGame' },
+      { action: 'END_GAME',             clockTime: '13:30', condition: 'hasGame' },
+      { action: 'CLOSE_DMS',            clockTime: '13:31' },
+      { action: 'START_ACTIVITY',       clockTime: '14:00', condition: 'hasActivity' },
+      { action: 'END_ACTIVITY',         clockTime: '15:30', condition: 'hasActivity' },
+      { action: 'OPEN_DMS',             clockTime: '15:31' },
+      { action: 'END_DILEMMA',          clockTime: '16:30', condition: 'hasDilemma' },
+      { action: 'OPEN_VOTING',          clockTime: '17:00' },
+      { action: 'CLOSE_DMS',            clockTime: '17:01' },
+      { action: 'CLOSE_VOTING',         clockTime: '19:30' },
+      { action: 'ELIMINATE',            clockTime: '19:32' },
+      { action: 'START_CONFESSION_CHAT', clockTime: '19:33' },
+      { action: 'END_CONFESSION_CHAT',  clockTime: '19:57' },
+      { action: 'END_DAY',              clockTime: '20:00' },
+    ],
+  },
   SMOKE_TEST: {
     type: 'offset',
     dayDurationMin: 5,

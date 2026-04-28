@@ -234,7 +234,7 @@ function resolveSocialParams(
   totalDays: number,
   alivePlayers: number,
   rules: PeckingOrderRuleset['social'],
-): { dmCharsPerPlayer: number; dmPartnersPerPlayer: number; requireDmInvite: boolean; dmSlotsPerPlayer: number } {
+): { dmCharsPerPlayer: number; dmPartnersPerPlayer: number; requireDmInvite: boolean; dmSlotsPerPlayer: number; dmCost: number; disableNudgeThrottle: boolean } {
   let dmChars = scaleValue(dayIndex, totalDays, rules.dmChars);
   // PER_ACTIVE_PLAYER: base is per-player, multiply by alive count
   if (rules.dmChars.mode === 'PER_ACTIVE_PLAYER') {
@@ -245,6 +245,8 @@ function resolveSocialParams(
     dmPartnersPerPlayer: scaleValue(dayIndex, totalDays, rules.dmPartners),
     requireDmInvite: rules.requireDmInvite ?? false,
     dmSlotsPerPlayer: rules.dmSlotsPerPlayer ?? 5,
+    dmCost: rules.dmCost,
+    disableNudgeThrottle: rules.disableNudgeThrottle ?? false,
   };
 }
 

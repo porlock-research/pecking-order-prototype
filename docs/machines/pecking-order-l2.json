@@ -4,7 +4,7 @@
   "filePath": "src/machines/l2-orchestrator.ts",
   "stats": {
     "stateCount": 10,
-    "transitionCount": 50,
+    "transitionCount": 52,
     "eventTypes": [
       "*",
       "ADMIN.ELIMINATE_PLAYER",
@@ -27,6 +27,7 @@
       "SILVER_TRANSFER.REJECTED",
       "SOCIAL.SEND_MSG",
       "SYSTEM.INIT",
+      "SYSTEM.PLAYER_CONNECTED",
       "SYSTEM.PLAYER_JOINED",
       "SYSTEM.WAKEUP",
       "xstate.done.actor.l3-session",
@@ -54,6 +55,7 @@
         "SYSTEM.WAKEUP",
         "ADMIN.NEXT_STAGE",
         "SYSTEM.PLAYER_JOINED",
+        "SYSTEM.PLAYER_CONNECTED",
         "FACT.RECORD",
         "*"
       ]
@@ -180,6 +182,11 @@
     {
       "source": "preGame",
       "target": "preGame",
+      "event": "SYSTEM.PLAYER_CONNECTED"
+    },
+    {
+      "source": "preGame",
+      "target": "preGame",
       "event": "FACT.RECORD"
     },
     {
@@ -301,6 +308,11 @@
       "source": "dayLoop.activeSession",
       "target": "dayLoop.activeSession",
       "event": "*"
+    },
+    {
+      "source": "dayLoop.activeSession",
+      "target": "dayLoop.activeSession",
+      "event": "ADMIN.INJECT_TIMELINE_EVENT"
     },
     {
       "source": "dayLoop.activeSession",

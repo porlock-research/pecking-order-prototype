@@ -356,7 +356,20 @@ export const dailySessionMachine = setup({
               entry: [
                 'openConfessionChannel',
                 'emitConfessionPhaseStartedFact',
-                sendParent({ type: 'PUSH.PHASE', trigger: 'CONFESSION_OPEN' } as any),
+                // Push fires for admin-injected opens (no scheduled START_CONFESSION_CHAT
+                // in this day's timeline) where the booth is the player's first signal.
+                // For scheduled booths (preset includes START_CONFESSION_CHAT), an
+                // adjacent elim/phase push has already brought players on screen, and
+                // the persistent ConfessionPhaseBanner is the visual signal — extra
+                // push would be redundant and noisy.
+                sendParent(({ context }: any) => {
+                  const isScheduled = (context.manifest?.timeline ?? []).some(
+                    (e: any) => e.action === 'START_CONFESSION_CHAT',
+                  );
+                  return isScheduled
+                    ? { type: 'NOOP' }
+                    : { type: 'PUSH.PHASE', trigger: 'CONFESSION_OPEN' };
+                }),
               ],
               on: {
                 'INTERNAL.END_CONFESSION_CHAT': {

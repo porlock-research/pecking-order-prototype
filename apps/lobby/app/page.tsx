@@ -472,6 +472,7 @@ export default function LobbyRoot() {
           dmCost: dynamicConfig.social.dmCost,
           requireDmInvite: dynamicConfig.social.requireDmInvite,
           dmSlotsPerPlayer: dynamicConfig.social.dmSlotsPerPlayer,
+          disableNudgeThrottle: dynamicConfig.social.disableNudgeThrottle,
           groupDmEnabled: true,
         },
         inactivity: dynamicConfig.inactivity,

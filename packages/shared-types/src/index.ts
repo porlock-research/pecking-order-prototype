@@ -72,7 +72,7 @@ export const LobbySchema = z.object({
 
 export const TimelineEventSchema = z.object({
   time: z.string(), // "09:00" or ISO string
-  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "OPEN_DMS", "CLOSE_DMS", "OPEN_GROUP_CHAT", "CLOSE_GROUP_CHAT", "START_GAME", "END_GAME", "START_DILEMMA", "END_DILEMMA", "START_CONFESSION_CHAT", "END_CONFESSION_CHAT", "END_DAY"]),
+  action: z.enum(["START_CARTRIDGE", "INJECT_PROMPT", "START_ACTIVITY", "END_ACTIVITY", "OPEN_VOTING", "CLOSE_VOTING", "ELIMINATE", "OPEN_DMS", "CLOSE_DMS", "OPEN_GROUP_CHAT", "CLOSE_GROUP_CHAT", "START_GAME", "END_GAME", "START_DILEMMA", "END_DILEMMA", "START_CONFESSION_CHAT", "END_CONFESSION_CHAT", "END_DAY"]),
   payload: z.any().optional(),
 });
 
@@ -142,6 +142,8 @@ export const DailyManifestSchema = z.object({
   dmPartnersPerPlayer: z.number().optional(),
   requireDmInvite: z.boolean().optional(),
   dmSlotsPerPlayer: z.number().optional(),
+  dmCost: z.number().optional(),
+  disableNudgeThrottle: z.boolean().optional(),
 });
 export type DailyManifest = z.infer<typeof DailyManifestSchema>;
 
@@ -215,7 +217,7 @@ export function resolveScheduling(
 
 // --- Schedule Presets (lobby-side templates for timeline timestamps) ---
 
-export const SchedulePresetSchema = z.enum(['DEFAULT', 'COMPACT', 'SPEED_RUN', 'SMOKE_TEST', 'PLAYTEST', 'PLAYTEST_SHORT']);
+export const SchedulePresetSchema = z.enum(['DEFAULT', 'COMPACT', 'SPEED_RUN', 'SMOKE_TEST', 'PLAYTEST', 'PLAYTEST_SHORT', 'PLAYTEST_NEXT']);
 export type SchedulePreset = z.infer<typeof SchedulePresetSchema>;
 
 // --- Scaling Mode (for social rules in dynamic manifests) ---
@@ -262,6 +264,8 @@ export const PeckingOrderSocialRulesSchema = z.object({
   groupDmEnabled: z.boolean(),
   requireDmInvite: z.boolean().default(false),
   dmSlotsPerPlayer: z.number().min(1).max(20).default(5),
+  /** When true, removes the per-(sender,target,day) nudge rate-limit. Default false (existing behavior). */
+  disableNudgeThrottle: z.boolean().optional(),
 });
 export type PeckingOrderSocialRules = z.infer<typeof PeckingOrderSocialRulesSchema>;
 

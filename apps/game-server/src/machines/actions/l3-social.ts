@@ -14,6 +14,10 @@ function channelHasCapability(
   return ch.capabilities?.includes(capability) ?? false;
 }
 
+function resolveDmCost(context: any): number {
+  return context.manifest?.dmCost ?? Config.dm.silverCost;
+}
+
 export const l3SocialActions = {
   // Unified message handler — handles existing channels, new channel creation, and legacy targetId
   processChannelMessage: assign(({ context, event }: any) => {
@@ -85,7 +89,7 @@ export const l3SocialActions = {
     const ch = channels[channelId];
     const isExempt = ch?.constraints?.exempt;
     const isMainOrExempt = channelId === 'MAIN' || isExempt;
-    const silverCost = isMainOrExempt ? 0 : (ch?.constraints?.silverCost ?? Config.dm.silverCost);
+    const silverCost = isMainOrExempt ? 0 : (ch?.constraints?.silverCost ?? resolveDmCost(context));
     const roster = silverCost > 0
       ? deductSilver(context.roster, senderId, silverCost)
       : context.roster;
@@ -214,7 +218,7 @@ export const l3SocialActions = {
         reason = 'INVITE_REQUIRED';
       } else if (!channel.memberIds.includes(senderId)) {
         reason = 'INVITE_REQUIRED';
-      } else if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) {
+      } else if ((context.roster[senderId]?.silver ?? 0) < resolveDmCost(context)) {
         reason = 'INSUFFICIENT_SILVER';
       } else {
         reason = 'CHAR_LIMIT';
@@ -226,7 +230,7 @@ export const l3SocialActions = {
         reason = 'SELF_DM';
       } else if (recipientIds.some((id: string) => context.roster[id]?.status === PlayerStatuses.ELIMINATED)) {
         reason = 'TARGET_ELIMINATED';
-      } else if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) {
+      } else if ((context.roster[senderId]?.silver ?? 0) < resolveDmCost(context)) {
         reason = 'INSUFFICIENT_SILVER';
       } else {
         const used = context.slotsUsedByPlayer[senderId] ?? 0;
@@ -656,16 +660,15 @@ export const l3SocialGuards = {
     return context.chatLog.some((msg: any) => msg.id === event.messageId);
   },
 
-  // Guard: nudge target must be alive, one per sender→target per day
+  // Guard: nudge target must be alive. Per-(sender,target,day) rate limit
+  // applies unless manifest.disableNudgeThrottle is set (per-game opt-out).
   isNudgeAllowed: ({ context, event }: any) => {
     if (event.type !== Events.Social.NUDGE) return false;
     const { senderId, targetId } = event;
     if (senderId === targetId) return false;
     if (!context.roster[targetId] || context.roster[targetId].status !== PlayerStatuses.ALIVE) return false;
     if (!context.roster[senderId] || context.roster[senderId].status !== PlayerStatuses.ALIVE) return false;
-    // Rate limit: check facts for existing NUDGE from sender→target today
-    // Facts are recorded via L2, not directly available in L3 context.
-    // We use a lightweight tracking approach: store nudges in context.
+    if (context.manifest?.disableNudgeThrottle) return true;
     const nudges = context.nudgesThisDay || {};
     const key = `${senderId}:${targetId}`;
     if (nudges[key]) return false;
@@ -761,7 +764,7 @@ export const l3SocialGuards = {
       const charsUsed = context.dmCharsByPlayer[senderId] || 0;
       if (charsUsed + event.content.length > charLimit) return false;
       // Silver check
-      const silverCost = channel.constraints?.silverCost ?? Config.dm.silverCost;
+      const silverCost = channel.constraints?.silverCost ?? resolveDmCost(context);
       if ((context.roster[senderId]?.silver ?? 0) < silverCost) return false;
       return true;
     }
@@ -783,7 +786,7 @@ export const l3SocialGuards = {
     if (used >= context.dmSlotsPerPlayer) return false;
 
     // Silver check
-    if ((context.roster[senderId]?.silver ?? 0) < Config.dm.silverCost) return false;
+    if ((context.roster[senderId]?.silver ?? 0) < resolveDmCost(context)) return false;
 
     return true;
   },

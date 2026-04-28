@@ -17,6 +17,7 @@ export interface DynamicRulesetConfig {
     dmCost: number;
     requireDmInvite: boolean;       // require mutual invite before DM
     dmSlotsPerPlayer: number;       // max DM conversations per player per day (when invite mode on)
+    disableNudgeThrottle: boolean;  // remove the per-(sender,target,day) nudge rate limit
   };
   // Inactivity
   inactivity: {
@@ -33,7 +34,7 @@ export interface DynamicRulesetConfig {
     maxDays: number;
   };
   // Schedule preset
-  schedulePreset: 'DEFAULT' | 'COMPACT' | 'PLAYTEST' | 'PLAYTEST_SHORT' | 'SPEED_RUN';
+  schedulePreset: 'DEFAULT' | 'COMPACT' | 'PLAYTEST' | 'PLAYTEST_SHORT' | 'PLAYTEST_NEXT' | 'SPEED_RUN';
   // Start time
   startTime: string;  // datetime-local format: "YYYY-MM-DDTHH:MM"
   // Min players to start
@@ -56,6 +57,7 @@ export function createDefaultDynamicConfig(): DynamicRulesetConfig {
       dmCost: 1,
       requireDmInvite: false,
       dmSlotsPerPlayer: 5,
+      disableNudgeThrottle: false,
     },
     inactivity: {
       enabled: true,
@@ -124,7 +126,7 @@ interface PresetTimelineEvent {
 }
 
 const SCHEDULE_PRESETS: {
-  value: 'DEFAULT' | 'COMPACT' | 'PLAYTEST' | 'PLAYTEST_SHORT' | 'SPEED_RUN';
+  value: 'DEFAULT' | 'COMPACT' | 'PLAYTEST' | 'PLAYTEST_SHORT' | 'PLAYTEST_NEXT' | 'SPEED_RUN';
   label: string;
   desc: string;
   dayLength: string;
@@ -204,6 +206,31 @@ const SCHEDULE_PRESETS: {
       { action: 'OPEN_VOTING', label: 'Voting Opens', time: '19:02' },
       { action: 'CLOSE_VOTING', label: 'Voting Closes', time: '20:00' },
       { action: 'END_DAY', label: 'Day Ends', time: '20:01' },
+    ],
+  },
+  {
+    value: 'PLAYTEST_NEXT',
+    label: 'Playtest Next',
+    desc: 'Full day, dense beats — 10am to 8pm. Elim 30min before close',
+    dayLength: '~10 hours',
+    events: [
+      { action: 'OPEN_GROUP_CHAT',       label: 'Group Chat',          time: '10:00' },
+      { action: 'START_DILEMMA',         label: 'Dilemma Starts',      time: '10:01' },
+      { action: 'OPEN_DMS',              label: 'DMs Open',            time: '11:00' },
+      { action: 'START_GAME',            label: 'Game Starts',         time: '12:00', condition: 'hasGame' },
+      { action: 'END_GAME',              label: 'Game Ends',           time: '13:30', condition: 'hasGame' },
+      { action: 'CLOSE_DMS',             label: 'DMs Close',           time: '13:31' },
+      { action: 'START_ACTIVITY',        label: 'Activity Starts',     time: '14:00', condition: 'hasActivity' },
+      { action: 'END_ACTIVITY',          label: 'Activity Ends',       time: '15:30', condition: 'hasActivity' },
+      { action: 'OPEN_DMS',              label: 'DMs Re-open',         time: '15:31' },
+      { action: 'END_DILEMMA',           label: 'Dilemma Ends',        time: '16:30' },
+      { action: 'OPEN_VOTING',           label: 'Voting Opens',        time: '17:00' },
+      { action: 'CLOSE_DMS',             label: 'DMs Close',           time: '17:01' },
+      { action: 'CLOSE_VOTING',          label: 'Voting Closes',       time: '19:30' },
+      { action: 'ELIMINATE',             label: 'Elimination',         time: '19:32' },
+      { action: 'START_CONFESSION_CHAT', label: 'Confession Booth',    time: '19:33' },
+      { action: 'END_CONFESSION_CHAT',   label: 'Confession Closes',   time: '19:57' },
+      { action: 'END_DAY',               label: 'Day Ends',            time: '20:00' },
     ],
   },
   {
@@ -589,6 +616,17 @@ export function DynamicRulesetBuilder({
               min={0}
               max={20}
             />
+          </div>
+
+          {/* Nudge Throttle */}
+          <div className="space-y-2 pt-1 border-t border-skin-base/30">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono text-skin-dim/60">Allow repeat nudges (no throttle)</span>
+              <Toggle checked={config.social.disableNudgeThrottle} onChange={v => updateSocial({ disableNudgeThrottle: v })} size="md" data-testid="disable-nudge-throttle-toggle" />
+            </div>
+            <p className="text-[8px] font-mono text-skin-dim/30">
+              By default each sender can nudge each target only once per day. Toggle on to remove the limit.
+            </p>
           </div>
 
           {/* DM Invite Mode */}

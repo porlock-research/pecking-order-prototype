@@ -295,6 +295,21 @@ export const orchestratorMachine = setup({
                 ]
               },
               {
+                // ELIMINATE: schedulable timeline event that applies the pending
+                // voting elimination early (before END_DAY), enabling a post-vote
+                // chat window with status already flipped. Both actions are
+                // idempotent — pendingElimination is cleared by processNightSummary,
+                // so the same actions in nightSummary entry no-op the second time.
+                // Presets that don't schedule ELIMINATE keep the original behavior:
+                // elim applies at END_DAY when nightSummary entry fires.
+                guard: ({ event }: any) => event.payload?.action === 'ELIMINATE',
+                actions: [
+                  'logAdminInject',
+                  'recordCompletedVoting',
+                  'processNightSummary',
+                ],
+              },
+              {
                 // Ruleset gate: skip START_CONFESSION_CHAT when confessions.enabled !== true.
                 guard: ({ context, event }: any) =>
                   event.payload?.action === 'START_CONFESSION_CHAT' &&
