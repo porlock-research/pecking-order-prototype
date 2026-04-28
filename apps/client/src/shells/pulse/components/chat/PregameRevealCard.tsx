@@ -71,13 +71,15 @@ export function PregameRevealCard({ actorId, question, answer }: Props) {
         </span>
       </div>
 
-      {/* The question label — small, muted, italic */}
+      {/* The question label — small, tracked-caps. Uses a pink-tinted neutral
+          (accent-mixed text-3) instead of plain text-3 so it reads as part of
+          the magazine card's color family rather than gray-on-color. */}
       <div style={{
         fontSize: 11,
         fontWeight: 700,
         letterSpacing: '0.12em',
         textTransform: 'uppercase',
-        color: 'var(--pulse-text-3)',
+        color: 'color-mix(in oklch, var(--pulse-accent) 45%, var(--pulse-text-3))',
         marginBottom: 8,
       }}>
         {question}

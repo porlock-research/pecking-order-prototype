@@ -19,11 +19,14 @@ export function DmStatusRing({ partnerId, channelId, color, size, children }: Pr
   if (channelId && typingIn === channelId) status = 'typing';
   else if (isOnline) status = 'online';
 
-  // Typing reads via ring width + full opacity; no ambient scale loop.
-  // "Only pending/urgent state pulses ambiently" — typing is transient.
-  const ringWidth = status === 'typing' ? 3 : 2;
+  // Typing reads via an outer halo (box-shadow) + full opacity; no ambient
+  // scale loop. "Only pending/urgent state pulses ambiently" — typing is
+  // transient. The ring is a fixed 2px border so the layout never shifts;
+  // typing emphasis comes from a 1px box-shadow outline (paints outside the
+  // box, doesn't trigger layout) instead of growing the border-width.
   const opacity = status === 'idle' ? 0.3 : 1;
-  const outer = size + ringWidth * 4;
+  const haloOutline = status === 'typing' ? `0 0 0 1px ${color}` : 'none';
+  const outer = size + 8; // room for fixed 2px border + halo
 
   return (
     <div
@@ -31,9 +34,10 @@ export function DmStatusRing({ partnerId, channelId, color, size, children }: Pr
         width: outer,
         height: outer,
         borderRadius: '50%',
-        border: `${ringWidth}px solid ${color}`,
+        border: `2px solid ${color}`,
         opacity,
-        transition: 'opacity 180ms ease, border-width 180ms ease',
+        boxShadow: haloOutline,
+        transition: 'opacity 180ms ease, box-shadow 180ms ease',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

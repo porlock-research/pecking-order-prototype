@@ -298,7 +298,7 @@ export function PulseInput() {
               onKeyDown={handleKeyDown}
               disabled={!composerEnabled}
               placeholder={
-                groupChatOpen ? 'Message...'
+                groupChatOpen ? 'Message the chat…'
                 : isPregame ? 'Whisper a cast member — try /whisper'
                 : 'Group chat is closed'
               }

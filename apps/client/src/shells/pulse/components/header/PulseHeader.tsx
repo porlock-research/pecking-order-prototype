@@ -55,7 +55,11 @@ export function PulseHeader({ onCompose, onOpenPanel }: Props) {
       padding: 'var(--pulse-space-sm) var(--pulse-space-md)',
       background: 'var(--pulse-surface)',
       borderBottom: `${chrome.borderWidth}px solid ${chrome.borderColor}`,
-      transition: 'border-bottom-color 240ms ease, border-bottom-width 240ms ease',
+      // Only transition the color, not the width. Animating border-width
+      // forces every layout below to shift mid-tween — janky on mid-tier
+      // Android. Phase changes are infrequent dramatic beats; the 1–2px
+      // width snap reads as punctuation, not glitch.
+      transition: 'border-bottom-color 240ms ease',
       position: 'relative', zIndex: PULSE_Z.flow,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--pulse-space-md)' }}>

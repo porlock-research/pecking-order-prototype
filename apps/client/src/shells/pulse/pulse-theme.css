@@ -479,7 +479,10 @@
 /* Message inline actions — collapse to zero space when hidden, expand on
    hover (desktop) or tap (touch). Inline layout, not absolute, so they can
    never overlap adjacent rows. The `.pulse-msg-group` wrapper is the hover
-   scope since actions are a sibling of the message content, not a child. */
+   scope since actions are a sibling of the message content, not a child.
+   Only max-height + opacity transition; margin/padding/border-width snap
+   so we're animating one layout property instead of four (cheaper reflow
+   on mid-tier Android). */
 .pulse-msg-actions {
   max-height: 0;
   opacity: 0;
@@ -488,7 +491,7 @@
   border-width: 0 !important;
   overflow: hidden;
   pointer-events: none;
-  transition: max-height 0.18s ease, opacity 0.15s ease, margin-top 0.18s ease, padding 0.18s ease;
+  transition: max-height 0.18s ease, opacity 0.15s ease;
 }
 /* Expand rule — matches desktop hover, keyboard focus, and the tap-to-toggle
    class. Kept outside of media queries so the tapped class works on any

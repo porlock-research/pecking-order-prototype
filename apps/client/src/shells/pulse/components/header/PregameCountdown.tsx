@@ -82,6 +82,8 @@ export function PregameCountdown({ startTime }: Props) {
         borderRadius: 'var(--pulse-radius-pill)',
         background: 'var(--pulse-surface-2)',
         border: `1px solid color-mix(in oklch, ${color} 30%, transparent)`,
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
       }}
     >
       <span style={{
@@ -90,16 +92,18 @@ export function PregameCountdown({ startTime }: Props) {
         letterSpacing: '0.16em',
         textTransform: 'uppercase',
         color: 'var(--pulse-text-3)',
+        whiteSpace: 'nowrap',
       }}>
-        Day 1 in
+        Starts in
       </span>
       <span style={{
         fontFamily: 'var(--po-font-display)',
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: 700,
         letterSpacing: '-0.01em',
         color,
         fontVariantNumeric: 'tabular-nums',
+        whiteSpace: 'nowrap',
       }}>
         {value}
       </span>

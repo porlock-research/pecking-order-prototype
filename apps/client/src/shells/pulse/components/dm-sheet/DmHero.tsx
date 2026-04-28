@@ -131,10 +131,11 @@ export function DmHero({ player, colorIdx, rank, isLeader, isOnline, channelId, 
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <span aria-hidden="true" style={{
-                width: variant === v ? 10 : 7,
-                height: variant === v ? 10 : 7,
+                width: 10,
+                height: 10,
                 borderRadius: '50%',
-                transition: 'width 140ms ease, height 140ms ease, background 140ms ease',
+                transform: variant === v ? 'scale(1)' : 'scale(0.7)',
+                transition: 'transform 140ms ease, background 140ms ease',
                 background: variant === v ? 'var(--pulse-on-accent)' : 'rgba(255,255,255,0.4)',
               }} />
             </button>
