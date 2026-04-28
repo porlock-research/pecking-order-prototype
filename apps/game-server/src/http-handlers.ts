@@ -494,6 +494,16 @@ async function handleAdmin(ctx: HandlerContext, req: Request): Promise<Response>
       }
       log('info', 'L1', 'Admin sending player event', { senderId, eventType: event.type });
       ctx.actor.send({ ...event, senderId });
+    } else if (body.type === "UPDATE_PUSH_CONFIG") {
+      // Live-patch manifest.pushConfig (no DO re-init needed). Body shape:
+      // { type: 'UPDATE_PUSH_CONFIG', pushConfig: { OPEN_DMS: false, CLOSE_DMS: false, ... } }
+      // Missing keys retain their existing value (or DEFAULT_PUSH_CONFIG).
+      const { pushConfig } = body;
+      if (!pushConfig || typeof pushConfig !== 'object') {
+        return new Response(JSON.stringify({ error: 'pushConfig object required' }), { status: 400 });
+      }
+      log('info', 'L1', 'Admin patching pushConfig', { keys: Object.keys(pushConfig).join(',') });
+      ctx.actor.send({ type: Events.Admin.UPDATE_PUSH_CONFIG, pushConfig });
     } else {
       return new Response("Unknown Admin Command", { status: 400 });
     }

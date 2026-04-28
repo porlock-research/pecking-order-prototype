@@ -49,6 +49,7 @@ export type GameEvent =
   | { type: 'ADMIN.NEXT_STAGE' }
   | { type: 'ADMIN.INJECT_TIMELINE_EVENT'; payload: { action: string; payload?: any } }
   | { type: 'ADMIN.ELIMINATE_PLAYER'; playerId: string; reason?: string }
+  | { type: 'ADMIN.UPDATE_PUSH_CONFIG'; pushConfig: Record<string, boolean> }
   | { type: 'FACT.RECORD'; fact: Fact }
   | { type: 'INTERNAL.READY' }
   | { type: `VOTE.${string}`; senderId: string; targetId?: string; [key: string]: any }
@@ -112,6 +113,28 @@ export const orchestratorMachine = setup({
           error: String((event as any)?.error ?? (event as any)?.data ?? 'unknown'),
           stack: (event as any)?.error?.stack,
         }),
+    },
+    // Live patch of manifest.pushConfig — admin-driven, accepts a partial map
+    // of trigger → boolean and merges into the existing pushConfig (missing
+    // entries fall back to DEFAULT_PUSH_CONFIG via isPushEnabled). Available
+    // in every state so the playtest host can quiet noisy notifications
+    // without needing to re-init the DO.
+    'ADMIN.UPDATE_PUSH_CONFIG': {
+      actions: [
+        assign({
+          manifest: ({ context, event }: any) => {
+            if (!context.manifest) return context.manifest;
+            return {
+              ...context.manifest,
+              pushConfig: { ...(context.manifest.pushConfig ?? {}), ...event.pushConfig },
+            };
+          },
+        }),
+        ({ event }: any) =>
+          log('info', 'L2', 'pushConfig patched', {
+            keys: Object.keys(event.pushConfig ?? {}).join(','),
+          }),
+      ],
     },
   },
   context: {
