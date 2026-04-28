@@ -135,7 +135,7 @@ export type DayPhase = 'pregame' | 'day' | 'night';
  */
 export function derivePhase(manifest: any, dayIndex: number, now: number): DayPhase {
   const day = manifest?.days?.[dayIndex - 1] ?? manifest?.days?.[dayIndex];
-  if (!day?.timeline || manifest?.scheduling !== 'PRE_SCHEDULED') return 'day';
+  if (!day?.timeline) return 'day';
   const tl = (day.timeline as any[]).filter((e) => e.time?.includes('T'));
   if (tl.length === 0) return 'day';
   const times = tl.map((e) => new Date(e.time).getTime());
@@ -387,7 +387,7 @@ export function usePillStates(): PillState[] {
     // COMPLETED representation (completed included: a Day N completed cartridge
     // makes any past-due timeline entry for that kind redundant).
     const day = manifest?.days?.[dayIndex - 1] ?? manifest?.days?.[dayIndex];
-    if (day?.timeline && manifest?.scheduling === 'PRE_SCHEDULED') {
+    if (day?.timeline) {
       const now = Date.now();
       for (const ev of day.timeline as any[]) {
         const kind = ACTION_TO_KIND[ev.action];
@@ -434,7 +434,7 @@ export function usePillStates(): PillState[] {
     // Pair OPEN_* and CLOSE_* timeline events into single window pills with
     // start + end times. Skip the urgent / acted / unread treatments (per
     // mockup): social windows are not cartridges and have no "result".
-    if (day?.timeline && manifest?.scheduling === 'PRE_SCHEDULED') {
+    if (day?.timeline) {
       const now = Date.now();
       const tl = day.timeline as any[];
       // Collect already-paired open events keyed by (action, time) so duplicates
@@ -478,14 +478,18 @@ export function usePillStates(): PillState[] {
     }
 
     // ── Cartridge open/close-time stamping + urgent upgrade ───────────────
-    // PRE_SCHEDULED only. Walks the day's timeline. For OPEN_* events stamps
-    // startTime on the matching active cartridge pill so chronological sort
-    // keeps it in its original row position when it transitions from
-    // upcoming → active (without this, active pills sort to startTime ?? 0
-    // and jump to the front of the row). For CLOSE_* events stamps endTime
-    // (so countdowns format) and upgrades needs-action → urgent when
-    // close is within URGENT_THRESHOLD_MS and player hasn't acted.
-    if (day?.timeline && manifest?.scheduling === 'PRE_SCHEDULED') {
+    // Walks the day's timeline whenever one is populated, regardless of
+    // scheduling mode. DYNAMIC games resolve their day's timeline at
+    // runtime (game-master.ts), so by the time a cartridge becomes active
+    // the timeline is present; ADMIN games without a timeline simply skip
+    // the walk and lean on the lifecycle-fallback in the sort below.
+    // For OPEN_* events stamps startTime on the matching active cartridge
+    // pill so chronological sort keeps it in its original row position
+    // when it transitions from upcoming → active. For CLOSE_* events
+    // stamps endTime (so countdowns format) and upgrades needs-action →
+    // urgent when close is within URGENT_THRESHOLD_MS and player hasn't
+    // acted.
+    if (day?.timeline) {
       const now = tickNow;
       for (const ev of day.timeline as any[]) {
         if (!ev.time?.includes('T')) continue;
@@ -539,7 +543,7 @@ export function usePillStates(): PillState[] {
     let phase: 'pregame' | 'day' | 'night' = 'day';
     let dayStartMs: number | null = null;
     let dayEndMs: number | null = null;
-    if (day?.timeline && manifest?.scheduling === 'PRE_SCHEDULED') {
+    if (day?.timeline) {
       const tl = (day.timeline as any[]).filter(e => e.time?.includes('T'));
       if (tl.length > 0) {
         const times = tl.map(e => new Date(e.time).getTime());
@@ -584,13 +588,36 @@ export function usePillStates(): PillState[] {
     }
 
     // ── Chronological sort (active/upcoming pills) ─────────────────────────
-    // Sort by startTime ascending. Active pills without startTime go first
-    // (they're already running). Completed pills go after upcoming so the
-    // row reads chronologically left-to-right within a day.
+    // Sort by startTime ascending. When startTime is undefined (ADMIN games
+    // without a manifest timeline, DYNAMIC games where the day hasn't been
+    // resolved yet, or any timing gap), synthesize a fallback from the
+    // pill's lifecycle so it sorts into a sensible chronological band:
+    //   completed → just-past
+    //   active    → now
+    //   upcoming  → just-future
+    // Then break ties with a stable per-kind index so concurrent active
+    // pills don't shuffle position render-to-render.
+    const KIND_ORDER: Record<PillKind, number> = {
+      group: 0,
+      dilemma: 1,
+      dms: 2,
+      game: 3,
+      prompt: 4,
+      voting: 5,
+      boundary: 6,
+    };
+    const fallbackTime = (p: PillState): number => {
+      if (p.startTime !== undefined) return p.startTime;
+      const lc = p.lifecycle;
+      if (lc === 'completed') return tickNow - 1_000_000;
+      if (lc === 'upcoming' || lc === 'starting') return tickNow + 1_000_000;
+      return tickNow;
+    };
     pills.sort((a, b) => {
-      const sa = a.startTime ?? 0;
-      const sb = b.startTime ?? 0;
-      return sa - sb;
+      const sa = fallbackTime(a);
+      const sb = fallbackTime(b);
+      if (sa !== sb) return sa - sb;
+      return KIND_ORDER[a.kind] - KIND_ORDER[b.kind];
     });
 
     // ── Boundary pill ──────────────────────────────────────────────────────
