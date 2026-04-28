@@ -995,8 +995,25 @@ export const useGameStore = create<GameState>((set) => ({
     // This prevents cascading re-renders across the entire component tree
     // when a SYNC arrives but the player-visible data is identical.
     const nextRoster = data.context?.roster ?? state.roster;
-    const nextChatLog = data.context?.chatLog?.length ? data.context.chatLog : state.chatLog;
+    // Distinguish "missing chatLog" (preserve current) from "explicitly
+    // empty" (replace). The previous `?.length` guard treated both the same,
+    // which prevented day-transition clears: when L3 ends day N and the new
+    // L3 boots day N+1 with briefingMessages, there's a brief window where
+    // SYNC could arrive with chatLog: [] before the briefings are appended.
+    // Using Array.isArray gives the day-transition flow the chance to
+    // actually wipe the previous day's slate.
+    const nextChatLog = Array.isArray(data.context?.chatLog) ? data.context.chatLog : state.chatLog;
     const nextChannels = data.context?.channels ?? state.channels;
+    // Day transition: ticker messages (narrator lines, social events,
+    // eliminations) accumulate across the whole game and have no dayIndex
+    // discriminator, so they otherwise carry over and crowd day N+1's
+    // chat. Clear on dayIndex change for a fresh slate per day. Reveals
+    // that fire AFTER day rollover (winner / final elimination) come
+    // through their own TICKER.UPDATE and rebuild on top of the cleared
+    // slate.
+    const incomingDay = data.context?.dayIndex;
+    const dayChanged = typeof incomingDay === 'number' && incomingDay > 0 && incomingDay !== state.dayIndex && state.dayIndex > 0;
+    const nextTickerMessages = dayChanged ? [] : state.tickerMessages;
 
     return {
       gameId: data.context?.gameId || state.gameId,
@@ -1020,6 +1037,11 @@ export const useGameStore = create<GameState>((set) => ({
       dmStats: stableRef(state.dmStats, data.context?.dmStats ?? null),
       onlinePlayers: stableRef(state.onlinePlayers, data.context?.onlinePlayers ?? state.onlinePlayers),
       playerActivity: stableRef(state.playerActivity, data.context?.playerActivity ?? state.playerActivity),
+      // tickerMessages aren't normally part of SYNC (they flow via
+      // TICKER.UPDATE), so this branch only takes effect on day transitions
+      // — see `dayChanged` guard above. stableRef preserves the existing
+      // reference when nothing changed.
+      tickerMessages: stableRef(state.tickerMessages, nextTickerMessages),
       // Per-recipient confession-phase projection (T12 put it under `context`, not `l3Context`).
       // stableRef is load-bearing here: posts[] can mutate in-place server-side (reactions,
       // edits-within-window), so length equality is insufficient — rely on deep equality.
