@@ -26,6 +26,7 @@ export class GameServer extends Server<Env> {
   lastBroadcastState: string = '';
   lastKnownDmsOpen: boolean = false;
   lastKnownGroupChatOpen: boolean = false;
+  lastDayIndex: number = 0;
   tickerHistory: TickerMessage[] = [];
   lastDebugSummary: string = '';
   scheduler: Scheduler<Env>;

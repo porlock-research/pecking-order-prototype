@@ -40,6 +40,12 @@ export interface SubscriptionState {
   lastBroadcastState: string;
   lastKnownDmsOpen: boolean;
   lastKnownGroupChatOpen: boolean;
+  /** Last observed L2 dayIndex — used to detect day transitions that
+   *  collapse the morningBriefing tick into a single subscription
+   *  callback (xstate v5 transient states can be skipped at the
+   *  subscriber level). dayIndex is incremented synchronously at
+   *  morningBriefing entry so it's a reliable rollover signal. */
+  lastDayIndex: number;
   tickerHistory: TickerMessage[];
   lastDebugSummary: string;
   goldCredited: boolean;
@@ -137,10 +143,20 @@ export function setupActorSubscription(
     const currentStateStr = JSON.stringify(snapshot.value) + l3StateJson;
     if (currentStateStr !== state.lastBroadcastState) {
       if (!isRestoreFire) {
-        // Flush ticker history on new day so previous-day messages don't carry over
-        if (currentStateStr.includes('morningBriefing') && !state.lastBroadcastState.includes('morningBriefing')) {
+        // Flush ticker history on new day so previous-day messages don't
+        // carry over. Detect via dayIndex change: morningBriefing's entry
+        // action increments dayIndex synchronously, so both the morningBriefing
+        // and the immediately-following activeSession states report the new
+        // dayIndex. Compare to last observed dayIndex regardless of which
+        // tick the subscriber actually catches — XState v5 can collapse
+        // transient states (`always` transitions) into a single subscriber
+        // notification, so a string-based morningBriefing match isn't
+        // guaranteed to fire.
+        const currentDay = (snapshot.context as any)?.dayIndex ?? 0;
+        if (currentDay > 0 && currentDay !== state.lastDayIndex && state.lastDayIndex > 0) {
           state.tickerHistory = [];
         }
+        state.lastDayIndex = currentDay;
 
         const tickerMsg = stateToTicker(currentStateStr, snapshot.context);
         if (tickerMsg) {
