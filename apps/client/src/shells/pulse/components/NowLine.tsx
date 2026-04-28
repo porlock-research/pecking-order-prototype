@@ -138,6 +138,18 @@ export function computeNowLine(
   // Night: day has ended; surface tomorrow's anchor explicitly. The previous
   // copy ("Day ends · in 5h 35m") read as nonsense in this phase.
   if (phase === 'night') {
+    // Game over (winner crowned, or last day's night) — the boundary pill
+    // already flipped to the 'boundary-gameover' variant ("Game over /
+    // Crowned"). Without this branch, NowLine kept predicting a non-existent
+    // Day N+1, which read as a stale countdown next to the correct boundary.
+    if (boundary?.id === 'boundary-gameover') {
+      return {
+        nowText: 'Game over',
+        nextText: 'Crowned',
+        hasUrgent: false,
+        isFaded: true,
+      };
+    }
     const nextOpenMs = boundary?.endTime;
     return {
       nowText: 'Night',
