@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/table';
 import { useState } from 'react';
 import { adminInitGame } from '../../../../actions';
+import { PushConfigCard } from './PushConfigCard';
 
 interface OverviewTabProps {
   state: any;
@@ -208,6 +209,9 @@ export function OverviewTab({ state, gameId, inviteCode, clientHost, onCommand, 
           </CardContent>
         </Card>
       )}
+
+      {/* Push Notifications — live patch of manifest.pushConfig */}
+      <PushConfigCard state={state} onCommand={onCommand} />
     </div>
   );
 }
