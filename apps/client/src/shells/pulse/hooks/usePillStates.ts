@@ -220,6 +220,9 @@ export function usePillStates(): PillState[] {
   const manifest = useGameStore(s => s.manifest);
   const dayIndex = useGameStore(s => s.dayIndex);
   const playerId = useGameStore(s => s.playerId);
+  // Game-over signal — when present, the night-phase boundary skips its
+  // "Day N+1 starts" prediction (there's no next day).
+  const winner = useGameStore(s => s.winner);
   // Tick once per second so countdown meta strings update without store
   // mutations driving the re-render.
   const tickNow = useNowTick(1000);
@@ -627,14 +630,25 @@ export function usePillStates(): PillState[] {
     // The pregame-only-shows-boundary rule lives at the render layer
     // (PulseBar) so CartridgeOverlay's pill-by-id lookup still works during
     // pregame for programmatically-focused cartridges (e.g., deep links).
-    const boundary = buildBoundaryPill({ phase, dayStartMs, dayEndMs, now: tickNow, dayIndex });
+    // Total day count — STATIC manifest has it as days.length; DYNAMIC has
+    // it on the ruleset. Used by buildBoundaryPill to suppress the
+    // "Day N+1 starts" prediction in night when there is no next day.
+    const totalDays = (() => {
+      if (!manifest) return null;
+      if (manifest.kind === 'STATIC') return manifest.days?.length ?? null;
+      const ruleDayCount = (manifest as any).ruleset?.dayCount;
+      if (ruleDayCount?.mode === 'FIXED' && typeof ruleDayCount.value === 'number') return ruleDayCount.value;
+      return null;
+    })();
+    const isGameOver = !!winner || (totalDays !== null && dayIndex >= totalDays);
+    const boundary = buildBoundaryPill({ phase, dayStartMs, dayEndMs, now: tickNow, dayIndex, isGameOver });
     if (boundary) {
       boundary.meta = formatPillMeta(boundary, tickNow);
       pills.push(boundary);
     }
 
     return pills;
-  }, [voting, game, prompt, dilemma, completed, manifest, dayIndex, playerId, tickNow]);
+  }, [voting, game, prompt, dilemma, completed, manifest, dayIndex, playerId, tickNow, winner]);
 }
 
 /**
@@ -708,8 +722,9 @@ function buildBoundaryPill(opts: {
   dayEndMs: number | null;
   now: number;
   dayIndex: number;
+  isGameOver: boolean;
 }): PillState | null {
-  const { phase, dayStartMs, dayEndMs, now, dayIndex } = opts;
+  const { phase, dayStartMs, dayEndMs, now, dayIndex, isGameOver } = opts;
 
   if (phase === 'pregame' && dayStartMs !== null) {
     return {
@@ -728,17 +743,33 @@ function buildBoundaryPill(opts: {
   }
 
   if (phase === 'night' && dayEndMs !== null) {
-    // Next-day open is a guess (24h after this morning's open) — refined when
-    // tomorrow's manifest day lands. Hero copy reads symmetrically with the
-    // pregame anchor: eyebrow names the next day, body is the clock time,
-    // rel is the bare relative — BoundaryHeroPill adds the "in" prefix.
+    // Game over — last day's night, or a winner has been declared. There's
+    // no next day to predict, so the boundary becomes a "Game over" anchor
+    // rather than a misleading "Day N+1 starts in 0s" countdown.
+    if (isGameOver) {
+      return {
+        id: 'boundary-gameover',
+        kind: 'boundary',
+        label: 'Game over',
+        lifecycle: 'completed',
+        startTime: Number.MAX_SAFE_INTEGER,
+        endTime: dayEndMs,
+        hero: {
+          eyebrow: 'Game over',
+          body: 'Crowned',
+        },
+      };
+    }
+    // Mid-game night — predict next day. Hero copy reads symmetrically with
+    // the pregame anchor: eyebrow names the next day, body is the clock
+    // time, rel is the bare relative — BoundaryHeroPill adds the "in" prefix.
     const nextOpen = (dayStartMs ?? dayEndMs) + 24 * 60 * 60 * 1000;
     return {
       id: 'boundary-night',
       kind: 'boundary',
       label: `Day ${dayIndex + 1} starts`,
       lifecycle: 'upcoming',
-      startTime: Number.MAX_SAFE_INTEGER, // boundary always last
+      startTime: Number.MAX_SAFE_INTEGER,
       endTime: nextOpen,
       hero: {
         eyebrow: `Day ${dayIndex + 1} starts`,
