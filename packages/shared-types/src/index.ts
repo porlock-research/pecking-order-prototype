@@ -11,7 +11,7 @@ export type { VoteTypeUiInfo, MechanismTone } from './vote-type-info';
 export { DILEMMA_TYPE_INFO } from './dilemma-type-info';
 export type { DilemmaTypeInfo } from './dilemma-type-info';
 export { GAME_TYPE_INFO } from './game-type-info';
-export type { GameTypeInfo } from './game-type-info';
+export type { GameTypeInfo, GameCategory } from './game-type-info';
 export { CARTRIDGE_INFO } from './cartridge-info';
 export type { CartridgeInfoEntry } from './cartridge-info';
 export { ACTIVITY_TYPE_INFO } from './activity-type-info';

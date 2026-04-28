@@ -25,6 +25,13 @@ export interface VoteTypeUiInfo {
   noEliminationCopy: string;
   // Tone drives hero composition: punitive (community decision), fate (no choice), celebratory (FINALS)
   mechanismTone: MechanismTone;
+  /** Minimum alive players for this vote type to be valid. Lobby uses this for
+   *  the chip's "Xn+ players" subtitle; server enforces via PeckingOrderVotingRulesSchema.constraints.
+   *  FINALS forces 2 (auto-applied on last day); DUELS uses 4 (paired voting). */
+  minPlayers: number;
+  /** Whether this vote type appears in the lobby's selectable list. False for
+   *  FINALS (auto-applied on last day) and DUELS (experimental, gated until ready). */
+  selectableInLobby: boolean;
   // FINALS only — hero subtitle on the winner reveal
   winnerSubtitle?: string;
   // Executioner second-phase fields (only on EXECUTIONER entry)
@@ -52,6 +59,8 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     eliminatedSubtitle: 'Voted out by the group',
     noEliminationCopy: 'The group spared everyone',
     mechanismTone: 'punitive',
+    minPlayers: 3,
+    selectableInLobby: true,
   },
   EXECUTIONER: {
     name: 'Executioner',
@@ -68,6 +77,8 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     eliminatedSubtitle: 'Cut down by the executioner',
     noEliminationCopy: 'The executioner stayed their hand',
     mechanismTone: 'punitive',
+    minPlayers: 5,
+    selectableInLobby: true,
     executionerPickHeader: 'Executioner: Pick Your Target',
     executionerPickCta: 'You\u2019re the executioner. Who goes?',
     executionerPickConfirm: 'Eliminate {name}?',
@@ -89,6 +100,8 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     eliminatedSubtitle: 'Not enough saves to stay afloat',
     noEliminationCopy: 'Everyone floated through',
     mechanismTone: 'punitive',
+    minPlayers: 6,
+    selectableInLobby: true,
   },
   PODIUM_SACRIFICE: {
     name: 'Podium Sacrifice',
@@ -105,6 +118,8 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     eliminatedSubtitle: 'Sacrificed from the top',
     noEliminationCopy: 'The podium stands',
     mechanismTone: 'punitive',
+    minPlayers: 5,
+    selectableInLobby: true,
   },
   SECOND_TO_LAST: {
     name: 'Second to Last',
@@ -121,6 +136,8 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     eliminatedSubtitle: 'Second-lowest in silver',
     noEliminationCopy: 'No one to cut',
     mechanismTone: 'fate',
+    minPlayers: 3,
+    selectableInLobby: true,
   },
   SHIELD: {
     name: 'Shield',
@@ -137,6 +154,8 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     eliminatedSubtitle: 'No shield, no save',
     noEliminationCopy: 'Shields held all around',
     mechanismTone: 'punitive',
+    minPlayers: 4,
+    selectableInLobby: true,
   },
   TRUST_PAIRS: {
     name: 'Trust Pairs',
@@ -153,6 +172,8 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     eliminatedSubtitle: 'Betrayed by a partner',
     noEliminationCopy: 'No betrayal landed',
     mechanismTone: 'punitive',
+    minPlayers: 5,
+    selectableInLobby: true,
   },
   DUELS: {
     name: 'Duels',
@@ -169,6 +190,8 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     eliminatedSubtitle: 'Lost the duel',
     noEliminationCopy: 'Both duelists survive',
     mechanismTone: 'punitive',
+    minPlayers: 4,
+    selectableInLobby: false,
   },
   FINALS: {
     name: 'Finals',
@@ -185,6 +208,8 @@ export const VOTE_TYPE_INFO: Record<VoteType, VoteTypeUiInfo> = {
     eliminatedSubtitle: '',
     noEliminationCopy: '',
     mechanismTone: 'celebratory',
+    minPlayers: 2,
+    selectableInLobby: false,
     winnerSubtitle: 'Top of the pecking order',
   },
 };

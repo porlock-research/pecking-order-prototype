@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { GAME_TYPE_INFO, ACTIVITY_TYPE_INFO, VOTE_TYPE_INFO, type GameCategory } from '@pecking-order/shared-types';
 
 // ── Types ──
 
@@ -47,9 +48,10 @@ export function createDefaultDynamicConfig(): DynamicRulesetConfig {
   const dateStr = tomorrow.toISOString().slice(0, 10);
 
   return {
-    allowedVoteTypes: ['MAJORITY', 'EXECUTIONER', 'BUBBLE', 'SECOND_TO_LAST', 'PODIUM_SACRIFICE', 'SHIELD', 'TRUST_PAIRS'],
-    allowedGameTypes: ['TRIVIA', 'GAP_RUN', 'GRID_PUSH', 'SEQUENCE', 'REACTION_TIME', 'COLOR_MATCH', 'STACKER', 'QUICK_MATH', 'SIMON_SAYS', 'AIM_TRAINER', 'BET_BET_BET', 'BLIND_AUCTION', 'KINGS_RANSOM', 'THE_SPLIT', 'TOUCH_SCREEN', 'REALTIME_TRIVIA'],
-    allowedActivityTypes: ['PLAYER_PICK', 'PREDICTION', 'WOULD_YOU_RATHER', 'HOT_TAKE', 'CONFESSION', 'GUESS_WHO'],
+    // Defaults: all selectable types ON. Hosts can opt out per-game via the chip toggles.
+    allowedVoteTypes: VOTE_TYPES.map(v => v.value),
+    allowedGameTypes: GAME_TYPES.map(g => g.value),
+    allowedActivityTypes: ACTIVITY_TYPES.map(a => a.value),
     allowedDilemmaTypes: ['SILVER_GAMBIT', 'SPOTLIGHT', 'GIFT_OR_GRIEF'],
     social: {
       dmCharsPerPlayer: 300,
@@ -76,45 +78,21 @@ export function createDefaultDynamicConfig(): DynamicRulesetConfig {
   };
 }
 
-// ── Mechanic metadata ──
+// ── Mechanic metadata (derived from canonical shared-types *_INFO objects) ──
+//
+// Adding a new vote/game/activity to its registry + *_INFO entry surfaces
+// the chip here automatically. Hand-maintaining these lists historically
+// caused drift — see git history for the arcade-batch missing-from-lobby bug.
 
-const VOTE_TYPES = [
-  { value: 'MAJORITY', label: 'Majority', desc: 'Simple vote — most votes eliminated', min: 3 },
-  { value: 'EXECUTIONER', label: 'Executioner', desc: 'Top 3 immune, rest vote', min: 5 },
-  { value: 'BUBBLE', label: 'Bubble', desc: 'Top 3 immune, bottom at risk', min: 6 },
-  { value: 'SECOND_TO_LAST', label: '2nd to Last', desc: 'Second-lowest votes eliminated', min: 3 },
-  { value: 'PODIUM_SACRIFICE', label: 'Podium Sacrifice', desc: 'Top 3 pick one to sacrifice', min: 5 },
-  { value: 'SHIELD', label: 'Shield', desc: 'Vote to save — unshielded eliminated', min: 4 },
-  { value: 'TRUST_PAIRS', label: 'Trust Pairs', desc: 'Paired voting — betrayal costs', min: 5 },
-];
+const VOTE_TYPES: { value: string; label: string; min: number }[] = Object.entries(VOTE_TYPE_INFO)
+  .filter(([, info]) => info.selectableInLobby)
+  .map(([value, info]) => ({ value, label: info.name, min: info.minPlayers }));
 
-const GAME_TYPES = [
-  { value: 'TRIVIA', label: 'Trivia', cat: 'knowledge' },
-  { value: 'REALTIME_TRIVIA', label: 'RT Trivia', cat: 'knowledge' },
-  { value: 'GAP_RUN', label: 'Gap Run', cat: 'arcade' },
-  { value: 'GRID_PUSH', label: 'Grid Push', cat: 'arcade' },
-  { value: 'SEQUENCE', label: 'Sequence', cat: 'arcade' },
-  { value: 'REACTION_TIME', label: 'Reaction', cat: 'arcade' },
-  { value: 'COLOR_MATCH', label: 'Color Match', cat: 'arcade' },
-  { value: 'STACKER', label: 'Stacker', cat: 'arcade' },
-  { value: 'QUICK_MATH', label: 'Quick Math', cat: 'arcade' },
-  { value: 'SIMON_SAYS', label: 'Simon Says', cat: 'arcade' },
-  { value: 'AIM_TRAINER', label: 'Aim Trainer', cat: 'arcade' },
-  { value: 'BET_BET_BET', label: 'Bet Bet Bet', cat: 'social' },
-  { value: 'BLIND_AUCTION', label: 'Blind Auction', cat: 'social' },
-  { value: 'KINGS_RANSOM', label: "King's Ransom", cat: 'social' },
-  { value: 'THE_SPLIT', label: 'The Split', cat: 'social' },
-  { value: 'TOUCH_SCREEN', label: 'Touch Screen', cat: 'social' },
-];
+const GAME_TYPES: { value: string; label: string; cat: GameCategory }[] = Object.entries(GAME_TYPE_INFO)
+  .map(([value, info]) => ({ value, label: info.name, cat: info.category }));
 
-const ACTIVITY_TYPES = [
-  { value: 'PLAYER_PICK', label: 'Player Pick' },
-  { value: 'PREDICTION', label: 'Prediction' },
-  { value: 'WOULD_YOU_RATHER', label: 'Would You Rather' },
-  { value: 'HOT_TAKE', label: 'Hot Take' },
-  { value: 'CONFESSION', label: 'Confession' },
-  { value: 'GUESS_WHO', label: 'Guess Who' },
-];
+const ACTIVITY_TYPES: { value: string; label: string }[] = Object.entries(ACTIVITY_TYPE_INFO)
+  .map(([value, info]) => ({ value, label: info.name }));
 
 // ── Schedule preset data ──
 
