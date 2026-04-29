@@ -32,6 +32,12 @@
  *                                 drops the `dmsOpen` gate (pregame is always-
  *                                 on) but keeps alive / self-not-target / text-
  *                                 non-empty + requires MAIN to carry WHISPER cap.
+ *   - SOCIAL.NUDGE              → "hey, I see you" ping to a specific player
+ *                                 before Day 1. Emits NUDGE fact (sendParent →
+ *                                 L2) which the journal+push pipeline turns
+ *                                 into a notification. No throttle in pregame —
+ *                                 there's no day boundary, and the design is
+ *                                 "meet the cast" so repeat-pings are fine.
  *
  * See plans/DECISIONS.md ADR-143.
  */
@@ -48,16 +54,17 @@ import {
 import { buildChatMessage, appendToChatLog } from './actions/social-helpers';
 
 /** Synthetic MAIN channel seeded at spawn. Pregame allows group chat
- *  (CHAT + REACTIONS) and whispers; silver/nudge/DMs stay closed — the
+ *  (CHAT + REACTIONS), whispers, and nudges; silver/DMs stay closed — the
  *  design is "meet the cast, gossip before Day 1 starts" without the
- *  economy yet. */
+ *  full economy yet. Nudges intentionally bypass the per-day throttle
+ *  since pregame has no day; clients can repeat-ping if they want. */
 const PREGAME_MAIN_CHANNEL: Channel = {
   id: 'MAIN',
   type: 'MAIN' as const,
   memberIds: [],
   createdBy: 'SYSTEM',
   createdAt: Date.now(),
-  capabilities: ['CHAT', 'REACTIONS', 'WHISPER'] as const,
+  capabilities: ['CHAT', 'REACTIONS', 'WHISPER', 'NUDGE'] as const,
 };
 
 export interface PregameContext {
@@ -89,7 +96,8 @@ export type PregameEvent =
   | { type: 'PREGAME.REVEAL_ANSWER'; senderId: string; qIndex: number }
   | { type: 'SOCIAL.SEND_MSG'; senderId: string; content: string; replyTo?: string }
   | { type: 'SOCIAL.REACT'; senderId: string; messageId: string; emoji: string }
-  | { type: 'SOCIAL.WHISPER'; senderId: string; targetId: string; text: string };
+  | { type: 'SOCIAL.WHISPER'; senderId: string; targetId: string; text: string }
+  | { type: typeof Events.Social.NUDGE; senderId: string; targetId: string };
 
 export const pregameMachine = setup({
   types: {
@@ -153,6 +161,21 @@ export const pregameMachine = setup({
       if (!event.senderId || !event.messageId || !event.emoji) return false;
       const sender = context.players[event.senderId];
       return !!sender && sender.status === PlayerStatuses.ALIVE;
+    },
+    // Pregame nudge: alive sender + alive target + self != target + MAIN
+    // carries NUDGE cap. No throttle — pregame has no day boundary, and
+    // the design is "meet the cast" so repeat-pings are fine.
+    canNudge: ({ context, event }: any) => {
+      if (event.type !== Events.Social.NUDGE) return false;
+      const mainCaps = context.channels?.MAIN?.capabilities ?? [];
+      if (!mainCaps.includes('NUDGE')) return false;
+      const { senderId, targetId } = event;
+      if (!senderId || !targetId || senderId === targetId) return false;
+      const sender = context.players[senderId];
+      const target = context.players[targetId];
+      if (!sender || sender.status !== PlayerStatuses.ALIVE) return false;
+      if (!target || target.status !== PlayerStatuses.ALIVE) return false;
+      return true;
     },
   } as any,
 }).createMachine({
@@ -359,6 +382,25 @@ export const pregameMachine = setup({
                 },
               };
             }),
+          ],
+        },
+        // Pregame nudge: ping a specific player. Mirrors l3-social's
+        // processNudge — emits a NUDGE fact (sendParent → L2) which the
+        // journal+push pipeline turns into a notification on the target.
+        // No state mutation in pregame context; rate-limit-free per design.
+        [Events.Social.NUDGE]: {
+          guard: 'canNudge',
+          actions: [
+            sendParent(({ event }: any): { type: typeof Events.Fact.RECORD; fact: Fact } => ({
+              type: Events.Fact.RECORD,
+              fact: {
+                type: FactTypes.NUDGE,
+                actorId: event.senderId,
+                targetId: event.targetId,
+                payload: {},
+                timestamp: Date.now(),
+              },
+            })),
           ],
         },
         'SOCIAL.REACT': {

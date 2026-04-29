@@ -211,13 +211,15 @@ export const orchestratorMachine = setup({
           },
           {
             // Pregame social allowlist: group chat is open (SEND_MSG + REACT on
-            // MAIN), whispers are intrigue-only. Silver/nudge/DM stay closed —
+            // MAIN), whispers are intrigue-only, nudges ping a specific player
+            // ("hey you, I see you" before Day 1). Silver/DM stay closed —
             // the pregame MAIN channel doesn't carry those capabilities and the
             // pregame actor has no handler, so those events silently no-op.
             guard: ({ event }: any) =>
               event.type === Events.Social.WHISPER ||
               event.type === Events.Social.SEND_MSG ||
-              event.type === Events.Social.REACT,
+              event.type === Events.Social.REACT ||
+              event.type === Events.Social.NUDGE,
             actions: sendTo('l3-pregame', ({ event }: any) => event),
           },
         ],
