@@ -220,6 +220,7 @@ export function PulseInput() {
             command={commandMode.command}
             onSelect={(player, pid) => withMorph(() => handlePlayerSelect(player, pid))}
             onBack={() => withMorph(() => back())}
+            phase={phase}
           />
         </div>
       )}

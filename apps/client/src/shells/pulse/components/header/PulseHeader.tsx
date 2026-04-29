@@ -4,7 +4,6 @@ import type { DayPhase } from '@pecking-order/shared-types';
 import { PULSE_Z } from '../../zIndex';
 import { ComposeButton } from './ComposeButton';
 import { PanelButton } from './PanelButton';
-import { PregameCountdown } from './PregameCountdown';
 import { SilverPip } from '../common/SilverPip';
 
 interface Props { onCompose: () => void; onOpenPanel: () => void; }
@@ -46,9 +45,7 @@ function phaseChrome(phase: DayPhase | undefined): {
 export function PulseHeader({ onCompose, onOpenPanel }: Props) {
   const dayIndex = useGameStore(s => s.dayIndex);
   const phase = useGameStore(s => s.phase);
-  const startTime = useGameStore(s => s.manifest?.startTime as string | undefined);
   const chrome = phaseChrome(phase);
-  const showCountdown = phase === DayPhases.PREGAME && !!startTime;
   return (
     <header style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -89,7 +86,6 @@ export function PulseHeader({ onCompose, onOpenPanel }: Props) {
           </span>
         </div>
         <SilverPip variant="global" />
-        {showCountdown && <PregameCountdown startTime={startTime} />}
       </div>
       <div style={{ display: 'flex', gap: 'var(--pulse-space-sm)' }}>
         <ComposeButton onClick={onCompose} />

@@ -1,6 +1,7 @@
 import { useMemo, useEffect } from 'react';
 import { motion, useAnimationControls } from 'framer-motion';
-import { TickerCategories } from '@pecking-order/shared-types';
+import { DayPhases, TickerCategories } from '@pecking-order/shared-types';
+import type { DayPhase } from '@pecking-order/shared-types';
 import { ArrowLeft, HandWaving, UsersThree } from '../../icons';
 import { useGameStore } from '../../../../store/useGameStore';
 import { usePulse } from '../../PulseShell';
@@ -14,6 +15,11 @@ interface PlayerPickerProps {
   command?: Command;
   onSelect: (player: SocialPlayer, playerId: string) => void;
   onBack: () => void;
+  /** Game phase. When 'pregame' the picker stays open but shows a clarifying
+   *  banner — DMs/silver/nudge/group chat aren't reachable yet, only whispers
+   *  land. Without this hint the picker reads as broken (tapping a face does
+   *  something for /whisper but nothing for /dm /silver /nudge). */
+  phase?: DayPhase;
 }
 
 const COMMAND_HUE: Record<Command, string> = {
@@ -40,10 +46,20 @@ const EMPTY_VERB: Record<Command, string> = {
   mention: 'tag',
 };
 
-export function PlayerPicker({ command, onSelect, onBack }: PlayerPickerProps) {
+export function PlayerPicker({ command, onSelect, onBack, phase }: PlayerPickerProps) {
   const roster = useGameStore(s => s.roster);
   const tickerMessages = useGameStore(s => s.tickerMessages);
   const { playerId } = usePulse();
+  const isPregame = phase === DayPhases.PREGAME;
+  // Per-command pregame copy: /whisper actually works (server allows pregame
+  // whispers as intrigue beats); the others are visibly active but won't go
+  // through. The picker stays open by design so tapping a face still teaches
+  // "this is how you'd do it" — the banner just sets expectations honestly.
+  const pregameNote = isPregame
+    ? command === 'whisper'
+      ? 'Whispers fire even before Day 1 — your target sees them, the rest of the cast sees a lock.'
+      : 'Day 1 hasn’t started yet. This will go through once the day opens.'
+    : null;
 
   const alreadyNudged = useMemo<Record<string, true>>(() => {
     if (command !== 'nudge' || !playerId) return {};
@@ -97,6 +113,35 @@ export function PlayerPicker({ command, onSelect, onBack }: PlayerPickerProps) {
           {title}
         </span>
       </div>
+
+      {pregameNote && (
+        <div
+          role="status"
+          style={{
+            margin: '0 0 12px',
+            padding: '8px 12px',
+            borderRadius: 'var(--pulse-radius-md)',
+            background: 'color-mix(in oklch, var(--pulse-gold) 6%, var(--pulse-surface-2))',
+            border: '1px solid color-mix(in oklch, var(--pulse-gold) 24%, transparent)',
+            fontSize: 12,
+            lineHeight: 1.4,
+            color: 'var(--pulse-text-2)',
+            fontFamily: 'var(--po-font-body)',
+            fontStyle: 'italic',
+          }}
+        >
+          <span aria-hidden="true" style={{
+            display: 'inline-block',
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: 'var(--pulse-gold)',
+            marginRight: 8,
+            verticalAlign: 'middle',
+          }} />
+          {pregameNote}
+        </div>
+      )}
 
       {players.length === 0 ? (
         <div style={{

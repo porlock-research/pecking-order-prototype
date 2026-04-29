@@ -102,7 +102,7 @@ export function PulseBar() {
         background: 'var(--pulse-surface)',
       }}
     >
-      <NowLine pills={pills} />
+      {phase !== 'pregame' && <NowLine pills={pills} />}
       <div style={{ position: 'relative' }}>
         <div
           ref={(el) => {

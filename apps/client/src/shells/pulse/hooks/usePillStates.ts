@@ -558,6 +558,22 @@ export function usePillStates(): PillState[] {
         else if (dayEndMs !== null && now >= dayEndMs) phase = 'night';
         else phase = 'day';
       }
+    } else if (manifest?.kind === 'DYNAMIC') {
+      // DYNAMIC PRE_SCHEDULED games don't carry a Day-1 timeline at pregame —
+      // the Game Master resolves the day at runtime when the alarm fires. The
+      // manifest's top-level `startTime` is still the canonical Day-1 anchor,
+      // and we need it here so the pregame boundary hero pill ("Day 1 starts ·
+      // in 12m") renders during the wait. Without this branch, dayStartMs
+      // stays null, buildBoundaryPill returns null, and the pregame row is
+      // empty — leaving only the small muted header chip to signal Day 1.
+      const startIso = (manifest as any).startTime as string | undefined;
+      if (startIso) {
+        dayStartMs = new Date(startIso).getTime();
+        if (Date.now() < dayStartMs) phase = 'pregame';
+        // Past startTime in a DYNAMIC game with no day timeline yet → keep
+        // the default 'day' phase. dayEndMs stays null — that's fine, the
+        // night branch is gated on dayEndMs !== null and won't fire.
+      }
     }
 
     // ── Debug: ?force-urgent=voting|game|prompt|dilemma ────────────────────
