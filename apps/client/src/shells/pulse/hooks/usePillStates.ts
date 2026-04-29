@@ -135,15 +135,31 @@ export type DayPhase = 'pregame' | 'day' | 'night';
  */
 export function derivePhase(manifest: any, dayIndex: number, now: number): DayPhase {
   const day = manifest?.days?.[dayIndex - 1] ?? manifest?.days?.[dayIndex];
-  if (!day?.timeline) return 'day';
-  const tl = (day.timeline as any[]).filter((e) => e.time?.includes('T'));
-  if (tl.length === 0) return 'day';
-  const times = tl.map((e) => new Date(e.time).getTime());
-  const start = Math.min(...times);
-  const endDay = tl.find((e) => e.action === 'END_DAY');
-  const end = endDay ? new Date(endDay.time).getTime() : Math.max(...times);
-  if (now < start) return 'pregame';
-  if (now >= end) return 'night';
+  if (day?.timeline) {
+    const tl = (day.timeline as any[]).filter((e) => e.time?.includes('T'));
+    if (tl.length > 0) {
+      const times = tl.map((e) => new Date(e.time).getTime());
+      const start = Math.min(...times);
+      const endDay = tl.find((e) => e.action === 'END_DAY');
+      const end = endDay ? new Date(endDay.time).getTime() : Math.max(...times);
+      if (now < start) return 'pregame';
+      if (now >= end) return 'night';
+      return 'day';
+    }
+  }
+  // DYNAMIC PRE_SCHEDULED games carry no Day-1 timeline at pregame — the
+  // Game Master resolves days at runtime. Use manifest.startTime as the
+  // pregame anchor so useDayPhase() returns 'pregame' (powering PulseBar's
+  // NowLine suppression and the boundary hero pill). Without this, DYNAMIC
+  // pregame falls through to 'day' and the row shows duplicate countdown
+  // surfaces.
+  if (manifest?.kind === 'DYNAMIC') {
+    const startIso = manifest.startTime as string | undefined;
+    if (startIso) {
+      const start = new Date(startIso).getTime();
+      if (now < start) return 'pregame';
+    }
+  }
   return 'day';
 }
 
