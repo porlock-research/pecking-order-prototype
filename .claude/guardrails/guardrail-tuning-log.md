@@ -98,29 +98,9 @@ diff without shelling out. Options if this becomes noisy: shorten further to a
 single line, or refactor the guardian to support a `MATCH_SHELL_CHECK` hook
 that runs a quick shell predicate before firing.
 
-### Tighten candidates identified 2026-04-24 (not yet done)
+## Confirmed empty 2026-04-29
 
-Arcade / canvas renderers that fire on every `cartridges/games/**/*Renderer.tsx`
-edit regardless of the edit's topic:
-- `finite-arcade-end-game-single-flag` — needs `MATCH_CONTENT` gating on
-  `ending|timeLimit|floatingText|solveCelebrate|finish\(`
-- `finite-arcade-pickup-place-ownership` — gate on `floating`, `tubes[`,
-  `pickupFromTube`
-- `finite-canvas-theme-capture-at-init` — gate on `useCartridgeTheme|themeRef|
-  useLayoutEffect|colorKey`
-- `finite-canvas-trail-sampling-threshold` — gate on `trail|threshold|unshift`
-- `finite-canvas-playtest-hidden-tab` — gate on `visibilityState|mcp__.*chrome`
-  or promote to a workflow doc (procedural, not reactive)
-
-Misconfigured MATCH_PATTERN (code patterns in the path field):
-- `finite-arcade-result-integer-coercion` — scope MATCH_PATTERN to a file
-  regex; move current patterns to MATCH_CONTENT.
-- `finite-ts-config-as-const-literal-pin` — same fix.
-- `finite-game-dev-harness-local-types` — same fix; scope to
-  `apps/.*GameDevHarness\.tsx`.
-
-Broad path, worth a content gate:
-- `finite-claude-md-placement` — fires on every CLAUDE.md edit. Gate on
-  structural additions (new `^##` heading etc.).
-- `finite-shared-types-rebuild` — fires on every shared-types source edit.
-  Gate on significant surface changes.
+The "Tighten candidates identified 2026-04-24 (not yet done)" list previously
+held here is fully covered by the "Resolved 2026-04-24 (tightening pass — 10
+rules gated)" section above. No guardrail commits between 2026-04-24 and
+2026-04-29, so no new candidates have surfaced.
