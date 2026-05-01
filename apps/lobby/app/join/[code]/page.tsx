@@ -6,6 +6,7 @@ import { useSwipeable } from 'react-swipeable';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getInviteInfo, getRandomPersonas, redrawPersonas, acceptInvite } from '../../actions';
 import type { GameInfo, Persona } from '../../actions';
+import { BrowserSupportGate } from '@/components/BrowserSupportGate';
 import { selectQuestionsForPersona, resolveAnswers, type QuestionWithOptions, type QaSubmission } from './questions-pool';
 import { QuestionStep } from './QuestionStep';
 
@@ -233,6 +234,7 @@ export default function InvitePage() {
   const bgConfig = STEP_BG[step] || STEP_BG[1];
 
   return (
+    <BrowserSupportGate>
     <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
       {/* Blurred full-body background — crossfades with persona, blur/opacity varies by step */}
       <AnimatePresence mode="popLayout">
@@ -827,6 +829,7 @@ export default function InvitePage() {
         </div>
       )}
     </div>
+    </BrowserSupportGate>
   );
 }
 

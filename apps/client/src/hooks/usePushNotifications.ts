@@ -3,6 +3,16 @@ import * as Sentry from '@sentry/react';
 
 type PushPermission = 'default' | 'granted' | 'denied' | 'unsupported';
 
+export type SubscribeError = 'aborted' | 'denied' | 'unsupported' | 'unknown';
+
+function classifySubscribeError(err: unknown): Exclude<SubscribeError, 'denied' | 'unsupported'> {
+  if (err && typeof err === 'object' && 'name' in err) {
+    const name = (err as { name: string }).name;
+    if (name === 'AbortError') return 'aborted';
+  }
+  return 'unknown';
+}
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -69,6 +79,7 @@ export function usePushNotifications(activeToken?: string | null) {
   });
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [ready, setReady] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<SubscribeError | null>(null);
 
   const serverHost = import.meta.env.VITE_GAME_SERVER_HOST || 'http://localhost:8787';
   const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
@@ -169,6 +180,7 @@ export function usePushNotifications(activeToken?: string | null) {
         if (!vapidPublicKey) {
           console.error('[Push] Auto-resubscribe: no VAPID key configured');
           setIsSubscribed(false);
+          setSubscribeError('unknown');
           return;
         }
 
@@ -209,32 +221,39 @@ export function usePushNotifications(activeToken?: string | null) {
         if (!res.ok) {
           console.error('[Push] Auto-resubscribe server registration failed:', res.status);
           setIsSubscribed(false);
+          setSubscribeError('unknown');
           return;
         }
 
         setIsSubscribed(true);
         setPermission('granted');
+        setSubscribeError(null);
         console.log('[Push] Auto-resubscribe successful');
         Sentry.addBreadcrumb({ category: 'push', message: 'auto-resubscribe.success' });
       } catch (err) {
         console.error('[Push] Auto-resubscribe failed:', err);
         setIsSubscribed(false);
+        setSubscribeError(classifySubscribeError(err));
         Sentry.addBreadcrumb({ category: 'push', message: 'auto-resubscribe.failed', data: { error: String(err) } });
       }
     }
   }, [permission, serverHost, vapidPublicKey, activeToken]);
 
-  const subscribe = useCallback(async () => {
+  const subscribe = useCallback(async (): Promise<boolean> => {
+    setSubscribeError(null);
+
     if (permission === 'unsupported') {
       console.warn('[Push] Subscribe called but push is unsupported');
-      return;
+      setSubscribeError('unsupported');
+      return false;
     }
 
     const result = await Notification.requestPermission();
     setPermission(result as PushPermission);
     if (result !== 'granted') {
       Sentry.addBreadcrumb({ category: 'push', message: 'subscribe.denied', data: { result } });
-      return;
+      if (result === 'denied') setSubscribeError('denied');
+      return false;
     }
 
     try {
@@ -249,7 +268,8 @@ export function usePushNotifications(activeToken?: string | null) {
 
       if (!vapidPublicKey) {
         console.error('[Push] No VAPID key configured');
-        return;
+        setSubscribeError('unknown');
+        return false;
       }
 
       const sub = await reg.pushManager.subscribe({
@@ -261,7 +281,8 @@ export function usePushNotifications(activeToken?: string | null) {
       const token = activeToken || findCachedToken();
       if (!token) {
         console.error('[Push] No cached JWT — cannot register subscription');
-        return;
+        setSubscribeError('unknown');
+        return false;
       }
 
       const subJSON = sub.toJSON();
@@ -278,15 +299,20 @@ export function usePushNotifications(activeToken?: string | null) {
       });
       if (!res.ok) {
         console.error('[Push] Subscribe server registration failed:', res.status);
-        return;
+        setSubscribeError('unknown');
+        return false;
       }
 
       setIsSubscribed(true);
+      setSubscribeError(null);
       console.log('[Push] Subscribe successful');
       Sentry.addBreadcrumb({ category: 'push', message: 'subscribe.success' });
+      return true;
     } catch (err) {
       console.error('[Push] Subscribe failed:', err);
+      setSubscribeError(classifySubscribeError(err));
       Sentry.addBreadcrumb({ category: 'push', message: 'subscribe.failed', data: { error: String(err) } });
+      return false;
     }
   }, [permission, serverHost, vapidPublicKey, activeToken]);
 
@@ -323,5 +349,5 @@ export function usePushNotifications(activeToken?: string | null) {
     }
   }, [permission, serverHost, activeToken]);
 
-  return { permission, isSubscribed, isStandalone, hasPushManager, ready, subscribe, unsubscribe };
+  return { permission, isSubscribed, isStandalone, hasPushManager, ready, subscribe, unsubscribe, subscribeError };
 }

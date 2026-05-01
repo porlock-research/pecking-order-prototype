@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { getDB, getEnv } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import { BrowserSupportGate } from '@/components/BrowserSupportGate';
 import { WelcomeForm } from './welcome-form';
 import { JoinedCast } from './joined-cast';
 import { buildSocialLine, displayLabelFor, type JoinedPlayer } from './cast-helpers';
@@ -183,6 +184,7 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
   const hasCast = players.length > 0;
 
   return (
+    <BrowserSupportGate>
     <div className="relative min-h-dvh flex items-center justify-center bg-skin-deep px-4 py-8 sm:px-6 sm:py-10 overflow-hidden">
       {/* Warm radial tint — pulls attention center, respects skin-deep palette */}
       <div
@@ -242,5 +244,6 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
         </p>
       </div>
     </div>
+    </BrowserSupportGate>
   );
 }

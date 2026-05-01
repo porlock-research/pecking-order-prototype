@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Drawer } from 'vaul';
-import { Bell, BellOff, Check } from 'lucide-react';
+import { Bell, BellOff, Check, Copy, ShieldAlert } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import '@khmyznikov/pwa-install';
 
@@ -20,12 +20,47 @@ function isMobileDevice(): boolean {
   return navigator.maxTouchPoints > 0 && window.innerWidth < 1024;
 }
 
+function isIOS(): boolean {
+  return /iPhone|iPad|iPod/.test(navigator.userAgent);
+}
+
+/** True if iOS AND a non-Safari/Chrome browser (Brave, Firefox, Edge, etc).
+ *  These browsers use WebKit but don't reliably support our A2HS+push flow on iOS. */
+function isIOSUnsupportedBrowser(): boolean {
+  if (!isIOS()) return false;
+  const ua = navigator.userAgent;
+  // Firefox iOS and Edge iOS have explicit UA tokens
+  if (/FxiOS|EdgiOS/.test(ua)) return true;
+  // Brave is detected separately via navigator.brave (async); the caller passes it in
+  return false;
+}
+
+function getOSPlatform(): 'macos' | 'windows' | 'linux' | 'android' | 'ios' | 'unknown' {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua)) return 'ios';
+  if (/Android/.test(ua)) return 'android';
+  if (/Mac/.test(ua)) return 'macos';
+  if (/Windows/.test(ua)) return 'windows';
+  if (/Linux/.test(ua)) return 'linux';
+  return 'unknown';
+}
+
 function getDeniedResetInstructions(): string {
   const ua = navigator.userAgent;
   if (/iPhone|iPad|iPod/.test(ua)) {
     return 'Go to Settings \u2192 Safari \u2192 Notifications \u2192 find this site \u2192 Allow';
   }
   return 'Tap the lock icon in the address bar \u2192 Site settings \u2192 Notifications \u2192 Allow';
+}
+
+function getBraveOSPermissionInstruction(): string {
+  switch (getOSPlatform()) {
+    case 'macos': return 'System Settings \u2192 Notifications \u2192 Brave \u2192 allow notifications';
+    case 'android': return 'Android Settings \u2192 Apps \u2192 Brave \u2192 Notifications \u2192 enable';
+    case 'windows': return 'Windows Settings \u2192 System \u2192 Notifications \u2192 Brave \u2192 enable';
+    case 'linux': return 'Your desktop environment\u2019s notification settings \u2192 enable for Brave';
+    default: return 'Your OS notification settings \u2192 enable for Brave';
+  }
 }
 
 interface PwaGateProps {
@@ -40,12 +75,25 @@ export function PwaGate({ token }: PwaGateProps) {
 }
 
 function PwaGateInner({ token }: { token: string }) {
-  const { permission, isSubscribed, isStandalone, ready, subscribe } =
+  const { permission, isSubscribed, isStandalone, ready, subscribe, subscribeError } =
     usePushNotifications(token);
   const [deferred, setDeferred] = useState(
     () => sessionStorage.getItem(DEFER_KEY) === '1',
   );
   const [subscribeSuccess, setSubscribeSuccess] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [isBrave, setIsBrave] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await (navigator as { brave?: { isBrave?: () => Promise<boolean> } }).brave?.isBrave?.();
+        setIsBrave(!!result);
+      } catch {
+        // navigator.brave not present — non-Brave browser
+      }
+    })();
+  }, []);
 
   const isMobile = isMobileDevice();
 
@@ -69,13 +117,25 @@ function PwaGateInner({ token }: { token: string }) {
   }, []);
 
   const handleSubscribe = useCallback(async () => {
-    await subscribe();
-    // Check if permission was actually granted after the subscribe call
-    if (Notification.permission === 'granted') {
+    const ok = await subscribe();
+    // Only flash success if the subscription actually completed end-to-end.
+    // Brave can grant Notification.permission but throw AbortError on
+    // pushManager.subscribe — that's a failure, not a success.
+    if (ok) {
       setSubscribeSuccess(true);
       setTimeout(() => setSubscribeSuccess(false), 2000);
     }
   }, [subscribe]);
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      console.warn('[PwaGate] clipboard write failed:', err);
+    }
+  }, []);
 
   if (!showInstallGate && !showPushDrawer && !subscribeSuccess) return null;
 
@@ -109,6 +169,64 @@ function PwaGateInner({ token }: { token: string }) {
                       You'll receive notifications for important game events.
                     </p>
                   </div>
+                </>
+              ) : (subscribeError === 'aborted' || subscribeError === 'unknown') ? (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center">
+                    <ShieldAlert size={32} className="text-amber-400" />
+                  </div>
+                  <div className="space-y-2">
+                    <h2 className="text-xl font-black font-display text-skin-base">
+                      {isBrave ? 'Brave Blocked Push Notifications' : "Browser Can't Send Notifications"}
+                    </h2>
+                    {isBrave ? (
+                      <>
+                        <p className="text-sm text-skin-dim leading-relaxed max-w-xs">
+                          Brave allowed the notification permission, but its privacy shield is blocking the push service that actually delivers them.
+                        </p>
+                        <p className="text-xs text-skin-dim/80 leading-relaxed max-w-xs">
+                          Easiest: open this game in Chrome, Safari, or Firefox.
+                        </p>
+                        <p className="text-xs font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 leading-relaxed text-left">
+                          Or to stay on Brave:<br/>
+                          1. Open <span className="underline">brave://settings/privacy</span> &rarr; enable "Use Google services for push messaging"<br/>
+                          2. {getBraveOSPermissionInstruction()}<br/>
+                          3. Restart Brave, then reload this page
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-skin-dim leading-relaxed max-w-xs">
+                          Your browser is blocking push notifications. Pecking Order needs them so you don't miss votes, DMs, and game events.
+                        </p>
+                        <p className="text-xs text-skin-dim/80 leading-relaxed max-w-xs">
+                          Open this game in Chrome, Safari, or Firefox to play with reminders.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleCopyLink}
+                    className="w-full max-w-xs px-6 py-3.5 rounded-xl bg-skin-pink text-white font-bold text-sm uppercase tracking-wider shadow-lg shadow-skin-pink/20 active:scale-[0.97] transition-transform flex items-center justify-center gap-2"
+                  >
+                    {linkCopied ? (
+                      <><Check size={16} /> Link copied</>
+                    ) : (
+                      <><Copy size={16} /> Copy game link</>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleSubscribe}
+                    className="text-xs text-skin-dim/70 hover:text-skin-dim transition-colors underline underline-offset-2"
+                  >
+                    Try again
+                  </button>
+                  <button
+                    onClick={handleDefer}
+                    className="text-xs text-skin-dim/50 hover:text-skin-dim transition-colors underline underline-offset-2"
+                  >
+                    I'll do this later
+                  </button>
                 </>
               ) : permission === 'denied' ? (
                 <>
