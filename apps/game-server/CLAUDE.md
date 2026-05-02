@@ -25,6 +25,7 @@ Server modules (L1 is a thin shell): `http-handlers.ts`, `ws-handlers.ts`, `subs
 - **`enqueue.sendTo('child-id', event)`**: Cannot resolve invoked children. Use `enqueue.raise()` workaround.
 - **`spawn()` only in `assign()`**: `spawn()` is NOT available in `enqueueActions()`. If you need to spawn AND do other work, use separate actions: `assign()` for spawn, then another action for the rest.
 - **Parallel state name collisions**: Parallel regions (dilemmaLayer, activityLayer, votingLayer) should use unique state names. Using `playing` in multiple layers causes `resolveDayPhase()` to misidentify the phase. Use descriptive names like `dilemmaActive`, `voting`, `dailyGame`.
+- **Transient states (`always:`) can be skipped by subscribers**: When entry runs synchronously and `always:` advances in the same microtask (e.g. `dayLoop.morningBriefing → activeSession`), `actor.subscribe` can collapse the transient state's notification into the next stable state's. Don't gate side-effects on `JSON.stringify(snapshot.value).includes('transientName')` — that match silently no-ops when the subscriber misses the intermediate tick. Use synchronously-incremented context fields instead (e.g. `incrementDay` writes the new `dayIndex` before `always:` fires; both transient and stable states report the new value). The 2026-05-02 ticker-history clear in `subscription.ts` was a real instance of this — see commit `3f75e7f`.
 
 ## Game Design Rules
 
