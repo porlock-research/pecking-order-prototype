@@ -16,6 +16,10 @@ PlaytestSignups stores encrypted PII only (`email_encrypted`, `phone_encrypted`,
 - `next build`
 - `npm run deploy` (opennextjs + wrangler)
 
+## Design Context
+
+Lobby has its own design brief at **`apps/lobby/.impeccable.md`** — distinct from the repo-root `.impeccable.md` (which is for the Pulse shell). Use lobby's brief when invoking any `/impeccable:*` skill on a lobby page. The two surfaces are intentionally different: Pulse is calm + dramatic + recedes; lobby is loud + photo-driven + magazine-cover. Don't conflate them.
+
 ## Key Patterns
 
 - Lobby UI converts local time → UTC via `new Date(datetimeLocal).toISOString()` before sending to server.
