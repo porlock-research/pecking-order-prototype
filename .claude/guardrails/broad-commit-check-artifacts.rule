@@ -1,8 +1,8 @@
 MATCH_TOOL: Bash
 MATCH_PATTERN: git commit
 ADVISORY: |
-  Before committing, check for untracked test artifacts:
-  - Root *.png files (from Playwright/testing skills)
-  - **/test-results/ directories
-  - **/playwright-report/ directories
-  Clean up or gitignore any stale artifacts before committing.
+  Pre-commit: check for stale untracked artifacts (root *.png, **/test-results/, **/playwright-report/) — clean up or gitignore.
+KILL_CONDITION: |
+  When the guardian gains a Bash-side diff/predicate gate, this rule's
+  noise floor will drop to ~zero and the advisory can be re-expanded with
+  detail.

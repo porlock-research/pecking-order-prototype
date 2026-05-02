@@ -88,15 +88,13 @@ Broad path rules:
 - `finite-zustand-selector-fresh-objects` — added skip-if preamble to advisory
   (option C). Superseded by the 2026-04-16 content-aware gate.
 
-## Still pending (low urgency)
+## Resolved 2026-05-02 (single-line shortening)
 
-### `broad-commit-check-artifacts` — fires on every `git commit`
-
-Advisory is short (5 lines) and the guardian only applies `MATCH_CONTENT`
-to Edit/Write tools, not Bash. There's no clean way to gate Bash-side on the
-diff without shelling out. Options if this becomes noisy: shorten further to a
-single line, or refactor the guardian to support a `MATCH_SHELL_CHECK` hook
-that runs a quick shell predicate before firing.
+- `broad-commit-check-artifacts` — shortened advisory to a single line per the
+  option flagged in 2026-04-16's "low urgency" note. Bash-side diff gating is
+  still not feasible without a guardian refactor; KILL_CONDITION on the rule
+  documents the trigger that would let the advisory re-expand. Closing the
+  log entry — rule is now "as quiet as possible without infrastructure work."
 
 ## Confirmed empty 2026-04-29
 
