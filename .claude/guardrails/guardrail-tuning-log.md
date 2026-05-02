@@ -96,6 +96,19 @@ Broad path rules:
   documents the trigger that would let the advisory re-expand. Closing the
   log entry — rule is now "as quiet as possible without infrastructure work."
 
+## Resolved 2026-05-02 (state-endpoint L3-gating)
+
+- `finite-state-endpoint` — fired ~6× during the arcade-tour session on
+  legitimate L2 reads (`d.get('day')`, `d.get('state')`, manifest indexing).
+  Guardian's `MATCH_CONTENT` only handles Edit/Write input bodies, so the
+  fix was to fold the L3-field detection into `MATCH_PATTERN`: the rule now
+  requires the same command line to mention an L3-shaped field
+  (`channels`, `chatLog`, `dayPhase`, `active(Game|Voting|Prompt|Dilemma)Cartridge`,
+  `cartridgeUpdatedAt`, `connectedPlayers`) alongside the `/state` URL.
+  Raw `curl /state | jq` (no specific extraction) now stays quiet — the
+  developer will see the response shape and self-correct without an injected
+  reminder.
+
 ## Confirmed empty 2026-04-29
 
 The "Tighten candidates identified 2026-04-24 (not yet done)" list previously
