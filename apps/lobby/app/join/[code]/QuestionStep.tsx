@@ -111,7 +111,10 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                 <span className="text-xs font-display font-bold text-skin-dim tracking-widest tabular-nums">
                   {currentIndex + 1} / {questions.length}
                 </span>
-                <h2 className="text-lg font-display font-bold text-skin-base mt-1 leading-snug">
+                {/* Question stem in body font (Manrope) — was font-display
+                    (Big Shoulders Display, a condensed signage face). Display
+                    fonts at body sizes are textbook readability complaints. */}
+                <h2 className="text-lg font-body font-bold text-skin-base mt-1 leading-snug">
                   {question.text}
                 </h2>
               </div>
@@ -131,7 +134,10 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                           : 'bg-skin-panel/30 border border-skin-base/30 text-skin-base hover:bg-skin-panel/50'
                       }`}
                     >
-                      <span className="text-skin-dim font-display font-bold text-xs mr-2">
+                      {/* Option letter in body font; was display-condensed at
+                          12px which made A/B/C/D unscannable. Bumped to text-sm
+                          and text-skin-base/70 for legibility. */}
+                      <span className="text-skin-base/70 font-body font-bold text-sm mr-2">
                         {String.fromCharCode(65 + idx)}.
                       </span>
                       {option}
@@ -146,7 +152,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                     : 'bg-skin-panel/30 border border-skin-base/30'
                 }`}>
                   <div className="flex items-center gap-2 px-4 py-2">
-                    <span className="text-skin-dim font-display font-bold text-xs">D.</span>
+                    <span className="text-skin-base/70 font-body font-bold text-sm">D.</span>
                     <input
                       type="text"
                       value={currentSub?.selectedIndex === 3 ? (currentSub.customAnswer ?? '') : customText}

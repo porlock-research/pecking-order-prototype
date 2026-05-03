@@ -55,7 +55,7 @@ export function WelcomeForm({ code }: { code: string }) {
           placeholder="Your name"
           className="mt-2 w-full px-4 py-3 bg-skin-input border border-skin-base rounded-xl text-skin-base placeholder:text-skin-dim/70 focus:outline-none focus:border-skin-gold/50 text-base"
         />
-        <span className="mt-2 block text-[11px] text-skin-dim">
+        <span className="mt-2 block text-xs text-skin-base/70 leading-snug">
           This is so the group knows you in-game and in the reveal at the end.
         </span>
       </label>
