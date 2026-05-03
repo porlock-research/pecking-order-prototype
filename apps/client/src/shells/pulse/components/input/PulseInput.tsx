@@ -218,7 +218,7 @@ export function PulseInput() {
   }
 
   return (
-    <div style={{ borderTop: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)', position: 'relative', zIndex: PULSE_Z.flow }}>
+    <div style={{ borderTop: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)', position: 'relative', zIndex: PULSE_Z.flow, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {/* Floating vote chip — mounted at the input's outer wrapper (not
           inside the idle-mode block) so it survives command/reply/whisper
           mode transitions. Voting urgency shouldn't disappear when the user

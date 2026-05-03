@@ -215,6 +215,11 @@ export function ChatView() {
         flex: 1,
         overflowY: 'auto',
         overflowX: 'hidden',
+        // overscroll-behavior: contain → stops iOS Safari pull-to-refresh
+        // from firing when the player scrolls chat back to load history.
+        // Without it, an accidental over-scroll re-mounts the entire app +
+        // re-runs WS connect + replays pregame reveals. Vivid sets this too.
+        overscrollBehavior: 'contain',
         padding: 'var(--pulse-space-sm) var(--pulse-space-md)',
         display: 'flex',
         flexDirection: 'column',

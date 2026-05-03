@@ -85,7 +85,7 @@ function Pill({ label, color }: { label: string; color: string }) {
       style={{
         fontSize: 9, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase',
         padding: '2px 7px', borderRadius: 'var(--pulse-radius-pill)',
-        background: `${color}20`, color, border: `1px solid ${color}40`,
+        background: `color-mix(in oklch, ${color} 13%, transparent)`, color, border: `1px solid color-mix(in oklch, ${color} 25%, transparent)`,
         flexShrink: 0,
       }}
     >
@@ -123,7 +123,7 @@ function VoteBar({ count, max, color }: { count: number; max: number; color: str
         style={{
           width: Math.min(80, Math.max(12, pct * 0.8)),
           height: 6, borderRadius: 3,
-          background: `linear-gradient(90deg, ${color}60, ${color})`,
+          background: `linear-gradient(90deg, color-mix(in oklch, ${color} 38%, transparent), ${color})`,
         }}
       />
       <span style={{ fontSize: 12, fontWeight: 700, color, minWidth: 14, textAlign: 'right' }}>
@@ -367,7 +367,7 @@ function OutcomeRow({ pid, roster, label, color, icon, eliminated }: {
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '12px 14px', borderRadius: 'var(--pulse-radius-md)',
-        background: `${color}12`, border: `1px solid ${color}40`,
+        background: `color-mix(in oklch, ${color} 7%, transparent)`, border: `1px solid color-mix(in oklch, ${color} 25%, transparent)`,
       }}
     >
       <Avatar pid={pid} roster={roster} size={36} eliminated={eliminated} />
@@ -517,7 +517,7 @@ function RankBadge({ rank }: { rank: number }) {
     <div
       style={{
         width: 22, height: 22, borderRadius: 'var(--pulse-radius-xs)',
-        background: `${color}24`,
+        background: `color-mix(in oklch, ${color} 14%, transparent)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         color,
       }}
@@ -1114,8 +1114,8 @@ function DilemmaResult({ snapshot, roster, playerId }: {
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '8px 12px', borderRadius: 'var(--pulse-radius-sm)',
-                background: `${color}10`,
-                border: `1px solid ${color}30`,
+                background: `color-mix(in oklch, ${color} 6%, transparent)`,
+                border: `1px solid color-mix(in oklch, ${color} 19%, transparent)`,
               }}
             >
               <Avatar pid={pid} roster={roster} size={26} />
@@ -1163,7 +1163,7 @@ function OutcomeBanner({ tone, title, body, icon }: {
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
         padding: '14px 16px', borderRadius: 'var(--pulse-radius-md)',
-        background: `${color}14`, border: `1px solid ${color}40`,
+        background: `color-mix(in oklch, ${color} 8%, transparent)`, border: `1px solid color-mix(in oklch, ${color} 25%, transparent)`,
         textAlign: 'center',
       }}
     >

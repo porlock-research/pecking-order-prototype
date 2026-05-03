@@ -478,10 +478,14 @@ function BoundaryHeroPill({
           ? {
               opacity: 1,
               scale: 1,
+              // framer-motion's color parser can't interpolate color-mix();
+              // see memory `reference_framer_motion_no_color_mix`. Convert
+              // animated keyframes to rgba (gold base #ffc83d → 255,200,61).
+              // Static color-mix elsewhere in this component is fine.
               boxShadow: [
-                '0 0 32px color-mix(in oklch, var(--pulse-gold) 30%, transparent), inset 0 0 0 1px color-mix(in oklch, var(--pulse-gold) 18%, transparent)',
-                '0 0 56px color-mix(in oklch, var(--pulse-gold) 65%, transparent), inset 0 0 0 1px color-mix(in oklch, var(--pulse-gold) 32%, transparent)',
-                '0 0 32px color-mix(in oklch, var(--pulse-gold) 30%, transparent), inset 0 0 0 1px color-mix(in oklch, var(--pulse-gold) 18%, transparent)',
+                '0 0 32px rgba(255,200,61,0.30), inset 0 0 0 1px rgba(255,200,61,0.18)',
+                '0 0 56px rgba(255,200,61,0.65), inset 0 0 0 1px rgba(255,200,61,0.32)',
+                '0 0 32px rgba(255,200,61,0.30), inset 0 0 0 1px rgba(255,200,61,0.18)',
               ],
             }
           : { opacity: 1, scale: 1 }

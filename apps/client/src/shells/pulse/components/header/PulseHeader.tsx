@@ -49,7 +49,10 @@ export function PulseHeader({ onCompose, onOpenPanel }: Props) {
   return (
     <header style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: 'var(--pulse-space-sm) var(--pulse-space-md)',
+      // env(safe-area-inset-top) → keeps the header below the iPhone notch
+      // and dynamic island. Vivid had this; Pulse missed the iOS hardening
+      // pass on initial build.
+      padding: 'calc(var(--pulse-space-sm) + env(safe-area-inset-top, 0px)) var(--pulse-space-md) var(--pulse-space-sm)',
       background: 'var(--pulse-surface)',
       borderBottom: `${chrome.borderWidth}px solid ${chrome.borderColor}`,
       // Only transition the color, not the width. Animating border-width

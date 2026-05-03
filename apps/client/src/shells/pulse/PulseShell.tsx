@@ -42,7 +42,10 @@ import { PickingBanner } from './components/caststrip/PickingBanner';
 import { StartPickedCta } from './components/caststrip/StartPickedCta';
 import { EliminationReveal } from './components/reveals/EliminationReveal';
 import { WinnerReveal } from './components/reveals/WinnerReveal';
-import { PhaseTransition } from './components/reveals/PhaseTransition';
+// PhaseTransition removed — was a 3-second emoji-takeover scrim on every
+// phase change (8x per game day). Header eyebrow tints + chat NarratorLines
+// carry the same job; bespoke EliminationReveal + WinnerReveal stay for
+// actual dramatic moments.
 import { CartridgeOverlay } from './components/cartridge-overlay/CartridgeOverlay';
 import { SilverBurst } from './components/overdrive/SilverBurst';
 import { NudgeBurst } from './components/overdrive/NudgeBurst';
@@ -147,19 +150,36 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
         return true;
       }
       case 'cartridge_active': {
-        // Don't commit until SYNC has hydrated the manifest; otherwise the
-        // overlay's pill-match lookup (usePillStates → active slots +
-        // completedCartridges) has nothing to resolve against and
-        // CartridgeOverlay unfocuses with "Activity unavailable" before the
-        // pill arrives. Returning false leaves the intent pending so the
-        // retry loop picks it up once the store is populated.
+        // Don't commit until SYNC has hydrated the manifest AND the active
+        // cartridge slot for this kind matches the intent's id. The previous
+        // gate (manifest only) was insufficient: when push lands during a
+        // SYNC race, manifest is present but active*Cartridge is still null
+        // (or matches the PRIOR cartridge of the same kind). focusCartridge
+        // succeeds, intent is dropped, then CartridgeOverlay's pill-match
+        // lookup fails → "Activity unavailable" toast + auto-unfocus.
+        // Returning false here leaves the intent pending so useDeepLinkIntent
+        // retries until the cartridge actually lands.
         if (!state.manifest) return false;
+        const activeForKind =
+          intent.cartridgeKind === 'voting' ? state.activeVotingCartridge :
+          intent.cartridgeKind === 'game' ? state.activeGameCartridge :
+          intent.cartridgeKind === 'prompt' ? state.activePromptCartridge :
+          intent.cartridgeKind === 'dilemma' ? state.activeDilemma :
+          null;
+        if (!activeForKind || activeForKind.id !== intent.cartridgeId) return false;
         markCartridgeSeen(intent.cartridgeId);
         focusCartridge(intent.cartridgeId, intent.cartridgeKind, 'push');
         return true;
       }
       case 'cartridge_result': {
+        // Same race for results: pill must be in completedCartridges before
+        // the overlay can render its result UI. Without this gate, push from
+        // a fresh result lands "Activity unavailable" until SYNC catches up.
         if (!state.manifest) return false;
+        const inCompleted = (state.completedCartridges ?? []).some(
+          (c: { key: string }) => c.key === intent.cartridgeId,
+        );
+        if (!inCompleted) return false;
         markCartridgeSeen(intent.cartridgeId);
         const kind = (intent.cartridgeId.split('-')[0] ?? 'voting') as CartridgeKind;
         focusCartridge(intent.cartridgeId, kind, 'push');
@@ -379,7 +399,7 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
 
         <EliminationReveal />
         <WinnerReveal />
-        <PhaseTransition />
+        {/* PhaseTransition removed — see import-site note. */}
         {/* Overdrive layers — sender celebration bursts. Listen for
             pulse:silver-burst / pulse:nudge-burst window CustomEvents. */}
         <SilverBurst />
