@@ -911,6 +911,14 @@ export async function startDebugGame(
   tokens?: Record<string, string>;
   error?: string;
 }> {
+  // Auth gate (issue #105): unauthenticated callers could mint signed JWTs and
+  // burn DO/D1/R2 budget. Match the pattern used by adminInitGame/adminPatchPushConfig.
+  try {
+    await requireSuperAdmin();
+  } catch {
+    return { success: false, error: 'unauthorized' };
+  }
+
   const env = await getEnv();
   const GAME_SERVER_HOST = (env.GAME_SERVER_HOST as string) || 'http://localhost:8787';
   const AUTH_SECRET = (env.AUTH_SECRET as string) || 'dev-secret-change-me';

@@ -17,6 +17,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <!-- Static manifest + favicon. Chrome decides installability before JS
+         runs, so the runtime updatePwaManifest() (App.tsx, ADR-149) which
+         rewrites this link to a per-game data: URL with baked JWT is too
+         late on its own. The static href below gives Chrome an immediately-
+         resolvable manifest at first load; runtime code replaces the href
+         once a game token is known. Favicon stops the per-page 404 hammer. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/icons/icon-192.png" />
 
     <!-- Open Graph + Twitter Card for link unfurling. SPA index.html is served
          for every /game/* route, so rich previews work from any share URL the

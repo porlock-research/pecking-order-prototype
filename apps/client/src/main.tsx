@@ -49,3 +49,19 @@ registerSW({
     console.error('[SW] Registration failed:', error);
   },
 });
+
+// Issue #126: when a new SW takes control mid-session (clientsClaim + skipWaiting
+// from autoUpdate), the page is still bundled against OLD precached chunks. Any
+// subsequent lazy import (DemoPage, GameDevHarness, etc.) hits "Loading chunk N
+// failed". postMessage listeners attached to the old controller also drop on
+// silent SW swap. Reload on controllerchange fixes both — accepted cost is one
+// transient reload after deploy, which is what the user would expect anyway.
+if ('serviceWorker' in navigator) {
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    console.log('[SW] controllerchange — reloading to pick up new SW');
+    window.location.reload();
+  });
+}

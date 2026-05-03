@@ -111,8 +111,22 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
   const resolveIntent = useCallback((intent: DeepLinkIntent, _origin: 'push'): boolean => {
     const state = useGameStore.getState();
     switch (intent.kind) {
-      case 'main':
+      case 'main': {
+        // Issue #134 — was a no-op return true. Push triggers with kind:'main'
+        // (vote opens, day wraps, DM open/close, group chat open, confession
+        // booth open) tap-handled silently with zero UI side-effect. Players
+        // saw "tap notification → nothing happens" → trust break.
+        // Fix: close any open overlay/sheet so the player lands on the main
+        // chat surface, then signal ChatView to scroll-to-latest.
+        setSilverTarget(null);
+        setDmTarget(null);
+        setDmIsGroup(false);
+        setSocialPanelOpen(false);
+        setDossierTargetId(null);
+        useGameStore.getState().unfocusCartridge();
+        window.dispatchEvent(new CustomEvent('pulse:focusMain'));
         return true;
+      }
       case 'dm': {
         const ch = state.channels[intent.channelId];
         if (!ch) return false;

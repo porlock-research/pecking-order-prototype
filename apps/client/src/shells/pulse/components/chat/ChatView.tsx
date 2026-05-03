@@ -143,6 +143,19 @@ export function ChatView() {
     }
   }, [timeline.length, autoScroll]);
 
+  // Issue #134 — when a kind:'main' push notification is tapped, PulseShell
+  // closes any open overlay and dispatches 'pulse:focusMain'. Force a
+  // scroll-to-bottom AND re-enable autoScroll so the player lands on the
+  // latest content (not wherever they had scrolled to before backgrounding).
+  useEffect(() => {
+    const onFocusMain = () => {
+      setAutoScroll(true);
+      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    };
+    window.addEventListener('pulse:focusMain', onFocusMain);
+    return () => window.removeEventListener('pulse:focusMain', onFocusMain);
+  }, []);
+
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;

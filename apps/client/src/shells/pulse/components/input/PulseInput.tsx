@@ -181,10 +181,41 @@ export function PulseInput() {
     });
   }, [commandMode, engine, cancel, guardWhisper]);
 
-  // When chat is closed the ChatView renders its own "Chat opens at dawn"
-  // notice in the empty chat area. Hiding the input bar here avoids a
-  // duplicate copy of the same message stacked at the bottom of the viewport.
-  if (!isSocialPhase) return null;
+  // Issue #33 — was `return null`, which fully unmounted the bar during
+  // ELIMINATION / GAME_OVER. The server pulses through these phases briefly
+  // during day rollover, vote-result hold, and reveal sequencing, so the input
+  // visibly disappeared and reappeared mid-game ("input field disappears
+  // intermittently"). Render a height-preserving disabled stub instead — same
+  // border-top + background as the normal input so layout doesn't reflow,
+  // muted phase-aware label so it reads as intentional, not broken. Different
+  // copy from ChatView's empty-state notice so it doesn't duplicate.
+  if (!isSocialPhase) {
+    const stubLabel = phase === DayPhases.ELIMINATION
+      ? 'Chat reopens after the reveal'
+      : 'Game over · chat closed';
+    return (
+      <div
+        aria-hidden="true"
+        style={{
+          borderTop: '1px solid var(--pulse-border)',
+          background: 'var(--pulse-surface)',
+          padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
+          minHeight: 56,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--pulse-text-3)',
+          fontSize: 12,
+          fontStyle: 'italic',
+          textAlign: 'center',
+          zIndex: PULSE_Z.flow,
+          position: 'relative',
+        }}
+      >
+        {stubLabel}
+      </div>
+    );
+  }
 
   return (
     <div style={{ borderTop: '1px solid var(--pulse-border)', background: 'var(--pulse-surface)', position: 'relative', zIndex: PULSE_Z.flow }}>

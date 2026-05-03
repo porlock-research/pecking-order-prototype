@@ -15,6 +15,29 @@ declare global {
 }
 
 const DEFER_KEY = 'po_gate_deferred';
+// Issue #44: was sessionStorage — every cold-launch (iOS evicts standalone
+// webviews aggressively) re-prompted, hammering returning players. Switching
+// to localStorage with a 24h TTL fixes the per-cold-launch reprompt without
+// becoming permanent silence (push is the engagement engine — see memory
+// `feedback_push_is_engagement_engine`; if a player defers in pregame they
+// should still see the gate next day when notifications actually matter).
+const DEFER_TTL_MS = 24 * 60 * 60 * 1000;
+
+function isDeferredFresh(): boolean {
+  try {
+    const raw = localStorage.getItem(DEFER_KEY);
+    if (!raw) return false;
+    const ts = parseInt(raw, 10);
+    if (!Number.isFinite(ts)) return false;
+    if (Date.now() - ts >= DEFER_TTL_MS) {
+      localStorage.removeItem(DEFER_KEY);
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function isMobileDevice(): boolean {
   return navigator.maxTouchPoints > 0 && window.innerWidth < 1024;
@@ -77,9 +100,7 @@ export function PwaGate({ token }: PwaGateProps) {
 function PwaGateInner({ token }: { token: string }) {
   const { permission, isSubscribed, isStandalone, ready, subscribe, subscribeError } =
     usePushNotifications(token);
-  const [deferred, setDeferred] = useState(
-    () => sessionStorage.getItem(DEFER_KEY) === '1',
-  );
+  const [deferred, setDeferred] = useState(() => isDeferredFresh());
   const [subscribeSuccess, setSubscribeSuccess] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [isBrave, setIsBrave] = useState(false);
@@ -112,7 +133,11 @@ function PwaGateInner({ token }: { token: string }) {
     !subscribeSuccess;
 
   const handleDefer = useCallback(() => {
-    sessionStorage.setItem(DEFER_KEY, '1');
+    try {
+      localStorage.setItem(DEFER_KEY, Date.now().toString());
+    } catch {
+      // Storage may be denied (private mode); deferred-state lives in React only
+    }
     setDeferred(true);
   }, []);
 
