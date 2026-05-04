@@ -11,7 +11,7 @@ export function DmEmptyState({ isGroup, targetName, groupNames }: Props) {
       }}>
         {isGroup
           ? <>Your group with {groupNames}. No messages yet. Say something to get it started.</>
-          : <>No messages yet with {targetName}. Break the ice.</>
+          : <>You and {targetName}. Nothing said yet. Make a move.</>
         }
       </div>
     </div>

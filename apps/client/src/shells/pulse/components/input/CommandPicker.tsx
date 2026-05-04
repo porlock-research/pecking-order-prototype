@@ -15,10 +15,10 @@ const commands: Array<{
   requires?: 'dmsOpen';
   cap?: ChannelCapability;
 }> = [
-  { id: 'silver',  icon: Coins,       label: 'Silver',  desc: 'Send silver',    color: 'var(--pulse-gold)',    cap: 'SILVER_TRANSFER' },
-  { id: 'dm',      icon: ChatCircle,  label: 'DM',      desc: 'Start a chat',   color: 'var(--pulse-accent)',  requires: 'dmsOpen' },
-  { id: 'nudge',   icon: HandWaving,  label: 'Nudge',   desc: 'Poke a player',  color: 'var(--pulse-nudge)',   cap: 'NUDGE' },
-  { id: 'whisper', icon: Lock,        label: 'Whisper', desc: 'Secret message', color: 'var(--pulse-whisper)', requires: 'dmsOpen', cap: 'WHISPER' },
+  { id: 'silver',  icon: Coins,       label: 'Silver',  desc: 'Tip silver',         color: 'var(--pulse-gold)',    cap: 'SILVER_TRANSFER' },
+  { id: 'dm',      icon: ChatCircle,  label: 'DM',      desc: 'Open a DM',          color: 'var(--pulse-accent)',  requires: 'dmsOpen' },
+  { id: 'nudge',   icon: HandWaving,  label: 'Nudge',   desc: 'Get on their radar', color: 'var(--pulse-nudge)',   cap: 'NUDGE' },
+  { id: 'whisper', icon: Lock,        label: 'Whisper', desc: 'Off the record',     color: 'var(--pulse-whisper)', requires: 'dmsOpen', cap: 'WHISPER' },
 ];
 
 interface CommandPickerProps {

@@ -42,7 +42,7 @@ export function BroadcastCard({ message }: BroadcastCardProps) {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--pulse-accent)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>
-            Game Master
+            Production
           </div>
           <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--pulse-text-1)', lineHeight: 1.4 }}>
             {message.content}

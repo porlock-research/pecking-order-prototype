@@ -191,7 +191,7 @@ function PwaGateInner({ token }: { token: string }) {
                       You're all set!
                     </h2>
                     <p className="text-sm text-skin-dim leading-relaxed max-w-xs">
-                      You'll receive notifications for important game events.
+                      We&apos;ll ping you for DMs, votes, and the next elimination.
                     </p>
                   </div>
                 </>
@@ -286,8 +286,8 @@ function PwaGateInner({ token }: { token: string }) {
                       Enable Notifications
                     </h2>
                     <p className="text-sm text-skin-dim leading-relaxed max-w-xs">
-                      Get notified when it's your turn to vote, when you receive
-                      DMs, and for important game events.
+                      Don&apos;t miss your DMs, the day&apos;s vote, or the next
+                      elimination — we&apos;ll ping you when each one drops.
                     </p>
                   </div>
                   <button
@@ -351,7 +351,7 @@ function InstallGate({ onDefer }: { onDefer: () => void }) {
         name="Pecking Order"
         description="Keep your friends close..."
         icon="/icons/icon-192.png"
-        install-description="Install to enable push notifications and play the game"
+        install-description="Install to get DMs, votes, and elimination pings on your home screen"
         disable-close
         manual-apple
         manual-chrome
