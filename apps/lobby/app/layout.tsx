@@ -55,8 +55,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // data-theme="reality-tv-tabloid" scopes the lobby's tabloid B+W + red
+  // palette to lobby pages only. Other apps consuming @pecking-order/ui-kit
+  // (notably the client's Vivid/Classic/Immersive shells) keep the default
+  // Reality TV purple/pink/gold theme. See apps/lobby/.impeccable.md.
   return (
-    <html lang="en">
+    <html lang="en" data-theme="reality-tv-tabloid">
       <body>{children}</body>
     </html>
   );

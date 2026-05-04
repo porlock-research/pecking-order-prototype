@@ -77,6 +77,57 @@
 }
 
 /* ============================================================
+   THEME: Reality TV Tabloid  (lobby-scoped)
+   Tabloid ink + paper + single tabloid red. Lobby applies this via
+   <html data-theme="reality-tv-tabloid"> in apps/lobby/app/layout.tsx.
+   Other shells (Pulse, Vivid, Classic, Immersive) keep the default.
+   See apps/lobby/.impeccable.md for the full brief and pattern catalog.
+   ============================================================ */
+[data-theme="reality-tv-tabloid"] {
+  /* Backgrounds — ink ladder */
+  --po-bg-deep: #0a0a0a;
+  --po-bg-panel: #131313;
+  --po-bg-input: #1d1d1d;
+  --po-bg-bubble: #1d1d1d;
+  --po-bg-glass: rgba(245, 243, 240, 0.08);
+  --po-bg-glass-elevated: rgba(245, 243, 240, 0.14);
+  --po-bg-cartridge: rgba(10, 10, 10, 0.92);
+
+  /* Text — paper ladder */
+  --po-text: #f5f3f0;
+  --po-text-dim: #a8a39c;
+  --po-text-faint: #6f6a64;
+  --po-text-inverted: #0a0a0a;
+
+  /* Single saturated accent — tabloid red.
+     Token names kept (--po-pink, --po-gold) for codebase continuity;
+     semantically `pink` is now red here. Rename is a follow-up. */
+  --po-pink: #d72638;
+  --po-pink-depth: #8a1a25;
+
+  /* Premium signal — gold, used sparingly per brief principle 3 */
+  --po-gold: #f7c52e;
+  --po-gold-dim: rgba(247, 197, 46, 0.18);
+
+  /* Borders */
+  --po-border: rgba(245, 243, 240, 0.10);
+  --po-border-active: #d72638;
+  --po-rule: #2c2c2c;
+
+  /* Shadows — paper inner highlight, ink under-bleed, red glow accent */
+  --po-shadow-card:
+    inset 0 1px 0 rgba(245, 243, 240, 0.06),
+    0 12px 32px -12px rgba(0, 0, 0, 0.85),
+    0 4px 12px -4px rgba(215, 38, 56, 0.18);
+  --po-shadow-glow-pink: 0 0 18px rgba(215, 38, 56, 0.35);
+
+  /* Gradient — ink ground with subtle red radial tint */
+  --po-gradient-bg:
+    radial-gradient(ellipse 70% 55% at 50% 28%, rgba(215, 38, 56, 0.06), transparent 70%),
+    var(--po-bg-deep);
+}
+
+/* ============================================================
    THEME: Cyberpunk  (alt — proves theming works)
    Neon cyan, electric red, dark chrome.
    ============================================================ */

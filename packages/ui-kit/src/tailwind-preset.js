@@ -86,6 +86,7 @@ module.exports = {
                 skin: {
                     base: 'var(--po-border)',
                     active: 'var(--po-border-active)',
+                    rule: 'var(--po-rule)',
                     gold: 'var(--po-gold)',
                     pink: 'var(--po-pink)',
                     green: 'var(--po-green)',
