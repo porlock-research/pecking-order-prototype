@@ -62,14 +62,14 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="text-center flex-shrink-0 space-y-1">
-        <h2 className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+        <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
           Get Into Character
         </h2>
         <p className="text-xs text-skin-dim">
-          Answer as <span className="text-skin-gold font-bold">{personaName}</span> — or{' '}
+          Answer as <span className="text-skin-pink font-bold">{personaName}</span> — or{' '}
           <button
             onClick={onSkip}
-            className="text-skin-gold/70 underline underline-offset-2 hover:text-skin-gold transition-colors"
+            className="text-skin-pink/80 underline underline-offset-2 hover:text-skin-pink transition-colors"
           >
             skip to use defaults
           </button>
@@ -84,9 +84,9 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
             onClick={() => goTo(i)}
             className={`w-2 h-2 rounded-full transition-all duration-200 ${
               i === currentIndex
-                ? 'bg-skin-gold scale-125'
+                ? 'bg-skin-pink scale-125'
                 : submissions[q.id]
-                  ? 'bg-skin-gold/50'
+                  ? 'bg-skin-pink/50'
                   : 'bg-skin-input'
             }`}
           />
@@ -130,7 +130,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                       whileTap={{ scale: 0.98 }}
                       className={`w-full text-left px-4 py-3 rounded-xl text-sm font-body transition-all duration-200 ${
                         isSelected
-                          ? 'bg-skin-gold/20 border-2 border-skin-gold text-skin-gold font-bold'
+                          ? 'bg-skin-pink/20 border-2 border-skin-pink text-skin-pink font-bold'
                           : 'bg-skin-panel/30 border border-skin-base/30 text-skin-base hover:bg-skin-panel/50'
                       }`}
                     >
@@ -148,7 +148,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                 {/* "Other" write-in option */}
                 <div className={`rounded-xl transition-all duration-200 ${
                   currentSub?.selectedIndex === 3
-                    ? 'bg-skin-gold/20 border-2 border-skin-gold'
+                    ? 'bg-skin-pink/20 border-2 border-skin-pink'
                     : 'bg-skin-panel/30 border border-skin-base/30'
                 }`}>
                   <div className="flex items-center gap-2 px-4 py-2">
@@ -175,7 +175,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                     {customText.trim() && currentSub?.selectedIndex !== 3 && (
                       <button
                         onClick={() => selectAnswer(3, customText.trim())}
-                        className="text-xs font-display font-bold text-skin-gold uppercase"
+                        className="text-xs font-display font-bold text-skin-pink uppercase"
                       >
                         Pick
                       </button>
@@ -200,7 +200,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
           </p>
           <button
             onClick={handleComplete}
-            className="w-full py-3 bg-skin-gold text-skin-deep font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg hover:brightness-110 active:scale-[0.99] transition-all"
+            className="w-full py-3 bg-skin-pink text-skin-base font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg hover:brightness-110 active:scale-[0.99] transition-all"
           >
             Continue
           </button>

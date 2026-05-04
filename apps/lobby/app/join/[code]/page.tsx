@@ -249,30 +249,34 @@ export default function InvitePage() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
             className="absolute inset-0 w-full h-full object-cover object-top scale-110 pointer-events-none transition-[filter] duration-500"
-            style={{ filter: `blur(${bgConfig.blur}px)` }}
+            // Variant-A noir treatment: photo desaturated + dimmed under the
+            // ink scrim. Per docs/reports/lobby-mockups/01-palette-directions.html
+            // the wizard's photo-bg becomes a tabloid black-and-white portrait,
+            // not a full-color blurred bleed. Type contrast becomes deterministic.
+            style={{ filter: `blur(${bgConfig.blur}px) grayscale(1) brightness(0.55)` }}
           />
         )}
       </AnimatePresence>
-      {/* Page-bg overlay over the blurred persona photo. Bumped from /60
-          to /72 so text-skin-faint and text-skin-dim hit ≥4.5:1 even when
-          the photo behind is light (faces, gold-toned wardrobe, etc.). */}
-      <div className="absolute inset-0 bg-skin-deep/72 pointer-events-none" />
+      {/* Page-bg overlay over the blurred + grayscaled persona photo.
+          Mockup variant A scrim is rgba(ink, 0.65); type sits on a near-
+          opaque ink wash so legibility doesn't depend on photo brightness. */}
+      <div className="absolute inset-0 bg-skin-deep/65 pointer-events-none" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
 
       {/* Content area — fills viewport above the bottom bar */}
       <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
-        {/* Masthead — wordmark left, tear-off code stub right.
-            Replaces the older PECKING-ORDER-with-invite-code stack.
-            Code stays visible as a tabloid receipt; the player already
-            arrived via the URL so we don't repeat-pitch the value. */}
-        <header className="flex items-center justify-between flex-shrink-0 pb-2 border-b-2 border-skin-base">
-          <div className="font-display font-black text-base text-skin-base tracking-[0.16em] uppercase leading-none">
-            Pecking Order
-          </div>
-          <div className="font-mono text-[10px] font-bold tracking-[0.1em] text-skin-dim leading-none">
-            <span className="opacity-60 mr-1">CODE</span>
-            <span className="text-skin-base">{code}</span>
-          </div>
+        {/* Wizard header — centered red wordmark + invite-code subline.
+            Matches docs/reports/lobby-mockups/01-palette-directions.html
+            variant A. The masthead pattern (paper wordmark + tear-off
+            receipt) is the WELCOME surface signature; the wizard wants a
+            different — louder — opener since the photo-bg dominates. */}
+        <header className="text-center flex-shrink-0 pt-1">
+          <h1 className="font-display font-black text-skin-pink leading-none tracking-tight" style={{ fontSize: '28px', letterSpacing: '-0.01em' }}>
+            PECKING ORDER
+          </h1>
+          <p className="text-[11px] text-skin-dim mt-0.5">
+            Invite Code:<span className="text-skin-pink font-mono font-bold tracking-[0.1em] ml-1">{code}</span>
+          </p>
         </header>
 
         {/* Already Joined */}
@@ -308,7 +312,7 @@ export default function InvitePage() {
                         wayfinding. Bumped to text-skin-base/85 for legibility. */}
                     <div
                       className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-display font-bold transition-all duration-300
-                        ${step >= s ? 'bg-skin-gold text-skin-deep' : 'bg-skin-input text-skin-base/85'}`}
+                        ${step >= s ? 'bg-skin-pink text-skin-base' : 'bg-skin-input text-skin-base/85'}`}
                     >
                       {step > s ? '\u2713' : s}
                     </div>
@@ -316,7 +320,7 @@ export default function InvitePage() {
                   {s < 4 && (
                     <div className="w-8 h-0.5 bg-skin-input relative overflow-hidden">
                       <motion.div
-                        className="absolute inset-0 bg-skin-gold origin-left"
+                        className="absolute inset-0 bg-skin-pink origin-left"
                         animate={{ scaleX: step > s ? 1 : 0 }}
                         transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
                       />
@@ -342,7 +346,7 @@ export default function InvitePage() {
                     className="h-full flex flex-col gap-3"
                   >
                     <div className="text-center flex-shrink-0 space-y-1">
-                      <h2 className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+                      <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
                         Choose Your Persona
                       </h2>
                       <p className="text-[11px] text-skin-dim tracking-wide">
@@ -384,7 +388,7 @@ export default function InvitePage() {
                         {/* Hero Image Area — swipeable, fills remaining space */}
                         <div
                           {...swipeHandlers}
-                          className="flex-1 min-h-0 relative rounded-2xl overflow-hidden glow-breathe"
+                          className="flex-1 min-h-0 relative rounded-2xl overflow-hidden ring-1 ring-skin-base/10"
                           style={{ touchAction: 'pan-y' }}
                         >
                           <AnimatePresence initial={false} custom={directionRef.current} mode="popLayout">
@@ -419,7 +423,7 @@ export default function InvitePage() {
                                 <div className="text-2xl font-display font-black text-skin-base text-glow leading-tight">
                                   {activePersona?.name}
                                 </div>
-                                <div className="text-xs font-display font-bold text-skin-gold uppercase tracking-[0.2em]">
+                                <div className="text-xs font-display font-bold text-skin-pink uppercase tracking-[0.2em]">
                                   {activePersona?.stereotype}
                                 </div>
                                 {/* Description in body font (Manrope) — was display.
@@ -474,7 +478,7 @@ export default function InvitePage() {
                               <div
                                 className={`w-14 h-14 rounded-full overflow-hidden transition-all duration-200 ${
                                   idx === activeIndex
-                                    ? 'ring-2 ring-skin-gold ring-offset-2 ring-offset-skin-deep scale-110'
+                                    ? 'ring-2 ring-skin-pink ring-offset-2 ring-offset-skin-deep scale-110'
                                     : 'opacity-50 grayscale hover:opacity-70'
                                 }`}
                               >
@@ -489,7 +493,7 @@ export default function InvitePage() {
                               </div>
                               <span
                                 className={`text-[10px] font-display font-bold text-center transition-colors ${
-                                  idx === activeIndex ? 'text-skin-gold' : 'text-skin-faint'
+                                  idx === activeIndex ? 'text-skin-pink' : 'text-skin-faint'
                                 }`}
                               >
                                 {persona.name.split(' ')[0]}
@@ -516,7 +520,7 @@ export default function InvitePage() {
                   >
                     <div className="my-auto space-y-4 py-2">
                       <div className="text-center flex-shrink-0">
-                        <h2 className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+                        <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
                           Write Your Catfish Bio
                         </h2>
                         <p className="text-xs text-skin-dim mt-1">First impression. Make it stick.</p>
@@ -531,14 +535,14 @@ export default function InvitePage() {
                           src={personaHeadshotUrl(selectedPersona.id)}
                           alt=""
                           aria-hidden="true"
-                          className="w-14 h-14 rounded-full object-cover object-top border-2 border-skin-gold/60 flex-shrink-0"
+                          className="w-14 h-14 rounded-full object-cover object-top border-2 border-skin-pink/60 flex-shrink-0"
                           onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0'; }}
                         />
                         <div className="text-left">
                           <div className="text-xl font-display font-black text-skin-base leading-tight">
                             {selectedPersona.name}
                           </div>
-                          <div className="text-[11px] font-display font-bold text-skin-gold uppercase tracking-[0.16em]">
+                          <div className="text-[11px] font-display font-bold text-skin-pink uppercase tracking-[0.16em]">
                             {selectedPersona.stereotype}
                           </div>
                         </div>
@@ -557,7 +561,7 @@ export default function InvitePage() {
                           placeholder="Write your catfish bio... Who are you pretending to be?"
                           rows={4}
                           aria-label="Catfish bio"
-                          className="w-full px-4 py-3 bg-skin-input border border-skin-gold rounded-xl text-base text-skin-base placeholder:text-skin-base/40 focus:outline-none focus:ring-1 focus:ring-skin-gold resize-none"
+                          className="w-full px-4 py-3 bg-skin-input border border-skin-pink rounded-xl text-base text-skin-base placeholder:text-skin-base/40 focus:outline-none focus:ring-1 focus:ring-skin-pink resize-none"
                         />
                         <div className="flex justify-between text-xs">
                           <span className="text-skin-base/70">Max 280 characters</span>
@@ -639,7 +643,7 @@ export default function InvitePage() {
                           <span className="sr-only">Confirm Your Identity. </span>
                           {selectedPersona.name}
                         </h2>
-                        <p className="text-xs font-display font-bold text-skin-gold uppercase tracking-[0.2em]">
+                        <p className="text-xs font-display font-bold text-skin-pink uppercase tracking-[0.2em]">
                           {selectedPersona.stereotype}
                         </p>
                       </div>
@@ -652,7 +656,7 @@ export default function InvitePage() {
                             deep background below. Locked-In stamp + gold accent
                             stripe stay as the commitment-moment treatment. */}
                       <div className="relative overflow-hidden rounded-2xl">
-                        <div aria-hidden className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-skin-gold to-transparent z-10" />
+                        <div aria-hidden className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-skin-pink to-transparent z-10" />
                         <div className="aspect-[16/9] bg-skin-input/30 relative overflow-hidden">
                           <img
                             src={selectedPersona.fullImageUrl}
@@ -825,7 +829,7 @@ export default function InvitePage() {
                         ${
                           !customBio.trim()
                             ? 'bg-skin-input text-skin-faint cursor-not-allowed'
-                            : 'bg-skin-gold text-skin-deep shadow-btn hover:brightness-110 active:scale-[0.99]'
+                            : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
                         }`}
                     >
                       Continue
