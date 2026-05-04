@@ -37,19 +37,19 @@ export default async function PlaytestPage() {
   const playtestUrl = (env.PLAYTEST_URL as string) || `${lobbyHost}/playtest`;
 
   return (
-    <div className="min-h-screen bg-skin-deep bg-grid-pattern font-body text-skin-base selection:bg-skin-gold/30 relative overflow-hidden">
+    <div className="min-h-screen bg-skin-deep bg-grid-pattern font-body text-skin-base selection:bg-skin-pink/30 relative overflow-hidden">
       {/* Ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-gradient-radial from-skin-panel/60 via-skin-panel/20 to-transparent opacity-80 pointer-events-none" />
 
       {/* Hero */}
       <header className="relative pt-[max(2rem,env(safe-area-inset-top))] pb-2 px-4 text-center">
-        <h1 className="font-display font-black text-skin-gold tracking-tight text-glow mb-2 leading-[0.9]" style={{ fontSize: 'clamp(2.75rem, 12vw, 4.5rem)' }}>
+        <h1 className="font-display font-black text-skin-base tracking-tight mb-2 leading-[0.9]" style={{ fontSize: 'clamp(2.75rem, 12vw, 4.5rem)' }}>
           PECKING ORDER
         </h1>
         <p className="text-skin-dim text-base md:text-lg font-light tracking-wide mb-4 max-w-sm mx-auto">
           A multi-day social game for the people who watch this stuff for the strategy.
         </p>
-        <span className="inline-block bg-skin-gold/10 rounded-full px-5 py-2 text-skin-gold text-xs font-bold uppercase tracking-[0.2em] mb-8">
+        <span className="inline-block bg-skin-pink/10 rounded-full px-5 py-2 text-skin-pink text-xs font-bold uppercase tracking-[0.2em] mb-8">
           Playtesting Now
         </span>
 
@@ -80,7 +80,7 @@ export default async function PlaytestPage() {
       <section className="relative py-12 px-6 max-w-md mx-auto text-center">
         <div className="font-display font-black uppercase leading-[0.95] tracking-tight text-skin-base" style={{ fontSize: 'clamp(2rem, 9vw, 3.25rem)' }}>
           <div>Vote.</div>
-          <div className="text-skin-gold">Ally.</div>
+          <div className="text-skin-pink">Ally.</div>
           <div>Betray.</div>
           <div className="text-skin-pink">Survive.</div>
         </div>

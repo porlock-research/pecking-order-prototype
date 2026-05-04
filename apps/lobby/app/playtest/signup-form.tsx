@@ -10,7 +10,7 @@ import { ShareButtons } from './share-buttons';
 const STORAGE_KEY = 'pecking-order-playtest';
 
 const inputClass =
-  'w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-sm placeholder:text-skin-faint';
+  'w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-pink/50 focus:border-skin-pink/50 transition-all text-sm placeholder:text-skin-faint';
 
 export function SignupForm({
   turnstileSiteKey,
@@ -162,7 +162,7 @@ export function SignupForm({
         </div>
 
         {referralCode && (
-          <div className="text-center py-3 bg-skin-deep/40 rounded-xl border border-skin-gold/15">
+          <div className="text-center py-3 bg-skin-deep/40 rounded-xl border border-skin-pink/15">
             <p className="text-[10px] font-bold text-skin-dim uppercase tracking-[0.2em] mb-1.5 font-display">
               Your Referral Code
             </p>
@@ -279,7 +279,7 @@ export function SignupForm({
                     ? 'bg-skin-input text-skin-faint cursor-wait'
                     : !hasOptionalInput
                       ? 'bg-skin-input text-skin-faint cursor-not-allowed'
-                      : 'bg-skin-gold/85 text-skin-deep hover:brightness-110 active:scale-[0.99]'
+                      : 'bg-skin-pink/85 text-skin-base hover:brightness-110 active:scale-[0.99]'
                 }`}
               >
                 {optionalIsLoading ? 'Saving…' : 'Save'}
@@ -346,7 +346,7 @@ export function SignupForm({
           ${
             isLoading
               ? 'bg-skin-input text-skin-faint cursor-wait'
-              : 'bg-skin-gold text-skin-deep shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
+              : 'bg-skin-pink text-skin-base shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
           }`}
       >
         {isLoading ? (
@@ -364,14 +364,14 @@ export function SignupForm({
         By signing up, you agree to our{' '}
         <Link
           href="/terms"
-          className="text-skin-dim hover:text-skin-gold underline-offset-2 hover:underline transition-colors"
+          className="text-skin-dim hover:text-skin-pink underline-offset-2 hover:underline transition-colors"
         >
           Terms
         </Link>{' '}
         and{' '}
         <Link
           href="/privacy"
-          className="text-skin-dim hover:text-skin-gold underline-offset-2 hover:underline transition-colors"
+          className="text-skin-dim hover:text-skin-pink underline-offset-2 hover:underline transition-colors"
         >
           Privacy Policy
         </Link>
