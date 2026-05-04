@@ -8,6 +8,7 @@ import { useGameStore, selectHaveINudged, selectPendingInvitesForMe } from '../.
 import { useDeepLinkIntent } from '../../hooks/useDeepLinkIntent';
 import { useRevealQueue } from './hooks/useRevealQueue';
 import { useReceivedOverdrive } from './hooks/useReceivedOverdrive';
+import { useLockInCountdown } from './hooks/useLockInCountdown';
 import { ChannelTypes, DayPhases } from '@pecking-order/shared-types';
 import type { DeepLinkIntent, CartridgeKind } from '@pecking-order/shared-types';
 import { PULSE_Z } from './zIndex';
@@ -29,6 +30,7 @@ const DM_REJECTION_LABELS: Record<string, string> = {
 import { AmbientBackground } from './components/AmbientBackground';
 import { PulseBar } from './components/PulseBar';
 import { PushOffBanner } from './components/PushOffBanner';
+import { NudgeLockInPill } from './components/NudgeLockInPill';
 import { ChatView } from './components/chat/ChatView';
 import { CastStrip } from './components/caststrip/CastStrip';
 import { PulseInput } from './components/input/PulseInput';
@@ -209,32 +211,56 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
   useDeepLinkIntent(resolveIntent);
 
   const openSendSilver = useCallback((targetId: string) => setSilverTarget(targetId), []);
-  // Nudge fires immediately + toasts; the recipient's cast chip shakes via the
-  // SOCIAL_NUDGE ticker arriving on their client. No modal confirmation — it was
-  // cosmetic and (worse) the previous code never actually called engine.sendNudge.
-  // Mirror the server's per-day guard client-side so we don't toast a false
-  // success when the server would silently drop the event.
-  // Per-target double-tap guard: the SOCIAL_NUDGE ticker round-trips through the
-  // server before selectHaveINudged flips true, so rapid taps in the window
-  // before that would otherwise fire multiple WS events. 1s ceiling covers it.
-  const nudgeInFlight = useRef<Set<string>>(new Set());
-  const openNudge = useCallback((targetId: string) => {
-    if (nudgeInFlight.current.has(targetId)) return;
-    const state = useGameStore.getState();
-    const name = state.roster[targetId]?.personaName ?? 'them';
-    if (selectHaveINudged(state, targetId)) {
-      toast.message(`Already nudged ${name} today`);
-      return;
-    }
-    nudgeInFlight.current.add(targetId);
-    setTimeout(() => nudgeInFlight.current.delete(targetId), 1000);
-    engine.sendNudge(targetId);
+
+  // Nudge — used to fire instantly. Per impeccable.md principle 7, irreversible
+  // commit actions get a 3-second tap-to-undo window (AvatarPicker is the
+  // template). The lock-in subsumes the previous per-target double-tap guard
+  // because only one nudge can be in-flight at a time globally; concurrent
+  // taps for any target are ignored while a countdown is running. Server-side
+  // per-day guard (`selectHaveINudged`) still gates the action up front.
+  const [nudgeTarget, setNudgeTarget] = useState<{ id: string; name: string } | null>(null);
+
+  const completeNudge = useCallback(() => {
+    if (!nudgeTarget) return;
+    engine.sendNudge(nudgeTarget.id);
     // Sender celebration — three-pulse haptic + NudgeBurst overdrive layer.
     // Success toast dropped in favor of the burst (inline public chat card
     // still lands via SOCIAL_NUDGE ticker, so a11y info isn't lost).
     try { navigator.vibrate?.([20, 40, 20]); } catch { /* no-op */ }
-    window.dispatchEvent(new CustomEvent('pulse:nudge-burst', { detail: { recipient: name } }));
-  }, [engine]);
+    window.dispatchEvent(
+      new CustomEvent('pulse:nudge-burst', { detail: { recipient: nudgeTarget.name } }),
+    );
+    setNudgeTarget(null);
+  }, [nudgeTarget, engine]);
+
+  const {
+    state: nudgeLockState,
+    start: startNudgeLock,
+    cancel: cancelNudgeLock,
+  } = useLockInCountdown({ onComplete: completeNudge });
+
+  const openNudge = useCallback(
+    (targetId: string) => {
+      // Concurrent guard — one lock-in at a time. A second tap (same or
+      // different target) while the countdown is running is intentionally
+      // ignored so the player doesn't accidentally queue or overwrite.
+      if (nudgeLockState === 'locking') return;
+      const state = useGameStore.getState();
+      const name = state.roster[targetId]?.personaName ?? 'them';
+      if (selectHaveINudged(state, targetId)) {
+        toast.message(`Already nudged ${name} today`);
+        return;
+      }
+      setNudgeTarget({ id: targetId, name });
+      startNudgeLock();
+    },
+    [nudgeLockState, startNudgeLock],
+  );
+
+  const cancelNudge = useCallback(() => {
+    cancelNudgeLock();
+    setNudgeTarget(null);
+  }, [cancelNudgeLock]);
   const openDM = useCallback((targetId: string, isGroup = false) => {
     // Pregame has no DM channel (design: group chat only, DMs closed). All
     // tap-to-DM entry points (message avatar, @mention, social panel, etc.)
@@ -404,6 +430,18 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
 
         <AnimatePresence>
           {pickingActive && <StartPickedCta />}
+        </AnimatePresence>
+
+        {/* Nudge lock-in pill — only renders during the 3-sec countdown.
+            Tap dismisses + cancels send. See NudgeLockInPill.tsx. */}
+        <AnimatePresence>
+          {nudgeTarget && nudgeLockState === 'locking' && (
+            <NudgeLockInPill
+              key={`nudge-${nudgeTarget.id}`}
+              name={nudgeTarget.name}
+              onCancel={cancelNudge}
+            />
+          )}
         </AnimatePresence>
 
         <AnimatePresence>
