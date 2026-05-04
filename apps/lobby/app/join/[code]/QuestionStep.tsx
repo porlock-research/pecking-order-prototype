@@ -60,20 +60,23 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="text-center flex-shrink-0 space-y-1">
-        <h2 className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+      {/* Header. Skip is its own button row instead of an inline link
+          buried in the paragraph — /harden onboarding rule: "make
+          onboarding optional, let experienced users skip" needs a
+          visible escape hatch, not a 12px underline. */}
+      <div className="text-center flex-shrink-0 space-y-1.5">
+        <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
           Get Into Character
         </h2>
         <p className="text-xs text-skin-dim">
-          Answer as <span className="text-skin-gold font-bold">{personaName}</span> — or{' '}
-          <button
-            onClick={onSkip}
-            className="text-skin-gold/70 underline underline-offset-2 hover:text-skin-gold transition-colors"
-          >
-            skip to use defaults
-          </button>
+          Answer as <span className="text-skin-pink font-bold">{personaName}</span>
         </p>
+        <button
+          onClick={onSkip}
+          className="inline-flex items-center gap-1.5 text-[11px] font-display font-black text-skin-base/85 hover:text-skin-pink uppercase tracking-[0.16em] underline decoration-skin-pink decoration-2 underline-offset-4 transition-colors"
+        >
+          Skip — use defaults
+        </button>
       </div>
 
       {/* Progress dots */}
@@ -84,9 +87,9 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
             onClick={() => goTo(i)}
             className={`w-2 h-2 rounded-full transition-all duration-200 ${
               i === currentIndex
-                ? 'bg-skin-gold scale-125'
+                ? 'bg-skin-pink scale-125'
                 : submissions[q.id]
-                  ? 'bg-skin-gold/50'
+                  ? 'bg-skin-pink/50'
                   : 'bg-skin-input'
             }`}
           />
@@ -111,7 +114,10 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                 <span className="text-xs font-display font-bold text-skin-dim tracking-widest tabular-nums">
                   {currentIndex + 1} / {questions.length}
                 </span>
-                <h2 className="text-lg font-display font-bold text-skin-base mt-1 leading-snug">
+                {/* Question stem in body font (Manrope) — was font-display
+                    (Big Shoulders Display, a condensed signage face). Display
+                    fonts at body sizes are textbook readability complaints. */}
+                <h2 className="text-lg font-body font-bold text-skin-base mt-1 leading-snug">
                   {question.text}
                 </h2>
               </div>
@@ -127,11 +133,14 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                       whileTap={{ scale: 0.98 }}
                       className={`w-full text-left px-4 py-3 rounded-xl text-sm font-body transition-all duration-200 ${
                         isSelected
-                          ? 'bg-skin-gold/20 border-2 border-skin-gold text-skin-gold font-bold'
+                          ? 'bg-skin-pink/20 border-2 border-skin-pink text-skin-pink font-bold'
                           : 'bg-skin-panel/30 border border-skin-base/30 text-skin-base hover:bg-skin-panel/50'
                       }`}
                     >
-                      <span className="text-skin-dim font-display font-bold text-xs mr-2">
+                      {/* Option letter in body font; was display-condensed at
+                          12px which made A/B/C/D unscannable. Bumped to text-sm
+                          and text-skin-base/70 for legibility. */}
+                      <span className="text-skin-base/70 font-body font-bold text-sm mr-2">
                         {String.fromCharCode(65 + idx)}.
                       </span>
                       {option}
@@ -142,11 +151,11 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                 {/* "Other" write-in option */}
                 <div className={`rounded-xl transition-all duration-200 ${
                   currentSub?.selectedIndex === 3
-                    ? 'bg-skin-gold/20 border-2 border-skin-gold'
+                    ? 'bg-skin-pink/20 border-2 border-skin-pink'
                     : 'bg-skin-panel/30 border border-skin-base/30'
                 }`}>
                   <div className="flex items-center gap-2 px-4 py-2">
-                    <span className="text-skin-dim font-display font-bold text-xs">D.</span>
+                    <span className="text-skin-base/70 font-body font-bold text-sm">D.</span>
                     <input
                       type="text"
                       value={currentSub?.selectedIndex === 3 ? (currentSub.customAnswer ?? '') : customText}
@@ -169,7 +178,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                     {customText.trim() && currentSub?.selectedIndex !== 3 && (
                       <button
                         onClick={() => selectAnswer(3, customText.trim())}
-                        className="text-xs font-display font-bold text-skin-gold uppercase"
+                        className="text-xs font-display font-bold text-skin-pink uppercase"
                       >
                         Pick
                       </button>
@@ -194,7 +203,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
           </p>
           <button
             onClick={handleComplete}
-            className="w-full py-3 bg-skin-gold text-skin-deep font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg hover:brightness-110 active:scale-[0.99] transition-all"
+            className="w-full py-3 bg-skin-pink text-skin-base font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg hover:brightness-110 active:scale-[0.99] transition-all"
           >
             Continue
           </button>

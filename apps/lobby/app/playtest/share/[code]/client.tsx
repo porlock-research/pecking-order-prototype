@@ -18,14 +18,14 @@ export function SharePageClient({ code, playtestUrl }: { code: string; playtestU
   }, [referralCode]);
 
   return (
-    <div className="min-h-dvh bg-skin-deep bg-grid-pattern font-body text-skin-base selection:bg-skin-gold/30 relative overflow-hidden flex items-center justify-center pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className="min-h-dvh bg-skin-deep bg-grid-pattern font-body text-skin-base selection:bg-skin-pink/30 relative overflow-hidden flex items-center justify-center pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       {/* Ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-gradient-radial from-skin-panel/60 via-skin-panel/20 to-transparent opacity-80 pointer-events-none" />
 
       <main className="relative px-5 py-10 max-w-md mx-auto w-full">
         <div className="bg-skin-deep/70 border border-skin-base rounded-3xl p-7 md:p-8 shadow-card">
           <div className="text-center space-y-3 mb-6">
-            <h1 className="font-display font-black text-2xl md:text-3xl text-skin-gold tracking-tight text-glow">
+            <h1 className="font-display font-black text-2xl md:text-3xl text-skin-base tracking-tight">
               PECKING ORDER
             </h1>
             <p className="text-skin-dim text-sm">
@@ -37,13 +37,13 @@ export function SharePageClient({ code, playtestUrl }: { code: string; playtestU
               surface its own typographic anchor instead of just listing chrome. */}
           <div className="text-center mb-6 font-display font-black uppercase leading-[0.95] tracking-tight" style={{ fontSize: 'clamp(1.75rem, 8vw, 2.5rem)' }}>
             <div className="text-skin-base">Vote.</div>
-            <div className="text-skin-gold">Ally.</div>
+            <div className="text-skin-pink">Ally.</div>
             <div className="text-skin-base">Betray.</div>
             <div className="text-skin-pink">Survive.</div>
           </div>
 
           {/* Referral code display — mono is the right call here, this IS a code */}
-          <div className="text-center py-3 mb-6 bg-skin-deep/40 rounded-xl border border-skin-gold/15">
+          <div className="text-center py-3 mb-6 bg-skin-deep/40 rounded-xl border border-skin-pink/15">
             <p className="text-[10px] font-display font-bold text-skin-dim uppercase tracking-[0.2em] mb-1.5">
               Your Referral Code
             </p>

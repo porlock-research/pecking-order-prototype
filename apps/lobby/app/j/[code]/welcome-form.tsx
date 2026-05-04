@@ -42,8 +42,8 @@ export function WelcomeForm({ code }: { code: string }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <label className="block">
-        <span className="block text-xs font-bold text-skin-dim uppercase tracking-widest">
-          What should we call you?
+        <span className="block text-[11px] font-bold text-skin-dim uppercase tracking-[0.18em] font-display">
+          Your real name
         </span>
         <input
           type="text"
@@ -52,11 +52,12 @@ export function WelcomeForm({ code }: { code: string }) {
           autoFocus
           autoComplete="given-name"
           maxLength={24}
-          placeholder="Your name"
-          className="mt-2 w-full px-4 py-3 bg-skin-input border border-skin-base rounded-xl text-skin-base placeholder:text-skin-dim/70 focus:outline-none focus:border-skin-gold/50 text-base"
+          placeholder="Your real name"
+          className="mt-2 w-full px-4 py-3 bg-skin-input border border-skin-rule rounded-lg text-skin-base placeholder:text-skin-faint focus:outline-none focus:border-skin-pink/60 text-base"
         />
-        <span className="mt-2 block text-[11px] text-skin-dim">
-          This is so the group knows you in-game and in the reveal at the end.
+        <span className="mt-2 block text-[11.5px] text-skin-dim leading-snug">
+          <strong className="text-skin-base font-semibold">Stays hidden</strong> while you play. Other players see your{' '}
+          <span className="text-skin-pink font-semibold">persona</span>. Revealed at the end.
         </span>
       </label>
 
@@ -73,9 +74,9 @@ export function WelcomeForm({ code }: { code: string }) {
         type="submit"
         disabled={isPending}
         aria-busy={isPending}
-        className="w-full min-h-[52px] py-4 bg-skin-gold text-skin-deep font-display font-black text-sm uppercase tracking-widest rounded-xl disabled:opacity-50 active:scale-[0.99] transition-transform"
+        className="w-full min-h-[52px] py-4 bg-skin-pink text-skin-base font-display font-black text-[15px] uppercase tracking-[0.22em] rounded-lg disabled:opacity-50 active:scale-[0.99] transition-transform shadow-btn"
       >
-        {isPending ? 'Joining…' : "Let's go →"}
+        {isPending ? 'Stepping in…' : 'Step in →'}
       </button>
     </form>
   );

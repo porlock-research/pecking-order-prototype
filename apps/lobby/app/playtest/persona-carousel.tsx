@@ -50,7 +50,7 @@ function PersonaCard({
           {persona.name}
         </p>
         {featured && (
-          <p className="text-skin-gold text-[11px] font-bold uppercase tracking-wider mt-0.5 drop-shadow">
+          <p className="text-skin-pink text-[11px] font-bold uppercase tracking-wider mt-0.5 drop-shadow">
             {persona.stereotype}
           </p>
         )}

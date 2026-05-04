@@ -6,12 +6,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0f0a1a",
+  themeColor: "#0a0a0a",
 };
 
 const SITE_TITLE = "Pecking Order";
 const SITE_DESCRIPTION =
-  "Vote. Ally. Betray. Survive. A social deduction game in your group chat. Seven days. One winner.";
+  "Catfish your friends. Vote. Ally. Betray. Survive. A social deduction game in your group chat. Last catfish wins.";
 
 // `generateMetadata` (instead of the static `metadata` export) so we can read
 // LOBBY_HOST from the Cloudflare env and emit absolute og:image / og:url.
@@ -55,8 +55,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // data-theme="reality-tv-tabloid" scopes the lobby's tabloid B+W + red
+  // palette to lobby pages only. Other apps consuming @pecking-order/ui-kit
+  // (notably the client's Vivid/Classic/Immersive shells) keep the default
+  // Reality TV purple/pink/gold theme. See apps/lobby/.impeccable.md.
   return (
-    <html lang="en">
+    <html lang="en" data-theme="reality-tv-tabloid">
       <body>{children}</body>
     </html>
   );

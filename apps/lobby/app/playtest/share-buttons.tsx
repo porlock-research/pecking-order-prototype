@@ -172,7 +172,7 @@ export function ShareButtons({ emphasis = false, referralCode, playtestUrl }: { 
     <div className="text-center">
       {emphasis ? (
         <>
-          <p className="text-skin-gold font-display font-black uppercase tracking-tight text-2xl mb-1">
+          <p className="text-skin-pink font-display font-black uppercase tracking-tight text-2xl mb-1">
             Bring your people
           </p>
           <p className="text-skin-dim text-sm mb-5">

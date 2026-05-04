@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pecking Order — Lobby palette directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ─────────────────────  Page chrome (NEUTRAL, not in any variant)  ───────────────────── */
+  :root {
+    --doc-bg: #15161a;
+    --doc-text-1: #f0eef0;
+    --doc-text-2: #a09da6;
+    --doc-text-3: #6b6970;
+    --doc-border: rgba(255,255,255,0.08);
+    --doc-surface: #1c1d22;
+
+    /* Persona portrait used in every phone (consistent so palette is the variable) */
+    --persona-img: url('https://staging-assets.peckingorder.ca/personas/persona-04/full.png');
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: var(--doc-bg);
+    color: var(--doc-text-1);
+    font-family: 'Manrope', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    padding: 24px 16px 80px;
+  }
+
+  .doc { max-width: 1640px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+
+  /* ─────────────────────  Document header  ───────────────────── */
+  .doc-head { padding: 8px 0 0; }
+  .doc-head .eyebrow {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--doc-text-2);
+    margin-bottom: 8px;
+  }
+  .doc-head h1 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    color: var(--doc-text-1);
+    margin-bottom: 14px;
+    max-width: 800px;
+  }
+  .doc-head .lede {
+    color: var(--doc-text-2);
+    font-size: 15px;
+    line-height: 1.55;
+    max-width: 760px;
+    margin-bottom: 12px;
+  }
+  .doc-head .lede strong { color: var(--doc-text-1); font-weight: 600; }
+  .doc-head .lede em { color: var(--doc-text-1); font-style: normal; font-weight: 600; }
+
+  .ground-rules {
+    margin-top: 14px;
+    padding: 14px 18px;
+    background: var(--doc-surface);
+    border: 1px solid var(--doc-border);
+    border-radius: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px 22px;
+  }
+  .ground-rules .rule {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .ground-rules .rule .key {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 10px; font-weight: 800;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--doc-text-3);
+  }
+  .ground-rules .rule .val {
+    font-size: 13px;
+    color: var(--doc-text-1);
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  /* ─────────────────────  Phone grid  ───────────────────── */
+  .phones-title {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 12px; font-weight: 800;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--doc-text-3);
+    margin: 16px 0 4px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--doc-border);
+  }
+  .phone-grid {
+    display: flex; flex-wrap: wrap;
+    gap: 28px;
+    justify-content: center;
+    padding-top: 8px;
+  }
+  .phone-cell {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    width: 380px;
+    flex-shrink: 0;
+  }
+  .phone-cell .label {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--doc-text-3);
+    text-align: center;
+  }
+  .phone-cell .label .num {
+    color: var(--doc-text-3); margin-right: 8px;
+    opacity: 0.6;
+  }
+  .phone-cell .label .name {
+    color: var(--doc-text-1);
+  }
+  .phone-cell .palette {
+    display: flex; gap: 6px; align-items: center;
+    margin-top: 2px;
+  }
+  .phone-cell .palette .swatch {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .phone {
+    width: 380px; height: 760px;
+    background: #000;
+    border-radius: 38px;
+    border: 1px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    position: relative;
+    box-shadow: 0 0 0 6px #0a070d, 0 30px 60px -20px rgba(0,0,0,0.7);
+  }
+
+  .status-bar {
+    height: 38px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px;
+    font-size: 13px; font-weight: 700;
+    z-index: 50; position: relative;
+  }
+  .status-bar .icons { display: flex; gap: 6px; align-items: center; }
+  .status-bar .signal { width: 17px; height: 11px; background: currentColor; clip-path: polygon(0% 100%, 25% 100%, 25% 75%, 50% 75%, 50% 50%, 75% 50%, 75% 25%, 100% 25%, 100% 100%); }
+  .status-bar .battery { width: 26px; height: 12px; border: 1px solid currentColor; border-radius: 3px; padding: 1px; position: relative; }
+  .status-bar .battery::after { content: ''; position: absolute; right: -3px; top: 3px; bottom: 3px; width: 2px; background: currentColor; border-radius: 0 1px 1px 0; }
+  .status-bar .battery .fill { background: currentColor; height: 100%; width: 80%; border-radius: 1px; }
+
+  /* ─────────────────────  Wizard chrome — shared across all 4  ───────────────────── */
+
+  .wiz {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    position: relative;
+    background: var(--bg);
+    color: var(--text-1);
+    overflow: hidden;
+  }
+
+  /* Photo background — same persona across all 4 variants. Each variant
+     applies its own scrim color + opacity via --scrim and --photo-filter. */
+  .wiz .photo-bg {
+    position: absolute;
+    inset: 0;
+    background-image: var(--persona-img);
+    background-size: cover;
+    background-position: center 18%;
+    filter: var(--photo-filter, blur(6px));
+    transform: scale(1.08);
+    z-index: 0;
+  }
+  .wiz .photo-scrim {
+    position: absolute; inset: 0;
+    background: var(--scrim);
+    z-index: 1;
+    pointer-events: none;
+  }
+  .wiz > * { position: relative; z-index: 2; }
+
+  .wiz .wiz-header {
+    flex-shrink: 0;
+    padding: 8px 18px 4px;
+    text-align: center;
+  }
+  .wiz .wiz-header h1 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    color: var(--accent-strong);
+    line-height: 1;
+  }
+  .wiz .wiz-header .invite {
+    font-size: 11px;
+    color: var(--text-2);
+    margin-top: 2px;
+  }
+  .wiz .wiz-header .invite .code {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-weight: 700;
+    color: var(--accent-strong);
+    letter-spacing: 0.1em;
+    margin-left: 4px;
+  }
+
+  .wiz .pips {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0 4px;
+    gap: 0;
+  }
+  .wiz .pips .pip-wrap { width: 44px; height: 44px; display: grid; place-items: center; }
+  .wiz .pips .pip {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 14px; font-weight: 800;
+    background: var(--pip-bg);
+    color: var(--pip-text);
+  }
+  .wiz .pips .pip.active {
+    background: var(--accent);
+    color: var(--accent-on);
+    box-shadow: 0 0 0 0 var(--accent);
+  }
+  .wiz .pips .pip-rule {
+    width: 28px; height: 2px;
+    background: var(--pip-rule);
+  }
+  .wiz .pips .pip-rule.done { background: var(--accent); }
+
+  .wiz .step-head {
+    flex-shrink: 0;
+    text-align: center;
+    padding: 10px 18px 0;
+  }
+  .wiz .step-head h2 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-strong);
+  }
+  .wiz .step-head .hint {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 4px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Hero — persona portrait card with overlaid name + stereotype + description */
+  .wiz .hero {
+    flex: 1;
+    margin: 14px 18px 8px;
+    min-height: 0;
+    border-radius: 18px;
+    overflow: hidden;
+    position: relative;
+    background-image: var(--persona-img);
+    background-size: cover;
+    background-position: center 18%;
+    box-shadow: var(--hero-shadow, 0 0 0 1px rgba(255,255,255,0.06));
+  }
+  .wiz .hero .hero-scrim {
+    position: absolute; inset: 0;
+    background: var(--hero-scrim);
+    pointer-events: none;
+  }
+  .wiz .hero .hero-text {
+    position: absolute;
+    left: 14px; right: 14px; bottom: 14px;
+    z-index: 2;
+  }
+  .wiz .hero .name {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 30px;
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    color: var(--hero-name);
+  }
+  .wiz .hero .stereotype {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-strong);
+    margin-top: 4px;
+  }
+  .wiz .hero .description {
+    font-size: 13px;
+    color: var(--hero-desc);
+    line-height: 1.4;
+    margin-top: 6px;
+    max-width: 280px;
+  }
+
+  /* Thumbnail strip — 3 personas */
+  .wiz .thumbs {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    padding: 4px 18px 6px;
+  }
+  .wiz .thumbs .thumb {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .wiz .thumbs .thumb .face {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center top;
+    border: 1.5px solid transparent;
+    opacity: 0.5;
+    filter: grayscale(0.4);
+  }
+  .wiz .thumbs .thumb.is-active .face {
+    border-color: var(--accent);
+    opacity: 1;
+    filter: none;
+    transform: scale(1.05);
+    box-shadow: 0 0 0 3px var(--bg);
+  }
+  .wiz .thumbs .thumb .thumb-name {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--text-2);
+  }
+  .wiz .thumbs .thumb.is-active .thumb-name {
+    color: var(--accent-strong);
+  }
+
+  /* Bottom action bar */
+  .wiz .action-bar {
+    flex-shrink: 0;
+    display: flex;
+    gap: 10px;
+    padding: 8px 18px 22px;
+    background: linear-gradient(180deg, transparent, var(--bg) 60%);
+  }
+  .wiz .btn-secondary {
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: transparent;
+    border: 1px solid var(--btn-secondary-border);
+    color: var(--btn-secondary-text);
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .wiz .btn-primary {
+    flex: 1;
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: var(--accent-on);
+    border: none;
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    box-shadow: var(--btn-primary-shadow);
+  }
+
+  /* ───────  VARIANT A — Tabloid B+W + Red  ─────── */
+  .v-a {
+    --bg: #0a0a0a;
+    --text-1: #f5f3f0;
+    --text-2: #a8a39c;
+    --accent: #d72638;
+    --accent-strong: #d72638;
+    --accent-on: #f5f3f0;
+    --pip-bg: #2a2a2a;
+    --pip-text: #888;
+    --pip-rule: #2a2a2a;
+    --photo-filter: blur(8px) grayscale(1) brightness(0.55);
+    --scrim: rgba(10,10,10,0.65);
+    --hero-scrim: linear-gradient(to top, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.0) 60%);
+    --hero-name: #f5f3f0;
+    --hero-desc: #d8d4cc;
+    --hero-shadow: 0 0 0 1px rgba(245,243,240,0.08), inset 0 0 0 1px rgba(255,255,255,0.04);
+    --btn-secondary-border: rgba(245,243,240,0.22);
+    --btn-secondary-text: #d8d4cc;
+    --btn-primary-shadow: 0 6px 0 #8a1a25, 0 0 24px rgba(215,38,56,0.32);
+  }
+  .v-a .status-bar { color: #f5f3f0; }
+
+  /* ───────  VARIANT B — Premium dark + Copper  ─────── */
+  .v-b {
+    --bg: #1c1612;
+    --text-1: #f5f0e8;
+    --text-2: #b8a89a;
+    --accent: #c97a3c;
+    --accent-strong: #e8a35c;
+    --accent-on: #1c1612;
+    --pip-bg: #2a2520;
+    --pip-text: #8a7f72;
+    --pip-rule: #2a2520;
+    --photo-filter: blur(6px);
+    --scrim: linear-gradient(180deg, rgba(28,22,18,0.55) 0%, rgba(28,22,18,0.78) 100%);
+    --hero-scrim: linear-gradient(to top, rgba(28,22,18,0.96) 0%, rgba(28,22,18,0.45) 35%, rgba(28,22,18,0.0) 70%);
+    --hero-name: #f5f0e8;
+    --hero-desc: #d4c8b8;
+    --hero-shadow: 0 0 0 1px rgba(232,163,92,0.18), 0 14px 28px -10px rgba(0,0,0,0.55);
+    --btn-secondary-border: rgba(232,163,92,0.3);
+    --btn-secondary-text: #d4c8b8;
+    --btn-primary-shadow: 0 6px 0 #8a4a1c, 0 0 22px rgba(201,122,60,0.25);
+  }
+  .v-b .status-bar { color: #f5f0e8; }
+
+  /* ───────  VARIANT C — Editorial cream + Rust  ─────── */
+  .v-c {
+    --bg: #f5f0e4;
+    --text-1: #1a1612;
+    --text-2: #6b5d4a;
+    --accent: #b3491c;
+    --accent-strong: #b3491c;
+    --accent-on: #f5f0e4;
+    --pip-bg: #e3dac3;
+    --pip-text: #8a7a5c;
+    --pip-rule: #e3dac3;
+    --photo-filter: blur(4px) brightness(1.05);
+    --scrim: linear-gradient(180deg, rgba(245,240,228,0.65) 0%, rgba(245,240,228,0.85) 100%);
+    --hero-scrim: linear-gradient(to top, rgba(245,240,228,0.0) 30%, rgba(245,240,228,0.0) 65%, rgba(26,22,18,0.06) 100%);
+    --hero-name: #f5f0e4;
+    --hero-desc: #f0e8d4;
+    --hero-shadow: 0 0 0 1px rgba(26,22,18,0.12), 0 14px 28px -10px rgba(120,90,40,0.18);
+    --btn-secondary-border: rgba(26,22,18,0.18);
+    --btn-secondary-text: #6b5d4a;
+    --btn-primary-shadow: 0 6px 0 #7a2f0e, 0 0 18px rgba(179,73,28,0.18);
+  }
+  .v-c .status-bar { color: #1a1612; }
+  .v-c .wiz .hero { box-shadow: var(--hero-shadow); }
+  /* Editorial-cream hero overrides scrim — photo stays full-color, name/stereotype get a dark scrim band at the bottom */
+  .v-c .wiz .hero .hero-scrim {
+    background: linear-gradient(to top, rgba(20,16,12,0.85) 0%, rgba(20,16,12,0.20) 35%, rgba(20,16,12,0.0) 65%);
+  }
+
+  /* ───────  VARIANT D — Loud non-purple (Electric ink-blue + cream)  ─────── */
+  .v-d {
+    --bg: #0a0e1f;
+    --text-1: #f0ebd8;
+    --text-2: #8a9bbf;
+    --accent: #3b82f6;
+    --accent-strong: #fcd34d;  /* gold for the wordmark/headlines, electric blue for CTAs */
+    --accent-on: #0a0e1f;
+    --pip-bg: #131a36;
+    --pip-text: #6a7aa0;
+    --pip-rule: #131a36;
+    --photo-filter: blur(7px) saturate(1.1);
+    --scrim: linear-gradient(180deg, rgba(8,12,28,0.60) 0%, rgba(8,12,28,0.82) 100%);
+    --hero-scrim: linear-gradient(to top, rgba(8,12,28,0.95) 0%, rgba(8,12,28,0.30) 40%, rgba(8,12,28,0.0) 70%);
+    --hero-name: #f0ebd8;
+    --hero-desc: #c8d0e3;
+    --hero-shadow: 0 0 0 1px rgba(252,211,77,0.18), 0 14px 32px -10px rgba(59,130,246,0.32);
+    --btn-secondary-border: rgba(240,235,216,0.2);
+    --btn-secondary-text: #c8d0e3;
+    --btn-primary-shadow: 0 6px 0 #1e4dbd, 0 0 28px rgba(59,130,246,0.42);
+  }
+  .v-d .status-bar { color: #f0ebd8; }
+  /* In variant D, accent-strong is gold (for the wordmark), but accent (for active states + CTA) is electric blue. Stereotype uses gold. */
+
+  /* ─────────────────────  Annotation panels  ───────────────────── */
+  .annotations {
+    margin-top: 32px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .anno {
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: var(--doc-surface);
+    border: 1px solid var(--doc-border);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .anno .anno-head {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .anno .anno-head .badge {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 10px; font-weight: 900;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .anno .anno-head h3 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 16px; font-weight: 800;
+    letter-spacing: -0.005em;
+    color: var(--doc-text-1);
+  }
+  .anno .keywords {
+    font-size: 11px;
+    color: var(--doc-text-3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .anno p {
+    font-size: 13px; line-height: 1.5;
+    color: var(--doc-text-2);
+  }
+  .anno p strong { color: var(--doc-text-1); font-weight: 600; }
+  .anno .pros-cons {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid var(--doc-border);
+  }
+  .anno .pros-cons .col {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .anno .pros-cons .col-head {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 10px; font-weight: 800;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--doc-text-3);
+  }
+  .anno .pros-cons .col-body {
+    font-size: 12px; color: var(--doc-text-1); line-height: 1.45;
+  }
+  .anno .badge.a { background: rgba(215,38,56,0.18); color: #ff5666; }
+  .anno .badge.b { background: rgba(232,163,92,0.18); color: #e8a35c; }
+  .anno .badge.c { background: rgba(179,73,28,0.20); color: #d8814c; }
+  .anno .badge.d { background: rgba(59,130,246,0.18); color: #6aa3ff; }
+
+  /* Decision prompt at the bottom */
+  .decision {
+    margin-top: 24px;
+    padding: 18px 22px;
+    border-radius: 12px;
+    border: 1px solid var(--doc-border);
+    background: linear-gradient(180deg, var(--doc-surface), rgba(28,29,34,0.5));
+  }
+  .decision h2 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: -0.005em;
+    color: var(--doc-text-1);
+    margin-bottom: 6px;
+  }
+  .decision p {
+    font-size: 14px; color: var(--doc-text-2); line-height: 1.5;
+  }
+  .decision p strong { color: var(--doc-text-1); }
+  .decision .options {
+    margin-top: 10px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .decision .options .opt {
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--doc-text-1);
+  }
+
+  /* Mobile scaling (matches existing pulse-mockups pattern) */
+  @media (max-width: 720px) {
+    body { padding: 16px 12px 48px; }
+    .doc-head h1 { font-size: 26px; }
+    .doc-head .lede { font-size: 14px; }
+    .ground-rules { padding: 12px 14px; gap: 10px 16px; }
+
+    .phone-grid { gap: 16px; }
+    .phone-cell {
+      width: 100%;
+      max-width: 100%;
+      --ph-scale: calc((100vw - 24px) / 380);
+    }
+    .phone {
+      transform: scale(var(--ph-scale));
+      transform-origin: top center;
+      margin-bottom: calc((var(--ph-scale) - 1) * 760px);
+    }
+  }
+
+  @media (max-width: 380px) {
+    body { padding: 12px 8px 40px; }
+    .phone-cell { --ph-scale: calc((100vw - 16px) / 380); }
+  }
+</style>
+</head>
+<body>
+
+<div class="doc">
+
+  <!-- ─────────────────────  Document header  ───────────────────── -->
+  <div class="doc-head">
+    <div class="eyebrow">Pecking Order · Lobby palette directions</div>
+    <h1>Drop the purple-pink-gold ramp. Keep the loud.</h1>
+    <div class="lede">
+      The lobby's current palette reads as <strong>generic AI</strong> — purple→pink→gold is the default for any teen-targeted app right now. Below are <strong>four directions</strong> that ship the same loud · gossipy · electric voice in a hue family that doesn't read like every other AI-built lobby. Same surface (wizard step 1), same fonts (<em>Big Shoulders Display + Manrope</em>), same persona photo behind. Only the palette + scrim change.
+    </div>
+
+    <div class="ground-rules">
+      <div class="rule">
+        <span class="key">Surface shown</span>
+        <span class="val">Wizard step 1 — persona pick. The hardest legibility test (photo bleeds onto chrome).</span>
+      </div>
+      <div class="rule">
+        <span class="key">What's locked</span>
+        <span class="val">Big Shoulders Display + Manrope · 4-step flow · photo-as-background pattern.</span>
+      </div>
+      <div class="rule">
+        <span class="key">What's variable</span>
+        <span class="val">Hue ramp · scrim color &amp; opacity · accent strategy · photo treatment.</span>
+      </div>
+      <div class="rule">
+        <span class="key">Decision criterion</span>
+        <span class="val">Which one preserves loud · gossipy · electric without reading as AI default?</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="phones-title">━━━ Compare side-by-side · scroll horizontally on small screens</div>
+
+  <div class="phone-grid">
+
+    <!-- ════  VARIANT A — Tabloid B+W + Red  ════ -->
+    <div class="phone-cell">
+      <div class="label"><span class="num">A</span><span class="name">Tabloid B+W + Red</span></div>
+      <div class="palette">
+        <span class="swatch" style="background:#0a0a0a;"></span>
+        <span class="swatch" style="background:#f5f3f0;"></span>
+        <span class="swatch" style="background:#d72638;"></span>
+        <span class="swatch" style="background:#888888;"></span>
+      </div>
+      <div class="phone">
+        <div class="status-bar v-a"><span>5:14</span><span class="icons"><span class="signal"></span><span style="font-size:10px;font-weight:800;">5G</span><span class="battery"><span class="fill"></span></span></span></div>
+        <div class="wiz v-a">
+          <div class="photo-bg"></div><div class="photo-scrim"></div>
+          <div class="wiz-header">
+            <h1>PECKING ORDER</h1>
+            <div class="invite">Invite Code:<span class="code">ABCD-EFGH</span></div>
+          </div>
+          <div class="pips">
+            <div class="pip-wrap"><div class="pip active">1</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">2</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">3</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">4</div></div>
+          </div>
+          <div class="step-head">
+            <h2>Choose Your Persona</h2>
+            <div class="hint">Swipe to browse. Tap one to lock in.</div>
+          </div>
+          <div class="hero">
+            <div class="hero-scrim"></div>
+            <div class="hero-text">
+              <div class="name">Felix Stage</div>
+              <div class="stereotype">The Showmance</div>
+              <div class="description">Here for the love-bombing and the protein. Will catfish a producer for screen time.</div>
+            </div>
+          </div>
+          <div class="thumbs">
+            <div class="thumb is-active">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-04/headshot.png');"></div>
+              <div class="thumb-name">Felix</div>
+            </div>
+            <div class="thumb">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-09/headshot.png');"></div>
+              <div class="thumb-name">Brenda</div>
+            </div>
+            <div class="thumb">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-15/headshot.png');"></div>
+              <div class="thumb-name">Spike</div>
+            </div>
+          </div>
+          <div class="action-bar">
+            <button class="btn-secondary">Redraw</button>
+            <button class="btn-primary">Lock In</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════  VARIANT B — Premium dark + Copper  ════ -->
+    <div class="phone-cell">
+      <div class="label"><span class="num">B</span><span class="name">Premium dark + Copper</span></div>
+      <div class="palette">
+        <span class="swatch" style="background:#1c1612;"></span>
+        <span class="swatch" style="background:#f5f0e8;"></span>
+        <span class="swatch" style="background:#c97a3c;"></span>
+        <span class="swatch" style="background:#e8a35c;"></span>
+      </div>
+      <div class="phone">
+        <div class="status-bar v-b"><span>5:14</span><span class="icons"><span class="signal"></span><span style="font-size:10px;font-weight:800;">5G</span><span class="battery"><span class="fill"></span></span></span></div>
+        <div class="wiz v-b">
+          <div class="photo-bg"></div><div class="photo-scrim"></div>
+          <div class="wiz-header">
+            <h1>PECKING ORDER</h1>
+            <div class="invite">Invite Code:<span class="code">ABCD-EFGH</span></div>
+          </div>
+          <div class="pips">
+            <div class="pip-wrap"><div class="pip active">1</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">2</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">3</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">4</div></div>
+          </div>
+          <div class="step-head">
+            <h2>Choose Your Persona</h2>
+            <div class="hint">Swipe to browse. Tap one to lock in.</div>
+          </div>
+          <div class="hero">
+            <div class="hero-scrim"></div>
+            <div class="hero-text">
+              <div class="name">Felix Stage</div>
+              <div class="stereotype">The Showmance</div>
+              <div class="description">Here for the love-bombing and the protein. Will catfish a producer for screen time.</div>
+            </div>
+          </div>
+          <div class="thumbs">
+            <div class="thumb is-active">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-04/headshot.png');"></div>
+              <div class="thumb-name">Felix</div>
+            </div>
+            <div class="thumb">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-09/headshot.png');"></div>
+              <div class="thumb-name">Brenda</div>
+            </div>
+            <div class="thumb">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-15/headshot.png');"></div>
+              <div class="thumb-name">Spike</div>
+            </div>
+          </div>
+          <div class="action-bar">
+            <button class="btn-secondary">Redraw</button>
+            <button class="btn-primary">Lock In</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════  VARIANT C — Editorial cream + Rust  ════ -->
+    <div class="phone-cell">
+      <div class="label"><span class="num">C</span><span class="name">Editorial cream + Rust</span></div>
+      <div class="palette">
+        <span class="swatch" style="background:#f5f0e4;"></span>
+        <span class="swatch" style="background:#1a1612;"></span>
+        <span class="swatch" style="background:#b3491c;"></span>
+        <span class="swatch" style="background:#d97706;"></span>
+      </div>
+      <div class="phone">
+        <div class="status-bar v-c"><span>5:14</span><span class="icons"><span class="signal"></span><span style="font-size:10px;font-weight:800;">5G</span><span class="battery"><span class="fill"></span></span></span></div>
+        <div class="wiz v-c">
+          <div class="photo-bg"></div><div class="photo-scrim"></div>
+          <div class="wiz-header">
+            <h1>PECKING ORDER</h1>
+            <div class="invite">Invite Code:<span class="code">ABCD-EFGH</span></div>
+          </div>
+          <div class="pips">
+            <div class="pip-wrap"><div class="pip active">1</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">2</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">3</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">4</div></div>
+          </div>
+          <div class="step-head">
+            <h2>Choose Your Persona</h2>
+            <div class="hint">Swipe to browse. Tap one to lock in.</div>
+          </div>
+          <div class="hero">
+            <div class="hero-scrim"></div>
+            <div class="hero-text">
+              <div class="name">Felix Stage</div>
+              <div class="stereotype">The Showmance</div>
+              <div class="description">Here for the love-bombing and the protein. Will catfish a producer for screen time.</div>
+            </div>
+          </div>
+          <div class="thumbs">
+            <div class="thumb is-active">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-04/headshot.png');"></div>
+              <div class="thumb-name">Felix</div>
+            </div>
+            <div class="thumb">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-09/headshot.png');"></div>
+              <div class="thumb-name">Brenda</div>
+            </div>
+            <div class="thumb">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-15/headshot.png');"></div>
+              <div class="thumb-name">Spike</div>
+            </div>
+          </div>
+          <div class="action-bar">
+            <button class="btn-secondary">Redraw</button>
+            <button class="btn-primary">Lock In</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════  VARIANT D — Loud non-purple (Electric ink-blue + cream + gold)  ════ -->
+    <div class="phone-cell">
+      <div class="label"><span class="num">D</span><span class="name">Electric ink-blue + Gold + Cream</span></div>
+      <div class="palette">
+        <span class="swatch" style="background:#0a0e1f;"></span>
+        <span class="swatch" style="background:#f0ebd8;"></span>
+        <span class="swatch" style="background:#3b82f6;"></span>
+        <span class="swatch" style="background:#fcd34d;"></span>
+      </div>
+      <div class="phone">
+        <div class="status-bar v-d"><span>5:14</span><span class="icons"><span class="signal"></span><span style="font-size:10px;font-weight:800;">5G</span><span class="battery"><span class="fill"></span></span></span></div>
+        <div class="wiz v-d">
+          <div class="photo-bg"></div><div class="photo-scrim"></div>
+          <div class="wiz-header">
+            <h1>PECKING ORDER</h1>
+            <div class="invite">Invite Code:<span class="code">ABCD-EFGH</span></div>
+          </div>
+          <div class="pips">
+            <div class="pip-wrap"><div class="pip active">1</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">2</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">3</div></div>
+            <div class="pip-rule"></div>
+            <div class="pip-wrap"><div class="pip">4</div></div>
+          </div>
+          <div class="step-head">
+            <h2>Choose Your Persona</h2>
+            <div class="hint">Swipe to browse. Tap one to lock in.</div>
+          </div>
+          <div class="hero">
+            <div class="hero-scrim"></div>
+            <div class="hero-text">
+              <div class="name">Felix Stage</div>
+              <div class="stereotype">The Showmance</div>
+              <div class="description">Here for the love-bombing and the protein. Will catfish a producer for screen time.</div>
+            </div>
+          </div>
+          <div class="thumbs">
+            <div class="thumb is-active">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-04/headshot.png');"></div>
+              <div class="thumb-name">Felix</div>
+            </div>
+            <div class="thumb">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-09/headshot.png');"></div>
+              <div class="thumb-name">Brenda</div>
+            </div>
+            <div class="thumb">
+              <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-15/headshot.png');"></div>
+              <div class="thumb-name">Spike</div>
+            </div>
+          </div>
+          <div class="action-bar">
+            <button class="btn-secondary">Redraw</button>
+            <button class="btn-primary">Lock In</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─────────────────────  Annotation panels  ───────────────────── -->
+  <div class="annotations">
+
+    <div class="anno">
+      <div class="anno-head">
+        <span class="badge a">A</span>
+        <h3>Tabloid B+W + Red</h3>
+      </div>
+      <div class="keywords">Magazine cover · Casting call · NYT</div>
+      <p>Treats the persona photo as a <strong>noir tabloid portrait</strong> — desaturated to grayscale, dimmed by a dark scrim. Chrome is ink-black with paper-white type; the only saturated color is the red accent on active states + the primary CTA. Loudness comes from <strong>contrast and type</strong>, not hue.</p>
+      <div class="pros-cons">
+        <div class="col">
+          <div class="col-head">Pros</div>
+          <div class="col-body">No AI-default vibe. Type leads the page. Contrast is deterministic — text on dark scrim always works.</div>
+        </div>
+        <div class="col">
+          <div class="col-head">Cons</div>
+          <div class="col-body">Loses some "party" warmth. Grayscale photos may dull the cast-reveal energy unless we save full-color photos for the lock-in moment.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="anno">
+      <div class="anno-head">
+        <span class="badge b">B</span>
+        <h3>Premium dark + Copper</h3>
+      </div>
+      <div class="keywords">Cameo · Premium recruiting · Slick</div>
+      <p>Same dark-mode pattern as today, but the chrome is <strong>warm charcoal</strong> instead of purple. Photos stay full-color. Copper accent does the work that pink + gold do today, with one signal color instead of two competing accents.</p>
+      <div class="pros-cons">
+        <div class="col">
+          <div class="col-head">Pros</div>
+          <div class="col-body">Closest to current visual rhythm — least disruptive to ship. Photo-bg pattern works as-is with a hue shift.</div>
+        </div>
+        <div class="col">
+          <div class="col-head">Cons</div>
+          <div class="col-body">Risks reading "premium" rather than "party." Copper alone may feel restrained next to the loud-gossipy-electric voice.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="anno">
+      <div class="anno-head">
+        <span class="badge c">C</span>
+        <h3>Editorial cream + Rust</h3>
+      </div>
+      <div class="keywords">Magazine spread · Print poster · Bold contrast</div>
+      <p>Inverts the ground — <strong>cream wash</strong> instead of dark. Persona photo barely peeks through a heavy cream scrim; the hero card is dark for the name + stereotype + description (so the face still reads). Rust accent. Reads like a printed editorial poster.</p>
+      <div class="pros-cons">
+        <div class="col">
+          <div class="col-head">Pros</div>
+          <div class="col-body">Genuinely unfamiliar in the AI-app landscape. Maximum legibility. Type-led design, photos as bold accents.</div>
+        </div>
+        <div class="col">
+          <div class="col-head">Cons</div>
+          <div class="col-body">Light mode at night reads "harsh." May lose the late-night-on-the-couch vibe. Risk of feeling like a publication, not a game.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="anno">
+      <div class="anno-head">
+        <span class="badge d">D</span>
+        <h3>Electric ink-blue + Gold + Cream</h3>
+      </div>
+      <div class="keywords">Vegas marquee · Late-night TV · Loud</div>
+      <p>Stays squarely in the <strong>loud · electric</strong> register — just shifts the hue family. Deep ink-blue ground, warm cream type, gold for the wordmark + premium signals, electric blue for active states + primary CTA. Two accents in dialog with each other (gold + blue) without competing.</p>
+      <div class="pros-cons">
+        <div class="col">
+          <div class="col-head">Pros</div>
+          <div class="col-body">Preserves the party energy without the AI-purple ramp. Two accents give visual variety. Clearly "a game," not a publication.</div>
+        </div>
+        <div class="col">
+          <div class="col-head">Cons</div>
+          <div class="col-body">Blue + gold is its own tropes (Vegas, fintech, sports). Has to be deployed carefully to avoid feeling generic in a different way.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─────────────────────  Decision prompt  ───────────────────── -->
+  <div class="decision">
+    <h2>Which one preserves the loud-gossipy-electric voice without reading as AI-default?</h2>
+    <p>
+      All four keep the photo-as-background pattern (with each variant's own scrim color and opacity), the same fonts, and the same composition. The variable is <strong>palette family</strong> — which hue ramp lets the voice come through without the purple-pink-gold tell?
+    </p>
+    <div class="options">
+      <div class="opt">A · Tabloid B+W + Red</div>
+      <div class="opt">B · Premium dark + Copper</div>
+      <div class="opt">C · Editorial cream + Rust</div>
+      <div class="opt">D · Electric ink-blue + Gold + Cream</div>
+      <div class="opt">Other / mix</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

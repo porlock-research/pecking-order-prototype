@@ -243,15 +243,21 @@ export default function WaitingRoom() {
 
       {/* Content */}
       <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
-        {/* Header */}
-        <header className="text-center space-y-0.5 flex-shrink-0">
-          <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow">
-            PECKING ORDER
-          </h1>
-          <p className="text-sm text-skin-dim">
-            Game: <span className="text-skin-gold font-mono font-bold tracking-wider">{code.toUpperCase()}</span>
-          </p>
-          <div className="mt-2 max-w-sm mx-auto space-y-2">
+        {/* Masthead — wordmark left, tear-off code stub right. Mirrors the
+            /j/ welcome treatment so the host sees the same chrome the
+            invitee will see when they tap in. */}
+        <div className="flex items-center justify-between flex-shrink-0 pb-2 border-b-2 border-skin-base">
+          <div className="font-display font-black text-base text-skin-base tracking-[0.16em] uppercase leading-none">
+            Pecking Order
+          </div>
+          <div className="font-mono text-[10px] font-bold tracking-[0.1em] text-skin-dim leading-none">
+            <span className="opacity-60 mr-1">CODE</span>
+            <span className="text-skin-base">{code.toUpperCase()}</span>
+          </div>
+        </div>
+
+        <header className="text-center space-y-0.5 flex-shrink-0 mt-3">
+          <div className="max-w-sm mx-auto space-y-2">
             <div className="text-[10px] font-display font-bold text-skin-dim uppercase tracking-widest text-left">
               Invite link
             </div>
@@ -262,7 +268,11 @@ export default function WaitingRoom() {
               <button
                 onClick={handleCopyLink}
                 aria-label={copied ? 'Invite link copied' : 'Copy invite link'}
-                className="min-h-[36px] text-xs font-display font-bold text-skin-gold px-3 py-2 rounded border border-skin-gold/30 hover:border-skin-gold/60 transition-all whitespace-nowrap"
+                className={`min-h-[36px] text-xs font-display font-bold px-3 py-2 rounded border transition-all whitespace-nowrap ${
+                  copied
+                    ? 'text-skin-pink border-skin-pink/60'
+                    : 'text-skin-base border-skin-base/30 hover:border-skin-base/60'
+                }`}
               >
                 {copied ? 'Copied!' : 'Copy'}
               </button>
@@ -326,13 +336,13 @@ export default function WaitingRoom() {
                 isStarted
                   ? 'text-skin-green border-skin-green'
                   : isReady
-                    ? 'text-skin-gold border-skin-gold'
+                    ? 'text-skin-pink border-skin-pink'
                     : 'text-skin-dim border-skin-base'
               }`}
           >
             <span
               className={`w-2 h-2 rounded-full ${
-                isStarted ? 'bg-skin-green' : isReady ? 'bg-skin-gold' : 'bg-skin-dim'
+                isStarted ? 'bg-skin-green' : isReady ? 'bg-skin-pink' : 'bg-skin-dim'
               } ${!isStarted ? 'animate-pulse' : ''}`}
               aria-hidden
             />
@@ -348,7 +358,7 @@ export default function WaitingRoom() {
 
         {/* Cast title */}
         <div className="text-center mt-2 flex-shrink-0">
-          <h2 className="text-base font-display font-black text-skin-gold text-glow uppercase tracking-widest">
+          <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
             The Cast
           </h2>
         </div>
@@ -387,6 +397,12 @@ export default function WaitingRoom() {
                         src={personaMediumUrl(slot.personaId)}
                         alt={slot.personaName || ''}
                         loading={idx < 4 ? 'eager' : 'lazy'}
+                        onError={(e) => {
+                          // Persona CDN occasionally 404s on stale slot data;
+                          // hide the broken-image icon and fall back to the
+                          // ink-input placeholder behind the <img>.
+                          (e.currentTarget as HTMLImageElement).style.display = 'none';
+                        }}
                         className="absolute inset-0 w-full h-full object-cover object-top"
                       />
                     ) : (
@@ -394,12 +410,14 @@ export default function WaitingRoom() {
                     )}
                     {/* Gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/40 via-30% to-transparent pointer-events-none" />
-                    {/* Name + stereotype */}
+                    {/* Name + stereotype. Stereotype in red (was gold) per
+                        variant A single-accent rule. text-glow dropped from
+                        name (gold-tinted shadow leftover from old palette). */}
                     <div className="absolute bottom-0 left-0 right-0 p-3 pointer-events-none">
-                      <div className="text-sm font-display font-black text-skin-base text-glow leading-tight truncate">
+                      <div className="text-sm font-display font-black text-skin-base leading-tight truncate">
                         {slot.personaName}
                       </div>
-                      <div className="text-[9px] font-display font-bold text-skin-gold uppercase tracking-[0.15em] truncate">
+                      <div className="text-[9px] font-display font-bold text-skin-pink uppercase tracking-[0.15em] truncate">
                         {slot.personaStereotype}
                       </div>
                     </div>
@@ -476,7 +494,7 @@ export default function WaitingRoom() {
                           className={`px-4 py-2.5 rounded-lg font-display font-bold text-xs uppercase tracking-widest transition-all whitespace-nowrap
                             ${isSendingInvite || !inviteEmail.trim()
                               ? 'bg-skin-input text-skin-faint cursor-wait'
-                              : 'bg-skin-gold text-skin-deep hover:brightness-110 active:scale-[0.98]'
+                              : 'bg-skin-pink text-skin-base hover:brightness-110 active:scale-[0.98]'
                             }`}
                         >
                           {isSendingInvite ? '...' : 'Send'}
@@ -587,7 +605,7 @@ export default function WaitingRoom() {
                   className="relative block w-full overflow-hidden rounded-2xl outline-none focus-visible:[outline:2px_solid_var(--po-gold)] focus-visible:[outline-offset:3px]"
                   style={{
                     backgroundColor:
-                      'color-mix(in oklch, #2c003e 82%, var(--po-gold) 18%)',
+                      'color-mix(in oklch, var(--po-bg-deep) 82%, var(--po-gold) 18%)',
                     boxShadow:
                       'inset 0 0 0 1px color-mix(in oklch, var(--po-gold) 45%, transparent), inset 0 30px 72px -36px color-mix(in oklch, var(--po-gold) 72%, transparent)',
                   }}
@@ -622,7 +640,7 @@ export default function WaitingRoom() {
                             className="inline-block h-9 w-9 rounded-full bg-skin-input overflow-hidden"
                             style={{
                               boxShadow:
-                                'inset 0 0 0 1.5px color-mix(in oklch, var(--po-gold) 60%, transparent), 0 0 0 2px #2c003e',
+                                'inset 0 0 0 1.5px color-mix(in oklch, var(--po-gold) 60%, transparent), 0 0 0 2px var(--po-bg-deep)',
                             }}
                           >
                             {slot.personaId && (

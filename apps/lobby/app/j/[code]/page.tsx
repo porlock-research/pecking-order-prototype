@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = hostLabel
     ? `${hostLabel} added you to Pecking Order`
     : `You're invited to Pecking Order`;
-  const description = 'Vote. Ally. Betray. Survive. A social deduction game in your group chat. Seven days. One winner.';
+  const description = 'Catfish your friends. Vote. Ally. Betray. Survive. A social deduction game in your group chat. Last catfish wins.';
   const url = `${lobbyHost}/j/${code.toUpperCase()}`;
 
   return {
@@ -82,10 +82,10 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
 
   const game = await db
     .prepare(
-      'SELECT id, status, invite_code FROM GameSessions WHERE invite_code = ?',
+      'SELECT id, status, invite_code, player_count FROM GameSessions WHERE invite_code = ?',
     )
     .bind(code.toUpperCase())
-    .first<{ id: string; status: string; invite_code: string }>();
+    .first<{ id: string; status: string; invite_code: string; player_count: number }>();
 
   if (!game) notFound();
 
@@ -185,62 +185,121 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
 
   return (
     <BrowserSupportGate>
-    <div className="relative min-h-dvh flex items-center justify-center bg-skin-deep px-4 py-8 sm:px-6 sm:py-10 overflow-hidden">
-      {/* Warm radial tint — pulls attention center, respects skin-deep palette */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 70% 55% at 50% 28%, rgba(236,72,153,0.12), transparent 70%)',
-        }}
-      />
+    <div className="relative min-h-dvh flex items-start justify-center bg-skin-deep px-4 py-6 sm:px-6 sm:py-8 overflow-hidden">
+      {/* Background tint comes from --po-gradient-bg in the tabloid theme —
+          subtle red radial on ink ground. No inline pink radial; that
+          competed with the page's red accent. */}
 
-      <div className="relative w-full max-w-md space-y-7 sm:space-y-8">
-        {hasCast && (
-          <div className="pt-2">
+      <div className="relative w-full max-w-md flex flex-col gap-6 sm:gap-7">
+
+        {/* Masthead — wordmark left, tear-off code stub right. 2px paper rule
+            anchors the page as a magazine cover. */}
+        <div className="flex items-center justify-between pb-2.5 border-b-2 border-skin-base">
+          <div className="font-display font-black text-base text-skin-base tracking-[0.16em] uppercase leading-none">
+            Pecking Order
+          </div>
+          <div className="font-mono text-[10px] font-bold tracking-[0.1em] text-skin-dim leading-none">
+            <span className="opacity-60 mr-1">CODE</span>
+            <span className="text-skin-base">{game.invite_code.toUpperCase()}</span>
+          </div>
+        </div>
+
+        {/* Cast forming → photo fan + named-cast meta line.
+            Empty state → "First in" red tag. */}
+        {hasCast ? (
+          <div className="space-y-3">
             <JoinedCast players={players} assetsUrl={assetsUrl} />
+            <p className="text-center text-[13px] text-skin-base leading-snug px-2">
+              {socialLine}{' '}
+              <span className="text-skin-dim font-medium">Tap in to join them.</span>
+            </p>
+          </div>
+        ) : (
+          <div className="flex justify-center pt-1">
+            <span className="inline-flex items-center bg-skin-pink text-skin-base px-2.5 py-1 rounded font-display font-black text-[10px] tracking-[0.22em] uppercase">
+              First in · You set the room
+            </span>
           </div>
         )}
 
-        <header className="text-center space-y-3">
-          <p className="text-[10px] font-display font-bold text-skin-gold uppercase tracking-[0.3em]">
-            Pecking Order
-          </p>
+        {/* Hero — kicker (cast forming only), headline, dek. "Catfish" surfaces
+            in red as the load-bearing concept word. */}
+        <div className={`${hasCast ? 'border-b border-skin-rule pb-4' : 'text-center'}`}>
+          {hasCast && (
+            <div className="inline-flex items-center gap-2 mb-2">
+              <span className="inline-block w-6 h-px bg-skin-pink" />
+              <span className="font-display font-black text-[10px] tracking-[0.32em] uppercase text-skin-pink leading-none">
+                Casting Call
+              </span>
+            </div>
+          )}
           <h1
-            className="font-display font-black text-skin-base leading-[0.95]"
-            // Fluid headline — 2rem on ~320px phones, 3.25rem on tablets+.
-            style={{ fontSize: 'clamp(2rem, 8vw + 0.25rem, 3.25rem)' }}
+            className="font-display font-black tracking-tight leading-[0.9] text-skin-base mb-2"
+            style={{ fontSize: 'clamp(2.4rem, 10.5vw, 3.25rem)' }}
           >
-            {hasCast ? 'You’re invited.' : 'You’re in first.'}
+            You’re <span className="text-skin-pink">{hasCast ? 'invited.' : 'in first.'}</span>
           </h1>
-          <p className="text-[15px] text-skin-dim max-w-[30ch] mx-auto leading-snug">
-            {socialLine}
+          <p className={`text-sm text-skin-dim leading-relaxed max-w-[32ch] ${hasCast ? '' : 'mx-auto'}`}>
+            <span className="text-skin-pink font-bold">Catfish</span> your friends.{' '}
+            {hasCast ? (
+              <>Vote them out. <strong className="text-skin-base font-semibold">Last catfish wins.</strong></>
+            ) : (
+              <>Last catfish wins. <strong className="text-skin-base font-semibold">The room fills as your friends accept.</strong></>
+            )}
           </p>
-        </header>
+        </div>
 
-        {/* Brand verb-stack — only on the empty state. With cast present, the
-            JoinedCast component IS the visual interest; the verb stack here
-            would compete. With no cast, the page would otherwise be a logo
-            + headline + form — the stack fills that void with the same brand
-            mantra used on /playtest and in invite emails. */}
+        {/* Verb stack — empty-state visual replacing the cast fan. */}
         {!hasCast && (
           <div
             aria-hidden
-            className="text-center font-display font-black uppercase leading-[0.92] tracking-tight"
-            style={{ fontSize: 'clamp(2.25rem, 10vw, 3.5rem)' }}
+            className="text-center font-display font-black uppercase leading-[0.94] tracking-tight border-y border-skin-rule py-3.5"
+            style={{ fontSize: 'clamp(2rem, 9.5vw, 2.75rem)' }}
           >
             <div className="text-skin-base">Vote.</div>
-            <div className="text-skin-gold">Ally.</div>
+            <div className="text-skin-pink">Ally.</div>
             <div className="text-skin-base">Betray.</div>
             <div className="text-skin-pink">Survive.</div>
           </div>
         )}
 
+        {/* Rhythm strip — cold-player intro per /harden onboarding rules.
+            Three reality-TV verbs; mechanism in italic sub-labels. Foot
+            conveys multi-day async without committing to a specific count. */}
+        <div className="border-y border-skin-rule py-3">
+          <div className="text-center font-display font-black text-[10px] tracking-[0.28em] uppercase text-skin-pink mb-2.5">
+            Each day
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            <div className="text-center px-1 border-r border-skin-rule">
+              <div className="font-display font-black text-[10px] tracking-[0.16em] text-skin-pink leading-none">01</div>
+              <div className="font-display font-black text-[22px] tracking-[-0.005em] uppercase text-skin-base leading-none mt-1">Scheme</div>
+              <div className="text-[11px] italic text-skin-dim mt-1 leading-tight">alliances and rivalries</div>
+            </div>
+            <div className="text-center px-1 border-r border-skin-rule">
+              <div className="font-display font-black text-[10px] tracking-[0.16em] text-skin-pink leading-none">02</div>
+              <div className="font-display font-black text-[22px] tracking-[-0.005em] uppercase text-skin-base leading-none mt-1">Compete</div>
+              <div className="text-[11px] italic text-skin-dim mt-1 leading-tight">daily games for silver</div>
+            </div>
+            <div className="text-center px-1">
+              <div className="font-display font-black text-[10px] tracking-[0.16em] text-skin-pink leading-none">03</div>
+              <div className="font-display font-black text-[22px] tracking-[-0.005em] uppercase text-skin-base leading-none mt-1">Betray</div>
+              <div className="text-[11px] italic text-skin-dim mt-1 leading-tight">vote one out</div>
+            </div>
+          </div>
+          <p className="text-center text-[11px] text-skin-dim mt-2.5 leading-tight">
+            Plays out <strong className="text-skin-base font-bold">day after day</strong>. Until only one{' '}
+            <span className="text-skin-pink font-bold">catfish</span> remains.
+          </p>
+        </div>
+
+        {/* Real-name form — collects player's real name with privacy contract */}
         <WelcomeForm code={game.invite_code} />
 
-        <p className="text-center text-[11px] text-skin-dim tracking-wide">
-          Seven days. One winner. Don’t get voted out.
+        {/* Page footer-line */}
+        <p className="text-center text-[11px] text-skin-faint tracking-wide pb-safe pt-1">
+          One round a day · One leaves each round ·{' '}
+          <span className="text-skin-pink font-bold tracking-[0.12em]">Last catfish wins</span>
         </p>
       </div>
     </div>

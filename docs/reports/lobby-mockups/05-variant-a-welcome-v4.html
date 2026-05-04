@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pecking Order — Variant A · welcome v4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=JetBrains+Mono:wght@500;700&family=Manrope:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap" rel="stylesheet" />
+<style>
+  /* ─────────────────────  Doc chrome  ───────────────────── */
+  :root {
+    --doc-bg: #15161a;
+    --doc-text-1: #f0eef0;
+    --doc-text-2: #a09da6;
+    --doc-text-3: #6b6970;
+    --doc-border: rgba(255,255,255,0.08);
+    --doc-surface: #1c1d22;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: var(--doc-bg);
+    color: var(--doc-text-1);
+    font-family: 'Manrope', system-ui, sans-serif;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    padding: 24px 16px 80px;
+  }
+  .doc { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+
+  .doc-head { padding: 8px 0 0; }
+  .doc-head .eyebrow {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: #d72638;
+    margin-bottom: 8px;
+  }
+  .doc-head h1 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    color: var(--doc-text-1);
+    margin-bottom: 14px;
+    max-width: 800px;
+  }
+  .doc-head .lede {
+    color: var(--doc-text-2);
+    font-size: 15px; line-height: 1.55;
+    max-width: 760px;
+    margin-bottom: 12px;
+  }
+  .doc-head .lede strong { color: var(--doc-text-1); font-weight: 600; }
+
+  .changes {
+    margin-top: 14px; padding: 14px 18px;
+    background: var(--doc-surface);
+    border: 1px solid var(--doc-border);
+    border-radius: 10px;
+  }
+  .changes h3 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--doc-text-3);
+    margin-bottom: 10px;
+  }
+  .changes ul {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 8px 22px;
+  }
+  .changes li {
+    font-size: 13px;
+    color: var(--doc-text-1);
+    line-height: 1.45;
+    padding-left: 16px;
+    position: relative;
+  }
+  .changes li::before {
+    content: '→';
+    position: absolute;
+    left: 0; top: 0;
+    color: #d72638;
+    font-weight: 800;
+  }
+  .changes li strong { color: #ff5666; font-weight: 600; }
+  .changes li code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: rgba(215,38,56,0.12);
+    color: #ff8090;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .phones-title {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 12px; font-weight: 800;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--doc-text-3);
+    margin: 16px 0 4px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--doc-border);
+  }
+  .phone-grid {
+    display: flex; flex-wrap: wrap;
+    gap: 28px;
+    justify-content: center;
+    padding-top: 8px;
+  }
+  .phone-cell {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    width: 380px;
+    flex-shrink: 0;
+  }
+  .phone-cell .label {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--doc-text-3);
+    text-align: center;
+  }
+  .phone-cell .label .name { color: var(--doc-text-1); }
+
+  .phone {
+    width: 380px; height: 760px;
+    background: #000;
+    border-radius: 38px;
+    border: 1px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    position: relative;
+    box-shadow: 0 0 0 6px #0a070d, 0 30px 60px -20px rgba(0,0,0,0.7);
+  }
+
+  .status-bar {
+    height: 38px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px;
+    font-size: 13px; font-weight: 700;
+    z-index: 50; position: relative;
+    color: #f5f3f0;
+  }
+  .status-bar .icons { display: flex; gap: 6px; align-items: center; }
+  .status-bar .signal { width: 17px; height: 11px; background: currentColor; clip-path: polygon(0% 100%, 25% 100%, 25% 75%, 50% 75%, 50% 50%, 75% 50%, 75% 25%, 100% 25%, 100% 100%); }
+  .status-bar .battery { width: 26px; height: 12px; border: 1px solid currentColor; border-radius: 3px; padding: 1px; position: relative; }
+  .status-bar .battery::after { content: ''; position: absolute; right: -3px; top: 3px; bottom: 3px; width: 2px; background: currentColor; border-radius: 0 1px 1px 0; }
+  .status-bar .battery .fill { background: currentColor; height: 100%; width: 80%; border-radius: 1px; }
+
+  /* ────────────────────────  Variant A theme tokens  ─────────────────────── */
+  .v-a {
+    --bg-0: #0a0a0a;
+    --bg-1: #131313;
+    --bg-2: #1d1d1d;
+    --text-1: #f5f3f0;
+    --text-2: #a8a39c;
+    --text-3: #6f6a64;
+    --rule: #2c2c2c;
+    --accent: #d72638;
+    --accent-2: #ff5666;
+    --accent-deep: #8a1a25;
+    --gold: #f7c52e;
+  }
+
+  /* ─────────────────────  Welcome surface (Variant A)  ───────────────────── */
+  .welcome {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    background: var(--bg-0);
+    color: var(--text-1);
+    position: relative;
+    overflow: hidden;
+  }
+  .welcome::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle at 25% 30%, rgba(215,38,56,0.06) 0%, transparent 35%),
+      radial-gradient(circle at 80% 75%, rgba(215,38,56,0.04) 0%, transparent 40%);
+    pointer-events: none;
+  }
+  .welcome > * { position: relative; z-index: 2; }
+
+  .welcome .body {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    padding: 4px 22px 8px;
+    overflow-y: auto;
+  }
+  .welcome .body::-webkit-scrollbar { display: none; }
+
+  /* ─────────────  Masthead  ───────────── */
+  .masthead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0 10px;
+    border-bottom: 2px solid var(--text-1);
+  }
+  .masthead .wordmark {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 14px; font-weight: 900;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--text-1);
+    line-height: 1;
+  }
+  .masthead .code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text-2);
+  }
+  .masthead .code .label { opacity: 0.6; margin-right: 4px; }
+  .masthead .code .val { color: var(--text-1); }
+
+  /* ─────────────  Cast fan (v4 — no stereotype) ───────────── */
+  .cast-fan-row { padding: 16px 0 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .cast-fan {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 130px;
+    position: relative;
+  }
+  .cast-fan .card {
+    width: 80px; height: 116px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg-2);
+    border: 1.5px solid var(--text-1);
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 8px 18px -8px rgba(0,0,0,0.6);
+  }
+  .cast-fan .card:nth-child(1) { transform: rotate(-9deg) translateY(4px); margin-right: -20px; z-index: 1; }
+  .cast-fan .card:nth-child(2) { transform: rotate(-3deg); margin-right: -20px; z-index: 2; }
+  .cast-fan .card:nth-child(3) { transform: rotate(4deg); margin-right: -20px; z-index: 3; }
+  .cast-fan .card:nth-child(4) { transform: rotate(10deg) translateY(4px); z-index: 4; }
+  .cast-fan .card .face {
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center top;
+    filter: contrast(1.1) saturate(0.85);
+  }
+  /* Single-line name strip — stereotype dropped per direction */
+  .cast-fan .card .name-strip {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 16px 4px 4px;
+    background: linear-gradient(to top, rgba(0,0,0,0.92), transparent);
+    color: var(--text-1);
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 900;
+    letter-spacing: 0.04em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .cast-meta {
+    font-size: 13px;
+    color: var(--text-1);
+    text-align: center;
+    line-height: 1.4;
+    padding: 0 10px;
+  }
+  .cast-meta strong { font-weight: 700; }
+  .cast-meta .quiet { color: var(--text-2); font-weight: 500; }
+
+  /* ─────────────  Hero  ───────────── */
+  .hero {
+    margin-top: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero .kicker {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 10px; font-weight: 900;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--accent);
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .hero .kicker::before {
+    content: '';
+    display: inline-block;
+    width: 24px; height: 1px;
+    background: var(--accent);
+  }
+  .hero h1 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: clamp(38px, 10.5vw, 52px);
+    font-weight: 900;
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    color: var(--text-1);
+    margin-bottom: 8px;
+  }
+  .hero h1 .accent { color: var(--accent); }
+  .hero .dek {
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--text-2);
+    max-width: 32ch;
+  }
+  .hero .dek strong { color: var(--text-1); font-weight: 600; }
+  .hero .dek .catfish { color: var(--accent); font-weight: 700; }
+
+  /* ─────────────  Rhythm strip (v4 — RT verbs)  ───────────── */
+  .rhythm {
+    margin-top: 12px;
+    padding: 12px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .rhythm-eyebrow {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 10px; font-weight: 900;
+    letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .rhythm-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .rhythm-step {
+    display: flex; flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0 4px;
+    text-align: center;
+    border-right: 1px solid var(--rule);
+  }
+  .rhythm-step:last-child { border-right: none; }
+  .rhythm-step .num {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 10px; font-weight: 900;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .rhythm-step .label {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 22px; font-weight: 900;
+    letter-spacing: -0.005em;
+    color: var(--text-1);
+    text-transform: uppercase;
+    line-height: 1;
+    margin-top: 4px;
+  }
+  .rhythm-step .sub {
+    font-size: 11px;
+    font-style: italic;
+    color: var(--text-2);
+    line-height: 1.3;
+    margin-top: 4px;
+    font-weight: 400;
+  }
+  .rhythm-foot {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-2);
+    letter-spacing: 0.04em;
+    line-height: 1.45;
+  }
+  .rhythm-foot strong { color: var(--text-1); font-weight: 700; }
+  .rhythm-foot .catfish { color: var(--accent); font-weight: 700; }
+
+  /* ─────────────  Form  ───────────── */
+  .form { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .form .label {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .form .input-group { display: flex; flex-direction: column; gap: 6px; }
+  .form input {
+    width: 100%;
+    padding: 13px 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    color: var(--text-1);
+    font-family: 'Manrope', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    outline: none;
+  }
+  .form input::placeholder { color: var(--text-3); }
+  .form .help {
+    font-size: 11.5px;
+    color: var(--text-2);
+    line-height: 1.4;
+  }
+  .form .help strong { color: var(--text-1); font-weight: 600; }
+  .form .help .accent { color: var(--accent); font-weight: 600; }
+
+  .cta {
+    width: 100%;
+    padding: 15px 18px;
+    background: var(--accent);
+    color: var(--text-1);
+    border: none;
+    border-radius: 8px;
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    box-shadow: 0 4px 0 var(--accent-deep), 0 0 28px rgba(215,38,56,0.32);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .cta .arrow { display: inline-block; transform: translateY(-1px); }
+
+  .footer-line {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    font-size: 11px;
+    color: var(--text-3);
+    text-align: center;
+    letter-spacing: 0.06em;
+  }
+  .footer-line .em { color: var(--accent); font-weight: 700; letter-spacing: 0.12em; }
+
+  /* ─────────────  Empty state  ───────────── */
+  .first-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: var(--text-1);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .verb-stack {
+    margin: 18px 0 4px;
+    padding: 14px 0;
+    text-align: center;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .verb-stack .verb {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: clamp(32px, 9.5vw, 44px);
+    font-weight: 900;
+    line-height: 0.94;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+  .verb-stack .verb.w { color: var(--text-1); }
+  .verb-stack .verb.r { color: var(--accent); }
+
+  /* ─────────────────────  Annotation panels  ───────────────────── */
+  .annotations {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .anno {
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: var(--doc-surface);
+    border: 1px solid var(--doc-border);
+  }
+  .anno h3 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #d72638;
+    margin-bottom: 8px;
+  }
+  .anno p {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--doc-text-2);
+  }
+  .anno p strong { color: var(--doc-text-1); font-weight: 600; }
+  .anno p + p { margin-top: 8px; }
+  .anno code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    background: rgba(215,38,56,0.12);
+    color: #ff8090;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .anno .before-after {
+    margin-top: 8px;
+    display: grid; gap: 6px;
+    font-size: 12.5px;
+  }
+  .anno .before-after .row {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .anno .before-after .tag {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 9px; font-weight: 900;
+    letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .anno .before-after .tag.was { color: var(--doc-text-3); }
+  .anno .before-after .tag.now { color: #ff5666; }
+  .anno .before-after .body { color: var(--doc-text-1); line-height: 1.4; }
+  .anno .before-after .body em { color: var(--doc-text-2); font-style: italic; }
+
+  .next-step {
+    margin-top: 16px;
+    padding: 18px 22px;
+    border-radius: 12px;
+    border: 1px solid rgba(215,38,56,0.32);
+    background: linear-gradient(180deg, rgba(215,38,56,0.10), rgba(215,38,56,0.03));
+  }
+  .next-step h2 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--doc-text-1);
+    margin-bottom: 6px;
+  }
+  .next-step p {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--doc-text-2);
+  }
+  .next-step p strong { color: var(--doc-text-1); }
+
+  /* Mobile scaling */
+  @media (max-width: 720px) {
+    body { padding: 16px 12px 48px; }
+    .doc-head h1 { font-size: 26px; }
+    .doc-head .lede { font-size: 14px; }
+    .changes { padding: 12px 14px; }
+
+    .phone-grid { gap: 16px; }
+    .phone-cell {
+      width: 100%; max-width: 100%;
+      --ph-scale: calc((100vw - 24px) / 380);
+    }
+    .phone {
+      transform: scale(var(--ph-scale));
+      transform-origin: top center;
+      margin-bottom: calc((var(--ph-scale) - 1) * 760px);
+    }
+  }
+
+  @media (max-width: 380px) {
+    body { padding: 12px 8px 40px; }
+    .phone-cell { --ph-scale: calc((100vw - 16px) / 380); }
+  }
+</style>
+</head>
+<body>
+
+<div class="doc">
+
+  <div class="doc-head">
+    <div class="eyebrow">Variant A · Welcome v4 · catfish forward, mask retired</div>
+    <h1>The catfish concept does the heavy lifting now.</h1>
+    <div class="lede">
+      Iteration of <strong>04-variant-a-welcome-v3.html</strong>. Five fixes: <strong>(1)</strong> stereotypes dropped from cast cards — too noisy, names alone do the work. <strong>(2)</strong> RT-flavored rhythm verbs <code>SCHEME / COMPETE / BETRAY</code>. <strong>(3)</strong> "Mask" is gone everywhere. <strong>(4)</strong> "Catfish" gets the spotlight — appears in dek + rhythm-foot + page footer, the one term that explains the game on its own. <strong>(5)</strong> Form copy clarifies that the entered name is your <em>real</em> name, hidden from other players until the reveal.
+    </div>
+
+    <div class="changes">
+      <h3>Diff from v3</h3>
+      <ul>
+        <li><strong>Cast cards: stereotypes gone.</strong> Single-line name strip. Names alone. (Field still exists server-side; just not surfaced here.)</li>
+        <li><strong>Rhythm verbs:</strong> <code>ALLY / EARN / VOTE</code> → <code>SCHEME / COMPETE / BETRAY</code>. Reality-TV register. <em>Plot</em> dropped — it overlapped <em>scheme</em> too much.</li>
+        <li><strong>Rhythm subs:</strong> "alliances and rivalries" / "daily games for silver" / "vote one out". Sets up the gameplay specifics under each verb.</li>
+        <li><strong>"Mask" retired across the page.</strong> Dek, rhythm-foot, and page footer-line all updated. Catfish takes its place.</li>
+        <li><strong>Form copy:</strong> label is <code>Your real name</code>; help text spells out that this stays hidden, players see the persona, reveal happens at the end.</li>
+        <li><strong>Dek (cast forming):</strong> "Pick a mask. Pick a name. Catfish your friends until one mask is left." → <code>Catfish your friends. Vote them out. <strong>Last catfish wins.</strong></code></li>
+        <li><strong>Dek (empty state):</strong> "Pick a mask. Pick a name. The room fills as your friends accept the invite." → <code>Catfish your friends. Last catfish wins. <strong>The room fills as your friends accept.</strong></code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phones-title">━━━ Both states with v4 changes</div>
+
+  <div class="phone-grid">
+
+    <!-- ════ Phone 1 — WITH CAST already forming ════ -->
+    <div class="phone-cell">
+      <div class="label"><span class="num">A·1</span> <span class="name">Cast forming</span></div>
+      <div class="phone">
+        <div class="status-bar v-a"><span>5:14</span><span class="icons"><span class="signal"></span><span style="font-size:10px;font-weight:800;">5G</span><span class="battery"><span class="fill"></span></span></span></div>
+        <div class="welcome v-a">
+
+          <div class="body">
+
+            <div class="masthead">
+              <div class="wordmark">Pecking Order</div>
+              <div class="code"><span class="label">CODE</span><span class="val">ABCD-EFGH</span></div>
+            </div>
+
+            <!-- Cast fan with names only -->
+            <div class="cast-fan-row">
+              <div class="cast-fan">
+                <div class="card">
+                  <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-09/headshot.png');"></div>
+                  <div class="name-strip">Brenda</div>
+                </div>
+                <div class="card">
+                  <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-15/headshot.png');"></div>
+                  <div class="name-strip">Spike</div>
+                </div>
+                <div class="card">
+                  <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-04/headshot.png');"></div>
+                  <div class="name-strip">Felix</div>
+                </div>
+                <div class="card">
+                  <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-16/headshot.png');"></div>
+                  <div class="name-strip">Max</div>
+                </div>
+              </div>
+              <div class="cast-meta">
+                <strong>Brenda, Spike, Felix &amp; Max</strong> are in.
+                <span class="quiet">Tap in to join them.</span>
+              </div>
+            </div>
+
+            <!-- Hero with catfish-led dek -->
+            <div class="hero">
+              <span class="kicker">Casting Call</span>
+              <h1>You're <span class="accent">invited.</span></h1>
+              <div class="dek"><span class="catfish">Catfish</span> your friends. Vote them out. <strong>Last catfish wins.</strong></div>
+            </div>
+
+            <!-- Rhythm strip with RT verbs -->
+            <div class="rhythm">
+              <div class="rhythm-eyebrow">Each day</div>
+              <div class="rhythm-row">
+                <div class="rhythm-step">
+                  <span class="num">01</span>
+                  <span class="label">Scheme</span>
+                  <span class="sub">alliances and rivalries</span>
+                </div>
+                <div class="rhythm-step">
+                  <span class="num">02</span>
+                  <span class="label">Compete</span>
+                  <span class="sub">daily games for silver</span>
+                </div>
+                <div class="rhythm-step">
+                  <span class="num">03</span>
+                  <span class="label">Betray</span>
+                  <span class="sub">vote one out</span>
+                </div>
+              </div>
+              <div class="rhythm-foot">
+                Plays out <strong>day after day</strong>. Until only one <span class="catfish">catfish</span> remains.
+              </div>
+            </div>
+
+            <!-- Form with corrected real-name copy -->
+            <div class="form">
+              <div class="input-group">
+                <span class="label">Your real name</span>
+                <input type="text" placeholder="Your real name" />
+                <span class="help"><strong>Stays hidden</strong> while you play. Other players see your <span class="accent">persona</span>. Revealed at the end.</span>
+              </div>
+              <button class="cta">Step in <span class="arrow">→</span></button>
+            </div>
+
+            <div class="footer-line">
+              One round a day · One leaves each round · <span class="em">Last catfish wins</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ Phone 2 — EMPTY STATE ════ -->
+    <div class="phone-cell">
+      <div class="label"><span class="num">A·2</span> <span class="name">You're first in</span></div>
+      <div class="phone">
+        <div class="status-bar v-a"><span>5:14</span><span class="icons"><span class="signal"></span><span style="font-size:10px;font-weight:800;">5G</span><span class="battery"><span class="fill"></span></span></span></div>
+        <div class="welcome v-a">
+
+          <div class="body">
+
+            <div class="masthead">
+              <div class="wordmark">Pecking Order</div>
+              <div class="code"><span class="label">CODE</span><span class="val">ABCD-EFGH</span></div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; align-items:center; padding-top:18px;">
+              <div class="first-tag">First in · You set the room</div>
+              <div class="hero" style="text-align:center; border-bottom:none; padding-bottom:0;">
+                <h1>You're <span class="accent">in first.</span></h1>
+                <div class="dek" style="margin-left:auto; margin-right:auto;"><span class="catfish">Catfish</span> your friends. Last catfish wins. <strong>The room fills as your friends accept.</strong></div>
+              </div>
+            </div>
+
+            <div class="verb-stack">
+              <div class="verb w">Vote.</div>
+              <div class="verb r">Ally.</div>
+              <div class="verb w">Betray.</div>
+              <div class="verb r">Survive.</div>
+            </div>
+
+            <!-- Rhythm strip with RT verbs -->
+            <div class="rhythm">
+              <div class="rhythm-eyebrow">Each day</div>
+              <div class="rhythm-row">
+                <div class="rhythm-step">
+                  <span class="num">01</span>
+                  <span class="label">Scheme</span>
+                  <span class="sub">alliances and rivalries</span>
+                </div>
+                <div class="rhythm-step">
+                  <span class="num">02</span>
+                  <span class="label">Compete</span>
+                  <span class="sub">daily games for silver</span>
+                </div>
+                <div class="rhythm-step">
+                  <span class="num">03</span>
+                  <span class="label">Betray</span>
+                  <span class="sub">vote one out</span>
+                </div>
+              </div>
+              <div class="rhythm-foot">
+                Plays out <strong>day after day</strong>. Until only one <span class="catfish">catfish</span> remains.
+              </div>
+            </div>
+
+            <div class="form">
+              <div class="input-group">
+                <span class="label">Your real name</span>
+                <input type="text" placeholder="Your real name" />
+                <span class="help"><strong>Stays hidden</strong> while you play. Other players see your <span class="accent">persona</span>. Revealed at the end.</span>
+              </div>
+              <button class="cta">Step in <span class="arrow">→</span></button>
+            </div>
+
+            <div class="footer-line">
+              One round a day · One leaves each round · <span class="em">Last catfish wins</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─────────────────────  Annotation panels  ───────────────────── -->
+  <div class="annotations">
+
+    <div class="anno">
+      <h3>Reality-TV verbs</h3>
+      <p>Old set was clarifying mechanism (Ally / Earn / Vote). New set names the <strong>dramatic register</strong> of each step.</p>
+      <div class="before-after">
+        <div class="row">
+          <span class="tag was">Was</span>
+          <span class="body">ALLY / EARN / VOTE</span>
+        </div>
+        <div class="row">
+          <span class="tag now">Now</span>
+          <span class="body">SCHEME / COMPETE / BETRAY</span>
+        </div>
+      </div>
+      <p><strong>SCHEME</strong> covers alliances + rivalries (the social game). <strong>COMPETE</strong> is the daily-game step (specifically <em>daily games for silver</em>, since silver is what individuals win even when the group is collaborating for gold). <strong>BETRAY</strong> is what voting <em>feels</em> like in a social-deduction game — you cut someone you might have schemed with that morning.</p>
+      <p><em>Plot</em> dropped because it overlapped <em>scheme</em>. <em>Vote</em> dropped because <em>betray</em> dramatizes it without losing the action.</p>
+    </div>
+
+    <div class="anno">
+      <h3>Catfish, front and center</h3>
+      <p>You called it: catfish is the one word that explains the game on its own. v4 leans into that. The term appears in three places, in red:</p>
+      <p>1. <strong>Dek:</strong> "<em>Catfish</em> your friends. Vote them out. Last catfish wins."<br>2. <strong>Rhythm-foot:</strong> "Until only one <em>catfish</em> remains."<br>3. <strong>Page footer-line:</strong> "Last <em>catfish</em> wins."</p>
+      <p>Three uses, varied phrasing, same accent color — the eye picks up the through-line without re-reading. Catfish is rendered in the same red as the headline accent and the active rhythm number, so it visually belongs to the same family as the page's most important elements.</p>
+    </div>
+
+    <div class="anno">
+      <h3>Mask, retired</h3>
+      <p>The mask metaphor was a load-bearing concept that didn't have load-bearing follow-through anywhere else in the product. Dropped. Three rewrites:</p>
+      <div class="before-after">
+        <div class="row">
+          <span class="tag was">Was</span>
+          <span class="body">"Pick a mask. Pick a name."</span>
+        </div>
+        <div class="row">
+          <span class="tag now">Now</span>
+          <span class="body">No persona-pick framing on /j/ — that's a /join/ activity. Dek leads with the verb (<em>Catfish your friends</em>) instead.</span>
+        </div>
+        <div class="row">
+          <span class="tag was">Was</span>
+          <span class="body">"Until one mask is left."</span>
+        </div>
+        <div class="row">
+          <span class="tag now">Now</span>
+          <span class="body">"Until only one <em>catfish</em> remains."</span>
+        </div>
+        <div class="row">
+          <span class="tag was">Was</span>
+          <span class="body">"Last mask wins"</span>
+        </div>
+        <div class="row">
+          <span class="tag now">Now</span>
+          <span class="body">"Last <em>catfish</em> wins"</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="anno">
+      <h3>Real-name copy fixed</h3>
+      <p>Old label said "What should we call you?" with help text "So the group knows you in-game" — both implied the entered name was the in-game identity. It's not. Players see the <em>persona</em>; the real name stays hidden until the reveal.</p>
+      <div class="before-after">
+        <div class="row">
+          <span class="tag was">Was</span>
+          <span class="body"><strong>What should we call you?</strong><br>So the group knows you in-game. Reveal at the end.</span>
+        </div>
+        <div class="row">
+          <span class="tag now">Now</span>
+          <span class="body"><strong>Your real name</strong><br>Stays hidden while you play. Other players see your <em>persona</em>. Revealed at the end.</span>
+        </div>
+      </div>
+      <p>Three things the new help does the old didn't: (1) names what's stored (<em>real name</em>), (2) explains what others see (<em>persona</em>), (3) flags the privacy contract (<em>stays hidden until reveal</em>). The accent on <em>persona</em> hooks back to the persona-pick step on /join/.</p>
+    </div>
+
+    <div class="anno">
+      <h3>Stereotype tags, dropped</h3>
+      <p>Even quietened, the <em>the sweetheart / the bad boy / the showmance</em> lines added another reading layer to a card that's already doing two things (face + name). Per your direction: too noisy. Names alone.</p>
+      <p>The persona <code>stereotype</code> field is still in the data — it just doesn't surface on the welcome page. The persona pick step (/join/ step 1) keeps the stereotype as the persona's tagline, where it has a job to do (helping the player pick a character that fits). On /j/ the cast is announced; characterization stays for the wizard.</p>
+    </div>
+
+    <div class="anno">
+      <h3>What didn't change</h3>
+      <p>Composition skeleton, fonts, masthead, kicker (<em>Casting Call</em>), headlines (<em>You're invited.</em> / <em>You're in first.</em>), CTA copy (<em>Step in →</em>), verb stack on empty state, cast meta line, palette tokens. The two passes only touched what you flagged.</p>
+    </div>
+
+  </div>
+
+  <div class="next-step">
+    <h2>If v4 lands → write the brief, then implement</h2>
+    <p>
+      Sequence: rewrite <code style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(215,38,56,0.12);color:#ff8090;padding:1px 5px;border-radius:3px;">apps/lobby/.impeccable.md</code> with the new B+W+red token map, masthead pattern, rhythm-strip pattern, real-name privacy copy, and the catfish-forward voice rule. Apply variant A to the wizard surfaces (steps 1–4) — including a new scrim treatment for the photo-bg contrast on the wizard. Ship as a single visual-redesign branch. <strong>Anything else to push back on before I move to the brief?</strong>
+    </p>
+  </div>
+
+</div>
+
+</body>
+</html>

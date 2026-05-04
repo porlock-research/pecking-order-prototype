@@ -1,30 +1,44 @@
 // ── Email templates — "Title Card" ───────────────────────────────────────
 // Inline CSS only (email clients strip <style> blocks).
-// Voice: reality-TV title-card. Short, declarative, teen-native.
-// Shell-agnostic: this is the Pecking Order umbrella brand, not a shell skin.
+// Voice: tabloid magazine cover. Short, declarative, teen-native.
+//
+// Paper-first register per apps/lobby/.impeccable.md: dark-mode email
+// rendering is unreliable across clients (Outlook normalisation strips
+// custom dark schemes; Gmail mobile auto-inverts; some webmails ignore
+// color-scheme entirely). Paper ground + ink type renders predictably
+// in light AND auto-darkened modes.
 
 // ── Palette ──────────────────────────────────────────────────────────────
-const BG = '#0e0014';          // near-black plum
-const CARD_BG = '#1a0a28';     // dark amethyst
-const CARD_BORDER = '#3a1a55'; // muted purple border
-const GOLD = '#f0c040';        // warm rich gold
-const GOLD_DIM = '#b8922e';    // subdued gold for rules/hairlines
-const CTA = '#d946ef';         // vivid fuchsia
-const TEXT = '#ede0f5';        // lavender white
-const DIM = '#a888c0';         // muted lilac
-const FAINT = '#604878';       // barely-there purple
+// Mirrors [data-theme="reality-tv-tabloid"] from packages/ui-kit/src/theme.css
+// in paper-first form. Token *names* are kept for codebase continuity;
+// rename pass is out of scope for the redesign.
+const BG = '#f5f3f0';                          // paper ground
+const CARD_BG = '#ffffff';                     // raised card on paper
+const CARD_BORDER = 'rgba(10,10,10,0.10)';     // subtle ink rule
+const RED = '#d72638';                         // tabloid red — single accent
+const RED_DEEP = '#8a1a25';                    // shadow tone
+const GOLD = '#d4a118';                        // premium signal — used sparingly
+const TEXT = '#0a0a0a';                        // ink body
+const DIM = '#555555';                         // supporting copy
+const FAINT = '#8b8b8b';                       // footers
+const RULE = 'rgba(10,10,10,0.16)';            // hairline divider
+
+// Legacy alias for older call sites that still reference CTA / GOLD_DIM
+const CTA = RED;
+const GOLD_DIM = '#b8922e';
 
 // ── Type stacks (email-safe) ─────────────────────────────────────────────
-// Display: tabloid/title-card condensed weight. Impact is the target; degrades
-// through Helvetica Neue (macOS) → Arial Black (ubiquitous) → sans-serif.
-const DISPLAY = `Impact, 'Helvetica Neue', 'Arial Black', Arial, sans-serif`;
-// Body: modern system-sans stack. Supported by Apple Mail, Outlook 365,
-// most webmail. Falls back cleanly on anything older.
-const BODY = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
+// Display: tabloid/title-card condensed weight. Big Shoulders Display is the
+// project's web display face but most email clients strip remote fonts.
+// Falls through Impact → Helvetica Neue Condensed → Arial Black → sans.
+const DISPLAY = `'Big Shoulders Display', Impact, 'Helvetica Neue Condensed', 'Arial Black', Arial, sans-serif`;
+// Body: Manrope is the web body face; same fallback story. Stack supports
+// Apple Mail, Outlook 365, most webmail.
+const BODY = `Manrope, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
 
 // ── Shared building blocks ───────────────────────────────────────────────
 
-/** Full-page dark wrapper. `preheader` is the hidden inbox-preview line
+/** Full-page paper wrapper. `preheader` is the hidden inbox-preview line
  * shown next to the subject in Gmail / Apple Mail / Outlook. */
 function wrap(inner: string, preheader: string, title: string = 'Pecking Order'): string {
   return `<!DOCTYPE html>
@@ -32,11 +46,11 @@ function wrap(inner: string, preheader: string, title: string = 'Pecking Order')
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <meta name="supported-color-schemes" content="dark">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
   <title>${title}</title>
 </head>
-<body style="margin:0;padding:0;background-color:${BG};font-family:${BODY};">
+<body style="margin:0;padding:0;background-color:${BG};font-family:${BODY};color:${TEXT};">
   <div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:${BG};opacity:0;">${preheader}&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;</div>
   <!-- Built for the drama. Shipped from the group chat. -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BG};">
@@ -51,26 +65,27 @@ function wrap(inner: string, preheader: string, title: string = 'Pecking Order')
 }
 
 /** Text-only masthead — stacked "PECKING / ORDER" wordmark in display font,
- * with a gold hairline and a dated issue line. Feels like a tabloid cover. */
+ * with an ink hairline and a dated issue line. Magazine-cover voice without
+ * the gold-glow aesthetic — paper-first register. */
 function logo(lobbyUrl: string): string {
   const issueDate = new Date()
     .toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' })
     .toUpperCase()
-    .replace(/,/g, ' \u00b7');
+    .replace(/,/g, ' ·');
   return `<tr><td align="center" style="padding-bottom:40px;">
-    <a href="${lobbyUrl}" target="_blank" style="text-decoration:none;display:inline-block;color:${GOLD};">
-      <div style="font-family:${DISPLAY};font-size:60px;font-weight:900;line-height:0.85;letter-spacing:-0.03em;color:${GOLD};text-transform:uppercase;">
+    <a href="${lobbyUrl}" target="_blank" style="text-decoration:none;display:inline-block;color:${TEXT};">
+      <div style="font-family:${DISPLAY};font-size:60px;font-weight:900;line-height:0.85;letter-spacing:-0.03em;color:${TEXT};text-transform:uppercase;">
         Pecking<br>Order
       </div>
-      <div style="width:80px;height:3px;background-color:${GOLD};margin:18px auto 10px;line-height:0;font-size:0;">&nbsp;</div>
-      <div style="font-family:${BODY};font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${GOLD_DIM};">
+      <div style="width:80px;height:3px;background-color:${TEXT};margin:18px auto 10px;line-height:0;font-size:0;">&nbsp;</div>
+      <div style="font-family:${BODY};font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${DIM};">
         ${issueDate}
       </div>
     </a>
   </td></tr>`;
 }
 
-/** Card — dark panel with muted border */
+/** Card — white panel with subtle ink-rule border, sits on the paper ground */
 function card(inner: string): string {
   return `<tr><td>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${CARD_BG};border-radius:14px;border:1px solid ${CARD_BORDER};">
@@ -81,11 +96,11 @@ function card(inner: string): string {
   </td></tr>`;
 }
 
-/** CTA button */
+/** CTA button — red bg, paper text. Single saturated accent doing the action job. */
 function button(label: string, href: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-    <tr><td align="center" style="border-radius:10px;background-color:${CTA};">
-      <a href="${href}" target="_blank" style="display:inline-block;padding:16px 44px;font-family:${BODY};font-size:13px;font-weight:bold;letter-spacing:2.5px;text-transform:uppercase;color:#ffffff;text-decoration:none;">
+    <tr><td align="center" style="border-radius:10px;background-color:${RED};">
+      <a href="${href}" target="_blank" style="display:inline-block;padding:16px 44px;font-family:${BODY};font-size:13px;font-weight:bold;letter-spacing:2.5px;text-transform:uppercase;color:${BG};text-decoration:none;">
         ${label}
       </a>
     </td></tr>
@@ -93,7 +108,7 @@ function button(label: string, href: string): string {
 }
 
 /** Persona card-deck hero image — fills the column; cover hook.
- * object-fit crops the 650x630 source PNG to a tight band in Gmail/Apple Mail/etc.
+ * object-fit crops the source PNG to a tight band in Gmail/Apple Mail/etc.
  * Outlook ignores object-fit and falls back to natural aspect; no worse than v1. */
 function hero(lobbyUrl: string): string {
   return `<tr><td align="center" style="padding-bottom:32px;">
@@ -108,9 +123,9 @@ function footer(text: string): string {
   </td></tr>`;
 }
 
-/** Tracked-caps eyebrow label */
+/** Tracked-caps eyebrow label — red, mirrors the web "Casting Call" kicker */
 function eyebrow(text: string): string {
-  return `<p style="margin:0 0 14px;font-family:${BODY};font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${DIM};">${text}</p>`;
+  return `<p style="margin:0 0 14px;font-family:${BODY};font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${RED};">${text}</p>`;
 }
 
 /** Tabloid headline — uppercase display, tight leading. Line-height 1.02 gives
@@ -125,14 +140,13 @@ function bodyLine(text: string): string {
 }
 
 /** Stacked-verb statement. Each word becomes its own line in giant display
- * type with alternating accents. Used as a typographic moment that names the
- * game shape with no chrome. Mirrors the `/playtest` web treatment.
+ * type with alternating ink/red. Mirrors the `/playtest` and /j/ web treatments.
  *
- * Default colors rotate TEXT → GOLD → TEXT → CTA. Pass a `colors` array to
+ * Default colors rotate TEXT → RED → TEXT → RED. Pass a `colors` array to
  * override per-line. Line-height is set to 1.0 for Outlook safety; we add an
- * explicit margin between lines so the stack still has air on tight rendererss. */
+ * explicit margin between lines so the stack still has air on tight renderers. */
 function verbStack(words: string[], colors?: string[]): string {
-  const palette = colors ?? [TEXT, GOLD, TEXT, CTA];
+  const palette = colors ?? [TEXT, RED, TEXT, RED];
   return `<div style="margin:0 0 32px;text-align:center;">${words
     .map((word, i) => {
       const color = palette[i % palette.length];
@@ -142,7 +156,8 @@ function verbStack(words: string[], colors?: string[]): string {
     .join('')}</div>`;
 }
 
-/** Code block — tracked display glyphs over tiny label */
+/** Code block — tracked display glyphs over tiny label. Gold for the code
+ * value preserves "premium identifier" weight without a second saturated hue. */
 function codeBlock(label: string, code: string): string {
   return `<div style="text-align:left;">
     <p style="margin:0 0 6px;font-family:${BODY};font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${FAINT};">${label}</p>
@@ -152,15 +167,16 @@ function codeBlock(label: string, code: string): string {
 
 /** Hairline rule used sparingly when structural separation is genuinely needed */
 function hairline(): string {
-  return `<div style="height:1px;background-color:${GOLD_DIM};opacity:0.4;margin:28px 0;"></div>`;
+  return `<div style="height:1px;background-color:${RULE};margin:28px 0;"></div>`;
 }
 
-/** Numbered beat row for "what to expect" lists */
+/** Numbered beat row for "what to expect" lists. Number in red — matches the
+ * web rhythm-strip's red step numbers (01 / 02 / 03). */
 function beat(num: string, title: string, body: string, isLast: boolean = false): string {
-  return `<tr><td style="padding:14px 0;${isLast ? '' : `border-bottom:1px solid ${CARD_BORDER};`}">
+  return `<tr><td style="padding:14px 0;${isLast ? '' : `border-bottom:1px solid ${RULE};`}">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       <tr>
-        <td width="44" valign="top" style="font-family:${DISPLAY};font-size:22px;font-weight:900;color:${GOLD};letter-spacing:1px;line-height:1;padding-top:2px;">${num}</td>
+        <td width="44" valign="top" style="font-family:${DISPLAY};font-size:22px;font-weight:900;color:${RED};letter-spacing:1px;line-height:1;padding-top:2px;">${num}</td>
         <td style="font-family:${BODY};font-size:15px;line-height:1.5;color:${TEXT};">
           <strong style="color:${TEXT};font-weight:700;">${title}</strong><br>
           <span style="color:${DIM};">${body}</span>
@@ -174,6 +190,11 @@ function beat(num: string, title: string, body: string, isLast: boolean = false)
 function buttonRow(label: string, href: string, marginBottom: number = 0): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto ${marginBottom}px;"><tr><td>${button(label, href)}</td></tr></table>`;
 }
+
+// Suppress unused-variable warnings for legacy aliases preserved for compat
+void CTA;
+void GOLD_DIM;
+void RED_DEEP;
 
 // ── Public builders ──────────────────────────────────────────────────────
 
@@ -194,7 +215,7 @@ export function buildInviteEmail(opts: {
     ${card(`
       ${eyebrow('Cast list')}
       ${hugeLine(`${sender} added you`)}
-      ${bodyLine('Pecking Order is a social deduction game you play in a group chat. A few minutes a day on your phone. Last one standing wins.')}
+      ${bodyLine('Catfish your friends. A few minutes a day on your phone. Last catfish wins.')}
       ${verbStack(['Vote.', 'Ally.', 'Betray.', 'Survive.'])}
       ${buttonRow('Take your spot', opts.inviteLink, 28)}
       ${hairline()}
@@ -221,7 +242,7 @@ export function buildLoginEmail(opts: {
     ${card(`
       ${eyebrow('Sign in')}
       ${hugeLine('One tap back in')}
-      ${bodyLine(`Link is live for <strong style="color:${GOLD};font-weight:700;">5 minutes</strong>.`)}
+      ${bodyLine(`Link is live for <strong style="color:${RED};font-weight:700;">5 minutes</strong>.`)}
       ${buttonRow('Sign in', opts.loginLink)}
     `)}
     ${footer('Not you? Ignore this &mdash; nothing happens.')}
@@ -238,7 +259,7 @@ export function buildPlaytestConfirmationEmail(opts: {
   playtestUrl: string;
   referralCode?: string;
 }): { subject: string; html: string } {
-  const subject = 'You\u2019re on the Pecking Order waitlist';
+  const subject = 'You’re on the Pecking Order waitlist';
   const shareUrl = opts.referralCode
     ? `${opts.playtestUrl}/share/${opts.referralCode}`
     : opts.playtestUrl;
@@ -258,7 +279,7 @@ export function buildPlaytestConfirmationEmail(opts: {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
         ${beat('01', 'Pick a face', 'Play a persona with their own history, drama, and enemies.')}
         ${beat('02', 'Play from your phone', 'Real time, day by day. Things happen while you&rsquo;re at school.')}
-        ${beat('03', 'Last one standing wins', 'Form alliances. Send gifts. Vote someone out. Don&rsquo;t get voted out.', true)}
+        ${beat('03', 'Last catfish wins', 'Form alliances. Send gifts. Vote someone out. Don&rsquo;t get voted out.', true)}
       </table>
 
       ${bodyLine('We&rsquo;ll email when it&rsquo;s your turn. Until then &mdash; bring your people:')}

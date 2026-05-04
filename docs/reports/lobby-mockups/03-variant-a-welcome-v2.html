@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pecking Order — Variant A · welcome v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=JetBrains+Mono:wght@500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ─────────────────────  Doc chrome  ───────────────────── */
+  :root {
+    --doc-bg: #15161a;
+    --doc-text-1: #f0eef0;
+    --doc-text-2: #a09da6;
+    --doc-text-3: #6b6970;
+    --doc-border: rgba(255,255,255,0.08);
+    --doc-surface: #1c1d22;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: var(--doc-bg);
+    color: var(--doc-text-1);
+    font-family: 'Manrope', system-ui, sans-serif;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    padding: 24px 16px 80px;
+  }
+  .doc { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+
+  .doc-head { padding: 8px 0 0; }
+  .doc-head .eyebrow {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: #d72638;
+    margin-bottom: 8px;
+  }
+  .doc-head h1 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    color: var(--doc-text-1);
+    margin-bottom: 14px;
+    max-width: 800px;
+  }
+  .doc-head .lede {
+    color: var(--doc-text-2);
+    font-size: 15px; line-height: 1.55;
+    max-width: 760px;
+    margin-bottom: 12px;
+  }
+  .doc-head .lede strong { color: var(--doc-text-1); font-weight: 600; }
+
+  .changes {
+    margin-top: 14px; padding: 14px 18px;
+    background: var(--doc-surface);
+    border: 1px solid var(--doc-border);
+    border-radius: 10px;
+  }
+  .changes h3 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--doc-text-3);
+    margin-bottom: 10px;
+  }
+  .changes ul {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 8px 22px;
+  }
+  .changes li {
+    font-size: 13px;
+    color: var(--doc-text-1);
+    line-height: 1.45;
+    padding-left: 16px;
+    position: relative;
+  }
+  .changes li::before {
+    content: '→';
+    position: absolute;
+    left: 0; top: 0;
+    color: #d72638;
+    font-weight: 800;
+  }
+  .changes li strong { color: #ff5666; font-weight: 600; }
+
+  .phones-title {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 12px; font-weight: 800;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--doc-text-3);
+    margin: 16px 0 4px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--doc-border);
+  }
+  .phone-grid {
+    display: flex; flex-wrap: wrap;
+    gap: 28px;
+    justify-content: center;
+    padding-top: 8px;
+  }
+  .phone-cell {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 14px;
+    width: 380px;
+    flex-shrink: 0;
+  }
+  .phone-cell .label {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--doc-text-3);
+    text-align: center;
+  }
+  .phone-cell .label .name { color: var(--doc-text-1); }
+
+  .phone {
+    width: 380px; height: 760px;
+    background: #000;
+    border-radius: 38px;
+    border: 1px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    position: relative;
+    box-shadow: 0 0 0 6px #0a070d, 0 30px 60px -20px rgba(0,0,0,0.7);
+  }
+
+  .status-bar {
+    height: 38px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px;
+    font-size: 13px; font-weight: 700;
+    z-index: 50; position: relative;
+    color: #f5f3f0;
+  }
+  .status-bar .icons { display: flex; gap: 6px; align-items: center; }
+  .status-bar .signal { width: 17px; height: 11px; background: currentColor; clip-path: polygon(0% 100%, 25% 100%, 25% 75%, 50% 75%, 50% 50%, 75% 50%, 75% 25%, 100% 25%, 100% 100%); }
+  .status-bar .battery { width: 26px; height: 12px; border: 1px solid currentColor; border-radius: 3px; padding: 1px; position: relative; }
+  .status-bar .battery::after { content: ''; position: absolute; right: -3px; top: 3px; bottom: 3px; width: 2px; background: currentColor; border-radius: 0 1px 1px 0; }
+  .status-bar .battery .fill { background: currentColor; height: 100%; width: 80%; border-radius: 1px; }
+
+  /* ────────────────────────  Variant A theme tokens  ─────────────────────── */
+  .v-a {
+    --bg-0: #0a0a0a;
+    --bg-1: #131313;
+    --bg-2: #1d1d1d;
+    --text-1: #f5f3f0;
+    --text-2: #a8a39c;
+    --text-3: #6f6a64;
+    --rule: #2c2c2c;
+    --accent: #d72638;
+    --accent-2: #ff5666;
+    --accent-deep: #8a1a25;
+    --gold: #f7c52e;
+  }
+
+  /* ─────────────────────  Welcome surface (Variant A)  ───────────────────── */
+  .welcome {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    background: var(--bg-0);
+    color: var(--text-1);
+    position: relative;
+    overflow: hidden;
+  }
+  .welcome::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle at 25% 30%, rgba(215,38,56,0.06) 0%, transparent 35%),
+      radial-gradient(circle at 80% 75%, rgba(215,38,56,0.04) 0%, transparent 40%);
+    pointer-events: none;
+  }
+  .welcome > * { position: relative; z-index: 2; }
+
+  .welcome .body {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    padding: 4px 22px 8px;
+    overflow-y: auto;
+  }
+  .welcome .body::-webkit-scrollbar { display: none; }
+
+  /* ─────────────  Masthead (simplified — no issue number)  ───────────── */
+  .masthead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0 10px;
+    border-bottom: 2px solid var(--text-1);
+  }
+  .masthead .wordmark {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 14px; font-weight: 900;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--text-1);
+    line-height: 1;
+  }
+  .masthead .code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text-2);
+  }
+  .masthead .code .label { opacity: 0.6; margin-right: 4px; }
+  .masthead .code .val { color: var(--text-1); }
+
+  /* ─────────────  Cast fan with stereotype tags  ───────────── */
+  .cast-fan-row { padding: 16px 0 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .cast-fan {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 130px;
+    position: relative;
+  }
+  .cast-fan .card {
+    width: 78px; height: 110px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--bg-2);
+    border: 1.5px solid var(--text-1);
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 8px 18px -8px rgba(0,0,0,0.6);
+  }
+  .cast-fan .card:nth-child(1) { transform: rotate(-9deg) translateY(4px); margin-right: -20px; z-index: 1; }
+  .cast-fan .card:nth-child(2) { transform: rotate(-3deg); margin-right: -20px; z-index: 2; }
+  .cast-fan .card:nth-child(3) { transform: rotate(4deg); margin-right: -20px; z-index: 3; }
+  .cast-fan .card:nth-child(4) { transform: rotate(10deg) translateY(4px); z-index: 4; }
+  .cast-fan .card .face {
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center top;
+    filter: contrast(1.1) saturate(0.85);
+  }
+  .cast-fan .card .name-strip {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 16px 4px 4px;
+    background: linear-gradient(to top, rgba(0,0,0,0.92), transparent);
+    color: var(--text-1);
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 900;
+    letter-spacing: 0.04em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  /* Stereotype corner tag — small red ribbon top-left */
+  .cast-fan .card .stereo {
+    position: absolute;
+    top: 5px; left: 5px;
+    background: var(--accent);
+    color: var(--text-1);
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 8px; font-weight: 900;
+    letter-spacing: 0.18em;
+    padding: 2px 5px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    line-height: 1;
+    box-shadow: 0 2px 6px -1px rgba(0,0,0,0.5);
+  }
+  .cast-meta {
+    font-size: 13px;
+    color: var(--text-1);
+    text-align: center;
+    line-height: 1.4;
+    padding: 0 10px;
+  }
+  .cast-meta strong { font-weight: 700; }
+  .cast-meta .quiet { color: var(--text-2); font-weight: 500; }
+
+  /* ─────────────  Hero copy  ───────────── */
+  .hero {
+    margin-top: 14px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero .kicker {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 10px; font-weight: 900;
+    letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--accent);
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .hero .kicker::before {
+    content: '';
+    display: inline-block;
+    width: 24px; height: 1px;
+    background: var(--accent);
+  }
+  .hero h1 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: clamp(38px, 10.5vw, 52px);
+    font-weight: 900;
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    color: var(--text-1);
+    margin-bottom: 8px;
+  }
+  .hero h1 .accent { color: var(--accent); }
+  .hero .dek {
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--text-2);
+    max-width: 32ch;
+  }
+  .hero .dek strong { color: var(--text-1); font-weight: 600; }
+
+  /* ─────────────  "What to expect" rhythm strip (cold-player intro)  ───────────── */
+  .rhythm {
+    margin-top: 14px;
+    padding: 14px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .rhythm-eyebrow {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 10px; font-weight: 900;
+    letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .rhythm-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .rhythm-step {
+    display: flex; flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0 4px;
+    text-align: center;
+    border-right: 1px solid var(--rule);
+  }
+  .rhythm-step:last-child { border-right: none; }
+  .rhythm-step .num {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 900;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .rhythm-step .label {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 22px; font-weight: 900;
+    letter-spacing: -0.01em;
+    color: var(--text-1);
+    text-transform: uppercase;
+    line-height: 1;
+    margin-top: 4px;
+  }
+  .rhythm-step .sub {
+    font-size: 11px;
+    color: var(--text-2);
+    line-height: 1.3;
+    margin-top: 4px;
+  }
+  .rhythm-foot {
+    margin-top: 10px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-2);
+    letter-spacing: 0.04em;
+  }
+  .rhythm-foot strong { color: var(--text-1); font-weight: 700; }
+
+  /* ─────────────  Form  ───────────── */
+  .form { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .form .label {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 11px; font-weight: 800;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .form .input-group { display: flex; flex-direction: column; gap: 6px; }
+  .form input {
+    width: 100%;
+    padding: 13px 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    color: var(--text-1);
+    font-family: 'Manrope', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    outline: none;
+  }
+  .form input::placeholder { color: var(--text-3); }
+  .form .help {
+    font-size: 11px;
+    color: var(--text-2);
+    line-height: 1.4;
+  }
+
+  .cta {
+    width: 100%;
+    padding: 15px 18px;
+    background: var(--accent);
+    color: var(--text-1);
+    border: none;
+    border-radius: 8px;
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    box-shadow: 0 4px 0 var(--accent-deep), 0 0 28px rgba(215,38,56,0.32);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .cta .arrow { display: inline-block; transform: translateY(-1px); }
+
+  .footer-line {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    font-size: 11px;
+    color: var(--text-3);
+    text-align: center;
+    letter-spacing: 0.06em;
+  }
+  .footer-line .em { color: var(--accent); font-weight: 700; letter-spacing: 0.12em; }
+
+  /* ─────────────  Empty state additions  ───────────── */
+  .first-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: var(--text-1);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .verb-stack {
+    margin: 18px 0 4px;
+    padding: 14px 0;
+    text-align: center;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .verb-stack .verb {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: clamp(32px, 9.5vw, 44px);
+    font-weight: 900;
+    line-height: 0.94;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+  .verb-stack .verb.w { color: var(--text-1); }
+  .verb-stack .verb.r { color: var(--accent); }
+
+  /* ─────────────────────  Annotation panels  ───────────────────── */
+  .annotations {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .anno {
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: var(--doc-surface);
+    border: 1px solid var(--doc-border);
+  }
+  .anno h3 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #d72638;
+    margin-bottom: 8px;
+  }
+  .anno p {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--doc-text-2);
+  }
+  .anno p strong { color: var(--doc-text-1); font-weight: 600; }
+  .anno p + p { margin-top: 8px; }
+  .anno code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    background: rgba(215,38,56,0.12);
+    color: #ff8090;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .next-step {
+    margin-top: 16px;
+    padding: 18px 22px;
+    border-radius: 12px;
+    border: 1px solid rgba(215,38,56,0.32);
+    background: linear-gradient(180deg, rgba(215,38,56,0.10), rgba(215,38,56,0.03));
+  }
+  .next-step h2 {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--doc-text-1);
+    margin-bottom: 6px;
+  }
+  .next-step p {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--doc-text-2);
+  }
+  .next-step p strong { color: var(--doc-text-1); }
+
+  /* Mobile scaling */
+  @media (max-width: 720px) {
+    body { padding: 16px 12px 48px; }
+    .doc-head h1 { font-size: 26px; }
+    .doc-head .lede { font-size: 14px; }
+    .changes { padding: 12px 14px; }
+
+    .phone-grid { gap: 16px; }
+    .phone-cell {
+      width: 100%; max-width: 100%;
+      --ph-scale: calc((100vw - 24px) / 380);
+    }
+    .phone {
+      transform: scale(var(--ph-scale));
+      transform-origin: top center;
+      margin-bottom: calc((var(--ph-scale) - 1) * 760px);
+    }
+  }
+
+  @media (max-width: 380px) {
+    body { padding: 12px 8px 40px; }
+    .phone-cell { --ph-scale: calc((100vw - 16px) / 380); }
+  }
+</style>
+</head>
+<body>
+
+<div class="doc">
+
+  <div class="doc-head">
+    <div class="eyebrow">Variant A · Welcome v2 · cold-player intro added</div>
+    <h1>Five fixes from your read.</h1>
+    <div class="lede">
+      Iteration of <strong>02-variant-a-welcome.html</strong>. Same palette (B+W + red). Same fonts. Same composition skeleton. The differences are pointed below — most importantly, the <strong>What to expect</strong> rhythm strip (cold-player intro per <code style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(215,38,56,0.12);color:#ff8090;padding:1px 5px;border-radius:3px;">/harden</code> onboarding section, since <code style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(215,38,56,0.12);color:#ff8090;padding:1px 5px;border-radius:3px;">/onboard</code> was deprecated in impeccable v2.1 and merged into harden).
+    </div>
+
+    <div class="changes">
+      <h3>What changed from v1</h3>
+      <ul>
+        <li><strong>Issue # ribbon dropped.</strong> Replaced with a clean masthead — wordmark on the left, code receipt on the right. No publishing-jargon decoration.</li>
+        <li><strong>Cast count dropped.</strong> "4 of 8 seats filled" doesn't survive DYNAMIC games with flexible rosters. Now: just names + invitation. Works for any game type.</li>
+        <li><strong>"What to expect" rhythm strip added.</strong> Three-step CHAT · PLAY · VOTE with sub-labels, plus 7-day · 1-winner footer line. Cold players see what a day shape is before they tap in.</li>
+        <li><strong>Stereotype corner tags rendered.</strong> Small red ribbons in each cast card top-left — visible now, carrying the persona's stereotype.</li>
+        <li><strong>Headline copy fixed.</strong> "You're invited." (cast forming) and "You're in first." (empty) — both accurate. Player hasn't joined yet.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phones-title">━━━ Both states with v2 changes</div>
+
+  <div class="phone-grid">
+
+    <!-- ════ Phone 1 — WITH CAST already forming ════ -->
+    <div class="phone-cell">
+      <div class="label"><span class="num">A·1</span> <span class="name">Cast forming</span></div>
+      <div class="phone">
+        <div class="status-bar v-a"><span>5:14</span><span class="icons"><span class="signal"></span><span style="font-size:10px;font-weight:800;">5G</span><span class="battery"><span class="fill"></span></span></span></div>
+        <div class="welcome v-a">
+
+          <div class="body">
+
+            <!-- Masthead — clean, no issue # -->
+            <div class="masthead">
+              <div class="wordmark">Pecking Order</div>
+              <div class="code"><span class="label">CODE</span><span class="val">ABCD-EFGH</span></div>
+            </div>
+
+            <!-- Cast fan -->
+            <div class="cast-fan-row">
+              <div class="cast-fan">
+                <div class="card">
+                  <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-09/headshot.png');"></div>
+                  <div class="stereo">Sweetheart</div>
+                  <div class="name-strip">Brenda</div>
+                </div>
+                <div class="card">
+                  <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-15/headshot.png');"></div>
+                  <div class="stereo">Bad Boy</div>
+                  <div class="name-strip">Spike</div>
+                </div>
+                <div class="card">
+                  <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-04/headshot.png');"></div>
+                  <div class="stereo">Showmance</div>
+                  <div class="name-strip">Felix</div>
+                </div>
+                <div class="card">
+                  <div class="face" style="background-image:url('https://staging-assets.peckingorder.ca/personas/persona-16/headshot.png');"></div>
+                  <div class="stereo">Hero</div>
+                  <div class="name-strip">Max</div>
+                </div>
+              </div>
+              <div class="cast-meta">
+                <strong>Brenda, Spike, Felix &amp; Max</strong> are in.
+                <span class="quiet">Tap in to join them.</span>
+              </div>
+            </div>
+
+            <!-- Hero -->
+            <div class="hero">
+              <span class="kicker">Casting Call</span>
+              <h1>You're <span class="accent">invited.</span></h1>
+              <div class="dek">Pick a mask. Pick a name. <strong>Catfish your friends for seven days.</strong></div>
+            </div>
+
+            <!-- "What to expect" rhythm strip -->
+            <div class="rhythm">
+              <div class="rhythm-eyebrow">What to expect</div>
+              <div class="rhythm-row">
+                <div class="rhythm-step">
+                  <span class="num">01</span>
+                  <span class="label">Chat</span>
+                  <span class="sub">All day</span>
+                </div>
+                <div class="rhythm-step">
+                  <span class="num">02</span>
+                  <span class="label">Play</span>
+                  <span class="sub">A game a day</span>
+                </div>
+                <div class="rhythm-step">
+                  <span class="num">03</span>
+                  <span class="label">Vote</span>
+                  <span class="sub">One leaves</span>
+                </div>
+              </div>
+              <div class="rhythm-foot">
+                Repeat for <strong>7 days</strong>. Last mask standing wins the gold.
+              </div>
+            </div>
+
+            <!-- Form -->
+            <div class="form">
+              <div class="input-group">
+                <span class="label">What should we call you?</span>
+                <input type="text" placeholder="Your name" />
+                <span class="help">So the group knows you in-game. Reveal at the end.</span>
+              </div>
+              <button class="cta">Step in <span class="arrow">→</span></button>
+            </div>
+
+            <div class="footer-line">
+              Seven days · One winner · <span class="em">Don't get voted out</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ Phone 2 — EMPTY STATE ════ -->
+    <div class="phone-cell">
+      <div class="label"><span class="num">A·2</span> <span class="name">You're first in</span></div>
+      <div class="phone">
+        <div class="status-bar v-a"><span>5:14</span><span class="icons"><span class="signal"></span><span style="font-size:10px;font-weight:800;">5G</span><span class="battery"><span class="fill"></span></span></span></div>
+        <div class="welcome v-a">
+
+          <div class="body">
+
+            <div class="masthead">
+              <div class="wordmark">Pecking Order</div>
+              <div class="code"><span class="label">CODE</span><span class="val">ABCD-EFGH</span></div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; align-items:center; padding-top:18px;">
+              <div class="first-tag">First in · You set the room</div>
+              <div class="hero" style="text-align:center; border-bottom:none; padding-bottom:0;">
+                <h1>You're <span class="accent">in first.</span></h1>
+                <div class="dek" style="margin-left:auto; margin-right:auto;">Pick a mask. Pick a name. The room fills as your friends accept the invite.</div>
+              </div>
+            </div>
+
+            <!-- Verb stack as the visual instead of the cast fan -->
+            <div class="verb-stack">
+              <div class="verb w">Vote.</div>
+              <div class="verb r">Ally.</div>
+              <div class="verb w">Betray.</div>
+              <div class="verb r">Survive.</div>
+            </div>
+
+            <!-- "What to expect" rhythm strip -->
+            <div class="rhythm">
+              <div class="rhythm-eyebrow">What to expect</div>
+              <div class="rhythm-row">
+                <div class="rhythm-step">
+                  <span class="num">01</span>
+                  <span class="label">Chat</span>
+                  <span class="sub">All day</span>
+                </div>
+                <div class="rhythm-step">
+                  <span class="num">02</span>
+                  <span class="label">Play</span>
+                  <span class="sub">A game a day</span>
+                </div>
+                <div class="rhythm-step">
+                  <span class="num">03</span>
+                  <span class="label">Vote</span>
+                  <span class="sub">One leaves</span>
+                </div>
+              </div>
+              <div class="rhythm-foot">
+                Repeat for <strong>7 days</strong>. Last mask standing wins the gold.
+              </div>
+            </div>
+
+            <!-- Form -->
+            <div class="form">
+              <div class="input-group">
+                <span class="label">What should we call you?</span>
+                <input type="text" placeholder="Your name" />
+                <span class="help">So the group knows you in-game. Reveal at the end.</span>
+              </div>
+              <button class="cta">Step in <span class="arrow">→</span></button>
+            </div>
+
+            <div class="footer-line">
+              Seven days · One winner · <span class="em">Don't get voted out</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─────────────────────  Annotation panels  ───────────────────── -->
+  <div class="annotations">
+
+    <div class="anno">
+      <h3>Cold-player onboarding via /harden</h3>
+      <p>The <strong>"What to expect" rhythm strip</strong> applies four /harden onboarding rules in one element:</p>
+      <p><strong>Show, don't tell.</strong> Three labelled steps + sub-labels. Player parses the daily loop in 2-3 seconds without reading paragraphs.</p>
+      <p><strong>Smart defaults / progressive disclosure.</strong> Top-line essentials only. We could later expose detail behind a "How does this work?" expandable, but cold players don't need it before deciding to tap in.</p>
+      <p><strong>Don't force long onboarding.</strong> The strip is one screen of scroll, not a multi-step intro. Player can ignore it and still complete the form.</p>
+    </div>
+
+    <div class="anno">
+      <h3>Flexible-roster copy</h3>
+      <p>Old: <code>"4 of 8 seats filled"</code> — breaks for DYNAMIC games where the host can keep the room open.</p>
+      <p>New: <code>"Brenda, Spike, Felix &amp; Max are in. Tap in to join them."</code> — names always work, invitation is universal, no fixed-total assumption. Same surface lights up correctly whether the game is 4-, 6-, 8-, or 12-player.</p>
+      <p>Server-side, the lobby query (<code>SELECT player_count</code>) can still drive a "seats left" hint when the game is STATIC and the count is meaningful — but it doesn't ship in the headline copy here.</p>
+    </div>
+
+    <div class="anno">
+      <h3>Stereotype corner tags</h3>
+      <p>Each cast card now carries a <strong>small red corner ribbon</strong> with the persona's stereotype (<em>Sweetheart, Bad Boy, Showmance, Hero</em>). The tag does double duty: it's gossip-energy garnish (you can tell which cast member is which kind of player at a glance) and it places the ONLY non-monochrome element on the card other than the photo.</p>
+      <p>If the stereotype is too long for the corner (> ~10 chars), truncate or omit. Hosts/personas without a stereotype field skip the tag.</p>
+    </div>
+
+    <div class="anno">
+      <h3>Masthead simplification</h3>
+      <p>Dropped the publishing decoration (<code>Issue №007 · Casting Call</code>). Replaced with a clean two-element bar: <strong>wordmark left</strong>, <strong>code right</strong>. The "Casting Call" framing now lives only as the kicker eyebrow above the headline — one place, no redundancy.</p>
+      <p>Code still rendered in monospace as a "tear-off receipt" — invariant from the old mockup. Useful as a defensive signal in case a player needs to share the code verbally.</p>
+    </div>
+
+    <div class="anno">
+      <h3>Headline accuracy</h3>
+      <p><strong>You're invited.</strong> (cast forming) and <strong>You're in first.</strong> (empty). Both accurate to the actual state — the player has been invited, hasn't joined yet. The accent word ("invited" / "in first") sits in red, carrying the kinetic emphasis the old "in" word did, without claiming a state that isn't true.</p>
+      <p>CTA copy upgraded: <code>Let's go →</code> → <code>Step in →</code>. Sharper, more theatrical, matches the casting-call kicker.</p>
+    </div>
+
+    <div class="anno">
+      <h3>Voice still loud · gossipy · electric</h3>
+      <p><strong>Loud:</strong> 38–52px display headlines, all-caps eyebrows, rhythm-strip step numbers in red.</p>
+      <p><strong>Gossipy:</strong> stereotype tags ("Sweetheart") + cast meta line + Casting Call kicker. The cast is named, the personas are categorised — that's the gossip register.</p>
+      <p><strong>Electric:</strong> red CTA with shadow bevel + glow. Single accent doing all the kinetic work.</p>
+    </div>
+
+  </div>
+
+  <div class="next-step">
+    <h2>If A·1 v2 lands → I write the design brief, then implement</h2>
+    <p>
+      Sequence: rewrite <code style="font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(215,38,56,0.12);color:#ff8090;padding:1px 5px;border-radius:3px;">apps/lobby/.impeccable.md</code> with the new B+W+red token map and rhythm-strip pattern, apply variant A to the wizard surfaces (1–4) — including a fix for the photo-bg contrast on the wizard — then ship the full visual redesign on a new branch. Functional flow stays untouched. <strong>Anything still off in v2 before I move to the brief?</strong>
+    </p>
+  </div>
+
+</div>
+
+</body>
+</html>

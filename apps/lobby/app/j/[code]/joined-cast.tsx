@@ -20,9 +20,10 @@ export function JoinedCast({
   const overflow = Math.max(0, players.length - visible.length);
 
   return (
-    // aria-hidden: the socialLine paragraph below the cast already reads
-    // "Maya, Lior, and Zane are in." — repeating persona names via image
-    // alts would be noisy for screen readers.
+    <div className="space-y-3">
+    {/* aria-hidden: the socialLine paragraph below the cast already reads
+        "Maya, Lior, and Zane are in." — repeating persona names via image
+        alts would be noisy for screen readers. */}
     <div
       aria-hidden
       className="relative mx-auto flex items-end justify-center select-none"
@@ -78,12 +79,18 @@ export function JoinedCast({
               }}
               className="absolute inset-0 w-full h-full object-cover object-top"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/25 to-transparent" />
+            {/* Wider+darker scrim band so portrait labels read on bright skin
+                tones. Was from-black/92 via-black/25 — the via-stop landed
+                too high, leaving the label area exposed when the photo was
+                bright. Bumped scrim density at the bottom 50%. */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/55 via-30% to-transparent to-65%" />
             <div className="absolute bottom-2 left-2 right-2">
-              <p className="font-display font-black text-white text-[11px] leading-tight drop-shadow truncate">
+              {/* Was 11px name + 9px stereotype — both below WCAG-comfortable
+                  on small phones. Bumped to 12px / 10px and tightened tracking. */}
+              <p className="font-display font-black text-white text-xs leading-tight drop-shadow truncate">
                 {p.displayLabel}
               </p>
-              <p className="text-skin-gold/90 text-[9px] font-bold uppercase tracking-[0.1em] mt-0.5 drop-shadow truncate">
+              <p className="text-skin-gold/95 text-[10px] font-bold uppercase tracking-[0.08em] mt-0.5 drop-shadow truncate">
                 {p.personaStereotype}
               </p>
             </div>
@@ -98,6 +105,7 @@ export function JoinedCast({
           </motion.div>
         );
       })}
+    </div>
     </div>
   );
 }
