@@ -3,7 +3,7 @@ import { getEnv } from '@/lib/db';
 
 const FALLBACK_TITLE = 'Pecking Order — Join the Playtest';
 const FALLBACK_DESCRIPTION =
-  'Vote. Ally. Betray. Survive. A social deduction game in your group chat. Reserve your seat in the next playtest.';
+  'Vote. Ally. Betray. Survive. Multi-day social deduction, played from your phone. Reserve your seat in the next playtest.';
 
 // Distinct magenta for the signup funnel — visually separates the playtest
 // onboarding from the in-game `#0f0a1a` palette. Root lobby layout sets

@@ -47,7 +47,7 @@ export default async function PlaytestPage() {
           PECKING ORDER
         </h1>
         <p className="text-skin-dim text-base md:text-lg font-light tracking-wide mb-4 max-w-sm mx-auto">
-          A social game of alliances, betrayal & strategy
+          Multi-day social deduction. Played from your phone, async.
         </p>
         <span className="inline-block bg-skin-gold/10 rounded-full px-5 py-2 text-skin-gold text-xs font-bold uppercase tracking-[0.2em] mb-8">
           Playtesting Now
@@ -85,7 +85,7 @@ export default async function PlaytestPage() {
           <div className="text-skin-pink">Survive.</div>
         </div>
         <p className="text-skin-faint text-xs tracking-wide mt-6">
-          Play from your phone. Games run over multiple days.
+          5–10 min / day · async · no install required
         </p>
       </section>
 
