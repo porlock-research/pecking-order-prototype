@@ -82,10 +82,10 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
 
   const game = await db
     .prepare(
-      'SELECT id, status, invite_code FROM GameSessions WHERE invite_code = ?',
+      'SELECT id, status, invite_code, player_count FROM GameSessions WHERE invite_code = ?',
     )
     .bind(code.toUpperCase())
-    .first<{ id: string; status: string; invite_code: string }>();
+    .first<{ id: string; status: string; invite_code: string; player_count: number }>();
 
   if (!game) notFound();
 
@@ -199,7 +199,7 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
       <div className="relative w-full max-w-md space-y-7 sm:space-y-8">
         {hasCast && (
           <div className="pt-2">
-            <JoinedCast players={players} assetsUrl={assetsUrl} />
+            <JoinedCast players={players} assetsUrl={assetsUrl} totalSlots={game.player_count} />
           </div>
         )}
 
@@ -239,7 +239,7 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
 
         <WelcomeForm code={game.invite_code} />
 
-        <p className="text-center text-[11px] text-skin-dim tracking-wide">
+        <p className="text-center text-xs text-skin-base/70 tracking-wide pb-safe">
           Seven days. One winner. Don’t get voted out.
         </p>
       </div>

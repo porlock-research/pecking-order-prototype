@@ -299,9 +299,12 @@ export default function InvitePage() {
                     className="w-11 h-11 flex items-center justify-center"
                     aria-current={step === s ? 'step' : undefined}
                   >
+                    {/* Inactive pip: was text-skin-faint (#b39ad6) on bg-skin-input
+                        (#5b21b6) \u2248 2.9:1 \u2014 fails WCAG AA, and the pip IS the
+                        wayfinding. Bumped to text-skin-base/85 for legibility. */}
                     <div
                       className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-display font-bold transition-all duration-300
-                        ${step >= s ? 'bg-skin-gold text-skin-deep' : 'bg-skin-input text-skin-faint'}`}
+                        ${step >= s ? 'bg-skin-gold text-skin-deep' : 'bg-skin-input text-skin-base/85'}`}
                     >
                       {step > s ? '\u2713' : s}
                     </div>
@@ -403,7 +406,11 @@ export default function InvitePage() {
                                   }
                                 }}
                               />
-                              <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/50 via-40% to-transparent pointer-events-none" />
+                              {/* Wider+denser scrim so name + stereotype + description
+                                  read against any persona's skin tone. Was via-skin-deep/50
+                                  via-40% — too narrow a band. Now via-skin-deep/85 via-25%
+                                  pulls the dark wash up to where the description starts. */}
+                              <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/85 via-25% to-transparent to-60% pointer-events-none" />
                               <div className="absolute bottom-5 left-5 right-5 pointer-events-none space-y-1">
                                 <div className="text-2xl font-display font-black text-skin-base text-glow leading-tight">
                                   {activePersona?.name}
@@ -411,7 +418,9 @@ export default function InvitePage() {
                                 <div className="text-xs font-display font-bold text-skin-gold uppercase tracking-[0.2em]">
                                   {activePersona?.stereotype}
                                 </div>
-                                <p className="text-sm text-skin-base/90 leading-snug pt-1">
+                                {/* Description in body font (Manrope) — was display.
+                                    Bumped opacity to text-skin-base full for legibility. */}
+                                <p className="text-sm font-body text-skin-base leading-snug pt-1">
                                   {activePersona?.description}
                                 </p>
                               </div>
@@ -509,18 +518,34 @@ export default function InvitePage() {
                         <p className="text-xs text-skin-dim mt-1">First impression. Make it stick.</p>
                       </div>
 
-                      {/* Persona identity — prominent, no card (blurred bg IS the card) */}
-                      <div className="text-center space-y-1">
-                        <div className="text-xl font-display font-black text-skin-base text-glow leading-tight">
-                          {selectedPersona.name}
-                        </div>
-                        <div className="text-xs font-display font-bold text-skin-gold uppercase tracking-[0.2em]">
-                          {selectedPersona.stereotype}
+                      {/* Persona identity — inline headshot + name + stereotype.
+                          Was text-only: photo behind was blurred so the player
+                          had no visible confirmation of who they picked while
+                          writing their bio. Inline 56×56 headshot anchors it. */}
+                      <div className="flex items-center justify-center gap-3">
+                        <img
+                          src={personaHeadshotUrl(selectedPersona.id)}
+                          alt=""
+                          aria-hidden="true"
+                          className="w-14 h-14 rounded-full object-cover object-top border-2 border-skin-gold/60 flex-shrink-0"
+                          onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0'; }}
+                        />
+                        <div className="text-left">
+                          <div className="text-xl font-display font-black text-skin-base leading-tight">
+                            {selectedPersona.name}
+                          </div>
+                          <div className="text-[11px] font-display font-bold text-skin-gold uppercase tracking-[0.16em]">
+                            {selectedPersona.stereotype}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Bio textarea — opaque deep panel, gold border for the
-                          one active commit moment (per principle 2: single accent at a time). */}
+                      {/* Bio textarea — solid input panel for legible contrast.
+                          Was bg-skin-deep/80 over a blurred photo: when the photo
+                          was bright, the overlay read as muddy tan and the gold
+                          text became unreadable. Now: solid input bg, white text,
+                          gold border as the single active-commit accent (principle 2).
+                          Counter promoted to text-skin-base/70 from text-skin-faint. */}
                       <div className="space-y-2">
                         <textarea
                           value={customBio}
@@ -528,11 +553,11 @@ export default function InvitePage() {
                           placeholder="Write your catfish bio... Who are you pretending to be?"
                           rows={4}
                           aria-label="Catfish bio"
-                          className="w-full px-4 py-3 bg-skin-deep/80 border border-skin-gold rounded-xl text-base font-bold text-skin-gold text-glow placeholder:text-skin-faint placeholder:font-normal focus:outline-none focus:ring-1 focus:ring-skin-gold resize-none"
+                          className="w-full px-4 py-3 bg-skin-input border border-skin-gold rounded-xl text-base text-skin-base placeholder:text-skin-base/40 focus:outline-none focus:ring-1 focus:ring-skin-gold resize-none"
                         />
                         <div className="flex justify-between text-xs">
-                          <span className="text-skin-faint">Max 280 characters</span>
-                          <span className={customBio.length > 260 ? 'text-skin-pink font-mono tabular-nums' : 'text-skin-faint font-mono tabular-nums'}>
+                          <span className="text-skin-base/70">Max 280 characters</span>
+                          <span className={customBio.length > 260 ? 'text-skin-pink font-mono tabular-nums' : 'text-skin-base/70 font-mono tabular-nums'}>
                             {customBio.length}/280
                           </span>
                         </div>
@@ -600,7 +625,10 @@ export default function InvitePage() {
                   >
                     <div className="my-auto space-y-3 py-2">
                       <div className="text-center flex-shrink-0 space-y-1">
-                        <p className="text-[10px] font-display font-bold text-skin-faint uppercase tracking-[0.3em]">
+                        {/* Was 10px text-skin-faint w/ 0.3em tracking — looked
+                            designed but unscannable. Bumped to 12px, tracking
+                            0.16em, text-skin-base/60 for legible eyebrow. */}
+                        <p className="text-xs font-display font-bold text-skin-base/60 uppercase tracking-[0.16em]">
                           You’ll be playing as
                         </p>
                         <h2 className="font-display font-black text-skin-base uppercase leading-[0.92] tracking-tight" style={{ fontSize: 'clamp(2.5rem, 11vw, 3.75rem)' }}>
@@ -612,10 +640,15 @@ export default function InvitePage() {
                         </p>
                       </div>
 
-                      <div className="relative bg-skin-deep/85 border border-skin-gold/30 rounded-2xl overflow-hidden">
-                        {/* Title-card accent stripe — narrow gold band along the
-                            top of the reveal card. Reads as a cinema slate. */}
-                        <div aria-hidden className="h-[3px] bg-gradient-to-r from-transparent via-skin-gold to-transparent" />
+                      {/* One-card-per-page: was an outer rounded-2xl card with
+                            border-skin-gold/30 wrapping a photo + bio sub-card +
+                            Q&A sub-cards. That violated principle #5 "one opaque
+                            card per page" — too many nested borders. The photo
+                            now IS the card; bio + Q&A typeset directly on the
+                            deep background below. Locked-In stamp + gold accent
+                            stripe stay as the commitment-moment treatment. */}
+                      <div className="relative overflow-hidden rounded-2xl">
+                        <div aria-hidden className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-skin-gold to-transparent z-10" />
                         <div className="aspect-[16/9] bg-skin-input/30 relative overflow-hidden">
                           <img
                             src={selectedPersona.fullImageUrl}
@@ -642,9 +675,12 @@ export default function InvitePage() {
                             Locked In
                           </div>
                         </div>
-                        <div className="p-4 space-y-4">
+                      </div>
+                      {/* Bio + Q&A typeset directly on the deep background below
+                          the photo card — no outer wrapper, no nested cards. */}
+                      <div className="space-y-4 px-1 pt-2">
                           <div>
-                            <div className="text-[10px] font-display font-bold text-skin-faint uppercase tracking-widest mb-2">
+                            <div className="text-xs font-display font-bold text-skin-base/60 uppercase tracking-[0.16em] mb-2">
                               Your Bio
                             </div>
                             <p className="text-sm text-skin-base leading-relaxed">{customBio}</p>
@@ -655,16 +691,16 @@ export default function InvitePage() {
                             const answers: { question: string; answer: string }[] = JSON.parse(qaAnswersJson);
                             return answers.length > 0 ? (
                               <div>
-                                <div className="text-[10px] font-display font-bold text-skin-faint uppercase tracking-widest mb-2">
+                                <div className="text-xs font-display font-bold text-skin-base/60 uppercase tracking-[0.16em] mb-2">
                                   Your Answers
                                 </div>
                                 <div className="space-y-2">
                                   {answers.map((qa, i) => (
-                                    <div key={i} className="bg-skin-deep/60 border border-skin-base/40 rounded-lg px-3 py-2">
-                                      <div className="text-[10px] text-skin-dim leading-snug">
+                                    <div key={i} className="border-l-2 border-skin-gold/40 pl-3">
+                                      <div className="text-xs text-skin-base/70 leading-snug">
                                         {qa.question}
                                       </div>
-                                      <div className="text-xs text-skin-gold font-bold leading-snug mt-0.5">
+                                      <div className="text-sm text-skin-base font-medium leading-snug mt-0.5">
                                         {qa.answer}
                                       </div>
                                     </div>
@@ -673,7 +709,6 @@ export default function InvitePage() {
                               </div>
                             ) : null;
                           })()}
-                        </div>
                       </div>
                     </div>
                   </motion.div>
