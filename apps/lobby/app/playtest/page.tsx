@@ -47,7 +47,7 @@ export default async function PlaytestPage() {
           PECKING ORDER
         </h1>
         <p className="text-skin-dim text-base md:text-lg font-light tracking-wide mb-4 max-w-sm mx-auto">
-          Multi-day social deduction. Played from your phone, async.
+          A multi-day social game for the people who watch this stuff for the strategy.
         </p>
         <span className="inline-block bg-skin-gold/10 rounded-full px-5 py-2 text-skin-gold text-xs font-bold uppercase tracking-[0.2em] mb-8">
           Playtesting Now
@@ -66,10 +66,10 @@ export default async function PlaytestPage() {
         <div className="bg-skin-deep/70 border border-skin-base rounded-3xl p-7 md:p-8 shadow-card">
           <div className="text-center mb-7">
             <h2 className="font-display font-black text-2xl text-skin-base mb-1.5 uppercase tracking-tight">
-              Join the Next Playtest
+              Reserve a Seat in the Next Cast
             </h2>
             <p className="text-skin-dim text-sm">
-              Be the first to know when we're ready for you.
+              Real cohorts. Real schemers. We&apos;ll email when your game opens.
             </p>
           </div>
           <SignupForm turnstileSiteKey={turnstileSiteKey} playtestUrl={playtestUrl} />
