@@ -155,9 +155,9 @@ export function SignupForm({
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h2 className="font-display font-bold text-xl text-skin-green">You&apos;re In!</h2>
+          <h2 className="font-display font-bold text-xl text-skin-green">You&apos;re Cast.</h2>
           <p className="text-skin-dim text-sm">
-            We&apos;ll reach out when the next playtest is ready.
+            We&apos;ll email when your cohort kicks off — bring your strategy.
           </p>
         </div>
 
