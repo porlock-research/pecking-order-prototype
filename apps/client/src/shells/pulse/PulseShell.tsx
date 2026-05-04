@@ -28,6 +28,7 @@ const DM_REJECTION_LABELS: Record<string, string> = {
 };
 import { AmbientBackground } from './components/AmbientBackground';
 import { PulseBar } from './components/PulseBar';
+import { PushOffBanner } from './components/PushOffBanner';
 import { ChatView } from './components/chat/ChatView';
 import { CastStrip } from './components/caststrip/CastStrip';
 import { PulseInput } from './components/input/PulseInput';
@@ -102,6 +103,17 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
   const [socialPanelOpen, setSocialPanelOpen] = useState(false);
   const [confessionChannelId, setConfessionChannelId] = useState<string | null>(null);
   const [dossierTargetId, setDossierTargetId] = useState<string | null>(null);
+
+  // Layer 3 push-off recovery — PushOffBanner clears localStorage `po_gate_deferred`
+  // and dispatches `pulse:request-push-gate` when the user taps Turn-on. Bumping
+  // this key forces PwaGate to remount, which re-runs `isDeferredFresh()` and
+  // shows the canonical gate again. See components/PushOffBanner.tsx.
+  const [pwaGateKey, setPwaGateKey] = useState(0);
+  useEffect(() => {
+    const onRequestGate = () => setPwaGateKey((k) => k + 1);
+    window.addEventListener('pulse:request-push-gate', onRequestGate);
+    return () => window.removeEventListener('pulse:request-push-gate', onRequestGate);
+  }, []);
 
   // Cartridge overlay — store-driven (shell-agnostic intent + Pulse rendering)
   const focusedCartridge = useGameStore(s => s.focusedCartridge);
@@ -342,6 +354,7 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
           {confessionActive && <ConfessionPhaseBanner key="confession-banner" />}
         </AnimatePresence>
         {pickingActive && <PickingBanner />}
+        <PushOffBanner token={token ?? null} />
         <CastStrip />
         <PulseBar />
         <main style={{ flex: 1, overflow: 'hidden', position: 'relative', zIndex: PULSE_Z.base }}>
@@ -405,7 +418,7 @@ export default function PulseShell({ playerId, engine, token }: ShellProps) {
         <SilverBurst />
         <NudgeBurst />
         <Toaster position="top-center" theme="dark" richColors closeButton={false} />
-        <PwaGate token={token} />
+        <PwaGate key={pwaGateKey} token={token} />
       </div>
     </PulseContext.Provider>
   );

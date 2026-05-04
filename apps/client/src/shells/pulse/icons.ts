@@ -61,6 +61,7 @@ export {
 
   // System
   Broadcast,
+  BellSlash,
   Lightning,
   Crown,
   Trophy,
