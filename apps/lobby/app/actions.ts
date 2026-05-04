@@ -7,6 +7,7 @@ import { requireAuth, getSession, generateId, generateInviteCode, generateToken 
 import { requireSuperAdmin } from '@/lib/super-admin';
 import { sendEmail } from '@/lib/email';
 import { buildInviteEmail } from '@/lib/email-templates';
+import { slotDisplayName } from '@/lib/slot-display';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,6 @@ interface InviteRow {
   accepted_by: string | null;
   persona_id: string | null;
   display_name: string | null;
-  email: string | null;
   persona_name: string | null;
   persona_stereotype: string | null;
 }
@@ -309,11 +309,14 @@ export async function getInviteInfo(code: string): Promise<{
     return { success: false, error: 'This game is no longer accepting players' };
   }
 
-  // Get all invite slots with user info
+  // Get all invite slots with user info. We deliberately do NOT select
+  // `u.email` — the slot output goes back to other players, and including
+  // email-derived strings (e.g., the local-part as a displayName fallback)
+  // leaks real-name info that personas exist to hide. See `lib/slot-display.ts`.
   const { results: invites } = await db
     .prepare(
       `SELECT i.slot_index, i.accepted_by, i.persona_id,
-              u.display_name, u.email,
+              u.display_name,
               pp.name as persona_name, pp.stereotype as persona_stereotype
        FROM Invites i
        LEFT JOIN Users u ON u.id = i.accepted_by
@@ -331,7 +334,7 @@ export async function getInviteInfo(code: string): Promise<{
     personaName: inv.persona_name,
     personaStereotype: inv.persona_stereotype,
     personaImageUrl: inv.persona_id ? personaImageUrl(inv.persona_id, 'headshot') : null,
-    displayName: inv.display_name || inv.email?.split('@')[0] || null,
+    displayName: slotDisplayName(inv.display_name),
   }));
 
   const alreadyJoined = invites.some((i) => i.accepted_by === session.userId);
@@ -1545,10 +1548,12 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     return { status: 'NOT_FOUND', slots: [] };
   }
 
+  // See note in getInviteInfo about not selecting u.email — same privacy
+  // contract applies here. lib/slot-display.ts is the canonical helper.
   const { results: invites } = await db
     .prepare(
       `SELECT i.slot_index, i.accepted_by, i.persona_id,
-              u.display_name, u.email,
+              u.display_name,
               pp.name as persona_name, pp.stereotype as persona_stereotype
        FROM Invites i
        LEFT JOIN Users u ON u.id = i.accepted_by
@@ -1566,7 +1571,7 @@ export async function getGameSessionStatus(inviteCode: string): Promise<{
     personaName: inv.persona_name,
     personaStereotype: inv.persona_stereotype,
     personaImageUrl: inv.persona_id ? personaImageUrl(inv.persona_id, 'headshot', env.PERSONA_ASSETS_URL as string) : null,
-    displayName: inv.display_name || inv.email?.split('@')[0] || null,
+    displayName: slotDisplayName(inv.display_name),
   }));
 
   // Mint token: for STARTED games, or for CONFIGURABLE_CYCLE players who have accepted
