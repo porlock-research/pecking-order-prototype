@@ -389,3 +389,21 @@ body {
 .slide-out-left {
   animation: slide-out-left 300ms ease-in both;
 }
+
+/* ============================================================
+   REDUCED MOTION
+   Honor prefers-reduced-motion for ambient/decorative animations.
+   Doesn't disable functional motion (entrance, dismiss, page
+   transitions) — that stays via framer-motion's own reduced-motion
+   handling. Targets the looping ambient animations that ride on a
+   surface forever.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .pulse-live,
+  .glow-breathe,
+  .gold-glow,
+  .shimmer,
+  .spin-slow {
+    animation: none;
+  }
+}
