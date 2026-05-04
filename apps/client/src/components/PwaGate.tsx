@@ -356,9 +356,20 @@ function InstallGate({ onDefer }: { onDefer: () => void }) {
         manual-apple
         manual-chrome
       />
-      {/* Escape hatch overlay — rendered behind the pwa-install dialog */}
+      {/* Escape hatch overlay — rendered behind the pwa-install dialog. Two
+          de-emphasized links: a help-page link (for the playtester who saw
+          "4 options none worked" — see /install-help in the lobby) and the
+          existing defer link. Both stay quiet per gates-are-principled. */}
       {showGate && (
-        <div className="fixed bottom-4 left-0 right-0 z-[55] flex justify-center pointer-events-none">
+        <div className="fixed bottom-4 left-0 right-0 z-[55] flex justify-center gap-5 pointer-events-none">
+          <a
+            href={`${import.meta.env.VITE_LOBBY_HOST || 'http://localhost:3000'}/install-help`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pointer-events-auto text-xs text-white/50 hover:text-white/70 transition-colors underline underline-offset-2"
+          >
+            Step-by-step help →
+          </a>
           <button
             onClick={() => {
               setShowGate(false);
