@@ -60,20 +60,23 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="text-center flex-shrink-0 space-y-1">
+      {/* Header. Skip is its own button row instead of an inline link
+          buried in the paragraph — /harden onboarding rule: "make
+          onboarding optional, let experienced users skip" needs a
+          visible escape hatch, not a 12px underline. */}
+      <div className="text-center flex-shrink-0 space-y-1.5">
         <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
           Get Into Character
         </h2>
         <p className="text-xs text-skin-dim">
-          Answer as <span className="text-skin-pink font-bold">{personaName}</span> — or{' '}
-          <button
-            onClick={onSkip}
-            className="text-skin-pink/80 underline underline-offset-2 hover:text-skin-pink transition-colors"
-          >
-            skip to use defaults
-          </button>
+          Answer as <span className="text-skin-pink font-bold">{personaName}</span>
         </p>
+        <button
+          onClick={onSkip}
+          className="inline-flex items-center gap-1.5 text-[11px] font-display font-black text-skin-base/85 hover:text-skin-pink uppercase tracking-[0.16em] underline decoration-skin-pink decoration-2 underline-offset-4 transition-colors"
+        >
+          Skip — use defaults
+        </button>
       </div>
 
       {/* Progress dots */}

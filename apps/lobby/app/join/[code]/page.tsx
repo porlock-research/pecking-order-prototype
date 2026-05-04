@@ -307,18 +307,20 @@ export default function InvitePage() {
                     className="w-11 h-11 flex items-center justify-center"
                     aria-current={step === s ? 'step' : undefined}
                   >
-                    {/* Inactive pip: was text-skin-faint (#b39ad6) on bg-skin-input
-                        (#5b21b6) \u2248 2.9:1 \u2014 fails WCAG AA, and the pip IS the
-                        wayfinding. Bumped to text-skin-base/85 for legibility. */}
+                    {/* Inactive pip uses a paper-rim border, not a filled bg \u2014
+                        bg-skin-input (#1d1d1d) on bg-skin-deep (#0a0a0a) was only
+                        ~7 points lighter and disappeared against ink. The 1px
+                        paper-at-30% rim makes the disc visible regardless of
+                        the photo-bg-bleed brightness behind it. */}
                     <div
                       className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-display font-bold transition-all duration-300
-                        ${step >= s ? 'bg-skin-pink text-skin-base' : 'bg-skin-input text-skin-base/85'}`}
+                        ${step >= s ? 'bg-skin-pink text-skin-base' : 'border border-skin-base/30 text-skin-base/80 bg-skin-deep/60'}`}
                     >
                       {step > s ? '\u2713' : s}
                     </div>
                   </div>
                   {s < 4 && (
-                    <div className="w-8 h-0.5 bg-skin-input relative overflow-hidden">
+                    <div className="w-8 h-px bg-skin-base/20 relative overflow-hidden">
                       <motion.div
                         className="absolute inset-0 bg-skin-pink origin-left"
                         animate={{ scaleX: step > s ? 1 : 0 }}
@@ -420,15 +422,27 @@ export default function InvitePage() {
                                   pulls the dark wash up to where the description starts. */}
                               <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/85 via-25% to-transparent to-60% pointer-events-none" />
                               <div className="absolute bottom-5 left-5 right-5 pointer-events-none space-y-1">
-                                <div className="text-2xl font-display font-black text-skin-base text-glow leading-tight">
+                                {/* Hero persona name — truncate on overflow.
+                                    Dropped text-glow (gold-tinted shadow) since
+                                    variant A is no-glow per /quieter pass. */}
+                                <div className="text-2xl font-display font-black text-skin-base leading-tight truncate">
                                   {activePersona?.name}
                                 </div>
-                                <div className="text-xs font-display font-bold text-skin-pink uppercase tracking-[0.2em]">
+                                <div className="text-xs font-display font-bold text-skin-pink uppercase tracking-[0.2em] truncate">
                                   {activePersona?.stereotype}
                                 </div>
-                                {/* Description in body font (Manrope) — was display.
-                                    Bumped opacity to text-skin-base full for legibility. */}
-                                <p className="text-sm font-body text-skin-base leading-snug pt-1">
+                                {/* Description: body font (Manrope), max 3 lines —
+                                    long descriptions truncate gracefully via
+                                    -webkit-line-clamp instead of pushing the hero
+                                    composition off-screen on small phones. */}
+                                <p
+                                  className="text-sm font-body text-skin-base leading-snug pt-1 overflow-hidden"
+                                  style={{
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 3,
+                                    WebkitBoxOrient: 'vertical',
+                                  }}
+                                >
                                   {activePersona?.description}
                                 </p>
                               </div>
@@ -538,11 +552,11 @@ export default function InvitePage() {
                           className="w-14 h-14 rounded-full object-cover object-top border-2 border-skin-pink/60 flex-shrink-0"
                           onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0'; }}
                         />
-                        <div className="text-left">
-                          <div className="text-xl font-display font-black text-skin-base leading-tight">
+                        <div className="text-left min-w-0 flex-1">
+                          <div className="text-xl font-display font-black text-skin-base leading-tight truncate">
                             {selectedPersona.name}
                           </div>
-                          <div className="text-[11px] font-display font-bold text-skin-pink uppercase tracking-[0.16em]">
+                          <div className="text-[11px] font-display font-bold text-skin-pink uppercase tracking-[0.16em] truncate">
                             {selectedPersona.stereotype}
                           </div>
                         </div>
@@ -639,7 +653,15 @@ export default function InvitePage() {
                         <p className="text-xs font-display font-bold text-skin-base/60 uppercase tracking-[0.16em]">
                           You’ll be playing as
                         </p>
-                        <h2 className="font-display font-black text-skin-base uppercase leading-[0.92] tracking-tight" style={{ fontSize: 'clamp(2.5rem, 11vw, 3.75rem)' }}>
+                        <h2
+                          className="font-display font-black text-skin-base uppercase leading-[0.92] tracking-tight px-2 break-words"
+                          style={{
+                            fontSize: 'clamp(2.5rem, 11vw, 3.75rem)',
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            hyphens: 'auto',
+                          }}
+                        >
                           <span className="sr-only">Confirm Your Identity. </span>
                           {selectedPersona.name}
                         </h2>
