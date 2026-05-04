@@ -5,11 +5,13 @@ const FALLBACK_TITLE = 'Pecking Order — Join the Playtest';
 const FALLBACK_DESCRIPTION =
   'Vote. Ally. Betray. Survive. Multi-day social deduction, played from your phone. Reserve your seat in the next playtest.';
 
-// Distinct magenta for the signup funnel — visually separates the playtest
-// onboarding from the in-game `#0f0a1a` palette. Root lobby layout sets
-// `#0f0a1a`; this override applies only to the /playtest subtree.
+// Browser-chrome themeColor — matches the new lobby ink ground (--po-bg-deep
+// in [data-theme="reality-tv-tabloid"]). Same value as the root lobby layout
+// post-redesign; the per-route override predates the unified palette and is
+// kept only so iOS/Android status-bar tinting matches when navigation hops
+// across layouts.
 export const viewport: Viewport = {
-  themeColor: '#2c003e',
+  themeColor: '#0a0a0a',
 };
 
 export async function generateMetadata(): Promise<Metadata> {

@@ -8,13 +8,9 @@ const TILTS = [-9, -3, 4, 10]; // fanning like a hand of cards
 export function JoinedCast({
   players,
   assetsUrl,
-  totalSlots,
 }: {
   players: JoinedPlayer[];
   assetsUrl: string;
-  /** Total seats in the game — used to render "X of Y joined" callout
-      below the fan so the host can see how many slots remain. */
-  totalSlots?: number;
 }) {
   const reduceMotion = useReducedMotion();
 
@@ -110,17 +106,6 @@ export function JoinedCast({
         );
       })}
     </div>
-    {/* Slot-fill callout: tells the host how many seats remain (the question
-        they actually have) instead of just "+N joined." Hidden if totalSlots
-        wasn't passed. */}
-    {totalSlots && totalSlots > 0 && (
-      <p className="text-center text-xs font-display font-bold text-skin-base/70 uppercase tracking-[0.16em]">
-        {players.length} of {totalSlots} joined
-        {players.length < totalSlots && (
-          <span className="text-skin-gold"> · {totalSlots - players.length} {totalSlots - players.length === 1 ? 'seat' : 'seats'} left</span>
-        )}
-      </p>
-    )}
     </div>
   );
 }

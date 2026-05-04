@@ -587,7 +587,7 @@ export default function WaitingRoom() {
                   className="relative block w-full overflow-hidden rounded-2xl outline-none focus-visible:[outline:2px_solid_var(--po-gold)] focus-visible:[outline-offset:3px]"
                   style={{
                     backgroundColor:
-                      'color-mix(in oklch, #2c003e 82%, var(--po-gold) 18%)',
+                      'color-mix(in oklch, var(--po-bg-deep) 82%, var(--po-gold) 18%)',
                     boxShadow:
                       'inset 0 0 0 1px color-mix(in oklch, var(--po-gold) 45%, transparent), inset 0 30px 72px -36px color-mix(in oklch, var(--po-gold) 72%, transparent)',
                   }}
@@ -622,7 +622,7 @@ export default function WaitingRoom() {
                             className="inline-block h-9 w-9 rounded-full bg-skin-input overflow-hidden"
                             style={{
                               boxShadow:
-                                'inset 0 0 0 1.5px color-mix(in oklch, var(--po-gold) 60%, transparent), 0 0 0 2px #2c003e',
+                                'inset 0 0 0 1.5px color-mix(in oklch, var(--po-gold) 60%, transparent), 0 0 0 2px var(--po-bg-deep)',
                             }}
                           >
                             {slot.personaId && (

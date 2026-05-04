@@ -261,14 +261,18 @@ export default function InvitePage() {
 
       {/* Content area — fills viewport above the bottom bar */}
       <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
-        {/* Header — fixed, never slides */}
-        <header className="text-center space-y-0.5 flex-shrink-0">
-          <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter text-skin-gold text-glow">
-            PECKING ORDER
-          </h1>
-          <p className="text-sm text-skin-dim">
-            Invite Code: <span className="text-skin-gold font-mono font-bold tracking-wider">{code}</span>
-          </p>
+        {/* Masthead — wordmark left, tear-off code stub right.
+            Replaces the older PECKING-ORDER-with-invite-code stack.
+            Code stays visible as a tabloid receipt; the player already
+            arrived via the URL so we don't repeat-pitch the value. */}
+        <header className="flex items-center justify-between flex-shrink-0 pb-2 border-b-2 border-skin-base">
+          <div className="font-display font-black text-base text-skin-base tracking-[0.16em] uppercase leading-none">
+            Pecking Order
+          </div>
+          <div className="font-mono text-[10px] font-bold tracking-[0.1em] text-skin-dim leading-none">
+            <span className="opacity-60 mr-1">CODE</span>
+            <span className="text-skin-base">{code}</span>
+          </div>
         </header>
 
         {/* Already Joined */}
@@ -686,7 +690,11 @@ export default function InvitePage() {
                             <p className="text-sm text-skin-base leading-relaxed">{customBio}</p>
                           </div>
 
-                          {/* Q&A Answers Preview */}
+                          {/* Q&A Answers Preview — numbered Q1/Q2/Q3 in red,
+                              tabloid-magazine interview grammar. Replaces the
+                              previous `border-l-2 gold-rule` pattern (banned per
+                              impeccable absolute_bans — "no colored side
+                              stripes >1px"). */}
                           {qaAnswersJson && (() => {
                             const answers: { question: string; answer: string }[] = JSON.parse(qaAnswersJson);
                             return answers.length > 0 ? (
@@ -694,14 +702,19 @@ export default function InvitePage() {
                                 <div className="text-xs font-display font-bold text-skin-base/60 uppercase tracking-[0.16em] mb-2">
                                   Your Answers
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2.5">
                                   {answers.map((qa, i) => (
-                                    <div key={i} className="border-l-2 border-skin-gold/40 pl-3">
-                                      <div className="text-xs text-skin-base/70 leading-snug">
-                                        {qa.question}
+                                    <div key={i} className="grid grid-cols-[28px_1fr] gap-3">
+                                      <div className="font-display font-black text-skin-pink text-[11px] tracking-[0.16em] uppercase leading-none pt-1">
+                                        Q{i + 1}
                                       </div>
-                                      <div className="text-sm text-skin-base font-medium leading-snug mt-0.5">
-                                        {qa.answer}
+                                      <div>
+                                        <div className="text-[11px] text-skin-dim leading-snug uppercase tracking-[0.06em] font-bold">
+                                          {qa.question}
+                                        </div>
+                                        <div className="text-sm text-skin-base font-medium leading-snug mt-1">
+                                          {qa.answer}
+                                        </div>
                                       </div>
                                     </div>
                                   ))}

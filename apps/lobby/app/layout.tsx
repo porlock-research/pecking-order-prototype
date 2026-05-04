@@ -6,12 +6,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0f0a1a",
+  themeColor: "#0a0a0a",
 };
 
 const SITE_TITLE = "Pecking Order";
 const SITE_DESCRIPTION =
-  "Vote. Ally. Betray. Survive. A social deduction game in your group chat. Seven days. One winner.";
+  "Catfish your friends. Vote. Ally. Betray. Survive. A social deduction game in your group chat. Last catfish wins.";
 
 // `generateMetadata` (instead of the static `metadata` export) so we can read
 // LOBBY_HOST from the Cloudflare env and emit absolute og:image / og:url.
