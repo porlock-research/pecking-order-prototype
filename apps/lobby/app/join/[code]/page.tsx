@@ -295,14 +295,21 @@ export default function InvitePage() {
                     className="w-11 h-11 flex items-center justify-center"
                     aria-current={step === s ? 'step' : undefined}
                   >
-                    {/* Inactive pip uses a paper-rim border, not a filled bg \u2014
-                        bg-skin-input (#1d1d1d) on bg-skin-deep (#0a0a0a) was only
-                        ~7 points lighter and disappeared against ink. The 1px
-                        paper-at-30% rim makes the disc visible regardless of
-                        the photo-bg-bleed brightness behind it. */}
+                    {/* Inactive pip needs a visible lift from the page ink.
+                        Earlier attempts:
+                          - bg-skin-input (#1d1d1d) was ~7 perceptual points
+                            lighter than bg-skin-deep \u2014 too subtle.
+                          - bg-skin-deep/60 (current main) was a TRANSPARENT
+                            wash of the page bg = no lift at all \u2192 black on
+                            black, as flagged in the variant-A mockup review.
+                        Fix: bg-skin-glass-elevated (rgba(paper, 0.14) per
+                        theme.css) gives a real ~#2a2a2a lift while staying
+                        warmly desaturated so the disc reads on every photo
+                        the bg might bleed under. Border bumped to /20 so
+                        it's quieter than the fill, not louder than it. */}
                     <div
                       className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-display font-bold transition-all duration-300
-                        ${step >= s ? 'bg-skin-pink text-skin-base' : 'border border-skin-base/30 text-skin-base/80 bg-skin-deep/60'}`}
+                        ${step >= s ? 'bg-skin-pink text-skin-base' : 'bg-skin-glass-elevated border border-skin-base/20 text-skin-base/95'}`}
                     >
                       {step > s ? '\u2713' : s}
                     </div>
