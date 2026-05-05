@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { getGameSessionStatus, startGame, sendEmailInvite, getGameInvites, sendGameEntryPush } from '../../../actions';
 import type { GameSlot, SentInvite } from '../../../actions';
 
@@ -13,6 +13,10 @@ function personaMediumUrl(id: string): string {
 export default function WaitingRoom() {
   const params = useParams();
   const code = params.id as string;
+  // /delight choreography hooks — animations branch on this so users
+  // with prefers-reduced-motion get a flat "everything appears at once"
+  // render instead of staggered springs.
+  const reduceMotion = useReducedMotion();
 
   const [status, setStatus] = useState<string>('LOADING');
   const [slots, setSlots] = useState<GameSlot[]>([]);
@@ -376,9 +380,9 @@ export default function WaitingRoom() {
             until myPersonaId hydrates from the action. */}
         {myPersonaName ? (
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
+            initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
             className="text-center mt-3 mb-1 flex-shrink-0 relative"
           >
             <p className="text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.28em]">
@@ -387,13 +391,25 @@ export default function WaitingRoom() {
             {/* Headline pushed clamp(1.75/8vw/2.75) → clamp(2/9.5vw/3.25)
                 for the bolder pass — this is the "you got picked" moment
                 the user explicitly called out as the activation centerpiece;
-                needed to crop harder so it reads as title-card, not body. */}
-            <h2
+                needed to crop harder so it reads as title-card, not body.
+                /delight: the h2 lands with a spring-overshoot scale (0.92
+                → 1) ~0.18s after the eyebrow, reading as a press-stamp
+                landing on paper. The eyebrow + name + gold sweep play as
+                three beats: kicker, name, accent — a tabloid title-card
+                sequence rather than one synchronized fade. */}
+            <motion.h2
+              initial={reduceMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.92, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { delay: 0.18, type: 'spring', stiffness: 320, damping: 17 }
+              }
               className="font-display font-black text-skin-base leading-[0.9] tracking-tight mt-0.5 px-2 break-words"
               style={{ fontSize: 'clamp(2rem, 9.5vw, 3.25rem)' }}
             >
               {myPersonaName}
-            </h2>
+            </motion.h2>
             {/* Gold accent sweep — one-shot draw-in on mount, then static.
                 Sits below the name as a tabloid sub-rule; not banned per
                 impeccable.md (banned is `box-shadow: inset` SIDE-stripes;
@@ -441,15 +457,49 @@ export default function WaitingRoom() {
                   The user's own card (matched by personaId) gets a gold
                   hairline ring + a "YOU" stamp so self-recognition is
                   instant, not a beat-of-effort to find themselves. */}
+              {/* /delight choreography: others land in array order, then a
+                  ~0.2s beat, then the user's own card. The "and… YOU" reveal
+                  mirrors the reality-TV pacing the lobby brief asks for —
+                  cast call, dramatic pause, you. Computed off filledSlots
+                  positions so the camera works whether the user joined first,
+                  middle, or last. */}
               {filledSlots.map((slot, idx) => {
                 const isMostRecent = idx === filledSlots.length - 1;
                 const isMine = !!myPersonaId && slot.personaId === myPersonaId;
+                const totalOthers = filledSlots.filter(
+                  (s) => s.personaId !== myPersonaId,
+                ).length;
+                const othersBefore = filledSlots
+                  .slice(0, idx)
+                  .filter((s) => s.personaId !== myPersonaId).length;
+                const cardDelay = reduceMotion
+                  ? 0
+                  : isMine
+                    ? totalOthers * 0.08 + 0.22 // beat after the last other
+                    : othersBefore * 0.08;
                 return (
                   <motion.div
                     key={slot.slotIndex}
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={
+                      reduceMotion
+                        ? { opacity: 1, scale: 1 }
+                        : isMine
+                          ? { opacity: 0, scale: 0.82 }
+                          : { opacity: 0, scale: 0.9 }
+                    }
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: idx * 0.08, duration: 0.35 }}
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : isMine
+                          ? {
+                              delay: cardDelay,
+                              type: 'spring',
+                              stiffness: 280,
+                              damping: 16,
+                            }
+                          : { delay: cardDelay, duration: 0.35 }
+                    }
                     className={`aspect-[3/4] relative rounded-2xl overflow-hidden ${isMostRecent ? 'glow-breathe' : ''} ${isMine ? 'ring-2 ring-skin-gold' : ''}`}
                   >
                     {slot.personaId ? (
@@ -472,15 +522,34 @@ export default function WaitingRoom() {
                     <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/40 via-30% to-transparent pointer-events-none" />
                     {/* "YOU" press-stamp — only on the user's own card. Gold
                         + slight skew to read as a tabloid stamp, mirrors the
-                        "Locked In" stamp pattern on the wizard's step 4. */}
+                        "Locked In" stamp pattern on the wizard's step 4.
+                        /delight: lands ~0.25s after the card itself with a
+                        spring-overshoot rotation (kicks in from -12deg, lands
+                        at +3deg) so the stamp reads as a press-down, not a
+                        sticker. */}
                     {isMine && (
-                      <div
+                      <motion.div
                         aria-hidden
+                        initial={
+                          reduceMotion
+                            ? { opacity: 1, scale: 1, rotate: 3 }
+                            : { opacity: 0, scale: 0.4, rotate: -12 }
+                        }
+                        animate={{ opacity: 1, scale: 1, rotate: 3 }}
+                        transition={
+                          reduceMotion
+                            ? { duration: 0 }
+                            : {
+                                delay: cardDelay + 0.22,
+                                type: 'spring',
+                                stiffness: 360,
+                                damping: 12,
+                              }
+                        }
                         className="absolute top-2 right-2 px-2 py-0.5 bg-skin-gold text-skin-deep font-display font-black text-[10px] uppercase tracking-[0.2em] rounded-sm pointer-events-none"
-                        style={{ transform: 'rotate(3deg)' }}
                       >
                         You
-                      </div>
+                      </motion.div>
                     )}
                     {/* Name + stereotype. Stereotype in red (was gold) per
                         variant A single-accent rule. text-glow dropped from
