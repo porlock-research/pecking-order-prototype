@@ -6,10 +6,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { getGameSessionStatus, startGame, sendEmailInvite, getGameInvites, sendGameEntryPush } from '../../../actions';
 import type { GameSlot, SentInvite } from '../../../actions';
 
-function personaFullUrl(id: string): string {
-  return `/api/persona-image/${id}/full.png`;
-}
-
 function personaMediumUrl(id: string): string {
   return `/api/persona-image/${id}/medium.png`;
 }
@@ -24,7 +20,6 @@ export default function WaitingRoom() {
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [clientHost, setClientHost] = useState('http://localhost:5173');
-  const [myPersonaId, setMyPersonaId] = useState<string | null>(null);
   const [mode, setMode] = useState<string | null>(null);
 
   // Invite by email state
@@ -47,7 +42,6 @@ export default function WaitingRoom() {
         if (result.tokens) setTokens(result.tokens);
         if (result.clientHost) setClientHost(result.clientHost);
         if (result.mode) setMode(result.mode);
-        if (result.myPersonaId) setMyPersonaId(result.myPersonaId);
         if (result.isHost) setIsHost(true);
 
         // Load sent invites (only returned for host)
@@ -216,30 +210,24 @@ export default function WaitingRoom() {
   const myToken = tokens ? Object.values(tokens)[0] : null;
   const clientEntryUrl = myToken ? `${clientHost}/game/${code}?_t=${myToken}` : null;
 
-  // Use first filled slot's persona as background fallback if myPersonaId not available
-  const bgPersonaId = myPersonaId || filledSlots[0]?.personaId;
-
   return (
     <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
-      {/* Blurred persona background */}
-      <AnimatePresence mode="popLayout">
-        {bgPersonaId && (
-          <motion.img
-            key={bgPersonaId}
-            src={personaFullUrl(bgPersonaId)}
-            alt=""
-            aria-hidden
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.8 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="absolute inset-0 w-full h-full object-cover object-top scale-110 pointer-events-none"
-            style={{ filter: 'blur(2px)' }}
-          />
-        )}
-      </AnimatePresence>
-      <div className="absolute inset-0 bg-skin-deep/60 pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
+      {/* Variant A waiting room background — paper grid (on the wrapper)
+          plus two soft red radial highlights, matching the wizard and
+          docs/reports/lobby-mockups/05-variant-a-welcome-v4.html. The
+          persona-as-blurred-bg treatment was retired alongside the
+          wizard's; the cast portrait grid below is the visual anchor
+          and shouldn't compete with a portrait scrim above it. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle at 25% 30%, rgba(215,38,56,0.06) 0%, transparent 35%),
+            radial-gradient(circle at 80% 75%, rgba(215,38,56,0.04) 0%, transparent 40%)
+          `,
+        }}
+      />
 
       {/* Content */}
       <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
@@ -261,7 +249,12 @@ export default function WaitingRoom() {
             <div className="text-[10px] font-display font-bold text-skin-dim uppercase tracking-widest text-left">
               Invite link
             </div>
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-skin-input/60">
+            {/* Solid bg-skin-input (#1d1d1d) — was bg-skin-input/60, which
+                is a 60% wash that on the page-bg ink barely lifts and
+                made the URL hard to read. Per variant A brief: surfaces
+                that hold typography land at solid input ink, not at a
+                transparent fade of the page color. */}
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-skin-input border border-skin-base/15">
               <code className="flex-1 text-xs font-mono text-skin-base truncate text-left">
                 {shareLink}
               </code>
@@ -331,7 +324,7 @@ export default function WaitingRoom() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.3 }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-skin-deep/60 text-xs font-display font-bold uppercase tracking-widest border
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-skin-glass-elevated text-xs font-display font-bold uppercase tracking-widest border
               ${
                 isStarted
                   ? 'text-skin-green border-skin-green'
@@ -432,7 +425,7 @@ export default function WaitingRoom() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: filledSlots.length * 0.08 + 0.1, duration: 0.3 }}
-                  className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed border-skin-base/40 bg-skin-deep/40 flex items-center justify-center"
+                  className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed border-skin-base/40 bg-skin-glass flex items-center justify-center"
                 >
                   <div className="text-center space-y-1">
                     <div className="text-[10px] font-display font-bold text-skin-faint uppercase tracking-[0.2em]">
@@ -452,7 +445,7 @@ export default function WaitingRoom() {
               <button
                 onClick={() => setShowInviteSection(!showInviteSection)}
                 aria-expanded={showInviteSection}
-                className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-skin-base/50 bg-skin-deep/50 text-sm font-display font-bold text-skin-dim hover:text-skin-base hover:border-skin-gold/30 transition-all"
+                className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-skin-base/30 bg-skin-glass-elevated text-sm font-display font-bold text-skin-dim hover:text-skin-base hover:border-skin-gold/30 transition-all"
               >
                 <span>Invite by Email</span>
                 <svg
@@ -521,7 +514,7 @@ export default function WaitingRoom() {
                           {sentInvites.map((inv) => (
                             <div
                               key={inv.email + inv.createdAt}
-                              className="flex items-center justify-between py-1.5 px-3 rounded-lg text-xs bg-skin-deep/40"
+                              className="flex items-center justify-between py-1.5 px-3 rounded-lg text-xs bg-skin-glass"
                             >
                               <span className="text-skin-dim truncate">{inv.email}</span>
                               <span className={`text-[10px] font-display font-bold uppercase tracking-wider ${inv.used ? 'text-skin-green' : 'text-skin-faint'}`}>
