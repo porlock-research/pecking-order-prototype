@@ -246,8 +246,11 @@ export default function WaitingRoom() {
         {/* Masthead — wordmark left, tear-off code stub right. Mirrors the
             /j/ welcome treatment so the host sees the same chrome the
             invitee will see when they tap in. */}
+        {/* Masthead — wordmark text-base → text-lg for the bolder pass.
+            Matches the /j welcome surface; both are page-level mastheads
+            and should announce, not whisper. */}
         <div className="flex items-center justify-between flex-shrink-0 pb-2 border-b-2 border-skin-base">
-          <div className="font-display font-black text-base text-skin-base tracking-[0.16em] uppercase leading-none">
+          <div className="font-display font-black text-lg text-skin-base tracking-[0.16em] uppercase leading-none">
             Pecking Order
           </div>
           <div className="font-mono text-[10px] font-bold tracking-[0.1em] text-skin-dim leading-none">
@@ -258,7 +261,7 @@ export default function WaitingRoom() {
 
         <header className="text-center space-y-0.5 flex-shrink-0 mt-3">
           <div className="max-w-sm mx-auto space-y-2">
-            <div className="text-[10px] font-display font-bold text-skin-dim uppercase tracking-widest text-left">
+            <div className="text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.22em] text-left">
               Invite link
             </div>
             {/* Solid bg-skin-input (#1d1d1d) — was bg-skin-input/60, which
@@ -293,7 +296,7 @@ export default function WaitingRoom() {
               {hasNativeShare && (
                 <button
                   onClick={handleNativeShare}
-                  className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-skin-pink text-skin-base text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all"
+                  className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-skin-pink text-skin-base text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <circle cx="18" cy="5" r="3" />
@@ -308,7 +311,7 @@ export default function WaitingRoom() {
               <button
                 onClick={handleSmsShare}
                 aria-label="Share via SMS"
-                className={`${hasNativeShare ? 'w-10' : 'flex-1'} min-h-[40px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#22c55e] text-white text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all`}
+                className={`${hasNativeShare ? 'w-10' : 'flex-1'} min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-[#22c55e] text-white text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all`}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
@@ -318,7 +321,7 @@ export default function WaitingRoom() {
               <button
                 onClick={handleWhatsAppShare}
                 aria-label="Share via WhatsApp"
-                className={`${hasNativeShare ? 'w-10' : 'flex-1'} min-h-[40px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#25D366] text-white text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all`}
+                className={`${hasNativeShare ? 'w-10' : 'flex-1'} min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-[#25D366] text-white text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all`}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
@@ -381,9 +384,13 @@ export default function WaitingRoom() {
             <p className="text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.28em]">
               Cast as
             </p>
+            {/* Headline pushed clamp(1.75/8vw/2.75) → clamp(2/9.5vw/3.25)
+                for the bolder pass — this is the "you got picked" moment
+                the user explicitly called out as the activation centerpiece;
+                needed to crop harder so it reads as title-card, not body. */}
             <h2
-              className="font-display font-black text-skin-base leading-[0.92] tracking-tight mt-0.5 px-2 break-words"
-              style={{ fontSize: 'clamp(1.75rem, 8vw, 2.75rem)' }}
+              className="font-display font-black text-skin-base leading-[0.9] tracking-tight mt-0.5 px-2 break-words"
+              style={{ fontSize: 'clamp(2rem, 9.5vw, 3.25rem)' }}
             >
               {myPersonaName}
             </h2>
@@ -477,12 +484,15 @@ export default function WaitingRoom() {
                     )}
                     {/* Name + stereotype. Stereotype in red (was gold) per
                         variant A single-accent rule. text-glow dropped from
-                        name (gold-tinted shadow leftover from old palette). */}
+                        name (gold-tinted shadow leftover from old palette).
+                        Bolder pass: name 14→16px and stereotype 9→10.5px
+                        with tighter tracking so the chyron reads from a
+                        thumb-glance, not a squint. */}
                     <div className="absolute bottom-0 left-0 right-0 p-3 pointer-events-none">
-                      <div className="text-sm font-display font-black text-skin-base leading-tight truncate">
+                      <div className="text-base font-display font-black text-skin-base leading-[1.05] tracking-tight truncate">
                         {slot.personaName}
                       </div>
-                      <div className="text-[9px] font-display font-bold text-skin-pink uppercase tracking-[0.15em] truncate">
+                      <div className="text-[10.5px] font-display font-black text-skin-pink uppercase tracking-[0.18em] truncate mt-0.5">
                         {slot.personaStereotype}
                       </div>
                     </div>
@@ -499,11 +509,17 @@ export default function WaitingRoom() {
                   transition={{ delay: filledSlots.length * 0.08 + 0.1, duration: 0.3 }}
                   className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed border-skin-base/40 bg-skin-glass flex items-center justify-center"
                 >
+                  {/* Empty-seat eyebrow promoted to red display-black 11px,
+                      tracking 0.22em — kicker grammar instead of muted UI
+                      label. The dashed-border card already says "absence";
+                      letting the eyebrow read as a CASTING-CALL kicker
+                      makes the gap feel like an open audition slot, not
+                      missing data. */}
                   <div className="text-center space-y-1">
-                    <div className="text-[10px] font-display font-bold text-skin-base/75 uppercase tracking-[0.2em]">
+                    <div className="text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.22em]">
                       Open seat
                     </div>
-                    <div className="text-xs text-skin-base/55">Waiting on someone</div>
+                    <div className="text-xs text-skin-base/60">Waiting on someone</div>
                   </div>
                 </motion.div>
               ))}
@@ -623,14 +639,27 @@ export default function WaitingRoom() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
+                {/* Launch Game CTA — gets the same shadow-bevel treatment
+                    as the /j Step-in CTA so the host's commit moment
+                    matches the invitee's. Bigger min-h, text-base instead
+                    of text-sm, tracking 0.24em to match. Press translates
+                    down 2px and shrinks the bevel for tactile depth. */}
                 <button
                   onClick={handleStart}
                   disabled={isStarting}
-                  className={`w-full py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all flex items-center justify-center gap-3
+                  style={
+                    isStarting
+                      ? undefined
+                      : {
+                          boxShadow:
+                            '0 4px 0 var(--po-pink-depth), 0 10px 24px -6px rgba(215,38,56,0.42)',
+                        }
+                  }
+                  className={`w-full min-h-[60px] py-5 font-display font-black text-base tracking-[0.24em] uppercase rounded-xl transition-[transform,box-shadow] flex items-center justify-center gap-3
                     ${
                       isStarting
                         ? 'bg-skin-input text-skin-faint cursor-wait'
-                        : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
+                        : 'bg-skin-pink text-skin-base active:translate-y-[2px] active:[box-shadow:0_2px_0_var(--po-pink-depth),0_6px_14px_-4px_rgba(215,38,56,0.35)]'
                     }`}
                 >
                   {isStarting ? (
