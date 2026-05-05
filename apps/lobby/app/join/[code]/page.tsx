@@ -535,24 +535,38 @@ export default function InvitePage() {
                         <p className="text-xs text-skin-dim mt-1">First impression. Make it stick.</p>
                       </div>
 
-                      {/* Persona identity — inline headshot + name + stereotype.
-                          Was text-only: photo behind was blurred so the player
-                          had no visible confirmation of who they picked while
-                          writing their bio. Inline 56×56 headshot anchors it. */}
-                      <div className="flex items-center justify-center gap-3">
-                        <img
-                          src={personaHeadshotUrl(selectedPersona.id)}
-                          alt=""
-                          aria-hidden="true"
-                          className="w-14 h-14 rounded-full object-cover object-top border-2 border-skin-pink/60 flex-shrink-0"
-                          onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0'; }}
-                        />
-                        <div className="text-left min-w-0 flex-1">
-                          <div className="text-xl font-display font-black text-skin-base leading-tight truncate">
-                            {selectedPersona.name}
-                          </div>
-                          <div className="text-[11px] font-display font-bold text-skin-pink uppercase tracking-[0.16em] truncate">
-                            {selectedPersona.stereotype}
+                      {/* Persona identity — hero portrait card with name +
+                          stereotype overlaid. Was a 56×56 inline headshot to
+                          the left of the name/stereotype block (lobby-mockups
+                          v1). The variant-A v4 decision moved away from
+                          headshot-as-thumbnail toward a single committed
+                          portrait that anchors the page as the player writes
+                          their bio — same treatment grammar as step 4's
+                          locked-in reveal but smaller (4:5 portrait crop
+                          instead of step 4's 16:9 letterbox). */}
+                      <div className="relative overflow-hidden rounded-2xl">
+                        <div aria-hidden className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-skin-pink to-transparent z-10" />
+                        <div className="aspect-[4/5] bg-skin-input/30 relative overflow-hidden max-h-[320px]">
+                          <img
+                            src={selectedPersona.fullImageUrl}
+                            alt={selectedPersona.name}
+                            className="w-full h-full object-cover object-top"
+                            onError={(e) => {
+                              const el = e.target as HTMLImageElement;
+                              if (!el.dataset.fallback) {
+                                el.dataset.fallback = '1';
+                                el.src = selectedPersona.imageUrl;
+                              }
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-skin-deep/95 via-skin-deep/40 via-30% to-transparent pointer-events-none" />
+                          <div className="absolute bottom-0 left-0 right-0 p-4">
+                            <div className="text-2xl font-display font-black text-skin-base leading-[0.95] tracking-tight">
+                              {selectedPersona.name}
+                            </div>
+                            <div className="text-[11px] font-display font-bold text-skin-pink uppercase tracking-[0.18em] mt-1">
+                              {selectedPersona.stereotype}
+                            </div>
                           </div>
                         </div>
                       </div>
