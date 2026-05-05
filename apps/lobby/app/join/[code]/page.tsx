@@ -825,7 +825,7 @@ export default function InvitePage() {
                             : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
                         }`}
                     >
-                      {selectedPersona ? 'Lock In' : 'Select a Character'}
+                      {selectedPersona ? `I'm ${selectedPersona.name.split(' ')[0]}` : 'Select a Character'}
                     </button>
                   </div>
                 </motion.div>

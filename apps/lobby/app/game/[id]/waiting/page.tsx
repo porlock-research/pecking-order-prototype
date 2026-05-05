@@ -21,6 +21,10 @@ export default function WaitingRoom() {
   const [isStarting, setIsStarting] = useState(false);
   const [clientHost, setClientHost] = useState('http://localhost:5173');
   const [mode, setMode] = useState<string | null>(null);
+  // Track the calling user's persona so we can render "you're cast" on
+  // their own card + use the persona name in the Enter CTA. Derived
+  // server-side because we have no session.userId on the client.
+  const [myPersonaId, setMyPersonaId] = useState<string | null>(null);
 
   // Invite by email state
   const [inviteEmail, setInviteEmail] = useState('');
@@ -42,6 +46,7 @@ export default function WaitingRoom() {
         if (result.tokens) setTokens(result.tokens);
         if (result.clientHost) setClientHost(result.clientHost);
         if (result.mode) setMode(result.mode);
+        if (result.myPersonaId) setMyPersonaId(result.myPersonaId);
         if (result.isHost) setIsHost(true);
 
         // Load sent invites (only returned for host)
@@ -210,6 +215,13 @@ export default function WaitingRoom() {
   const myToken = tokens ? Object.values(tokens)[0] : null;
   const clientEntryUrl = myToken ? `${clientHost}/game/${code}?_t=${myToken}` : null;
 
+  // The user's own slot — used for the "(YOU)" self-marker on their card
+  // and to source persona name for the Enter CTA. Match by personaId
+  // because slotIndex assignment isn't stable across CONFIGURABLE_CYCLE
+  // late-join paths until tokens land.
+  const mySlot = myPersonaId ? slots.find((s) => s.personaId === myPersonaId) : null;
+  const myPersonaName = mySlot?.personaName ?? null;
+
   return (
     <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
       {/* Variant A waiting room background — paper grid (on the wrapper)
@@ -345,16 +357,38 @@ export default function WaitingRoom() {
                 ? 'Ready to Launch'
                 : isLoading
                   ? 'Cueing the room…'
-                  : `Waiting for Players (${filledSlots.length}/${totalSlots})`}
+                  : isConfigurableCycle || totalSlots === 0
+                    ? `Casting · ${filledSlots.length} ${filledSlots.length === 1 ? 'in' : 'joined'}`
+                    : `Casting · ${filledSlots.length} of ${totalSlots} in`}
           </motion.div>
         </div>
 
-        {/* Cast title */}
-        <div className="text-center mt-2 flex-shrink-0">
-          <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
-            The Cast
-          </h2>
-        </div>
+        {/* "You're cast as Felix" arrival moment — the activation beat the
+            wizard sets up but the lobby has been silent on. Self-recognition
+            up front; the cast grid below plus the (YOU) marker on the
+            player's own card reinforce. Falls back to "The Cast" header
+            until myPersonaId hydrates from the action. */}
+        {myPersonaName ? (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="text-center mt-2 flex-shrink-0 space-y-0.5"
+          >
+            <p className="text-[10px] font-display font-bold text-skin-pink uppercase tracking-[0.22em]">
+              You&apos;re cast as
+            </p>
+            <h2 className="text-xl font-display font-black text-skin-base leading-[0.95] tracking-tight">
+              {myPersonaName}
+            </h2>
+          </motion.div>
+        ) : (
+          <div className="text-center mt-2 flex-shrink-0">
+            <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
+              The Cast
+            </h2>
+          </div>
+        )}
 
         {/* Cast grid */}
         <div className="flex-1 min-h-0 overflow-y-auto mt-2 pb-2">
@@ -374,16 +408,20 @@ export default function WaitingRoom() {
             >
               {/* Filled slots — cast portrait cards. Only the most-recent join
                   (last in the list) gets the breathing glow, so the eye lands
-                  on what just happened instead of every card competing. */}
+                  on what just happened instead of every card competing.
+                  The user's own card (matched by personaId) gets a gold
+                  hairline ring + a "YOU" stamp so self-recognition is
+                  instant, not a beat-of-effort to find themselves. */}
               {filledSlots.map((slot, idx) => {
                 const isMostRecent = idx === filledSlots.length - 1;
+                const isMine = !!myPersonaId && slot.personaId === myPersonaId;
                 return (
                   <motion.div
                     key={slot.slotIndex}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.08, duration: 0.35 }}
-                    className={`aspect-[3/4] relative rounded-2xl overflow-hidden ${isMostRecent ? 'glow-breathe' : ''}`}
+                    className={`aspect-[3/4] relative rounded-2xl overflow-hidden ${isMostRecent ? 'glow-breathe' : ''} ${isMine ? 'ring-2 ring-skin-gold' : ''}`}
                   >
                     {slot.personaId ? (
                       <img
@@ -403,6 +441,18 @@ export default function WaitingRoom() {
                     )}
                     {/* Gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/40 via-30% to-transparent pointer-events-none" />
+                    {/* "YOU" press-stamp — only on the user's own card. Gold
+                        + slight skew to read as a tabloid stamp, mirrors the
+                        "Locked In" stamp pattern on the wizard's step 4. */}
+                    {isMine && (
+                      <div
+                        aria-hidden
+                        className="absolute top-2 right-2 px-2 py-0.5 bg-skin-gold text-skin-deep font-display font-black text-[10px] uppercase tracking-[0.2em] rounded-sm pointer-events-none"
+                        style={{ transform: 'rotate(3deg)' }}
+                      >
+                        You
+                      </div>
+                    )}
                     {/* Name + stereotype. Stereotype in red (was gold) per
                         variant A single-accent rule. text-glow dropped from
                         name (gold-tinted shadow leftover from old palette). */}
@@ -666,7 +716,7 @@ export default function WaitingRoom() {
                           color: 'color-mix(in oklch, var(--po-gold) 62%, transparent)',
                         }}
                       >
-                        as {myPlayerId?.toUpperCase()}
+                        as {myPersonaName ?? myPlayerId?.toUpperCase() ?? ''}
                       </span>
                     </span>
 

@@ -63,13 +63,18 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
       {/* Header. Skip is its own button row instead of an inline link
           buried in the paragraph — /harden onboarding rule: "make
           onboarding optional, let experienced users skip" needs a
-          visible escape hatch, not a 12px underline. */}
+          visible escape hatch, not a 12px underline. The context line
+          ("one goes public…") sets the stakes — these answers matter,
+          here's exactly how. Without it the Q&A reads as setup busywork. */}
       <div className="text-center flex-shrink-0 space-y-1.5">
         <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
           Get Into Character
         </h2>
         <p className="text-xs text-skin-dim">
           Answer as <span className="text-skin-pink font-bold">{personaName}</span>
+        </p>
+        <p className="text-[11px] text-skin-base/70 leading-snug max-w-xs mx-auto">
+          One answer goes public when you arrive. The other two stay sealed until Day 1.
         </p>
         <button
           onClick={onSkip}
@@ -79,18 +84,22 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
         </button>
       </div>
 
-      {/* Progress dots */}
-      <div className="flex justify-center gap-1.5 py-3 flex-shrink-0">
+      {/* Progress dots. Bumped from 2×2 (whisper-tier) to 3×3 with a 6×6
+          active state — the player is mid-task, this should be a confident
+          progress signal, not a dotline. Answered dots are a faded red so
+          the funnel reads at a glance: red = active/done, ink = pending. */}
+      <div className="flex justify-center gap-2 py-3 flex-shrink-0">
         {questions.map((q, i) => (
           <button
             key={q.id}
             onClick={() => goTo(i)}
-            className={`w-2 h-2 rounded-full transition-all duration-200 ${
+            aria-label={`Go to question ${i + 1}`}
+            className={`rounded-full transition-all duration-200 ${
               i === currentIndex
-                ? 'bg-skin-pink scale-125'
+                ? 'bg-skin-pink w-6 h-3 shadow-[0_0_10px_color-mix(in_oklch,var(--po-pink)_50%,transparent)]'
                 : submissions[q.id]
-                  ? 'bg-skin-pink/50'
-                  : 'bg-skin-input'
+                  ? 'bg-skin-pink/55 w-3 h-3'
+                  : 'bg-skin-input w-3 h-3 border border-skin-base/15'
             }`}
           />
         ))}
@@ -109,21 +118,28 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
               transition={SPRING}
               className="h-full flex flex-col gap-3"
             >
-              {/* Question text */}
-              <div className="text-center px-2">
-                <span className="text-xs font-display font-bold text-skin-dim tracking-widest tabular-nums">
-                  {currentIndex + 1} / {questions.length}
+              {/* Question text — display-font kicker ("Q 1 / 3") in red
+                  reads as a tabloid quiz prompt. Stem stays body font for
+                  legibility (display fonts at body sizes are unreadable);
+                  bumped from text-lg/font-bold to text-xl/font-black for
+                  the bolder pass. */}
+              <div className="text-center px-2 space-y-1.5">
+                <span className="inline-block px-2.5 py-0.5 bg-skin-pink/15 border border-skin-pink/40 rounded-md text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.18em] tabular-nums">
+                  Q {currentIndex + 1} / {questions.length}
                 </span>
-                {/* Question stem in body font (Manrope) — was font-display
-                    (Big Shoulders Display, a condensed signage face). Display
-                    fonts at body sizes are textbook readability complaints. */}
-                <h2 className="text-lg font-body font-bold text-skin-base mt-1 leading-snug">
+                <h2 className="text-xl font-body font-black text-skin-base leading-tight tracking-tight">
                   {question.text}
                 </h2>
               </div>
 
-              {/* Answer buttons */}
-              <div className="space-y-2 px-1">
+              {/* Answer buttons. Letter chip is now a pill that anchors
+                  each option visually — A/B/C are scannable column-style
+                  even on mobile. Selected state: full pink fill with white
+                  text on the chip too (was outline-only with translucent
+                  fill, which read as ghosted). Unselected uses bg-skin-input
+                  for a real ~#1d1d1d surface (was bg-skin-panel/30, a
+                  transparent wash that disappeared on the deep page bg). */}
+              <div className="space-y-2.5 px-1">
                 {question.options.map((option, idx) => {
                   const isSelected = currentSub?.selectedIndex === idx;
                   return (
@@ -131,31 +147,51 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                       key={idx}
                       onClick={() => selectAnswer(idx)}
                       whileTap={{ scale: 0.98 }}
-                      className={`w-full text-left px-4 py-3 rounded-xl text-sm font-body transition-all duration-200 ${
+                      className={`group w-full text-left rounded-xl text-sm font-body transition-all duration-200 flex items-stretch overflow-hidden border-2 ${
                         isSelected
-                          ? 'bg-skin-pink/20 border-2 border-skin-pink text-skin-pink font-bold'
-                          : 'bg-skin-panel/30 border border-skin-base/30 text-skin-base hover:bg-skin-panel/50'
+                          ? 'bg-skin-pink border-skin-pink text-skin-base shadow-[0_0_24px_color-mix(in_oklch,var(--po-pink)_30%,transparent)]'
+                          : 'bg-skin-input border-skin-base/15 text-skin-base hover:border-skin-pink/50 hover:bg-skin-input/80'
                       }`}
                     >
-                      {/* Option letter in body font; was display-condensed at
-                          12px which made A/B/C/D unscannable. Bumped to text-sm
-                          and text-skin-base/70 for legibility. */}
-                      <span className="text-skin-base/70 font-body font-bold text-sm mr-2">
-                        {String.fromCharCode(65 + idx)}.
+                      {/* Letter chip — column on the left, full-height,
+                          tabloid-bold. Solid red on selected, paper-tone
+                          rim on unselected. */}
+                      <span
+                        aria-hidden
+                        className={`flex-shrink-0 w-10 flex items-center justify-center font-display font-black text-base ${
+                          isSelected
+                            ? 'bg-skin-pink-depth text-skin-base'
+                            : 'bg-skin-deep text-skin-pink border-r border-skin-base/15'
+                        }`}
+                      >
+                        {String.fromCharCode(65 + idx)}
                       </span>
-                      {option}
+                      <span className="flex-1 px-3 py-3 leading-snug font-medium">
+                        {option}
+                      </span>
                     </motion.button>
                   );
                 })}
 
-                {/* "Other" write-in option */}
-                <div className={`rounded-xl transition-all duration-200 ${
+                {/* "Other" write-in option — same chip + body grammar as
+                    the lettered options for visual consistency. The input
+                    sits inside the body cell; selected state matches. */}
+                <div className={`rounded-xl transition-all duration-200 flex items-stretch overflow-hidden border-2 ${
                   currentSub?.selectedIndex === 3
-                    ? 'bg-skin-pink/20 border-2 border-skin-pink'
-                    : 'bg-skin-panel/30 border border-skin-base/30'
+                    ? 'bg-skin-pink border-skin-pink shadow-[0_0_24px_color-mix(in_oklch,var(--po-pink)_30%,transparent)]'
+                    : 'bg-skin-input border-skin-base/15'
                 }`}>
-                  <div className="flex items-center gap-2 px-4 py-2">
-                    <span className="text-skin-base/70 font-body font-bold text-sm">D.</span>
+                  <span
+                    aria-hidden
+                    className={`flex-shrink-0 w-10 flex items-center justify-center font-display font-black text-base ${
+                      currentSub?.selectedIndex === 3
+                        ? 'bg-skin-pink-depth text-skin-base'
+                        : 'bg-skin-deep text-skin-pink border-r border-skin-base/15'
+                    }`}
+                  >
+                    D
+                  </span>
+                  <div className="flex-1 flex items-center gap-2 px-3 py-2">
                     <input
                       type="text"
                       value={currentSub?.selectedIndex === 3 ? (currentSub.customAnswer ?? '') : customText}
@@ -170,15 +206,19 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                           selectAnswer(3, customText.trim());
                         }
                       }}
-                      placeholder="Write your own..."
+                      placeholder="Write your own…"
                       aria-label="Custom answer"
-                      className="flex-1 bg-transparent text-sm text-skin-base placeholder:text-skin-dim/70 focus:outline-none"
+                      className={`flex-1 bg-transparent text-sm focus:outline-none ${
+                        currentSub?.selectedIndex === 3
+                          ? 'text-skin-base placeholder:text-skin-base/60'
+                          : 'text-skin-base placeholder:text-skin-base/40'
+                      }`}
                       maxLength={140}
                     />
                     {customText.trim() && currentSub?.selectedIndex !== 3 && (
                       <button
                         onClick={() => selectAnswer(3, customText.trim())}
-                        className="text-xs font-display font-bold text-skin-pink uppercase"
+                        className="text-xs font-display font-black text-skin-pink uppercase tracking-widest hover:underline"
                       >
                         Pick
                       </button>
