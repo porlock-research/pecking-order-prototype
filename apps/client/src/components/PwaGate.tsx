@@ -178,7 +178,7 @@ function PwaGateInner({ token }: { token: string }) {
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 z-[60]" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-[70] rounded-t-2xl bg-skin-fill/95 backdrop-blur-xl border-t border-white/[0.08] outline-none">
-            <Drawer.Title className="sr-only">Enable Notifications</Drawer.Title>
+            <Drawer.Title className="sr-only">Turn on pings</Drawer.Title>
 
             <div className="px-6 pt-8 pb-10 flex flex-col items-center text-center gap-5 pb-safe">
               {subscribeSuccess ? (
@@ -202,7 +202,7 @@ function PwaGateInner({ token }: { token: string }) {
                   </div>
                   <div className="space-y-2">
                     <h2 className="text-xl font-black font-display text-skin-base">
-                      {isBrave ? 'Brave Blocked Push Notifications' : "Browser Can't Send Notifications"}
+                      {isBrave ? 'Brave is blocking pings' : "Your browser can't deliver pings"}
                     </h2>
                     {isBrave ? (
                       <>
@@ -222,10 +222,10 @@ function PwaGateInner({ token }: { token: string }) {
                     ) : (
                       <>
                         <p className="text-sm text-skin-dim leading-relaxed max-w-xs">
-                          Your browser is blocking push notifications. Pecking Order needs them so you don't miss votes, DMs, and game events.
+                          Your browser is blocking pings. We need them so you don&apos;t miss votes, DMs, or eliminations.
                         </p>
                         <p className="text-xs text-skin-dim/80 leading-relaxed max-w-xs">
-                          Open this game in Chrome, Safari, or Firefox to play with reminders.
+                          Open this game in Chrome, Safari, or Firefox to play with the pings on.
                         </p>
                       </>
                     )}
@@ -260,10 +260,10 @@ function PwaGateInner({ token }: { token: string }) {
                   </div>
                   <div className="space-y-2">
                     <h2 className="text-xl font-black font-display text-skin-base">
-                      Notifications Blocked
+                      Pings blocked
                     </h2>
                     <p className="text-sm text-skin-dim leading-relaxed max-w-xs">
-                      You previously blocked notifications. To fix this:
+                      You blocked pings earlier. To turn them back on:
                     </p>
                     <p className="text-xs font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 leading-relaxed">
                       {getDeniedResetInstructions()}
@@ -283,7 +283,7 @@ function PwaGateInner({ token }: { token: string }) {
                   </div>
                   <div className="space-y-2">
                     <h2 className="text-xl font-black font-display text-skin-base">
-                      Enable Notifications
+                      Turn on pings
                     </h2>
                     <p className="text-sm text-skin-dim leading-relaxed max-w-xs">
                       Don&apos;t miss your DMs, the day&apos;s vote, or the next
@@ -294,7 +294,7 @@ function PwaGateInner({ token }: { token: string }) {
                     onClick={handleSubscribe}
                     className="w-full max-w-xs px-6 py-3.5 rounded-xl bg-skin-pink text-white font-bold text-sm uppercase tracking-wider shadow-lg shadow-skin-pink/20 active:scale-[0.97] transition-transform"
                   >
-                    Allow Notifications
+                    Turn on pings
                   </button>
                   <button
                     onClick={handleDefer}
