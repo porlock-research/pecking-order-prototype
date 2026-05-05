@@ -1,13 +1,70 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { getGameSessionStatus, startGame, sendEmailInvite, getGameInvites, sendGameEntryPush } from '../../../actions';
 import type { GameSlot, SentInvite } from '../../../actions';
 
 function personaMediumUrl(id: string): string {
   return `/api/persona-image/${id}/medium.png`;
+}
+
+// Paper-tape confetti for the "you got picked" moment. 14 pieces, mix of
+// red/paper/gold to match the lobby brief's accent register without going
+// rainbow-cheap. Pieces fall + rotate with mild horizontal drift; opacity
+// fades out in the last ~30% so the bottom of the trail doesn't hard-cut.
+// Reduced-motion users never see this — the parent caller gates on the
+// hook, this component just renders the pieces.
+function CastConfetti() {
+  const pieces = useMemo(() => {
+    return Array.from({ length: 14 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      drift: (Math.random() - 0.5) * 24,
+      delay: Math.random() * 0.35,
+      rotation: 540 + Math.random() * 540,
+      width: 6 + Math.random() * 6,
+      height: 14 + Math.random() * 14,
+      duration: 1.5 + Math.random() * 0.8,
+      color: ['var(--po-pink)', 'var(--po-text)', 'var(--po-gold)'][i % 3],
+    }));
+  }, []);
+
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-30 overflow-hidden">
+      {pieces.map((p) => (
+        <motion.span
+          key={p.id}
+          initial={{ y: -40, x: '0vw', rotate: 0, opacity: 1 }}
+          animate={{
+            y: '110vh',
+            x: `${p.drift}vw`,
+            rotate: p.rotation,
+            opacity: [1, 1, 0.6, 0],
+          }}
+          transition={{
+            duration: p.duration,
+            delay: p.delay,
+            ease: [0.5, 0, 0.7, 0.95], // accelerate (gravity-feeling)
+            opacity: {
+              times: [0, 0.7, 0.85, 1],
+              duration: p.duration,
+              delay: p.delay,
+            },
+          }}
+          className="absolute"
+          style={{
+            left: `${p.x}%`,
+            width: `${p.width}px`,
+            height: `${p.height}px`,
+            background: p.color,
+            borderRadius: 1,
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function WaitingRoom() {
@@ -29,6 +86,12 @@ export default function WaitingRoom() {
   // their own card + use the persona name in the Enter CTA. Derived
   // server-side because we have no session.userId on the client.
   const [myPersonaId, setMyPersonaId] = useState<string | null>(null);
+  // /delight: paper-tape confetti fires once when myPersonaName first
+  // hydrates — that's the "you got picked" beat. confettiFiredRef ensures
+  // it only ever runs once per mount (we don't want it re-firing if data
+  // refreshes), and reduceMotion gates it out entirely.
+  const [showConfetti, setShowConfetti] = useState(false);
+  const confettiFiredRef = useRef(false);
 
   // Invite by email state
   const [inviteEmail, setInviteEmail] = useState('');
@@ -72,6 +135,26 @@ export default function WaitingRoom() {
     if (!token) return;
     sendGameEntryPush(code, token).then(({ sent }) => setPushSent(sent)).catch(() => {});
   }, [status, tokens, code]);
+
+  // Fire confetti once when myPersonaName first hydrates. This is the
+  // "you got picked" beat the user explicitly called out as the activation
+  // centerpiece. Hard-gated by confettiFiredRef so a status refresh
+  // doesn't re-fire it; gated by reduceMotion so users who request flat
+  // animation never see it. Auto-dismisses after the longest piece would
+  // have left the viewport.
+  useEffect(() => {
+    if (!myPersonaId) return;
+    if (confettiFiredRef.current) return;
+    if (reduceMotion) return;
+    // Wait until the cast strip has resolved so the confetti's timing
+    // matches the "Cast as <name>" headline arrival, not a stub render.
+    const myName = slots.find((s) => s.personaId === myPersonaId)?.personaName;
+    if (!myName) return;
+    confettiFiredRef.current = true;
+    setShowConfetti(true);
+    const t = setTimeout(() => setShowConfetti(false), 2800);
+    return () => clearTimeout(t);
+  }, [myPersonaId, slots, reduceMotion]);
 
   async function handleStart() {
     setIsStarting(true);
@@ -244,6 +327,8 @@ export default function WaitingRoom() {
           `,
         }}
       />
+
+      {showConfetti && <CastConfetti />}
 
       {/* Content */}
       <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
