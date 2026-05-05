@@ -58,7 +58,7 @@ export function JoinedCast({
                     delay: 0.05 + i * 0.08,
                   }
             }
-            className={`relative w-[84px] h-[120px] sm:w-[110px] sm:h-[156px] rounded-[14px] overflow-hidden shadow-card ring-1 ring-white/5 ${overlapClass}`}
+            className={`relative w-[84px] h-[120px] sm:w-[110px] sm:h-[156px] rounded-[14px] overflow-hidden shadow-card ring-[1.5px] ring-skin-base/85 ${overlapClass}`}
             style={{
               // Neutral dark fill behind the image. If the CDN 404s the
               // onError handler below hides the <img>, leaving this fill
@@ -77,21 +77,27 @@ export function JoinedCast({
               onError={(e) => {
                 e.currentTarget.style.opacity = '0';
               }}
+              // Per lobby brief Cast-fan pattern: slight desaturation
+              // contrast(1.1) saturate(0.85) so faces feel printed, not
+              // photographic. Was missing — added in the bolder pass to
+              // align with the canonical visual reference (mockup 05).
+              style={{ filter: 'contrast(1.1) saturate(0.85)' }}
               className="absolute inset-0 w-full h-full object-cover object-top"
             />
-            {/* Wider+darker scrim band so portrait labels read on bright skin
-                tones. Was from-black/92 via-black/25 — the via-stop landed
-                too high, leaving the label area exposed when the photo was
-                bright. Bumped scrim density at the bottom 50%. */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/55 via-30% to-transparent to-65%" />
+            {/* Tighter scrim band: name-strip only sits over the bottom
+                ~30%, so the scrim doesn't need to climb past 50%. Was
+                via-black/55 to-65% which dimmed the upper face area. */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 via-22% to-transparent to-50%" />
             <div className="absolute bottom-2 left-2 right-2">
-              {/* Was 11px name + 9px stereotype — both below WCAG-comfortable
-                  on small phones. Bumped to 12px / 10px and tightened tracking. */}
-              <p className="font-display font-black text-white text-xs leading-tight drop-shadow truncate">
+              {/* Per lobby brief: single-line name strip — name only.
+                  Stereotype was retired here (it lives in /join step 1
+                  where it has a job to do). Letting the name own the
+                  strip makes the cast fan louder by removing competing
+                  text. Name bumped 12 → 13px display-black for the
+                  bolder pass; on a small phone it now reads as a
+                  reality-TV chyron, not a thumbnail caption. */}
+              <p className="font-display font-black text-white text-[13px] leading-[1.05] drop-shadow truncate">
                 {p.displayLabel}
-              </p>
-              <p className="text-skin-gold/95 text-[10px] font-bold uppercase tracking-[0.08em] mt-0.5 drop-shadow truncate">
-                {p.personaStereotype}
               </p>
             </div>
 

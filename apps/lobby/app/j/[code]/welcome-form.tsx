@@ -70,11 +70,22 @@ export function WelcomeForm({ code }: { code: string }) {
         </div>
       )}
 
+      {/* Primary commit CTA — pushed bigger + harder for the bolder pass.
+          The shadow-bevel uses --po-pink-depth (the dedicated shadow
+          tone) to give the button physical depth instead of a generic
+          drop shadow; press translates the button down 2px and shrinks
+          the bevel for tactile feedback. Type bumped 15px→16px and
+          tracking 0.22em→0.24em to feel like reality-TV title-card,
+          not utility chrome. */}
       <button
         type="submit"
         disabled={isPending}
         aria-busy={isPending}
-        className="w-full min-h-[52px] py-4 bg-skin-pink text-skin-base font-display font-black text-[15px] uppercase tracking-[0.22em] rounded-lg disabled:opacity-50 active:scale-[0.99] transition-transform shadow-btn"
+        style={{
+          boxShadow:
+            '0 4px 0 var(--po-pink-depth), 0 10px 24px -6px rgba(215,38,56,0.42)',
+        }}
+        className="w-full min-h-[60px] py-5 bg-skin-pink text-skin-base font-display font-black text-base uppercase tracking-[0.24em] rounded-lg disabled:opacity-50 transition-[transform,box-shadow] active:translate-y-[2px] active:[box-shadow:0_2px_0_var(--po-pink-depth),0_6px_14px_-4px_rgba(215,38,56,0.35)]"
       >
         {isPending ? 'Stepping in…' : 'Step in →'}
       </button>
