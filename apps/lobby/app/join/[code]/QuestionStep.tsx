@@ -84,10 +84,11 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
         </button>
       </div>
 
-      {/* Progress dots. Bumped from 2×2 (whisper-tier) to 3×3 with a 6×6
-          active state — the player is mid-task, this should be a confident
-          progress signal, not a dotline. Answered dots are a faded red so
-          the funnel reads at a glance: red = active/done, ink = pending. */}
+      {/* Progress dots. User flagged the answered (/55 red) and unanswered
+          (bg-skin-input) states as "not viewable" against the grid bg.
+          Pumped: answered = full red (no opacity drop), unanswered =
+          bg-skin-base/[0.18] solid 18% paper lift + /40 border (matches
+          wizard pip treatment). Active still gets the wider pill + halo. */}
       <div className="flex justify-center gap-2 py-3 flex-shrink-0">
         {questions.map((q, i) => (
           <button
@@ -98,8 +99,8 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
               i === currentIndex
                 ? 'bg-skin-pink w-6 h-3 shadow-[0_0_10px_color-mix(in_oklch,var(--po-pink)_50%,transparent)]'
                 : submissions[q.id]
-                  ? 'bg-skin-pink/55 w-3 h-3'
-                  : 'bg-skin-input w-3 h-3 border border-skin-base/15'
+                  ? 'bg-skin-pink w-3 h-3'
+                  : 'bg-skin-base/[0.18] w-3 h-3 border border-skin-base/40'
             }`}
           />
         ))}

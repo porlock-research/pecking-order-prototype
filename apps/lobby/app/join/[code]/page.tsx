@@ -295,21 +295,21 @@ export default function InvitePage() {
                     className="w-11 h-11 flex items-center justify-center"
                     aria-current={step === s ? 'step' : undefined}
                   >
-                    {/* Inactive pip needs a visible lift from the page ink.
+                    {/* Inactive pip \u2014 needs MEANINGFUL lift, not subtle.
                         Earlier attempts:
-                          - bg-skin-input (#1d1d1d) was ~7 perceptual points
-                            lighter than bg-skin-deep \u2014 too subtle.
-                          - bg-skin-deep/60 (current main) was a TRANSPARENT
-                            wash of the page bg = no lift at all \u2192 black on
-                            black, as flagged in the variant-A mockup review.
-                        Fix: bg-skin-glass-elevated (rgba(paper, 0.14) per
-                        theme.css) gives a real ~#2a2a2a lift while staying
-                        warmly desaturated so the disc reads on every photo
-                        the bg might bleed under. Border bumped to /20 so
-                        it's quieter than the fill, not louder than it. */}
+                          - bg-skin-input (#1d1d1d): ~7 points lighter than
+                            page, too subtle.
+                          - bg-skin-deep/60: transparent wash, no lift.
+                          - bg-skin-glass-elevated (rgba(paper,0.14)): paper
+                            tone, ~#2c2c2c, but on the bg-grid-pattern page
+                            user still reported "dark on dark, not readable."
+                        Current: bg-skin-base/[0.18] solid 18% paper lift
+                        (~#3b3b3a) with a /40 paper border + full text-skin-
+                        base \u2014 readable at distance, no longer relying on
+                        background-blend luck against the grid. */}
                     <div
                       className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-display font-bold transition-all duration-300
-                        ${step >= s ? 'bg-skin-pink text-skin-base' : 'bg-skin-glass-elevated border border-skin-base/20 text-skin-base/95'}`}
+                        ${step >= s ? 'bg-skin-pink text-skin-base' : 'bg-skin-base/[0.18] border border-skin-base/40 text-skin-base'}`}
                     >
                       {step > s ? '\u2713' : s}
                     </div>
@@ -326,6 +326,16 @@ export default function InvitePage() {
                 </div>
               ))}
             </nav>
+
+            {/* Time signal — sets expectation. CRO research shows even one
+                line of "takes about a minute" reduces wizard abandonment.
+                Skip on step 4 (already locked in, signal is no longer
+                useful). */}
+            {step < 4 && (
+              <p className="text-center text-[11px] text-skin-base/65 leading-snug -mt-0.5">
+                About a minute · {4 - step} {4 - step === 1 ? 'step' : 'steps'} left
+              </p>
+            )}
 
             {/* Step content — slides left/right on step change */}
             <div className="flex-1 min-h-0 relative overflow-hidden">
@@ -346,7 +356,7 @@ export default function InvitePage() {
                       <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
                         Choose Your Persona
                       </h2>
-                      <p className="text-[11px] text-skin-dim tracking-wide">
+                      <p className="text-xs text-skin-base/75 tracking-wide">
                         Swipe to browse. Tap one to lock in.
                       </p>
                     </div>
@@ -527,26 +537,29 @@ export default function InvitePage() {
                     transition={SPRING_SWIPE}
                     className="h-full flex flex-col overflow-y-auto"
                   >
-                    <div className="my-auto space-y-4 py-2">
+                    {/* Was my-auto: vertically-centered the content, leaving
+                        a huge gap between the title and the persona card on
+                        tall viewports. Drop the my-auto, let the layout
+                        flow from the top so title → portrait → bio reads
+                        as a tight vertical sequence. */}
+                    <div className="space-y-4 pt-3 pb-2">
                       <div className="text-center flex-shrink-0">
                         <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
                           Write Your Catfish Bio
                         </h2>
-                        <p className="text-xs text-skin-dim mt-1">First impression. Make it stick.</p>
+                        <p className="text-xs text-skin-base/75 mt-1">First impression. Make it stick.</p>
                       </div>
 
-                      {/* Persona identity — hero portrait card with name +
-                          stereotype overlaid. Was a 56×56 inline headshot to
-                          the left of the name/stereotype block (lobby-mockups
-                          v1). The variant-A v4 decision moved away from
-                          headshot-as-thumbnail toward a single committed
-                          portrait that anchors the page as the player writes
-                          their bio — same treatment grammar as step 4's
-                          locked-in reveal but smaller (4:5 portrait crop
-                          instead of step 4's 16:9 letterbox). */}
-                      <div className="relative overflow-hidden rounded-2xl">
+                      {/* Persona identity — hero portrait card. Was full-
+                          stretch with max-h-[320px] which under aspect-[4/5]
+                          made the card 256px wide × 320px tall and rendered
+                          left-aligned in the wider parent (user-flagged
+                          weird position). Now: explicit max-w-xs (320px)
+                          centered with mx-auto, no max-h — predictable 320×
+                          400 portrait that anchors below the title. */}
+                      <div className="relative overflow-hidden rounded-2xl mx-auto max-w-xs">
                         <div aria-hidden className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-skin-pink to-transparent z-10" />
-                        <div className="aspect-[4/5] bg-skin-input/30 relative overflow-hidden max-h-[320px]">
+                        <div className="aspect-[4/5] bg-skin-input/30 relative overflow-hidden">
                           <img
                             src={selectedPersona.fullImageUrl}
                             alt={selectedPersona.name}

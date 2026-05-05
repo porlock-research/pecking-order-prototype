@@ -363,24 +363,46 @@ export default function WaitingRoom() {
           </motion.div>
         </div>
 
-        {/* "You're cast as Felix" arrival moment — the activation beat the
-            wizard sets up but the lobby has been silent on. Self-recognition
-            up front; the cast grid below plus the (YOU) marker on the
-            player's own card reinforce. Falls back to "The Cast" header
+        {/* "Cast as <Felix>" arrival /overdrive moment — was a quiet
+            text-xl with a 10px eyebrow. Per user feedback ("waiting room
+            needs reality TV energy, /bolder /delight /overdrive"), bumped
+            to a clamp(1.75–2.75rem) display name with a gold accent sweep
+            that draws in from the left on first mount. The eyebrow tracks
+            wider (.28em) and goes display-black, reading as a tabloid
+            kicker instead of a body label. Falls back to "The Cast" header
             until myPersonaId hydrates from the action. */}
         {myPersonaName ? (
           <motion.div
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center mt-2 flex-shrink-0 space-y-0.5"
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="text-center mt-3 mb-1 flex-shrink-0 relative"
           >
-            <p className="text-[10px] font-display font-bold text-skin-pink uppercase tracking-[0.22em]">
-              You&apos;re cast as
+            <p className="text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.28em]">
+              Cast as
             </p>
-            <h2 className="text-xl font-display font-black text-skin-base leading-[0.95] tracking-tight">
+            <h2
+              className="font-display font-black text-skin-base leading-[0.92] tracking-tight mt-0.5 px-2 break-words"
+              style={{ fontSize: 'clamp(1.75rem, 8vw, 2.75rem)' }}
+            >
               {myPersonaName}
             </h2>
+            {/* Gold accent sweep — one-shot draw-in on mount, then static.
+                Sits below the name as a tabloid sub-rule; not banned per
+                impeccable.md (banned is `box-shadow: inset` SIDE-stripes;
+                a center-anchored gold underline rule is fine). */}
+            <motion.div
+              aria-hidden
+              initial={{ scaleX: 0, opacity: 0 }}
+              animate={{ scaleX: 1, opacity: 1 }}
+              transition={{ delay: 0.32, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+              className="mx-auto mt-2 h-[3px] w-40 max-w-[60%] origin-left"
+              style={{
+                background:
+                  'linear-gradient(90deg, transparent, var(--po-gold) 35%, var(--po-gold) 65%, transparent)',
+                boxShadow: '0 0 12px color-mix(in oklch, var(--po-gold) 40%, transparent)',
+              }}
+            />
           </motion.div>
         ) : (
           <div className="text-center mt-2 flex-shrink-0">
@@ -478,10 +500,10 @@ export default function WaitingRoom() {
                   className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed border-skin-base/40 bg-skin-glass flex items-center justify-center"
                 >
                   <div className="text-center space-y-1">
-                    <div className="text-[10px] font-display font-bold text-skin-faint uppercase tracking-[0.2em]">
+                    <div className="text-[10px] font-display font-bold text-skin-base/75 uppercase tracking-[0.2em]">
                       Open seat
                     </div>
-                    <div className="text-xs text-skin-faint/70">Waiting on someone</div>
+                    <div className="text-xs text-skin-base/55">Waiting on someone</div>
                   </div>
                 </motion.div>
               ))}
