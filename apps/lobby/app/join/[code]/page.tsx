@@ -49,13 +49,11 @@ const stepVariants = {
 
 const LEFT_EDGE_IGNORE = 30;
 
-// Per-step background blur + opacity
-const STEP_BG: Record<number, { blur: number; opacity: number }> = {
-  1: { blur: 10, opacity: 0.55 },
-  2: { blur: 2, opacity: 1 },
-  3: { blur: 12, opacity: 0.35 },
-  4: { blur: 8, opacity: 0.45 },
-};
+// STEP_BG (per-step blur/opacity for a persona full-bleed bg) was retired
+// 2026-05-04. Variant A's signature visual interest is the cast face-tile
+// grid in the body, not a grayscale-noir portrait under a scrim — see
+// docs/reports/lobby-mockups/05-variant-a-welcome-v4.html. The wizard now
+// uses the same paper + soft-red-radial bg as the welcome surface.
 
 export default function InvitePage() {
   const params = useParams();
@@ -229,47 +227,37 @@ export default function InvitePage() {
 
   const activePersona = personas[activeIndex];
 
-  // Background persona: browse-mode on step 1, locked-in persona on steps 2-4
-  const bgPersona = step === 1 ? activePersona : selectedPersona;
-  const bgConfig = STEP_BG[step] || STEP_BG[1];
-
   return (
     <BrowserSupportGate>
     <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
-      {/* Blurred full-body background — crossfades with persona, blur/opacity varies by step */}
-      <AnimatePresence mode="popLayout">
-        {bgPersona && (
-          <motion.img
-            key={bgPersona.id}
-            src={bgPersona.fullImageUrl}
-            alt=""
-            aria-hidden
-            initial={{ opacity: 0 }}
-            animate={{ opacity: bgConfig.opacity }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="absolute inset-0 w-full h-full object-cover object-top scale-110 pointer-events-none transition-[filter] duration-500"
-            // Variant-A noir treatment: photo desaturated + dimmed under the
-            // ink scrim. Per docs/reports/lobby-mockups/01-palette-directions.html
-            // the wizard's photo-bg becomes a tabloid black-and-white portrait,
-            // not a full-color blurred bleed. Type contrast becomes deterministic.
-            style={{ filter: `blur(${bgConfig.blur}px) grayscale(1) brightness(0.55)` }}
-          />
-        )}
-      </AnimatePresence>
-      {/* Page-bg overlay over the blurred + grayscaled persona photo.
-          Mockup variant A scrim is rgba(ink, 0.65); type sits on a near-
-          opaque ink wash so legibility doesn't depend on photo brightness. */}
-      <div className="absolute inset-0 bg-skin-deep/65 pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
+      {/* Variant A wizard background — paper grid (on the wrapper) plus two
+          soft red radial highlights. Per
+          docs/reports/lobby-mockups/05-variant-a-welcome-v4.html. The
+          earlier persona-as-grayscale-bg treatment from mockup 01 was
+          retired: the welcome iterations decided against a portrait under
+          a 65% ink scrim because (a) scrim opacity required so much
+          dimming the photo stopped reading, and (b) face-tile cards in
+          the body carry persona identity without competing for the
+          headline's contrast. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle at 25% 30%, rgba(215,38,56,0.06) 0%, transparent 35%),
+            radial-gradient(circle at 80% 75%, rgba(215,38,56,0.04) 0%, transparent 40%)
+          `,
+        }}
+      />
 
       {/* Content area — fills viewport above the bottom bar */}
       <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
         {/* Wizard header — centered red wordmark + invite-code subline.
             Matches docs/reports/lobby-mockups/01-palette-directions.html
             variant A. The masthead pattern (paper wordmark + tear-off
-            receipt) is the WELCOME surface signature; the wizard wants a
-            different — louder — opener since the photo-bg dominates. */}
+            receipt) is the WELCOME surface signature; the wizard runs
+            a tighter, louder opener so the persona-browser body owns
+            the visual weight. */}
         <header className="text-center flex-shrink-0 pt-1">
           <h1 className="font-display font-black text-skin-pink leading-none tracking-tight" style={{ fontSize: '28px', letterSpacing: '-0.01em' }}>
             PECKING ORDER
