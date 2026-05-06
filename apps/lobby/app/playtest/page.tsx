@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getDB, getEnv } from '@/lib/db';
 import { PersonaCarousel } from './persona-carousel';
 import { SignupForm } from './signup-form';
@@ -37,9 +38,9 @@ export default async function PlaytestPage() {
   const playtestUrl = (env.PLAYTEST_URL as string) || `${lobbyHost}/playtest`;
 
   return (
-    <div className="min-h-screen bg-skin-deep bg-grid-pattern font-body text-skin-base selection:bg-skin-pink/30 relative overflow-hidden">
+    <div className="min-h-screen bg-skin-deep bg-grid-pattern font-body text-skin-base selection:bg-[rgba(215,38,56,0.3)] relative overflow-hidden">
       {/* Ambient glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-gradient-radial from-skin-panel/60 via-skin-panel/20 to-transparent opacity-80 pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-gradient-radial from-[rgba(19,19,19,0.6)] via-[rgba(19,19,19,0.2)] to-transparent opacity-80 pointer-events-none" />
 
       {/* Hero */}
       <header className="relative pt-[max(2rem,env(safe-area-inset-top))] pb-2 px-4 text-center">
@@ -47,11 +48,30 @@ export default async function PlaytestPage() {
           PECKING ORDER
         </h1>
         <p className="text-skin-dim text-base md:text-lg font-light tracking-wide mb-4 max-w-sm mx-auto">
-          A multi-day social game for the people who watch this stuff for the strategy.
+          A multi-day social-deduction game. Sign up for the next cast.
         </p>
-        <span className="inline-block bg-skin-pink/10 rounded-full px-5 py-2 text-skin-pink text-xs font-bold uppercase tracking-[0.2em] mb-8">
+        <span className="inline-block bg-[rgba(215,38,56,0.12)] rounded-full px-5 py-2 text-skin-pink text-xs font-bold uppercase tracking-[0.2em] mb-3">
           Playtesting Now
         </span>
+        <nav
+          aria-label="About Pecking Order"
+          className="mb-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-3 text-[12px] sm:text-[13px] tracking-[0.16em] uppercase font-display font-bold"
+        >
+          <Link
+            href="/casting"
+            className="group inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-[rgba(245,243,240,0.4)] text-skin-base hover:bg-skin-base hover:text-skin-deep hover:border-skin-base transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink"
+          >
+            <span aria-hidden className="text-skin-pink motion-safe:group-hover:-translate-x-0.5 transition-transform">←</span>
+            What is this?
+          </Link>
+          <Link
+            href="/how-it-works"
+            className="group inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-[rgba(245,243,240,0.4)] text-skin-base hover:bg-skin-base hover:text-skin-deep hover:border-skin-base transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink"
+          >
+            How it works
+            <span aria-hidden className="text-skin-pink motion-safe:group-hover:translate-x-0.5 transition-transform">→</span>
+          </Link>
+        </nav>
 
         {/* Persona Carousel */}
         {personas.length > 0 && (
@@ -63,13 +83,13 @@ export default async function PlaytestPage() {
 
       {/* Form */}
       <main className="relative px-5 py-10 max-w-md mx-auto">
-        <div className="bg-skin-deep/70 border border-skin-base rounded-3xl p-7 md:p-8 shadow-card">
+        <div className="bg-[rgba(10,10,10,0.7)] border border-skin-base rounded-3xl p-7 md:p-8 shadow-card">
           <div className="text-center mb-7">
             <h2 className="font-display font-black text-2xl text-skin-base mb-1.5 uppercase tracking-tight">
-              Reserve a Seat in the Next Cast
+              Get on the next cast
             </h2>
             <p className="text-skin-dim text-sm">
-              Real cohorts. Real schemers. We&apos;ll email when your game opens.
+              We&apos;ll email when your cast starts. New cohorts open continuously.
             </p>
           </div>
           <SignupForm turnstileSiteKey={turnstileSiteKey} playtestUrl={playtestUrl} />

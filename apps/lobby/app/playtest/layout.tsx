@@ -16,12 +16,14 @@ export const viewport: Viewport = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const env = await getEnv();
-  const lobbyHost = (env.LOBBY_HOST as string) || 'https://lobby.peckingorder.ca';
-  const playtestUrl = (env.PLAYTEST_URL as string) || `${lobbyHost}/playtest`;
-  const ogImage = `${lobbyHost}/og-playtest.png`;
+  // Marketing host for canonical URL + OG. Keep a fallback to apex so local
+  // dev / preview builds without MARKETING_HOST set still emit valid metadata.
+  const host = (env.MARKETING_HOST as string) || 'https://peckingorder.ca';
+  const playtestUrl = `${host}/playtest`;
+  const ogImage = `${host}/og-playtest.png`;
 
   return {
-    metadataBase: new URL(lobbyHost),
+    metadataBase: new URL(host),
     title: FALLBACK_TITLE,
     description: FALLBACK_DESCRIPTION,
     openGraph: {

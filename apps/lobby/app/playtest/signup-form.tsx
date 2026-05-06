@@ -10,7 +10,7 @@ import { ShareButtons } from './share-buttons';
 const STORAGE_KEY = 'pecking-order-playtest';
 
 const inputClass =
-  'w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-skin-pink/50 focus:border-skin-pink/50 transition-all text-sm placeholder:text-skin-faint';
+  'w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-[rgba(215,38,56,0.5)] focus:border-[rgba(215,38,56,0.5)] transition-all text-sm placeholder:text-skin-faint';
 
 export function SignupForm({
   turnstileSiteKey,
@@ -48,6 +48,10 @@ export function SignupForm({
   const [optionalIsLoading, setOptionalIsLoading] = useState(false);
   const [optionalSaved, setOptionalSaved] = useState(false);
   const [optionalError, setOptionalError] = useState<string | null>(null);
+  // Optional fields hidden behind a tap so the success state stays light by
+  // default — users who actually want better reminders can opt in. Lifts
+  // perceived completion + reduces post-signup form abandonment.
+  const [showOptional, setShowOptional] = useState(false);
 
   // Returning-user check + ?ref= param read
   useEffect(() => {
@@ -141,7 +145,7 @@ export function SignupForm({
     return (
       <div className="space-y-6">
         <div className="text-center space-y-3">
-          <div className="w-16 h-16 bg-skin-green/15 rounded-full flex items-center justify-center mx-auto">
+          <div className="w-16 h-16 bg-[rgba(16,185,129,0.15)] rounded-full flex items-center justify-center mx-auto">
             <svg
               viewBox="0 0 24 24"
               width="32"
@@ -162,7 +166,7 @@ export function SignupForm({
         </div>
 
         {referralCode && (
-          <div className="text-center py-3 bg-skin-deep/40 rounded-xl border border-skin-pink/15">
+          <div className="text-center py-3 bg-[rgba(10,10,10,0.4)] rounded-xl border border-[rgba(215,38,56,0.15)]">
             <p className="text-[10px] font-bold text-skin-dim uppercase tracking-[0.2em] mb-1.5 font-display">
               Your Referral Code
             </p>
@@ -172,7 +176,7 @@ export function SignupForm({
           </div>
         )}
 
-        <div className="pt-2 border-t border-skin-base/20">
+        <div className="pt-2 border-t border-[rgba(245,243,240,0.2)]">
           <ShareButtons
             emphasis
             referralCode={referralCode || undefined}
@@ -180,15 +184,28 @@ export function SignupForm({
           />
         </div>
 
-        {/* Optional reminders form — only when this session just signed up (we have the email + code in memory) */}
-        {submittedEmail && !optionalSaved && (
-          <div className="pt-6 border-t border-skin-base/20 space-y-4">
+        {/* Tap-to-reveal — keeps success state light by default */}
+        {submittedEmail && !optionalSaved && !showOptional && (
+          <div className="pt-6 border-t border-[rgba(245,243,240,0.2)] text-center">
+            <button
+              type="button"
+              onClick={() => setShowOptional(true)}
+              className="inline-flex items-center gap-2 py-2 px-4 text-[12px] font-bold text-skin-dim hover:text-skin-pink uppercase tracking-widest font-display transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink rounded-md"
+            >
+              + Add reminders <span className="text-skin-faint normal-case tracking-normal font-normal">(optional)</span>
+            </button>
+          </div>
+        )}
+
+        {/* Optional reminders form — appears after tap-to-reveal */}
+        {submittedEmail && !optionalSaved && showOptional && (
+          <div className="pt-6 border-t border-[rgba(245,243,240,0.2)] space-y-4">
             <div className="text-center space-y-1.5">
               <p className="text-[11px] font-bold text-skin-dim uppercase tracking-widest font-display">
                 One more thing — optional
               </p>
               <p className="text-sm text-skin-faint">
-                Help us reach you when your cohort starts. All optional, all skippable.
+                Help us reach you when your cast starts. All optional, all skippable.
               </p>
             </div>
 
@@ -266,7 +283,7 @@ export function SignupForm({
               )}
 
               {optionalError && (
-                <div className="p-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm">
+                <div className="p-3 rounded-lg bg-[rgba(215,38,56,0.1)] border border-[rgba(215,38,56,0.3)] text-skin-pink text-sm">
                   {optionalError}
                 </div>
               )}
@@ -279,7 +296,7 @@ export function SignupForm({
                     ? 'bg-skin-input text-skin-faint cursor-wait'
                     : !hasOptionalInput
                       ? 'bg-skin-input text-skin-faint cursor-not-allowed'
-                      : 'bg-skin-pink/85 text-skin-base hover:brightness-110 active:scale-[0.99]'
+                      : 'bg-[rgba(215,38,56,0.85)] text-skin-base hover:brightness-110 active:scale-[0.99]'
                 }`}
               >
                 {optionalIsLoading ? 'Saving…' : 'Save'}
@@ -289,7 +306,7 @@ export function SignupForm({
         )}
 
         {optionalSaved && (
-          <div className="pt-6 border-t border-skin-base/20 text-center">
+          <div className="pt-6 border-t border-[rgba(245,243,240,0.2)] text-center">
             <p className="text-sm text-skin-dim">Thanks — saved.</p>
           </div>
         )}
@@ -323,7 +340,7 @@ export function SignupForm({
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm">
+        <div className="p-3 rounded-lg bg-[rgba(215,38,56,0.1)] border border-[rgba(215,38,56,0.3)] text-skin-pink text-sm">
           {error}
         </div>
       )}
@@ -356,7 +373,7 @@ export function SignupForm({
             <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:150ms]" />
           </>
         ) : (
-          'Reserve My Seat'
+          'Sign up to play'
         )}
       </button>
 
