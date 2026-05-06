@@ -6,10 +6,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { getGameSessionStatus, startGame, sendEmailInvite, getGameInvites, sendGameEntryPush } from '../../../actions';
 import type { GameSlot, SentInvite } from '../../../actions';
 
-function personaFullUrl(id: string): string {
-  return `/api/persona-image/${id}/full.png`;
-}
-
 function personaMediumUrl(id: string): string {
   return `/api/persona-image/${id}/medium.png`;
 }
@@ -24,8 +20,11 @@ export default function WaitingRoom() {
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [clientHost, setClientHost] = useState('http://localhost:5173');
-  const [myPersonaId, setMyPersonaId] = useState<string | null>(null);
   const [mode, setMode] = useState<string | null>(null);
+  // Track the calling user's persona so we can render "you're cast" on
+  // their own card + use the persona name in the Enter CTA. Derived
+  // server-side because we have no session.userId on the client.
+  const [myPersonaId, setMyPersonaId] = useState<string | null>(null);
 
   // Invite by email state
   const [inviteEmail, setInviteEmail] = useState('');
@@ -216,30 +215,31 @@ export default function WaitingRoom() {
   const myToken = tokens ? Object.values(tokens)[0] : null;
   const clientEntryUrl = myToken ? `${clientHost}/game/${code}?_t=${myToken}` : null;
 
-  // Use first filled slot's persona as background fallback if myPersonaId not available
-  const bgPersonaId = myPersonaId || filledSlots[0]?.personaId;
+  // The user's own slot — used for the "(YOU)" self-marker on their card
+  // and to source persona name for the Enter CTA. Match by personaId
+  // because slotIndex assignment isn't stable across CONFIGURABLE_CYCLE
+  // late-join paths until tokens land.
+  const mySlot = myPersonaId ? slots.find((s) => s.personaId === myPersonaId) : null;
+  const myPersonaName = mySlot?.personaName ?? null;
 
   return (
     <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
-      {/* Blurred persona background */}
-      <AnimatePresence mode="popLayout">
-        {bgPersonaId && (
-          <motion.img
-            key={bgPersonaId}
-            src={personaFullUrl(bgPersonaId)}
-            alt=""
-            aria-hidden
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.8 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="absolute inset-0 w-full h-full object-cover object-top scale-110 pointer-events-none"
-            style={{ filter: 'blur(2px)' }}
-          />
-        )}
-      </AnimatePresence>
-      <div className="absolute inset-0 bg-skin-deep/60 pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
+      {/* Variant A waiting room background — paper grid (on the wrapper)
+          plus two soft red radial highlights, matching the wizard and
+          docs/reports/lobby-mockups/05-variant-a-welcome-v4.html. The
+          persona-as-blurred-bg treatment was retired alongside the
+          wizard's; the cast portrait grid below is the visual anchor
+          and shouldn't compete with a portrait scrim above it. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle at 25% 30%, rgba(215,38,56,0.06) 0%, transparent 35%),
+            radial-gradient(circle at 80% 75%, rgba(215,38,56,0.04) 0%, transparent 40%)
+          `,
+        }}
+      />
 
       {/* Content */}
       <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
@@ -261,7 +261,12 @@ export default function WaitingRoom() {
             <div className="text-[10px] font-display font-bold text-skin-dim uppercase tracking-widest text-left">
               Invite link
             </div>
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-skin-input/60">
+            {/* Solid bg-skin-input (#1d1d1d) — was bg-skin-input/60, which
+                is a 60% wash that on the page-bg ink barely lifts and
+                made the URL hard to read. Per variant A brief: surfaces
+                that hold typography land at solid input ink, not at a
+                transparent fade of the page color. */}
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-skin-input border border-skin-base/15">
               <code className="flex-1 text-xs font-mono text-skin-base truncate text-left">
                 {shareLink}
               </code>
@@ -331,7 +336,7 @@ export default function WaitingRoom() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.3 }}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-skin-deep/60 text-xs font-display font-bold uppercase tracking-widest border
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-skin-glass-elevated text-xs font-display font-bold uppercase tracking-widest border
               ${
                 isStarted
                   ? 'text-skin-green border-skin-green'
@@ -352,16 +357,60 @@ export default function WaitingRoom() {
                 ? 'Ready to Launch'
                 : isLoading
                   ? 'Cueing the room…'
-                  : `Waiting for Players (${filledSlots.length}/${totalSlots})`}
+                  : isConfigurableCycle || totalSlots === 0
+                    ? `Casting · ${filledSlots.length} ${filledSlots.length === 1 ? 'in' : 'joined'}`
+                    : `Casting · ${filledSlots.length} of ${totalSlots} in`}
           </motion.div>
         </div>
 
-        {/* Cast title */}
-        <div className="text-center mt-2 flex-shrink-0">
-          <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
-            The Cast
-          </h2>
-        </div>
+        {/* "Cast as <Felix>" arrival /overdrive moment — was a quiet
+            text-xl with a 10px eyebrow. Per user feedback ("waiting room
+            needs reality TV energy, /bolder /delight /overdrive"), bumped
+            to a clamp(1.75–2.75rem) display name with a gold accent sweep
+            that draws in from the left on first mount. The eyebrow tracks
+            wider (.28em) and goes display-black, reading as a tabloid
+            kicker instead of a body label. Falls back to "The Cast" header
+            until myPersonaId hydrates from the action. */}
+        {myPersonaName ? (
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="text-center mt-3 mb-1 flex-shrink-0 relative"
+          >
+            <p className="text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.28em]">
+              Cast as
+            </p>
+            <h2
+              className="font-display font-black text-skin-base leading-[0.92] tracking-tight mt-0.5 px-2 break-words"
+              style={{ fontSize: 'clamp(1.75rem, 8vw, 2.75rem)' }}
+            >
+              {myPersonaName}
+            </h2>
+            {/* Gold accent sweep — one-shot draw-in on mount, then static.
+                Sits below the name as a tabloid sub-rule; not banned per
+                impeccable.md (banned is `box-shadow: inset` SIDE-stripes;
+                a center-anchored gold underline rule is fine). */}
+            <motion.div
+              aria-hidden
+              initial={{ scaleX: 0, opacity: 0 }}
+              animate={{ scaleX: 1, opacity: 1 }}
+              transition={{ delay: 0.32, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+              className="mx-auto mt-2 h-[3px] w-40 max-w-[60%] origin-left"
+              style={{
+                background:
+                  'linear-gradient(90deg, transparent, var(--po-gold) 35%, var(--po-gold) 65%, transparent)',
+                boxShadow: '0 0 12px color-mix(in oklch, var(--po-gold) 40%, transparent)',
+              }}
+            />
+          </motion.div>
+        ) : (
+          <div className="text-center mt-2 flex-shrink-0">
+            <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
+              The Cast
+            </h2>
+          </div>
+        )}
 
         {/* Cast grid */}
         <div className="flex-1 min-h-0 overflow-y-auto mt-2 pb-2">
@@ -381,16 +430,20 @@ export default function WaitingRoom() {
             >
               {/* Filled slots — cast portrait cards. Only the most-recent join
                   (last in the list) gets the breathing glow, so the eye lands
-                  on what just happened instead of every card competing. */}
+                  on what just happened instead of every card competing.
+                  The user's own card (matched by personaId) gets a gold
+                  hairline ring + a "YOU" stamp so self-recognition is
+                  instant, not a beat-of-effort to find themselves. */}
               {filledSlots.map((slot, idx) => {
                 const isMostRecent = idx === filledSlots.length - 1;
+                const isMine = !!myPersonaId && slot.personaId === myPersonaId;
                 return (
                   <motion.div
                     key={slot.slotIndex}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.08, duration: 0.35 }}
-                    className={`aspect-[3/4] relative rounded-2xl overflow-hidden ${isMostRecent ? 'glow-breathe' : ''}`}
+                    className={`aspect-[3/4] relative rounded-2xl overflow-hidden ${isMostRecent ? 'glow-breathe' : ''} ${isMine ? 'ring-2 ring-skin-gold' : ''}`}
                   >
                     {slot.personaId ? (
                       <img
@@ -410,6 +463,18 @@ export default function WaitingRoom() {
                     )}
                     {/* Gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/40 via-30% to-transparent pointer-events-none" />
+                    {/* "YOU" press-stamp — only on the user's own card. Gold
+                        + slight skew to read as a tabloid stamp, mirrors the
+                        "Locked In" stamp pattern on the wizard's step 4. */}
+                    {isMine && (
+                      <div
+                        aria-hidden
+                        className="absolute top-2 right-2 px-2 py-0.5 bg-skin-gold text-skin-deep font-display font-black text-[10px] uppercase tracking-[0.2em] rounded-sm pointer-events-none"
+                        style={{ transform: 'rotate(3deg)' }}
+                      >
+                        You
+                      </div>
+                    )}
                     {/* Name + stereotype. Stereotype in red (was gold) per
                         variant A single-accent rule. text-glow dropped from
                         name (gold-tinted shadow leftover from old palette). */}
@@ -432,13 +497,13 @@ export default function WaitingRoom() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: filledSlots.length * 0.08 + 0.1, duration: 0.3 }}
-                  className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed border-skin-base/40 bg-skin-deep/40 flex items-center justify-center"
+                  className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed border-skin-base/40 bg-skin-glass flex items-center justify-center"
                 >
                   <div className="text-center space-y-1">
-                    <div className="text-[10px] font-display font-bold text-skin-faint uppercase tracking-[0.2em]">
+                    <div className="text-[10px] font-display font-bold text-skin-base/75 uppercase tracking-[0.2em]">
                       Open seat
                     </div>
-                    <div className="text-xs text-skin-faint/70">Waiting on someone</div>
+                    <div className="text-xs text-skin-base/55">Waiting on someone</div>
                   </div>
                 </motion.div>
               ))}
@@ -452,7 +517,7 @@ export default function WaitingRoom() {
               <button
                 onClick={() => setShowInviteSection(!showInviteSection)}
                 aria-expanded={showInviteSection}
-                className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-skin-base/50 bg-skin-deep/50 text-sm font-display font-bold text-skin-dim hover:text-skin-base hover:border-skin-gold/30 transition-all"
+                className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-skin-base/30 bg-skin-glass-elevated text-sm font-display font-bold text-skin-dim hover:text-skin-base hover:border-skin-gold/30 transition-all"
               >
                 <span>Invite by Email</span>
                 <svg
@@ -521,7 +586,7 @@ export default function WaitingRoom() {
                           {sentInvites.map((inv) => (
                             <div
                               key={inv.email + inv.createdAt}
-                              className="flex items-center justify-between py-1.5 px-3 rounded-lg text-xs bg-skin-deep/40"
+                              className="flex items-center justify-between py-1.5 px-3 rounded-lg text-xs bg-skin-glass"
                             >
                               <span className="text-skin-dim truncate">{inv.email}</span>
                               <span className={`text-[10px] font-display font-bold uppercase tracking-wider ${inv.used ? 'text-skin-green' : 'text-skin-faint'}`}>
@@ -673,7 +738,7 @@ export default function WaitingRoom() {
                           color: 'color-mix(in oklch, var(--po-gold) 62%, transparent)',
                         }}
                       >
-                        as {myPlayerId?.toUpperCase()}
+                        as {myPersonaName ?? myPlayerId?.toUpperCase() ?? ''}
                       </span>
                     </span>
 

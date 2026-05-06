@@ -49,13 +49,11 @@ const stepVariants = {
 
 const LEFT_EDGE_IGNORE = 30;
 
-// Per-step background blur + opacity
-const STEP_BG: Record<number, { blur: number; opacity: number }> = {
-  1: { blur: 10, opacity: 0.55 },
-  2: { blur: 2, opacity: 1 },
-  3: { blur: 12, opacity: 0.35 },
-  4: { blur: 8, opacity: 0.45 },
-};
+// STEP_BG (per-step blur/opacity for a persona full-bleed bg) was retired
+// 2026-05-04. Variant A's signature visual interest is the cast face-tile
+// grid in the body, not a grayscale-noir portrait under a scrim — see
+// docs/reports/lobby-mockups/05-variant-a-welcome-v4.html. The wizard now
+// uses the same paper + soft-red-radial bg as the welcome surface.
 
 export default function InvitePage() {
   const params = useParams();
@@ -229,47 +227,37 @@ export default function InvitePage() {
 
   const activePersona = personas[activeIndex];
 
-  // Background persona: browse-mode on step 1, locked-in persona on steps 2-4
-  const bgPersona = step === 1 ? activePersona : selectedPersona;
-  const bgConfig = STEP_BG[step] || STEP_BG[1];
-
   return (
     <BrowserSupportGate>
     <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
-      {/* Blurred full-body background — crossfades with persona, blur/opacity varies by step */}
-      <AnimatePresence mode="popLayout">
-        {bgPersona && (
-          <motion.img
-            key={bgPersona.id}
-            src={bgPersona.fullImageUrl}
-            alt=""
-            aria-hidden
-            initial={{ opacity: 0 }}
-            animate={{ opacity: bgConfig.opacity }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="absolute inset-0 w-full h-full object-cover object-top scale-110 pointer-events-none transition-[filter] duration-500"
-            // Variant-A noir treatment: photo desaturated + dimmed under the
-            // ink scrim. Per docs/reports/lobby-mockups/01-palette-directions.html
-            // the wizard's photo-bg becomes a tabloid black-and-white portrait,
-            // not a full-color blurred bleed. Type contrast becomes deterministic.
-            style={{ filter: `blur(${bgConfig.blur}px) grayscale(1) brightness(0.55)` }}
-          />
-        )}
-      </AnimatePresence>
-      {/* Page-bg overlay over the blurred + grayscaled persona photo.
-          Mockup variant A scrim is rgba(ink, 0.65); type sits on a near-
-          opaque ink wash so legibility doesn't depend on photo brightness. */}
-      <div className="absolute inset-0 bg-skin-deep/65 pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
+      {/* Variant A wizard background — paper grid (on the wrapper) plus two
+          soft red radial highlights. Per
+          docs/reports/lobby-mockups/05-variant-a-welcome-v4.html. The
+          earlier persona-as-grayscale-bg treatment from mockup 01 was
+          retired: the welcome iterations decided against a portrait under
+          a 65% ink scrim because (a) scrim opacity required so much
+          dimming the photo stopped reading, and (b) face-tile cards in
+          the body carry persona identity without competing for the
+          headline's contrast. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle at 25% 30%, rgba(215,38,56,0.06) 0%, transparent 35%),
+            radial-gradient(circle at 80% 75%, rgba(215,38,56,0.04) 0%, transparent 40%)
+          `,
+        }}
+      />
 
       {/* Content area — fills viewport above the bottom bar */}
       <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
         {/* Wizard header — centered red wordmark + invite-code subline.
             Matches docs/reports/lobby-mockups/01-palette-directions.html
             variant A. The masthead pattern (paper wordmark + tear-off
-            receipt) is the WELCOME surface signature; the wizard wants a
-            different — louder — opener since the photo-bg dominates. */}
+            receipt) is the WELCOME surface signature; the wizard runs
+            a tighter, louder opener so the persona-browser body owns
+            the visual weight. */}
         <header className="text-center flex-shrink-0 pt-1">
           <h1 className="font-display font-black text-skin-pink leading-none tracking-tight" style={{ fontSize: '28px', letterSpacing: '-0.01em' }}>
             PECKING ORDER
@@ -307,14 +295,21 @@ export default function InvitePage() {
                     className="w-11 h-11 flex items-center justify-center"
                     aria-current={step === s ? 'step' : undefined}
                   >
-                    {/* Inactive pip uses a paper-rim border, not a filled bg \u2014
-                        bg-skin-input (#1d1d1d) on bg-skin-deep (#0a0a0a) was only
-                        ~7 points lighter and disappeared against ink. The 1px
-                        paper-at-30% rim makes the disc visible regardless of
-                        the photo-bg-bleed brightness behind it. */}
+                    {/* Inactive pip \u2014 needs MEANINGFUL lift, not subtle.
+                        Earlier attempts:
+                          - bg-skin-input (#1d1d1d): ~7 points lighter than
+                            page, too subtle.
+                          - bg-skin-deep/60: transparent wash, no lift.
+                          - bg-skin-glass-elevated (rgba(paper,0.14)): paper
+                            tone, ~#2c2c2c, but on the bg-grid-pattern page
+                            user still reported "dark on dark, not readable."
+                        Current: bg-skin-base/[0.18] solid 18% paper lift
+                        (~#3b3b3a) with a /40 paper border + full text-skin-
+                        base \u2014 readable at distance, no longer relying on
+                        background-blend luck against the grid. */}
                     <div
                       className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-display font-bold transition-all duration-300
-                        ${step >= s ? 'bg-skin-pink text-skin-base' : 'border border-skin-base/30 text-skin-base/80 bg-skin-deep/60'}`}
+                        ${step >= s ? 'bg-skin-pink text-skin-base' : 'bg-skin-base/[0.18] border border-skin-base/40 text-skin-base'}`}
                     >
                       {step > s ? '\u2713' : s}
                     </div>
@@ -331,6 +326,16 @@ export default function InvitePage() {
                 </div>
               ))}
             </nav>
+
+            {/* Time signal — sets expectation. CRO research shows even one
+                line of "takes about a minute" reduces wizard abandonment.
+                Skip on step 4 (already locked in, signal is no longer
+                useful). */}
+            {step < 4 && (
+              <p className="text-center text-[11px] text-skin-base/65 leading-snug -mt-0.5">
+                About a minute · {4 - step} {4 - step === 1 ? 'step' : 'steps'} left
+              </p>
+            )}
 
             {/* Step content — slides left/right on step change */}
             <div className="flex-1 min-h-0 relative overflow-hidden">
@@ -351,7 +356,7 @@ export default function InvitePage() {
                       <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
                         Choose Your Persona
                       </h2>
-                      <p className="text-[11px] text-skin-dim tracking-wide">
+                      <p className="text-xs text-skin-base/75 tracking-wide">
                         Swipe to browse. Tap one to lock in.
                       </p>
                     </div>
@@ -532,32 +537,49 @@ export default function InvitePage() {
                     transition={SPRING_SWIPE}
                     className="h-full flex flex-col overflow-y-auto"
                   >
-                    <div className="my-auto space-y-4 py-2">
+                    {/* Was my-auto: vertically-centered the content, leaving
+                        a huge gap between the title and the persona card on
+                        tall viewports. Drop the my-auto, let the layout
+                        flow from the top so title → portrait → bio reads
+                        as a tight vertical sequence. */}
+                    <div className="space-y-4 pt-3 pb-2">
                       <div className="text-center flex-shrink-0">
                         <h2 className="text-base font-display font-black text-skin-pink uppercase tracking-widest">
                           Write Your Catfish Bio
                         </h2>
-                        <p className="text-xs text-skin-dim mt-1">First impression. Make it stick.</p>
+                        <p className="text-xs text-skin-base/75 mt-1">First impression. Make it stick.</p>
                       </div>
 
-                      {/* Persona identity — inline headshot + name + stereotype.
-                          Was text-only: photo behind was blurred so the player
-                          had no visible confirmation of who they picked while
-                          writing their bio. Inline 56×56 headshot anchors it. */}
-                      <div className="flex items-center justify-center gap-3">
-                        <img
-                          src={personaHeadshotUrl(selectedPersona.id)}
-                          alt=""
-                          aria-hidden="true"
-                          className="w-14 h-14 rounded-full object-cover object-top border-2 border-skin-pink/60 flex-shrink-0"
-                          onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0'; }}
-                        />
-                        <div className="text-left min-w-0 flex-1">
-                          <div className="text-xl font-display font-black text-skin-base leading-tight truncate">
-                            {selectedPersona.name}
-                          </div>
-                          <div className="text-[11px] font-display font-bold text-skin-pink uppercase tracking-[0.16em] truncate">
-                            {selectedPersona.stereotype}
+                      {/* Persona identity — hero portrait card. Was full-
+                          stretch with max-h-[320px] which under aspect-[4/5]
+                          made the card 256px wide × 320px tall and rendered
+                          left-aligned in the wider parent (user-flagged
+                          weird position). Now: explicit max-w-xs (320px)
+                          centered with mx-auto, no max-h — predictable 320×
+                          400 portrait that anchors below the title. */}
+                      <div className="relative overflow-hidden rounded-2xl mx-auto max-w-xs">
+                        <div aria-hidden className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-skin-pink to-transparent z-10" />
+                        <div className="aspect-[4/5] bg-skin-input/30 relative overflow-hidden">
+                          <img
+                            src={selectedPersona.fullImageUrl}
+                            alt={selectedPersona.name}
+                            className="w-full h-full object-cover object-top"
+                            onError={(e) => {
+                              const el = e.target as HTMLImageElement;
+                              if (!el.dataset.fallback) {
+                                el.dataset.fallback = '1';
+                                el.src = selectedPersona.imageUrl;
+                              }
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-skin-deep/95 via-skin-deep/40 via-30% to-transparent pointer-events-none" />
+                          <div className="absolute bottom-0 left-0 right-0 p-4">
+                            <div className="text-2xl font-display font-black text-skin-base leading-[0.95] tracking-tight">
+                              {selectedPersona.name}
+                            </div>
+                            <div className="text-[11px] font-display font-bold text-skin-pink uppercase tracking-[0.18em] mt-1">
+                              {selectedPersona.stereotype}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -816,7 +838,7 @@ export default function InvitePage() {
                             : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
                         }`}
                     >
-                      {selectedPersona ? 'Lock In' : 'Select a Character'}
+                      {selectedPersona ? `I'm ${selectedPersona.name.split(' ')[0]}` : 'Select a Character'}
                     </button>
                   </div>
                 </motion.div>
