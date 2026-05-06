@@ -19,9 +19,11 @@ export async function generateMetadata(): Promise<Metadata> {
   // canonical peckingorder.ca/casting URLs, not the lobby.* subdomain.
   const host = (env.MARKETING_HOST as string) || 'https://peckingorder.ca';
   const url = `${host}/casting`;
-  // Reuse the existing 1200x630 share card during initial ship.
-  // A dedicated /og-casting.png is a polish-pass follow-up.
-  const ogImage = `${host}/og-playtest.png`;
+  // Dedicated 1200x630 share card. Captured from /og-mockup with persona-37
+  // (Barry Bumbling / The Accidental Contestant) — the confused-contestant
+  // read pairs with the "LIAR?" tabloid scrawl + signals the game's
+  // light-hearted reality-TV tone. Source: apps/lobby/app/og-mockup/page.tsx
+  const ogImage = `${host}/og-casting.png`;
 
   return {
     metadataBase: new URL(host),
@@ -52,7 +54,7 @@ export async function generateMetadata(): Promise<Metadata> {
           secureUrl: ogImage,
           width: 1200,
           height: 630,
-          alt: 'Pecking Order — multi-day social-deduction game cast reveal',
+          alt: 'Pecking Order — you’re invited. A game of catfishing, betrayal, and survival.',
           type: 'image/png',
         },
       ],
