@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-skin-deep font-body text-skin-base">
       <main className="max-w-2xl mx-auto px-6 py-12 md:py-20 space-y-10">
-        <div className="border border-skin-gold/40 bg-skin-gold/10 rounded-xl px-5 py-4">
+        <div className="border border-[rgba(247,197,46,0.4)] bg-[rgba(247,197,46,0.1)] rounded-xl px-5 py-4">
           <p className="text-[10px] uppercase tracking-widest font-bold text-skin-gold mb-1.5 font-display">
             Draft — Lawyer Review Required
           </p>
@@ -142,7 +142,7 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <footer className="pt-8 border-t border-skin-base/20 flex flex-wrap gap-x-6 gap-y-3 items-center justify-between">
+        <footer className="pt-8 border-t border-[rgba(245,243,240,0.2)] flex flex-wrap gap-x-6 gap-y-3 items-center justify-between">
           <Link
             href="/playtest"
             className="text-[11px] uppercase tracking-widest text-skin-faint hover:text-skin-dim font-display transition-colors"

@@ -124,7 +124,7 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
           <h1 className="font-display text-2xl font-black text-skin-dim">
             This game already started
           </h1>
-          <p className="text-sm text-skin-dim/80">
+          <p className="text-sm text-[rgba(168,163,156,0.8)]">
             The host kicked off before you tapped in. Ask your friends to start a new game and
             share the link before they begin.
           </p>

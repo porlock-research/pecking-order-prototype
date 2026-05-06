@@ -139,7 +139,7 @@ export function BrowserSupportGate({ children }: Props) {
           </div>
 
           {copy.details && copy.details.length > 0 && (
-            <ol className="text-xs text-skin-dim/80 bg-skin-deep/50 border border-white/10 rounded-lg px-4 py-3 space-y-1.5 text-left list-decimal list-inside">
+            <ol className="text-xs text-[rgba(168,163,156,0.8)] bg-[rgba(10,10,10,0.5)] border border-white/10 rounded-lg px-4 py-3 space-y-1.5 text-left list-decimal list-inside">
               {copy.details.map((step, i) => (
                 <li key={i}>{step}</li>
               ))}
@@ -149,13 +149,13 @@ export function BrowserSupportGate({ children }: Props) {
           <div className="flex flex-col items-center gap-3">
             <button
               onClick={handleCopyLink}
-              className="w-full max-w-xs px-6 py-3.5 rounded-xl bg-skin-pink text-white font-bold text-sm uppercase tracking-wider shadow-lg shadow-skin-pink/20 active:scale-[0.97] transition-transform"
+              className="w-full max-w-xs px-6 py-3.5 rounded-xl bg-skin-pink text-white font-bold text-sm uppercase tracking-wider shadow-lg shadow-[rgba(215,38,56,0.2)] active:scale-[0.97] transition-transform"
             >
               {copied ? 'Link copied' : copy.primary}
             </button>
             <button
               onClick={() => setOverride(true)}
-              className="text-xs text-skin-dim/60 hover:text-skin-dim transition-colors underline underline-offset-2"
+              className="text-xs text-[rgba(168,163,156,0.6)] hover:text-skin-dim transition-colors underline underline-offset-2"
             >
               Continue anyway (you may miss notifications)
             </button>

@@ -310,7 +310,7 @@ export default function WaitingRoom() {
   const myPersonaName = mySlot?.personaName ?? null;
 
   return (
-    <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
+    <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-[rgba(247,197,46,0.3)] overflow-hidden">
       {/* Variant A waiting room background — paper grid (on the wrapper)
           plus two soft red radial highlights, matching the wizard and
           docs/reports/lobby-mockups/05-variant-a-welcome-v4.html. The
@@ -353,12 +353,12 @@ export default function WaitingRoom() {
             <div className="text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.22em] text-left">
               Invite link
             </div>
-            {/* Solid bg-skin-input (#1d1d1d) — was bg-skin-input/60, which
+            {/* Solid bg-skin-input (#1d1d1d) — was bg-[rgba(29,29,29,0.6)], which
                 is a 60% wash that on the page-bg ink barely lifts and
                 made the URL hard to read. Per variant A brief: surfaces
                 that hold typography land at solid input ink, not at a
                 transparent fade of the page color. */}
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-skin-input border border-skin-base/15">
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-skin-input border border-[rgba(245,243,240,0.15)]">
               <code className="flex-1 text-xs font-mono text-skin-base truncate text-left">
                 {shareLink}
               </code>
@@ -367,8 +367,8 @@ export default function WaitingRoom() {
                 aria-label={copied ? 'Invite link copied' : 'Copy invite link'}
                 className={`min-h-[36px] text-xs font-display font-bold px-3 py-2 rounded border transition-all whitespace-nowrap ${
                   copied
-                    ? 'text-skin-pink border-skin-pink/60'
-                    : 'text-skin-base border-skin-base/30 hover:border-skin-base/60'
+                    ? 'text-skin-pink border-[rgba(215,38,56,0.6)]'
+                    : 'text-skin-base border-[rgba(245,243,240,0.3)] hover:border-[rgba(245,243,240,0.6)]'
                 }`}
               >
                 {copied ? 'Copied!' : 'Copy'}
@@ -526,7 +526,7 @@ export default function WaitingRoom() {
             /* Skeleton grid */
             <div className="grid grid-cols-2 gap-3">
               {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="aspect-[3/4] rounded-2xl bg-skin-input/20 animate-pulse" />
+                <div key={i} className="aspect-[3/4] rounded-2xl bg-[rgba(29,29,29,0.2)] animate-pulse" />
               ))}
             </div>
           ) : (
@@ -604,7 +604,7 @@ export default function WaitingRoom() {
                       <div className="absolute inset-0 bg-skin-input" />
                     )}
                     {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/40 via-30% to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-[rgba(10,10,10,0.4)] via-30% to-transparent pointer-events-none" />
                     {/* "YOU" press-stamp — only on the user's own card. Gold
                         + slight skew to read as a tabloid stamp, mirrors the
                         "Locked In" stamp pattern on the wizard's step 4.
@@ -661,7 +661,7 @@ export default function WaitingRoom() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: filledSlots.length * 0.08 + 0.1, duration: 0.3 }}
-                  className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed border-skin-base/40 bg-skin-glass flex items-center justify-center"
+                  className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed border-[rgba(245,243,240,0.4)] bg-skin-glass flex items-center justify-center"
                 >
                   {/* Empty-seat eyebrow promoted to red display-black 11px,
                       tracking 0.22em — kicker grammar instead of muted UI
@@ -673,7 +673,7 @@ export default function WaitingRoom() {
                     <div className="text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.22em]">
                       Open seat
                     </div>
-                    <div className="text-xs text-skin-base/60">Waiting on someone</div>
+                    <div className="text-xs text-[rgba(245,243,240,0.6)]">Waiting on someone</div>
                   </div>
                 </motion.div>
               ))}
@@ -687,7 +687,7 @@ export default function WaitingRoom() {
               <button
                 onClick={() => setShowInviteSection(!showInviteSection)}
                 aria-expanded={showInviteSection}
-                className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-skin-base/30 bg-skin-glass-elevated text-sm font-display font-bold text-skin-dim hover:text-skin-base hover:border-skin-gold/30 transition-all"
+                className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-[rgba(245,243,240,0.3)] bg-skin-glass-elevated text-sm font-display font-bold text-skin-dim hover:text-skin-base hover:border-[rgba(247,197,46,0.3)] transition-all"
               >
                 <span>Invite by Email</span>
                 <svg
@@ -721,7 +721,7 @@ export default function WaitingRoom() {
                           placeholder="player@example.com"
                           aria-label="Player email"
                           required
-                          className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 placeholder:text-skin-faint"
+                          className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] placeholder:text-skin-faint"
                         />
                         <button
                           type="submit"
@@ -737,13 +737,13 @@ export default function WaitingRoom() {
                       </form>
 
                       {inviteStatus && (
-                        <div role="status" className="p-2.5 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs text-center">
+                        <div role="status" className="p-2.5 rounded-lg bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.3)] text-skin-green text-xs text-center">
                           {inviteStatus}
                         </div>
                       )}
 
                       {inviteError && (
-                        <div role="alert" className="p-2.5 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-xs text-center">
+                        <div role="alert" className="p-2.5 rounded-lg bg-[rgba(215,38,56,0.1)] border border-[rgba(215,38,56,0.3)] text-skin-pink text-xs text-center">
                           {inviteError}
                         </div>
                       )}
@@ -776,10 +776,10 @@ export default function WaitingRoom() {
       </div>
 
       {/* Bottom action bar */}
-      <div className="flex-shrink-0 relative z-20 bg-gradient-to-b from-skin-deep/0 to-skin-deep pt-3 px-4" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+      <div className="flex-shrink-0 relative z-20 bg-gradient-to-b from-[rgba(10,10,10,0)] to-skin-deep pt-3 px-4" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
         <div className="max-w-lg mx-auto">
           {error && (
-            <div role="alert" className="p-3 mb-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm text-center">
+            <div role="alert" className="p-3 mb-3 rounded-lg bg-[rgba(215,38,56,0.1)] border border-[rgba(215,38,56,0.3)] text-skin-pink text-sm text-center">
               {error}
             </div>
           )}
@@ -839,7 +839,7 @@ export default function WaitingRoom() {
                 className="space-y-3"
               >
                 {pushSent && (
-                  <div role="status" className="p-3 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs text-center">
+                  <div role="status" className="p-3 rounded-lg bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.3)] text-skin-green text-xs text-center">
                     We sent a notification to your app. Tap it to enter!
                   </div>
                 )}

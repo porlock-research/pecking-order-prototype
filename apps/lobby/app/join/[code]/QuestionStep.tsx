@@ -73,12 +73,12 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
         <p className="text-xs text-skin-dim">
           Answer as <span className="text-skin-pink font-bold">{personaName}</span>
         </p>
-        <p className="text-[11px] text-skin-base/70 leading-snug max-w-xs mx-auto">
+        <p className="text-[11px] text-[rgba(245,243,240,0.7)] leading-snug max-w-xs mx-auto">
           One answer goes public when you arrive. The other two stay sealed until Day 1.
         </p>
         <button
           onClick={onSkip}
-          className="inline-flex items-center gap-1.5 text-[11px] font-display font-black text-skin-base/85 hover:text-skin-pink uppercase tracking-[0.16em] underline decoration-skin-pink decoration-2 underline-offset-4 transition-colors"
+          className="inline-flex items-center gap-1.5 text-[11px] font-display font-black text-[rgba(245,243,240,0.85)] hover:text-skin-pink uppercase tracking-[0.16em] underline decoration-skin-pink decoration-2 underline-offset-4 transition-colors"
         >
           Skip — use defaults
         </button>
@@ -87,7 +87,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
       {/* Progress dots. User flagged the answered (/55 red) and unanswered
           (bg-skin-input) states as "not viewable" against the grid bg.
           Pumped: answered = full red (no opacity drop), unanswered =
-          bg-skin-base/[0.18] solid 18% paper lift + /40 border (matches
+          bg-[rgba(245,243,240,0.18)] solid 18% paper lift + /40 border (matches
           wizard pip treatment). Active still gets the wider pill + halo. */}
       <div className="flex justify-center gap-2 py-3 flex-shrink-0">
         {questions.map((q, i) => (
@@ -100,7 +100,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                 ? 'bg-skin-pink w-6 h-3 shadow-[0_0_10px_color-mix(in_oklch,var(--po-pink)_50%,transparent)]'
                 : submissions[q.id]
                   ? 'bg-skin-pink w-3 h-3'
-                  : 'bg-skin-base/[0.18] w-3 h-3 border border-skin-base/40'
+                  : 'bg-[rgba(245,243,240,0.18)] w-3 h-3 border border-[rgba(245,243,240,0.4)]'
             }`}
           />
         ))}
@@ -125,7 +125,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                   bumped from text-lg/font-bold to text-xl/font-black for
                   the bolder pass. */}
               <div className="text-center px-2 space-y-1.5">
-                <span className="inline-block px-2.5 py-0.5 bg-skin-pink/15 border border-skin-pink/40 rounded-md text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.18em] tabular-nums">
+                <span className="inline-block px-2.5 py-0.5 bg-[rgba(215,38,56,0.15)] border border-[rgba(215,38,56,0.4)] rounded-md text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.18em] tabular-nums">
                   Q {currentIndex + 1} / {questions.length}
                 </span>
                 <h2 className="text-xl font-body font-black text-skin-base leading-tight tracking-tight">
@@ -138,7 +138,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                   even on mobile. Selected state: full pink fill with white
                   text on the chip too (was outline-only with translucent
                   fill, which read as ghosted). Unselected uses bg-skin-input
-                  for a real ~#1d1d1d surface (was bg-skin-panel/30, a
+                  for a real ~#1d1d1d surface (was bg-[rgba(19,19,19,0.3)], a
                   transparent wash that disappeared on the deep page bg). */}
               <div className="space-y-2.5 px-1">
                 {question.options.map((option, idx) => {
@@ -151,7 +151,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                       className={`group w-full text-left rounded-xl text-sm font-body transition-all duration-200 flex items-stretch overflow-hidden border-2 ${
                         isSelected
                           ? 'bg-skin-pink border-skin-pink text-skin-base shadow-[0_0_24px_color-mix(in_oklch,var(--po-pink)_30%,transparent)]'
-                          : 'bg-skin-input border-skin-base/15 text-skin-base hover:border-skin-pink/50 hover:bg-skin-input/80'
+                          : 'bg-skin-input border-[rgba(245,243,240,0.15)] text-skin-base hover:border-[rgba(215,38,56,0.5)] hover:bg-[rgba(29,29,29,0.8)]'
                       }`}
                     >
                       {/* Letter chip — column on the left, full-height,
@@ -162,7 +162,7 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                         className={`flex-shrink-0 w-10 flex items-center justify-center font-display font-black text-base ${
                           isSelected
                             ? 'bg-skin-pink-depth text-skin-base'
-                            : 'bg-skin-deep text-skin-pink border-r border-skin-base/15'
+                            : 'bg-skin-deep text-skin-pink border-r border-[rgba(245,243,240,0.15)]'
                         }`}
                       >
                         {String.fromCharCode(65 + idx)}
@@ -180,14 +180,14 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                 <div className={`rounded-xl transition-all duration-200 flex items-stretch overflow-hidden border-2 ${
                   currentSub?.selectedIndex === 3
                     ? 'bg-skin-pink border-skin-pink shadow-[0_0_24px_color-mix(in_oklch,var(--po-pink)_30%,transparent)]'
-                    : 'bg-skin-input border-skin-base/15'
+                    : 'bg-skin-input border-[rgba(245,243,240,0.15)]'
                 }`}>
                   <span
                     aria-hidden
                     className={`flex-shrink-0 w-10 flex items-center justify-center font-display font-black text-base ${
                       currentSub?.selectedIndex === 3
                         ? 'bg-skin-pink-depth text-skin-base'
-                        : 'bg-skin-deep text-skin-pink border-r border-skin-base/15'
+                        : 'bg-skin-deep text-skin-pink border-r border-[rgba(245,243,240,0.15)]'
                     }`}
                   >
                     D
@@ -211,8 +211,8 @@ export function QuestionStep({ questions, personaName, onComplete, onSkip }: Que
                       aria-label="Custom answer"
                       className={`flex-1 bg-transparent text-sm focus:outline-none ${
                         currentSub?.selectedIndex === 3
-                          ? 'text-skin-base placeholder:text-skin-base/60'
-                          : 'text-skin-base placeholder:text-skin-base/40'
+                          ? 'text-skin-base placeholder:text-[rgba(245,243,240,0.6)]'
+                          : 'text-skin-base placeholder:text-[rgba(245,243,240,0.4)]'
                       }`}
                       maxLength={140}
                     />

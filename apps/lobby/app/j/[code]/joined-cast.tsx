@@ -58,7 +58,7 @@ export function JoinedCast({
                     delay: 0.05 + i * 0.08,
                   }
             }
-            className={`relative w-[84px] h-[120px] sm:w-[110px] sm:h-[156px] rounded-[14px] overflow-hidden shadow-card ring-[1.5px] ring-skin-base/85 ${overlapClass}`}
+            className={`relative w-[84px] h-[120px] sm:w-[110px] sm:h-[156px] rounded-[14px] overflow-hidden shadow-card ring-[1.5px] ring-[rgba(245,243,240,0.85)] ${overlapClass}`}
             style={{
               // Neutral dark fill behind the image. If the CDN 404s the
               // onError handler below hides the <img>, leaving this fill
@@ -102,7 +102,7 @@ export function JoinedCast({
             </div>
 
             {isLast && (
-              <div className="absolute inset-0 bg-skin-deep/70 flex items-center justify-center">
+              <div className="absolute inset-0 bg-[rgba(10,10,10,0.7)] flex items-center justify-center">
                 <span className="font-display font-black text-white text-2xl drop-shadow">
                   +{overflow + 1}
                 </span>

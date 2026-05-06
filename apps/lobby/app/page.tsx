@@ -571,10 +571,10 @@ export default function LobbyRoot() {
   const isConfigurableMode = mode === 'CONFIGURABLE_CYCLE';
 
   return (
-    <div className="min-h-screen bg-skin-deep bg-grid-pattern flex flex-col items-center justify-center p-4 font-body text-skin-base relative selection:bg-skin-gold/30">
+    <div className="min-h-screen bg-skin-deep bg-grid-pattern flex flex-col items-center justify-center p-4 font-body text-skin-base relative selection:bg-[rgba(247,197,46,0.3)]">
 
       {/* Ambient Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-[rgba(19,19,19,0.4)] to-transparent opacity-60 pointer-events-none" />
 
       <div className="max-w-xl w-full relative z-10">
 
@@ -585,7 +585,7 @@ export default function LobbyRoot() {
             <span className="text-xs font-mono text-skin-dim tracking-widest uppercase">Network Online</span>
           </div>
           {authEmail && (
-            <div className="text-xs font-mono text-skin-dim/60">
+            <div className="text-xs font-mono text-[rgba(168,163,156,0.6)]">
               Logged in as {authEmail}
             </div>
           )}
@@ -600,8 +600,8 @@ export default function LobbyRoot() {
         </header>
 
         {/* Main Interface Card */}
-        <div className="bg-skin-panel/30 backdrop-blur-md border border-skin-base p-1 rounded-3xl shadow-card overflow-hidden">
-          <div className="bg-skin-deep/60 rounded-[20px] p-8 border border-skin-base">
+        <div className="bg-[rgba(19,19,19,0.3)] backdrop-blur-md border border-skin-base p-1 rounded-3xl shadow-card overflow-hidden">
+          <div className="bg-[rgba(10,10,10,0.6)] rounded-[20px] p-8 border border-skin-base">
 
             <div className="space-y-8">
               {/* Active Games */}
@@ -623,20 +623,20 @@ export default function LobbyRoot() {
                         <a
                           key={game.id}
                           href={href}
-                          className="flex items-center justify-between p-3 bg-skin-panel/30 hover:bg-skin-panel/50 text-skin-base rounded-lg transition-all border border-skin-base hover:border-skin-dim/30 group"
+                          className="flex items-center justify-between p-3 bg-[rgba(19,19,19,0.3)] hover:bg-[rgba(19,19,19,0.5)] text-skin-base rounded-lg transition-all border border-skin-base hover:border-[rgba(168,163,156,0.3)] group"
                         >
                           <div className="flex items-center gap-3">
                             <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
                               isStarted
-                                ? 'bg-skin-green/20 text-skin-green border border-skin-green/30'
-                                : 'bg-skin-info/20 text-skin-info border border-skin-info/30'
+                                ? 'bg-[rgba(16,185,129,0.2)] text-skin-green border border-[rgba(16,185,129,0.3)]'
+                                : 'bg-[rgba(129,140,248,0.2)] text-skin-info border border-[rgba(129,140,248,0.3)]'
                             }`}>
                               {game.status}
                             </span>
-                            <span className="text-xs font-mono text-skin-dim/60">{game.mode}</span>
-                            <span className="text-[10px] font-mono text-skin-dim/40">{game.playerCount}p</span>
+                            <span className="text-xs font-mono text-[rgba(168,163,156,0.6)]">{game.mode}</span>
+                            <span className="text-[10px] font-mono text-[rgba(168,163,156,0.4)]">{game.playerCount}p</span>
                           </div>
-                          <span className="text-skin-dim/40 group-hover:text-skin-gold group-hover:translate-x-1 transition-all text-sm">
+                          <span className="text-[rgba(168,163,156,0.4)] group-hover:text-skin-gold group-hover:translate-x-1 transition-all text-sm">
                             {isStarted ? 'Jump In' : 'Waiting'} &rarr;
                           </span>
                         </a>
@@ -656,12 +656,12 @@ export default function LobbyRoot() {
                     data-testid="game-mode-select"
                     value={mode}
                     onChange={(e) => setMode(e.target.value as any)}
-                    className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-sm hover:border-skin-dim/30"
+                    className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] transition-all font-mono text-sm hover:border-[rgba(168,163,156,0.3)]"
                   >
                     <option value="CONFIGURABLE_CYCLE">CONFIGURABLE_CYCLE (Custom)</option>
                     <option value="DEBUG_PECKING_ORDER">DEBUG_OVERRIDE (Manual)</option>
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-skin-dim/50 group-hover:text-skin-dim transition-colors">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-[rgba(168,163,156,0.5)] group-hover:text-skin-dim transition-colors">
                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
                   </div>
                 </div>
@@ -669,12 +669,12 @@ export default function LobbyRoot() {
 
               {/* Manifest Kind Toggle */}
               {!gameId && (
-                <div className="flex items-center justify-between border border-skin-base rounded-lg bg-skin-input/40 p-3">
+                <div className="flex items-center justify-between border border-skin-base rounded-lg bg-[rgba(29,29,29,0.4)] p-3">
                   <div>
                     <span className="text-xs font-bold text-skin-dim uppercase tracking-widest font-display">
                       {manifestKind === 'STATIC' ? 'Static' : 'Dynamic'}
                     </span>
-                    <span className="block text-[10px] font-mono text-skin-dim/40 mt-0.5">
+                    <span className="block text-[10px] font-mono text-[rgba(168,163,156,0.4)] mt-0.5">
                       {manifestKind === 'STATIC'
                         ? 'Configure each day upfront'
                         : 'Game Master decides day-by-day'}
@@ -687,8 +687,8 @@ export default function LobbyRoot() {
                       onChange={() => setManifestKind(prev => prev === 'STATIC' ? 'DYNAMIC' : 'STATIC')}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-skin-input border border-skin-base rounded-full peer-checked:bg-skin-gold/30 peer-checked:border-skin-gold/50 transition-all" />
-                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-skin-dim/60 rounded-full peer-checked:translate-x-4 peer-checked:bg-skin-gold transition-all" />
+                    <div className="w-9 h-5 bg-skin-input border border-skin-base rounded-full peer-checked:bg-[rgba(247,197,46,0.3)] peer-checked:border-[rgba(247,197,46,0.5)] transition-all" />
+                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-[rgba(168,163,156,0.6)] rounded-full peer-checked:translate-x-4 peer-checked:bg-skin-gold transition-all" />
                   </label>
                 </div>
               )}
@@ -701,11 +701,11 @@ export default function LobbyRoot() {
                       Debug Manifest
                     </label>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-skin-dim/60">Days:</span>
+                      <span className="text-xs font-mono text-[rgba(168,163,156,0.6)]">Days:</span>
                       <button
                         onClick={() => handleDayCountChange(-1)}
                         disabled={debugConfig.dayCount <= 1}
-                        className="w-7 h-7 flex items-center justify-center bg-skin-input border border-skin-base rounded-lg font-mono text-sm text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                        className="w-7 h-7 flex items-center justify-center bg-skin-input border border-skin-base rounded-lg font-mono text-sm text-skin-dim hover:text-skin-gold hover:border-[rgba(247,197,46,0.3)] transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
                       >
                         -
                       </button>
@@ -713,7 +713,7 @@ export default function LobbyRoot() {
                       <button
                         onClick={() => handleDayCountChange(1)}
                         disabled={debugConfig.dayCount >= 7}
-                        className="w-7 h-7 flex items-center justify-center bg-skin-input border border-skin-base rounded-lg font-mono text-sm text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                        className="w-7 h-7 flex items-center justify-center bg-skin-input border border-skin-base rounded-lg font-mono text-sm text-skin-dim hover:text-skin-gold hover:border-[rgba(247,197,46,0.3)] transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
                       >
                         +
                       </button>
@@ -722,18 +722,18 @@ export default function LobbyRoot() {
 
                   <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                     {debugConfig.days.map((day, idx) => (
-                      <div key={idx} className="border border-skin-base rounded-lg bg-skin-input/40 p-4 space-y-3">
+                      <div key={idx} className="border border-skin-base rounded-lg bg-[rgba(29,29,29,0.4)] p-4 space-y-3">
                         <div className="font-mono text-xs text-skin-gold tracking-widest">
                           DAY_{String(idx + 1).padStart(2, '0')}
                         </div>
 
                         <div className="grid grid-cols-4 gap-2">
                           <div className="relative">
-                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Vote</label>
+                            <label className="text-[10px] font-mono text-[rgba(168,163,156,0.5)] mb-1 block">Vote</label>
                             <select
                               value={day.voteType}
                               onChange={(e) => handleVoteTypeChange(idx, e.target.value)}
-                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] transition-all font-mono text-xs hover:border-[rgba(168,163,156,0.3)]"
                             >
                               {AVAILABLE_VOTE_TYPES.map(vt => (
                                 <option key={vt.value} value={vt.value}>{vt.label}</option>
@@ -741,11 +741,11 @@ export default function LobbyRoot() {
                             </select>
                           </div>
                           <div className="relative">
-                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Game</label>
+                            <label className="text-[10px] font-mono text-[rgba(168,163,156,0.5)] mb-1 block">Game</label>
                             <select
                               value={day.gameType}
                               onChange={(e) => handleGameTypeChange(idx, e.target.value)}
-                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] transition-all font-mono text-xs hover:border-[rgba(168,163,156,0.3)]"
                             >
                               {AVAILABLE_GAME_TYPES.map(gt => (
                                 <option key={gt.value} value={gt.value}>{gt.label}</option>
@@ -753,22 +753,22 @@ export default function LobbyRoot() {
                             </select>
                           </div>
                           <div className="relative">
-                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Mode</label>
+                            <label className="text-[10px] font-mono text-[rgba(168,163,156,0.5)] mb-1 block">Mode</label>
                             <select
                               value={day.gameMode || 'SOLO'}
                               onChange={(e) => handleGameModeChange(idx, e.target.value)}
-                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] transition-all font-mono text-xs hover:border-[rgba(168,163,156,0.3)]"
                             >
                               <option value="SOLO">Solo</option>
                               <option value="LIVE">Live</option>
                             </select>
                           </div>
                           <div className="relative">
-                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Activity</label>
+                            <label className="text-[10px] font-mono text-[rgba(168,163,156,0.5)] mb-1 block">Activity</label>
                             <select
                               value={day.activityType}
                               onChange={(e) => handleActivityTypeChange(idx, e.target.value)}
-                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] transition-all font-mono text-xs hover:border-[rgba(168,163,156,0.3)]"
                             >
                               {AVAILABLE_ACTIVITY_TYPES.map(at => (
                                 <option key={at.value} value={at.value}>{at.label}</option>
@@ -777,7 +777,7 @@ export default function LobbyRoot() {
                           </div>
                         </div>
 
-                        <div className="text-[10px] font-mono text-skin-dim/40">
+                        <div className="text-[10px] font-mono text-[rgba(168,163,156,0.4)]">
                           All timeline actions enabled
                         </div>
                       </div>
@@ -785,9 +785,9 @@ export default function LobbyRoot() {
                   </div>
 
                   {/* DM Invite Mode */}
-                  <div className="border border-skin-base rounded-lg bg-skin-input/40 p-4 space-y-2">
+                  <div className="border border-skin-base rounded-lg bg-[rgba(29,29,29,0.4)] p-4 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono text-skin-dim/60">Require DM invitations</span>
+                      <span className="text-xs font-mono text-[rgba(168,163,156,0.6)]">Require DM invitations</span>
                       <button
                         type="button"
                         role="switch"
@@ -795,7 +795,7 @@ export default function LobbyRoot() {
                         onClick={() => setDebugConfig(prev => ({ ...prev, requireDmInvite: !prev.requireDmInvite }))}
                         className={`relative inline-flex shrink-0 w-9 h-5 items-center rounded-full border transition-all duration-200 ${
                           debugConfig.requireDmInvite
-                            ? 'bg-skin-gold/30 border-skin-gold/50'
+                            ? 'bg-[rgba(247,197,46,0.3)] border-[rgba(247,197,46,0.5)]'
                             : 'bg-skin-input border-skin-base'
                         }`}
                       >
@@ -803,23 +803,23 @@ export default function LobbyRoot() {
                           className={`w-4 h-4 rounded-full transition-all duration-200 ${
                             debugConfig.requireDmInvite
                               ? 'translate-x-4 bg-skin-gold'
-                              : 'translate-x-0.5 bg-skin-dim/40'
+                              : 'translate-x-0.5 bg-[rgba(168,163,156,0.4)]'
                           }`}
                         />
                       </button>
                     </div>
-                    <p className="text-[8px] font-mono text-skin-dim/30">
+                    <p className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">
                       Players must send and accept mutual invites before DM conversations open
                     </p>
                     {debugConfig.requireDmInvite && (
                       <div className="flex items-center justify-between pt-1">
-                        <span className="text-[10px] font-mono text-skin-dim/50">Conversations per player per day</span>
+                        <span className="text-[10px] font-mono text-[rgba(168,163,156,0.5)]">Conversations per player per day</span>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => setDebugConfig(prev => ({ ...prev, dmSlotsPerPlayer: Math.max(2, (prev.dmSlotsPerPlayer ?? 5) - 1) }))}
                             disabled={(debugConfig.dmSlotsPerPlayer ?? 5) <= 2}
-                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-[rgba(247,197,46,0.3)] transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
                           >
                             -
                           </button>
@@ -828,7 +828,7 @@ export default function LobbyRoot() {
                             type="button"
                             onClick={() => setDebugConfig(prev => ({ ...prev, dmSlotsPerPlayer: Math.min(10, (prev.dmSlotsPerPlayer ?? 5) + 1) }))}
                             disabled={(debugConfig.dmSlotsPerPlayer ?? 5) >= 10}
-                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-[rgba(247,197,46,0.3)] transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
                           >
                             +
                           </button>
@@ -849,23 +849,23 @@ export default function LobbyRoot() {
                       </label>
                       <button
                         onClick={handleSpeedRun}
-                        className="px-2.5 py-1 rounded-full bg-skin-danger/20 border border-skin-danger/30 text-[10px] font-mono font-bold text-skin-danger hover:bg-skin-danger/30 transition-all"
+                        className="px-2.5 py-1 rounded-full bg-[rgba(239,68,68,0.2)] border border-[rgba(239,68,68,0.3)] text-[10px] font-mono font-bold text-skin-danger hover:bg-[rgba(239,68,68,0.3)] transition-all"
                       >
                         Speed Run
                       </button>
                       <button
                         onClick={handlePlaytestSchedule}
-                        className="px-2.5 py-1 rounded-full bg-skin-gold/20 border border-skin-gold/30 text-[10px] font-mono font-bold text-skin-gold hover:bg-skin-gold/30 transition-all"
+                        className="px-2.5 py-1 rounded-full bg-[rgba(247,197,46,0.2)] border border-[rgba(247,197,46,0.3)] text-[10px] font-mono font-bold text-skin-gold hover:bg-[rgba(247,197,46,0.3)] transition-all"
                       >
                         Playtest
                       </button>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-skin-dim/60">Days:</span>
+                      <span className="text-xs font-mono text-[rgba(168,163,156,0.6)]">Days:</span>
                       <button
                         onClick={() => handleCfgDayCountChange(-1)}
                         disabled={configurableConfig.dayCount <= 1}
-                        className="w-7 h-7 flex items-center justify-center bg-skin-input border border-skin-base rounded-lg font-mono text-sm text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                        className="w-7 h-7 flex items-center justify-center bg-skin-input border border-skin-base rounded-lg font-mono text-sm text-skin-dim hover:text-skin-gold hover:border-[rgba(247,197,46,0.3)] transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
                       >
                         -
                       </button>
@@ -873,7 +873,7 @@ export default function LobbyRoot() {
                       <button
                         onClick={() => handleCfgDayCountChange(1)}
                         disabled={configurableConfig.dayCount >= 7}
-                        className="w-7 h-7 flex items-center justify-center bg-skin-input border border-skin-base rounded-lg font-mono text-sm text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                        className="w-7 h-7 flex items-center justify-center bg-skin-input border border-skin-base rounded-lg font-mono text-sm text-skin-dim hover:text-skin-gold hover:border-[rgba(247,197,46,0.3)] transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
                       >
                         +
                       </button>
@@ -882,12 +882,12 @@ export default function LobbyRoot() {
 
                   {/* Day 1 date picker (Day 0 is always today) */}
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-skin-dim/60">Day 1 Start</span>
+                    <span className="text-xs font-mono text-[rgba(168,163,156,0.6)]">Day 1 Start</span>
                     <input
                       type="date"
                       value={configurableConfig.startDate}
                       onChange={(e) => handleCfgStartDateChange(e.target.value)}
-                      className="bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 transition-all"
+                      className="bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] transition-all"
                     />
                   </div>
 
@@ -897,21 +897,21 @@ export default function LobbyRoot() {
                       if (!configurableConfig.speedRun) dayDate.setDate(dayDate.getDate() + idx);
                       const dateLabel = dayDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
                       return (
-                      <div key={idx} className="border border-skin-base rounded-lg bg-skin-input/40 p-4 space-y-3">
+                      <div key={idx} className="border border-skin-base rounded-lg bg-[rgba(29,29,29,0.4)] p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="font-mono text-xs text-skin-gold tracking-widest">
                             DAY_{String(idx + 1).padStart(2, '0')}
                           </div>
-                          <span className="text-[10px] font-mono text-skin-dim/50">{dateLabel}</span>
+                          <span className="text-[10px] font-mono text-[rgba(168,163,156,0.5)]">{dateLabel}</span>
                         </div>
 
                         <div className="grid grid-cols-4 gap-2">
                           <div className="relative">
-                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Vote</label>
+                            <label className="text-[10px] font-mono text-[rgba(168,163,156,0.5)] mb-1 block">Vote</label>
                             <select
                               value={day.voteType}
                               onChange={(e) => handleCfgVoteTypeChange(idx, e.target.value)}
-                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] transition-all font-mono text-xs hover:border-[rgba(168,163,156,0.3)]"
                             >
                               {AVAILABLE_VOTE_TYPES.map(vt => (
                                 <option key={vt.value} value={vt.value}>{vt.label}</option>
@@ -919,11 +919,11 @@ export default function LobbyRoot() {
                             </select>
                           </div>
                           <div className="relative">
-                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Game</label>
+                            <label className="text-[10px] font-mono text-[rgba(168,163,156,0.5)] mb-1 block">Game</label>
                             <select
                               value={day.gameType}
                               onChange={(e) => handleCfgGameTypeChange(idx, e.target.value)}
-                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] transition-all font-mono text-xs hover:border-[rgba(168,163,156,0.3)]"
                             >
                               {AVAILABLE_GAME_TYPES.map(gt => (
                                 <option key={gt.value} value={gt.value}>{gt.label}</option>
@@ -931,22 +931,22 @@ export default function LobbyRoot() {
                             </select>
                           </div>
                           <div className="relative">
-                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Mode</label>
+                            <label className="text-[10px] font-mono text-[rgba(168,163,156,0.5)] mb-1 block">Mode</label>
                             <select
                               value={day.gameMode || 'SOLO'}
                               onChange={(e) => handleCfgGameModeChange(idx, e.target.value)}
-                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] transition-all font-mono text-xs hover:border-[rgba(168,163,156,0.3)]"
                             >
                               <option value="SOLO">Solo</option>
                               <option value="LIVE">Live</option>
                             </select>
                           </div>
                           <div className="relative">
-                            <label className="text-[10px] font-mono text-skin-dim/50 mb-1 block">Activity</label>
+                            <label className="text-[10px] font-mono text-[rgba(168,163,156,0.5)] mb-1 block">Activity</label>
                             <select
                               value={day.activityType}
                               onChange={(e) => handleCfgActivityTypeChange(idx, e.target.value)}
-                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all font-mono text-xs hover:border-skin-dim/30"
+                              className="w-full appearance-none bg-skin-input text-skin-base border border-skin-base rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] transition-all font-mono text-xs hover:border-[rgba(168,163,156,0.3)]"
                             >
                               {AVAILABLE_ACTIVITY_TYPES.map(at => (
                                 <option key={at.value} value={at.value}>{at.label}</option>
@@ -957,7 +957,7 @@ export default function LobbyRoot() {
 
                         {/* Timeline Events */}
                         <details className="group/events">
-                          <summary className="text-[10px] font-mono text-skin-dim/50 cursor-pointer hover:text-skin-dim transition-colors select-none">
+                          <summary className="text-[10px] font-mono text-[rgba(168,163,156,0.5)] cursor-pointer hover:text-skin-dim transition-colors select-none">
                             Timeline Events ({Object.values(day.events).filter(e => e.enabled).length}/12)
                           </summary>
                           <div className="mt-2 space-y-1.5">
@@ -972,10 +972,10 @@ export default function LobbyRoot() {
                                       onChange={() => handleCfgEventToggle(idx, key)}
                                       className="sr-only peer"
                                     />
-                                    <div className="w-6 h-3 bg-skin-input border border-skin-base rounded-full peer-checked:bg-skin-gold/30 peer-checked:border-skin-gold/50 transition-all" />
-                                    <div className="absolute left-0.5 top-0.5 w-2 h-2 bg-skin-dim/60 rounded-full peer-checked:translate-x-3 peer-checked:bg-skin-gold transition-all" />
+                                    <div className="w-6 h-3 bg-skin-input border border-skin-base rounded-full peer-checked:bg-[rgba(247,197,46,0.3)] peer-checked:border-[rgba(247,197,46,0.5)] transition-all" />
+                                    <div className="absolute left-0.5 top-0.5 w-2 h-2 bg-[rgba(168,163,156,0.6)] rounded-full peer-checked:translate-x-3 peer-checked:bg-skin-gold transition-all" />
                                   </label>
-                                  <span className={`text-[10px] font-mono w-28 flex-shrink-0 ${evt?.enabled ? 'text-skin-dim' : 'text-skin-dim/30'}`}>
+                                  <span className={`text-[10px] font-mono w-28 flex-shrink-0 ${evt?.enabled ? 'text-skin-dim' : 'text-[rgba(168,163,156,0.3)]'}`}>
                                     {label}
                                   </span>
                                   <input
@@ -983,7 +983,7 @@ export default function LobbyRoot() {
                                     value={evt?.time || ''}
                                     onChange={(e) => handleCfgEventTimeChange(idx, key, e.target.value)}
                                     disabled={!evt?.enabled}
-                                    className="bg-skin-input text-skin-base border border-skin-base rounded-lg px-2 py-1 text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 disabled:opacity-30 transition-all"
+                                    className="bg-skin-input text-skin-base border border-skin-base rounded-lg px-2 py-1 text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] disabled:opacity-30 transition-all"
                                   />
                                 </div>
                               );
@@ -996,9 +996,9 @@ export default function LobbyRoot() {
                   </div>
 
                   {/* DM Invite Mode */}
-                  <div className="border border-skin-base rounded-lg bg-skin-input/40 p-4 space-y-2">
+                  <div className="border border-skin-base rounded-lg bg-[rgba(29,29,29,0.4)] p-4 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono text-skin-dim/60">Require DM invitations</span>
+                      <span className="text-xs font-mono text-[rgba(168,163,156,0.6)]">Require DM invitations</span>
                       <button
                         type="button"
                         role="switch"
@@ -1006,7 +1006,7 @@ export default function LobbyRoot() {
                         onClick={() => setConfigurableConfig(prev => ({ ...prev, requireDmInvite: !prev.requireDmInvite }))}
                         className={`relative inline-flex shrink-0 w-9 h-5 items-center rounded-full border transition-all duration-200 ${
                           configurableConfig.requireDmInvite
-                            ? 'bg-skin-gold/30 border-skin-gold/50'
+                            ? 'bg-[rgba(247,197,46,0.3)] border-[rgba(247,197,46,0.5)]'
                             : 'bg-skin-input border-skin-base'
                         }`}
                       >
@@ -1014,23 +1014,23 @@ export default function LobbyRoot() {
                           className={`w-4 h-4 rounded-full transition-all duration-200 ${
                             configurableConfig.requireDmInvite
                               ? 'translate-x-4 bg-skin-gold'
-                              : 'translate-x-0.5 bg-skin-dim/40'
+                              : 'translate-x-0.5 bg-[rgba(168,163,156,0.4)]'
                           }`}
                         />
                       </button>
                     </div>
-                    <p className="text-[8px] font-mono text-skin-dim/30">
+                    <p className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">
                       Players must send and accept mutual invites before DM conversations open
                     </p>
                     {configurableConfig.requireDmInvite && (
                       <div className="flex items-center justify-between pt-1">
-                        <span className="text-[10px] font-mono text-skin-dim/50">Conversations per player per day</span>
+                        <span className="text-[10px] font-mono text-[rgba(168,163,156,0.5)]">Conversations per player per day</span>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => setConfigurableConfig(prev => ({ ...prev, dmSlotsPerPlayer: Math.max(2, (prev.dmSlotsPerPlayer ?? 5) - 1) }))}
                             disabled={(configurableConfig.dmSlotsPerPlayer ?? 5) <= 2}
-                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-[rgba(247,197,46,0.3)] transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
                           >
                             -
                           </button>
@@ -1039,7 +1039,7 @@ export default function LobbyRoot() {
                             type="button"
                             onClick={() => setConfigurableConfig(prev => ({ ...prev, dmSlotsPerPlayer: Math.min(10, (prev.dmSlotsPerPlayer ?? 5) + 1) }))}
                             disabled={(configurableConfig.dmSlotsPerPlayer ?? 5) >= 10}
-                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+                            className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-[rgba(247,197,46,0.3)] transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
                           >
                             +
                           </button>
@@ -1060,12 +1060,12 @@ export default function LobbyRoot() {
                     config={dynamicConfig}
                     onChange={setDynamicConfig}
                   />
-                  <div className="flex items-center justify-between border border-skin-base rounded-lg bg-skin-input/40 p-3">
+                  <div className="flex items-center justify-between border border-skin-base rounded-lg bg-[rgba(29,29,29,0.4)] p-3">
                     <div>
                       <span className="text-xs font-bold text-skin-dim uppercase tracking-widest font-display">
                         Min Players to Start
                       </span>
-                      <span className="block text-[10px] font-mono text-skin-dim/40 mt-0.5">
+                      <span className="block text-[10px] font-mono text-[rgba(168,163,156,0.4)] mt-0.5">
                         Game won't start until this many players join
                       </span>
                     </div>
@@ -1074,7 +1074,7 @@ export default function LobbyRoot() {
                       min={2}
                       value={dynamicConfig.minPlayers}
                       onChange={e => setDynamicConfig(prev => ({ ...prev, minPlayers: Math.max(2, parseInt(e.target.value) || 2) }))}
-                      className="w-16 bg-skin-input text-skin-base border border-skin-base rounded-lg px-2 py-1.5 text-center font-mono text-sm focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all"
+                      className="w-16 bg-skin-input text-skin-base border border-skin-base rounded-lg px-2 py-1.5 text-center font-mono text-sm focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] transition-all"
                     />
                   </div>
                 </div>
@@ -1086,13 +1086,13 @@ export default function LobbyRoot() {
                   <label className="text-xs font-bold text-skin-dim uppercase tracking-widest pl-1 font-display">
                     Push Alerts
                   </label>
-                  <div className="border border-skin-base rounded-lg bg-skin-input/40 p-3 space-y-1.5">
+                  <div className="border border-skin-base rounded-lg bg-[rgba(29,29,29,0.4)] p-3 space-y-1.5">
                     {PUSH_TRIGGER_LABELS.map(({ key, label }) => {
                       const pushConfig = isConfigurableMode ? configurableConfig.pushConfig : debugConfig.pushConfig;
                       const toggleFn = isConfigurableMode ? handleCfgPushToggle : handlePushToggle;
                       return (
                         <label key={key} className="flex items-center justify-between cursor-pointer group">
-                          <span className="text-xs font-mono text-skin-dim/60 group-hover:text-skin-dim transition-colors">
+                          <span className="text-xs font-mono text-[rgba(168,163,156,0.6)] group-hover:text-skin-dim transition-colors">
                             {label}
                           </span>
                           <div className="relative">
@@ -1102,8 +1102,8 @@ export default function LobbyRoot() {
                               onChange={() => toggleFn(key)}
                               className="sr-only peer"
                             />
-                            <div className="w-8 h-4 bg-skin-input border border-skin-base rounded-full peer-checked:bg-skin-gold/30 peer-checked:border-skin-gold/50 transition-all" />
-                            <div className="absolute left-0.5 top-0.5 w-3 h-3 bg-skin-dim/60 rounded-full peer-checked:translate-x-4 peer-checked:bg-skin-gold transition-all" />
+                            <div className="w-8 h-4 bg-skin-input border border-skin-base rounded-full peer-checked:bg-[rgba(247,197,46,0.3)] peer-checked:border-[rgba(247,197,46,0.5)] transition-all" />
+                            <div className="absolute left-0.5 top-0.5 w-3 h-3 bg-[rgba(168,163,156,0.6)] rounded-full peer-checked:translate-x-4 peer-checked:bg-skin-gold transition-all" />
                           </div>
                         </label>
                       );
@@ -1122,10 +1122,10 @@ export default function LobbyRoot() {
                       onChange={(e) => setSkipInvites(e.target.checked)}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-skin-input border border-skin-base rounded-full peer-checked:bg-skin-gold/30 peer-checked:border-skin-gold/50 transition-all" />
-                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-skin-dim/60 rounded-full peer-checked:translate-x-4 peer-checked:bg-skin-gold transition-all" />
+                    <div className="w-9 h-5 bg-skin-input border border-skin-base rounded-full peer-checked:bg-[rgba(247,197,46,0.3)] peer-checked:border-[rgba(247,197,46,0.5)] transition-all" />
+                    <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-[rgba(168,163,156,0.6)] rounded-full peer-checked:translate-x-4 peer-checked:bg-skin-gold transition-all" />
                   </div>
-                  <span className="text-xs font-mono text-skin-dim/60 group-hover:text-skin-dim transition-colors">
+                  <span className="text-xs font-mono text-[rgba(168,163,156,0.6)] group-hover:text-skin-dim transition-colors">
                     Skip invites (hardcoded players, no auth)
                   </span>
                 </label>
@@ -1162,12 +1162,12 @@ export default function LobbyRoot() {
                               setInviteEmails(updated);
                             }}
                             placeholder="player@example.com"
-                            className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 placeholder:text-skin-dim/30"
+                            className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] placeholder:text-[rgba(168,163,156,0.3)]"
                           />
                           {inviteEmails.length > 1 && (
                             <button
                               onClick={() => setInviteEmails(inviteEmails.filter((_, i) => i !== idx))}
-                              className="px-2 text-skin-dim/40 hover:text-skin-pink transition-colors text-lg"
+                              className="px-2 text-[rgba(168,163,156,0.4)] hover:text-skin-pink transition-colors text-lg"
                             >
                               &times;
                             </button>
@@ -1176,11 +1176,11 @@ export default function LobbyRoot() {
                       ))}
                       <button
                         onClick={() => setInviteEmails([...inviteEmails, ''])}
-                        className="text-xs font-mono text-skin-dim/60 hover:text-skin-gold transition-colors"
+                        className="text-xs font-mono text-[rgba(168,163,156,0.6)] hover:text-skin-gold transition-colors"
                       >
                         + Add another
                       </button>
-                      <p className="text-[10px] text-skin-dim/40 font-mono">
+                      <p className="text-[10px] text-[rgba(168,163,156,0.4)] font-mono">
                         Invites are sent after the game is created. Players will get a one-click link.
                       </p>
                     </div>
@@ -1199,7 +1199,7 @@ export default function LobbyRoot() {
                       disabled={isLoading}
                       className={`group w-full py-5 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transform transition-all flex items-center justify-center gap-3 relative overflow-hidden
                         ${isLoading
-                          ? 'bg-skin-input text-skin-dim/40 cursor-wait'
+                          ? 'bg-skin-input text-[rgba(168,163,156,0.4)] cursor-wait'
                           : 'bg-skin-pink text-skin-base shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
                         }`}
                     >
@@ -1220,7 +1220,7 @@ export default function LobbyRoot() {
                       disabled={isLoading}
                       className={`group w-full py-5 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transform transition-all flex items-center justify-center gap-3 relative overflow-hidden
                         ${isLoading
-                          ? 'bg-skin-input text-skin-dim/40 cursor-wait'
+                          ? 'bg-skin-input text-[rgba(168,163,156,0.4)] cursor-wait'
                           : 'bg-skin-pink text-skin-base shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
                         }`}
                     >
@@ -1239,12 +1239,12 @@ export default function LobbyRoot() {
               )}
 
               {/* Terminal Output */}
-              <div className="font-mono text-xs border-t border-skin-base/30 pt-6 mt-6">
-                <div className="flex justify-between items-center text-skin-dim/50 mb-2">
+              <div className="font-mono text-xs border-t border-[rgba(245,243,240,0.3)] pt-6 mt-6">
+                <div className="flex justify-between items-center text-[rgba(168,163,156,0.5)] mb-2">
                   <span>SYSTEM_LOG</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-skin-green/50 pulse-live"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[rgba(16,185,129,0.5)] pulse-live"></span>
                 </div>
-                <div data-testid="status-output" className={`p-3 rounded bg-skin-deep/80 border border-skin-base/30 text-left transition-colors duration-300 ${gameId ? 'text-skin-green' : 'text-skin-dim/70'}`}>
+                <div data-testid="status-output" className={`p-3 rounded bg-[rgba(10,10,10,0.8)] border border-[rgba(245,243,240,0.3)] text-left transition-colors duration-300 ${gameId ? 'text-skin-green' : 'text-[rgba(168,163,156,0.7)]'}`}>
                   {`> ${status}`}
                   <span className="animate-pulse">_</span>
                 </div>
@@ -1260,12 +1260,12 @@ export default function LobbyRoot() {
                     <div data-testid="invite-code" className="text-4xl font-mono font-black text-skin-gold tracking-[0.3em] select-all">
                       {inviteCode}
                     </div>
-                    <p className="text-xs text-skin-dim/60">Share this code with your players</p>
+                    <p className="text-xs text-[rgba(168,163,156,0.6)]">Share this code with your players</p>
                   </div>
 
                   {/* Email invites sent confirmation */}
                   {Object.keys(emailInviteStatuses).length > 0 && (
-                    <div className="p-3 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs font-mono text-center">
+                    <div className="p-3 rounded-lg bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.3)] text-skin-green text-xs font-mono text-center">
                       Email invites sent to {inviteEmails.filter(e => e.trim() && e.includes('@')).length} player(s)
                     </div>
                   )}
@@ -1273,25 +1273,25 @@ export default function LobbyRoot() {
                   <div className="grid grid-cols-1 gap-3">
                     <a
                       href={`/join/${inviteCode}`}
-                      className="flex items-center justify-between p-4 bg-skin-panel/30 hover:bg-skin-panel/50 text-skin-base rounded-lg transition-all border border-skin-base hover:border-skin-dim/30 group"
+                      className="flex items-center justify-between p-4 bg-[rgba(19,19,19,0.3)] hover:bg-[rgba(19,19,19,0.5)] text-skin-base rounded-lg transition-all border border-skin-base hover:border-[rgba(168,163,156,0.3)] group"
                     >
                       <span className="font-medium text-sm flex flex-col">
                         <span className="font-bold text-skin-base">Join as Host</span>
-                        <span className="text-xs text-skin-dim/60">Pick your character</span>
+                        <span className="text-xs text-[rgba(168,163,156,0.6)]">Pick your character</span>
                       </span>
-                      <span className="text-skin-dim/40 group-hover:text-skin-gold group-hover:translate-x-1 transition-all">&rarr;</span>
+                      <span className="text-[rgba(168,163,156,0.4)] group-hover:text-skin-gold group-hover:translate-x-1 transition-all">&rarr;</span>
                     </a>
 
                     {inviteCode && (
                       <a
                         href={`/game/${inviteCode}/waiting`}
-                        className="flex items-center justify-between p-4 bg-skin-info/10 hover:bg-skin-info/20 text-skin-info rounded-lg transition-all border border-skin-info/20 hover:border-skin-info/40 group"
+                        className="flex items-center justify-between p-4 bg-[rgba(129,140,248,0.1)] hover:bg-[rgba(129,140,248,0.2)] text-skin-info rounded-lg transition-all border border-[rgba(129,140,248,0.2)] hover:border-[rgba(129,140,248,0.4)] group"
                       >
                         <span className="font-medium text-sm flex flex-col">
                           <span className="font-bold text-skin-info">Waiting Room</span>
-                          <span className="text-xs text-skin-info/50">See who has joined</span>
+                          <span className="text-xs text-[rgba(129,140,248,0.5)]">See who has joined</span>
                         </span>
-                        <span className="text-skin-info/30 group-hover:text-skin-info group-hover:translate-x-1 transition-all">&rarr;</span>
+                        <span className="text-[rgba(129,140,248,0.3)] group-hover:text-skin-info group-hover:translate-x-1 transition-all">&rarr;</span>
                       </a>
                     )}
                   </div>
@@ -1305,25 +1305,25 @@ export default function LobbyRoot() {
                     href={inviteCode ? `${clientHost}/game/${inviteCode}?token=${tokens['p1']}` : `${clientHost}/?token=${tokens['p1']}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center justify-between p-4 bg-skin-panel/30 hover:bg-skin-panel/50 text-skin-base rounded-lg transition-all border border-skin-base hover:border-skin-dim/30 group"
+                    className="flex items-center justify-between p-4 bg-[rgba(19,19,19,0.3)] hover:bg-[rgba(19,19,19,0.5)] text-skin-base rounded-lg transition-all border border-skin-base hover:border-[rgba(168,163,156,0.3)] group"
                   >
                     <span className="font-medium text-sm flex flex-col">
                       <span className="font-bold text-skin-base">Enter Simulation</span>
-                      <span className="text-xs text-skin-dim/60">Connect as Player 1</span>
+                      <span className="text-xs text-[rgba(168,163,156,0.6)]">Connect as Player 1</span>
                     </span>
-                    <span className="text-skin-dim/40 group-hover:text-skin-gold group-hover:translate-x-1 transition-all">&rarr;</span>
+                    <span className="text-[rgba(168,163,156,0.4)] group-hover:text-skin-gold group-hover:translate-x-1 transition-all">&rarr;</span>
                   </a>
 
                   {isDebugMode && (
                     <a
                       href={`/admin/game/${gameId}`}
-                      className="flex items-center justify-between p-4 bg-skin-info/10 hover:bg-skin-info/20 text-skin-info rounded-lg transition-all border border-skin-info/20 hover:border-skin-info/40 group"
+                      className="flex items-center justify-between p-4 bg-[rgba(129,140,248,0.1)] hover:bg-[rgba(129,140,248,0.2)] text-skin-info rounded-lg transition-all border border-[rgba(129,140,248,0.2)] hover:border-[rgba(129,140,248,0.4)] group"
                     >
                       <span className="font-medium text-sm flex flex-col">
                         <span className="font-bold text-skin-info">Admin Console</span>
-                        <span className="text-xs text-skin-info/50">God Mode Controls</span>
+                        <span className="text-xs text-[rgba(129,140,248,0.5)]">God Mode Controls</span>
                       </span>
-                      <span className="text-skin-info/30 group-hover:text-skin-info group-hover:translate-x-1 transition-all">&rarr;</span>
+                      <span className="text-[rgba(129,140,248,0.3)] group-hover:text-skin-info group-hover:translate-x-1 transition-all">&rarr;</span>
                     </a>
                   )}
                 </div>
@@ -1334,7 +1334,7 @@ export default function LobbyRoot() {
         </div>
 
         {/* Footer Info */}
-        <div className="mt-8 grid grid-cols-3 gap-4 text-center text-[10px] text-skin-dim/30 uppercase tracking-widest font-mono">
+        <div className="mt-8 grid grid-cols-3 gap-4 text-center text-[10px] text-[rgba(168,163,156,0.3)] uppercase tracking-widest font-mono">
           <div>Secure Connection</div>
           <div>v0.9.2 BETA</div>
           <div>PartyKit Inc.</div>

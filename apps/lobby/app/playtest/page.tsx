@@ -37,9 +37,9 @@ export default async function PlaytestPage() {
   const playtestUrl = (env.PLAYTEST_URL as string) || `${lobbyHost}/playtest`;
 
   return (
-    <div className="min-h-screen bg-skin-deep bg-grid-pattern font-body text-skin-base selection:bg-skin-pink/30 relative overflow-hidden">
+    <div className="min-h-screen bg-skin-deep bg-grid-pattern font-body text-skin-base selection:bg-[rgba(215,38,56,0.3)] relative overflow-hidden">
       {/* Ambient glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-gradient-radial from-skin-panel/60 via-skin-panel/20 to-transparent opacity-80 pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-gradient-radial from-[rgba(19,19,19,0.6)] via-[rgba(19,19,19,0.2)] to-transparent opacity-80 pointer-events-none" />
 
       {/* Hero */}
       <header className="relative pt-[max(2rem,env(safe-area-inset-top))] pb-2 px-4 text-center">
@@ -49,7 +49,7 @@ export default async function PlaytestPage() {
         <p className="text-skin-dim text-base md:text-lg font-light tracking-wide mb-4 max-w-sm mx-auto">
           A multi-day social game for the people who watch this stuff for the strategy.
         </p>
-        <span className="inline-block bg-skin-pink/10 rounded-full px-5 py-2 text-skin-pink text-xs font-bold uppercase tracking-[0.2em] mb-8">
+        <span className="inline-block bg-[rgba(215,38,56,0.1)] rounded-full px-5 py-2 text-skin-pink text-xs font-bold uppercase tracking-[0.2em] mb-8">
           Playtesting Now
         </span>
 
@@ -63,7 +63,7 @@ export default async function PlaytestPage() {
 
       {/* Form */}
       <main className="relative px-5 py-10 max-w-md mx-auto">
-        <div className="bg-skin-deep/70 border border-skin-base rounded-3xl p-7 md:p-8 shadow-card">
+        <div className="bg-[rgba(10,10,10,0.7)] border border-skin-base rounded-3xl p-7 md:p-8 shadow-card">
           <div className="text-center mb-7">
             <h2 className="font-display font-black text-2xl text-skin-base mb-1.5 uppercase tracking-tight">
               Reserve a Seat in the Next Cast

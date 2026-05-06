@@ -188,7 +188,7 @@ export function ShareButtons({ emphasis = false, referralCode, playtestUrl }: { 
         <button
           onClick={shareTwitter}
           aria-label="Share on Twitter"
-          className={`${circleSize} rounded-full bg-skin-panel/60 text-skin-dim hover:text-white hover:bg-skin-base/20 transition-all flex items-center justify-center hover:scale-110`}
+          className={`${circleSize} rounded-full bg-[rgba(19,19,19,0.6)] text-skin-dim hover:text-white hover:bg-[rgba(245,243,240,0.2)] transition-all flex items-center justify-center hover:scale-110`}
         >
           <TwitterIcon />
         </button>
@@ -227,14 +227,14 @@ export function ShareButtons({ emphasis = false, referralCode, playtestUrl }: { 
         <button
           onClick={shareEmail}
           aria-label="Share via email"
-          className={`${circleSize} rounded-full bg-skin-panel/60 text-skin-dim hover:text-white hover:bg-skin-base/20 transition-all flex items-center justify-center hover:scale-110`}
+          className={`${circleSize} rounded-full bg-[rgba(19,19,19,0.6)] text-skin-dim hover:text-white hover:bg-[rgba(245,243,240,0.2)] transition-all flex items-center justify-center hover:scale-110`}
         >
           <EmailIcon />
         </button>
         <button
           onClick={copyLink}
           aria-label="Copy link"
-          className={`${circleSize} rounded-full bg-skin-panel/60 text-skin-dim hover:text-white hover:bg-skin-base/20 transition-all flex items-center justify-center hover:scale-110`}
+          className={`${circleSize} rounded-full bg-[rgba(19,19,19,0.6)] text-skin-dim hover:text-white hover:bg-[rgba(245,243,240,0.2)] transition-all flex items-center justify-center hover:scale-110`}
         >
           {copiedBtn === 'link' ? (
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>

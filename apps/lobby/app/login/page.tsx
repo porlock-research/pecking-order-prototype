@@ -51,7 +51,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="bg-skin-deep/70 border border-skin-base rounded-3xl p-7 sm:p-8 shadow-card space-y-6">
+    <div className="bg-[rgba(10,10,10,0.7)] border border-skin-base rounded-3xl p-7 sm:p-8 shadow-card space-y-6">
 
       {!magicLink && !emailSent ? (
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
@@ -67,12 +67,12 @@ function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="player@example.com"
-              className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 transition-all text-base placeholder:text-skin-faint"
+              className="w-full bg-skin-input text-skin-base border border-skin-base rounded-xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] transition-all text-base placeholder:text-skin-faint"
             />
           </div>
 
           {error && (
-            <div role="alert" className="p-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm">
+            <div role="alert" className="p-3 rounded-lg bg-[rgba(215,38,56,0.1)] border border-[rgba(215,38,56,0.3)] text-skin-pink text-sm">
               {error}
             </div>
           )}
@@ -140,7 +140,7 @@ function LoginForm() {
 
           <a
             href={magicLink!}
-            className="block w-full py-4 text-center bg-skin-green/10 text-skin-green border border-skin-green/30 rounded-xl font-display font-bold uppercase tracking-widest text-sm hover:bg-skin-green/20 transition-all"
+            className="block w-full py-4 text-center bg-[rgba(16,185,129,0.1)] text-skin-green border border-[rgba(16,185,129,0.3)] rounded-xl font-display font-bold uppercase tracking-widest text-sm hover:bg-[rgba(16,185,129,0.2)] transition-all"
           >
             Click to Sign In
           </a>
@@ -160,8 +160,8 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-dvh bg-skin-deep bg-grid-pattern flex flex-col items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] font-body text-skin-base relative selection:bg-skin-gold/30">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-skin-panel/40 to-transparent opacity-60 pointer-events-none" />
+    <div className="min-h-dvh bg-skin-deep bg-grid-pattern flex flex-col items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] font-body text-skin-base relative selection:bg-[rgba(247,197,46,0.3)]">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-[rgba(19,19,19,0.4)] to-transparent opacity-60 pointer-events-none" />
 
       <div className="max-w-md w-full relative z-10">
         <header className="text-center mb-10 sm:mb-12 space-y-4">
@@ -174,7 +174,7 @@ export default function LoginPage() {
         </header>
 
         <Suspense fallback={
-          <div className="bg-skin-deep/70 border border-skin-base rounded-3xl p-8 flex items-center justify-center shadow-card">
+          <div className="bg-[rgba(10,10,10,0.7)] border border-skin-base rounded-3xl p-8 flex items-center justify-center shadow-card">
             <span className="text-skin-faint text-sm">Pulling your session…</span>
           </div>
         }>

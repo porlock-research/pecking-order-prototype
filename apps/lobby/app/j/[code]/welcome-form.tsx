@@ -53,7 +53,7 @@ export function WelcomeForm({ code }: { code: string }) {
           autoComplete="given-name"
           maxLength={24}
           placeholder="Your real name"
-          className="mt-2 w-full px-4 py-3 bg-skin-input border border-skin-rule rounded-lg text-skin-base placeholder:text-skin-faint focus:outline-none focus:border-skin-pink/60 text-base"
+          className="mt-2 w-full px-4 py-3 bg-skin-input border border-skin-rule rounded-lg text-skin-base placeholder:text-skin-faint focus:outline-none focus:border-[rgba(215,38,56,0.6)] text-base"
         />
         <span className="mt-2 block text-[11.5px] text-skin-dim leading-snug">
           <strong className="text-skin-base font-semibold">Stays hidden</strong> while you play. Other players see your{' '}
@@ -64,7 +64,7 @@ export function WelcomeForm({ code }: { code: string }) {
       {error && (
         <div
           role="alert"
-          className="p-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm"
+          className="p-3 rounded-lg bg-[rgba(215,38,56,0.1)] border border-[rgba(215,38,56,0.3)] text-skin-pink text-sm"
         >
           {error}
         </div>
