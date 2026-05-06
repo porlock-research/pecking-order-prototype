@@ -32,13 +32,15 @@
       },
       "routes": [
         { "pattern": "staging-lobby.peckingorder.ca", "custom_domain": true },
-        { "pattern": "staging-playtest.peckingorder.ca", "custom_domain": true }
+        { "pattern": "staging-playtest.peckingorder.ca", "custom_domain": true },
+        { "pattern": "staging.peckingorder.ca", "custom_domain": true }
       ],
       "vars": {
         "GAME_SERVER_HOST": "https://staging-api.peckingorder.ca",
         "GAME_CLIENT_HOST": "https://staging-play.peckingorder.ca",
         "PERSONA_ASSETS_URL": "https://staging-assets.peckingorder.ca",
         "LOBBY_HOST": "https://staging-lobby.peckingorder.ca",
+        "MARKETING_HOST": "https://staging.peckingorder.ca",
         "SESSION_COOKIE_NAME": "po_session_stg",
         "PLAYTEST_URL": "https://staging-playtest.peckingorder.ca",
         "TURNSTILE_SITE_KEY": "0x4AAAAAACyKQ25EgAbM9RSm"
@@ -63,13 +65,16 @@
       },
       "routes": [
         { "pattern": "lobby.peckingorder.ca", "custom_domain": true },
-        { "pattern": "playtest.peckingorder.ca", "custom_domain": true }
+        { "pattern": "playtest.peckingorder.ca", "custom_domain": true },
+        { "pattern": "peckingorder.ca", "custom_domain": true },
+        { "pattern": "www.peckingorder.ca", "custom_domain": true }
       ],
       "vars": {
         "GAME_SERVER_HOST": "https://api.peckingorder.ca",
         "GAME_CLIENT_HOST": "https://play.peckingorder.ca",
         "PERSONA_ASSETS_URL": "https://assets.peckingorder.ca",
         "LOBBY_HOST": "https://lobby.peckingorder.ca",
+        "MARKETING_HOST": "https://peckingorder.ca",
         "SESSION_COOKIE_NAME": "po_session",
         "PLAYTEST_URL": "https://playtest.peckingorder.ca",
         "TURNSTILE_SITE_KEY": "0x4AAAAAACyKQ25EgAbM9RSm"
