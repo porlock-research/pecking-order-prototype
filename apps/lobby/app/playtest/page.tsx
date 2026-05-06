@@ -59,14 +59,14 @@ export default async function PlaytestPage() {
         >
           <Link
             href="/casting"
-            className="group inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-[rgba(245,243,240,0.4)] text-skin-base hover:bg-skin-base hover:text-skin-deep hover:border-skin-base transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink"
+            className="group inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-[rgba(245,243,240,0.4)] text-skin-base hover:bg-[var(--po-text)] hover:text-skin-inverted hover:border-[var(--po-text)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink"
           >
             <span aria-hidden className="text-skin-pink motion-safe:group-hover:-translate-x-0.5 transition-transform">←</span>
             What is this?
           </Link>
           <Link
             href="/how-it-works"
-            className="group inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-[rgba(245,243,240,0.4)] text-skin-base hover:bg-skin-base hover:text-skin-deep hover:border-skin-base transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink"
+            className="group inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-[rgba(245,243,240,0.4)] text-skin-base hover:bg-[var(--po-text)] hover:text-skin-inverted hover:border-[var(--po-text)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink"
           >
             How it works
             <span aria-hidden className="text-skin-pink motion-safe:group-hover:translate-x-0.5 transition-transform">→</span>

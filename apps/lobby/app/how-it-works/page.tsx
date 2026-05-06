@@ -101,14 +101,14 @@ function Hero({ playtestUrl }: { playtestUrl: string }) {
       >
         <a
           href="#a-game-looks-like-this"
-          className="group inline-flex items-center gap-2.5 px-4 py-3 sm:py-2.5 rounded-md border border-[rgba(245,243,240,0.4)] text-skin-base bg-transparent hover:bg-skin-base hover:text-skin-deep hover:border-skin-base transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink"
+          className="group inline-flex items-center gap-2.5 px-4 py-3 sm:py-2.5 rounded-md border border-[rgba(245,243,240,0.4)] text-skin-base bg-transparent hover:bg-[var(--po-text)] hover:text-skin-inverted hover:border-[var(--po-text)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink"
         >
           <span aria-hidden className="text-skin-pink group-hover:text-skin-pink transition-transform motion-safe:group-hover:translate-y-0.5">↓</span>
           A day looks like this
         </a>
         <a
           href="#faq"
-          className="group inline-flex items-center gap-2.5 px-4 py-3 sm:py-2.5 rounded-md border border-[rgba(245,243,240,0.4)] text-skin-base bg-transparent hover:bg-skin-base hover:text-skin-deep hover:border-skin-base transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink"
+          className="group inline-flex items-center gap-2.5 px-4 py-3 sm:py-2.5 rounded-md border border-[rgba(245,243,240,0.4)] text-skin-base bg-transparent hover:bg-[var(--po-text)] hover:text-skin-inverted hover:border-[var(--po-text)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink"
         >
           <span aria-hidden className="text-skin-pink group-hover:text-skin-pink transition-transform motion-safe:group-hover:translate-y-0.5">↓</span>
           Common questions
@@ -742,7 +742,7 @@ function CtaButton({
   return (
     <Link
       href={href}
-      className="inline-block w-full sm:w-auto sm:min-w-[280px] py-4 px-6 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99] transition-all"
+      className="inline-block w-full sm:w-auto sm:min-w-[280px] py-4 px-6 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl bg-skin-pink text-skin-base shadow-btn motion-safe:hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5 active:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink transition-[transform,filter] duration-150 ease-out"
     >
       {children}
     </Link>

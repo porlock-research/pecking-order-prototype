@@ -103,7 +103,7 @@ export function StickyCta({ playtestUrl, hideWhenInViewSelectors }: StickyCtaPro
     >
       <Link
         href={href}
-        className="block w-full py-3 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl bg-skin-pink text-skin-base shadow-btn active:scale-[0.99] transition-transform"
+        className="block w-full py-3 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl bg-skin-pink text-skin-base shadow-btn active:translate-y-0.5 active:brightness-95 transition-[transform,filter] duration-150 ease-out"
       >
         Get cast →
       </Link>
