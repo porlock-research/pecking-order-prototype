@@ -3,7 +3,7 @@ import { getEnv } from '@/lib/db';
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const env = await getEnv();
-  const lobbyHost = (env.LOBBY_HOST as string) || 'https://lobby.peckingorder.ca';
+  const host = (env.MARKETING_HOST as string) || 'https://peckingorder.ca';
 
   return {
     rules: [
@@ -16,6 +16,6 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         disallow: ['/admin/', '/admin', '/api/internal/', '/api/internal'],
       },
     ],
-    sitemap: `${lobbyHost}/sitemap.xml`,
+    sitemap: `${host}/sitemap.xml`,
   };
 }
