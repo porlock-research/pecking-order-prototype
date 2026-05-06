@@ -291,12 +291,12 @@ export function SignupForm({
               <button
                 type="submit"
                 disabled={optionalIsLoading || !hasOptionalInput}
-                className={`w-full py-3 font-display font-bold text-xs tracking-widest uppercase rounded-xl transition-all ${
+                className={`w-full py-3 font-display font-bold text-xs tracking-widest uppercase rounded-xl transition-[transform,filter,background-color] duration-150 ease-out ${
                   optionalIsLoading
                     ? 'bg-skin-input text-skin-faint cursor-wait'
                     : !hasOptionalInput
                       ? 'bg-skin-input text-skin-faint cursor-not-allowed'
-                      : 'bg-[rgba(215,38,56,0.85)] text-skin-base hover:brightness-110 active:scale-[0.99]'
+                      : 'bg-[rgba(215,38,56,0.85)] text-skin-base hover:brightness-105 active:translate-y-0.5 active:brightness-95'
                 }`}
               >
                 {optionalIsLoading ? 'Saving…' : 'Save'}
@@ -359,11 +359,11 @@ export function SignupForm({
       <button
         type="submit"
         disabled={isLoading || !email || (!!turnstileSiteKey && !turnstileToken)}
-        className={`w-full py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl transition-all flex items-center justify-center gap-3
+        className={`w-full py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl transition-[transform,filter,background-color] duration-150 ease-out flex items-center justify-center gap-3
           ${
             isLoading
               ? 'bg-skin-input text-skin-faint cursor-wait'
-              : 'bg-skin-pink text-skin-base shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
+              : 'bg-skin-pink text-skin-base shadow-btn motion-safe:hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5 active:brightness-95'
           }`}
       >
         {isLoading ? (

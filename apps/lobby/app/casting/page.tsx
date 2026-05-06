@@ -160,13 +160,13 @@ function Hero({
       >
         <Link
           href={playtestUrl}
-          className="inline-block w-full sm:w-auto sm:min-w-[220px] py-4 px-6 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink transition-all"
+          className="inline-block w-full sm:w-auto sm:min-w-[220px] py-4 px-6 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl bg-skin-pink text-skin-base shadow-btn motion-safe:hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5 active:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink transition-[transform,filter] duration-150 ease-out"
         >
           Sign up to play
         </Link>
         <Link
           href="/how-it-works"
-          className="inline-block w-full sm:w-auto sm:min-w-[220px] py-4 px-6 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl border-2 border-skin-base text-skin-base hover:border-skin-pink hover:text-skin-pink active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-base transition-all"
+          className="inline-block w-full sm:w-auto sm:min-w-[220px] py-4 px-6 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl border-2 border-skin-base text-skin-base hover:bg-skin-pink hover:text-skin-base hover:border-skin-pink active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-base transition-[background-color,color,border-color,transform] duration-150 ease-out"
         >
           How it works →
         </Link>
@@ -628,7 +628,7 @@ function ScreenshotSlide({
           loading={index === 0 ? 'eager' : 'lazy'}
           decoding="async"
           fetchPriority={index === 0 ? 'high' : 'auto'}
-          className="block w-auto max-h-[60vh] sm:max-h-[70vh] rounded-xl shadow-card transition-transform duration-500 motion-safe:hover:scale-[1.015]"
+          className="block w-auto max-h-[80vh] sm:max-h-[70vh] rounded-xl shadow-card transition-transform duration-500 motion-safe:hover:scale-[1.015]"
         />
       </div>
       <figcaption className="text-center sm:text-left">
@@ -675,13 +675,13 @@ function FinalCta({ playtestUrl }: { playtestUrl: string }) {
       <div className="mt-7 flex flex-col sm:flex-row gap-3 justify-center">
         <Link
           href={playtestUrl}
-          className="inline-block w-full sm:w-auto sm:min-w-[220px] py-4 px-6 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink transition-all"
+          className="inline-block w-full sm:w-auto sm:min-w-[220px] py-4 px-6 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl bg-skin-pink text-skin-base shadow-btn motion-safe:hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5 active:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink transition-[transform,filter] duration-150 ease-out"
         >
           Sign up to play
         </Link>
         <Link
           href="/how-it-works"
-          className="inline-block w-full sm:w-auto sm:min-w-[220px] py-4 px-6 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl border-2 border-skin-base text-skin-base hover:border-skin-pink hover:text-skin-pink active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-base transition-all"
+          className="inline-block w-full sm:w-auto sm:min-w-[220px] py-4 px-6 text-center font-display font-bold text-sm tracking-widest uppercase rounded-xl border-2 border-skin-base text-skin-base hover:bg-skin-pink hover:text-skin-base hover:border-skin-pink active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-base transition-[background-color,color,border-color,transform] duration-150 ease-out"
         >
           How it works →
         </Link>
