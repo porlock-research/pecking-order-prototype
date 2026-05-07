@@ -24,6 +24,21 @@ export function middleware(req: NextRequest) {
     }
   }
 
+  // Apex domain: peckingorder.ca / www.peckingorder.ca → /casting at root.
+  // Same vanity-rewrite pattern as playtest.peckingorder.ca above. URL stays
+  // as `peckingorder.ca` (no path exposed) because rewrite is internal.
+  // /casting deep-link still works as an alternate URL on both hosts.
+  // Staging mirror: staging.peckingorder.ca behaves the same way.
+  if (
+    host === 'peckingorder.ca' ||
+    host === 'www.peckingorder.ca' ||
+    host === 'staging.peckingorder.ca'
+  ) {
+    if (req.nextUrl.pathname === '/') {
+      return NextResponse.rewrite(new URL('/casting', req.url));
+    }
+  }
+
   // Public routes: skip the session gate. Avoids bouncing fresh visitors
   // from SMS / share links to /login when the destination is a public
   // recruitment surface.

@@ -48,6 +48,10 @@ export function SignupForm({
   const [optionalIsLoading, setOptionalIsLoading] = useState(false);
   const [optionalSaved, setOptionalSaved] = useState(false);
   const [optionalError, setOptionalError] = useState<string | null>(null);
+  // Optional fields hidden behind a tap so the success state stays light by
+  // default — users who actually want better reminders can opt in. Lifts
+  // perceived completion + reduces post-signup form abandonment.
+  const [showOptional, setShowOptional] = useState(false);
 
   // Returning-user check + ?ref= param read
   useEffect(() => {
@@ -180,15 +184,28 @@ export function SignupForm({
           />
         </div>
 
-        {/* Optional reminders form — only when this session just signed up (we have the email + code in memory) */}
-        {submittedEmail && !optionalSaved && (
+        {/* Tap-to-reveal — keeps success state light by default */}
+        {submittedEmail && !optionalSaved && !showOptional && (
+          <div className="pt-6 border-t border-[rgba(245,243,240,0.2)] text-center">
+            <button
+              type="button"
+              onClick={() => setShowOptional(true)}
+              className="inline-flex items-center gap-2 py-2 px-4 text-[12px] font-bold text-skin-dim hover:text-skin-pink uppercase tracking-widest font-display transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-skin-pink rounded-md"
+            >
+              + Add reminders <span className="text-skin-faint normal-case tracking-normal font-normal">(optional)</span>
+            </button>
+          </div>
+        )}
+
+        {/* Optional reminders form — appears after tap-to-reveal */}
+        {submittedEmail && !optionalSaved && showOptional && (
           <div className="pt-6 border-t border-[rgba(245,243,240,0.2)] space-y-4">
             <div className="text-center space-y-1.5">
               <p className="text-[11px] font-bold text-skin-dim uppercase tracking-widest font-display">
                 One more thing — optional
               </p>
               <p className="text-sm text-skin-faint">
-                Help us reach you when your cohort starts. All optional, all skippable.
+                Help us reach you when your cast starts. All optional, all skippable.
               </p>
             </div>
 
@@ -274,12 +291,12 @@ export function SignupForm({
               <button
                 type="submit"
                 disabled={optionalIsLoading || !hasOptionalInput}
-                className={`w-full py-3 font-display font-bold text-xs tracking-widest uppercase rounded-xl transition-all ${
+                className={`w-full py-3 font-display font-bold text-xs tracking-widest uppercase rounded-xl transition-[transform,filter,background-color] duration-150 ease-out ${
                   optionalIsLoading
                     ? 'bg-skin-input text-skin-faint cursor-wait'
                     : !hasOptionalInput
                       ? 'bg-skin-input text-skin-faint cursor-not-allowed'
-                      : 'bg-[rgba(215,38,56,0.85)] text-skin-base hover:brightness-110 active:scale-[0.99]'
+                      : 'bg-[rgba(215,38,56,0.85)] text-skin-base hover:brightness-105 active:translate-y-0.5 active:brightness-95'
                 }`}
               >
                 {optionalIsLoading ? 'Saving…' : 'Save'}
@@ -342,11 +359,11 @@ export function SignupForm({
       <button
         type="submit"
         disabled={isLoading || !email || (!!turnstileSiteKey && !turnstileToken)}
-        className={`w-full py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl transition-all flex items-center justify-center gap-3
+        className={`w-full py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl transition-[transform,filter,background-color] duration-150 ease-out flex items-center justify-center gap-3
           ${
             isLoading
               ? 'bg-skin-input text-skin-faint cursor-wait'
-              : 'bg-skin-pink text-skin-base shadow-btn btn-press hover:brightness-110 active:scale-[0.99]'
+              : 'bg-skin-pink text-skin-base shadow-btn motion-safe:hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0.5 active:brightness-95'
           }`}
       >
         {isLoading ? (
@@ -356,7 +373,7 @@ export function SignupForm({
             <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:150ms]" />
           </>
         ) : (
-          'Reserve My Seat'
+          'Sign up to play'
         )}
       </button>
 
