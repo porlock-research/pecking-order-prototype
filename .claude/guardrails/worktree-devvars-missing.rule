@@ -21,3 +21,10 @@ ADVISORY: |
 
   Real session cost: user reports this as recurring ("why does this keep
   happening"). See memory: feedback_worktree_devvars_setup.md.
+
+  Related, distinct gotcha: `.wrangler/state/` (D1, R2, KV) is also
+  per-worktree and fresh-empty. If your work needs to read existing
+  games/users from main's D1 (e.g. visual verification of /j/CODE or
+  /game/CODE/waiting against real cast data), symlink the worktree's
+  `apps/<app>/.wrangler/` to main's. See memory:
+  feedback_worktree_wrangler_state_isolation.md.
