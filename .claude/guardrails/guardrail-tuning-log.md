@@ -115,3 +115,20 @@ The "Tighten candidates identified 2026-04-24 (not yet done)" list previously
 held here is fully covered by the "Resolved 2026-04-24 (tightening pass — 10
 rules gated)" section above. No guardrail commits between 2026-04-24 and
 2026-04-29, so no new candidates have surfaced.
+
+## 2026-05-07 — Watch list (no rule change)
+
+- **`finite-session-crash-forensics`** — fired during reading of an active
+  background-agent's transcript at `.claude/projects/.../agent-<id>.jsonl`.
+  The agent was alive, not crashed; I was checking progress. Cost ~50
+  tokens once. **Decision: leave as-is.** The rule's correct firings have
+  demonstrably high value. Tightening to require crash-context keywords
+  ("DiagnosticReport", "stop_hook_summary") would also exclude legitimate
+  triage where a user reads the JSONL alone. Revisit if 3+ false positives
+  accumulate.
+
+- **`finite-worktree-no-node-modules`** — fired this session after I had
+  already done the install + turbo build correctly. ~150 redundant tokens.
+  **Decision: leave as-is.** Filesystem-state predicates aren't available
+  to MATCH_PATTERN; the rule cannot know whether install/build was already
+  done. Acceptable noise floor.
