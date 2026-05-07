@@ -124,7 +124,7 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
           <h1 className="font-display text-2xl font-black text-skin-dim">
             This game already started
           </h1>
-          <p className="text-sm text-skin-dim/80">
+          <p className="text-sm text-[rgba(168,163,156,0.8)]">
             The host kicked off before you tapped in. Ask your friends to start a new game and
             share the link before they begin.
           </p>
@@ -193,9 +193,11 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
       <div className="relative w-full max-w-md flex flex-col gap-6 sm:gap-7">
 
         {/* Masthead — wordmark left, tear-off code stub right. 2px paper rule
-            anchors the page as a magazine cover. */}
+            anchors the page as a magazine cover. Wordmark up to text-lg
+            from text-base for the bolder pass — masthead is the page-
+            level masthead, it should announce, not whisper. */}
         <div className="flex items-center justify-between pb-2.5 border-b-2 border-skin-base">
-          <div className="font-display font-black text-base text-skin-base tracking-[0.16em] uppercase leading-none">
+          <div className="font-display font-black text-lg text-skin-base tracking-[0.16em] uppercase leading-none">
             Pecking Order
           </div>
           <div className="font-mono text-[10px] font-bold tracking-[0.1em] text-skin-dim leading-none">
@@ -234,8 +236,8 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
             </div>
           )}
           <h1
-            className="font-display font-black tracking-tight leading-[0.9] text-skin-base mb-2"
-            style={{ fontSize: 'clamp(2.4rem, 10.5vw, 3.25rem)' }}
+            className="font-display font-black tracking-tight leading-[0.86] text-skin-base mb-2"
+            style={{ fontSize: 'clamp(2.6rem, 12vw, 3.85rem)' }}
           >
             You’re <span className="text-skin-pink">{hasCast ? 'invited.' : 'in first.'}</span>
           </h1>
@@ -249,12 +251,17 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
           </p>
         </div>
 
-        {/* Verb stack — empty-state visual replacing the cast fan. */}
+        {/* Verb stack — empty-state visual replacing the cast fan. Pushed
+            from clamp(2/9.5vw/2.75) to clamp(2.4/11.5vw/3.4) for the
+            bolder pass — when there's no cast yet, this stack carries
+            the visual weight of the page; needs to feel like a tabloid
+            cover, not a list. Tighter leading [0.9] keeps the four
+            words stacked tight so they read as one block. */}
         {!hasCast && (
           <div
             aria-hidden
-            className="text-center font-display font-black uppercase leading-[0.94] tracking-tight border-y border-skin-rule py-3.5"
-            style={{ fontSize: 'clamp(2rem, 9.5vw, 2.75rem)' }}
+            className="text-center font-display font-black uppercase leading-[0.9] tracking-tight border-y border-skin-rule py-4"
+            style={{ fontSize: 'clamp(2.4rem, 11.5vw, 3.4rem)' }}
           >
             <div className="text-skin-base">Vote.</div>
             <div className="text-skin-pink">Ally.</div>
@@ -270,20 +277,25 @@ export default async function FrictionlessWelcomePage({ params }: PageProps) {
           <div className="text-center font-display font-black text-[10px] tracking-[0.28em] uppercase text-skin-pink mb-2.5">
             Each day
           </div>
+          {/* Verbs pushed 22px → 27px for the bolder pass — these are the
+              load-bearing nouns of the rhythm strip and were reading as
+              UI labels rather than headlines. Step numbers stay 10px
+              tracked-caps red (eyebrow grammar; principle 2 — loud through
+              contrast, not hue). */}
           <div className="grid grid-cols-3 gap-1">
             <div className="text-center px-1 border-r border-skin-rule">
               <div className="font-display font-black text-[10px] tracking-[0.16em] text-skin-pink leading-none">01</div>
-              <div className="font-display font-black text-[22px] tracking-[-0.005em] uppercase text-skin-base leading-none mt-1">Scheme</div>
+              <div className="font-display font-black text-[27px] tracking-[-0.01em] uppercase text-skin-base leading-[0.95] mt-1">Scheme</div>
               <div className="text-[11px] italic text-skin-dim mt-1 leading-tight">alliances and rivalries</div>
             </div>
             <div className="text-center px-1 border-r border-skin-rule">
               <div className="font-display font-black text-[10px] tracking-[0.16em] text-skin-pink leading-none">02</div>
-              <div className="font-display font-black text-[22px] tracking-[-0.005em] uppercase text-skin-base leading-none mt-1">Compete</div>
+              <div className="font-display font-black text-[27px] tracking-[-0.01em] uppercase text-skin-base leading-[0.95] mt-1">Compete</div>
               <div className="text-[11px] italic text-skin-dim mt-1 leading-tight">daily games for silver</div>
             </div>
             <div className="text-center px-1">
               <div className="font-display font-black text-[10px] tracking-[0.16em] text-skin-pink leading-none">03</div>
-              <div className="font-display font-black text-[22px] tracking-[-0.005em] uppercase text-skin-base leading-none mt-1">Betray</div>
+              <div className="font-display font-black text-[27px] tracking-[-0.01em] uppercase text-skin-base leading-[0.95] mt-1">Betray</div>
               <div className="text-[11px] italic text-skin-dim mt-1 leading-tight">vote one out</div>
             </div>
           </div>

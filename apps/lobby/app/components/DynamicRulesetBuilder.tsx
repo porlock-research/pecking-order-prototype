@@ -258,7 +258,7 @@ function Toggle({
       onClick={() => onChange(!checked)}
       className={`relative inline-flex shrink-0 ${w} items-center rounded-full border transition-all duration-200 ${
         checked
-          ? 'bg-skin-gold/30 border-skin-gold/50'
+          ? 'bg-[rgba(247,197,46,0.3)] border-[rgba(247,197,46,0.5)]'
           : 'bg-skin-input border-skin-base'
       }`}
     >
@@ -266,7 +266,7 @@ function Toggle({
         className={`${dot} rounded-full transition-all duration-200 ${
           checked
             ? `${translate} bg-skin-gold`
-            : 'translate-x-0.5 bg-skin-dim/40'
+            : 'translate-x-0.5 bg-[rgba(168,163,156,0.4)]'
         }`}
       />
     </button>
@@ -294,8 +294,8 @@ function ChipCheckbox({
       onClick={() => onChange(!checked)}
       className={`text-left px-2.5 py-1.5 rounded-lg border text-[10px] font-mono transition-all duration-150 ${
         checked
-          ? 'bg-skin-gold/10 border-skin-gold/40 text-skin-gold'
-          : 'bg-skin-input/60 border-skin-base text-skin-dim/50 hover:border-skin-dim/30 hover:text-skin-dim/70'
+          ? 'bg-[rgba(247,197,46,0.1)] border-[rgba(247,197,46,0.4)] text-skin-gold'
+          : 'bg-[rgba(29,29,29,0.6)] border-skin-base text-[rgba(168,163,156,0.5)] hover:border-[rgba(168,163,156,0.3)] hover:text-[rgba(168,163,156,0.7)]'
       }`}
     >
       <span className="block font-bold leading-tight">{label}</span>
@@ -321,12 +321,12 @@ function NumberStepper({
 }) {
   return (
     <div className="flex items-center gap-2">
-      {label && <span className="text-[10px] font-mono text-skin-dim/50">{label}</span>}
+      {label && <span className="text-[10px] font-mono text-[rgba(168,163,156,0.5)]">{label}</span>}
       <button
         type="button"
         onClick={() => onChange(Math.max(min, value - step))}
         disabled={value <= min}
-        className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+        className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-[rgba(247,197,46,0.3)] transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
       >
         -
       </button>
@@ -335,7 +335,7 @@ function NumberStepper({
         type="button"
         onClick={() => onChange(Math.min(max, value + step))}
         disabled={value >= max}
-        className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-skin-gold/30 transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
+        className="w-6 h-6 flex items-center justify-center bg-skin-input border border-skin-base rounded-md font-mono text-xs text-skin-dim hover:text-skin-gold hover:border-[rgba(247,197,46,0.3)] transition-all disabled:opacity-30 disabled:hover:text-skin-dim disabled:hover:border-skin-base"
       >
         +
       </button>
@@ -359,26 +359,26 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <details data-testid={testId} open={defaultOpen} className="group border border-skin-base rounded-lg bg-skin-input/40 overflow-hidden">
-      <summary className="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none hover:bg-skin-input/60 transition-colors">
+    <details data-testid={testId} open={defaultOpen} className="group border border-skin-base rounded-lg bg-[rgba(29,29,29,0.4)] overflow-hidden">
+      <summary className="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none hover:bg-[rgba(29,29,29,0.6)] transition-colors">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold text-skin-dim uppercase tracking-widest font-display">
             {title}
           </span>
           {badge && (
-            <span className="text-[9px] font-mono text-skin-gold/70 bg-skin-gold/10 border border-skin-gold/20 rounded-full px-1.5 py-0.5">
+            <span className="text-[9px] font-mono text-[rgba(247,197,46,0.7)] bg-[rgba(247,197,46,0.1)] border border-[rgba(247,197,46,0.2)] rounded-full px-1.5 py-0.5">
               {badge}
             </span>
           )}
         </div>
         <svg
-          className="w-3 h-3 text-skin-dim/40 transition-transform group-open:rotate-90"
+          className="w-3 h-3 text-[rgba(168,163,156,0.4)] transition-transform group-open:rotate-90"
           fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       </summary>
-      <div className="px-3 pb-3 pt-1 border-t border-skin-base/50">
+      <div className="px-3 pb-3 pt-1 border-t border-[rgba(245,243,240,0.5)]">
         {children}
       </div>
     </details>
@@ -403,18 +403,18 @@ function TimelinePreview({
   });
 
   return (
-    <div className="mt-2 border border-skin-base/40 rounded-lg bg-skin-input/20 p-2">
+    <div className="mt-2 border border-[rgba(245,243,240,0.4)] rounded-lg bg-[rgba(29,29,29,0.2)] p-2">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[8px] font-mono text-skin-dim/40 uppercase tracking-wider">Day 1 preview</span>
-        <span className="text-[8px] font-mono text-skin-dim/30">{preset.dayLength}</span>
+        <span className="text-[8px] font-mono text-[rgba(168,163,156,0.4)] uppercase tracking-wider">Day 1 preview</span>
+        <span className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">{preset.dayLength}</span>
       </div>
       <div className="space-y-0.5">
         {filteredEvents.map((e, i) => (
           <div key={i} className="flex items-center gap-2">
-            <span className="text-[9px] font-mono text-skin-gold/50 w-10 text-right shrink-0">{e.time}</span>
-            <div className="w-1 h-1 rounded-full bg-skin-gold/30 shrink-0" />
+            <span className="text-[9px] font-mono text-[rgba(247,197,46,0.5)] w-10 text-right shrink-0">{e.time}</span>
+            <div className="w-1 h-1 rounded-full bg-[rgba(247,197,46,0.3)] shrink-0" />
             <span className={`text-[9px] font-mono ${
-              e.condition ? 'text-skin-dim/30 italic' : 'text-skin-dim/50'
+              e.condition ? 'text-[rgba(168,163,156,0.3)] italic' : 'text-[rgba(168,163,156,0.5)]'
             }`}>
               {e.label}
               {e.condition && !((e.condition === 'hasGame' && hasGames) || (e.condition === 'hasActivity' && hasActivities))
@@ -477,7 +477,7 @@ export function DynamicRulesetBuilder({
             />
           ))}
         </div>
-        <p className="text-[8px] font-mono text-skin-dim/30 mt-2">
+        <p className="text-[8px] font-mono text-[rgba(168,163,156,0.3)] mt-2">
           FINALS is always used for the last day
         </p>
       </Section>
@@ -485,18 +485,18 @@ export function DynamicRulesetBuilder({
       {/* ── Allowed Game Types ── */}
       <Section title="Games" badge={gameCount > 0 ? `${gameCount}/${GAME_TYPES.length}` : 'none'} testId="section-games">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[9px] font-mono text-skin-dim/40">Deselect all to disable games</span>
+          <span className="text-[9px] font-mono text-[rgba(168,163,156,0.4)]">Deselect all to disable games</span>
           <button
             type="button"
             onClick={() => onChange({ ...config, allowedGameTypes: config.allowedGameTypes.length === GAME_TYPES.length ? [] : GAME_TYPES.map(g => g.value) })}
-            className="text-[9px] font-mono text-skin-gold/50 hover:text-skin-gold transition-colors"
+            className="text-[9px] font-mono text-[rgba(247,197,46,0.5)] hover:text-skin-gold transition-colors"
           >
             {config.allowedGameTypes.length === GAME_TYPES.length ? 'Clear all' : 'Select all'}
           </button>
         </div>
         {(['arcade', 'knowledge', 'social'] as const).map(cat => (
           <div key={cat} className="mt-2 first:mt-1">
-            <span className="text-[8px] font-mono text-skin-dim/40 uppercase tracking-wider">{cat}</span>
+            <span className="text-[8px] font-mono text-[rgba(168,163,156,0.4)] uppercase tracking-wider">{cat}</span>
             <div className="grid grid-cols-3 gap-1 mt-1">
               {GAME_TYPES.filter(g => g.cat === cat).map(gt => (
                 <ChipCheckbox
@@ -521,11 +521,11 @@ export function DynamicRulesetBuilder({
       {/* ── Allowed Activity Types ── */}
       <Section title="Activities" badge={activityCount > 0 ? `${activityCount}/${ACTIVITY_TYPES.length}` : 'none'} testId="section-activities">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[9px] font-mono text-skin-dim/40">Deselect all to disable activities</span>
+          <span className="text-[9px] font-mono text-[rgba(168,163,156,0.4)]">Deselect all to disable activities</span>
           <button
             type="button"
             onClick={() => onChange({ ...config, allowedActivityTypes: config.allowedActivityTypes.length === ACTIVITY_TYPES.length ? [] : ACTIVITY_TYPES.map(a => a.value) })}
-            className="text-[9px] font-mono text-skin-gold/50 hover:text-skin-gold transition-colors"
+            className="text-[9px] font-mono text-[rgba(247,197,46,0.5)] hover:text-skin-gold transition-colors"
           >
             {config.allowedActivityTypes.length === ACTIVITY_TYPES.length ? 'Clear all' : 'Select all'}
           </button>
@@ -555,7 +555,7 @@ export function DynamicRulesetBuilder({
           {/* DM Characters per player */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-skin-dim/60">DM Characters</span>
+              <span className="text-[10px] font-mono text-[rgba(168,163,156,0.6)]">DM Characters</span>
               <NumberStepper
                 value={config.social.dmCharsPerPlayer}
                 onChange={v => updateSocial({ dmCharsPerPlayer: v })}
@@ -564,7 +564,7 @@ export function DynamicRulesetBuilder({
                 step={50}
               />
             </div>
-            <p className="text-[8px] font-mono text-skin-dim/30">
+            <p className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">
               {config.social.dmCharsPerPlayer} chars x active players = total DM budget per day
             </p>
           </div>
@@ -572,7 +572,7 @@ export function DynamicRulesetBuilder({
           {/* DM Partners */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-skin-dim/60">DM Slots</span>
+              <span className="text-[10px] font-mono text-[rgba(168,163,156,0.6)]">DM Slots</span>
               <NumberStepper
                 value={config.social.dmPartners}
                 onChange={v => updateSocial({ dmPartners: v })}
@@ -580,14 +580,14 @@ export function DynamicRulesetBuilder({
                 max={10}
               />
             </div>
-            <p className="text-[8px] font-mono text-skin-dim/30">
+            <p className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">
               Total DM conversations per day (1-on-1 + group DMs combined)
             </p>
           </div>
 
           {/* DM Cost */}
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-skin-dim/60">Silver per DM</span>
+            <span className="text-[10px] font-mono text-[rgba(168,163,156,0.6)]">Silver per DM</span>
             <NumberStepper
               value={config.social.dmCost}
               onChange={v => updateSocial({ dmCost: v })}
@@ -597,29 +597,29 @@ export function DynamicRulesetBuilder({
           </div>
 
           {/* Nudge Throttle */}
-          <div className="space-y-2 pt-1 border-t border-skin-base/30">
+          <div className="space-y-2 pt-1 border-t border-[rgba(245,243,240,0.3)]">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-skin-dim/60">Allow repeat nudges (no throttle)</span>
+              <span className="text-[10px] font-mono text-[rgba(168,163,156,0.6)]">Allow repeat nudges (no throttle)</span>
               <Toggle checked={config.social.disableNudgeThrottle} onChange={v => updateSocial({ disableNudgeThrottle: v })} size="md" data-testid="disable-nudge-throttle-toggle" />
             </div>
-            <p className="text-[8px] font-mono text-skin-dim/30">
+            <p className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">
               By default each sender can nudge each target only once per day. Toggle on to remove the limit.
             </p>
           </div>
 
           {/* DM Invite Mode */}
-          <div className="space-y-2 pt-1 border-t border-skin-base/30">
+          <div className="space-y-2 pt-1 border-t border-[rgba(245,243,240,0.3)]">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-skin-dim/60">Require DM invitations</span>
+              <span className="text-[10px] font-mono text-[rgba(168,163,156,0.6)]">Require DM invitations</span>
               <Toggle checked={config.social.requireDmInvite} onChange={v => updateSocial({ requireDmInvite: v })} size="md" data-testid="dm-invite-toggle" />
             </div>
-            <p className="text-[8px] font-mono text-skin-dim/30">
+            <p className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">
               Players must send and accept mutual invites before DM conversations open
             </p>
             {config.social.requireDmInvite && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-skin-dim/50">Conversations per player per day</span>
+                  <span className="text-[10px] font-mono text-[rgba(168,163,156,0.5)]">Conversations per player per day</span>
                   <NumberStepper
                     value={config.social.dmSlotsPerPlayer}
                     onChange={v => updateSocial({ dmSlotsPerPlayer: v })}
@@ -627,7 +627,7 @@ export function DynamicRulesetBuilder({
                     max={10}
                   />
                 </div>
-                <p className="text-[8px] font-mono text-skin-dim/30">
+                <p className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">
                   Each player can have up to {config.social.dmSlotsPerPlayer} active DM conversations per day
                 </p>
               </div>
@@ -640,12 +640,12 @@ export function DynamicRulesetBuilder({
       <Section title="Inactivity" testId="section-inactivity">
         <div className="space-y-2 mt-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-skin-dim/60">Auto-eliminate inactive players</span>
+            <span className="text-[10px] font-mono text-[rgba(168,163,156,0.6)]">Auto-eliminate inactive players</span>
             <Toggle checked={config.inactivity.enabled} onChange={v => updateInactivity({ enabled: v })} size="md" />
           </div>
           {config.inactivity.enabled && (
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-skin-dim/50">Consecutive inactive days</span>
+              <span className="text-[10px] font-mono text-[rgba(168,163,156,0.5)]">Consecutive inactive days</span>
               <NumberStepper
                 value={config.inactivity.thresholdDays}
                 onChange={v => updateInactivity({ thresholdDays: v })}
@@ -661,7 +661,7 @@ export function DynamicRulesetBuilder({
       <Section title="Confession Booth" testId="section-confessions">
         <div className="space-y-2 mt-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-skin-dim/60">Enable confession phases</span>
+            <span className="text-[10px] font-mono text-[rgba(168,163,156,0.6)]">Enable confession phases</span>
             <Toggle
               checked={config.confessions.enabled}
               onChange={v => onChange({ ...config, confessions: { enabled: v } })}
@@ -669,9 +669,9 @@ export function DynamicRulesetBuilder({
               data-testid="confessions-enabled"
             />
           </div>
-          <p className="text-[8px] font-mono text-skin-dim/30">
-            Admins schedule <span className="text-skin-gold/70">START_CONFESSION_CHAT</span> /
-            <span className="text-skin-gold/70"> END_CONFESSION_CHAT</span> timeline events to open
+          <p className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">
+            Admins schedule <span className="text-[rgba(247,197,46,0.7)]">START_CONFESSION_CHAT</span> /
+            <span className="text-[rgba(247,197,46,0.7)]"> END_CONFESSION_CHAT</span> timeline events to open
             an anonymous post window. Players drop confessions under a daily
             &ldquo;Confessor #N&rdquo; handle — everyone sees the tape, no one sees the name.
           </p>
@@ -681,11 +681,11 @@ export function DynamicRulesetBuilder({
       {/* ── Day Count ── */}
       <Section title="Day Count" testId="section-day-count">
         <div className="space-y-2 mt-1">
-          <p className="text-[8px] font-mono text-skin-dim/30">
+          <p className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">
             Days = active players - 1 (capped at max)
           </p>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-skin-dim/50">Max days</span>
+            <span className="text-[10px] font-mono text-[rgba(168,163,156,0.5)]">Max days</span>
             <NumberStepper
               value={config.dayCount.maxDays}
               onChange={v => onChange({ ...config, dayCount: { maxDays: v } })}
@@ -704,8 +704,8 @@ export function DynamicRulesetBuilder({
               key={sp.value}
               className={`flex items-center gap-3 px-2.5 py-2 rounded-lg border cursor-pointer transition-all ${
                 config.schedulePreset === sp.value
-                  ? 'bg-skin-gold/10 border-skin-gold/40'
-                  : 'bg-skin-input/40 border-skin-base hover:border-skin-dim/30'
+                  ? 'bg-[rgba(247,197,46,0.1)] border-[rgba(247,197,46,0.4)]'
+                  : 'bg-[rgba(29,29,29,0.4)] border-skin-base hover:border-[rgba(168,163,156,0.3)]'
               }`}
             >
               <input
@@ -721,7 +721,7 @@ export function DynamicRulesetBuilder({
                 className={`w-3 h-3 rounded-full border-2 flex items-center justify-center transition-all ${
                   config.schedulePreset === sp.value
                     ? 'border-skin-gold'
-                    : 'border-skin-dim/30'
+                    : 'border-[rgba(168,163,156,0.3)]'
                 }`}
               >
                 {config.schedulePreset === sp.value && (
@@ -731,13 +731,13 @@ export function DynamicRulesetBuilder({
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <span className={`text-[10px] font-mono font-bold ${
-                    config.schedulePreset === sp.value ? 'text-skin-gold' : 'text-skin-dim/60'
+                    config.schedulePreset === sp.value ? 'text-skin-gold' : 'text-[rgba(168,163,156,0.6)]'
                   }`}>
                     {sp.label}
                   </span>
-                  <span className="text-[8px] font-mono text-skin-dim/30">{sp.dayLength}</span>
+                  <span className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">{sp.dayLength}</span>
                 </div>
-                <span className="block text-[8px] font-mono text-skin-dim/30">{sp.desc}</span>
+                <span className="block text-[8px] font-mono text-[rgba(168,163,156,0.3)]">{sp.desc}</span>
               </div>
             </label>
           ))}
@@ -754,7 +754,7 @@ export function DynamicRulesetBuilder({
               data-testid="start-time-input"
               value={config.startTime}
               onChange={e => onChange({ ...config, startTime: e.target.value })}
-              className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-skin-gold/50 transition-all"
+              className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] transition-all"
             />
           </div>
           {config.schedulePreset === 'SPEED_RUN' && (
@@ -767,12 +767,12 @@ export function DynamicRulesetBuilder({
                   .toISOString().slice(0, 16);
                 onChange({ ...config, startTime: local });
               }}
-              className="text-[10px] font-mono text-skin-gold/70 hover:text-skin-gold border border-skin-gold/20 rounded-lg px-2 py-1 transition-all"
+              className="text-[10px] font-mono text-[rgba(247,197,46,0.7)] hover:text-skin-gold border border-[rgba(247,197,46,0.2)] rounded-lg px-2 py-1 transition-all"
             >
               Set to now + 5 min
             </button>
           )}
-          <p className="text-[8px] font-mono text-skin-dim/30">
+          <p className="text-[8px] font-mono text-[rgba(168,163,156,0.3)]">
             {config.schedulePreset === 'SPEED_RUN'
               ? 'Game starts at this time — events fire minutes apart'
               : 'Day 1 begins on this date — events follow the preset schedule'}

@@ -1,8 +1,8 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { getGameSessionStatus, startGame, sendEmailInvite, getGameInvites, sendGameEntryPush } from '../../../actions';
 import type { GameSlot, SentInvite } from '../../../actions';
 
@@ -10,9 +10,70 @@ function personaMediumUrl(id: string): string {
   return `/api/persona-image/${id}/medium.png`;
 }
 
+// Paper-tape confetti for the "you got picked" moment. 14 pieces, mix of
+// red/paper/gold to match the lobby brief's accent register without going
+// rainbow-cheap. Pieces fall + rotate with mild horizontal drift; opacity
+// fades out in the last ~30% so the bottom of the trail doesn't hard-cut.
+// Reduced-motion users never see this — the parent caller gates on the
+// hook, this component just renders the pieces.
+function CastConfetti() {
+  const pieces = useMemo(() => {
+    return Array.from({ length: 14 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      drift: (Math.random() - 0.5) * 24,
+      delay: Math.random() * 0.35,
+      rotation: 540 + Math.random() * 540,
+      width: 6 + Math.random() * 6,
+      height: 14 + Math.random() * 14,
+      duration: 1.5 + Math.random() * 0.8,
+      color: ['var(--po-pink)', 'var(--po-text)', 'var(--po-gold)'][i % 3],
+    }));
+  }, []);
+
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-30 overflow-hidden">
+      {pieces.map((p) => (
+        <motion.span
+          key={p.id}
+          initial={{ y: -40, x: '0vw', rotate: 0, opacity: 1 }}
+          animate={{
+            y: '110vh',
+            x: `${p.drift}vw`,
+            rotate: p.rotation,
+            opacity: [1, 1, 0.6, 0],
+          }}
+          transition={{
+            duration: p.duration,
+            delay: p.delay,
+            ease: [0.5, 0, 0.7, 0.95], // accelerate (gravity-feeling)
+            opacity: {
+              times: [0, 0.7, 0.85, 1],
+              duration: p.duration,
+              delay: p.delay,
+            },
+          }}
+          className="absolute"
+          style={{
+            left: `${p.x}%`,
+            width: `${p.width}px`,
+            height: `${p.height}px`,
+            background: p.color,
+            borderRadius: 1,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function WaitingRoom() {
   const params = useParams();
   const code = params.id as string;
+  // /delight choreography hooks — animations branch on this so users
+  // with prefers-reduced-motion get a flat "everything appears at once"
+  // render instead of staggered springs.
+  const reduceMotion = useReducedMotion();
 
   const [status, setStatus] = useState<string>('LOADING');
   const [slots, setSlots] = useState<GameSlot[]>([]);
@@ -25,6 +86,12 @@ export default function WaitingRoom() {
   // their own card + use the persona name in the Enter CTA. Derived
   // server-side because we have no session.userId on the client.
   const [myPersonaId, setMyPersonaId] = useState<string | null>(null);
+  // /delight: paper-tape confetti fires once when myPersonaName first
+  // hydrates — that's the "you got picked" beat. confettiFiredRef ensures
+  // it only ever runs once per mount (we don't want it re-firing if data
+  // refreshes), and reduceMotion gates it out entirely.
+  const [showConfetti, setShowConfetti] = useState(false);
+  const confettiFiredRef = useRef(false);
 
   // Invite by email state
   const [inviteEmail, setInviteEmail] = useState('');
@@ -68,6 +135,26 @@ export default function WaitingRoom() {
     if (!token) return;
     sendGameEntryPush(code, token).then(({ sent }) => setPushSent(sent)).catch(() => {});
   }, [status, tokens, code]);
+
+  // Fire confetti once when myPersonaName first hydrates. This is the
+  // "you got picked" beat the user explicitly called out as the activation
+  // centerpiece. Hard-gated by confettiFiredRef so a status refresh
+  // doesn't re-fire it; gated by reduceMotion so users who request flat
+  // animation never see it. Auto-dismisses after the longest piece would
+  // have left the viewport.
+  useEffect(() => {
+    if (!myPersonaId) return;
+    if (confettiFiredRef.current) return;
+    if (reduceMotion) return;
+    // Wait until the cast strip has resolved so the confetti's timing
+    // matches the "Cast as <name>" headline arrival, not a stub render.
+    const myName = slots.find((s) => s.personaId === myPersonaId)?.personaName;
+    if (!myName) return;
+    confettiFiredRef.current = true;
+    setShowConfetti(true);
+    const t = setTimeout(() => setShowConfetti(false), 2800);
+    return () => clearTimeout(t);
+  }, [myPersonaId, slots, reduceMotion]);
 
   async function handleStart() {
     setIsStarting(true);
@@ -223,7 +310,7 @@ export default function WaitingRoom() {
   const myPersonaName = mySlot?.personaName ?? null;
 
   return (
-    <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-skin-gold/30 overflow-hidden">
+    <div className="h-dvh flex flex-col bg-skin-deep bg-grid-pattern font-body text-skin-base relative selection:bg-[rgba(247,197,46,0.3)] overflow-hidden">
       {/* Variant A waiting room background — paper grid (on the wrapper)
           plus two soft red radial highlights, matching the wizard and
           docs/reports/lobby-mockups/05-variant-a-welcome-v4.html. The
@@ -241,13 +328,18 @@ export default function WaitingRoom() {
         }}
       />
 
+      {showConfetti && <CastConfetti />}
+
       {/* Content */}
       <div className="flex-1 min-h-0 flex flex-col relative z-10 max-w-lg w-full mx-auto px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
         {/* Masthead — wordmark left, tear-off code stub right. Mirrors the
             /j/ welcome treatment so the host sees the same chrome the
             invitee will see when they tap in. */}
+        {/* Masthead — wordmark text-base → text-lg for the bolder pass.
+            Matches the /j welcome surface; both are page-level mastheads
+            and should announce, not whisper. */}
         <div className="flex items-center justify-between flex-shrink-0 pb-2 border-b-2 border-skin-base">
-          <div className="font-display font-black text-base text-skin-base tracking-[0.16em] uppercase leading-none">
+          <div className="font-display font-black text-lg text-skin-base tracking-[0.16em] uppercase leading-none">
             Pecking Order
           </div>
           <div className="font-mono text-[10px] font-bold tracking-[0.1em] text-skin-dim leading-none">
@@ -258,15 +350,15 @@ export default function WaitingRoom() {
 
         <header className="text-center space-y-0.5 flex-shrink-0 mt-3">
           <div className="max-w-sm mx-auto space-y-2">
-            <div className="text-[10px] font-display font-bold text-skin-dim uppercase tracking-widest text-left">
+            <div className="text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.22em] text-left">
               Invite link
             </div>
-            {/* Solid bg-skin-input (#1d1d1d) — was bg-skin-input/60, which
+            {/* Solid bg-skin-input (#1d1d1d) — was bg-[rgba(29,29,29,0.6)], which
                 is a 60% wash that on the page-bg ink barely lifts and
                 made the URL hard to read. Per variant A brief: surfaces
                 that hold typography land at solid input ink, not at a
                 transparent fade of the page color. */}
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-skin-input border border-skin-base/15">
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-skin-input border border-[rgba(245,243,240,0.15)]">
               <code className="flex-1 text-xs font-mono text-skin-base truncate text-left">
                 {shareLink}
               </code>
@@ -275,8 +367,8 @@ export default function WaitingRoom() {
                 aria-label={copied ? 'Invite link copied' : 'Copy invite link'}
                 className={`min-h-[36px] text-xs font-display font-bold px-3 py-2 rounded border transition-all whitespace-nowrap ${
                   copied
-                    ? 'text-skin-pink border-skin-pink/60'
-                    : 'text-skin-base border-skin-base/30 hover:border-skin-base/60'
+                    ? 'text-skin-pink border-[rgba(215,38,56,0.6)]'
+                    : 'text-skin-base border-[rgba(245,243,240,0.3)] hover:border-[rgba(245,243,240,0.6)]'
                 }`}
               >
                 {copied ? 'Copied!' : 'Copy'}
@@ -293,7 +385,7 @@ export default function WaitingRoom() {
               {hasNativeShare && (
                 <button
                   onClick={handleNativeShare}
-                  className="flex-1 min-h-[40px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-skin-pink text-skin-base text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all"
+                  className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-skin-pink text-skin-base text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <circle cx="18" cy="5" r="3" />
@@ -308,7 +400,7 @@ export default function WaitingRoom() {
               <button
                 onClick={handleSmsShare}
                 aria-label="Share via SMS"
-                className={`${hasNativeShare ? 'w-10' : 'flex-1'} min-h-[40px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#22c55e] text-white text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all`}
+                className={`${hasNativeShare ? 'w-10' : 'flex-1'} min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-[#22c55e] text-white text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all`}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
@@ -318,7 +410,7 @@ export default function WaitingRoom() {
               <button
                 onClick={handleWhatsAppShare}
                 aria-label="Share via WhatsApp"
-                className={`${hasNativeShare ? 'w-10' : 'flex-1'} min-h-[40px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#25D366] text-white text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all`}
+                className={`${hasNativeShare ? 'w-10' : 'flex-1'} min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-[#25D366] text-white text-xs font-display font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.99] transition-all`}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
@@ -373,20 +465,36 @@ export default function WaitingRoom() {
             until myPersonaId hydrates from the action. */}
         {myPersonaName ? (
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
+            initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
             className="text-center mt-3 mb-1 flex-shrink-0 relative"
           >
             <p className="text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.28em]">
               Cast as
             </p>
-            <h2
-              className="font-display font-black text-skin-base leading-[0.92] tracking-tight mt-0.5 px-2 break-words"
-              style={{ fontSize: 'clamp(1.75rem, 8vw, 2.75rem)' }}
+            {/* Headline pushed clamp(1.75/8vw/2.75) → clamp(2/9.5vw/3.25)
+                for the bolder pass — this is the "you got picked" moment
+                the user explicitly called out as the activation centerpiece;
+                needed to crop harder so it reads as title-card, not body.
+                /delight: the h2 lands with a spring-overshoot scale (0.92
+                → 1) ~0.18s after the eyebrow, reading as a press-stamp
+                landing on paper. The eyebrow + name + gold sweep play as
+                three beats: kicker, name, accent — a tabloid title-card
+                sequence rather than one synchronized fade. */}
+            <motion.h2
+              initial={reduceMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.92, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { delay: 0.18, type: 'spring', stiffness: 320, damping: 17 }
+              }
+              className="font-display font-black text-skin-base leading-[0.9] tracking-tight mt-0.5 px-2 break-words"
+              style={{ fontSize: 'clamp(2rem, 9.5vw, 3.25rem)' }}
             >
               {myPersonaName}
-            </h2>
+            </motion.h2>
             {/* Gold accent sweep — one-shot draw-in on mount, then static.
                 Sits below the name as a tabloid sub-rule; not banned per
                 impeccable.md (banned is `box-shadow: inset` SIDE-stripes;
@@ -418,7 +526,7 @@ export default function WaitingRoom() {
             /* Skeleton grid */
             <div className="grid grid-cols-2 gap-3">
               {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="aspect-[3/4] rounded-2xl bg-skin-input/20 animate-pulse" />
+                <div key={i} className="aspect-[3/4] rounded-2xl bg-[rgba(29,29,29,0.2)] animate-pulse" />
               ))}
             </div>
           ) : (
@@ -434,15 +542,49 @@ export default function WaitingRoom() {
                   The user's own card (matched by personaId) gets a gold
                   hairline ring + a "YOU" stamp so self-recognition is
                   instant, not a beat-of-effort to find themselves. */}
+              {/* /delight choreography: others land in array order, then a
+                  ~0.2s beat, then the user's own card. The "and… YOU" reveal
+                  mirrors the reality-TV pacing the lobby brief asks for —
+                  cast call, dramatic pause, you. Computed off filledSlots
+                  positions so the camera works whether the user joined first,
+                  middle, or last. */}
               {filledSlots.map((slot, idx) => {
                 const isMostRecent = idx === filledSlots.length - 1;
                 const isMine = !!myPersonaId && slot.personaId === myPersonaId;
+                const totalOthers = filledSlots.filter(
+                  (s) => s.personaId !== myPersonaId,
+                ).length;
+                const othersBefore = filledSlots
+                  .slice(0, idx)
+                  .filter((s) => s.personaId !== myPersonaId).length;
+                const cardDelay = reduceMotion
+                  ? 0
+                  : isMine
+                    ? totalOthers * 0.08 + 0.22 // beat after the last other
+                    : othersBefore * 0.08;
                 return (
                   <motion.div
                     key={slot.slotIndex}
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={
+                      reduceMotion
+                        ? { opacity: 1, scale: 1 }
+                        : isMine
+                          ? { opacity: 0, scale: 0.82 }
+                          : { opacity: 0, scale: 0.9 }
+                    }
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: idx * 0.08, duration: 0.35 }}
+                    transition={
+                      reduceMotion
+                        ? { duration: 0 }
+                        : isMine
+                          ? {
+                              delay: cardDelay,
+                              type: 'spring',
+                              stiffness: 280,
+                              damping: 16,
+                            }
+                          : { delay: cardDelay, duration: 0.35 }
+                    }
                     className={`aspect-[3/4] relative rounded-2xl overflow-hidden ${isMostRecent ? 'glow-breathe' : ''} ${isMine ? 'ring-2 ring-skin-gold' : ''}`}
                   >
                     {slot.personaId ? (
@@ -462,27 +604,49 @@ export default function WaitingRoom() {
                       <div className="absolute inset-0 bg-skin-input" />
                     )}
                     {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-skin-deep/40 via-30% to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-skin-deep via-[rgba(10,10,10,0.4)] via-30% to-transparent pointer-events-none" />
                     {/* "YOU" press-stamp — only on the user's own card. Gold
                         + slight skew to read as a tabloid stamp, mirrors the
-                        "Locked In" stamp pattern on the wizard's step 4. */}
+                        "Locked In" stamp pattern on the wizard's step 4.
+                        /delight: lands ~0.25s after the card itself with a
+                        spring-overshoot rotation (kicks in from -12deg, lands
+                        at +3deg) so the stamp reads as a press-down, not a
+                        sticker. */}
                     {isMine && (
-                      <div
+                      <motion.div
                         aria-hidden
+                        initial={
+                          reduceMotion
+                            ? { opacity: 1, scale: 1, rotate: 3 }
+                            : { opacity: 0, scale: 0.4, rotate: -12 }
+                        }
+                        animate={{ opacity: 1, scale: 1, rotate: 3 }}
+                        transition={
+                          reduceMotion
+                            ? { duration: 0 }
+                            : {
+                                delay: cardDelay + 0.22,
+                                type: 'spring',
+                                stiffness: 360,
+                                damping: 12,
+                              }
+                        }
                         className="absolute top-2 right-2 px-2 py-0.5 bg-skin-gold text-skin-deep font-display font-black text-[10px] uppercase tracking-[0.2em] rounded-sm pointer-events-none"
-                        style={{ transform: 'rotate(3deg)' }}
                       >
                         You
-                      </div>
+                      </motion.div>
                     )}
                     {/* Name + stereotype. Stereotype in red (was gold) per
                         variant A single-accent rule. text-glow dropped from
-                        name (gold-tinted shadow leftover from old palette). */}
+                        name (gold-tinted shadow leftover from old palette).
+                        Bolder pass: name 14→16px and stereotype 9→10.5px
+                        with tighter tracking so the chyron reads from a
+                        thumb-glance, not a squint. */}
                     <div className="absolute bottom-0 left-0 right-0 p-3 pointer-events-none">
-                      <div className="text-sm font-display font-black text-skin-base leading-tight truncate">
+                      <div className="text-base font-display font-black text-skin-base leading-[1.05] tracking-tight truncate">
                         {slot.personaName}
                       </div>
-                      <div className="text-[9px] font-display font-bold text-skin-pink uppercase tracking-[0.15em] truncate">
+                      <div className="text-[10.5px] font-display font-black text-skin-pink uppercase tracking-[0.18em] truncate mt-0.5">
                         {slot.personaStereotype}
                       </div>
                     </div>
@@ -497,13 +661,19 @@ export default function WaitingRoom() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: filledSlots.length * 0.08 + 0.1, duration: 0.3 }}
-                  className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed border-skin-base/40 bg-skin-glass flex items-center justify-center"
+                  className="aspect-[3/4] relative rounded-2xl overflow-hidden border border-dashed border-[rgba(245,243,240,0.4)] bg-skin-glass flex items-center justify-center"
                 >
+                  {/* Empty-seat eyebrow promoted to red display-black 11px,
+                      tracking 0.22em — kicker grammar instead of muted UI
+                      label. The dashed-border card already says "absence";
+                      letting the eyebrow read as a CASTING-CALL kicker
+                      makes the gap feel like an open audition slot, not
+                      missing data. */}
                   <div className="text-center space-y-1">
-                    <div className="text-[10px] font-display font-bold text-skin-base/75 uppercase tracking-[0.2em]">
+                    <div className="text-[11px] font-display font-black text-skin-pink uppercase tracking-[0.22em]">
                       Open seat
                     </div>
-                    <div className="text-xs text-skin-base/55">Waiting on someone</div>
+                    <div className="text-xs text-[rgba(245,243,240,0.6)]">Waiting on someone</div>
                   </div>
                 </motion.div>
               ))}
@@ -517,7 +687,7 @@ export default function WaitingRoom() {
               <button
                 onClick={() => setShowInviteSection(!showInviteSection)}
                 aria-expanded={showInviteSection}
-                className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-skin-base/30 bg-skin-glass-elevated text-sm font-display font-bold text-skin-dim hover:text-skin-base hover:border-skin-gold/30 transition-all"
+                className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-[rgba(245,243,240,0.3)] bg-skin-glass-elevated text-sm font-display font-bold text-skin-dim hover:text-skin-base hover:border-[rgba(247,197,46,0.3)] transition-all"
               >
                 <span>Invite by Email</span>
                 <svg
@@ -551,7 +721,7 @@ export default function WaitingRoom() {
                           placeholder="player@example.com"
                           aria-label="Player email"
                           required
-                          className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-skin-gold/50 focus:border-skin-gold/50 placeholder:text-skin-faint"
+                          className="flex-1 bg-skin-input text-skin-base border border-skin-base rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[rgba(247,197,46,0.5)] focus:border-[rgba(247,197,46,0.5)] placeholder:text-skin-faint"
                         />
                         <button
                           type="submit"
@@ -567,13 +737,13 @@ export default function WaitingRoom() {
                       </form>
 
                       {inviteStatus && (
-                        <div role="status" className="p-2.5 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs text-center">
+                        <div role="status" className="p-2.5 rounded-lg bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.3)] text-skin-green text-xs text-center">
                           {inviteStatus}
                         </div>
                       )}
 
                       {inviteError && (
-                        <div role="alert" className="p-2.5 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-xs text-center">
+                        <div role="alert" className="p-2.5 rounded-lg bg-[rgba(215,38,56,0.1)] border border-[rgba(215,38,56,0.3)] text-skin-pink text-xs text-center">
                           {inviteError}
                         </div>
                       )}
@@ -606,10 +776,10 @@ export default function WaitingRoom() {
       </div>
 
       {/* Bottom action bar */}
-      <div className="flex-shrink-0 relative z-20 bg-gradient-to-b from-skin-deep/0 to-skin-deep pt-3 px-4" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+      <div className="flex-shrink-0 relative z-20 bg-gradient-to-b from-[rgba(10,10,10,0)] to-skin-deep pt-3 px-4" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
         <div className="max-w-lg mx-auto">
           {error && (
-            <div role="alert" className="p-3 mb-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm text-center">
+            <div role="alert" className="p-3 mb-3 rounded-lg bg-[rgba(215,38,56,0.1)] border border-[rgba(215,38,56,0.3)] text-skin-pink text-sm text-center">
               {error}
             </div>
           )}
@@ -623,14 +793,27 @@ export default function WaitingRoom() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
+                {/* Launch Game CTA — gets the same shadow-bevel treatment
+                    as the /j Step-in CTA so the host's commit moment
+                    matches the invitee's. Bigger min-h, text-base instead
+                    of text-sm, tracking 0.24em to match. Press translates
+                    down 2px and shrinks the bevel for tactile depth. */}
                 <button
                   onClick={handleStart}
                   disabled={isStarting}
-                  className={`w-full py-4 font-display font-bold text-sm tracking-widest uppercase rounded-xl shadow-lg transition-all flex items-center justify-center gap-3
+                  style={
+                    isStarting
+                      ? undefined
+                      : {
+                          boxShadow:
+                            '0 4px 0 var(--po-pink-depth), 0 10px 24px -6px rgba(215,38,56,0.42)',
+                        }
+                  }
+                  className={`w-full min-h-[60px] py-5 font-display font-black text-base tracking-[0.24em] uppercase rounded-xl transition-[transform,box-shadow] flex items-center justify-center gap-3
                     ${
                       isStarting
                         ? 'bg-skin-input text-skin-faint cursor-wait'
-                        : 'bg-skin-pink text-skin-base shadow-btn hover:brightness-110 active:scale-[0.99]'
+                        : 'bg-skin-pink text-skin-base active:translate-y-[2px] active:[box-shadow:0_2px_0_var(--po-pink-depth),0_6px_14px_-4px_rgba(215,38,56,0.35)]'
                     }`}
                 >
                   {isStarting ? (
@@ -656,7 +839,7 @@ export default function WaitingRoom() {
                 className="space-y-3"
               >
                 {pushSent && (
-                  <div role="status" className="p-3 rounded-lg bg-skin-green/10 border border-skin-green/30 text-skin-green text-xs text-center">
+                  <div role="status" className="p-3 rounded-lg bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.3)] text-skin-green text-xs text-center">
                     We sent a notification to your app. Tap it to enter!
                   </div>
                 )}

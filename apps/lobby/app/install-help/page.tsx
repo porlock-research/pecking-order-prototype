@@ -153,7 +153,7 @@ export default function InstallHelpPage() {
 
 function BrowserCheck() {
   return (
-    <div className="border border-skin-gold/40 bg-skin-gold/10 rounded-xl px-5 py-4 space-y-2">
+    <div className="border border-[rgba(247,197,46,0.4)] bg-[rgba(247,197,46,0.1)] rounded-xl px-5 py-4 space-y-2">
       <p className="text-[10px] uppercase tracking-widest font-bold text-skin-gold mb-1.5 font-display">
         Two things to know
       </p>
@@ -217,7 +217,7 @@ function Troubleshooting() {
                 <li>Easiest: open this game in Chrome, Safari, or Firefox.</li>
                 <li>
                   Stay on Brave: go to{' '}
-                  <code className="text-skin-base bg-skin-fill/40 px-1 py-0.5 rounded">
+                  <code className="text-skin-base bg-[rgba(10,10,10,0.4)] px-1 py-0.5 rounded">
                     brave://settings/privacy
                   </code>{' '}
                   → turn on “Use Google services for push messaging” → restart Brave.
@@ -257,7 +257,7 @@ function PlatformSection({
         <p className={`text-[10px] uppercase tracking-widest font-bold font-display ${tagColor}`}>
           {tag}
         </p>
-        <p className="text-sm text-skin-dim leading-relaxed border-l-2 border-skin-gold/40 pl-3">
+        <p className="text-sm text-skin-dim leading-relaxed border-l-2 border-[rgba(247,197,46,0.4)] pl-3">
           {requirement}
         </p>
       </div>

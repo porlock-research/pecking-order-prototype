@@ -53,7 +53,7 @@ export function WelcomeForm({ code }: { code: string }) {
           autoComplete="given-name"
           maxLength={24}
           placeholder="Your real name"
-          className="mt-2 w-full px-4 py-3 bg-skin-input border border-skin-rule rounded-lg text-skin-base placeholder:text-skin-faint focus:outline-none focus:border-skin-pink/60 text-base"
+          className="mt-2 w-full px-4 py-3 bg-skin-input border border-skin-rule rounded-lg text-skin-base placeholder:text-skin-faint focus:outline-none focus:border-[rgba(215,38,56,0.6)] text-base"
         />
         <span className="mt-2 block text-[11.5px] text-skin-dim leading-snug">
           <strong className="text-skin-base font-semibold">Stays hidden</strong> while you play. Other players see your{' '}
@@ -64,17 +64,28 @@ export function WelcomeForm({ code }: { code: string }) {
       {error && (
         <div
           role="alert"
-          className="p-3 rounded-lg bg-skin-pink/10 border border-skin-pink/30 text-skin-pink text-sm"
+          className="p-3 rounded-lg bg-[rgba(215,38,56,0.1)] border border-[rgba(215,38,56,0.3)] text-skin-pink text-sm"
         >
           {error}
         </div>
       )}
 
+      {/* Primary commit CTA — pushed bigger + harder for the bolder pass.
+          The shadow-bevel uses --po-pink-depth (the dedicated shadow
+          tone) to give the button physical depth instead of a generic
+          drop shadow; press translates the button down 2px and shrinks
+          the bevel for tactile feedback. Type bumped 15px→16px and
+          tracking 0.22em→0.24em to feel like reality-TV title-card,
+          not utility chrome. */}
       <button
         type="submit"
         disabled={isPending}
         aria-busy={isPending}
-        className="w-full min-h-[52px] py-4 bg-skin-pink text-skin-base font-display font-black text-[15px] uppercase tracking-[0.22em] rounded-lg disabled:opacity-50 active:scale-[0.99] transition-transform shadow-btn"
+        style={{
+          boxShadow:
+            '0 4px 0 var(--po-pink-depth), 0 10px 24px -6px rgba(215,38,56,0.42)',
+        }}
+        className="w-full min-h-[60px] py-5 bg-skin-pink text-skin-base font-display font-black text-base uppercase tracking-[0.24em] rounded-lg disabled:opacity-50 transition-[transform,box-shadow] active:translate-y-[2px] active:[box-shadow:0_2px_0_var(--po-pink-depth),0_6px_14px_-4px_rgba(215,38,56,0.35)]"
       >
         {isPending ? 'Stepping in…' : 'Step in →'}
       </button>

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CARTRIDGE_INFO } from '@pecking-order/shared-types';
+import { CARTRIDGE_INFO, VOTE_TYPE_INFO } from '@pecking-order/shared-types';
 import { useGameStore } from '../../../store/useGameStore';
 import { useNowTick } from './useNowTick';
 
@@ -69,6 +69,33 @@ export const ACT_VERB: Record<CartridgeKind, string> = {
   prompt: 'sent',
   dilemma: 'chosen',
 };
+
+/**
+ * Per-mechanism noun for the completed lifecycle pill meta. Voting
+ * cartridges borrow VOTE_TYPE_INFO.revealLabel (lowercased) so each vote
+ * type's existing reveal vocabulary surfaces in the pill — "cut" for
+ * EXECUTIONER, "crowned" for FINALS, "sunk" for BUBBLE, "fallen" for
+ * PODIUM_SACRIFICE, etc. Game/prompt/dilemma get fixed words since they
+ * don't have a mechanism sub-taxonomy.
+ *
+ * Replaces the previous single 'result' fallback that read identical
+ * across every cartridge — a finished FINALS vote and a finished silver
+ * arcade game looked the same on the pill bar.
+ */
+function completedNoun(p: PillState): string {
+  if (p.kind === 'voting') {
+    const data = p.cartridgeData;
+    const voteType = data?.voteType ?? data?.mechanism;
+    const label = voteType
+      ? VOTE_TYPE_INFO[voteType as keyof typeof VOTE_TYPE_INFO]?.revealLabel
+      : undefined;
+    return label ? label.toLowerCase() : 'cut';
+  }
+  if (p.kind === 'game') return 'tallied';
+  if (p.kind === 'prompt') return 'judged';
+  if (p.kind === 'dilemma') return 'decided';
+  return 'result';
+}
 
 const ACTION_TO_KIND: Record<string, CartridgeKind> = {
   OPEN_VOTING: 'voting',
@@ -727,7 +754,7 @@ function formatPillMeta(p: PillState, now: number): string | undefined {
       // kind-color span), then the countdown follows.
       return p.endTime !== undefined ? formatCountdown(p.endTime - now) : undefined;
     case 'completed':
-      return 'result';
+      return completedNoun(p);
   }
   return undefined;
 }
