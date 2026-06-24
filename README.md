@@ -13,6 +13,12 @@
   <strong>Prototype · solo-built · playtest stage</strong>
 </p>
 
+<p align="center">
+  <a href="https://peckingorder.ca"><strong>Live → peckingorder.ca</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://peckingorder.ca/how-it-works">How it works</a>
+</p>
+
 ---
 
 This repository is the working prototype for Pecking Order, a real-time social game I designed and built end to end. I'm sharing it as a portfolio piece, so this README explains **what the system is and the thinking behind how it's built**, not how to install it. It isn't meant to be stood up by anyone else.
@@ -44,7 +50,7 @@ The hard part of Pecking Order isn't any one screen. It's that the game is a **s
 
 - **It's persistent and self-advancing.** Days and phases turn over on a schedule, on the server, even when no one is connected. The game is never "paused waiting for input."
 - **It's secret-keeping.** No two players are allowed to see the same thing. Hidden votes, private DM threads, anonymous confessions, who-submitted-but-not-what: the server has to decide, per player, what's true *for them* on every update.
-- **It's a moving target.** Twenty cartridge-style activities, four visual themes, a live social layer, an economy, and an admin console all have to compose without turning into a tangle.
+- **It's a moving target.** More than forty cartridge-style activities, four visual themes, a live social layer, an economy, and an admin console all have to compose without turning into a tangle.
 
 Here are the decisions I'd actually walk someone through.
 
