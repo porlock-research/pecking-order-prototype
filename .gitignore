@@ -70,4 +70,7 @@ skills-lock.json
 # Screenshots from testing/debugging (root level)
 /*.png
 
+# Local throwaway / staging debug scripts (never committed)
+scripts/tmp-*.js
+
 # Gemini
