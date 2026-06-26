@@ -52,7 +52,48 @@ The hard part of Pecking Order isn't any one screen. It's that the game is a **s
 - **It's secret-keeping.** No two players are allowed to see the same thing. Hidden votes, private DM threads, anonymous confessions, who-submitted-but-not-what: the server has to decide, per player, what's true *for them* on every update.
 - **It's a moving target.** More than forty cartridge-style activities, four visual themes, a live social layer, an economy, and an admin console all have to compose without turning into a tangle.
 
+Here's how those pieces fit together:
+
+```mermaid
+flowchart TB
+    Client["Player client — React 19 PWA · 4 shells · Zustand"]
+    subgraph CF["Cloudflare edge"]
+      direction TB
+      subgraph DO["Durable Object — one per game · authoritative state"]
+        direction TB
+        L1["L1 · Connection — socket, identity, routing"]
+        L2["L2 · Orchestrator — day/phase loop, fact log, scheduling"]
+        L3["L3 · Session — chat, voting, activities, dilemmas"]
+        CART["Cartridges — 42 game / vote / prompt / dilemma machines"]
+        SQL[("DO SQLite")]
+        L1 --> L2 --> L3 --> CART
+        L2 --> SQL
+      end
+      D1[("D1 — cross-game record")]
+      R2[("R2 — assets")]
+      ALARM["DO alarms — timeline scheduler"]
+    end
+    Client <-->|"WebSocket · per-player SYNC"| L1
+    L2 -.->|"fire-and-forget"| D1
+    ALARM -->|"WAKEUP"| L2
+    Client -.->|"assets"| R2
+```
+
+### Architecture at a glance
+
 Here are the decisions I'd actually walk someone through.
+
+| Decision | Why it matters |
+| --- | --- |
+| One Durable Object per game | One strongly-consistent actor owns all state — no distributed locking. DO SQLite is authoritative; D1 is a fire-and-forget secondary. |
+| Nested XState machines (the "Russian Doll") | Connection → orchestrator → session → cartridges, each with one job. Activities are pluggable child machines with a strict termination protocol. |
+| Event-sourced "facts" | State changes are an append-only log; side effects — journal, ticker, push — fan out from one seam. |
+| Per-player projections | Every transition broadcasts a *different*, filtered payload per player. A client can't leak what it was never sent. |
+| Pure machines + injected environment | Game logic does no I/O, so the whole engine is unit-testable without infrastructure (~70 test files). |
+| Alarm-driven timeline | The game advances on Durable Object alarms even when no one's connected. "Anchor to now": day index = what plays, clock = when. |
+
+<details>
+<summary><strong>The reasoning, decision by decision</strong></summary>
 
 **One Durable Object per game as the unit of consistency.** Each game is a single Cloudflare Durable Object, a single-threaded, strongly-consistent actor that owns all of that game's state. That sidesteps the usual distributed-state and locking problems. There's one authority, its SQLite is the source of truth, and a separate D1 database holds the secondary cross-game record (rosters, journals, wallets) on fire-and-forget writes. When the two disagree, the DO wins. I decided that up front rather than discovering it in production.
 
@@ -65,6 +106,8 @@ Here are the decisions I'd actually walk someone through.
 **Pure machines, with the environment injected at the edge.** The state machines are pure and do no I/O. The Durable Object's runtime, its database handle, network, and deferred work, gets injected at startup through a small set of overridable actions. The payoff is that the entire game brain is unit-testable without standing up any infrastructure. That's most of why there are ~70 test files here instead of a manual QA spreadsheet.
 
 **A scheduler bolted onto Durable Object alarms.** The timeline advances on DO alarms. The day model uses "anchor to now" resolution: the day index decides *what* content plays, the wall clock decides *when* its events fire. There's a documented workaround in here for a genuinely nasty alarm-versus-constructor race, the kind of thing you only find by living in the platform for a while.
+
+</details>
 
 If you want the real depth, [`ARCHITECTURE.md`](ARCHITECTURE.md) traces the actual data flows: the event-routing path, the fact fan-out, the sync broadcast, the alarm pipeline. [`plans/DECISIONS.md`](plans/DECISIONS.md) is the decision log, 151 ADRs and counting.
 
@@ -85,7 +128,17 @@ A Turborepo monorepo: five apps, five shared packages.
 | `packages/auth` | JWT issuing and verification (jose). |
 | `packages/ui-kit` | Tailwind preset and theme tokens. |
 
-**Stack:** TypeScript everywhere. Cloudflare Workers / Durable Objects (PartyServer), XState v5, React 19, Next.js 15, D1 (SQLite), R2, Zustand, Tailwind, Framer Motion. Tested with Vitest for unit work and Playwright across nine end-to-end suites.
+**Stack**
+
+| Layer | Tech |
+| --- | --- |
+| Client | React 19, Vite, Zustand, Tailwind, Framer Motion (PWA) |
+| Server | Cloudflare Workers, Durable Objects (PartyServer), XState v5 |
+| Data & infra | D1 (SQLite), R2, Durable Object alarms |
+| Lobby | Next.js 15 on Cloudflare (OpenNext) |
+| Tooling | TypeScript, Turborepo, Vitest, Playwright |
+
+TypeScript throughout, with ~70 Vitest unit files and nine Playwright end-to-end suites.
 
 ## How I built it
 
