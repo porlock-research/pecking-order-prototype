@@ -92,6 +92,38 @@ Here are the decisions I'd actually walk someone through.
 | Pure machines + injected environment | Game logic does no I/O, so the whole engine is unit-testable without infrastructure (~70 test files). |
 | Alarm-driven timeline | The game advances on Durable Object alarms even when no one's connected. "Anchor to now": day index = what plays, clock = when. |
 
+### How one action flows
+
+Layers never reach into each other; each passes events to the next (`sendTo` down, `sendParent` up), which is what keeps a system this size from tangling. A player action (or a Durable Object alarm firing `WAKEUP`) flows down to a cartridge; the resulting **fact** flows back up an append-only log and fans out to every handler; and the pure machines stay testable because all I/O is injected at the edge via `.provide()`. Every transition then re-broadcasts a per-player SYNC.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as Player
+    participant L1 as L1 · Durable Object
+    participant L2 as L2 · Orchestrator
+    participant L3 as L3 · Session
+    participant C as Cartridge
+    participant FX as side effects
+
+    P->>L1: action (vote, message) over WebSocket
+    Note over L1: inject server-verified senderId
+    L1->>L2: actor.send(event)
+    L2->>L3: sendTo('l3-session', event)
+    L3->>C: sendTo(cartridge, event)
+
+    C-->>L3: sendParent(FACT.RECORD)
+    L3-->>L2: forwardToL2
+    Note over L2,FX: fan-out, applyFactToRoster, updateJournalTimestamp, forwardFactToGameMaster, persistFactToD1
+    L2->>FX: persistFactToD1 via .provide(), append-only journal, ticker, push, perks
+
+    C-->>L3: reaches final state (xstate.done)
+    L3-->>L2: sendParent(CARTRIDGE.*_RESULT)
+    Note over L2: store result · emit result fact · economy
+
+    L2-->>P: per-player SYNC (filtered) on every transition
+```
+
 <details>
 <summary><strong>The reasoning, decision by decision</strong></summary>
 
