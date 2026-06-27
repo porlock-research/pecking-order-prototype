@@ -143,6 +143,44 @@ sequenceDiagram
 
 If you want the real depth, [`ARCHITECTURE.md`](ARCHITECTURE.md) traces the actual data flows: the event-routing path, the fact fan-out, the sync broadcast, the alarm pipeline. [`plans/DECISIONS.md`](plans/DECISIONS.md) is the decision log, 151 ADRs and counting.
 
+## An engine, not a game
+
+Pecking Order isn't hardcoded. The engine runs a **manifest**: a typed, Zod-validated document that names what plays and when. Swap the manifest and the same engine runs a different game.
+
+```jsonc
+// A STATIC manifest — the game IS this document; the engine runs what each day names.
+{
+  "kind": "STATIC",
+  "scheduling": "PRE_SCHEDULED",            // alarms fire the timeline ("ADMIN" = advance by hand)
+  "days": [
+    {
+      "dayIndex": 1,
+      "theme": "First Impressions",
+      "voteType": "MAJORITY",               // which voting cartridge runs
+      "gameType": "TRIVIA",                 // which mini-game cartridge runs
+      "activityType": "WOULD_YOU_RATHER",   // optional prompt cartridge
+      "timeline": [                         // scheduled actions → Durable Object alarms
+        { "time": "12:00", "action": "START_GAME" },
+        { "time": "17:00", "action": "OPEN_VOTING" },
+        { "time": "20:00", "action": "CLOSE_VOTING" },
+        { "time": "20:05", "action": "ELIMINATE" },
+        { "time": "20:10", "action": "END_DAY" }
+      ]
+    },
+    { "dayIndex": 2, "theme": "Alliances Form",  "voteType": "BUBBLE",           "gameType": "BLIND_AUCTION", "timeline": [] },
+    { "dayIndex": 3, "theme": "Betrayal",        "voteType": "EXECUTIONER",      "gameType": "BET_BET_BET",   "timeline": [] },
+    { "dayIndex": 4, "theme": "Desperate Moves", "voteType": "PODIUM_SACRIFICE", "gameType": "THE_SPLIT",     "timeline": [] },
+    { "dayIndex": 5, "theme": "The Finale",      "voteType": "FINALS",           "gameType": "KINGS_RANSOM",  "timeline": [] }
+  ]
+}
+```
+
+- **Cartridges are a playlist.** Each day names a voting mechanic (`voteType`), a mini-game (`gameType`), and optional prompt/dilemma. The engine spawns whatever the manifest names; a new format is a new entry, not new engine code.
+- **Two kinds, one schema** (a discriminated union on `kind`). `STATIC` scripts every day up front (above). `DYNAMIC` hands the engine a `ruleset` instead, and a Game Master actor resolves each day at runtime: day count scales to the cast (`ACTIVE_PLAYERS_MINUS_ONE`), DM budgets scale per active player, vote and game pools avoid repeats. The game rewrites itself to fit who's still in.
+- **Scheduling is orthogonal.** `PRE_SCHEDULED` turns the timeline into real Durable Object alarms; `ADMIN` advances by hand. A `schedulePreset` swaps tempo without touching content: `SMOKE_TEST` runs 5-minute days for tests, `DEFAULT` runs 24-hour days in production.
+
+Content, pacing, and scheduling are all data. That's the line between a product and an engine.
+
 ## How it's built
 
 A Turborepo monorepo: five apps, five shared packages.
