@@ -124,6 +124,69 @@ sequenceDiagram
     L2-->>P: per-player SYNC (filtered) on every transition
 ```
 
+### Inside the machines
+
+L1 is the Durable Object itself, not a statechart: it owns the WebSocket, injects identity, persists every snapshot, and runs the L2 actor. L2 and L3 are where the XState lives.
+
+**L2 is a sequential lifecycle.** It walks a game from setup to teardown, invoking a child session each day and looping until someone wins.
+
+```mermaid
+stateDiagram-v2
+    [*] --> uninitialized
+    uninitialized --> preGame: SYSTEM.INIT
+    preGame --> dayLoop: WAKEUP
+    state dayLoop {
+        [*] --> morningBriefing
+        morningBriefing --> activeSession: resolve day + invoke l3-session
+        activeSession --> [*]: day ends
+    }
+    dayLoop --> nightSummary
+    nightSummary --> dayLoop: more days
+    nightSummary --> gameSummary: game complete
+    gameSummary --> gameOver: NEXT_STAGE
+    gameOver --> [*]
+```
+
+**L3 is a single parallel state.** Its `running` state splits into five concurrent regions, each owning one slice of the day and routed by event prefix, so chat, the main stage, daily activities, dilemmas, and confessions all advance independently.
+
+```mermaid
+stateDiagram-v2
+    state running {
+        state social {
+            [*] --> active
+        }
+        --
+        state mainStage {
+            [*] --> groupChat
+            groupChat --> dailyGame: GAME.*
+            groupChat --> voting: VOTE.*
+            dailyGame --> groupChat
+            voting --> groupChat
+        }
+        --
+        state activityLayer {
+            state "idle" as idleAct
+            [*] --> idleAct
+            idleAct --> playing: ACTIVITY.*
+            playing --> idleAct
+        }
+        --
+        state dilemmaLayer {
+            state "idle" as idleDil
+            [*] --> idleDil
+            idleDil --> dilemmaActive: DILEMMA.*
+            dilemmaActive --> idleDil
+        }
+        --
+        state confessionLayer {
+            state "idle" as idleCon
+            [*] --> idleCon
+            idleCon --> recording: CONFESSION
+            recording --> idleCon
+        }
+    }
+```
+
 <details>
 <summary><strong>The reasoning, decision by decision</strong></summary>
 
