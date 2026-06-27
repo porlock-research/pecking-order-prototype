@@ -167,10 +167,11 @@ Pecking Order isn't hardcoded. The engine runs a **manifest**: a typed, Zod-vali
         { "time": "20:10", "action": "END_DAY" }
       ]
     },
-    { "dayIndex": 2, "theme": "Alliances Form",  "voteType": "BUBBLE",           "gameType": "BLIND_AUCTION", "timeline": [] },
-    { "dayIndex": 3, "theme": "Betrayal",        "voteType": "EXECUTIONER",      "gameType": "BET_BET_BET",   "timeline": [] },
-    { "dayIndex": 4, "theme": "Desperate Moves", "voteType": "PODIUM_SACRIFICE", "gameType": "THE_SPLIT",     "timeline": [] },
-    { "dayIndex": 5, "theme": "The Finale",      "voteType": "FINALS",           "gameType": "KINGS_RANSOM",  "timeline": [] }
+    // each later day is another row in the playlist (timelines elided):
+    { "dayIndex": 2, "theme": "Alliances Form", "voteType": "BUBBLE", "gameType": "BLIND_AUCTION" },
+    { "dayIndex": 3, "theme": "Betrayal", "voteType": "EXECUTIONER", "gameType": "BET_BET_BET" },
+    { "dayIndex": 4, "theme": "Desperate Moves", "voteType": "PODIUM_SACRIFICE", "gameType": "THE_SPLIT" },
+    { "dayIndex": 5, "theme": "The Finale", "voteType": "FINALS", "gameType": "KINGS_RANSOM" }
   ]
 }
 ```
